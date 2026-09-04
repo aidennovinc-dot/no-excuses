@@ -42,6 +42,12 @@
   .glow{animation:softglow 9s ease-in-out infinite}
   @keyframes softglow{50%{text-shadow:0 0 10px rgba(232,230,225,.22)}}
 
+  /* first open (v9): a tap-through in four cards — what this is, how modes open, how the look is earned */
+  #s-story{gap:22px;justify-content:center;cursor:pointer}
+  #s-story .card{display:flex;flex-direction:column;gap:16px;align-items:center;max-width:34ch;text-align:center;animation:rvin .5s ease-out both}
+  #s-story h2{font-family:var(--title);font-size:clamp(18px,5.4vw,30px);letter-spacing:.2em;text-transform:uppercase;padding-left:.2em}
+  #s-story p{color:var(--ink);opacity:.8;font-size:16px;line-height:1.6}
+  #s-story .dots{display:flex;gap:8px}#s-story .dots i{width:6px;height:6px;border-radius:50%;background:var(--line)}#s-story .dots i.on{background:var(--ink)}
   .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--mute)}
   button{font:inherit;color:var(--ink);background:none;border:0;cursor:pointer}
   button:focus-visible{outline:1px solid var(--ink);outline-offset:4px}
@@ -57,6 +63,13 @@
   .chip{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;padding:7px 11px;border:1px solid var(--line);color:var(--mute)}
   .chip.sel{color:var(--ink);border-color:var(--ink)}
   .chip.lbl{border:0;padding-left:0;padding-right:4px}
+  /* profile (v9): the name and a radar of your best across the games sit on top of the scores */
+  .prof{display:flex;flex-direction:column;align-items:center;gap:6px;flex:none}
+  #radar{width:min(58vw,230px);height:min(58vw,230px);overflow:visible}
+  #radar polygon.web{fill:none;stroke:var(--line)}#radar line{stroke:var(--line)}
+  #radar polygon.me{fill:color-mix(in srgb,var(--sq-live) 22%,transparent);stroke:var(--sq-live);stroke-width:2;stroke-linejoin:round}
+  #radar text{fill:var(--mute);font-family:var(--mono);font-size:8px;letter-spacing:.12em;text-transform:uppercase}
+  #radar circle{fill:var(--sq-live)}
   .who{display:flex;align-items:baseline;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--mute)}
   .who input{font:inherit;color:var(--ink);background:none;border:0;border-bottom:1px solid var(--line);width:11ch;text-transform:uppercase;letter-spacing:.18em;padding:4px 0;outline:none;text-align:center}
   .who input:focus{border-color:var(--ink)}
@@ -94,10 +107,25 @@
   .mini.dots i.w::before{background:var(--sq-live)}
   .mini.dots i.r::after{content:none}
   .mini.dots i.r::before{background:color-mix(in srgb,var(--cue) 25%,transparent);border:2px solid var(--cue)}
+  /* Estimate (v9): Grow shows a dashed target with a filled shape inside it; Cut shows a shape with a dotted line through it and a result */
   .mini.hold{align-items:flex-end}.mini.hold i{height:100%;background:none}
   .mini.hold i::before{content:"";position:absolute;left:0;right:0;bottom:0;height:64%;background:none;border:2px dashed var(--cue)}
   .mini.hold i.w::before{height:52%;background:var(--sq-live);border:0}
   .mini.hold i.e::before{border-radius:50%;height:70%}
+  .mini.cut{display:grid;place-items:center;position:relative;width:70%;height:70%}
+  .mini.cut i{position:absolute;inset:4% 18% 30% 18%;background:var(--sq-live);clip-path:polygon(0 30%,55% 0,100% 45%,80% 100%,20% 90%)}
+  .mini.cut i.ln{inset:auto;left:-6%;right:-6%;top:38%;height:0;border-top:2px dashed var(--cue);background:none;clip-path:none;rotate:-14deg}
+  .mini.cut b{position:absolute;left:-20%;right:-20%;bottom:-6%;text-align:center;font:700 8px var(--mono);color:var(--ok);letter-spacing:.06em;white-space:nowrap}
+  .mini.four{flex-wrap:wrap;gap:8%}.mini.four i{flex:none;width:46%;height:46%}
+  .mini.tmw{flex-direction:column;align-items:center;justify-content:center;gap:6%;width:80%}.mini.tmw i{flex:none;background:none;width:100%;text-align:center;font:700 13px var(--mono);color:var(--sq-live);letter-spacing:0;height:auto}
+  .mini.tmw i.u{font-size:10px;color:var(--mute);font-weight:500}.mini.tmw i.u b{color:var(--ok);font-weight:500}
+  .mini.tmh{position:relative;width:76%;height:56%;display:block}.mini.tmh i{position:absolute;background:none}
+  .mini.tmh i.b{left:0;top:32%;width:22%;height:36%;border-radius:50%;background:var(--sq-live)}
+  .mini.tmh i.wall{left:42%;right:0;top:0;bottom:0;background:var(--panel);border-left:1px solid var(--line)}
+  .mini.tmh i.m{left:64%;top:32%;width:22%;height:36%;border-radius:50%;border:2px dashed var(--cue)}
+  .mini.rx{background:var(--sq-live);width:100%;height:100%}.mini.rx i{display:none}
+  .mini.nogo{gap:14%;align-items:center;justify-content:center}.mini.nogo i{flex:none;width:34%;height:34%;background:var(--sq-live)}
+  .mini.nogo i.x::after{content:"";position:absolute;inset:-30%;background:linear-gradient(45deg,transparent 44%,var(--miss) 44%,var(--miss) 56%,transparent 56%),linear-gradient(-45deg,transparent 44%,var(--miss) 44%,var(--miss) 56%,transparent 56%)}
   .mini.seq i{background:var(--sq)}.mini.seq i:nth-child(1){background:var(--sq-live)}.mini.seq i:nth-child(2){background:#8a8883}.mini.seq i:nth-child(3){background:#45443f}
 
   /* bottom sheet: mode row stays, dims to the unpicked one, and the length row builds on it */
@@ -116,9 +144,10 @@
   .sheet.len .choice{padding:6px 12px}.sheet.len .choice .pic{width:56px;height:56px}.sheet.len .choice small{max-height:0;opacity:0}
   #lenwrap{display:flex;flex-direction:column;gap:12px;align-items:center;max-height:0;opacity:0;overflow:hidden;transition:max-height .18s cubic-bezier(.2,.8,.2,1),opacity .18s;width:100%}
   .sheet.len #lenwrap{max-height:340px;opacity:1}
-  .times{display:flex;gap:8px;justify-content:center}
-  .tbtn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 16px;border:1px solid var(--line);min-width:84px}
-  .tbtn b{font-weight:500;font-size:18px;letter-spacing:.1em}
+  .times{display:flex;gap:8px;justify-content:center;width:min(88vw,400px)}
+  .tbtn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 10px;border:1px solid var(--line);min-width:76px;flex:1;max-width:150px}
+  .tbtn b{font-weight:500;font-size:16px;letter-spacing:.08em;white-space:nowrap}
+  .tbtn b small{display:inline;font-size:12px;color:var(--mute);letter-spacing:.06em;margin-left:6px;text-transform:none}
   .tbtn small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--mute);text-transform:uppercase}
   .tbtn:hover,.tbtn:focus-visible,.tbtn.sel{border-color:var(--ink);outline:none}
 
@@ -131,11 +160,16 @@
   /* pads sit low and short (v7): no taller than 26% of the screen, so the cue has a lane to fall down */
   .pad{position:absolute;bottom:calc(3% + env(safe-area-inset-bottom));width:48%;height:min(36vw,22vh)}
   .pad.l{left:0}.pad.r{right:0}
+  /* Four (v9): a second row of pads above the first. Lead is gone from Quick Tap */
+  .pad.up{display:none}
+  #game[data-d="four"] .pad.up{display:block;bottom:calc(3% + env(safe-area-inset-bottom) + min(36vw,22vh) + 8px)}
+  #game[data-d="four"] .cue{display:none}
   .sq{position:absolute;inset:0;--v:0;background:color-mix(in srgb,var(--sq-live) calc(var(--v)*100%),var(--sq));transition:transform .12s}
   .pad.l .sq{right:6px;border-radius:0 4px 4px 0}.pad.r .sq{left:6px;border-radius:4px 0 0 4px}
   /* lead cue: a square that drops from above and comes to rest just over the next pad — it never covers the white */
   .cue{position:absolute;left:50%;bottom:calc(100% + 10px);width:34%;aspect-ratio:1;margin-left:-17%;background:var(--cue);opacity:0;border-radius:4px;z-index:2;pointer-events:none}
   .pad.l .cue{margin-left:calc(-17% - 3px)}.pad.r .cue{margin-left:calc(-17% + 3px)}
+  #game[data-g="quick-tap"] .cue{display:none}
   .cue.on{opacity:1;animation:fall 1.1s cubic-bezier(.3,0,.7,1) forwards}
   @keyframes fall{0%{transform:translateY(-560%);background:var(--cue);opacity:.7}70%{background:color-mix(in srgb,var(--cue) 55%,var(--sq-live))}100%{transform:translateY(0);background:var(--sq-live);opacity:.55}}
   .ring{position:absolute;inset:0;border:2px solid var(--sq-live);opacity:0;pointer-events:none}
@@ -161,7 +195,7 @@
   .tmclock{position:absolute;left:0;right:0;top:34%;text-align:center;font-family:var(--mono);font-weight:700;font-size:clamp(56px,18vw,120px);color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:0;pointer-events:none}
   .tmtarget{position:absolute;left:0;right:0;top:10%;text-align:center;font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);pointer-events:none}
   .tmtarget b{display:block;font-size:34px;color:var(--sq-live);letter-spacing:0;font-variant-numeric:tabular-nums}
-  #tmwall{position:absolute;top:9%;bottom:0;background:var(--panel);border-left:1px solid var(--line);transition:opacity .3s;pointer-events:none}
+  #tmwall{position:absolute;top:9%;bottom:0;background:color-mix(in srgb,var(--ground) 88%,#fff);border-left:1px solid var(--line);transition:opacity .3s;pointer-events:none}
   #tmball{position:absolute;left:0;top:0;width:var(--fsz);height:var(--fsz);border-radius:50%;background:var(--sq-live);pointer-events:none}
   #tmmark{position:absolute;width:var(--fsz);height:var(--fsz);border-radius:50%;border:2px dashed var(--cue);pointer-events:none;z-index:2}
   #tmghost{position:absolute;width:var(--fsz);height:var(--fsz);border-radius:50%;border:2px solid var(--ok);opacity:0;pointer-events:none;z-index:2}
@@ -173,6 +207,8 @@
   .rxpane .rxshape.circle{border-radius:50%}.rxpane .rxshape.tri{clip-path:polygon(50% 0,100% 100%,0 100%)}
   .rxmsg{position:absolute;left:0;right:0;top:16%;text-align:center;font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);line-height:1.8}
   .rxmsg b{display:block;font-size:clamp(48px,16vw,110px);color:var(--ink);letter-spacing:0;font-variant-numeric:tabular-nums;font-weight:700}
+  .rxmsg b.fb{font-size:clamp(30px,9vw,60px);font-family:var(--title);letter-spacing:.08em;margin-bottom:10px;line-height:1.2}
+  .rxmsg .sub{display:block;font-size:14px;letter-spacing:.2em;color:var(--ink);margin-top:8px}
   .rxpane.lit .rxmsg,.rxpane.lit .rxmsg b{color:var(--ground)}
   .rxrule{display:grid;grid-auto-flow:column;justify-content:center;gap:10px;align-items:center;margin-top:18px;color:var(--ink)}
   .rxpane .rxshape{transition:none}
@@ -200,13 +236,36 @@
   #lead.on{opacity:1}
   /* landing ring: starts pushed along the line of travel and settles onto the dot as it fades (v5) */
   #dring{border:2px solid var(--sq-live);opacity:0;pointer-events:none}
-  #dring.go{animation:none;transition:transform .28s cubic-bezier(.2,.8,.2,1),opacity .28s ease-out}
+  #dring.go{animation:none;transition:transform .3s ease-out,opacity .3s ease-out}
   /* hold: three svg layers — target (solid while growing), ghost (dotted outline), mine (filled) */
   #game[data-g="hold"] #hfield{display:block}
   #hfield svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
   #hfield path{fill:var(--sq-live);transition:opacity .15s}
   #hfield #hg path{fill:none;stroke:var(--cue);stroke-width:2;stroke-dasharray:5 6}
   #hfield #hm path{fill:color-mix(in srgb,var(--sq-live) 55%,var(--cue))}
+  #hfield #ht path{fill:none;stroke:var(--sq-live);stroke-width:2}
+  #hfield.show #ht path{fill:var(--sq-live);stroke:none}
+  #hfield #hcut path{fill:var(--sq-live)}
+  #hfield #hcut path.b{fill:color-mix(in srgb,var(--sq-live) 30%,var(--ground))}
+  #hfield line{stroke:var(--cue);stroke-width:3;stroke-dasharray:8 8;stroke-linecap:round;pointer-events:none}
+  /* what to do, written large and faint behind the shape (v9) — "tap and hold" / "tap and draw a line" */
+  #hbg{position:absolute;left:0;right:0;top:40%;text-align:center;font-family:var(--title);font-size:clamp(14px,4.2vw,28px);letter-spacing:.16em;text-transform:uppercase;color:var(--ink);opacity:0;pointer-events:none;transition:opacity .3s;line-height:1.5;padding:0 12px}
+  #hbg.on{opacity:.13}
+  /* the reveal (v9): a centred panel with two bars that fill while the px² count, then the difference, then the % */
+  #hcalc{position:absolute;left:8%;right:8%;top:50%;transform:translateY(-50%);display:none;flex-direction:column;gap:12px;background:color-mix(in srgb,var(--ground) 82%,transparent);border:1px solid var(--line);padding:18px 16px;font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);pointer-events:none;z-index:3}
+  #hcalc.on{display:flex}
+  .hrow{display:grid;grid-template-columns:56px 1fr 84px;gap:10px;align-items:center}
+  .hrow .bar{height:14px;background:var(--line);position:relative;overflow:hidden}
+  .hrow .bar i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--sq-live)}
+  .hrow.m .bar i{background:color-mix(in srgb,var(--sq-live) 55%,var(--cue))}
+  .hrow.b .bar i{background:color-mix(in srgb,var(--sq-live) 30%,var(--ground))}
+  .hrow .bar u{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--cue);left:0;text-decoration:none}
+  .hrow b{color:var(--ink);text-align:right;font-variant-numeric:tabular-nums;letter-spacing:0;font-size:13px}
+  #hres{text-align:center;opacity:0;transition:opacity .25s;line-height:1.9}
+  #hres.on{opacity:1}
+  #hres b{display:block;font-size:30px;color:var(--ink);letter-spacing:0}
+  #hres b.g{color:var(--ok)}#hres b.r{color:var(--miss)}
+  #hres i{font-style:normal;color:var(--ink)}
   #hlbl{position:absolute;left:0;right:0;bottom:6%;text-align:center;font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);pointer-events:none}
   #hlbl b{color:var(--ink);font-weight:700;font-size:26px;letter-spacing:0;display:block;margin-bottom:6px}
   #hlbl b.g{color:var(--ok)}
@@ -217,12 +276,19 @@
   #hicon.on{opacity:1}
   #hicon path{fill:none;stroke:var(--sq-live);stroke-width:2}
   #hicon text{fill:var(--mute);font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase}
+  /* the cut hint (v9): a finger drags a dotted line through a small shape, top right, before every Cut shape */
+  #hicon line{stroke:var(--cue);stroke-width:2.5;stroke-dasharray:5 5;stroke-dashoffset:120;animation:cutline 2.2s ease-in-out infinite}
+  #hicon circle.fg{fill:color-mix(in srgb,var(--ink) 25%,transparent);stroke:var(--ink);stroke-width:2;animation:cutfg 2.2s ease-in-out infinite}
+  @keyframes cutline{0%,15%{stroke-dashoffset:120;opacity:0}20%{opacity:1}70%,100%{stroke-dashoffset:0;opacity:1}}
+  @keyframes cutfg{0%,15%{cx:6px;cy:70px;opacity:0}20%{opacity:1}70%{cx:94px;cy:30px;opacity:1}85%,100%{cx:94px;cy:30px;opacity:0}}
+  #hicon.big{width:26vmin;height:26vmin;right:auto;left:50%;top:14%;margin-left:-13vmin}
   /* sequence */
   #game[data-g="sequence"] #seq{display:flex;flex-direction:row;gap:6px;padding:0 6px}
-  .key{flex:1;background:var(--sq);border-radius:0 0 6px 6px;position:relative;transition:background .08s;border-top:2px solid var(--line)}
+  /* keys (v9): a mid grey, not the pad grey — only the white ones could be seen */
+  .key{flex:1;background:color-mix(in srgb,var(--ground) 62%,#fff);border-radius:0 0 6px 6px;position:relative;transition:background .08s;border-top:2px solid color-mix(in srgb,var(--ground) 40%,#fff)}
   .key.lit{background:var(--sq-live)}
   .key.bad{background:var(--miss)}
-  .key::after{content:attr(data-n);position:absolute;bottom:10px;left:0;right:0;text-align:center;font-family:var(--mono);font-size:10px;color:var(--mute);letter-spacing:.2em}
+  .key::after{content:attr(data-n);position:absolute;bottom:10px;left:0;right:0;text-align:center;font-family:var(--mono);font-size:10px;color:var(--ground);opacity:.7;letter-spacing:.2em}
   .key.lit::after{color:var(--ground)}
   .hud{position:absolute;left:0;right:0;top:max(14px,env(safe-area-inset-top));padding:0 16px 0 60px;display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--mute);font-size:13px;letter-spacing:.14em;pointer-events:none}
   #score{font-weight:700;font-size:clamp(32px,8vw,60px);color:var(--ink);letter-spacing:0}
@@ -252,7 +318,8 @@
   #ghost.on{opacity:.9}
   #ghost.tap{animation:gtap .22s ease-out}
   #ghost.hold{scale:.86;background:color-mix(in srgb,var(--ink) 40%,transparent)}
-  @keyframes gtap{0%{scale:1}40%{scale:.78}100%{scale:1}}
+  /* the tap (v9) rings outward instead of shrinking */
+  @keyframes gtap{0%{scale:1;box-shadow:inset 0 0 0 3px #0a0a0b,0 0 0 0 rgba(232,230,225,.6)}60%{scale:1.25;box-shadow:inset 0 0 0 3px #0a0a0b,0 0 0 14px rgba(232,230,225,0)}100%{scale:1;box-shadow:inset 0 0 0 3px #0a0a0b,0 0 0 0 rgba(232,230,225,0)}}
   #flash{position:absolute;inset:0;background:var(--miss);opacity:0;pointer-events:none}
   #game.shake{animation:shake .32s linear}
   @keyframes shake{0%,100%{transform:translate(0)}20%{transform:translate(-8px,3px)}40%{transform:translate(7px,-4px)}60%{transform:translate(-5px,2px)}80%{transform:translate(4px,-2px)}}
@@ -266,7 +333,24 @@
   @keyframes scorein{0%{opacity:0;scale:.35}60%{opacity:1;scale:1.12}100%{scale:1}}
   .change{display:flex;flex-direction:column;gap:8px;align-items:center;margin-top:4px}
   .change .chips+.chips{margin-top:2px}
-  #s-over{justify-content:flex-start;overflow-y:auto;padding-top:max(28px,env(safe-area-inset-top));gap:10px}
+  /* v9: everything sits lower so an achievement toast has the top of the screen to itself, and each block arrives in turn */
+  #s-over{justify-content:flex-start;overflow-y:auto;padding-top:max(96px,calc(env(safe-area-inset-top) + 84px));gap:10px;padding-bottom:40px}
+  #s-over.on>*{animation:rvin .5s ease-out both}
+  #s-over.on>:nth-child(1){animation-delay:0s}#s-over.on>:nth-child(2){animation-delay:.1s}#s-over.on>:nth-child(3){animation-delay:.6s}#s-over.on>:nth-child(4){animation-delay:1s}#s-over.on>:nth-child(5){animation-delay:1.35s}#s-over.on>:nth-child(6){animation-delay:1.65s}#s-over.on>:nth-child(7){animation-delay:1.95s}#s-over.on>:nth-child(8){animation-delay:2.2s}#s-over.on>:nth-child(9){animation-delay:2.4s}#s-over.on>:nth-child(10){animation-delay:2.6s}
+  @keyframes rvin{0%{opacity:0;translate:0 10px}100%{opacity:1;translate:0 0}}
+  #s-over.on .stats span{animation:rvin .4s ease-out both}#s-over.on .stats span:nth-child(2){animation-delay:.25s}#s-over.on .stats span:nth-child(3){animation-delay:.5s}#s-over.on .stats span:nth-child(4){animation-delay:.75s}
+  #to-games{margin-top:22px;font-size:20px;padding:16px 44px}
+  .mchips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .mch{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 10px;border:1px solid var(--line);opacity:.55;min-width:84px}
+  .mch .pic{width:64px;height:64px;border:1px solid var(--line);background:var(--ground);display:grid;place-items:center}
+  .mch b{font-family:var(--mono);font-weight:700;font-size:10px;letter-spacing:.18em;text-transform:uppercase}
+  .mch.sel{border-color:var(--ink);opacity:1}
+  #vsbox{display:none;width:min(92vw,360px);grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute)}
+  #vsbox.on{display:grid}
+  #vsbox b{display:block;font-size:clamp(30px,9vw,54px);color:var(--ink);letter-spacing:0;font-variant-numeric:tabular-nums}
+  #vsbox .win b{color:var(--ok)}#vsbox .win{color:var(--ok)}
+  #vsbox em{font-style:normal;font-family:var(--title);font-size:14px;color:var(--mute)}
+  #s-pass{gap:18px}#s-pass .big{font-size:clamp(28px,8vw,48px);font-family:var(--title);letter-spacing:.16em}
   #over-top{width:min(92vw,360px);font-size:11px}
   #over-top td,#over-top th{padding:5px 6px}
   #over-top .eyebrow{text-align:center;margin-bottom:4px}
@@ -320,8 +404,6 @@
   #toast{position:absolute;left:50%;top:max(20px,env(safe-area-inset-top));transform:translate(-50%,-30px);background:var(--panel);border:1px solid var(--ink);padding:10px 16px;font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;opacity:0;transition:.22s;pointer-events:none;max-width:88vw;text-align:center;line-height:1.5;z-index:9}
   #toast.on{opacity:1;transform:translate(-50%,0)}
   /* on the result screen the toast sits low so it never covers the score and try-again (v8); an achievement toast is tappable */
-  #toast.low{top:auto;bottom:max(24px,env(safe-area-inset-bottom));transform:translate(-50%,30px)}
-  #toast.low.on{transform:translate(-50%,0)}
   #toast.tap{pointer-events:auto;cursor:pointer;border-color:var(--ok)}
   #toast.tap::after{content:' · tap';color:var(--mute)}
   /* the next unlock, in view while you play (v8) */
@@ -334,19 +416,24 @@
   /* customise */
   #s-custom{gap:12px;justify-content:flex-start;padding-top:max(18px,env(safe-area-inset-top));overflow-y:auto}
   .pv{width:min(84vw,320px);aspect-ratio:16/10;background:var(--ground);border:1px solid var(--line);position:relative;overflow:hidden;pointer-events:none;flex:none}
+  /* v9: every preview has the same finger as the pre-game demo, and shows the tap and what comes of it */
+  #pvg{position:absolute;left:0;top:0;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;border:2px solid var(--ink);outline:2px solid #0a0a0b;background:color-mix(in srgb,var(--ink) 18%,transparent);opacity:0;transition:left .4s cubic-bezier(.3,.7,.3,1),top .4s cubic-bezier(.3,.7,.3,1),opacity .2s;box-shadow:inset 0 0 0 2px #0a0a0b;z-index:5}
+  #pvg.on{opacity:.95}#pvg.tap{animation:gtap .22s ease-out}#pvg.hold{scale:.86;background:color-mix(in srgb,var(--ink) 40%,transparent)}
+  .pvtxt{position:absolute;left:0;right:0;text-align:center;font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute)}
+  .pvtxt b{display:block;font-size:22px;color:var(--ink);letter-spacing:0;font-variant-numeric:tabular-nums}
+  .pvtxt b.g{color:var(--ok)}.pvtxt b.r{color:var(--miss)}
+  .pvqt .pad{height:38%}.pvqt .pad.up{display:none}.pv[data-d="four"] .pvqt .pad.up{display:block;bottom:calc(4% + 38% + 4px)}
   .pv>div{position:absolute;inset:0;display:none}
   .pv[data-g="quick-tap"] .pvqt,.pv[data-g="dots"] .pvdots,.pv[data-g="hold"] .pvhold,.pv[data-g="sequence"] .pvseq{display:block}
   .pvqt .pad{bottom:4%;height:32%}
   .pvgen{display:none;align-items:center;justify-content:center;gap:8%}
   /* v8 previews drawn from the real games: a ball and wall, a flash pane, a field of shapes */
   .pvtm{display:none}.pv[data-g="timing"] .pvtm{display:block}
-  .pvtm b{position:absolute;left:0;top:44%;width:12%;aspect-ratio:1;border-radius:50%;background:var(--sq-live);transition:left .5s linear}
-  .pvtm i{position:absolute;left:45%;right:0;top:0;bottom:0;background:var(--panel);border-left:1px solid var(--line)}
-  .pvtm u{position:absolute;left:70%;top:44%;width:12%;aspect-ratio:1;border-radius:50%;border:2px dashed var(--cue)}
-  .pvrx{display:none;place-items:center;font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute)}.pv[data-g="reaction"] .pvrx{display:grid}
+  .pvrx{display:none;place-items:center;font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);transition:background .05s}.pv[data-g="reaction"] .pvrx{display:grid}
+  .pvrx b{display:block;font-size:24px;color:var(--ink);letter-spacing:0;text-align:center}
   .pvrx.lit{background:var(--sq-live);color:var(--ground)}
   .pvsp{display:none;flex-wrap:wrap;gap:5% 7%;padding:8% 10%;align-content:center;justify-content:center}.pv[data-g="spot"] .pvsp{display:flex}
-  .pvsp i{width:11%;aspect-ratio:1;background:var(--sq-live)}.pvsp i.c{border-radius:50%}.pvsp i.t{clip-path:polygon(50% 0,100% 100%,0 100%)}
+  .pvsp i{width:11%;aspect-ratio:1;background:var(--sq-live);transition:opacity .3s}.pvsp i.c{border-radius:50%}.pvsp i.t{clip-path:polygon(50% 0,100% 100%,0 100%)}.pvsp i.odd{box-shadow:0 0 0 3px var(--ok)}.pvsp i.dim{opacity:.2}
   .pvgen i{width:16%;aspect-ratio:1;background:var(--sq-live)}
   .pvgen i.c{border-radius:50%}.pvgen i.t{clip-path:polygon(50% 0,100% 100%,0 100%)}.pvgen i.ld{background:none;border:2px dashed var(--cue);border-radius:50%}
   .pvdots{--dsz:22%}
@@ -354,8 +441,9 @@
   .pvdots b.on{opacity:1}
   .pvdots b.ld{background:color-mix(in srgb,var(--cue) 22%,transparent);border:2px solid var(--cue)}
   .pvhold svg{width:100%;height:100%}
-  .pvhold .t{fill:none;stroke:var(--cue);stroke-width:2;stroke-dasharray:5 6}
-  .pvhold .m{fill:color-mix(in srgb,var(--sq-live) 55%,var(--cue))}
+  .pvhold .t{fill:none;stroke:var(--sq-live);stroke-width:2}
+  .pvhold .m{fill:color-mix(in srgb,var(--sq-live) 55%,var(--cue));transition:r .9s linear}
+  .pvtm .clk{top:36%}.pvtm .tgt{top:8%}.pvtm .tgt b{font-size:14px}
   .pvseq{display:none;gap:4px;padding:16% 6% 6%}
   .pv[data-g="sequence"] .pvseq{display:flex}
   .pvseq i{flex:1;background:var(--sq);border-radius:0 0 4px 4px}
@@ -395,6 +483,8 @@
 </head><body>
 <canvas id="stars"></canvas>
 
+<section class="screen" id="s-story"><div class="card" id="story-card"></div><div class="hint">tap to continue</div></section>
+
 <section class="screen on" id="s-menu">
   <div class="wordmark">No Excuses</div>
   <div style="height:14px"></div>
@@ -410,31 +500,34 @@
   <div class="grid" id="grid">
     <button class="tile" data-game="quick-tap"><span class="name glow">Quick Tap</span><span class="pic"><span class="mini"><i class="w"></i><i></i></span></span></button>
     <button class="tile" data-game="dots"><span class="name glow">Dots</span><span class="pic"><span class="mini dots"><i></i><i class="w"></i></span></span></button>
-    <button class="tile" data-game="hold"><span class="name glow">Hold</span><span class="pic"><span class="mini hold"><i></i><i class="w"></i></span></span></button>
+    <button class="tile" data-game="hold"><span class="name glow">Estimate</span><span class="pic"><span class="mini hold"><i></i><i class="w"></i></span></span></button>
     <button class="tile" data-game="sequence"><span class="name glow">Sequence</span><span class="pic"><span class="mini seq"><i></i><i></i><i></i></span></span></button>
     <button class="tile" data-game="timing"><span class="name glow">Timing</span><span class="pic"><span class="mini tm"><i class="h"></i><i class="w"></i><i class="h"></i></span></span></button>
-    <button class="tile" data-game="reaction"><span class="name glow">Reaction</span><span class="pic"><span class="mini rx"><i class="w"></i></span></span></button>
+    <button class="tile" data-game="reaction"><span class="name glow">Reaction</span><span class="pic"><span class="mini rx"></span></span></button>
     <button class="tile" data-game="spot"><span class="name glow">Spot</span><span class="pic"><span class="mini fd"><i></i><i class="t"></i><i></i><i class="w c"></i><i class="t"></i><i></i></span></span></button>
   </div>
   <div class="hint">tap empty space to go back</div>
   <div class="sheet" id="sheet">
     <div class="eyebrow" id="sheet-title">quick tap · mode</div>
+    <div class="chips" id="vs-row"><button class="chip sel" data-vs="0">solo</button><button class="chip" data-vs="1">vs a friend</button></div>
     <div class="diffs" id="diff-row"></div>
     <button class="lvl" id="lvl-back">&larr; mode · <b id="lvl-mode"></b></button>
     <div id="lenwrap">
-      <div class="chips" id="scale-row"></div>
-      <div class="chips" id="speed-row"></div>
-      <div class="chips" id="prac-row"></div>
       <div class="eyebrow" id="len-title">how long</div>
       <div class="times" id="time-row"></div>
+      <div id="seq-opts" style="display:none;flex-direction:column;gap:10px;align-items:center;width:100%">
+        <div class="chips" id="scale-row"></div>
+        <div class="chips" id="prac-row"></div>
+        <button class="item big" id="seq-play" style="margin-top:4px">Play</button>
+      </div>
     </div>
   </div>
 </section>
 
 <section class="screen top" id="s-board" data-back="s-menu">
   <button class="back">&larr; BACK</button>
+  <div class="prof"><div class="who">profile <input id="pname" maxlength="10" placeholder="YOU" autocomplete="off"></div><svg id="radar" viewBox="-30 -26 260 252"></svg><div class="hint" style="margin-top:0">your best in each game · 0 to 100</div></div>
   <div class="eyebrow">scores · local top 10</div>
-  <div class="who">playing as <input id="pname" maxlength="10" placeholder="YOU" autocomplete="off"></div>
   <div class="chips" id="bd-g"></div>
   <div class="chips" id="bd-d"></div>
   <div class="chips" id="bd-s"></div>
@@ -452,13 +545,14 @@
   <button class="back">&larr; BACK</button>
   <div class="eyebrow">customise · live preview</div>
   <div class="pv" id="pv" data-g="quick-tap">
-    <div class="pvqt"><div class="pad l"><div class="sq" id="pv0"></div><div class="cue" id="pvc0"></div></div><div class="pad r"><div class="sq" id="pv1"></div><div class="cue" id="pvc1"></div></div></div>
+    <div class="pvqt"><div class="pad l"><div class="sq" id="pv0"></div></div><div class="pad r"><div class="sq" id="pv1"></div></div><div class="pad l up"><div class="sq" id="pv2"></div></div><div class="pad r up"><div class="sq" id="pv3"></div></div></div>
     <div class="pvdots"><b class="ld" id="pvlead"></b><b id="pvdot"></b></div>
-    <div class="pvhold"><svg viewBox="0 0 160 100"><circle class="t" cx="80" cy="52" r="30"/><circle class="m" cx="80" cy="52" r="24"/></svg></div>
-    <div class="pvseq"><i></i><i class="lit"></i><i></i><i></i><i></i></div>
-    <div class="pvtm"><i></i><u></u><b id="pvball"></b></div>
+    <div class="pvhold"><svg viewBox="0 0 160 100"><circle class="t" cx="80" cy="52" r="30"/><circle class="m" cx="80" cy="52" r="0"/></svg><div class="pvtxt" id="pvhtxt" style="bottom:6%"></div></div>
+    <div class="pvseq"><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="pvtm"><div class="pvtxt tgt">target<b>7.00</b></div><div class="pvtxt clk"><b id="pvclk">0.00</b></div><div class="pvtxt" id="pvtmres" style="bottom:8%"></div></div>
     <div class="pvrx" id="pvrx">wait for it</div>
     <div class="pvsp" id="pvsp"></div>
+    <div id="pvg"></div>
   </div>
   <button id="pvlock"></button>
   <div class="chips" id="pv-g"></div>
@@ -474,31 +568,41 @@
   <div class="wordmark" style="font-size:18px">No Excuses</div>
   <div class="explain">Small games of pure skill. No power-ups, no lives, no luck. Nothing is hidden from you — when you miss, it's on you.<br><br>Built by one person in Canberra. Free to play, ads only on the result screen, never during a run.</div>
   <button class="support" id="support"><b>Support us · A$1.99</b><small>Removes the ads and unlocks every colour, background and sound pack — forever. Achievement unlocks stay earned, not bought.</small></button>
-  <div class="hint">build 8 · 4 sept 2026 · github pages</div>
+  <div class="hint">build 9 · 4 sept 2026 · github pages</div>
   <div class="eyebrow">testing</div>
-  <div class="chips"><button class="chip" id="dev-fresh">fresh game · wipe everything</button><button class="chip" id="dev-open">open everything</button></div>
+  <div class="chips"><button class="chip" id="dev-fresh">fresh game · wipe everything</button><button class="chip" id="dev-open">open everything</button><button class="chip" id="dev-story">replay the intro</button></div>
   <div class="hint" id="dev-state"></div>
+</section>
+
+<section class="screen" id="s-pass">
+  <div class="eyebrow" id="pass-eyebrow">vs</div>
+  <div class="big" id="pass-title">Pass the phone</div>
+  <div class="explain" id="pass-text"></div>
+  <button class="item big" id="pass-go">Ready</button>
 </section>
 
 <section class="screen" id="s-over" data-back="s-pick">
   <div class="eyebrow" id="over-eyebrow">time</div>
   <div class="big" id="over-score">0</div>
   <div class="verdict" id="verdict"></div>
+  <div id="vsbox"></div>
   <div class="stats" id="over-stats"></div>
   <div class="rank" id="over-rank"></div>
   <button class="item big" id="again">Try again</button>
   <div id="over-top"><div class="eyebrow" id="over-top-title">top 10</div><table><tbody id="over-runs"></tbody></table></div>
-  <div class="change"><div class="eyebrow">or change it up — pick, then try again</div><div class="chips" id="over-chips"></div><div class="chips" id="over-chips2"></div><div class="chips" id="over-chips3"></div></div>
-  <button class="item sub" data-go="s-menu">Menu</button>
+  <div class="change"><div class="eyebrow">or change it up — pick, then try again</div><div class="mchips" id="over-chips"></div><div class="chips" id="over-chips2"></div><div class="chips" id="over-chips3"></div></div>
+  <button class="item big" id="to-games">Game select</button>
 </section>
 
 <div id="game" data-g="quick-tap">
   <div id="qt">
     <div class="pad l" data-side="0"><div class="sq" id="sq0"></div><div class="cue" id="cue0"></div><div class="ring" id="ring0"></div></div>
     <div class="pad r" data-side="1"><div class="sq" id="sq1"></div><div class="cue" id="cue1"></div><div class="ring" id="ring1"></div></div>
+    <div class="pad l up" data-side="2"><div class="sq" id="sq2"></div><div class="ring" id="ring2"></div></div>
+    <div class="pad r up" data-side="3"><div class="sq" id="sq3"></div><div class="ring" id="ring3"></div></div>
   </div>
   <div id="field"><div id="lead"><b></b></div><div id="dot"></div><div id="dring"></div></div>
-  <div id="hfield"><svg id="ht"><clipPath id="tclip"><rect id="tclipr" x="-9999" y="-9999" width="99999" height="99999"/></clipPath><path clip-path="url(#tclip)"/></svg><svg id="hg"><path/></svg><svg id="hm"><clipPath id="hclip"><rect id="hclipr" x="-9999" y="-9999" width="99999" height="99999"/></clipPath><path clip-path="url(#hclip)"/></svg><svg id="hicon" viewBox="0 0 100 100"><path/><text x="50" y="98" text-anchor="middle"></text></svg><div id="hlbl"></div></div>
+  <div id="hfield"><svg id="ht"><clipPath id="tclip"><rect id="tclipr" x="-9999" y="-9999" width="99999" height="99999"/></clipPath><path clip-path="url(#tclip)" fill-rule="evenodd"/></svg><svg id="hg"><path fill-rule="evenodd"/></svg><svg id="hm"><clipPath id="hclip"><rect id="hclipr" x="-9999" y="-9999" width="99999" height="99999"/></clipPath><path clip-path="url(#hclip)" fill-rule="evenodd"/></svg><svg id="hcut"><path class="a" fill-rule="evenodd"/><path class="b" fill-rule="evenodd"/><line id="hline" x1="0" y1="0" x2="0" y2="0" style="opacity:0"/></svg><div id="hbg"></div><svg id="hicon" viewBox="0 0 100 100"><path/><text x="50" y="98" text-anchor="middle"></text></svg><div id="hcalc"></div><div id="hlbl"></div></div>
   <div id="seq"></div><div id="turn">your turn</div>
   <div id="gen"></div>
   <div class="hud"><span id="hud-mode"></span><span id="score">0</span><span id="hud-time">0.00</span></div>
@@ -525,39 +629,42 @@ const vmin=()=>Math.min(innerWidth,innerHeight)/100;
 const f2=n=>(Math.round(n*100)/100).toFixed(2);
 
 /* ---------- games registry: a new game is one entry here plus an engine ---------- */
-const MODE_NAME={blind:'Blind',lead:'Lead',match:'Match',estimate:'Estimate',solo:'',stopwatch:'Stopwatch',hidden:'Hidden',flash:'Flash',nogo:'Go / No-go',count:'Count',find:'Find'};
-const SEQ_SPEEDS=[.6,.5,.4,.3,.2]; // seconds per key (v8): tenths, not a normal/fast jump
+const MODE_NAME={blind:'Blind',four:'Four',lead:'Lead',grow:'Grow',cut:'Cut',solo:'',stopwatch:'Stopwatch',hidden:'Hidden',flash:'Flash',nogo:'Go / No-go',count:'Count',find:'Find'};
+// sequence speed is not a choice any more (v9): it starts at 0.5s a key and tightens 15ms a round, floor 0.28s
+const seqStep=round=>Math.max(280,Math.round(500-(round-1)*15));
 const shapeI=s=>`<i class="${s}"></i>`;
 const SHAPE_WORD={circle:'circle',tri:'triangle',square:'square'};
 const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
 const GAMES = {
-  'quick-tap': { name:'Quick Tap', modes:['blind','lead'], lens:[5,15,30], unit:'s', lenWord:'how long', timed:true, lead:true,
-    blind:'Nothing tells you where the next one is.', lead:'A key falls onto the next panel before you get there.',
-    pic:d=>`<span class="mini"><i class="w"></i><i class="${d==='lead'?'r':''}"></i></span>`,
-    cols:[['misses',r=>r.misses],['hits / sec',r=>(r.hits/r.s).toFixed(1)]], quality:r=>r.hits/r.s/6 },
+  // v9: every mode line says what to DO, first. Quick Tap lost Lead and gained Four (a 2×2 of pads)
+  'quick-tap': { name:'Quick Tap', modes:['blind','four'], lens:[5,15,30], unit:'s', lenWord:'how long', timed:true,
+    blind:'Tap the white square as soon as it appears!', four:'Four squares. Tap the white one as soon as it appears!',
+    pic:d=>d==='four'?`<span class="mini four"><i></i><i class="w"></i><i></i><i></i></span>`:`<span class="mini"><i class="w"></i><i></i></span>`,
+    cols:[['misses',r=>r.misses],['hits / sec',r=>(r.hits/r.s).toFixed(1)]], quality:r=>r.hits/r.s/(r.d==='four'?5:6) },
   'dots': { name:'Dots', modes:['blind','lead'], lens:[5,15,30], unit:'s', lenWord:'how long', timed:true, lead:true,
-    blind:'The dot lands anywhere on the screen. No warning.', lead:'A faint red circle shows where the next dot will land.',
+    blind:'Tap the dots.', lead:'Tap the dots. A faint red circle shows where the next one will land.',
     pic:d=>`<span class="mini dots"><i class="w"></i><i class="${d==='lead'?'r':''}"></i></span>`,
     cols:[['misses',r=>r.misses],['hits / sec',r=>(r.hits/r.s).toFixed(1)]], quality:r=>r.hits/r.s/4.5 },
-  'hold': { name:'Hold', modes:['match','estimate'], lens:[3,5,10], unit:' rounds', lenWord:'how many rounds', timed:false, lower:true, lead:true,
-    match:'Same shape, same spot, same wobble. Hold until yours sits exactly on the outline.', estimate:'A different shape, shown top right. Hold it until you judge the area is the same — the target is gone, you work from memory.',
-    pic:d=>`<span class="mini hold"><i class="${d==='estimate'?'e':''}"></i><i class="w"></i></span>`,
+  // Estimate (v9, was Hold). Grow alternates Match and Estimate rounds; Cut draws a line through a shape to split off a target share. Five rounds, no choice
+  'hold': { name:'Estimate', modes:['grow','cut'], lens:[5], unit:' rounds', lenWord:'', timed:false, lower:true, lead:true,
+    grow:'Grow your shape to match the area. Same shape one round, a different one the next.', cut:'Cut the shape just right. Draw a line that splits off the share it asks for.',
+    pic:d=>d==='cut'?`<span class="mini cut"><i></i><i class="ln"></i><b>53.5% · close!</b></span>`:`<span class="mini hold"><i></i><i class="w"></i></span>`,
     fmt:v=>f2(v), suffix:'%', scoreWord:'% off', cols:[['avg off',r=>f2(r.hits/r.s)+'%'],['worst',r=>f2(r.y)+'%']], quality:r=>1-Math.min(1,(r.hits/r.s)/20) },
-  'sequence': { name:'Sequence', modes:['solo'], lens:[3,5,7], unit:' keys', lenWord:'how many keys · tap to play', timed:false,
-    solo:'', pic:()=>`<span class="mini seq"><i></i><i></i><i></i></span>`,
-    cols:[['speed',r=>r.sp?(isNaN(r.sp)?r.sp:r.sp+'s'):((520/(r.x||520))>1.3?'fast':'normal')],['scale',r=>r.sc||'penta']], quality:r=>r.hits/16 },
+  'sequence': { name:'Sequence', modes:['solo'], lens:[3,5,7], unit:' keys', lenWord:'how many keys', timed:false,
+    solo:'Watch the keys light up, then play them back. One more each round.', pic:()=>`<span class="mini seq"><i></i><i></i><i></i></span>`,
+    cols:[['scale',r=>r.sc||'penta'],['practice',r=>r.practice?'from '+r.practice:'—']], quality:r=>r.hits/16 },
   // v7 — four new games. Score for each is the average over the attempts; timing, reaction and find are lower-is-better
   'timing': { name:'Timing', modes:['stopwatch','hidden'], lens:[3,5,10], unit:' attempts', lenWord:'how many attempts', timed:false, lower:true, lead:true,
-    stopwatch:'A clock counts up and fades out at 1.5s. Tap when it reaches the target time. Targets balance out around 7s.', hidden:'A ball rolls in from any side and goes behind a wall. Tap when it reaches the marker.',
-    pic:d=>`<span class="mini tm"><i class="h"></i><i class="w"></i><i class="h"></i></span>`,
+    stopwatch:'Tap when you think the time is right. The clock fades at 1.5s — count the rest in your head.', hidden:'Tap when the hidden ball reaches the marker. It rolls in, then goes behind a wall.',
+    pic:d=>d==='hidden'?`<span class="mini tmh"><i class="b"></i><i class="wall"></i><i class="m"></i></span>`:`<span class="mini tmw"><i>7.00</i><i class="u">you <b>7.14</b></i></span>`,
     fmt:v=>f2(v), suffix:'s', scoreWord:'s off', cols:[['best',r=>f2(r.x)+'s'],['worst',r=>f2(r.y)+'s']], quality:r=>1-Math.min(1,r.hits/1) },
   'reaction': { name:'Reaction', modes:['flash','nogo'], lens:[3,5,10], unit:' attempts', lenWord:'how many attempts', timed:false, lower:true,
-    flash:'The screen goes white. Tap. Tap early and that attempt starts again.', nogo:'Shapes cycle past. Tap the one you were told, the moment it shows. Tap a wrong one and the run is over.',
-    pic:d=>`<span class="mini rx"><i class="w${d==='nogo'?' c':''}"></i></span>`,
+    flash:'Tap as soon as you see white. Tap early and that attempt starts again.', nogo:'Tap only when you see your shape. Tap a wrong one and the run is over.',
+    pic:d=>d==='nogo'?`<span class="mini nogo"><i class="c" style="border-radius:50%"></i><i class="x" style="clip-path:none"></i></span>`:`<span class="mini rx"></span>`,
     fmt:v=>String(Math.round(v)), suffix:'ms', scoreWord:'ms', cols:[['false starts',r=>r.misses],['best',r=>Math.round(r.x)+'ms']], quality:r=>1-Math.min(1,Math.max(0,r.hits-150)/350) },
   // v8: Count and Find merged into Spot — two modes, each ramping in difficulty through the run. Score units differ per mode (`per`), see GC()
   'spot': { name:'Spot', modes:['count','find'], lens:[5,10,15], unit:' rounds', lenWord:'how many rounds', timed:false,
-    count:'Shapes flash up. Count the ones you were shown — the others are decoys. Harder every round.', find:'One shape is different. Tap it. The crowd grows every round.',
+    count:'Count the shapes you were shown. The others are decoys — harder every round.', find:'Tap the odd one out. The crowd grows every round.',
     pic:d=>d==='count'?`<span class="mini ct"><i class="w c"></i><i class="t"></i><i class="w c"></i><i class="w c"></i></span>`:`<span class="mini fd"><i></i><i class="t"></i><i></i><i class="w c"></i><i class="t"></i><i></i></span>`,
     suffix:'', scoreWord:'right', cols:[['wrong',r=>r.misses],['accuracy',r=>Math.round(r.hits/r.s*100)+'%']], quality:r=>r.hits/r.s,
     per:{ find:{ lower:true, fmt:v=>f2(v), suffix:'s', scoreWord:'s per find', cols:[['wrong taps',r=>r.misses],['best',r=>f2(r.x)+'s']], quality:r=>1-Math.min(1,Math.max(0,r.hits-1)/5) } } },
@@ -570,12 +677,12 @@ const lenLabel=(g,s)=>s+GAMES[g].unit;
 
 /* ---------- progression (v6): modes open on easy milestones, each in the mode before it. Quick Tap Blind is open from the start ---------- */
 const UNLOCKS = [
-  { key:'quick-tap:lead', need:'7 hits, no misses, in a 5s Quick Tap', where:{g:'quick-tap',d:'blind',s:5}, test:r=>r.g==='quick-tap'&&r.s===5&&r.misses===0&&r.hits>=7 },
+  { key:'quick-tap:four', need:'7 hits, no misses, in a 5s Quick Tap', where:{g:'quick-tap',d:'blind',s:5}, test:r=>r.g==='quick-tap'&&r.s===5&&r.misses===0&&r.hits>=7 },
   { key:'dots:blind',     need:'12 hits in one Quick Tap run',            where:{g:'quick-tap'},               test:r=>r.g==='quick-tap'&&r.hits>=12 },
   { key:'dots:lead',      need:'6 hits, no misses, in a 5s Dots',         where:{g:'dots',d:'blind',s:5},      test:r=>r.g==='dots'&&r.s===5&&r.misses===0&&r.hits>=6 },
-  { key:'hold:match',     need:'15 hits in one Dots run',                 where:{g:'dots'},                    test:r=>r.g==='dots'&&r.hits>=15 },
-  { key:'hold:estimate',  need:'one Hold round within 15%',               where:{g:'hold',d:'match',s:3},      test:r=>r.g==='hold'&&r.x<=15 },
-  { key:'sequence:solo',  need:'finish any Hold run',                     where:{g:'hold'},                    test:r=>r.g==='hold' },
+  { key:'hold:grow',      need:'15 hits in one Dots run',                 where:{g:'dots'},                    test:r=>r.g==='dots'&&r.hits>=15 },
+  { key:'hold:cut',       need:'one Grow round within 15%',               where:{g:'hold',d:'grow',s:5},       test:r=>r.g==='hold'&&r.d==='grow'&&r.x<=15 },
+  { key:'sequence:solo',  need:'finish any Estimate run',                 where:{g:'hold'},                    test:r=>r.g==='hold' },
   // v7 chain continues through the four new games
   { key:'timing:stopwatch', need:'reach round 5 in Sequence',             where:{g:'sequence'},                test:r=>r.g==='sequence'&&r.hits>=5 },
   { key:'timing:hidden',    need:'one Timing attempt within 0.30s',       where:{g:'timing',d:'stopwatch',s:3}, test:r=>r.g==='timing'&&r.x<=.3 },
@@ -594,11 +701,11 @@ function checkUnlocks(run){ const u=unlocked(); const fresh=[]; for(const x of U
 // the one-liner under the ghost demo, the first time a mode is played
 const INTRO = {
   'quick-tap:blind':['Tap the white pad.','nothing tells you where the next one is'],
-  'quick-tap:lead': ['Tap the white pad.','the red square drops onto the next one'],
+  'quick-tap:four': ['Tap the white pad.','four of them now'],
   'dots:blind':     ['Tap the dot where it lands.','anywhere on the screen'],
   'dots:lead':      ['Tap the dot where it lands.','the red ring shows the next spot'],
-  'hold:match':     ['Watch it grow. Hold until yours matches.','from memory — the outline is gone'],
-  'hold:estimate':  ['Hold a different shape to the same area.','from memory — the shape you hold is top right'],
+  'hold:grow':      ['Watch it grow. Tap and hold until yours matches.','from memory — the outline is gone'],
+  'hold:cut':       ['Draw a line through the shape.','cut off the share it asks for'],
   'sequence:solo':  ['Watch the keys. Play them back.','one more each round'],
   'timing:stopwatch':['Tap when the clock hits the target.','it disappears at 1.5s — count in your head'],
   'timing:hidden':  ['Tap when the ball reaches the marker.','it goes behind the wall first'],
@@ -629,7 +736,7 @@ const fullsetProg=(all,g)=>{ const G_=GAMES[g]; const cells=G_.modes.flatMap(d=>
 const ACH = [
   // everywhere
   { id:'first',   g:'all', tier:'unlock', name:'Showed up',   how:'Finish any run', unlocks:['sq','#FFE9C4'], test:()=>true },
-  { id:'named',   g:'all', tier:'unlock', name:'Signed in',   how:'Type a name on the Scores screen', unlocks:['bg','grid'], test:()=>!!prefs.name },
+  { id:'named',   g:'all', tier:'unlock', name:'Signed in',   how:'Put a name on your profile, top of the Scores screen', unlocks:['bg','grid'], test:()=>!!prefs.name },
   { id:'every',   g:'all', tier:'unlock', name:'Every game',  how:'Finish a run in every game', unlocks:['lead','#FFB020'],
       progress:all=>Object.keys(GAMES).filter(g=>all.some(x=>x.g===g)).length/N_GAMES, test:(r,all)=>Object.keys(GAMES).every(g=>all.some(x=>x.g===g)) },
   { id:'fullset', g:'all', tier:'stretch', name:'Full set',   how:'In one game, every mode at every length', unlocks:['wheel'],
@@ -638,18 +745,19 @@ const ACH = [
   { id:'tour',    g:'all', tier:'stretch', name:'Grand tour',  how:'Finish a run in every mode of every game', unlocks:['snd','sigh'],
       progress:all=>tourProg(all), test:(r,all)=>tourProg(all)===1 },
   // quick tap — every one is Blind or Lead, never "any mode" (v6). Lead thresholds sit higher; Blind's are the ones still being tested (#337)
-  { id:'qt_clean5',  g:'quick-tap', tier:'unlock',  name:'Clean · Sprint',       how:'Lead · 5s, no misses, at least 10 hits', unlocks:['sq','#9BE8FF'], at:{d:'lead',s:5}, test:r=>r.g==='quick-tap'&&r.d==='lead'&&r.s===5&&r.misses===0&&r.hits>=10 },
+  // Four (v9) took Lead's slots. Its pads are further apart, so its numbers sit under Blind's
+  { id:'qt_clean5',  g:'quick-tap', tier:'unlock',  name:'Clean · Sprint · Four', how:'Four · 5s, no misses, at least 7 hits', unlocks:['sq','#9BE8FF'], at:{d:'four',s:5}, test:r=>r.g==='quick-tap'&&r.d==='four'&&r.s===5&&r.misses===0&&r.hits>=7 },
   { id:'qt_bclean5', g:'quick-tap', tier:'unlock',  name:'Clean · Sprint · Blind', how:'Blind · 5s, no misses, at least 8 hits', at:{d:'blind',s:5}, test:r=>r.g==='quick-tap'&&r.d==='blind'&&r.s===5&&r.misses===0&&r.hits>=8 },
-  { id:'qt_r4',      g:'quick-tap', tier:'unlock',  name:'Quick',                how:'Lead · 4 hits a second, any length', unlocks:['snd','click'], at:{d:'lead'}, progress:all=>bestRate(all,'quick-tap',0,'lead')/4, test:r=>r.g==='quick-tap'&&r.d==='lead'&&rate(r)>=4 },
-  { id:'qt_clean15', g:'quick-tap', tier:'unlock',  name:'Clean · Dash',         how:'Lead · 15s, no misses, at least 30 hits', unlocks:['bg','rain'], at:{d:'lead',s:15}, test:r=>r.g==='quick-tap'&&r.d==='lead'&&r.s===15&&r.misses===0&&r.hits>=30 },
-  { id:'qt_clean30', g:'quick-tap', tier:'stretch', name:'Clean · Marathon',     how:'Lead · 30s, no misses, at least 60 hits', unlocks:['sq','#C6FF7A'], at:{d:'lead',s:30}, test:r=>r.g==='quick-tap'&&r.d==='lead'&&r.s===30&&r.misses===0&&r.hits>=60 },
-  { id:'qt_r5',      g:'quick-tap', tier:'stretch', name:'Quicker',              how:'Lead · 5 hits a second across a Dash', unlocks:['lead','#4FD9FF'], at:{d:'lead',s:15}, progress:all=>bestRate(all,'quick-tap',15,'lead')/5, test:r=>r.g==='quick-tap'&&r.d==='lead'&&r.s===15&&rate(r)>=5 },
+  { id:'qt_r4',      g:'quick-tap', tier:'unlock',  name:'Quick',                how:'Four · 3 hits a second, any length', unlocks:['snd','click'], at:{d:'four'}, progress:all=>bestRate(all,'quick-tap',0,'four')/3, test:r=>r.g==='quick-tap'&&r.d==='four'&&rate(r)>=3 },
+  { id:'qt_clean15', g:'quick-tap', tier:'unlock',  name:'Clean · Dash',         how:'Four · 15s, no misses, at least 24 hits', unlocks:['bg','rain'], at:{d:'four',s:15}, test:r=>r.g==='quick-tap'&&r.d==='four'&&r.s===15&&r.misses===0&&r.hits>=24 },
+  { id:'qt_clean30', g:'quick-tap', tier:'stretch', name:'Clean · Marathon',     how:'Four · 30s, no misses, at least 50 hits', unlocks:['sq','#C6FF7A'], at:{d:'four',s:30}, test:r=>r.g==='quick-tap'&&r.d==='four'&&r.s===30&&r.misses===0&&r.hits>=50 },
+  { id:'qt_r5',      g:'quick-tap', tier:'stretch', name:'Quicker',              how:'Four · 4 hits a second across a Dash', unlocks:['lead','#4FD9FF'], at:{d:'four',s:15}, progress:all=>bestRate(all,'quick-tap',15,'four')/4, test:r=>r.g==='quick-tap'&&r.d==='four'&&r.s===15&&rate(r)>=4 },
   { id:'qt_br4',     g:'quick-tap', tier:'stretch', name:'Blind quick',          how:'Blind · 4 hits a second across a Dash', at:{d:'blind',s:15}, progress:all=>bestRate(all,'quick-tap',15,'blind')/4, test:r=>r.g==='quick-tap'&&r.d==='blind'&&r.s===15&&rate(r)>=4 },
   { id:'qt_eyes',    g:'quick-tap', tier:'stretch', name:'Eyes shut',            how:'Blind · clean Marathon, at least 60 hits', unlocks:['lead','#FF4FD8'], at:{d:'blind',s:30}, test:r=>r.g==='quick-tap'&&r.d==='blind'&&r.s===30&&r.misses===0&&r.hits>=60 },
   { id:'qt_sab',     g:'quick-tap', tier:'stretch', name:'Committed',            how:'Blind · a run of nothing but misses, at least five', at:{d:'blind'}, test:r=>r.g==='quick-tap'&&r.d==='blind'&&r.hits===0&&r.misses>=5 },
-  { id:'qt_s5',      g:'quick-tap', tier:'secret',  name:'No excuses',           how:'Lead · 6 hits a second on a Sprint', at:{d:'lead',s:5}, progress:all=>bestRate(all,'quick-tap',5,'lead')/6, test:r=>r.g==='quick-tap'&&r.d==='lead'&&r.s===5&&rate(r)>=6 },
-  { id:'qt_s15',     g:'quick-tap', tier:'secret',  name:'Still no excuses',     how:'Lead · 6 hits a second, held for a Dash', at:{d:'lead',s:15}, progress:all=>bestRate(all,'quick-tap',15,'lead')/6, test:r=>r.g==='quick-tap'&&r.d==='lead'&&r.s===15&&rate(r)>=6 },
-  { id:'qt_s30',     g:'quick-tap', tier:'secret',  name:'Not normal',           how:'Lead · 6 hits a second, held for a Marathon', at:{d:'lead',s:30}, progress:all=>bestRate(all,'quick-tap',30,'lead')/6, test:r=>r.g==='quick-tap'&&r.d==='lead'&&r.s===30&&rate(r)>=6 },
+  { id:'qt_s5',      g:'quick-tap', tier:'secret',  name:'No excuses',           how:'Four · 5 hits a second on a Sprint', at:{d:'four',s:5}, progress:all=>bestRate(all,'quick-tap',5,'four')/5, test:r=>r.g==='quick-tap'&&r.d==='four'&&r.s===5&&rate(r)>=5 },
+  { id:'qt_s15',     g:'quick-tap', tier:'secret',  name:'Still no excuses',     how:'Four · 5 hits a second, held for a Dash', at:{d:'four',s:15}, progress:all=>bestRate(all,'quick-tap',15,'four')/5, test:r=>r.g==='quick-tap'&&r.d==='four'&&r.s===15&&rate(r)>=5 },
+  { id:'qt_s30',     g:'quick-tap', tier:'secret',  name:'Not normal',           how:'Four · 5 hits a second, held for a Marathon', at:{d:'four',s:30}, progress:all=>bestRate(all,'quick-tap',30,'four')/5, test:r=>r.g==='quick-tap'&&r.d==='four'&&r.s===30&&rate(r)>=5 },
   { id:'qt_bs5',     g:'quick-tap', tier:'secret',  name:'Blind faith',          how:'Blind · 5 hits a second on a Sprint', at:{d:'blind',s:5}, progress:all=>bestRate(all,'quick-tap',5,'blind')/5, test:r=>r.g==='quick-tap'&&r.d==='blind'&&r.s===5&&rate(r)>=5 },
   // dots
   { id:'dt_pin',   g:'dots', tier:'unlock',  name:'Pinpoint',        how:'Lead · a clean Sprint with at least 8 hits', unlocks:['sq','#FFD1DC'], at:{d:'lead',s:5}, test:r=>r.g==='dots'&&r.d==='lead'&&r.s===5&&r.misses===0&&r.hits>=8 },
@@ -662,7 +770,7 @@ const ACH = [
   // hold (score is total % off across rounds — lower is better)
   { id:'hd_money', g:'hold', tier:'unlock',  name:'On the money', how:'One round within 2.00%', unlocks:['snd','wood'], test:r=>r.g==='hold'&&r.x<=2 },
   { id:'hd_steady',g:'hold', tier:'unlock',  name:'Steady hand',  how:'Total under 15% off over 5 rounds', unlocks:['sq','#F3D9FF'], at:{s:5}, progress:all=>lowProg(lowTotal(all,null,5),15), test:r=>r.g==='hold'&&r.s===5&&r.hits<=15 },
-  { id:'hd_est',   g:'hold', tier:'stretch', name:'Good eye',     how:'Total under 40% off on Estimate over 10 rounds', unlocks:['lead','#FFFFFF'], at:{d:'estimate',s:10}, progress:all=>lowProg(lowTotal(all,'estimate',10),40), test:r=>r.g==='hold'&&r.d==='estimate'&&r.s===10&&r.hits<=40 },
+  { id:'hd_est',   g:'hold', tier:'stretch', name:'Good eye',     how:'Cut · total under 20% off over the 5 rounds', unlocks:['lead','#FFFFFF'], at:{d:'cut',s:5}, progress:all=>lowProg(lowTotal(all,'cut',5),20), test:r=>r.g==='hold'&&r.d==='cut'&&r.s===5&&r.hits<=20 },
   { id:'hd_s',     g:'hold', tier:'secret',  name:'Machine',      how:'Every round of a 5-round run within 4.00%', at:{s:5}, test:r=>r.g==='hold'&&r.s===5&&r.y<=4 },
   // sequence
   { id:'sq_7',   g:'sequence', tier:'unlock',  name:'Seven',      how:'Reach round 7 on any keys', unlocks:['bg','stars'], progress:all=>bestRound(all)/7, test:r=>r.g==='sequence'&&r.hits>=7 },
@@ -713,18 +821,20 @@ function renderAch(){
 function jumpTo(a){ const g=a.g==='all'?(F.ach.g==='all'?sel.game:F.ach.g):a.g; const d=a.at?.d||GAMES[g].modes[0]; if(!isOpen(g,d)) return toast('Locked · '+needFor(g,d)); sel.game=g; prefs.lastGame=g; save('ne.prefs',prefs); show('s-pick');
   $$('.tile').forEach(t=>t.classList.toggle('keep',t.dataset.game===g)); fillSheet();
   const G_=GAMES[g]; if(!G_.modes.includes(sel.diff)) sel.diff=G_.modes[0]; jumpLen=a.at?.s||0; if(jumpLen) sel.secs=jumpLen;
+  if(G_.lens.length===1){ setStage('mode'); return; }
   if(a.at?.d||G_.modes.length===1){ sel.diff=a.at?.d||G_.modes[0]; $$('.choice').forEach(c=>c.classList.toggle('sel',c.dataset.diff===sel.diff)); fillTimes(); setStage('len'); }
   else setStage('mode'); }
 let jumpLen=0;
 let toastT=0;
 // toast(msg, achId): an achievement toast is tappable and goes to that row; on the result screen every toast sits low, clear of the score (v8)
-function toast(msg,ach){ const t=$('#toast'); clearTimeout(toastT); t.innerHTML=msg; t.dataset.ach=ach||''; t.classList.toggle('tap',!!ach); t.classList.toggle('low',$('#s-over').classList.contains('on')); t.classList.add('on'); Snd.click(); toastT=setTimeout(()=>t.classList.remove('on'),ach?3200:2000); }
+function toast(msg,ach){ const t=$('#toast'); clearTimeout(toastT); t.innerHTML=msg; t.dataset.ach=ach||''; t.classList.toggle('tap',!!ach); t.classList.add('on'); Snd.click(); toastT=setTimeout(()=>t.classList.remove('on'),ach?3200:2000); }
 
 /* ---------- verdicts: tiered by a per-game quality 0..1 ---------- */
 const VERDICTS={
   'quick-tap':['Warming up. Go again.','Solid. Now stop looking, start moving.','Quick. The next tier is close.','Sharp. Very sharp.','That is not normal. Keep it.'],
   'dots':['Finding the screen. Go again.','Landing them. Faster now.','Quick hands.','Sharp. Very sharp.','Radar. That is not normal.'],
   'hold':['Nowhere near. Feel the rate, not the shape.','Close-ish. Trust the count.','Good eye.','Machine-adjacent.','That is not normal. Keep it.'],
+  'hold:cut':['Way off. Look at the whole shape first.','Getting there. Think in halves.','Good eye.','Surgical.','That is not normal. Keep it.'],
   'sequence':['Short memory. Go again.','Building. Say it out loud.','Long memory.','Very long memory.','That is not normal. Keep it.'],
   'timing':['Way off. Count it out loud.','Getting the rhythm.','Good clock.','Very good clock.','That is not normal. Keep it.'],
   'reaction':['Asleep. Go again.','Awake.','Quick.','Very quick.','That is not normal. Keep it.'],
@@ -793,9 +903,13 @@ if(!DESIGNS[prefs.bg]){ prefs.tint=String(prefs.bg).startsWith('#')?prefs.bg:'';
   const keep=runs.filter(r=>GAMES[r.g]&&GAMES[r.g].modes.includes(r.d)); save('ne.runs',keep);
   const u=load('ne.unlock',{}); let ch=false; for(const k of Object.keys(u)){ if(k.startsWith('count:')){ u['spot:count']=u[k]; delete u[k]; ch=true; } if(k.startsWith('find:')){ u['spot:find']=u[k]; delete u[k]; ch=true; } } if(ch) save('ne.unlock',u);
   const a=load('ne.ach',{}); const map={ct_5:'sp_5',ct_10:'sp_15',fd_fast:'sp_fast',fd_clean:'sp_clean'}; let ca=false; for(const k in map) if(a[k]){ a[map[k]]=a[k]; delete a[k]; ca=true; } if(ca) save('ne.ach',a);
-  if(prefs.speed==='normal') prefs.speed=.4; if(prefs.speed==='fast') prefs.speed=.3; })();
+  if(prefs.speed==='normal') prefs.speed=.4; if(prefs.speed==='fast') prefs.speed=.3;
+  // v9: Quick Tap Lead is gone (its runs with it); Hold Match/Estimate became Estimate · Grow, keeping only 5-round runs
+  const r9=load('ne.runs',[]); let c9=false; const k9=r9.filter(r=>{ if(r.g==='quick-tap'&&r.d==='lead'){ c9=true; return false; } if(r.g==='hold'&&(r.d==='match'||r.d==='estimate')){ c9=true; if(r.s!==5) return false; r.d='grow'; } return true; }); if(c9) save('ne.runs',k9);
+  const u9=load('ne.unlock',{}); const m9={'quick-tap:lead':'quick-tap:four','hold:match':'hold:grow','hold:estimate':'hold:cut'}; let cu=false; for(const k in m9) if(u9[k]){ u9[m9[k]]=u9[k]; delete u9[k]; cu=true; } if(cu) save('ne.unlock',u9);
+  const i9=load('ne.intro',{}); let ci=false; for(const k in m9) if(i9[k]){ delete i9[k]; ci=true; } if(ci) save('ne.intro',i9); })();
 const lockedBy=it=> it.by && !got()[it.by] && !prefs.allOpen ? ACH.find(a=>a.id===it.by) : null;
-function freshGame(){ ['ne.runs','ne.ach','ne.unlock','ne.intro'].forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} }); prefs.allOpen=false; save('ne.prefs',prefs); lastRun=null; }
+function freshGame(){ ['ne.runs','ne.ach','ne.unlock','ne.intro'].forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} }); prefs.allOpen=false; prefs.story=0; save('ne.prefs',prefs); lastRun=null; }
 function devState(){ const u=Object.keys(unlocked()).length, a=Object.keys(got()).length, r=Scores.runs().length; $('#dev-state').textContent=prefs.allOpen?`open everything is ON · every mode and cosmetic available · ${r} runs on record`:`progression ON · ${u} of ${UNLOCKS.length} modes earned · ${a} of ${ACH.length} achievements · ${r} runs on record`; $('#dev-open').classList.toggle('sel',!!prefs.allOpen); }
 // colours are per game (v6): prefs.col[game] = {sq, lead}. The old global sq/lead seed every game once
 if(!prefs.col){ prefs.col={}; for(const g in GAMES) prefs.col[g]={sq:prefs.sq||'#FFFFFF',lead:prefs.lead||'#C8322A'}; }
@@ -824,16 +938,21 @@ function renderCustom(){
   else { lockBtn.textContent=''; lockBtn.dataset.ach=''; }
 }
 const pvSeen={};  // the last unlocked item tapped, so what earned it shows on touch (v5)
-const PV={t:0,n:1,pos:{x:.1,y:.2},next:{x:.6,y:.4},k:1};
+/* previews (v9): every game's preview is played by the same finger as the pre-game demo — it shows the tap and what comes of it, on a loop */
+const PV={k:0,n:1,last:''};
+const pvG=(x,y)=>{ const g=$('#pvg'); g.style.left=x+'%'; g.style.top=y+'%'; g.classList.add('on'); };
+const pvTap=()=>{ const g=$('#pvg'); g.classList.remove('tap'); void g.offsetWidth; g.classList.add('tap'); };
+const pvPop=el=>{ el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); };
 function pvStep(){
   if(!$('#s-custom').classList.contains('on')) return;
-  if(F.pv.g==='quick-tap'){ PV.t=PV.n; PV.n=Math.random()<.5?0:1; [0,1].forEach(i=>{ $('#pv'+i).style.setProperty('--v',PV.t===i?1:0); const c=$('#pvc'+i); c.classList.remove('on'); if(PV.n===i){ void c.offsetWidth; c.classList.add('on'); } }); const s=$('#pv'+PV.t); s.classList.remove('pop'); void s.offsetWidth; s.classList.add('pop'); }
-  else if(F.pv.g==='dots'){ PV.pos=PV.next; PV.next={x:Math.random()*.76,y:Math.random()*.62}; const d=$('#pvdot'), l=$('#pvlead'); d.style.left=PV.pos.x*100+'%'; d.style.top=PV.pos.y*100+'%'; l.style.left=PV.next.x*100+'%'; l.style.top=PV.next.y*100+'%'; d.classList.add('on'); l.classList.add('on'); }
-  else if(F.pv.g==='sequence'){ const ks=$$('.pvseq i'); ks.forEach(k=>k.classList.remove('lit')); PV.k=(PV.k+1+(Math.random()*3|0))%ks.length; ks[PV.k].classList.add('lit'); }
-  else if(F.pv.g==='hold'){ const m=$('.pvhold .m'); m.setAttribute('r',22+Math.random()*10); }
-  else if(F.pv.g==='timing'){ const b=$('#pvball'); PV.k=(PV.k+1)%5; b.style.left=(-12+PV.k*24)+'%'; }
-  else if(F.pv.g==='reaction'){ const p=$('#pvrx'); PV.k=(PV.k+1)%5; p.classList.toggle('lit',PV.k===3); p.textContent=PV.k===3?'tap':'wait for it'; }
-  else if(F.pv.g==='spot'){ const ks=$$('#pvsp i'); ks.forEach(k=>k.style.opacity=1); }
+  const g=F.pv.g; if(g!==PV.last){ PV.last=g; PV.k=0; $('#pvg').classList.remove('on','hold'); } const k=PV.k++;
+  if(g==='quick-tap'){ const ph=k%3; if(ph===0){ PV.n=Math.random()<.5?0:1; [0,1].forEach(i=>$('#pv'+i).style.setProperty('--v',PV.n===i?1:0)); pvG(PV.n?75:25,80); } else if(ph===1){ pvTap(); pvPop($('#pv'+PV.n)); } }
+  else if(g==='dots'){ const ph=k%3; const d=$('#pvdot'), l=$('#pvlead'); if(ph===0){ PV.pos=PV.next||{x:.4,y:.3}; PV.next={x:Math.random()*.76,y:Math.random()*.62}; d.style.left=PV.pos.x*100+'%'; d.style.top=PV.pos.y*100+'%'; l.style.left=PV.next.x*100+'%'; l.style.top=PV.next.y*100+'%'; d.classList.add('on'); l.classList.add('on'); pvG(PV.pos.x*100+11,PV.pos.y*100+17); } else if(ph===1) pvTap(); }
+  else if(g==='hold'){ const ph=k%7, m=$('.pvhold .m'), t=$('#pvhtxt'), f=$('#pvg'); if(ph===0){ m.setAttribute('r',0); t.innerHTML='tap and hold'; f.classList.remove('hold'); pvG(50,86); } else if(ph===1){ f.classList.add('hold'); t.innerHTML=''; m.setAttribute('r',26+Math.random()*9); } else if(ph===3){ f.classList.remove('hold'); const r=+m.getAttribute('r'), pct=r*r/900*100, err=Math.abs(pct-100); t.innerHTML=`<b class="${err<=8?'g':'r'}">${pct.toFixed(1)}%</b>${err<=8?'close':pct>100?'too much':'too little'}`; } }
+  else if(g==='sequence'){ const ks=$$('.pvseq i'), ph=k%6; if(ph===0){ PV.a=Math.random()*5|0; PV.b=(PV.a+1+(Math.random()*3|0))%5; ks.forEach(x=>x.classList.remove('lit')); $('#pvg').classList.remove('on'); ks[PV.a].classList.add('lit'); } else if(ph===1){ ks.forEach(x=>x.classList.remove('lit')); ks[PV.b].classList.add('lit'); } else if(ph===2){ ks.forEach(x=>x.classList.remove('lit')); pvG(10+PV.a*20,60); } else if(ph===3){ pvTap(); ks[PV.a].classList.add('lit'); pvG(10+PV.b*20,60); } else if(ph===4){ pvTap(); ks[PV.a].classList.remove('lit'); ks[PV.b].classList.add('lit'); } else ks.forEach(x=>x.classList.remove('lit')); }
+  else if(g==='timing'){ const ph=k%9, c=$('#pvclk'), r=$('#pvtmres'); if(ph===0){ c.textContent='0.00'; c.style.opacity=1; r.innerHTML=''; pvG(50,84); } else if(ph<6){ const e=ph*1.35; c.textContent=e.toFixed(2); c.style.opacity=e<1.5?1:Math.max(0,1-(e-1.5)/1.2); } else if(ph===6){ pvTap(); const e=6.75+Math.random()*.6; c.textContent=e.toFixed(2); c.style.opacity=1; const err=Math.abs(e-7); r.innerHTML=`<b class="${err<=.1?'g':err<=.3?'':'r'}">${err.toFixed(2)}s</b>${e>7?'late':'early'}`; } }
+  else if(g==='reaction'){ const p=$('#pvrx'), ph=k%6; if(ph===0){ p.classList.remove('lit'); p.textContent='wait for it'; pvG(50,86); } else if(ph===3){ p.classList.add('lit'); p.textContent='tap'; } else if(ph===4){ pvTap(); p.classList.remove('lit'); p.innerHTML=`<b>${180+(Math.random()*90|0)} ms</b>`; } }
+  else if(g==='spot'){ const ks=$$('#pvsp i'), ph=k%5; if(!ks.length) return; if(ph===0){ ks.forEach(x=>x.classList.remove('odd','dim')); $('#pvg').classList.remove('on'); } else if(ph===2){ const o=ks[9], r=o.getBoundingClientRect(), b=$('#pv').getBoundingClientRect(); pvG((r.left+r.width/2-b.left)/b.width*100,(r.top+r.height/2-b.top)/b.height*100); } else if(ph===3){ pvTap(); ks[9].classList.add('odd'); ks.forEach((x,i)=>{ if(i!==9) x.classList.add('dim'); }); } }
 }
 setInterval(pvStep,520);
 
@@ -847,17 +966,31 @@ const Wheel=(()=>{ const cv=$('#wheel'), cx=cv.getContext('2d'); let set='sq', d
 
 /* ---------- navigation: every sub-screen goes back on a tap that isn't on a control ---------- */
 if(!GAMES[prefs.lastGame]) prefs.lastGame='quick-tap';
-const sel={ game:prefs.lastGame, diff:'blind', secs:15, practice:0, scale:prefs.scale||'penta', speed:+prefs.speed||.4 };
+const sel={ game:prefs.lastGame, diff:'blind', secs:15, practice:0, scale:prefs.scale||'penta', vs:0 };
+// vs a friend (v9): pass-and-play. Player 1 is the profile, player 2 is FRIEND; only player 1's run goes on the board
+const VS={ on:false, stage:0, p1:null, p2:null, reset(){ this.on=false; this.stage=0; this.p1=null; this.p2=null; } };
 const F={ bd:{g:prefs.lastGame,d:GAMES[prefs.lastGame].modes[0],s:15}, pv:{g:prefs.lastGame}, ach:{g:'all'} };
 let stage='grid', shownAt=0;
 function show(id){ $$('.screen').forEach(s=>s.classList.toggle('on',s.id===id)); $('#game').classList.remove('on'); $('#stars').style.opacity=1; shownAt=performance.now(); applyPrefs(sel.game);
-  if(id==='s-pick'){ renderTiles(); setStage('grid'); } if(id==='s-board') renderBoard(); if(id==='s-ach') renderAch(); if(id==='s-custom'){ F.pv.g=sel.game; pvTry.set=null; pvSeen.by=null; renderCustom(); } if(id==='s-about') devState(); }
+  if(id==='s-pick'){ renderTiles(); setStage('grid'); } if(id==='s-board'){ renderBoard(); renderRadar(); } if(id==='s-ach') renderAch(); if(id==='s-custom'){ F.pv.g=sel.game; pvTry.set=null; pvSeen.by=null; renderCustom(); } if(id==='s-about') devState(); }
 // first open only: title fades up, then the menu fades in under it (v7). The class comes off once it has played so hover/focus opacity works again
-$('#s-menu').classList.add('intro'); setTimeout(()=>$('#s-menu').classList.remove('intro'),2400);
+function menuIn(){ $('#s-menu').classList.add('intro'); setTimeout(()=>$('#s-menu').classList.remove('intro'),2400); }
+/* the tap-through (v9): four cards on the very first open — what this is, why the name, how modes open, how the look is earned. About → replay the intro brings it back */
+const STORY=[
+  ['No Excuses','Small games of pure skill. No power-ups, no lives, no luck. Nothing is hidden from you — when you miss, it was you.'],
+  ['One game to start','Quick Tap is open. Every other mode is earned: hit the milestone written on a locked tile and the next one opens. The goal is always in view while you play.'],
+  ['Earn the look','Colours, backgrounds and sound packs unlock through achievements — each one says what it gives you. Nothing here is bought.'],
+  ['That is the whole deal','Short runs. Honest numbers. Your best is always on the screen, and so is what beats it.'],
+];
+const Story={ i:0,
+  open(){ this.i=0; this.card(); show('s-story'); },
+  card(){ const [h,p]=STORY[this.i]; $('#story-card').innerHTML=`<h2>${h}</h2><p>${p}</p><div class="dots">${STORY.map((_,k)=>`<i class="${k===this.i?'on':''}"></i>`).join('')}</div>`; const c=$('#story-card'); c.style.animation='none'; void c.offsetWidth; c.style.animation=''; $('#s-story .hint').textContent=this.i===STORY.length-1?'tap to begin':'tap to continue'; },
+  next(){ Snd.click(); this.i++; if(this.i>=STORY.length){ prefs.story=1; save('ne.prefs',prefs); show('s-menu'); menuIn(); return; } this.card(); } };
+if(!prefs.story) Story.open(); else menuIn();
 function setStage(st){ stage=st; const g=GAMES[sel.game]; $('#grid').classList.toggle('dim',st!=='grid'); $('#sheet').classList.toggle('up',st!=='grid'); $('#sheet').classList.toggle('len',st==='len');
   $('#diff-row').classList.toggle('single',g.modes.length===1);
-  ['prac-row','scale-row','speed-row'].forEach(id=>$('#'+id).style.display=st==='len'&&sel.game==='sequence'?'':'none');
-  if(st==='grid'){ $$('.tile').forEach(t=>t.classList.remove('keep')); } $('#sheet-title').textContent=g.name; $('#len-title').textContent=g.lenWord;
+  $('#seq-opts').style.display='none'; $('#vs-row').style.display=st==='mode'||(st==='len'&&g.modes.length===1)?'':'none';
+  if(st==='grid'){ $$('.tile').forEach(t=>t.classList.remove('keep')); } $('#sheet-title').textContent=g.name+(sel.vs?' · vs a friend':''); $('#len-title').textContent=g.lenWord;
   $('#lvl-mode').textContent=MODE_NAME[sel.diff]||''; $('#lvl-back').style.display=g.modes.length>1?'':'none'; }
 // locked games are greyed with the condition on the tile (v6)
 function renderTiles(){ $$('.tile[data-game]').forEach(t=>{ const g=t.dataset.game, open=gameOpen(g); t.classList.toggle('locked',!open); t.querySelector('.pic').dataset.need=open?'':needFor(g,GAMES[g].modes[0]); }); }
@@ -866,10 +999,12 @@ function back(){ if(performance.now()-shownAt<450) return; const s=$('.screen.on
   if(s.id==='s-pick'){ if(stage==='len'){ if(GAMES[sel.game].modes.length===1) setStage('grid'); else setStage('mode'); } else if(stage==='mode') setStage('grid'); else show('s-menu'); return; }
   if(s.dataset.back) show(s.dataset.back); }
 // the length buttons are the play button (v8). Sequence: the keys are drawn, not counted; scale, speed and practice are chips above that only select
-function fillTimes(){ const g=GAMES[sel.game]; const seq=sel.game==='sequence'; $('#time-row').innerHTML=g.lens.map(s=>{ const best=Scores.best(sel.game,sel.diff,s); const face=seq?`<span class="keys">${'<i></i>'.repeat(s)}</span>`:g.timed?LEN_NAME[s]||s+'s':s; return `<button class="tbtn ${jumpLen===s?'sel':''}" data-time="${s}"><b>${face}</b><small>${seq?s+' keys · ':g.timed?s+'s · ':''}${best!==null?`best ${scoreTxt(sel.game,best,sel.diff)}`:'no run yet'}</small></button>`; }).join('');
+// the length face (v9): the name with its seconds beside it, the best underneath. Sequence: pick the keys first, then scale and practice appear with a Play button
+const lenFace=(g,s)=>{ const G_=GAMES[g]; if(g==='sequence') return `<span class="keys">${'<i></i>'.repeat(s)}</span>`; if(G_.timed) return `${LEN_NAME[s]||s+'s'}<small>${s}s</small>`; return `${s}<small>${G_.unit.trim()}</small>`; };
+function fillTimes(){ const g=GAMES[sel.game]; const seq=sel.game==='sequence'; const selS=seq?sel.secs:jumpLen; $('#time-row').innerHTML=g.lens.map(s=>{ const best=Scores.best(sel.game,sel.diff,s); return `<button class="tbtn ${selS===s?'sel':''}" data-time="${s}"><b>${lenFace(sel.game,s)}</b><small>${seq?s+' keys · ':''}${best!==null?`best ${scoreTxt(sel.game,best,sel.diff)}`:'no run yet'}</small></button>`; }).join('');
   $('#scale-row').innerHTML=`<span class="chip lbl">scale</span>`+Object.entries(SCALES).map(([k,v])=>`<button class="chip ${sel.scale===k?'sel':''}" data-scale="${k}">${v.name}</button>`).join('');
-  $('#speed-row').innerHTML=`<span class="chip lbl">s per key</span>`+SEQ_SPEEDS.map(k=>`<button class="chip ${+sel.speed===k?'sel':''}" data-speed="${k}">${k}</button>`).join('');
-  $('#prac-row').innerHTML=`<span class="chip lbl">practice from</span>`+[0,5,10,15].map(n=>`<button class="chip ${sel.practice===n?'sel':''}" data-prac="${n}">${n||'off'}</button>`).join(''); }
+  $('#prac-row').innerHTML=`<span class="chip lbl">practice from</span>`+[0,5,10,15].map(n=>`<button class="chip ${sel.practice===n?'sel':''}" data-prac="${n}">${n||'off'}</button>`).join('');
+  $('#seq-opts').style.display=seq&&g.lens.includes(sel.secs)&&stage==='len'?'flex':'none'; }
 document.addEventListener('pointerdown', ()=>Snd.unlock(), {once:true});
 $('#pname').value=prefs.name; $('#pname').addEventListener('input',e=>{ prefs.name=e.target.value.trim().toUpperCase().slice(0,10); save('ne.prefs',prefs);
   // Signed in is earned the moment a name goes in (v8) — it used to wait for the next finished run, which made it look impossible
@@ -878,6 +1013,7 @@ $('#pname').addEventListener('click',e=>e.stopPropagation());
 document.addEventListener('click', e=>{
   const b=e.target.closest('button');
   if(e.target.closest('#toast')){ const id=$('#toast').dataset.ach; if(id){ Snd.click(); $('#toast').classList.remove('on'); gotoAch(id); } return; }
+  if($('#s-story').classList.contains('on')) return Story.next();
   if(!b){ if(e.target.closest('.sheet')||e.target.closest('#game')||e.target.closest('input')||e.target.closest('#wheelwrap')) return; if($('.screen.on')){ Snd.click(); back(); } return; }
   Snd.click();
   if(b.id==='quit') return abort();
@@ -887,20 +1023,25 @@ document.addEventListener('click', e=>{
   if(b.dataset.game){ if(b.classList.contains('locked')) return toast('Locked · '+needFor(b.dataset.game,GAMES[b.dataset.game].modes[0]));
     sel.game=b.dataset.game; prefs.lastGame=sel.game; save('ne.prefs',prefs); applyPrefs(sel.game); $$('.tile').forEach(t=>t.classList.toggle('keep',t===b)); fillSheet();
     if(GAMES[sel.game].modes.length===1){ sel.diff=GAMES[sel.game].modes[0]; fillTimes(); setStage('len'); } else setStage('mode'); }
-  if(b.dataset.diff){ if(stage==='len') return setStage('mode'); if(b.classList.contains('locked')) return toast('Locked · '+needFor(sel.game,b.dataset.diff)); sel.diff=b.dataset.diff; $$('.choice').forEach(c=>c.classList.toggle('sel',c===b)); fillTimes(); setStage('len'); }
+  if(b.dataset.diff){ if(stage==='len') return setStage('mode'); if(b.classList.contains('locked')) return toast('Locked · '+needFor(sel.game,b.dataset.diff)); sel.diff=b.dataset.diff; $$('.choice').forEach(c=>c.classList.toggle('sel',c===b));
+    if(GAMES[sel.game].lens.length===1){ sel.secs=GAMES[sel.game].lens[0]; sel.practice=0; VS.reset(); return start(); } fillTimes(); setStage('len'); }
   if(b.id==='lvl-back') return setStage('mode');
   if(b.id==='dev-open'){ prefs.allOpen=!prefs.allOpen; save('ne.prefs',prefs); devState(); return toast(prefs.allOpen?'Everything open · modes and cosmetics':'Progression back on · only what you earned'); }
   if(b.id==='dev-fresh'){ freshGame(); devState(); return toast('Fresh game · runs, unlocks, achievements and intros wiped'); }
-  if(b.dataset.time){ sel.secs=+b.dataset.time; if(sel.game!=='sequence') sel.practice=0; start(); }
+  if(b.dataset.time){ sel.secs=+b.dataset.time; if(sel.game==='sequence'){ $$('[data-time]').forEach(c=>c.classList.toggle('sel',c===b)); $('#seq-opts').style.display='flex'; return; } sel.practice=0; VS.reset(); start(); }
+  if(b.id==='seq-play'){ VS.reset(); return start(); }
+  if(b.dataset.vs!==undefined){ sel.vs=+b.dataset.vs; $$('[data-vs]').forEach(c=>c.classList.toggle('sel',c===b)); $('#sheet-title').textContent=GAMES[sel.game].name+(sel.vs?' · vs a friend':''); return; }
+  if(b.id==='pass-go'){ return start(); }
+  if(b.id==='to-games'){ VS.reset(); return show('s-pick'); }
+  if(b.id==='dev-story'){ return Story.open(); }
   if(b.dataset.scale){ sel.scale=b.dataset.scale; prefs.scale=sel.scale; save('ne.prefs',prefs); $$('[data-scale]').forEach(c=>c.classList.toggle('sel',c===b)); Snd.scaleHear(); }
-  if(b.dataset.speed){ sel.speed=+b.dataset.speed; prefs.speed=sel.speed; save('ne.prefs',prefs); $$('[data-speed]').forEach(c=>c.classList.toggle('sel',c===b)); }
   if(b.dataset.prac!==undefined){ sel.practice=+b.dataset.prac; $$('[data-prac]').forEach(c=>c.classList.toggle('sel',c===b)); }
-  if(b.id==='again') start();
+  if(b.id==='again'){ if(VS.on){ VS.stage=0; VS.p1=VS.p2=null; } start(); }
   if(b.id==='support') toast('Purchases arrive in the app build');
   if(b.id==='pvlock'){ if(b.dataset.ach) gotoAch(b.dataset.ach); return; }
   if(b.dataset.ach){ const a=ACH.find(x=>x.id===b.dataset.ach); if(a&&(a.g!=='all'||a.id==='fullset')&&!(a.tier==='secret'&&!got()[a.id])) return jumpTo(a); return; }
   if(b.dataset.chip){ const [scope,key]=b.dataset.chip.split('-'); const v=b.dataset.v==='true'?true:b.dataset.v==='false'?false:isNaN(b.dataset.v)?b.dataset.v:+b.dataset.v;
-    if(scope==='over'){ if(key==='d'){ if(!isOpen(sel.game,v)) return toast('Locked · '+needFor(sel.game,v)); sel.diff=v; } if(key==='s') sel.secs=v; if(key==='sc'){ sel.scale=v; prefs.scale=v; save('ne.prefs',prefs); Snd.scaleHear(); } if(key==='sp') sel.speed=v; sel.practice=0; chips('over',key,v); return; }
+    if(scope==='over'){ if(key==='d'){ if(!isOpen(sel.game,v)) return toast('Locked · '+needFor(sel.game,v)); sel.diff=v; } if(key==='s') sel.secs=v; if(key==='sc'){ sel.scale=v; prefs.scale=v; save('ne.prefs',prefs); Snd.scaleHear(); } sel.practice=0; chips('over',key,v); $$('#over-chips .mch').forEach(c=>c.classList.toggle('sel',c.dataset.v===sel.diff)); return; }
     F[scope][key]=v; if(scope==='bd'){ if(key==='g'){ F.bd.s=GAMES[v].lens[1]; F.bd.d=GAMES[v].modes[0]; } renderBoard(); } if(scope==='pv') renderCustom(); if(scope==='ach') renderAch(); }
   const set=b.closest('[data-set]'); if(set){ const k=set.dataset.set;
     if(b.classList.contains('locked')){ const L=ACH.find(a=>a.id===b.dataset.lock); Object.assign(pvTry,{set:k,v:b.dataset.v,by:L.id}); renderCustom(); return toast('Locked · '+L.name); }
@@ -908,28 +1049,37 @@ document.addEventListener('click', e=>{
     if(k==='bg'){ prefs.bg=b.dataset.v; prefs.tint=''; } else if(k==='sq'||k==='lead') prefs.col[F.pv.g][k]=b.dataset.v; else prefs[k]=k==='music'?b.dataset.v==='true':b.dataset.v; applyPrefs(F.pv.g); renderCustom(); if(k==='snd') Snd.hit(); }
 });
 const fmtScore=(g,v,d)=>{ const c=GC(g,d); return c.fmt?c.fmt(v):v; };
-function rows(g,d,list,curT){ const cfg=GC(g,d), c=cfg.cols; return list.length ? list.map((r,i)=>`<tr class="${i===0&&(r.hits>0||cfg.lower)?'best':''} ${r.t===curT?'cur':''}"><td>${i+1}</td><td>${r.n||'you'}</td><td>${fmtScore(g,r.hits,d)}</td><td>${c[0][1](r)}</td><td>${c[1][1](r)}</td><td>${new Date(r.t).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'2-digit'})}</td></tr>`).join('') : '<tr><td colspan="6">No runs here yet.</td></tr>'; }
+function rows(g,d,list,curT){ const cfg=GC(g,d), c=cfg.cols; return list.length ? list.map((r,i)=>`<tr class="${i===0&&(r.hits>0||cfg.lower)?'best':''} ${r.t===curT?'cur':''}"><td>${i+1}</td><td></td><td>${fmtScore(g,r.hits,d)}</td><td>${c[0][1](r)}</td><td>${c[1][1](r)}</td><td>${new Date(r.t).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'2-digit'})}</td></tr>`).join('') : '<tr><td colspan="6">No runs here yet.</td></tr>'; }
+// the profile radar (v9): one axis per game, your best quality 0..1 in any mode and length of it
+function renderRadar(){ const all=Scores.runs(), ids=Object.keys(GAMES), n=ids.length, C=100, R=88; const vals=ids.map(g=>Math.min(1,Math.max(0,...all.filter(r=>r.g===g&&!r.practice).map(r=>{ try{ return GC(g,r.d).quality(r)||0; }catch(e){ return 0; } }))));
+  const pt=(i,k)=>{ const a=-Math.PI/2+i/n*2*Math.PI; return [C+Math.cos(a)*R*k,C+Math.sin(a)*R*k]; }; const P=k=>ids.map((_,i)=>pt(i,k).map(v=>v.toFixed(1)).join(',')).join(' ');
+  $('#radar').innerHTML=[.25,.5,.75,1].map(k=>`<polygon class="web" points="${P(k)}"/>`).join('')+ids.map((_,i)=>{ const [x,y]=pt(i,1); return `<line x1="${C}" y1="${C}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`; }).join('')
+    +`<polygon class="me" points="${ids.map((_,i)=>pt(i,Math.max(.03,vals[i])).map(v=>v.toFixed(1)).join(',')).join(' ')}"/>`+ids.map((_,i)=>{ const [x,y]=pt(i,Math.max(.03,vals[i])); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.5"/>`; }).join('')
+    +ids.map((g,i)=>{ const [x,y]=pt(i,1.19); return `<text x="${x.toFixed(1)}" y="${(y+3).toFixed(1)}" text-anchor="middle">${GAMES[g].name} ${Math.round(vals[i]*100)}</text>`; }).join(''); }
 function chips(scope,key,val){ $$(`[data-chip="${scope}-${key}"]`).forEach(c=>c.classList.toggle('sel',String(c.dataset.v)===String(val))); }
 function renderBoard(){ const g=F.bd.g; if(!GAMES[g].lens.includes(F.bd.s)) F.bd.s=GAMES[g].lens[1]; if(!GAMES[g].modes.includes(F.bd.d)) F.bd.d=GAMES[g].modes[0];
   $('#bd-g').innerHTML=Object.entries(GAMES).map(([id,x])=>`<button class="chip" data-chip="bd-g" data-v="${id}">${x.name}</button>`).join('');
   $('#bd-d').innerHTML=GAMES[g].modes.length>1?GAMES[g].modes.map(d=>`<button class="chip" data-chip="bd-d" data-v="${d}">${MODE_NAME[d]}</button>`).join(''):'';
-  $('#bd-s').innerHTML=GAMES[g].lens.map(s=>`<button class="chip" data-chip="bd-s" data-v="${s}">${lenLabel(g,s)}</button>`).join('');
+  $('#bd-s').innerHTML=GAMES[g].lens.length>1?GAMES[g].lens.map(s=>`<button class="chip" data-chip="bd-s" data-v="${s}">${lenLabel(g,s)}</button>`).join(''):'';
   chips('bd','g',g); chips('bd','d',F.bd.d); chips('bd','s',F.bd.s);
-  const cfg=GC(g,F.bd.d), c=cfg.cols; $('#runs-h').innerHTML=`<tr><th>rank</th><th>name</th><th>${cfg.scoreWord||'score'}</th><th>${c[0][0]}</th><th>${c[1][0]}</th><th>date</th></tr>`;
+  const cfg=GC(g,F.bd.d), c=cfg.cols; $('#runs-h').innerHTML=`<tr><th>rank</th><th></th><th>${cfg.scoreWord||'score'}</th><th>${c[0][0]}</th><th>${c[1][0]}</th><th>date</th></tr>`;
   $('#runs').innerHTML=rows(g,F.bd.d,Scores.of(g,F.bd.d,F.bd.s).slice(0,10),lastRun?.t); }
 let lastRun=null;
 function renderOver(run){ const g=GC(run.g,run.d);
   // mode, length and scale/speed each on their own row (v5) — one row read as one choice
-  $('#over-chips').innerHTML=g.modes.length>1?g.modes.map(d=>`<button class="chip" data-chip="over-d" data-v="${d}">${MODE_NAME[d]}</button>`).join(''):'';
-  $('#over-chips2').innerHTML=g.lens.map(s=>`<button class="chip" data-chip="over-s" data-v="${s}">${g.timed?LEN_NAME[s]||s+'s':lenLabel(run.g,s)}</button>`).join('');
-  $('#over-chips3').innerHTML=run.g==='sequence'?Object.entries(SCALES).map(([k,v])=>`<button class="chip" data-chip="over-sc" data-v="${k}">${v.name}</button>`).join('')+SEQ_SPEEDS.map(k=>`<button class="chip" data-chip="over-sp" data-v="${k}">${k}s</button>`).join(''):'';
-  chips('over','d',run.d); chips('over','s',run.s); chips('over','sc',sel.scale); chips('over','sp',sel.speed);
+  // modes come with their picture, as on the pick sheet (v9)
+  $('#over-chips').innerHTML=g.modes.length>1?g.modes.map(d=>`<button class="mch ${d===run.d?'sel':''}" data-chip="over-d" data-v="${d}"><span class="pic">${GAMES[run.g].pic(d)}</span><b>${MODE_NAME[d]}</b></button>`).join(''):'';
+  $('#over-chips2').innerHTML=g.lens.length>1?g.lens.map(s=>`<button class="chip" data-chip="over-s" data-v="${s}">${g.timed?(LEN_NAME[s]||s)+' · '+s+'s':lenLabel(run.g,s)}</button>`).join(''):'';
+  $('#over-chips3').innerHTML=run.g==='sequence'?Object.entries(SCALES).map(([k,v])=>`<button class="chip" data-chip="over-sc" data-v="${k}">${v.name}</button>`).join(''):'';
+  chips('over','s',run.s); chips('over','sc',sel.scale);
+  // vs (v9): both scores side by side, the winner in green
+  const vb=$('#vsbox'); if(VS.on&&VS.stage===2&&VS.p1&&VS.p2){ const lo=g.lower, a=VS.p1.hits, b=VS.p2.hits, tie=a===b, w1=lo?a<b:a>b; vb.innerHTML=`<div class="${!tie&&w1?'win':''}">${prefs.name||'you'}<b>${scoreTxt(run.g,a,run.d)}</b></div><em>vs</em><div class="${!tie&&!w1?'win':''}">friend<b>${scoreTxt(run.g,b,run.d)}</b></div>`; vb.classList.add('on'); } else vb.classList.remove('on');
   $('#over-top').style.display=run.practice?'none':'';
   if(run.practice){ $('#over-stats').innerHTML=''; $('#over-rank').innerHTML='practice · nothing recorded'; return; }
   // the top 10 for this mode and length, scores and dates, right under the result (v6)
   const top=Scores.of(run.g,run.d,run.s).slice(0,10);
   $('#over-top-title').textContent=`top 10 · ${g.name}${MODE_NAME[run.d]?' · '+MODE_NAME[run.d]:''} · ${g.timed?LEN_NAME[run.s]||run.s+'s':lenLabel(run.g,run.s)}`;
-  $('#over-runs').innerHTML=top.map((r,i)=>`<tr class="${r.t===run.t?'cur':''}"><td>${i+1}</td><td>${r.n||'you'}</td><td>${scoreTxt(run.g,r.hits,r.d)}</td><td>${new Date(r.t).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'2-digit'})}</td></tr>`).join('');
+  $('#over-runs').innerHTML=top.map((r,i)=>`<tr class="${r.t===run.t?'cur':''}"><td>${i+1}</td><td></td><td>${scoreTxt(run.g,r.hits,r.d)}</td><td>${new Date(r.t).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'2-digit'})}</td></tr>`).join('');
   const best=Scores.best(run.g,run.d,run.s);
   const peak=run.peak?`<span>peak <b>${run.peak.toFixed(1)}/s</b></span>`:'';
   $('#over-stats').innerHTML=`<span>${g.cols[0][0]} <b>${g.cols[0][1](run)}</b></span><span>best <b>${best===null?'—':scoreTxt(run.g,best,run.d)}</b></span><span>${g.cols[1][0]} <b>${g.cols[1][1](run)}</b></span>${peak}`;
@@ -939,82 +1089,143 @@ function renderOver(run){ const g=GC(run.g,run.d);
 const G={ on:false, t0:0, end:0, hits:0, misses:0, armed:false, lockUntil:0, raf:0, target:-1, next:-1, pos:null, nextPos:null, prevPos:null, timers:[] };
 const flip=()=>Math.random()<0.5?0:1;
 let cur=null;
-const sq=[$('#sq0'),$('#sq1')], cue=[$('#cue0'),$('#cue1')], ring=[$('#ring0'),$('#ring1')];
-const QT={ begin(){ G.target=flip(); G.next=flip(); },
-  advance(){ const p=G.target; G.target = sel.diff==='lead'?G.next:flip(); G.next=flip(); if(G.target===p){ const s=sq[G.target]; s.classList.remove('pop'); void s.offsetWidth; s.classList.add('pop'); } },
-  render(live){ for(const i of [0,1]){ sq[i].style.setProperty('--v',(live&&G.target===i)?1:0); const on=live&&sel.diff==='lead'&&G.next===i; cue[i].classList.remove('on'); if(on){ void cue[i].offsetWidth; cue[i].classList.add('on'); } } },
+const sq=[$('#sq0'),$('#sq1'),$('#sq2'),$('#sq3')], ring=[$('#ring0'),$('#ring1'),$('#ring2'),$('#ring3')];
+// pity (v9): random, but a streak of the same pad is cut at three — long runs of "again?" annoy without testing anything
+const QT={ n(){ return sel.diff==='four'?4:2; }, streak:0,
+  pickPad(prev){ const n=this.n(); let p=Math.random()*n|0; if(p===prev){ this.streak++; if(this.streak>=3){ p=(p+1+(Math.random()*(n-1)|0))%n; this.streak=0; } } else this.streak=0; return p; },
+  begin(){ this.streak=0; G.target=Math.random()*this.n()|0; },
+  advance(){ const p=G.target; G.target=this.pickPad(p); if(G.target===p){ const s=sq[G.target]; s.classList.remove('pop'); void s.offsetWidth; s.classList.add('pop'); } },
+  render(live){ for(let i=0;i<4;i++) sq[i].style.setProperty('--v',(live&&G.target===i)?1:0); },
   ring(){ const r=ring[G.target]; r.classList.remove('go'); void r.offsetWidth; r.classList.add('go'); } };
 const DT={ sz:80,
-  rnd(avoid){ const f=$('#field').getBoundingClientRect(); this.sz=parseFloat(getComputedStyle($('#dot')).width)||80; const mx=Math.max(1,f.width-this.sz), my=Math.max(1,f.height-this.sz);
-    for(let i=0;i<14;i++){ const p={x:Math.random()*mx,y:Math.random()*my}; if(!avoid||Math.hypot(p.x-avoid.x,p.y-avoid.y)>this.sz*1.3) return p; } return {x:Math.random()*mx,y:Math.random()*my}; },
+  // pity (v9): three dots in a row in the same quarter of the screen and the next one is forced elsewhere
+  q:-1, qn:0,
+  rnd(avoid){ const f=$('#field').getBoundingClientRect(); this.sz=parseFloat(getComputedStyle($('#dot')).width)||80; const mx=Math.max(1,f.width-this.sz), my=Math.max(1,f.height-this.sz); const quad=p=>(p.x>mx/2?1:0)+(p.y>my/2?2:0);
+    for(let i=0;i<20;i++){ const p={x:Math.random()*mx,y:Math.random()*my}; if(avoid&&Math.hypot(p.x-avoid.x,p.y-avoid.y)<=this.sz*1.3) continue; const q=quad(p); if(q===this.q&&this.qn>=3) continue; if(q===this.q) this.qn++; else { this.q=q; this.qn=1; } return p; } return {x:Math.random()*mx,y:Math.random()*my}; },
   begin(){ G.pos=this.rnd(null); G.prevPos=null; G.nextPos=this.rnd(G.pos); },
   advance(){ G.prevPos=G.pos; G.pos = sel.diff==='lead'?G.nextPos:this.rnd(G.pos); G.nextPos=this.rnd(G.pos); },
   render(live){ const d=$('#dot'), l=$('#lead'); if(G.pos){ d.style.transform=`translate(${G.pos.x}px,${G.pos.y}px)`; } d.classList.toggle('on',live);
     // the lead ring just appears where the next dot will be — no push, no effect (v5)
     const on=live&&sel.diff==='lead'; if(G.nextPos&&on){ l.style.transform=`translate(${G.nextPos.x}px,${G.nextPos.y}px)`; l.classList.add('on'); } else l.classList.remove('on'); },
   // the landing ring carries the direction of travel: it starts pushed on past the dot, further when the dot came from further, and settles back onto it as it fades (v5)
-  ring(){ const r=$('#dring'); if(!G.pos) return; let px=0,py=0; if(G.prevPos){ const dx=G.pos.x-G.prevPos.x, dy=G.pos.y-G.prevPos.y, dist=Math.hypot(dx,dy); if(dist>0){ const off=Math.min(dist*CFG.dotPush,CFG.dotPushMax*vmin()); px=dx/dist*off; py=dy/dist*off; } }
-    r.classList.remove('go'); r.style.transition='none'; r.style.opacity=.9; r.style.transform=`translate(${G.pos.x+px}px,${G.pos.y+py}px) scale(1.12)`; void r.offsetWidth; r.classList.add('go');
-    requestAnimationFrame(()=>{ r.style.transition=''; r.style.opacity=0; r.style.transform=`translate(${G.pos.x}px,${G.pos.y}px) scale(1)`; }); },
+  // the landing ring (v9) grows out from the dot and fades — no push to the side
+  ring(){ const r=$('#dring'); if(!G.pos) return; r.classList.remove('go'); r.style.transition='none'; r.style.opacity=.9; r.style.transform=`translate(${G.pos.x}px,${G.pos.y}px) scale(1)`; void r.offsetWidth; r.classList.add('go');
+    requestAnimationFrame(()=>{ r.style.transition=''; r.style.opacity=0; r.style.transform=`translate(${G.pos.x}px,${G.pos.y}px) scale(1.7)`; }); },
   onDown(e){ const f=$('#field').getBoundingClientRect(); const x=e.clientX-f.left, y=e.clientY-f.top, c=this.sz/2; tapAt(!!G.pos && Math.hypot(x-(G.pos.x+c), y-(G.pos.y+c)) <= c*CFG.dotLeeway+8); } };
 
-/* ---------- Hold: rounds. A shape grows with a wobble and stops. Match: hold the same shape onto it. Estimate: hold a different shape to the same area. Score is % off, lower is better ---------- */
-const HD={ st:'idle', round:0, total:0, worst:0, bestErr:999, target:0, shape:'', mineShape:'', t0:0, raf:0, timers:[],
-  shapes:['square','circle','tri','bar'], coef:{square:1,circle:Math.PI/4,tri:Math.sqrt(3)/4,bar:.22},
-  area(shape,s){ return this.coef[shape]*s*s; },
-  shapePath(shape,s,cx,cy){ if(s<=0) return '';
-    if(shape==='square') return `M${cx-s/2},${cy-s/2}h${s}v${s}h${-s}z`;
-    if(shape==='bar'){ const h=s*.22; return `M${cx-s/2},${cy-h/2}h${s}v${h}h${-s}z`; }
-    if(shape==='circle'){ const r=s/2; return `M${cx-r},${cy}a${r},${r} 0 1,0 ${2*r},0a${r},${r} 0 1,0 ${-2*r},0z`; }
-    const h=s*Math.sqrt(3)/2; return `M${cx},${cy-h/2}L${cx+s/2},${cy+h/2}L${cx-s/2},${cy+h/2}z`; },
-  path(shape,s){ const f=$('#hfield').getBoundingClientRect(); return this.shapePath(shape,s,f.width/2,f.height/2); },
-  // estimate: the shape you'll hold, as a picture top right (v6)
-  icon(shape){ const ic=$('#hicon'); if(!shape){ ic.classList.remove('on'); return; } ic.querySelector('path').setAttribute('d',this.shapePath(shape,shape==='bar'?84:62,50,46)); ic.querySelector('text').textContent=shape==='tri'?'triangle':shape; ic.classList.add('on'); },
-  unclip(){ for(const id of ['hclipr','tclipr']){ const r=$('#'+id); r.setAttribute('x',-9999); r.setAttribute('y',-9999); r.setAttribute('width',99999); r.setAttribute('height',99999); } },
-  // reveal (v7): a shape fills from the bottom while its px² counts up — used for the target first, then yours, then the % difference is worked out
-  fill(layer,clip,total,ms,counter){ return new Promise(res=>{ const p=$(`#${layer} path`); let bb; try{ bb=p.getBBox(); }catch(e){ return res(); } const rc=$('#'+clip), t0=performance.now();
-    rc.setAttribute('x',bb.x-3); rc.setAttribute('width',bb.width+6); rc.setAttribute('y',bb.y+bb.height); rc.setAttribute('height',0);
-    const anim=now=>{ if(this.st!=='reveal') return res(); const k=Math.min(1,(now-t0)/ms); rc.setAttribute('y',bb.y+bb.height*(1-k)-3); rc.setAttribute('height',bb.height*k+6); const c=$('#'+counter); if(c) c.textContent=Math.round(total*k); if(k<1) requestAnimationFrame(anim); else res(); };
-    requestAnimationFrame(anim); }); },
-  set(layer,shape,s,wob){ const p=$(`#${layer} path`); p.setAttribute('d',this.path(shape,s)); const f=$('#hfield').getBoundingClientRect(); p.setAttribute('transform',wob?`translate(${wob.x},${wob.y}) rotate(${wob.a} ${f.width/2} ${f.height/2})`:''); },
+/* ---------- shapes (v9): every shape is a set of point loops, longest side 1, centred on 0. Holes run the other way round, so the signed area of the loops is the area ---------- */
+const Shapes=(()=>{
+  const norm=loops=>{ let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9; loops.forEach(L=>L.forEach(([x,y])=>{ x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y); })); const s=Math.max(x1-x0,y1-y0)||1, cx=(x0+x1)/2, cy=(y0+y1)/2; return loops.map(L=>L.map(([x,y])=>[(x-cx)/s,(y-cy)/s])); };
+  const signed=L=>{ let a=0; for(let i=0;i<L.length;i++){ const [x1,y1]=L[i],[x2,y2]=L[(i+1)%L.length]; a+=x1*y2-x2*y1; } return a/2; };
+  const area=loops=>Math.abs(loops.reduce((s,L)=>s+signed(L),0));
+  const ring=(n,f)=>Array.from({length:n},(_,i)=>f(i/n*2*Math.PI,i));
+  const circ=(r,cx=0,cy=0,n=64,rev)=>{ const L=ring(n,a=>[cx+r*Math.cos(a),cy+r*Math.sin(a)]); return rev?L.reverse():L; };
+  // cells → boundary loops. Every cell contributes four directed edges; an edge shared by two cells cancels; what is left chains into loops, holes running the other way
+  function cellLoops(cells){ const edges=new Map(); const add=(a,b)=>{ const k=a+'>'+b, rk=b+'>'+a; if(edges.has(rk)) edges.delete(rk); else edges.set(k,[a,b]); };
+    cells.forEach(([x,y])=>{ add([x,y],[x+1,y]); add([x+1,y],[x+1,y+1]); add([x+1,y+1],[x,y+1]); add([x,y+1],[x,y]); });
+    const from=new Map(); for(const [a,b] of edges.values()){ const k=a.join(','); (from.get(k)||from.set(k,[]).get(k)).push(b); }
+    const loops=[]; while(from.size){ const start=from.keys().next().value; let cur=start.split(',').map(Number); const L=[];
+      for(let guard=0;guard<4000;guard++){ L.push(cur); const k=cur.join(','); const outs=from.get(k); if(!outs||!outs.length){ from.delete(k); break; } cur=outs.shift(); if(!outs.length) from.delete(k); if(cur.join(',')===start) break; }
+      if(L.length>2) loops.push(L.filter((p,i)=>{ const a=L[(i-1+L.length)%L.length], b=L[(i+1)%L.length]; return !((a[0]===p[0]&&p[0]===b[0])||(a[1]===p[1]&&p[1]===b[1])); })); }
+    return loops; }
+  const has=(cells,x,y)=>cells.some(c=>c[0]===x&&c[1]===y);
+  const R=n=>Math.random()*n|0, pick=a=>a[R(a.length)];
+  const DIRS=[[1,0],[-1,0],[0,1],[0,-1]];
+  // polyominoes: a random walk that mostly keeps going (a line of squares), a compact blob, stairs, a plus, an L, a T, and a chain of rectangles
+  function walk(k,straight){ const cells=[[0,0]]; let x=0,y=0,d=DIRS[R(4)]; while(cells.length<k){ if(Math.random()>straight) d=DIRS[R(4)]; const nx=x+d[0], ny=y+d[1]; if(!has(cells,nx,ny)) cells.push([nx,ny]); x=nx; y=ny; } return cells; }
+  function blob(k){ const cells=[[0,0]]; while(cells.length<k){ const c=pick(cells), d=DIRS[R(4)]; const nx=c[0]+d[0], ny=c[1]+d[1]; if(!has(cells,nx,ny)) cells.push([nx,ny]); } return cells; }
+  function stairs(n){ const cells=[]; for(let i=0;i<n;i++){ cells.push([i,i]); cells.push([i+1,i]); } return cells; }
+  function plus(a){ const cells=[]; for(let i=-a;i<=a;i++){ cells.push([i,0]); if(i) cells.push([0,i]); } return cells; }
+  function rects(n){ const cells=[]; let x=0,y=0; for(let i=0;i<n;i++){ const w=1+R(4), h=1+R(3); for(let dx=0;dx<w;dx++) for(let dy=0;dy<h;dy++) if(!has(cells,x+dx,y+dy)) cells.push([x+dx,y+dy]); if(Math.random()<.5) x+=w; else y+=h; } return cells; }
+  function star(){ const n=5+R(3), r1=.5, r2=.18+Math.random()*.16; return ring(n*2,(a,i)=>{ const r=i%2?r2:r1; return [r*Math.cos(a-Math.PI/2),r*Math.sin(a-Math.PI/2)]; }); }
+  function jag(){ const n=8+R(6); return ring(n,a=>{ const r=.26+Math.random()*.24; return [r*Math.cos(a),r*Math.sin(a)]; }); }
+  function spiral(){ const turns=1.6+Math.random()*1.2, w=.09+Math.random()*.05, r0=.06, b=(.5-w/2-r0)/(turns*2*Math.PI); const n=Math.round(turns*36); const out=[],inn=[];
+    for(let i=0;i<=n;i++){ const t=i/n*turns*2*Math.PI, r=r0+b*t; out.push([(r+w/2)*Math.cos(t),(r+w/2)*Math.sin(t)]); inn.push([Math.max(0,r-w/2)*Math.cos(t),Math.max(0,r-w/2)*Math.sin(t)]); }
+    return out.concat(inn.reverse()); }
+  function crescent(){ const o=[],i=[]; for(let k=0;k<=36;k++){ const a=Math.PI/2+k/36*Math.PI; o.push([.5*Math.cos(a),.5*Math.sin(a)]); } for(let k=36;k>=0;k--){ const a=Math.PI/2+k/36*Math.PI; i.push([.2+.42*Math.cos(a),.42*Math.sin(a)]); } return o.concat(i); }
+  const GEN={
+    square:()=>[[[-.5,-.5],[.5,-.5],[.5,.5],[-.5,.5]]], circle:()=>[circ(.5)], triangle:()=>[[[0,-.5],[.5,.5],[-.5,.5]]], bar:()=>[[[-.5,-.11],[.5,-.11],[.5,.11],[-.5,.11]]],
+    ring:()=>[circ(.5),circ(.2+Math.random()*.14,0,0,64,true)], star:()=>[star()], blob:()=>[jag()],
+    line:()=>cellLoops(walk(6+R(5),.78)), tetris:()=>cellLoops(blob(5+R(5))), stairs:()=>cellLoops(stairs(3+R(3))), plus:()=>cellLoops(plus(1+R(2))),
+    rects:()=>cellLoops(rects(3+R(3))), spiral:()=>[spiral()], crescent:()=>[crescent()],
+  };
+  const GROW=['square','circle','triangle','bar','ring','star','blob','line','tetris','stairs','plus','rects','crescent'];
+  const CUT=GROW.concat(['spiral','spiral']);
+  function make(name){ const loops=norm(GEN[name]()); return { name, loops, coef:area(loops) }; }
+  const path=(sh,s,cx,cy)=>sh.loops.map(L=>'M'+L.map(([x,y])=>`${(cx+x*s).toFixed(2)},${(cy+y*s).toFixed(2)}`).join('L')+'z').join('');
+  // one side of a line through p0 along d (Sutherland–Hodgman on each loop — holes stay holes)
+  function clip(loops,p0,d,side){ const ins=p=>(d[0]*(p[1]-p0[1])-d[1]*(p[0]-p0[0]))*side>=0; const cross=(a,b)=>{ const fa=d[0]*(a[1]-p0[1])-d[1]*(a[0]-p0[0]), fb=d[0]*(b[1]-p0[1])-d[1]*(b[0]-p0[0]); const t=fa/(fa-fb); return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t]; };
+    return loops.map(L=>{ const out=[]; for(let i=0;i<L.length;i++){ const a=L[i], b=L[(i+1)%L.length], ia=ins(a), ib=ins(b); if(ia) out.push(a); if(ia!==ib) out.push(cross(a,b)); } return out; }).filter(L=>L.length>2); }
+  return { make, path, area, clip, GROW, CUT, random:pool=>make(pick(pool)) };
+})();
+
+/* ---------- Estimate (v9, was Hold). Grow: a shape grows with a wobble and vanishes; tap and hold to grow yours to the same area — the same shape on odd rounds, a different one on even. Cut: a shape appears; drag a line through it that splits off the share asked for. Score is % off, lower is better. Five rounds ---------- */
+const HD={ st:'idle', round:0, total:0, worst:0, bestErr:999, target:0, shape:null, mine:null, t0:0, raf:0, timers:[], p0:null, p1:null, share:50,
+  est(){ return sel.diff==='grow'&&this.round%2===0; },
+  path(sh,s){ const f=$('#hfield').getBoundingClientRect(); return Shapes.path(sh,s,f.width/2,f.height/2); },
+  icon(sh){ const ic=$('#hicon'); ic.classList.remove('big'); ic.innerHTML='<path/><text x="50" y="98" text-anchor="middle"></text>'; if(!sh){ ic.classList.remove('on'); return; } ic.querySelector('path').setAttribute('d',Shapes.path(sh,sh.name==='bar'||sh.name==='line'?84:62,50,46)); ic.querySelector('text').textContent=sh.name; ic.classList.add('on'); },
+  // the cut hint: a finger drags a dotted line through a small shape. Big and centred first, then it parks top right for the round
+  hint(sh){ const ic=$('#hicon'); ic.innerHTML=`<path d="${Shapes.path(sh,58,50,50)}" fill-rule="evenodd"/><line x1="6" y1="70" x2="94" y2="30"/><circle class="fg" r="7"/><text x="50" y="98" text-anchor="middle">tap and draw a line</text>`; ic.classList.add('on','big'); this.later(()=>ic.classList.remove('big'),1500); },
+  bg(t){ const b=$('#hbg'); b.textContent=t||''; b.classList.toggle('on',!!t); },
+  set(layer,sh,s,wob){ const p=$(`#${layer} path`); if(!sh||s<=0){ p.setAttribute('d',''); return; } p.setAttribute('d',this.path(sh,s)); const f=$('#hfield').getBoundingClientRect(); p.setAttribute('transform',wob?`translate(${wob.x},${wob.y}) rotate(${wob.a} ${f.width/2} ${f.height/2})`:''); },
   wobble(ms){ return {a:Math.sin(ms/90)*4, x:Math.sin(ms/70)*3, y:Math.cos(ms/110)*3}; },
   clearT(){ this.timers.forEach(clearTimeout); this.timers=[]; cancelAnimationFrame(this.raf); },
   later(f,ms){ this.timers.push(setTimeout(()=>{ if(G.on) f(); },ms)); },
+  reset(){ ['ht','hg','hm'].forEach(l=>this.set(l,null,0)); $$('#hcut path').forEach(p=>p.setAttribute('d','')); $('#hline').style.opacity=0; $('#hcalc').classList.remove('on'); $('#hcalc').innerHTML=''; $('#hfield').classList.remove('show'); this.bg(''); this.icon(null); $('#hlbl').innerHTML=''; },
   begin(){ this.round=0; this.total=0; this.worst=0; this.bestErr=999; $('#score').textContent='0.00'; this.next(); },
-  pickMine(){ if(sel.diff==='match') return this.shape; const ok=this.shapes.filter(s=>s!==this.shape&&this.coef[s]/this.coef[this.shape]>=.4&&this.coef[s]/this.coef[this.shape]<=2.5); return ok[Math.random()*ok.length|0]; },
-  next(){ this.clearT(); this.round++; if(this.round>sel.secs) return finish({hits:Math.round(this.total*100)/100,misses:0,x:this.bestErr,y:this.worst});
-    $('#hud-time').textContent=`${this.round} / ${sel.secs}`; const v=vmin(); this.shape=this.shapes[Math.random()*4|0]; this.target=(14+Math.random()*44)*v; this.mineShape=this.pickMine();
-    this.unclip(); this.set('hg','square',0); this.set('hm','square',0); this.icon(sel.diff==='estimate'?this.mineShape:null); $('#hlbl').innerHTML=sel.diff==='estimate'?`watch · then hold the shape top right`:'watch';
+  pickMine(){ if(!this.est()) return this.shape; const c=this.shape.coef; const ok=Shapes.GROW.filter(n=>n!==this.shape.name).map(n=>Shapes.make(n)).filter(s=>s.coef/c>=.4&&s.coef/c<=2.5); return ok.length?ok[Math.random()*ok.length|0]:Shapes.random(Shapes.GROW); },
+  next(){ this.clearT(); this.round++; if(this.round>sel.secs) return finish({hits:Math.round(this.total*100)/100,misses:0,x:this.bestErr,y:this.worst}); this.reset();
+    if(sel.diff==='cut') return this.cutRound();
+    $('#hud-time').textContent=`${this.round} / ${sel.secs} · ${this.est()?'different shape':'same shape'}`; const v=vmin(); this.shape=Shapes.random(Shapes.GROW); this.target=(16+Math.random()*42)*v; this.mine=this.pickMine();
+    this.icon(this.est()?this.mine:null); $('#hlbl').innerHTML=this.est()?`watch · then hold the shape top right to the same area`:'watch'; $('#hfield').classList.add('show');
     this.st='show'; const t0=performance.now(), rate=CFG.holdRate*v, dur=this.target/rate*1000;
     const grow=now=>{ if(!G.on) return; const p=Math.min(1,(now-t0)/dur); this.set('ht',this.shape,this.target*p,this.wobble(now-t0)); if(p<1) this.raf=requestAnimationFrame(grow); else this.later(()=>this.ready(),420); };
     this.raf=requestAnimationFrame(grow); },
-  // Match: the target vanishes and no outline is left to trace — you hold it from memory. The outline only comes back at the reveal. Estimate keeps it, you need it to compare (v5)
-  // Match and Estimate both hold from memory now (v8): the target is gone either way, Estimate keeps only the small shape icon top right — the big outline was a distraction
-  ready(){ this.set('ht','square',0); this.st='wait'; $('#hlbl').innerHTML=sel.diff==='estimate'?`hold · same area · shape top right`:'hold'; Snd.click(); },
-  down(){ if(this.st!=='wait') return; this.st='hold'; this.t0=performance.now(); $('#hlbl').innerHTML=''; const rate=CFG.holdRate*vmin(), cap=Math.min(this.target*2.8,96*vmin());
-    const grow=now=>{ if(this.st!=='hold') return; const el=now-this.t0; this.set('hm',this.mineShape,Math.min(cap,el/1000*rate),sel.diff==='match'?this.wobble(el):null); this.raf=requestAnimationFrame(grow); }; this.raf=requestAnimationFrame(grow); },
-  // reveal (v8), both modes: the target fills bottom-up while its px² counts (0.9s), then yours, then the px² difference pops, then the % and verdict, and only then is it added to the total up top. ~4.5s a round — slow enough to read
-  up(){ if(this.st!=='hold') return; this.st='reveal'; cancelAnimationFrame(this.raf); const size=Math.min(Math.min(this.target*2.8,96*vmin()),(performance.now()-this.t0)/1000*CFG.holdRate*vmin());
-    this.set('hm',this.mineShape,size); const mine=this.area(this.mineShape,size), tgt=this.area(this.shape,this.target); const pct=mine/tgt*100; const err=Math.abs(pct-100);
-    const est=sel.diff==='estimate', word=err<=2?'on the money':err<=8?'close':pct>100?'too much':'too little';
-    const verdictHtml=`<b class="${err<=2?'g':''}">${f2(pct)}%</b>${word} · ${f2(err)} off`;
-    const sound=()=>{ err<=8?Snd.hit():Snd.miss(); if(err>8&&navigator.vibrate) navigator.vibrate(30); };
-    $('#hlbl').innerHTML=`<span style="opacity:.8">target <span id="tcount">0</span> px² · yours <span id="hcount">0</span> px²</span><div id="hdiff" style="margin-top:6px;opacity:0;transition:opacity .25s"></div><div id="hverd" style="margin-top:6px"></div>`;
-    const zero=id=>$('#'+id).setAttribute('height',0); const pause=ms=>new Promise(r=>this.later(r,ms));
-    zero('hclipr'); this.set('ht',this.shape,this.target); zero('tclipr'); if(!est) this.set('hg',this.shape,this.target);
-    this.fill('ht','tclipr',tgt,900,'tcount').then(()=>pause(300)).then(()=>this.fill('hm','hclipr',mine,900,'hcount')).then(()=>pause(300))
-      .then(()=>{ if(this.st!=='reveal') return; const d=$('#hdiff'); if(d){ const diff=Math.round(mine-tgt); d.innerHTML=`<b class="${err<=2?'g':err>8?'r':''}" style="font-size:22px;display:inline">${diff>0?'+':'−'}${Math.abs(diff)} px²</b>`; d.style.opacity=1; d.classList.add('pop'); } return pause(800); })
-      .then(()=>{ if(this.st!=='reveal') return; const v=$('#hverd'); if(v) v.innerHTML=verdictHtml; sound(); this.total+=err; this.worst=Math.max(this.worst,err); this.bestErr=Math.min(this.bestErr,err);
-        const s=$('#score'); s.textContent=f2(this.total); s.classList.remove('pop'); void s.offsetWidth; s.classList.add('pop'); this.later(()=>this.next(),1700); }); } };
+  ready(){ this.set('ht',null,0); $('#hfield').classList.remove('show'); this.st='wait'; $('#hlbl').innerHTML=this.est()?`same area · shape top right`:'same shape, same size'; this.bg('tap and hold'); Snd.click(); },
+  down(e){ if(sel.diff==='cut') return this.cutDown(e); if(this.st!=='wait') return; this.st='hold'; this.t0=performance.now(); $('#hlbl').innerHTML=''; this.bg(''); const rate=CFG.holdRate*vmin(), cap=Math.min(this.target*2.8,96*vmin());
+    const grow=now=>{ if(this.st!=='hold') return; const el=now-this.t0; this.set('hm',this.mine,Math.min(cap,el/1000*rate),this.est()?null:this.wobble(el)); this.raf=requestAnimationFrame(grow); }; this.raf=requestAnimationFrame(grow); },
+  // the reveal (v9): the target comes back as an outline only, yours stays filled, and a centred panel does the sums with two bars — target fills and counts, yours fills and counts, the difference, then the %
+  up(){ if(sel.diff==='cut') return this.cutUp(); if(this.st!=='hold') return; this.st='reveal'; cancelAnimationFrame(this.raf); const size=Math.min(Math.min(this.target*2.8,96*vmin()),(performance.now()-this.t0)/1000*CFG.holdRate*vmin());
+    this.set('hm',this.mine,size); this.set('ht',this.shape,this.target); const mine=Shapes.area(this.mine.loops)*size*size, tgt=this.shape.coef*this.target*this.target; const pct=mine/tgt*100, err=Math.abs(pct-100);
+    const word=err<=2?'on the money':err<=8?'close':pct>100?'too much':'too little';
+    this.calc([['target',tgt,''],['yours',mine,'m']],Math.max(tgt,mine),()=>{ const diff=Math.round(mine-tgt); return `<b class="${err<=2?'g':err>8?'r':''}" style="font-size:22px">${diff>0?'+':'−'}${Math.abs(diff).toLocaleString()} px²</b>`; },
+      `<b class="${err<=2?'g':err>8?'r':''}">${f2(pct)}%</b>${word} · <i>${f2(err)}</i> off`, err); },
+  calc(rowsIn,max,diffHtml,resultHtml,err){ const rows=rowsIn.map((r,i)=>`<div class="hrow ${r[2]}"><span>${r[0]}</span><span class="bar"><i id="hb${i}"></i>${r[3]?`<u style="left:${r[3]}%"></u>`:''}</span><b id="hn${i}">0</b></div>`).join('');
+    $('#hcalc').innerHTML=rows+`<div id="hdiff" style="text-align:center;opacity:0;transition:opacity .25s"></div><div id="hres"></div>`; $('#hcalc').classList.add('on');
+    const pause=ms=>new Promise(r=>this.later(r,ms));
+    const fill=(i,val,unit)=>new Promise(res=>{ const t0=performance.now(), bar=$('#hb'+i), n=$('#hn'+i); const anim=now=>{ if(this.st!=='reveal') return res(); const k=Math.min(1,(now-t0)/900); if(bar) bar.style.width=(val/max*100*k)+'%'; if(n) n.textContent=unit?(val*k).toFixed(1)+unit:Math.round(val*k).toLocaleString(); if(k<1) requestAnimationFrame(anim); else res(); }; requestAnimationFrame(anim); });
+    const unit=rowsIn[0][4]||'';
+    fill(0,rowsIn[0][1],unit).then(()=>pause(300)).then(()=>fill(1,rowsIn[1][1],unit)).then(()=>pause(300))
+      .then(()=>{ if(this.st!=='reveal') return; const d=$('#hdiff'); if(d&&diffHtml){ d.innerHTML=diffHtml(); d.style.opacity=1; d.classList.add('pop'); } return pause(diffHtml?800:100); })
+      .then(()=>{ if(this.st!=='reveal') return; const v=$('#hres'); if(v){ v.innerHTML=resultHtml; v.classList.add('on'); } err<=8?Snd.hit():Snd.miss(); if(err>8&&navigator.vibrate) navigator.vibrate(30);
+        this.total+=err; this.worst=Math.max(this.worst,err); this.bestErr=Math.min(this.bestErr,err); const s=$('#score'); s.textContent=f2(this.total); s.classList.remove('pop'); void s.offsetWidth; s.classList.add('pop'); this.later(()=>this.next(),1900); }); },
+  // Cut: the first two rounds ask for a half; after that any of 10–50%. The share is always the smaller piece, so "cut off 25%" reads one way only
+  // shares (v9): two halves to learn the feel, then awkward numbers — 35% of a triangle is the point, 50% of a square is not. Regular shapes never get the tidy 25/50 after round 2
+  cutRound(){ this.shape=Shapes.random(Shapes.CUT); const regular=['square','circle','triangle','bar','ring','star','plus'].includes(this.shape.name); const pool=regular?[10,15,20,30,35,40,45]:[10,15,20,25,30,35,40,45,50,50]; this.share=this.round<=2?50:pool[Math.random()*pool.length|0]; const v=vmin(); this.target=Math.min(54*v,$('#hfield').getBoundingClientRect().width*.7);
+    $('#hud-time').textContent=`${this.round} / ${sel.secs} · cut off ${this.share}%`; this.hint(this.shape); this.st='wait';
+    this.later(()=>{ $('#hcut path.a').setAttribute('d',this.path(this.shape,this.target)); $('#hcut path.a').classList.remove('b'); $('#hlbl').innerHTML=`cut off <b>${this.share}%</b>`; this.bg('tap and draw a line'); },1500); },
+  fpt(e){ const f=$('#hfield').getBoundingClientRect(); return [e.clientX-f.left,e.clientY-f.top]; },
+  cutDown(e){ if(this.st!=='wait'||!$('#hcut path.a').getAttribute('d')) return; this.st='draw'; this.p0=this.fpt(e); this.p1=this.p0; const l=$('#hline'); l.setAttribute('x1',this.p0[0]); l.setAttribute('y1',this.p0[1]); l.setAttribute('x2',this.p0[0]); l.setAttribute('y2',this.p0[1]); l.style.opacity=1; this.bg(''); },
+  cutMove(e){ if(this.st!=='draw') return; this.p1=this.fpt(e); const l=$('#hline'); l.setAttribute('x2',this.p1[0]); l.setAttribute('y2',this.p1[1]); },
+  cutUp(){ if(this.st!=='draw') return; const d=[this.p1[0]-this.p0[0],this.p1[1]-this.p0[1]], len=Math.hypot(d[0],d[1]); if(len<24){ this.st='wait'; $('#hline').style.opacity=0; this.bg('tap and draw a line'); return; }
+    const f=$('#hfield').getBoundingClientRect(), cx=f.width/2, cy=f.height/2; const loops=this.shape.loops.map(L=>L.map(([x,y])=>[cx+x*this.target,cy+y*this.target])); const total=Shapes.area(loops);
+    const A=Shapes.clip(loops,this.p0,d,1), B=Shapes.clip(loops,this.p0,d,-1); const aA=Shapes.area(A), aB=Shapes.area(B);
+    if(Math.min(aA,aB)/total<.005){ this.st='wait'; $('#hline').style.opacity=0; $('#hlbl').innerHTML=`the line missed the shape · <b>${this.share}%</b> again`; this.bg('tap and draw a line'); Snd.miss(); return; }
+    this.st='reveal'; const small=aA<=aB?A:B, big=aA<=aB?B:A, aS=Math.min(aA,aB), aL=Math.max(aA,aB); const share=aS/total*100, err=Math.abs(share-this.share);
+    // the line runs on across the whole field, and the two pieces take two tones
+    const ext=Math.max(f.width,f.height)*2, ux=d[0]/len, uy=d[1]/len, l=$('#hline'); l.setAttribute('x1',this.p0[0]-ux*ext); l.setAttribute('y1',this.p0[1]-uy*ext); l.setAttribute('x2',this.p0[0]+ux*ext); l.setAttribute('y2',this.p0[1]+uy*ext);
+    const P=Ls=>Ls.map(L=>'M'+L.map(([x,y])=>`${x.toFixed(2)},${y.toFixed(2)}`).join('L')+'z').join(''); $('#hcut path.a').setAttribute('d',P(small)); $('#hcut path.b').setAttribute('d',P(big)); $('#hlbl').innerHTML='';
+    const word=err<=1.5?'on the money':err<=5?'close!':share>this.share?'too much':'too little';
+    this.calc([['piece',share,'',this.share,'%'],['rest',100-share,'b',0,'%']],100,null,`<b class="${err<=1.5?'g':err>8?'r':''}">${f2(share)}%</b>${word} · target ${this.share}% · <i>${f2(err)}</i> off`,err); } };
 
 /* ---------- Sequence: streak. Watch, copy, one more each round; a wrong key ends it ---------- */
 const SQ={ st:'idle', keys:0, seq:[], idx:0, round:0, timers:[],
   clearT(){ this.timers.forEach(clearTimeout); this.timers=[]; },
   later(f,ms){ this.timers.push(setTimeout(()=>{ if(G.on) f(); },ms)); },
-  step(){ return Math.round((+sel.speed||.4)*1000); },
+  step(){ return seqStep(this.round); },
   // keys are built before the countdown so they can run the scale under it (v5)
   build(){ this.keys=sel.secs; this.st='idle'; $('#seq').innerHTML=Array.from({length:this.keys},(_,i)=>`<div class="key" data-k="${i}" data-n="${i+1}"></div>`).join('');
-    $('#hud-mode').textContent=`${SCALES[sel.scale].name} · ${this.keys} keys · ${sel.speed}s${sel.practice?' · practice':''}`; $('#score').style.visibility=sel.practice?'hidden':''; },
+    $('#hud-mode').textContent=`${SCALES[sel.scale].name} · ${this.keys} keys${sel.practice?' · practice':''}`; $('#score').style.visibility=sel.practice?'hidden':''; },
   demo(){ const n=this.keys, stepMs=Math.floor((CFG.countStep*3)/n); for(let i=0;i<n;i++) this.later(()=>this.light(i,stepMs*2.2,stepMs*.9),i*stepMs); },
   begin(){ this.round=Math.max(1,sel.practice||1); this.seq=Array.from({length:this.round},()=>Math.random()*this.keys|0); this.play(); },
   // the note rings for `ms`; the key only lights for `lit` (default a short flash) — sound is never cut by the key going dark (v5)
@@ -1025,7 +1236,7 @@ const SQ={ st:'idle', keys:0, seq:[], idx:0, round:0, timers:[],
     this.later(()=>{ this.st='input'; this.idx=0; $('#hud-time').textContent='your turn'; $('#hud-time').classList.add('you'); $('#seq').classList.remove('watch'); $('#seq').classList.add('input'); const t=$('#turn'); t.classList.remove('on'); void t.offsetWidth; t.classList.add('on'); Snd.turn(); },500+this.seq.length*step+120); },
   press(k){ if(this.st!=='input') return; if(k===this.seq[this.idx]){ this.light(k,700,180); this.idx++; if(this.idx===this.seq.length){ this.st='wait'; this.round++; this.seq.push(Math.random()*this.keys|0); Snd.hit(); $('#seq').classList.remove('input'); $('#hud-time').classList.remove('you'); this.later(()=>this.play(),650); } }
     else { this.st='over'; const el=$(`.key[data-k="${k}"]`); el.classList.add('bad'); const right=$(`.key[data-k="${this.seq[this.idx]}"]`); right.classList.add('lit'); Snd.miss(); if(navigator.vibrate) navigator.vibrate(40);
-      const g=$('#game'); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake'); this.later(()=>finish({hits:this.round-1,misses:0,x:this.step(),sp:sel.speed,sc:SCALES[sel.scale].name.toLowerCase().slice(0,5),practice:sel.practice||0}),900); } } };
+      const g=$('#game'); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake'); this.later(()=>finish({hits:this.round-1,misses:0,x:this.step(),sc:SCALES[sel.scale].name.toLowerCase().slice(0,5),practice:sel.practice||0}),900); } } };
 
 /* ---------- v7 engines. All four share #gen, a round counter, and `later` timers that die with the run ---------- */
 const genRect=()=>$('#gen').getBoundingClientRect();
@@ -1042,15 +1253,16 @@ const shapeHtml=(p,size,extra='')=>`<i class="fs ${p.shape} ${extra}" style="lef
 /* Timing — Stopwatch: a clock counts up and fades at 1.5s, tap on the target. Hidden: a ball rolls behind a wall, tap when it is at the marker. Score is seconds off, averaged */
 const TM=Object.assign(roundEngine(),{ errs:[], target:0, t0:0, ball:null, targets:[],
   // targets are dealt in pairs either side of 7s so every run averages about 7 (v8) — a run of long targets used to be an easy win
-  begin(){ this.round=0; this.errs=[]; this.targets=[]; for(let i=0;i<Math.floor(sel.secs/2);i++){ const d=.6+Math.random()*2.6; this.targets.push(7-d,7+d); } if(sel.secs%2) this.targets.push(6.5+Math.random()); for(let i=this.targets.length-1;i>0;i--){ const j=rnd(i+1); [this.targets[i],this.targets[j]]=[this.targets[j],this.targets[i]]; } $('#score').textContent='0.00'; this.next(); },
+  begin(){ this.round=0; this.errs=[]; this.targets=[]; const mid=sel.diff==='hidden'?1.2:7, sp=sel.diff==='hidden'?[.15,.5]:[.6,2.6]; for(let i=0;i<Math.floor(sel.secs/2);i++){ const d=sp[0]+Math.random()*sp[1]; this.targets.push(mid-d,mid+d); } if(sel.secs%2) this.targets.push(mid-.25+Math.random()*.5); for(let i=this.targets.length-1;i>0;i--){ const j=rnd(i+1); [this.targets[i],this.targets[j]]=[this.targets[j],this.targets[i]]; } $('#score').textContent='0.00'; this.next(); },
   next(){ this.clearT(); this.round++; if(this.round>sel.secs) return finish({hits:Math.round(mean(this.errs)*100)/100,misses:0,x:Math.min(...this.errs),y:Math.max(...this.errs)}); this.hud(); this.st='arm'; sel.diff==='hidden'?this.hidden():this.watch(); },
   watch(){ this.target=Math.round((this.targets[this.round-1]||7)*100)/100;
     $('#gen').innerHTML=`<div class="tmtarget">target<b>${f2(this.target)}</b></div><div class="tmclock" id="tmclock">0.00</div><div class="glbl bot" id="tmhint">it fades at 1.5s · tap at the target</div>`;
     this.later(()=>{ this.st='run'; this.t0=performance.now(); const el=$('#tmclock'); const loop=now=>{ if(this.st!=='run') return; const e=(now-this.t0)/1000; el.textContent=f2(e); el.style.opacity=e<1.5?1:Math.max(0,1-(e-1.5)/.5); if(e>this.target+5) return this.onDown(); this.raf=requestAnimationFrame(loop); }; this.raf=requestAnimationFrame(loop); },700); },
   // hidden (v8): the ball comes in from any of the four sides, the wall covers 55–85% of the way and is squared to the direction of travel, the marker sits somewhere inside it
+  // hidden (v9): the time the ball spends behind the wall before the marker is dealt around 1.3s, in pairs, the same for everyone — and never under 0.6s, so the wall's edge is no help
   hidden(){ const r=genRect(); const size=Math.max(28,Math.min(r.width,r.height)*.11); const dir=rnd(4), horiz=dir<2; const L=horiz?r.width:r.height;
-    const cross=horiz?r.height*(.18+Math.random()*.55):r.width*(.12+Math.random()*.7); const cover=.55+Math.random()*.3, wallStart=L*(1-cover);
-    const markT=wallStart+size+Math.random()*Math.max(1,L-wallStart-size*2.5); const v=(L*.28)*(1+Math.random()*.6);
+    const cross=horiz?r.height*(.18+Math.random()*.55):r.width*(.12+Math.random()*.7); const v=L*.3, behind=Math.max(.6,this.targets[this.round-1]||1.2); const need=v*behind+size*1.5; const cover=Math.min(.86,Math.max(.6,need/L+.06)), wallStart=L*(1-cover);
+    const markT=wallStart+v*behind;
     const pos=t=>dir===0?{x:t-size,y:cross}:dir===1?{x:r.width-t,y:cross}:dir===2?{x:cross,y:t-size}:{x:cross,y:r.height-t};
     const wall=dir===0?`left:${wallStart}px;right:0;top:0;bottom:0;border-left:1px solid var(--line)`:dir===1?`left:0;width:${r.width-wallStart}px;top:0;bottom:0;border-right:1px solid var(--line)`:dir===2?`top:${wallStart}px;bottom:0;left:0;right:0;border-top:1px solid var(--line)`:`top:0;height:${r.height-wallStart}px;left:0;right:0;border-bottom:1px solid var(--line)`;
     const m=pos(markT), p0=pos(0);
@@ -1067,25 +1279,27 @@ const TM=Object.assign(roundEngine(),{ errs:[], target:0, t0:0, ball:null, targe
 /* Reaction — Flash: white after a random wait, tap. Go/No-go (v8): shapes cycle past in different spots; tap the rule shape the moment it shows. A wrong shape ends the run. Score is ms, averaged */
 // the clock (v8): t0 is taken two frames after the change is queued, i.e. when it has actually been painted; the tap is timed from the event's own timestamp, not from when the handler ran
 const tapTime=e=>{ const n=performance.now(); const ts=e&&e.timeStamp; return ts&&ts<=n+1&&ts>n-5000?ts:n; };
-const RX=Object.assign(roundEngine(),{ times:[], faults:0, t0:0, rule:'circle', shown:'', armed:false,
+const RX=Object.assign(roundEngine(),{ times:[], faults:0, t0:0, rule:'circle', shown:'', armed:false, dry:0,
   begin(){ this.round=0; this.times=[]; this.faults=0; $('#score').textContent='0'; this.next(); },
   next(){ this.clearT(); this.round++; if(this.round>sel.secs) return finish({hits:Math.round(mean(this.times)),misses:this.faults,x:Math.min(...this.times),y:Math.max(...this.times)}); this.hud(); if(sel.diff==='nogo') this.rule=['circle','square','tri'][rnd(3)]; this.again(); },
   again(msg){ this.clearT(); this.st='wait'; this.armed=false; const nogo=sel.diff==='nogo';
     $('#gen').innerHTML=`<div class="rxpane" id="rxpane"><div class="rxmsg" id="rxmsg">${msg||'wait for it'}${nogo?`<div class="rxrule">tap the ${shapeI(this.rule)} ${SHAPE_WORD[this.rule]}</div>`:''}</div></div>`;
     if(nogo) this.later(()=>this.cycle(),900+Math.random()*600); else this.later(()=>this.go(),1200+Math.random()*3300); },
   arm(){ this.armed=false; requestAnimationFrame(()=>requestAnimationFrame(()=>{ if(this.st==='go'){ this.t0=performance.now(); this.armed=true; } })); },
-  go(){ const pane=$('#rxpane'); this.st='go'; pane.classList.add('lit'); $('#rxmsg').textContent='TAP'; this.arm(); this.later(()=>{ if(this.st==='go'){ this.faults++; this.again('too slow · again'); Snd.miss(); } },1500); },
+  go(){ const pane=$('#rxpane'); this.st='go'; pane.classList.add('lit'); $('#rxmsg').textContent='TAP'; this.arm(); this.later(()=>{ if(this.st==='go'){ this.faults++; this.fault('too slow'); } },1500); },
   // one shape after another, each in its own spot, size and flip; about a third are the rule shape
-  cycle(){ const pane=$('#rxpane'); if(!pane) return; this.shown=Math.random()<.36?this.rule:['circle','square','tri'].filter(s=>s!==this.rule)[rnd(2)];
+  // pity (v9): about a third are the rule shape, and never more than four decoys in a row
+  cycle(){ const pane=$('#rxpane'); if(!pane) return; this.shown=(Math.random()<.36||this.dry>=4)?this.rule:['circle','square','tri'].filter(s=>s!==this.rule)[rnd(2)]; this.dry=this.shown===this.rule?0:this.dry+1;
     const v=vmin(), dx=(Math.random()-.5)*24*v, dy=(Math.random()-.5)*22*v, sc=.75+Math.random()*.45, rot=this.shown==='tri'?[0,180,90,270][rnd(4)]:this.shown==='square'?[0,45][rnd(2)]:0;
     pane.innerHTML=`<div class="rxshape ${this.shown}" style="translate:${dx}px ${dy}px;scale:${sc};rotate:${rot}deg"></div>`;
-    if(this.shown===this.rule){ this.st='go'; this.arm(); this.later(()=>{ if(this.st==='go'){ this.faults++; Snd.miss(); this.again('missed it · again'); } },1200); }
+    if(this.shown===this.rule){ this.st='go'; this.arm(); this.later(()=>{ if(this.st==='go'){ this.faults++; this.fault('missed it'); } },1200); }
     else { this.st='nogo'; this.later(()=>{ if(this.st==='nogo') this.cycle(); },520+Math.random()*420); } },
-  onDown(e){ if(this.st==='wait'){ this.faults++; this.fault('too early · again'); return; }
+  onDown(e){ if(this.st==='wait'){ this.faults++; this.fault('too early'); return; }
     if(this.st==='nogo'){ return this.over(); }
     if(this.st!=='go'||!this.armed) return;
     const ms=Math.max(1,Math.round(tapTime(e)-this.t0)); this.st='show'; this.times.push(ms); $('#score').textContent=Math.round(mean(this.times)); const pane=$('#rxpane'); pane.classList.remove('lit'); pane.innerHTML=`<div class="rxmsg">${ms<200?'quick':ms<300?'good':'slow'}<b>${ms}<small style="font-size:14px;letter-spacing:.2em"> ms</small></b></div>`; Snd.hit(); this.later(()=>this.next(),1200); },
-  fault(msg){ this.st='fault'; this.clearT(); const pane=$('#rxpane'); pane.classList.remove('lit'); pane.classList.add('bad'); pane.innerHTML=`<div class="rxmsg">${msg}</div>`; Snd.miss(); if(navigator.vibrate) navigator.vibrate(40); this.later(()=>this.again(),900); },
+  // a fault (v9) is big and stays 1.7s — "missed it · again" used to be small type gone in under a second
+  fault(msg){ this.st='fault'; this.clearT(); const pane=$('#rxpane'); pane.classList.remove('lit'); pane.classList.add('bad'); pane.innerHTML=`<div class="rxmsg" style="top:30%"><b class="fb">${msg}</b><span class="sub">try again · attempt ${this.round} of ${sel.secs}</span></div>`; Snd.miss(); if(navigator.vibrate) navigator.vibrate(40); this.later(()=>this.again(),1700); },
   // a wrong shape ends the run (v8). What was scored so far still counts as the run's score, if there was anything
   over(){ this.st='over'; this.clearT(); const pane=$('#rxpane'); pane.classList.add('bad'); pane.innerHTML=`<div class="rxmsg">wrong shape<b style="font-size:28px">run over</b></div>`; Snd.miss(); if(navigator.vibrate) navigator.vibrate(60);
     const g=$('#game'); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake');
@@ -1129,8 +1343,8 @@ const Intro=(()=>{
   const move=el=>{ const c=centre(el); at(c.x,c.y); ghost.classList.add('on'); };
   function clear(){ timers.forEach(clearTimeout); timers=[]; ghost.classList.remove('on','hold','tap'); ghost.style.transition='none'; $('#intro').classList.remove('on'); }
   const SCRIPT={
-    'quick-tap'(){ G.target=0; G.next=1; QT.render(true); const pad=i=>$(`#qt .pad[data-side="${i}"]`);
-      later(()=>move(pad(0)),250); later(()=>{ tap(); G.target=1; G.next=0; QT.render(true); },800); later(()=>move(pad(1)),1050); later(()=>{ tap(); G.target=0; G.next=1; QT.render(true); },1650); later(()=>move(pad(0)),1900); later(()=>{ tap(); QT.render(false); },2500); return 3000; },
+    'quick-tap'(){ const four=sel.diff==='four'; G.target=0; QT.render(true); const pad=i=>$(`#qt .pad[data-side="${i}"]`);
+      later(()=>move(pad(0)),250); later(()=>{ tap(); G.target=four?3:1; QT.render(true); },800); later(()=>move(pad(four?3:1)),1050); later(()=>{ tap(); G.target=four?2:0; QT.render(true); },1650); later(()=>move(pad(four?2:0)),1900); later(()=>{ tap(); QT.render(false); },2500); return 3000; },
     'dots'(){ G.pos=DT.rnd(null); G.prevPos=null; G.nextPos=DT.rnd(G.pos); DT.render(true); const f=()=>$('#field').getBoundingClientRect(); const dot=()=>{ const r=f(); at(r.left+G.pos.x+DT.sz/2,r.top+G.pos.y+DT.sz/2); ghost.classList.add('on'); };
       const step=()=>{ tap(); DT.advance(); DT.render(true); DT.ring(); };
       later(dot,250); later(step,850); later(dot,1000); later(step,1700); later(dot,1850); later(()=>{ tap(); DT.render(false); },2550); return 3000; },
@@ -1146,7 +1360,7 @@ const Intro=(()=>{
       ghost.style.transition='none'; const c=centre($('#game')); at(c.x,c.y); void ghost.offsetWidth; ghost.style.transition='';
       done=()=>{ done=null; clear(); if(sel.game==='hold') HD.clearT(); cb(); };
       // v7 games have no ghost demo yet — the one-liner sits for 1.8s, then the countdown
-      const T=SCRIPT[sel.game]?SCRIPT[sel.game]():1800; if(T) later(()=>done&&done(),T); },
+      const T=SCRIPT[sel.game]&&!(sel.game==='hold'&&sel.diff==='cut')?SCRIPT[sel.game]():1800; if(T) later(()=>done&&done(),T); },
     skip(){ if(done) done(); }, active:()=>!!done, clear:()=>{ done=null; clear(); } };
 })();
 // a tap during the intro does nothing at all (v8) — it used to skip, and a stray touch left people confused
@@ -1155,9 +1369,10 @@ function countdown(cb){ const c=$('#count'); let n=3; c.classList.add('on');
   const step=()=>{ if(!G.on) return; if(n>0){ c.innerHTML=`<span>${n}</span>`; Snd.tick(); n--; G.timers.push(setTimeout(step,CFG.countStep)); } else { c.classList.remove('on'); c.innerHTML=''; Snd.go(); cb(); } };
   step(); }
 function start(){
-  jumpLen=0; cur=ENGINE[sel.game]; const g=GAMES[sel.game]; $('#game').dataset.g=sel.game;
+  jumpLen=0; cur=ENGINE[sel.game]; const g=GAMES[sel.game]; $('#game').dataset.g=sel.game; $('#game').dataset.d=sel.diff; HD.reset();
+  if(sel.vs&&!VS.on){ VS.on=true; VS.stage=0; VS.p1=VS.p2=null; } if(VS.on) VS.stage++;
   $$('.screen').forEach(s=>s.classList.remove('on')); $('#game').classList.add('on'); $('#stars').style.opacity=0; $('#wheelwrap').classList.remove('on');
-  $('#hud-mode').textContent=g.timed?`${MODE_NAME[sel.diff]} · ${LEN_NAME[sel.secs]||lenLabel(sel.game,sel.secs)}`:(MODE_NAME[sel.diff]||''); $('#score').textContent=GC(sel.game,sel.diff).lower?'0.00':'0';
+  $('#hud-mode').textContent=(VS.on?(VS.stage===1?(prefs.name||'you'):'friend')+' · ':'')+(g.timed?`${MODE_NAME[sel.diff]} · ${LEN_NAME[sel.secs]||lenLabel(sel.game,sel.secs)}`:(MODE_NAME[sel.diff]||'')); $('#score').textContent=GC(sel.game,sel.diff).lower?'0.00':'0';
   // the next unlock this run could earn, if any, sits under the HUD (v8)
   G.goal=goalFor(sel.game,sel.diff,sel.secs); const gl=$('#goal'); gl.classList.remove('hit'); gl.classList.toggle('on',!!G.goal); if(G.goal){ const [ug,ud]=G.goal.key.split(':'); gl.innerHTML=`next · <b>${GAMES[ug].name}${MODE_NAME[ud]?' · '+MODE_NAME[ud]:''}</b> · ${G.goal.need}`; } $('#bar').style.display=g.timed?'':'none'; $('#bar').style.transform='scaleX(1)';
   $('#hud-time').textContent=g.timed?sel.secs.toFixed(2):''; $('#hlbl').innerHTML=''; ['ht','hg','hm'].forEach(l=>$(`#${l} path`).setAttribute('d',''));
@@ -1173,10 +1388,10 @@ function start(){
       G.t0=performance.now(); G.end=G.t0+sel.secs*1000; cur.begin(); G.armed=true; arm();
       cancelAnimationFrame(G.raf); G.raf=requestAnimationFrame(tick); }); });
 }
-function abort(){ if(!G.on) return; G.on=false; Intro.clear(); cancelAnimationFrame(G.raf); G.timers.forEach(clearTimeout); G.timers=[]; Music.stop(); if(cur&&cur.clearT) cur.clearT(); $('#count').classList.remove('on'); show('s-pick'); }
+function abort(){ if(!G.on) return; G.on=false; VS.reset(); Intro.clear(); cancelAnimationFrame(G.raf); G.timers.forEach(clearTimeout); G.timers=[]; Music.stop(); if(cur&&cur.clearT) cur.clearT(); $('#count').classList.remove('on'); show('s-pick'); }
 const RATE_MAX={'quick-tap':6,'dots':4.5};
-// live hits per second over the last two seconds, on the right-edge bar; the screen edge warms up past 40% of the ceiling (v6)
-function rateMeter(now){ const t=G.hitT; let n=0; for(let i=t.length-1;i>=0&&now-t[i]<=2000;i--) n++; const r=n/2, k=Math.min(1,r/(RATE_MAX[sel.game]||6));
+// live hits per second (v9): from the gaps between the last six taps, so it moves in tenths — counting hits over two seconds could only ever show halves. It sags when you stop
+function rateMeter(now){ const t=G.hitT; let r=0; if(t.length>=2){ const k=Math.min(t.length-1,6); const avg=(t[t.length-1]-t[t.length-1-k])/k; const since=now-t[t.length-1]; r=1000/Math.max(avg,since>avg?since:avg); } else if(t.length===1){ r=Math.min(1,1000/Math.max(1,now-t[0])); } const k=Math.min(1,r/(RATE_MAX[sel.game]||6));
   $('#rate i').style.height=Math.round(k*100)+'%'; $('#rate b').textContent=r.toFixed(1)+'/s'; $('#edge').style.opacity=k>.4?((k-.4)/.6*.4).toFixed(2):0; }
 function arm(){ cur.render(true); cur.ring(); }
 function tick(now){
@@ -1202,7 +1417,10 @@ function miss(now){
 function finish(res){
   G.on=false; cancelAnimationFrame(G.raf); G.timers.forEach(clearTimeout); G.timers=[]; Music.stop(); if(cur.clearT) cur.clearT(); Snd.end();
   const run=Object.assign({ t:Date.now(), g:sel.game, d:sel.diff, s:sel.secs, n:prefs.name||'' },res); lastRun=run;
-  const isBest = run.practice||(run.fail&&!run.hits) ? false : Scores.submit(run);
+  // vs (v9): player 1's run is recorded and the phone is passed; player 2's is compared, not recorded
+  if(VS.on&&VS.stage===1){ VS.p1=run; if(!(run.practice||(run.fail&&!run.hits))) Scores.submit(run); $('#pass-eyebrow').textContent=`${GAMES[sel.game].name}${MODE_NAME[sel.diff]?' · '+MODE_NAME[sel.diff]:''} · vs`; $('#pass-text').innerHTML=`${prefs.name||'you'} scored <b>${scoreTxt(sel.game,run.hits,sel.diff)}</b>.<br>Hand the phone over — friend, you're up.`; setTimeout(()=>show('s-pass'),250); return; }
+  if(VS.on&&VS.stage===2) VS.p2=run;
+  const isBest = run.practice||(run.fail&&!run.hits)||(VS.on&&VS.stage===2) ? false : Scores.submit(run);
   const g=GC(sel.game,sel.diff);
   $('#over-eyebrow').textContent=`${g.name}${MODE_NAME[sel.diff]?' · '+MODE_NAME[sel.diff]:''} · ${g.timed?LEN_NAME[sel.secs]||lenLabel(sel.game,sel.secs):lenLabel(sel.game,sel.secs)}`+(run.practice?' · practice':run.fail?' · run over':isBest?' · new best':'');
   // practice shows no score at all (v5)
@@ -1216,14 +1434,15 @@ function finish(res){
 }
 $$('.pad[data-side]').forEach(p=>p.addEventListener('pointerdown',e=>{ e.preventDefault(); tapAt(+p.dataset.side===G.target); }));
 $('#field').addEventListener('pointerdown',e=>{ e.preventDefault(); DT.onDown(e); });
-$('#hfield').addEventListener('pointerdown',e=>{ e.preventDefault(); HD.down(); });
+$('#hfield').addEventListener('pointerdown',e=>{ e.preventDefault(); HD.down(e); });
+$('#hfield').addEventListener('pointermove',e=>{ HD.cutMove(e); });
 ['pointerup','pointercancel','pointerleave'].forEach(ev=>$('#hfield').addEventListener(ev,()=>HD.up()));
 $('#seq').addEventListener('pointerdown',e=>{ const k=e.target.closest('.key'); if(k){ e.preventDefault(); SQ.press(+k.dataset.k); } });
 $('#gen').addEventListener('pointerdown',e=>{ e.preventDefault(); if(cur&&cur.onDown&&G.on) cur.onDown(e); });
 window.addEventListener('keydown',e=>{ if(!G.on||e.repeat) return;
   if(e.key==='Escape') return abort();
   if((sel.game==='timing'||sel.game==='reaction')&&e.key===' ') cur.onDown({target:document.body,clientX:0,clientY:0});
-  if(sel.game==='quick-tap'){ if(e.key==='ArrowLeft') tapAt(G.target===0); if(e.key==='ArrowRight') tapAt(G.target===1); }
+  if(sel.game==='quick-tap'){ const m={ArrowLeft:0,ArrowRight:1,ArrowUp:2,ArrowDown:3}; if(e.key in m) tapAt(G.target===m[e.key]); }
   if(sel.game==='hold'&&e.key===' ') HD.down();
   if(sel.game==='sequence'&&/^[1-7]$/.test(e.key)) SQ.press(+e.key-1); });
 window.addEventListener('keyup',e=>{ if(sel.game==='hold'&&e.key===' ') HD.up(); });
@@ -1245,12 +1464,12 @@ const DRAW={
 (function draw(t){ cx.clearRect(0,0,W,H); (DRAW[prefs.bg]||DRAW.stars)(t); requestAnimationFrame(draw); })(0);
 </script>
 
-<div id="build">build 8</div>
+<div id="build">build 9</div>
 <button id="update">New build available — tap to reload</button>
 <script>
 // build check: version.json is fetched with no-store, so a stale cached page still learns a newer build exists
 (function(){
-  const BUILD="8";
+  const BUILD="9";
   async function check(){
     try{
       const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});
