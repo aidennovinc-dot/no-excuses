@@ -5,7 +5,11 @@ import { cv, cx } from "./app.js";
 import { Snd } from "./audio.js";
 import { $, $$, MODE_NAME, PASS_LEN, PUB_URL, VS_LEAD, load, pWho, save } from "./core.js";
 import { GAMES, GC, SHARED2, lenName, lenSub, scoreTxt, versusOf } from "./games/registry.js";
-import { ACH, ITEM_WORD, SCALES, Scores, UNLOCKS, gameOpen, got, isOpen, lenLock, lenOpen, lensOf, needFor, nextGoal, renderAch, setPendingAim, toast, unlocked } from "./progress.js";
+import { ACH, ITEM_WORD, SCALES, Scores, UNLOCKS, achById, gameOpen, got, isOpen, lenLock, lenOpen, lensOf, markSeen, needFor, newMark, nextGoal, practiceOpen, renderAch, seedSeen, setPendingAim, toast, unlocked } from "./progress.js";
+/* ---------- a challenge link (v13, 3.6): ?g=quick-tap&d=two&s=5&score=31 opens that pick sheet after the title sequence,
+   with the game open for this run only. Nothing is written to the unlock store ---------- */
+const CHAL=(()=>{ try{ const q=new URLSearchParams(location.search); const g=q.get('g'); if(!g||!GAMES[g]) return null;
+  const d=q.get('d')&&GAMES[g].modes.includes(q.get('d'))?q.get('d'):GAMES[g].modes[0]; return { g, d, s:q.get('s')?+q.get('s'):undefined, score:q.get('score')||'' }; }catch(e){ return null; } })();
 /* ---------- prefs / customise ---------- */
 const DESIGNS={ stars:{tint:'#050506'}, grid:{tint:'#070A14'}, rain:{tint:'#0B1008'}, orbs:{tint:'#0E0608'} };
 const ITEMS = {
@@ -13,9 +17,17 @@ const ITEMS = {
   lead:[{v:'#C8322A'},{v:'#FFB020',by:'every'},{v:'#7CFFB2',by:'dt_sweep'},{v:'#4FD9FF',by:'qt_r5'},{v:'#FF4FD8',by:'qt_eyes'},{v:'#FFFFFF',by:'hd_est'},{v:'wheel',by:'fullset'}],
   bg:  [{v:'stars'},{v:'grid',by:'named'},{v:'rain',by:'qt_clean15'},{v:'orbs',by:'dt_land'},{v:'wheel',by:'fullset'}],
   snd: [{v:'space',label:'Space'},{v:'click',label:'Click',by:'qt_r4'},{v:'wood',label:'Wood',by:'hd_money'},{v:'sigh',label:'Sigh',by:'tour'},{v:'off',label:'Off'}],
+  // v13 (12.1): music is per game — one track each, switched off or previewed on its own row
   music:[{v:true,label:'On'},{v:false,label:'Off'}],
+  // v13 (6.5): the Cut pieces are a pair. This picks the cut-off piece; the rest is the same colour at 40%
+  cut: [{v:'#FFFFFF'},{v:'#FFE9C4',by:'first'},{v:'#9BE8FF',by:'qt_clean5'},{v:'#FFD1DC',by:'dt_pin'},{v:'#F3D9FF',by:'hd_steady'},{v:'#C6FF7A',by:'qt_clean30'},{v:'#FFF3A0',by:'sq_12'},{v:'wheel',by:'fullset'}],
 };
-const prefs = Object.assign({ sq:'#FFFFFF', lead:'#C8322A', bg:'stars', tint:'', snd:'space', music:true, lastGame:'quick-tap', name:'', scale:'penta', allOpen:false, supporter:false, adRuns:0 }, load('ne.prefs',{}));
+// v13 (7.1): the scale list is built on demand — SCALES lives in progress.js, which evaluates after this module, so it cannot be read at declaration time
+const itemsOf=set=>set==='scale'?Object.entries(SCALES).map(([k,v])=>({v:k,label:v.name})):ITEMS[set];
+const prefs = Object.assign({ sq:'#FFFFFF', lead:'#C8322A', bg:'stars', tint:'', snd:'space', music:true, musicG:{}, lastGame:'quick-tap', name:'', scale:'penta', allOpen:false, supporter:false, adRuns:0 }, load('ne.prefs',{}));
+if(!prefs.musicG||typeof prefs.musicG!=='object') prefs.musicG={};
+if(prefs.music===false&&!Object.keys(prefs.musicG).length){ for(const g in GAMES) prefs.musicG[g]=false; prefs.music=true; } // v13: the old global switch becomes every game off
+const musicOn=g=>prefs.musicG[g]!==false;
 if(!DESIGNS[prefs.bg]){ prefs.tint=String(prefs.bg).startsWith('#')?prefs.bg:''; prefs.bg='stars'; } // v3 stored a hex here
 (function migrate(){ // v8: Count and Find became Spot · Count / Find; speed became seconds per key
   const runs=load('ne.runs',[]); runs.forEach(r=>{ if(r.g==='count'){ r.g='spot'; r.d='count'; } else if(r.g==='find'){ r.g='spot'; r.d='find'; } });
@@ -35,38 +47,44 @@ if(!DESIGNS[prefs.bg]){ prefs.tint=String(prefs.bg).startsWith('#')?prefs.bg:'';
   if(prefs.lastDiff==='blind'&&prefs.lastGame==='quick-tap') prefs.lastDiff='two'; })();
 // supporters (v10) have every cosmetic open; "open everything" is the testing switch for the same thing
 const lockedBy=it=> it.by && !got()[it.by] && !prefs.allOpen && !prefs.supporter ? ACH.find(a=>a.id===it.by) : null;
-function freshGame(){ ['ne.runs','ne.ach','ne.unlock','ne.intro','ne.tileSeen'].forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} }); prefs.allOpen=false; prefs.story=0; prefs.adRuns=0; prefs.played=0; prefs.gridSeen=0; save('ne.prefs',prefs); lastRun=null; menuWasFirst=true; }
+function freshGame(){ ['ne.runs','ne.ach','ne.unlock','ne.intro','ne.tileSeen','ne.seen'].forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} }); prefs.allOpen=false; prefs.story=0; prefs.adRuns=0; prefs.played=0; prefs.gridSeen=0; save('ne.prefs',prefs); lastRun=null; menuWasFirst=true; seedSeen(); Story.open(); }
 function devState(){ const u=Object.keys(unlocked()).length, a=Object.keys(got()).length, r=Scores.runs().length; $('#dev-state').textContent=(prefs.allOpen?`open everything is ON · every mode and cosmetic available`:`progression ON · ${u} of ${UNLOCKS.length} modes earned · ${a} of ${ACH.length} achievements`)+` · ${r} runs on record · ${prefs.supporter?'supporter ON':'free tier · ads on'}`; $('#dev-open').classList.toggle('sel',!!prefs.allOpen); $('#dev-sup').classList.toggle('sel',!!prefs.supporter); renderTier(); }
-// what the two tiers get (v10). Free: everything playable, earned by play; ads on the result screen only. Supporter, A$1.99 once: no ads, all cosmetics, pro lengths, a star
-function renderTier(){ const y='<b class="y">✓</b>'; const rows=[['','free','supporter'],['every game and mode','earned by play','earned by play'],['ads','result screen only','none'],['colours, backgrounds, sounds','earned by achievements','all open + colour wheel'],['pro length · 60s Quick Tap and Dots','—',y+' own boards'],['profile star','—',y],['achievements','same','same · never bought']];
-  $('#tierbox').innerHTML=rows.map(r=>`<div>${r.map((c,i)=>i?`<span>${c}</span>`:'').join('')}</div>`).join(''); $('#tierbox').firstElementChild.style.gridTemplateColumns='1fr 1fr';
-  $('#support-title').textContent=prefs.supporter?'Supporter · thank you':'Support · A$1.99 · once'; $('#support-text').textContent=prefs.supporter?'No ads. Every cosmetic open, the colour wheel, pro lengths with their own boards, and the star on your profile.':'No ads, ever. Every colour, background and sound pack open from day one, plus the colour wheel. A pro 60-second length in Quick Tap and Dots, with its own boards. A star on your profile.'; }
+// what supporting gets (v13, 13.1): no comparison table — a thank-you line and three lines of what is included. Pro lengths are gone (0.3)
+function renderTier(){ $('#tierbox').innerHTML=['No ads, ever.','Every colour, background and sound pack open from day one, plus the colour wheel.','A star on your profile.'].map(t=>`<div><span>${t}</span></div>`).join('');
+  $('#support-title').textContent=prefs.supporter?'Supporter · thank you':'Support · A$1.99 · once'; $('#support-text').textContent=prefs.supporter?'Thank you — it keeps this going.':'A one-off, if you want to back it.'; }
 // colours are per game (v6): prefs.col[game] = {sq, lead}. The old global sq/lead seed every game once
 if(!prefs.col){ prefs.col={}; for(const g in GAMES) prefs.col[g]={sq:prefs.sq||'#FFFFFF',lead:prefs.lead||'#C8322A'}; }
 for(const g in GAMES) if(!prefs.col[g]) prefs.col[g]={sq:'#FFFFFF',lead:'#C8322A'};
+for(const g in GAMES) if(!prefs.col[g].cut) prefs.col[g].cut=prefs.col[g].sq||'#FFFFFF';
 const colOf=g=>prefs.col[g]||prefs.col['quick-tap'];
-function applyPrefs(g){ const r=document.documentElement.style; const c=colOf(g||sel?.game||prefs.lastGame); r.setProperty('--sq-live',c.sq); r.setProperty('--cue',c.lead); r.setProperty('--ground',prefs.tint||DESIGNS[prefs.bg].tint); save('ne.prefs',prefs); }
+function applyPrefs(g){ const r=document.documentElement.style; const c=colOf(g||sel?.game||prefs.lastGame); r.setProperty('--sq-live',c.sq); r.setProperty('--cue',c.lead); r.setProperty('--cutp',c.cut||c.sq); r.setProperty('--ground',prefs.tint||DESIGNS[prefs.bg].tint); save('ne.prefs',prefs); }
 applyPrefs(prefs.lastGame);
 const pvTry={};  // a locked item being previewed: {set, v, by}
 function renderCustom(){
-  const wheelIt=set=>ITEMS[set].find(i=>i.v==='wheel');
-  for(const set of ['sq','lead','bg']) $('#c-'+set).innerHTML = ITEMS[set].map(it=>{ const L=lockedBy(it); const isWheel=it.v==='wheel';
+  const fresh=[];
+  for(const set of ['sq','lead','cut','bg']) $('#c-'+set).innerHTML = ITEMS[set].map(it=>{ const L=lockedBy(it); const isWheel=it.v==='wheel';
     const curC=colOf(F.pv.g)[set];
     const selNow = isWheel ? (set==='bg'?!!prefs.tint:!ITEMS[set].some(o=>o.v===curC)) : (set==='bg'?prefs.bg===it.v&&!prefs.tint:curC===it.v);
-    const cls=`${selNow?'sel':''} ${L?'locked':''} ${pvTry.set===set&&pvTry.v===it.v?'pvw':''} ${isWheel?'wheel':''} ${set==='bg'&&!isWheel?'bg-'+it.v:''}`;
+    const nw=L?'':newMark('cos:'+set+':'+it.v,fresh);
+    const cls=`${selNow?'sel':''} ${L?'locked':''}${nw} ${pvTry.set===set&&pvTry.v===it.v?'pvw':''} ${isWheel?'wheel':''} ${set==='bg'&&!isWheel?'bg-'+it.v:''}`;
     const style=set==='bg'?`background-color:${DESIGNS[it.v]?.tint||'transparent'}`:isWheel?'':`background:${it.v}`;
     return `<button data-v="${it.v}" class="${cls}" data-lock="${L?L.id:''}" style="${style}" aria-label="${it.v}${L?' locked':''}"></button>`; }).join('');
-  for(const set of ['snd','music']) $('#c-'+set).innerHTML = ITEMS[set].map(it=>{ const L=lockedBy(it); return `<button data-v="${it.v}" class="opt ${String(prefs[set])===String(it.v)?'sel':''} ${L?'locked':''}" data-lock="${L?L.id:''}">${it.label}</button>`; }).join('');
+  for(const set of ['snd','scale']) $('#c-'+set).innerHTML = itemsOf(set).map(it=>{ const L=lockedBy(it); const nw=L?'':newMark('cos:'+set+':'+it.v,fresh); return `<button data-v="${it.v}" class="opt ${String(prefs[set])===String(it.v)?'sel':''} ${L?'locked':''}${nw}" data-lock="${L?L.id:''}">${it.label}</button>`; }).join('');
+  // music is per game now (12.1): the row switches this game's track and previews it
+  $('#c-music').innerHTML = itemsOf('music').map(it=>`<button data-v="${it.v}" class="opt ${musicOn(F.pv.g)===it.v?'sel':''}">${it.label}</button>`).join('')+`<button class="opt" id="c-music-pv">Preview</button>`;
   $('#pv-g').innerHTML=Object.entries(GAMES).map(([id,x])=>`<button class="chip" data-chip="pv-g" data-v="${id}">${x.name}</button>`).join(''); chips('pv','g',F.pv.g);
   $('#pv').dataset.g=F.pv.g; $('#g-lead').style.display=GAMES[F.pv.g].lead?'':'none';
+  $('#g-cut').style.display=F.pv.g==='hold'?'':'none'; $('#g-scale').style.display=F.pv.g==='sequence'?'':'none';
+  $('#c-music-label').textContent=`Music · ${GAMES[F.pv.g].name}`;
   if(F.pv.g==='spot'&&!$('#pvsp').children.length){ const sh=['','c','t']; $('#pvsp').innerHTML=Array.from({length:14},(_,i)=>`<i class="${i===9?'c':sh[i%2?0:2]}"></i>`).join(''); }
   $('#s-custom .eyebrow').textContent=`customise · ${GAMES[F.pv.g].name} · colours are per game`;
-  const pv=$('#pv').style; pv.setProperty('--sq-live',colOf(F.pv.g).sq); pv.setProperty('--cue',colOf(F.pv.g).lead); pv.removeProperty('background');
+  const pv=$('#pv').style; pv.setProperty('--sq-live',colOf(F.pv.g).sq); pv.setProperty('--cue',colOf(F.pv.g).lead); pv.setProperty('--cutp',colOf(F.pv.g).cut||colOf(F.pv.g).sq); pv.removeProperty('background');
   const lockBtn=$('#pvlock');
-  if(pvTry.set){ const L=ACH.find(a=>a.id===pvTry.by); const map={sq:'--sq-live',lead:'--cue'}; if(map[pvTry.set]&&pvTry.v!=='wheel') pv.setProperty(map[pvTry.set],pvTry.v); if(pvTry.set==='bg'&&DESIGNS[pvTry.v]) pv.background=DESIGNS[pvTry.v].tint; lockBtn.innerHTML=`Locked · ${L.name} — ${L.how} · <u>show me</u>`; lockBtn.dataset.ach=L.id; }
+  if(pvTry.set){ const L=ACH.find(a=>a.id===pvTry.by); const map={sq:'--sq-live',lead:'--cue',cut:'--cutp'}; if(map[pvTry.set]&&pvTry.v!=='wheel') pv.setProperty(map[pvTry.set],pvTry.v); if(pvTry.set==='bg'&&DESIGNS[pvTry.v]) pv.background=DESIGNS[pvTry.v].tint; lockBtn.innerHTML=`Locked · ${L.name} — ${L.how} · <u>show me</u>`; lockBtn.dataset.ach=L.id; }
   // v11: an unlocked colour says nothing when tapped — the red requirement line is for locked ones only
   else if(pvSeen.by&&!got()[pvSeen.by]&&!prefs.allOpen&&!prefs.supporter){ const L=ACH.find(a=>a.id===pvSeen.by); lockBtn.innerHTML=`Locked · ${L.name} — ${L.how} · <u>show me</u>`; lockBtn.dataset.ach=L.id; }
   else { lockBtn.textContent=''; lockBtn.dataset.ach=''; }
+  markSeen(fresh);
 }
 const pvSeen={};  // the last unlocked item tapped, so what earned it shows on touch (v5)
 /* previews (v9): every game's preview is played by the same finger as the pre-game demo — it shows the tap and what comes of it, on a loop */
@@ -91,9 +109,9 @@ setInterval(pvStep,520);
 const Wheel=(()=>{ const cv=$('#wheel'), cx=cv.getContext('2d'); let set='sq', drawn=false, col='#ffffff';
   function draw(){ const R=240; const img=cx.createImageData(480,480); const d=img.data; for(let y=0;y<480;y++) for(let x=0;x<480;x++){ const dx=x-R, dy=y-R, r=Math.hypot(dx,dy); const i=(y*480+x)*4; if(r>R){ d[i+3]=0; continue; } const h=(Math.atan2(dy,dx)*180/Math.PI+360)%360, s=r/R, [rr,gg,bb]=hsl(h,s,set==='bg'?.08:.6); d[i]=rr; d[i+1]=gg; d[i+2]=bb; d[i+3]=255; } cx.putImageData(img,0,0); drawn=true; }
   function hsl(h,s,l){ const c=(1-Math.abs(2*l-1))*s, x=c*(1-Math.abs((h/60)%2-1)), m=l-c/2; let r,g,b; if(h<60)[r,g,b]=[c,x,0]; else if(h<120)[r,g,b]=[x,c,0]; else if(h<180)[r,g,b]=[0,c,x]; else if(h<240)[r,g,b]=[0,x,c]; else if(h<300)[r,g,b]=[x,0,c]; else [r,g,b]=[c,0,x]; return [r,g,b].map(v=>Math.round((v+m)*255)); }
-  function pick(e){ const b=cv.getBoundingClientRect(); const x=(e.clientX-b.left)/b.width*480, y=(e.clientY-b.top)/b.height*480; const dx=x-240, dy=y-240, r=Math.min(240,Math.hypot(dx,dy)); const h=(Math.atan2(dy,dx)*180/Math.PI+360)%360; const [rr,gg,bb]=hsl(h,r/240,set==='bg'?.08:.6); col='#'+[rr,gg,bb].map(v=>v.toString(16).padStart(2,'0')).join(''); $('#wheelout').style.background=col; if(set==='bg') prefs.tint=col; else prefs.col[F.pv.g][set]=col; applyPrefs(F.pv.g); $('#pv').style.setProperty(set==='sq'?'--sq-live':'--cue',col); }
+  function pick(e){ const b=cv.getBoundingClientRect(); const x=(e.clientX-b.left)/b.width*480, y=(e.clientY-b.top)/b.height*480; const dx=x-240, dy=y-240, r=Math.min(240,Math.hypot(dx,dy)); const h=(Math.atan2(dy,dx)*180/Math.PI+360)%360; const [rr,gg,bb]=hsl(h,r/240,set==='bg'?.08:.6); col='#'+[rr,gg,bb].map(v=>v.toString(16).padStart(2,'0')).join(''); $('#wheelout').style.background=col; if(set==='bg') prefs.tint=col; else prefs.col[F.pv.g][set]=col; applyPrefs(F.pv.g); $('#pv').style.setProperty(set==='sq'?'--sq-live':set==='cut'?'--cutp':'--cue',col); }
   cv.addEventListener('pointerdown',e=>{ e.preventDefault(); pick(e); cv.setPointerCapture(e.pointerId); }); cv.addEventListener('pointermove',e=>{ if(e.buttons) pick(e); });
-  return { open(s){ set=s; draw(); $('#wheel-title').textContent=`${ITEM_WORD[s]} · ${GAMES[F.pv.g].name} · drag to pick`; $('#wheelout').style.background=s==='bg'?(prefs.tint||DESIGNS[prefs.bg].tint):colOf(F.pv.g)[s]; $('#wheelwrap').classList.add('on'); }, close(){ $('#wheelwrap').classList.remove('on'); renderCustom(); } }; })();
+  return { open(s){ set=s; draw(); $('#wheel-title').textContent=`${ITEM_WORD[s]||s} · ${GAMES[F.pv.g].name} · drag to pick`; $('#wheelout').style.background=s==='bg'?(prefs.tint||DESIGNS[prefs.bg].tint):colOf(F.pv.g)[s]; $('#wheelwrap').classList.add('on'); }, close(){ $('#wheelwrap').classList.remove('on'); renderCustom(); } }; })();
 
 /* ---------- navigation: every sub-screen goes back on a tap that isn't on a control ---------- */
 if(!GAMES[prefs.lastGame]) prefs.lastGame='quick-tap';
@@ -112,7 +130,8 @@ let menuWasFirst=false;
 function renderMenu(){ const first=firstRun(); const opening=menuWasFirst&&!first; menuWasFirst=first;
   $$('#s-menu .item').forEach(b=>{ const x=first&&b.dataset.go!=='s-pick'; b.classList.toggle('dim',x); b.classList.remove('unx'); if(opening&&b.dataset.go!=='s-pick'){ b.classList.add('unx'); b.style.pointerEvents='none'; setTimeout(()=>{ b.classList.remove('unx'); b.style.pointerEvents=''; },700); } });
   $('#menu-note').textContent=first?'play one run · the rest opens':'';
-  const ng=nextGoal(); const nx=$('#nextup'); $('#menu-tag').hidden=!ng; if(ng){ nx.innerHTML=`<span>${ng.text}</span>`; nx.hidden=false; nextWhere=Object.assign({need:ng.need},ng.where); } else { nx.hidden=true; nextWhere=null; } }
+  // v13 (1.3): the card sits above the title, labelled Next achievement; the box holds the requirement and what it opens, nothing else
+  const ng=nextGoal(); const nx=$('#nextup'); $('#menu-tag').hidden=!ng; if(ng){ nx.innerHTML=`<em>Next achievement</em><span>${ng.need} ${ng.gname} → ${ng.name}</span>`; nx.hidden=false; nextWhere=Object.assign({need:ng.need},ng.where); } else { nx.hidden=true; nextWhere=null; } }
 let nextWhere=null;
 /* the intro (v11): three lines, one after another, then the title lands. About → replay the intro brings it back */
 const Story={ open(){ show('s-story'); const st=$('#s-story'); st.classList.remove('run'); void st.offsetWidth; st.classList.add('run'); }, next(){ Snd.click(); prefs.story=1; save('ne.prefs',prefs); show('s-menu'); menuIn(); } };
@@ -130,34 +149,49 @@ function renderVsRow(){ const g=sel.game; const vsOk=versusOf(g,sel.diff); if(se
 function setStage(st){ stage=st; const g=GAMES[sel.game]; $('#grid').classList.toggle('dim',st!=='grid'); $('#sheet').classList.toggle('up',st!=='grid'); $('#sheet').classList.toggle('len',st==='len');
   $('#diff-row').classList.toggle('single',g.modes.length===1);
   $('#seq-opts').style.display='none'; $('#vs-wrap').style.display=st==='mode'||(st==='len'&&g.modes.length===1)?'':'none'; renderVsRow();
-  if(st==='grid'){ $$('.tile').forEach(t=>t.classList.remove('keep')); } $('#sheet-title').textContent=g.name+(sel.vs===1?' · pass & play':sel.vs===2?' · versus':''); $('#len-title').textContent=GC(sel.game,sel.diff).lenWord||'';
+  if(st==='grid'){ $$('.tile').forEach(t=>t.classList.remove('keep')); } $('#sheet-title').textContent=g.name+(sel.vs===1?' · pass & play':sel.vs===2?' · versus':''); $('#len-title').textContent='Mode';
   renderVsArt(); $('#lvl-mode').textContent=MODE_NAME[sel.diff]||''; $('#lvl-back').style.display=g.modes.length>1?'':'none'; }
 // locked games are greyed with the condition on the tile (v6). Each tile wears its own game's colours (v10). v11: a padlock badge; the first visit reveals the grid tile by tile; a padlock wipes off when its game opens
-function renderTiles(){ const seen=load('ne.tileSeen',{}); let ch=false; const reveal=!prefs.gridSeen; if(reveal){ prefs.gridSeen=1; save('ne.prefs',prefs); }
-  $$('.tile[data-game]').forEach((t,i)=>{ const g=t.dataset.game, open=gameOpen(g); t.classList.toggle('locked',!open); t.querySelector('.pic').dataset.need=open?'':'to unlock: '+needFor(g,GAMES[g].modes[0]); const c=colOf(g); t.style.setProperty('--sq-live',c.sq); t.style.setProperty('--cue',c.lead);
-    t.classList.remove('reveal','unlocking'); t.style.animationDelay=''; if(reveal){ t.classList.add('reveal'); t.style.animationDelay=(i*120)+'ms'; }
-    if(open&&!seen[g]){ seen[g]=1; ch=true; if(g!=='quick-tap'&&!reveal){ t.classList.add('unlocking'); setTimeout(()=>t.classList.remove('unlocking'),700); } } });
-  if(ch) save('ne.tileSeen',seen); }
+function renderTiles(){ const reveal=!prefs.gridSeen; if(reveal){ prefs.gridSeen=1; save('ne.prefs',prefs); } const runs=Scores.runs(); const fresh=[];
+  $$('.tile[data-game]').forEach((t,i)=>{ const g=t.dataset.game, open=gameOpen(g); t.classList.toggle('locked',!open); t.querySelector('.pic').dataset.need=open?'':'to unlock: '+needFor(g,GAMES[g].modes[0]);
+    // v13 (1.2 / L7): white until the game has been played once — colour arrives with the first recorded run
+    const played=runs.some(r=>r.g===g), c=colOf(g); t.classList.toggle('unplayed',!played);
+    t.style.setProperty('--sq-live',played?c.sq:'#FFFFFF'); t.style.setProperty('--cue',played?c.lead:'#8A8883');
+    t.classList.remove('reveal','newthing'); t.style.animationDelay=''; if(reveal){ t.classList.add('reveal'); t.style.animationDelay=(i*120)+'ms'; }
+    if(open&&!reveal){ const nw=newMark('game:'+g,fresh); if(nw) t.classList.add('newthing'); } });
+  markSeen(fresh); }
 // a locked mode (v11) is crossed out, not just greyed; tapping it says what it takes
-function fillSheet(){ const g=GAMES[sel.game]; $('#diff-row').innerHTML=g.modes.map(d=>{ const open=isOpen(sel.game,d); return `<button class="choice ${open?'':'locked'}" data-diff="${d}"><span class="pic">${g.pic(d)}</span><span class="txt"><b class="${open?'':'x'}">${MODE_NAME[d]}</b><small>${open?g[d]:'To unlock: '+needFor(sel.game,d)}</small></span></button>`; }).join(''); }
+function fillSheet(){ const g=GAMES[sel.game]; const fresh=[]; $('#diff-row').innerHTML=g.modes.map(d=>{ const open=isOpen(sel.game,d); const nw=open?newMark('mode:'+sel.game+':'+d,fresh):''; return `<button class="choice ${open?'':'locked'}${nw}" data-diff="${d}"><span class="pic">${g.pic(d)}</span><span class="txt"><b class="${open?'':'x'}">${MODE_NAME[d]}</b><small>${open?g[d]:'To unlock: '+needFor(sel.game,d)}</small></span></button>`; }).join(''); markSeen(fresh); }
 function back(){ if(performance.now()-shownAt<450) return; const s=$('.screen.on'); if(!s) return;
   if(s.id==='s-pick'){ if(stage==='len'){ if(GAMES[sel.game].modes.length===1) setStage('grid'); else setStage('mode'); } else if(stage==='mode') setStage('grid'); else show('s-menu'); return; }
   if(s.dataset.back) show(s.dataset.back); }
 // the length face (v11): the name with its seconds beside it on the pick sheet, the best underneath; a locked length is crossed out
-const lenFace=(g,s,d)=>{ if(g==='sequence') return `<span class="keys">${'<i></i>'.repeat(s)}</span>`; const sub=lenSub(g,s,d); return `${lenName(g,s,d)}${sub?`<small>${sub}</small>`:''}`; };
+const lenFace=(g,s,d)=>{ if(g==='sequence') return `<span class="keys">${'<i></i>'.repeat(s)}</span>${lenName(g,s,d)}`; return lenName(g,s,d); };
 // the length buttons only select (v10); Go starts. The whole block slides up together, the same for every game. Pass & play fixes the length; versus has none (Reaction versus has a best-of)
 function fillTimes(){ const g=GAMES[sel.game], c=GC(sel.game,sel.diff); const seq=sel.game==='sequence'; const versus=sel.vs===2&&versusOf(sel.game,sel.diff); const lens=lensOf(sel.game,sel.diff,versus?2:0); if(!lens.includes(sel.secs)||!versus&&!lenOpen(sel.game,sel.diff,sel.secs)) sel.secs=lens.find(s=>versus||lenOpen(sel.game,sel.diff,s))||lens[0];
   const fixed=sel.vs===1&&(PASS_LEN[sel.game]||SHARED2(sel.game,sel.diff)), hideLen=fixed||(versus&&!c.vsLens);
-  $('#time-row').style.display=hideLen?'none':''; $('#len-title').style.display=hideLen?'none':''; $('#len-title').textContent=versus?'best of':c.lenWord||'';
-  $('#time-row').innerHTML=lens.map(s=>{ const best=Scores.best(sel.game,sel.diff,s); const pro=s===c.pro, L=versus?null:lenLock(sel.game,sel.diff,s); return `<button class="tbtn ${sel.secs===s?'sel':''} ${L?'locked':''}" data-time="${s}"><b class="${L?'x':''}">${lenFace(sel.game,s,sel.diff)}</b><small>${pro?'pro · ':''}${seq?s+' keys · ':''}${L?'locked':best!==null?`${c.lower?'closest':'best'} ${scoreTxt(sel.game,best,sel.diff,s)}`:'no run yet'}</small></button>`; }).join('');
-  $('#scale-row').innerHTML=`<span class="chip lbl">scale</span>`+Object.entries(SCALES).map(([k,v])=>`<button class="chip ${sel.scale===k?'sel':''}" data-scale="${k}">${v.name}</button>`).join('');
-  $('#prac-row').innerHTML=`<span class="chip lbl">practice from</span>`+[0,5,10,15].map(n=>`<button class="chip ${sel.practice===n?'sel':''}" data-prac="${n}">${n||'off'}</button>`).join('');
+  const fresh=[];
+  $('#time-row').style.display=hideLen?'none':''; $('#len-title').style.display=hideLen?'none':''; $('#len-title').textContent='Mode';
+  // v13 (3.3): NAME on one line, what it costs on the next, the best under that — nothing can overlap, and the layout is the same for every game
+  $('#time-row').innerHTML=lens.map(s=>{ const best=Scores.best(sel.game,sel.diff,s); const L=versus?null:lenLock(sel.game,sel.diff,s); const sub=versus?'':lenSub(sel.game,s,sel.diff); const nw=L?'':newMark('len:'+sel.game+':'+sel.diff+':'+s,fresh);
+    return `<button class="tbtn ${sel.secs===s?'sel':''} ${L?'locked':''}${nw}" data-time="${s}"><b class="${L?'x':''}">${lenFace(sel.game,s,sel.diff)}</b>${sub?`<small class="lsub">${sub}</small>`:''}<small>${L?'locked':best!==null?`${c.lower?'closest':'best'} ${scoreTxt(sel.game,best,sel.diff,s)}`:'no run yet'}</small></button>`; }).join('');
+  // v13 (7.1): the scale left for Customise. Practice from is earned (7.2)
+  const pOpen=practiceOpen(); if(!pOpen) sel.practice=0;
+  $('#prac-row').innerHTML=`<span class="chip lbl">practice from</span>`+(pOpen?[0,5,10,15].map(n=>`<button class="chip ${sel.practice===n?'sel':''}" data-prac="${n}">${n||'off'}</button>`).join(''):`<button class="chip locked x" data-praclock="1">locked · 8 notes in 7 keys</button>`);
   $('#seq-opts').style.display=seq&&stage==='len'&&!sel.vs?'flex':'none';
+  markSeen(fresh);
   $('#go-btn').textContent=versus?'Go · versus':fixed?(PASS_LEN[sel.game]&&!SHARED2(sel.game,sel.diff)?`Go · ${PASS_LEN[sel.game]}s each`:'Go · pass & play'):'Go'; }
 // the "beat my score" share (v11): navigator.share, or the clipboard with a toast
-function shareRun(){ const r=lastRun; if(!r) return; const c=GC(r.g,r.d,r.s); const bits=['No Excuses',c.name+(MODE_NAME[r.d]?' '+MODE_NAME[r.d]:''),lenName(r.g,r.s,r.d),scoreTxt(r.g,r.hits,r.d,r.s)+(c.scoreWord&&!c.suffix?' '+c.scoreWord:'')]; if(c.timed) bits.push((r.hits/r.s).toFixed(1)+'/s');
-  const text=bits.join(' · ')+' — beat my score: '+PUB_URL;
+// v13 (3.6): Challenge a friend. The link carries the target, so opening it drops the other player straight onto that pick sheet with the score to beat
+function shareRun(){ const r=lastRun; if(!r) return; const c=GC(r.g,r.d,r.s); const score=scoreTxt(r.g,r.hits,r.d,r.s)+(c.scoreWord&&!c.suffix?' '+c.scoreWord:'');
+  const rate=c.timed?` (${(r.hits/r.s).toFixed(1)}/s)`:'';
+  const where=`${c.name}${MODE_NAME[r.d]?' '+MODE_NAME[r.d]:''} · ${lenName(r.g,r.s,r.d)}`;
+  const url=`${PUB_URL}?g=${encodeURIComponent(r.g)}&d=${encodeURIComponent(r.d)}&s=${r.s}&score=${encodeURIComponent(r.hits)}`;
+  const text=`${prefs.name||'Someone'} scored ${score}${rate} on No Excuses · ${where}. Beat it: ${url}`;
   if(navigator.share){ navigator.share({text}).catch(()=>{}); return; } if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(()=>toast('Copied · paste it anywhere'),()=>toast(text)); } else toast(text); }
+// the challenge line on the pick sheet, and the sheet itself
+function openChallenge(){ if(!CHAL) return false; openSheetSafe(); return true; }
+function openSheetSafe(){ const el=$('#chal'); if(el){ el.innerHTML=CHAL.score?`A friend scored <b>${CHAL.score}</b> — beat it`:'A friend sent you this one'; el.hidden=false; } }
 let eggTaps=0;
 // a tap on a control that picks something is a select(); everything else is a click() (v11)
 const isPick=b=>b.classList.contains('chip')||b.classList.contains('choice')||b.classList.contains('tbtn')||b.classList.contains('tile')||b.classList.contains('mch')||b.classList.contains('opt')||b.dataset.vs2!==undefined||!!b.closest('.sw');
@@ -173,22 +207,24 @@ function chips(scope,key,val){ $$(`[data-chip="${scope}-${key}"]`).forEach(c=>c.
 function renderBoard(){ $('#pstar').textContent=prefs.supporter?'★':''; const g=F.bd.g; if(!GAMES[g].modes.includes(F.bd.d)) F.bd.d=GAMES[g].modes[0]; const lens=lensOf(g,F.bd.d); if(!lens.includes(F.bd.s)) F.bd.s=lens[0];
   $('#bd-g').innerHTML=Object.entries(GAMES).map(([id,x])=>`<button class="chip" data-chip="bd-g" data-v="${id}">${x.name}</button>`).join('');
   $('#bd-d').innerHTML=GAMES[g].modes.length>1?GAMES[g].modes.map(d=>`<button class="chip" data-chip="bd-d" data-v="${d}">${MODE_NAME[d]}</button>`).join(''):'';
-  $('#bd-s').innerHTML=lens.length>1?lens.map(s=>`<button class="chip" data-chip="bd-s" data-v="${s}">${lenName(g,s,F.bd.d)}${s===GC(g,F.bd.d).pro?' · pro':''}</button>`).join(''):'';
+  $('#bd-s').innerHTML=lens.length>1?lens.map(s=>`<button class="chip" data-chip="bd-s" data-v="${s}">${lenName(g,s,F.bd.d)}</button>`).join(''):'';
   chips('bd','g',g); chips('bd','d',F.bd.d); chips('bd','s',F.bd.s);
   const cfg=GC(g,F.bd.d,F.bd.s), c=cfg.cols; $('#runs-h').innerHTML=`<tr><th>rank</th><th></th><th>${cfg.scoreWord||'score'}${cfg.lower?' ▼':''}</th><th>${c[0][0]}</th><th>${c[1][0]}</th><th>date</th></tr>`;
   $('#runs').innerHTML=rows(g,F.bd.d,F.bd.s,Scores.of(g,F.bd.d,F.bd.s).slice(0,10),lastRun?.t); }
 let lastRun=null;
 // the result screen's options (v10): players, mode, length, scale — pick, then Go. What you were just playing is pre-selected. v11: Solo / With a friend, then Pass & play / Versus; locked modes and lengths are crossed out and cannot be picked
-function renderOverChips(){ const g=GAMES[sel.game]; const vsOk=versusOf(sel.game,sel.diff); if(sel.vs===2&&!vsOk) sel.vs=1;
+function renderOverChips(){ const g=GAMES[sel.game]; const vsOk=versusOf(sel.game,sel.diff); if(sel.vs===2&&!vsOk) sel.vs=1; const fresh=[];
   $('#over-vs').innerHTML=`<button class="chip ${sel.vs===0?'sel':''}" data-chip="over-vs" data-v="0">solo</button><button class="chip ${sel.vs?'sel':''}" data-chip="over-vs" data-v="f">with a friend</button>`+(sel.vs?`<span class="chip lbl">·</span><button class="chip ${sel.vs===1?'sel':''}" data-chip="over-vs2" data-v="1">pass &amp; play</button>${vsOk?`<button class="chip ${sel.vs===2?'sel':''}" data-chip="over-vs2" data-v="2">versus</button>`:''}`:'');
-  $('#over-chips').innerHTML=g.modes.length>1?g.modes.map(d=>{ const open=isOpen(sel.game,d); return `<button class="mch ${d===sel.diff?'sel':''} ${open?'':'locked'}" data-chip="over-d" data-v="${d}"><span class="pic">${g.pic(d)}</span><b class="${open?'':'x'}">${MODE_NAME[d]}</b></button>`; }).join(''):'';
+  $('#over-chips').innerHTML=g.modes.length>1?g.modes.map(d=>{ const open=isOpen(sel.game,d); const nw=open?newMark('mode:'+sel.game+':'+d,fresh):''; return `<button class="mch ${d===sel.diff?'sel':''} ${open?'':'locked'}${nw}" data-chip="over-d" data-v="${d}"><span class="pic">${g.pic(d)}</span><b class="${open?'':'x'}">${MODE_NAME[d]}</b></button>`; }).join(''):'';
   const versus=sel.vs===2&&vsOk, c=GC(sel.game,sel.diff), lens=lensOf(sel.game,sel.diff,versus?2:0), fixed=sel.vs===1&&(PASS_LEN[sel.game]||SHARED2(sel.game,sel.diff));
   if(!lens.includes(sel.secs)||!versus&&!lenOpen(sel.game,sel.diff,sel.secs)) sel.secs=lens.find(s=>versus||lenOpen(sel.game,sel.diff,s))||lens[0];
-  $('#over-chips2').innerHTML=lens.length>1&&!fixed&&(!versus||c.vsLens)?lens.map(s=>{ const L=versus?null:lenLock(sel.game,sel.diff,s); return `<button class="chip ${s===sel.secs?'sel':''} ${L?'locked x':''}" data-chip="over-s" data-v="${s}">${lenName(sel.game,s,sel.diff)}${s===c.pro?' · pro':''}</button>`; }).join(''):'';
-  $('#over-chips3').innerHTML=sel.game==='sequence'&&!sel.vs?Object.entries(SCALES).map(([k,v])=>`<button class="chip ${k===sel.scale?'sel':''}" data-chip="over-sc" data-v="${k}">${v.name}</button>`).join(''):'';
+  $('#over-chips2').innerHTML=lens.length>1&&!fixed&&(!versus||c.vsLens)?lens.map(s=>{ const L=versus?null:lenLock(sel.game,sel.diff,s); const nw=L?'':newMark('len:'+sel.game+':'+sel.diff+':'+s,fresh); return `<button class="chip ${s===sel.secs?'sel':''} ${L?'locked x':''}${nw}" data-chip="over-s" data-v="${s}">${lenName(sel.game,s,sel.diff)}</button>`; }).join(''):'';
+  $('#over-chips3').innerHTML='';
+  markSeen(fresh);
   $('#again').textContent=versus?'Go · versus':fixed?(PASS_LEN[sel.game]&&!SHARED2(sel.game,sel.diff)?`Go · ${PASS_LEN[sel.game]}s each`:'Go · pass & play'):'Go'; }
 // the top 10 under the result (v11) follows the mode and length picked in the chips, not only the run just played
-function renderOverTop(){ const run=lastRun; const g=GC(sel.game,sel.diff,sel.secs); const two=sel.vs>0; $('#over-top').style.display=two||(run&&run.practice)?'none':''; if(two) return;
+// v13 (3.5): a two-player run is never on a board (L10), so the whole top-10 block goes — the side-by-side pair and the chips stay
+function renderOverTop(){ const run=lastRun; const g=GC(sel.game,sel.diff,sel.secs); const two=sel.vs>0; $('#over-top').hidden=two||!!(run&&run.practice); $('#over-top').style.display=two||(run&&run.practice)?'none':''; if(two) return;
   const top=Scores.of(sel.game,sel.diff,sel.secs).slice(0,10);
   $('#over-top-title').textContent=`top 10 · ${g.name}${MODE_NAME[sel.diff]?' · '+MODE_NAME[sel.diff]:''} · ${lenName(sel.game,sel.secs,sel.diff)}${g.lower?' · closest first':''}`;
   $('#over-runs').innerHTML=top.length?top.map((r,i)=>`<tr class="${run&&r.t===run.t?'cur':''}"><td>${i+1}</td><td></td><td>${scoreTxt(sel.game,r.hits,r.d,r.s)}</td><td>${new Date(r.t).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'2-digit'})}</td></tr>`).join(''):'<tr><td colspan="4">No runs here yet.</td></tr>'; }
@@ -203,7 +239,10 @@ function renderOver(run){ const g=GC(run.g,run.d,run.s);
   if(run.practice||two){ $('#over-stats').innerHTML=''; $('#over-rank').innerHTML=run.practice?'practice · nothing recorded':'two players · nothing recorded'; return; }
   const best=Scores.best(run.g,run.d,run.s);
   const peak=run.peak?`<span>peak <b>${run.peak.toFixed(1)}/s</b></span>`:'';
-  $('#over-stats').innerHTML=`<span>${g.cols[0][0]} <b>${g.cols[0][1](run)}</b></span><span>${g.lower?'closest':'best'} <b>${best===null?'—':scoreTxt(run.g,best,run.d,run.s)}</b></span><span>${g.cols[1][0]} <b>${g.cols[1][1](run)}</b></span>${peak}`;
+  // v13 (8.1): where lower is better, "closest" already is the best try — the duplicate column is gone
+  const dupe=!!g.lower&&/^best /.test(g.cols[0][0]);
+  const col0=dupe?'':`<span>${g.cols[0][0]} <b>${g.cols[0][1](run)}</b></span>`;
+  $('#over-stats').innerHTML=`${col0}<span>${g.lower?'closest':'best'} <b>${best===null?'—':scoreTxt(run.g,best,run.d,run.s)}</b></span><span>${g.cols[1][0]} <b>${g.cols[1][1](run)}</b></span>${peak}`;
   const rk=Scores.rank(run); $('#over-rank').innerHTML = rk&&rk<=10 ? `rank <b>${rk}</b> of 10 · ${prefs.name||'you'}` : `outside the top 10 · ${prefs.name||'you'}`; }
 
 function setLastRun(v){ lastRun=v; }
@@ -211,4 +250,4 @@ function setMenuWasFirst(v){ menuWasFirst=v; }
 function bumpEggTaps(){ eggTaps++; }
 
 
-export { DESIGNS, F, ITEMS, PV, Story, VS, VS_ART, Wheel, applyPrefs, back, bumpEggTaps, chips, colOf, devState, eggTaps, fillSheet, fillTimes, firstRun, fmtScore, freshGame, isPick, lastRun, lenFace, lockedBy, menuIn, menuWasFirst, nextWhere, passLine, prefs, pvG, pvPop, pvSeen, pvStep, pvTap, pvTry, renderBoard, renderCustom, renderMenu, renderOver, renderOverChips, renderOverTop, renderRadar, renderTier, renderTiles, renderVsArt, renderVsRow, rows, sel, setLastRun, setMenuWasFirst, setStage, shareRun, show, shownAt, stage, vsLine };
+export { CHAL, DESIGNS, F, ITEMS, itemsOf, PV, Story, VS, VS_ART, Wheel, applyPrefs, back, bumpEggTaps, chips, colOf, devState, eggTaps, fillSheet, fillTimes, firstRun, fmtScore, freshGame, isPick, lastRun, lenFace, lockedBy, menuIn, menuWasFirst, musicOn, nextWhere, openChallenge, passLine, prefs, pvG, pvPop, pvSeen, pvStep, pvTap, pvTry, renderBoard, renderCustom, renderMenu, renderOver, renderOverChips, renderOverTop, renderRadar, renderTier, renderTiles, renderVsArt, renderVsRow, rows, sel, setLastRun, setMenuWasFirst, setStage, shareRun, show, shownAt, stage, vsLine };

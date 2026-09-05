@@ -14,7 +14,7 @@ import { SQ } from "./games/sequence.js";
 import { SP } from "./games/spot.js";
 import { TM } from "./games/timing.js";
 import { F, VS, applyPrefs, prefs, renderOver, renderOverChips, sel, setLastRun, show } from "./menu.js";
-import { INTRO, Scores, checkAch, checkUnlocks, goalFor, liveCheck, pendingAim, setPendingAim, toast, unlockHtml, unlockName, unlockToast, verdict } from "./progress.js";
+import { INTRO, Scores, UNLOCKS, checkAch, checkUnlocks, goalFor, liveCheck, pendingAim, pendingGoal, setPendingAim, setPendingGoal, toast, unlockHtml, unlockName, unlockToast, verdict } from "./progress.js";
 const ENGINE={ 'quick-tap':QT, 'dots':DT, 'hold':HD, 'sequence':SQ, 'timing':TM, 'reaction':RX, 'spot':SP };
 
 /* ---------- first play of a mode (v6): a ghost finger plays two or three beats under a one-liner, then the countdown. Tap to skip ---------- */
@@ -66,11 +66,12 @@ function start(){
   $('#game').classList.toggle('versus',vx); $('#game').classList.toggle('bigc',sel.game==='quick-tap'&&!versus); $('#bigcount').textContent='0';
   const who=VS.on?pWho(VS.stage-1)+' · ':''; $('#hud-mode').innerHTML=who+(MODE_NAME[sel.diff]?MODE_NAME[sel.diff]+' · ':'')+(versus?(c.vsLens?lenName(sel.game,sel.secs,sel.diff):'versus'):shared?'pass & play':lenName(sel.game,sel.secs,sel.diff)); $('#score').textContent=c.lower?'0.00':'0';
   // the next unlock this run could earn, if any, sits under the HUD (v8). Not for two players. v11: a "Try to unlock" or achievement run keeps its goal up as a reminder even when nothing new can unlock
-  G.goal=VS.on||sel.vs?null:goalFor(sel.game,sel.diff,sel.secs); const gl=$('#goal'); gl.classList.remove('hit'); gl.classList.toggle('on',!!G.goal||(!!pendingAim&&!sel.vs)); if(G.goal){ gl.innerHTML=`goal · <b>${G.goal.need}</b> · unlocks ${unlockName(G.goal.key)}`; } else if(pendingAim&&!sel.vs) gl.innerHTML=`goal · <b>${pendingAim}</b>`; else gl.innerHTML=''; $('#bar').style.display=g.timed?'':'none'; $('#bar').style.transform='scaleX(1)';
+  // v13 (3.8): a "Try to unlock" run keeps the goal for the thing that was tapped — not whatever the chain would offer next
+  G.goal=VS.on||sel.vs?null:((pendingGoal&&UNLOCKS.find(u=>u.key===pendingGoal))||goalFor(sel.game,sel.diff,sel.secs)); const gl=$('#goal'); gl.classList.remove('hit'); gl.classList.toggle('on',!!G.goal||(!!pendingAim&&!sel.vs)); if(G.goal){ gl.innerHTML=`goal · <b>${G.goal.need}</b> · unlocks ${unlockName(G.goal.key)}`; } else if(pendingAim&&!sel.vs) gl.innerHTML=`goal · <b>${pendingAim}</b>`; else gl.innerHTML=''; $('#bar').style.display=g.timed?'':'none'; $('#bar').style.transform='scaleX(1)';
   $('#hud-time').textContent=g.timed?sel.secs.toFixed(2):''; $('#hlbl').innerHTML=''; ['ht','hg','hm'].forEach(l=>$(`#${l} path`).setAttribute('d',''));
   G.timers.forEach(clearTimeout); G.timers=[]; $('#score').style.visibility=''; applyPrefs(sel.game); $('#gen').innerHTML=''; $('#hud-time').classList.remove('you'); $('#seq').classList.remove('watch','input'); $('#turn').classList.remove('on','stay','p1','p2'); $('#game').classList.toggle('timed',!!g.timed&&!versus); $('#rate i').style.height='0'; $('#rate b').textContent='0.0/s'; $('#edge').style.opacity=0; HD.icon(null);
   G.runId=(G.runId||0)+1; Object.assign(G,{on:true,live:false,end:0,hits:0,misses:0,armed:false,lockUntil:0,target:-1,next:-1,pos:null,nextPos:null,prevPos:null,hitT:[],goalHit:false,fresh:[]});
-  pbShow(); setPendingAim('');
+  pbShow(); setPendingAim(''); setPendingGoal(null);
   Music.start(sel.game);
   if(vx){ VX.setup(); countdown(()=>VX.begin()); return; }
   if(g.timed) cur.render(false);
@@ -141,7 +142,7 @@ function miss(now){
 }
 function finish(res){
   G.on=false; G.live=false; cancelAnimationFrame(G.raf); G.timers.forEach(clearTimeout); G.timers=[]; Music.stop(); if(cur.clearT) cur.clearT(); Snd.end(); $('#seqdone')?.classList.remove('on');
-  const run=Object.assign({ t:Date.now(), g:sel.game, d:sel.diff, s:sel.secs, n:prefs.name||'', v:11 },res); setLastRun(run); if(!prefs.played){ prefs.played=1; save('ne.prefs',prefs); }
+  const run=Object.assign({ t:Date.now(), g:sel.game, d:sel.diff, s:sel.secs, n:prefs.name||'', v:13 },res); setLastRun(run); if(!prefs.played){ prefs.played=1; save('ne.prefs',prefs); }
   // pass & play (v10): neither run is recorded — the board is solo. Player 1 plays, the phone is passed, the two are compared. v11: Player 1 red, Player 2 blue
   if(VS.on&&VS.stage===1){ VS.p1=run; $('#pass-eyebrow').textContent=`${GAMES[sel.game].name}${MODE_NAME[sel.diff]?' · '+MODE_NAME[sel.diff]:''} · pass & play`; $('#pass-who').innerHTML=`${pWho(1)} · you're up`; $('#pass-text').innerHTML=`${pWho(0)} scored <b>${scoreTxt(sel.game,run.hits,sel.diff,run.s)}</b>.<br>Hand the phone over.`; setTimeout(()=>show('s-pass'),250); return; }
   if(VS.on&&VS.stage===2) VS.p2=run;

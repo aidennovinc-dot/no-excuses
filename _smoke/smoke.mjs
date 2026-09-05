@@ -5,7 +5,13 @@
  *
  * Needs puppeteer-core and a local Chrome:  npm i puppeteer-core
  * Checks, at 390x844 with zero uncaught errors:
- *   intro -> menu -> every pick sheet opens -> one full Quick Tap run -> result screen.
+ *   intro -> menu -> every pick sheet opens -> one full Quick Tap run -> result screen,
+ *   plus the testable locked decisions on a fresh profile (build 13, FEEDBACK-v13 0.2):
+ *     L1 the title sequence plays before the menu
+ *     L2 Quick Tap's length row is exactly Sprint / Dash / Marathon
+ *     L3 Solo shows no Pass & play / Versus
+ *     L7 the Quick Tap tile is white before any run
+ *   A failing assertion blocks the push.
  */
 import puppeteer from 'puppeteer-core';
 
@@ -43,13 +49,55 @@ console.log('\ncold start (empty storage)');
 await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
 await sleep(400);
 let at = await onScreen();
-at === 's-story' ? ok('intro screen shows') : bad('intro screen shows', 'on ' + at);
+const sawStory = at === 's-story';
+sawStory ? ok('intro screen shows') : bad('intro screen shows', 'on ' + at);
 for (let i = 0; i < 8 && (await onScreen()) === 's-story'; i++) {
   await page.evaluate(() => document.body.click());
   await sleep(350);
 }
 at = await onScreen();
 at === 's-menu' ? ok('intro leads to the menu') : bad('intro leads to the menu', 'on ' + at);
+
+// ---- 1b. the locked decisions that can be asserted, on this fresh profile ----
+console.log('\nlocked decisions (fresh profile)');
+// L1 — the title sequence came before the menu on this fresh profile
+sawStory ? ok('L1 title sequence plays before the menu') : bad('L1 title sequence plays before the menu');
+
+await page.evaluate(() => document.querySelector('[data-go="s-pick"]').click());
+await sleep(400);
+// L7 — the Quick Tap tile is white before any run
+const tileCol = await page.evaluate(() => {
+  const t = document.querySelector('.tile[data-game="quick-tap"]');
+  return { sq: t.style.getPropertyValue('--sq-live').trim(), unplayed: t.classList.contains('unplayed') };
+});
+(tileCol.unplayed && tileCol.sq.toUpperCase() === '#FFFFFF')
+  ? ok('L7 Quick Tap tile is white before any run')
+  : bad('L7 Quick Tap tile is white before any run', JSON.stringify(tileCol));
+
+await page.evaluate(() => document.querySelector('.tile[data-game="quick-tap"]').click());
+await sleep(320);
+// L3 — Solo shows nothing about friends
+const soloSub = await page.evaluate(() => {
+  const sub = document.querySelector('#vs-sub');
+  return { hidden: sub.hasAttribute('hidden'), shown: getComputedStyle(sub).display !== 'none' };
+});
+(soloSub.hidden && !soloSub.shown)
+  ? ok('L3 Solo shows no Pass & play / Versus')
+  : bad('L3 Solo shows no Pass & play / Versus', JSON.stringify(soloSub));
+
+await page.evaluate(() => document.querySelector('#diff-row').children[0].click());
+await sleep(280);
+// L2 — Quick Tap's length row is exactly Sprint / Dash / Marathon
+const lens = await page.evaluate(() => [...document.querySelectorAll('#time-row .tbtn b')]
+  .map(b => b.childNodes[0].textContent.trim()));
+(lens.length === 3 && lens[0] === 'Sprint' && lens[1] === 'Dash' && lens[2] === 'Marathon')
+  ? ok('L2 Quick Tap lengths are Sprint / Dash / Marathon')
+  : bad('L2 Quick Tap lengths are Sprint / Dash / Marathon', JSON.stringify(lens));
+// and the row is labelled Mode (L9)
+const lenTitle = await page.evaluate(() => document.querySelector('#len-title').textContent.trim());
+lenTitle === 'Mode' ? ok('L9 the length row is labelled Mode') : bad('L9 the length row is labelled Mode', lenTitle);
+await page.evaluate(() => document.querySelector('#grid').click());
+await sleep(200);
 
 // ---- 2. everything unlocked, so every pick sheet can be opened ----
 console.log('\npick sheets (all unlocked)');

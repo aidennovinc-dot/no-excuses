@@ -21,7 +21,12 @@ const RX=Object.assign(roundEngine(),{ times:[], faults:0, t0:0, rule:'circle', 
     $('#gen').innerHTML=`<div class="rxpane" id="rxpane"><div class="rxmsg" id="rxmsg">${msg||'wait for it'}</div></div>`;
     rxBar(null); this.later(()=>this.go(),1200+Math.random()*3300); },
   arm(){ this.armed=false; requestAnimationFrame(()=>requestAnimationFrame(()=>{ if(this.st==='go'){ this.t0=performance.now(); this.armed=true; } })); },
-  go(){ const pane=$('#rxpane'); this.st='go'; pane.classList.add('lit'); pane.insertAdjacentHTML('beforeend',rxBox()); const m=$('#rxmsg'); if(m) m.textContent='TAP'; this.arm(); if(!this.versus()) this.later(()=>{ if(this.st==='go'){ this.faults++; this.fault('too slow'); } },1500); },
+  go(){ const pane=$('#rxpane'); this.st='go'; pane.classList.add('lit'); pane.insertAdjacentHTML('beforeend',rxBox()); const m=$('#rxmsg'); if(m) m.textContent='TAP'; this.arm();
+    // v13 (9.1): in a Streak, sitting on your hands is an attempt worth 600ms — 400 against the 500 budget — not a fault you can retake
+    if(!this.versus()) this.later(()=>{ if(this.st==='go'){ if(this.streak()) return this.noTap(); this.faults++; this.fault('too slow'); } },1500); },
+  noTap(){ const ms=600; this.st='show'; this.times.push(ms); this.over+=Math.max(0,ms-200); if(this.over>=500) this.out=true;
+    $('#score').textContent=String(this.times.length); const pane=$('#rxpane'); pane.classList.remove('lit'); pane.classList.add('hit');
+    pane.innerHTML=rxBox()+`<div class="rxmsg">no tap${this.out?' · 500 reached':''}<b>600<small style="font-size:14px;letter-spacing:.2em"> ms</small></b></div>`; Snd.miss(); if(navigator.vibrate) navigator.vibrate(30); this.hud(); liveCheck(this.result()); this.later(()=>this.next(),1400); },
   onDown(e){ if(this.versus()) return this.vsTap(e); if(this.nogo()) return this.nogoTap(e);
     if(this.st==='wait'){ this.faults++; this.fault('too early'); return; }
     if(this.st!=='go'||!this.armed) return;
