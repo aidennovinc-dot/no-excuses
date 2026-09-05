@@ -239,10 +239,11 @@ function renderOver(run){ const g=GC(run.g,run.d,run.s);
   if(run.practice||two){ $('#over-stats').innerHTML=''; $('#over-rank').innerHTML=run.practice?'practice · nothing recorded':'two players · nothing recorded'; return; }
   const best=Scores.best(run.g,run.d,run.s);
   const peak=run.peak?`<span>peak <b>${run.peak.toFixed(1)}/s</b></span>`:'';
-  // v13 (8.1): where lower is better, "closest" already is the best try — the duplicate column is gone
-  const dupe=!!g.lower&&/^best /.test(g.cols[0][0]);
-  const col0=dupe?'':`<span>${g.cols[0][0]} <b>${g.cols[0][1](run)}</b></span>`;
-  $('#over-stats').innerHTML=`${col0}<span>${g.lower?'closest':'best'} <b>${best===null?'—':scoreTxt(run.g,best,run.d,run.s)}</b></span><span>${g.cols[1][0]} <b>${g.cols[1][1](run)}</b></span>${peak}`;
+  // v13 (8.1): where lower is better, "closest" already IS the best try — whichever column repeats it comes out. Same rule on Estimate, Timing, Hidden and Reaction
+  const dupe=c=>!!g.lower&&/^best /.test(c[0]);
+  const cell=c=>`<span>${c[0]} <b>${c[1](run)}</b></span>`;
+  const rec=`<span>${g.lower?'closest':'best'} <b>${best===null?'—':scoreTxt(run.g,best,run.d,run.s)}</b></span>`;
+  $('#over-stats').innerHTML=[dupe(g.cols[0])?'':cell(g.cols[0]),rec,dupe(g.cols[1])?'':cell(g.cols[1])].join('')+peak;
   const rk=Scores.rank(run); $('#over-rank').innerHTML = rk&&rk<=10 ? `rank <b>${rk}</b> of 10 · ${prefs.name||'you'}` : `outside the top 10 · ${prefs.name||'you'}`; }
 
 function setLastRun(v){ lastRun=v; }
