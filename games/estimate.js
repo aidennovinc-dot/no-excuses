@@ -1,0 +1,87 @@
+/* No Excuses — Estimate — Grow and Cut
+   Split out of index.html at build 12. Behaviour is identical to build 11. */
+
+import { cx, finish, size } from "../app.js";
+import { Snd } from "../audio.js";
+import { $, $$, CFG, STREAK, f2, mean, vmin } from "../core.js";
+import { G } from "../engine-core.js";
+import { Shapes } from "./shapes.js";
+import { rows, sel } from "../menu.js";
+import { liveCheck, rate } from "../progress.js";
+/* ---------- Estimate (v9, was Hold). Grow: a shape grows with a wobble and vanishes; tap and hold to grow yours to the same area — the same shape on odd rounds, a different one on even. Cut: a shape appears; drag a line through it that splits off the share asked for. Score is % off, lower is better. Five rounds ---------- */
+const HD={ st:'idle', round:0, total:0, errs:[], target:0, rot:0, shape:null, mine:null, t0:0, raf:0, timers:[], p0:null, p1:null, share:50,
+  est(){ return sel.diff==='grow'&&this.round%2===0; },
+  streak(){ return sel.secs===STREAK; },
+  cy(){ const f=$('#hfield').getBoundingClientRect(); return f.height*(sel.diff==='cut'?.6:.5); },
+  path(sh,s){ const f=$('#hfield').getBoundingClientRect(); return Shapes.path(sh,s,f.width/2,this.cy()); },
+  icon(sh){ const ic=$('#hicon'); ic.classList.remove('big'); ic.innerHTML='<path/><text x="50" y="98" text-anchor="middle"></text>'; if(!sh){ ic.classList.remove('on'); return; } ic.querySelector('path').setAttribute('d',Shapes.path(sh,sh.name==='bar'||sh.name==='line'?84:62,50,46)); ic.querySelector('text').textContent=sh.name; ic.classList.add('on'); },
+  // the cut hint: a finger drags a dotted line through a small shape. Big and centred first, then it parks top right for the round
+  hint(sh){ const ic=$('#hicon'); ic.innerHTML=`<path d="${Shapes.path(sh,58,50,50)}" fill-rule="evenodd"/><line x1="6" y1="70" x2="94" y2="30"/><circle class="fg" r="7"/>`; ic.classList.add('on','big'); this.later(()=>ic.classList.remove('big'),1500); },
+  bg(t){ const b=$('#hbg'); b.textContent=t||''; b.classList.toggle('on',!!t); },
+  // the share (v10) counts up from 0 to the number asked for, so the eye lands on it before the shape
+  shareUp(n){ const el=$('#hshare'); if(!n){ el.classList.remove('on'); el.innerHTML=''; return; } el.classList.add('on'); const t0=performance.now(); const anim=now=>{ if(!G.on||this.st==='reveal') return; const k=Math.min(1,(now-t0)/900); el.innerHTML=`${Math.round(n*k)}%<small>cut off</small>`; if(k<1) requestAnimationFrame(anim); }; requestAnimationFrame(anim); },
+  set(layer,sh,s,wob){ const p=$(`#${layer} path`); if(!sh||s<=0){ p.setAttribute('d',''); return; } p.setAttribute('d',this.path(sh,s)); const f=$('#hfield').getBoundingClientRect(); p.setAttribute('transform',wob?`translate(${wob.x},${wob.y}) rotate(${wob.a} ${f.width/2} ${this.cy()})`:''); },
+  wobble(ms){ return {a:this.rot+Math.sin(ms/90)*4, x:Math.sin(ms/70)*3, y:Math.cos(ms/110)*3}; },
+  // a bottom-up fill (v11): the clip rect's top edge climbs from under the shape to above it as k goes 0 → 1
+  clipTo(id,k,size){ const r=$('#'+id); if(!r) return; const cy=this.cy(), y1=cy+size*.78, y0=cy-size*.78; r.setAttribute('y',y1-(y1-y0)*k); r.setAttribute('height',99999); },
+  clipFull(id){ const r=$('#'+id); if(r){ r.setAttribute('y',-9999); r.setAttribute('height',99999); } },
+  clearT(){ this.timers.forEach(clearTimeout); this.timers=[]; cancelAnimationFrame(this.raf); },
+  later(f,ms){ const id=G.runId; this.timers.push(setTimeout(()=>{ if(G.on&&G.runId===id) f(); },ms)); },
+  reset(){ this.st='idle'; ['ht','hg','hm'].forEach(l=>this.set(l,null,0)); $$('#hcut path').forEach(p=>p.setAttribute('d','')); ['tclipr','hclipr','aclipr','bclipr'].forEach(id=>this.clipFull(id)); $('#hline').style.opacity=0; $('#hcalc').classList.remove('on'); $('#hcalc').innerHTML=''; $('#hfield').classList.remove('show'); this.bg(''); this.shareUp(0); this.icon(null); $('#hlbl').innerHTML=''; },
+  begin(){ this.round=0; this.total=0; this.errs=[]; $('#score').textContent=this.streak()?'0':'0.00'; this.next(); },
+  pickMine(){ if(!this.est()) return this.shape; const c=this.shape.coef; const ok=Shapes.GROW.filter(n=>n!==this.shape.name).map(n=>Shapes.make(n)).filter(s=>s.coef/c>=.4&&s.coef/c<=2.5); return ok.length?ok[Math.random()*ok.length|0]:Shapes.random(Shapes.GROW); },
+  // v11: Set = 7 rounds, score the average % off (lower wins). Streak = the % differences add up; the run ends when the total reaches 100, score rounds
+  result(){ const best=this.errs.length?Math.min(...this.errs):0, worst=this.errs.length?Math.max(...this.errs):0; return this.streak()?{hits:this.errs.length,misses:0,x:best,y:worst,lim:'100%'}:{hits:Math.round(mean(this.errs)*100)/100,misses:0,x:best,y:worst}; },
+  hud(){ $('#hud-time').textContent=this.streak()?`round ${this.round} · ${f2(this.total)}% of 100`:`${this.round} / ${sel.secs}`+(sel.diff==='grow'?` · ${this.est()?'different shape':'same shape'}`:''); },
+  next(){ this.clearT(); this.round++; if(!this.streak()&&this.round>sel.secs) return finish(this.result()); if(this.streak()&&this.total>=100) return finish(this.result()); this.reset();
+    if(sel.diff==='cut') return this.cutRound();
+    this.hud(); const v=vmin(); this.shape=Shapes.random(Shapes.GROW); this.target=(16+Math.random()*42)*v; this.mine=this.pickMine(); this.rot=this.est()?0:[35,60,90,120,145,180,225,270][Math.random()*8|0];
+    this.icon(this.est()?this.mine:null); $('#hlbl').innerHTML=this.est()?`watch · then hold the shape top right to the same area`:'watch'; $('#hfield').classList.add('show');
+    this.st='show'; const t0=performance.now(), rate=CFG.holdRate*v, dur=this.target/rate*1000;
+    const grow=now=>{ if(!G.on) return; const p=Math.min(1,(now-t0)/dur); this.set('ht',this.shape,this.target*p,this.wobble(now-t0)); if(p<1) this.raf=requestAnimationFrame(grow); else this.later(()=>this.ready(),420); };
+    this.raf=requestAnimationFrame(grow); },
+  // v11: the target stays up as a dashed outline while you grow — turned for same-shape rounds — so you can see what you are comparing to
+  ready(){ this.set('ht',null,0); $('#hfield').classList.remove('show'); this.set('hg',this.shape,this.target,{a:this.rot,x:0,y:0}); this.st='wait'; $('#hlbl').innerHTML=this.est()?`same area · your shape is top right`:`same shape · it has been turned`; this.bg('tap and hold'); Snd.click(); },
+  down(e){ if(sel.diff==='cut') return this.cutDown(e); if(this.st!=='wait') return; this.st='hold'; this.t0=performance.now(); $('#hlbl').innerHTML=''; this.bg(''); const rate=CFG.holdRate*vmin(), cap=Math.min(this.target*2.8,96*vmin());
+    const grow=now=>{ if(this.st!=='hold') return; const el=now-this.t0; this.set('hm',this.mine,Math.min(cap,el/1000*rate)); this.raf=requestAnimationFrame(grow); }; this.raf=requestAnimationFrame(grow); },
+  // the reveal (v11): the target fills bottom-up while its px² counts, then yours does the same, then the difference and the %. The two fills and the two numbers are the sum, drawn
+  up(){ if(sel.diff==='cut') return this.cutUp(); if(this.st!=='hold') return; this.st='reveal'; cancelAnimationFrame(this.raf); const size=Math.min(Math.min(this.target*2.8,96*vmin()),(performance.now()-this.t0)/1000*CFG.holdRate*vmin());
+    this.set('hm',this.mine,size); const mine=Shapes.area(this.mine.loops)*size*size, tgt=this.shape.coef*this.target*this.target; const pct=mine/tgt*100, err=Math.abs(pct-100);
+    const word=err<=2?'on the money':err<=8?'close':pct>100?'too much':'too little';
+    // the target comes back filled, from the bottom up, inside its outline; yours fills the same way
+    this.set('hg',null,0); this.set('ht',this.shape,this.target,{a:this.rot,x:0,y:0}); $('#hfield').classList.add('show'); this.clipTo('tclipr',0,this.target); this.clipTo('hclipr',0,size);
+    this.calc([['target',tgt,'',0,'',k=>this.clipTo('tclipr',k,this.target)],['yours',mine,'m',0,'',k=>this.clipTo('hclipr',k,size)]],Math.max(tgt,mine)*1.15,()=>{ const diff=Math.round(mine-tgt); return `<b class="${err<=2?'g':err>8?'r':''}" style="font-size:22px">${diff>0?'+':'−'}${Math.abs(diff).toLocaleString()} px²</b>`; },
+      `<b class="${err<=2?'g':err>8?'r':''}">${f2(pct)}%</b>${word} · <i>${f2(err)}</i> off`, err); },
+  // the panel (v9): rows of bars. v11: both bars share one scale — max × 1.15 — so the bigger sits at ~87% and the smaller shows the real ratio; never both at 100%. Row[5] is a hook that fills the shape as the bar fills
+  calc(rowsIn,max,diffHtml,resultHtml,err){ const rows=rowsIn.map((r,i)=>`<div class="hrow ${r[2]}"><span>${r[0]}</span><span class="bar"><i id="hb${i}"></i>${r[3]?`<u style="left:${r[3]}%"></u>`:''}</span><b id="hn${i}">0</b></div>`).join('');
+    $('#hcalc').innerHTML=rows+`<div id="hdiff" style="text-align:center;opacity:0;transition:opacity .25s"></div><div id="hres"></div>`; $('#hcalc').classList.add('on');
+    const pause=ms=>new Promise(r=>this.later(r,ms));
+    const fill=(i,val,unit,hook)=>new Promise(res=>{ const t0=performance.now(), bar=$('#hb'+i), n=$('#hn'+i); const anim=now=>{ if(this.st!=='reveal') return res(); const k=Math.min(1,(now-t0)/900); if(bar) bar.style.width=(val/max*100*k)+'%'; if(n) n.textContent=unit?(val*k).toFixed(1)+unit:Math.round(val*k).toLocaleString(); if(hook) hook(k); if(k<1) requestAnimationFrame(anim); else res(); }; requestAnimationFrame(anim); });
+    const unit=rowsIn[0][4]||'';
+    fill(0,rowsIn[0][1],unit,rowsIn[0][5]).then(()=>pause(300)).then(()=>fill(1,rowsIn[1][1],unit,rowsIn[1][5])).then(()=>pause(300))
+      .then(()=>{ if(this.st!=='reveal') return; const d=$('#hdiff'); if(d&&diffHtml){ d.innerHTML=diffHtml(); d.style.opacity=1; d.classList.add('pop'); } return pause(diffHtml?800:100); })
+      .then(()=>{ if(this.st!=='reveal') return; const v=$('#hres'); if(v){ v.innerHTML=resultHtml; v.classList.add('on'); } err<=8?Snd.hit():Snd.miss(); if(err>8&&navigator.vibrate) navigator.vibrate(30);
+        this.total+=err; this.errs.push(err); const s=$('#score'); s.textContent=this.streak()?String(this.errs.length):f2(mean(this.errs)); s.classList.remove('pop'); void s.offsetWidth; s.classList.add('pop'); this.hud(); liveCheck(this.result()); this.later(()=>this.next(),1900); }); },
+  // Cut (v11): rounds 1–2 are simple shapes at 50%; then harder shapes, and shares that move toward 25% and the awkward numbers as the rounds go on. A Streak keeps ramping to round 8 and holds there
+  cutRound(){ const lvl=Math.min(8,this.round); const pool=lvl<=2?['square','circle','triangle','bar']:lvl<=4?['ring','star','plus','stairs','tetris','crescent','blob']:Shapes.CUT; this.shape=Shapes.random(pool);
+    const shares=lvl<=2?[50]:lvl<=4?[40,35,45,30,40]:lvl<=6?[30,25,35,20,25]:[25,20,15,10,25,30]; this.share=shares[Math.random()*shares.length|0]; const v=vmin(); this.target=Math.min(54*v,$('#hfield').getBoundingClientRect().width*.7);
+    this.hud(); this.hint(this.shape); this.st='wait';
+    this.later(()=>{ $('#hcut path.a').setAttribute('d',this.path(this.shape,this.target)); $('#hcut path.a').classList.remove('b'); this.bg('tap and hold · draw a line through it'); this.shareUp(this.share); },1500); },
+  fpt(e){ const f=$('#hfield').getBoundingClientRect(); return [e.clientX-f.left,e.clientY-f.top]; },
+  cutDown(e){ if(this.st!=='wait'||!$('#hcut path.a').getAttribute('d')) return; this.st='draw'; this.p0=this.fpt(e); this.p1=this.p0; const l=$('#hline'); l.setAttribute('x1',this.p0[0]); l.setAttribute('y1',this.p0[1]); l.setAttribute('x2',this.p0[0]); l.setAttribute('y2',this.p0[1]); l.style.opacity=1; this.bg(''); },
+  cutMove(e){ if(this.st!=='draw') return; this.p1=this.fpt(e); const l=$('#hline'); l.setAttribute('x2',this.p1[0]); l.setAttribute('y2',this.p1[1]); },
+  cutUp(){ if(this.st!=='draw') return; const d=[this.p1[0]-this.p0[0],this.p1[1]-this.p0[1]], len=Math.hypot(d[0],d[1]); if(len<24){ this.st='wait'; $('#hline').style.opacity=0; this.bg('tap and draw a line'); return; }
+    const f=$('#hfield').getBoundingClientRect(), cx=f.width/2, cy=this.cy(); const loops=this.shape.loops.map(L=>L.map(([x,y])=>[cx+x*this.target,cy+y*this.target])); const total=Shapes.area(loops);
+    const A=Shapes.clip(loops,this.p0,d,1), B=Shapes.clip(loops,this.p0,d,-1); const aA=Shapes.area(A), aB=Shapes.area(B);
+    if(Math.min(aA,aB)/total<.005){ this.st='wait'; $('#hline').style.opacity=0; $('#hlbl').innerHTML=`the line missed the shape · <b>${this.share}%</b> again`; this.bg('tap and hold · draw a line through it'); Snd.miss(); return; }
+    this.st='reveal'; const small=aA<=aB?A:B, big=aA<=aB?B:A, aS=Math.min(aA,aB), aL=Math.max(aA,aB); const share=aS/total*100, err=Math.abs(share-this.share);
+    // the line runs on across the whole field, and the two pieces take two tones
+    const ext=Math.max(f.width,f.height)*2, ux=d[0]/len, uy=d[1]/len, l=$('#hline'); l.setAttribute('x1',this.p0[0]-ux*ext); l.setAttribute('y1',this.p0[1]-uy*ext); l.setAttribute('x2',this.p0[0]+ux*ext); l.setAttribute('y2',this.p0[1]+uy*ext);
+    const P=Ls=>Ls.map(L=>'M'+L.map(([x,y])=>`${x.toFixed(2)},${y.toFixed(2)}`).join('L')+'z').join(''); $('#hcut path.a').setAttribute('d',P(small)); $('#hcut path.b').setAttribute('d',P(big)); $('#hlbl').innerHTML='';
+    // the reveal (v11): each piece fills bottom-up while its px² counts, the cut-off piece first, then the rest; then the share against the target and the difference
+    this.clipTo('aclipr',0,this.target); this.clipTo('bclipr',0,this.target);
+    const word=err<=1.5?'on the money':err<=5?'close!':share>this.share?'too much':'too little'; const want=total*this.share/100;
+    this.calc([['piece',aS,'',Math.round(want/(aL*1.15)*100),'',k=>this.clipTo('aclipr',k,this.target)],['rest',aL,'b',0,'',k=>this.clipTo('bclipr',k,this.target)]],aL*1.15,()=>{ const diff=Math.round(aS-want); return `<b class="${err<=1.5?'g':err>8?'r':''}" style="font-size:22px">${diff>0?'+':'−'}${Math.abs(diff).toLocaleString()} px²</b><br><span style="font-size:10px">target ${Math.round(want).toLocaleString()} px²</span>`; },`<b class="${err<=1.5?'g':err>8?'r':''}">${f2(share)}%</b>${word} · target ${this.share}% · <i>${f2(err)}</i> off`,err); } };
+
+
+export { HD };

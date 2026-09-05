@@ -1,0 +1,214 @@
+/* No Excuses — prefs, customise, navigation, pick sheet, scoreboard, result screen
+   Split out of index.html at build 12. Behaviour is identical to build 11. */
+
+import { cv, cx } from "./app.js";
+import { Snd } from "./audio.js";
+import { $, $$, MODE_NAME, PASS_LEN, PUB_URL, VS_LEAD, load, pWho, save } from "./core.js";
+import { GAMES, GC, SHARED2, lenName, lenSub, scoreTxt, versusOf } from "./games/registry.js";
+import { ACH, ITEM_WORD, SCALES, Scores, UNLOCKS, gameOpen, got, isOpen, lenLock, lenOpen, lensOf, needFor, nextGoal, renderAch, setPendingAim, toast, unlocked } from "./progress.js";
+/* ---------- prefs / customise ---------- */
+const DESIGNS={ stars:{tint:'#050506'}, grid:{tint:'#070A14'}, rain:{tint:'#0B1008'}, orbs:{tint:'#0E0608'} };
+const ITEMS = {
+  sq:  [{v:'#FFFFFF'},{v:'#FFE9C4',by:'first'},{v:'#9BE8FF',by:'qt_clean5'},{v:'#FFD1DC',by:'dt_pin'},{v:'#F3D9FF',by:'hd_steady'},{v:'#C6FF7A',by:'qt_clean30'},{v:'#FFF3A0',by:'sq_12'},{v:'wheel',by:'fullset'}],
+  lead:[{v:'#C8322A'},{v:'#FFB020',by:'every'},{v:'#7CFFB2',by:'dt_sweep'},{v:'#4FD9FF',by:'qt_r5'},{v:'#FF4FD8',by:'qt_eyes'},{v:'#FFFFFF',by:'hd_est'},{v:'wheel',by:'fullset'}],
+  bg:  [{v:'stars'},{v:'grid',by:'named'},{v:'rain',by:'qt_clean15'},{v:'orbs',by:'dt_land'},{v:'wheel',by:'fullset'}],
+  snd: [{v:'space',label:'Space'},{v:'click',label:'Click',by:'qt_r4'},{v:'wood',label:'Wood',by:'hd_money'},{v:'sigh',label:'Sigh',by:'tour'},{v:'off',label:'Off'}],
+  music:[{v:true,label:'On'},{v:false,label:'Off'}],
+};
+const prefs = Object.assign({ sq:'#FFFFFF', lead:'#C8322A', bg:'stars', tint:'', snd:'space', music:true, lastGame:'quick-tap', name:'', scale:'penta', allOpen:false, supporter:false, adRuns:0 }, load('ne.prefs',{}));
+if(!DESIGNS[prefs.bg]){ prefs.tint=String(prefs.bg).startsWith('#')?prefs.bg:''; prefs.bg='stars'; } // v3 stored a hex here
+(function migrate(){ // v8: Count and Find became Spot · Count / Find; speed became seconds per key
+  const runs=load('ne.runs',[]); runs.forEach(r=>{ if(r.g==='count'){ r.g='spot'; r.d='count'; } else if(r.g==='find'){ r.g='spot'; r.d='find'; } });
+  const keep=runs.filter(r=>GAMES[r.g]&&GAMES[r.g].modes.includes(r.d)); save('ne.runs',keep);
+  const u=load('ne.unlock',{}); let ch=false; for(const k of Object.keys(u)){ if(k.startsWith('count:')){ u['spot:count']=u[k]; delete u[k]; ch=true; } if(k.startsWith('find:')){ u['spot:find']=u[k]; delete u[k]; ch=true; } } if(ch) save('ne.unlock',u);
+  const a=load('ne.ach',{}); const map={ct_5:'sp_5',ct_10:'sp_15',fd_fast:'sp_fast',fd_clean:'sp_clean'}; let ca=false; for(const k in map) if(a[k]){ a[map[k]]=a[k]; delete a[k]; ca=true; } if(ca) save('ne.ach',a);
+  if(prefs.speed==='normal') prefs.speed=.4; if(prefs.speed==='fast') prefs.speed=.3;
+  // v9: Quick Tap Lead is gone (its runs with it); Hold Match/Estimate became Estimate · Grow, keeping only 5-round runs
+  const r9=load('ne.runs',[]); let c9=false; const k9=r9.filter(r=>{ if(r.g==='quick-tap'&&r.d==='lead'){ c9=true; return false; } if(r.g==='hold'&&(r.d==='match'||r.d==='estimate')){ c9=true; if(r.s!==5) return false; r.d='grow'; } return true; }); if(c9) save('ne.runs',k9);
+  const u9=load('ne.unlock',{}); const m9={'quick-tap:lead':'quick-tap:four','hold:match':'hold:grow','hold:estimate':'hold:cut'}; let cu=false; for(const k in m9) if(u9[k]){ u9[m9[k]]=u9[k]; delete u9[k]; cu=true; } if(cu) save('ne.unlock',u9);
+  const i9=load('ne.intro',{}); let ci=false; for(const k in m9) if(i9[k]){ delete i9[k]; ci=true; } if(ci) save('ne.intro',i9);
+  // v10: Hidden is scored in pixels now; runs scored in seconds cannot sit on the same board
+  const r10=load('ne.runs',[]); const k10=r10.filter(r=>!(r.g==='timing'&&r.d==='hidden'&&(r.v||0)<10)); if(k10.length!==r10.length) save('ne.runs',k10);
+  // v11: Quick Tap Blind is Two (runs, intros and colours keep). Estimate, Timing, Reaction and Count changed their scoring unit — runs from before build 11 cannot sit on the new boards, so they retire, once, with a note. Dots, Sequence and Find keep theirs
+  const r11=load('ne.runs',[]); let c11=0; const k11=r11.filter(r=>{ if(r.g==='quick-tap'&&r.d==='blind') r.d='two'; if((r.v||0)<11&&(r.g==='hold'||r.g==='timing'||r.g==='reaction'||(r.g==='spot'&&r.d==='count'))){ c11++; return false; } return true; }); if(c11||r11.some(r=>r.g==='quick-tap'&&r.d==='two')) save('ne.runs',k11); if(c11) prefs.mig11=c11;
+  const i11=load('ne.intro',{}); if(i11['quick-tap:blind']){ i11['quick-tap:two']=i11['quick-tap:blind']; delete i11['quick-tap:blind']; save('ne.intro',i11); }
+  if(prefs.lastDiff==='blind'&&prefs.lastGame==='quick-tap') prefs.lastDiff='two'; })();
+// supporters (v10) have every cosmetic open; "open everything" is the testing switch for the same thing
+const lockedBy=it=> it.by && !got()[it.by] && !prefs.allOpen && !prefs.supporter ? ACH.find(a=>a.id===it.by) : null;
+function freshGame(){ ['ne.runs','ne.ach','ne.unlock','ne.intro','ne.tileSeen'].forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} }); prefs.allOpen=false; prefs.story=0; prefs.adRuns=0; prefs.played=0; prefs.gridSeen=0; save('ne.prefs',prefs); lastRun=null; menuWasFirst=true; }
+function devState(){ const u=Object.keys(unlocked()).length, a=Object.keys(got()).length, r=Scores.runs().length; $('#dev-state').textContent=(prefs.allOpen?`open everything is ON · every mode and cosmetic available`:`progression ON · ${u} of ${UNLOCKS.length} modes earned · ${a} of ${ACH.length} achievements`)+` · ${r} runs on record · ${prefs.supporter?'supporter ON':'free tier · ads on'}`; $('#dev-open').classList.toggle('sel',!!prefs.allOpen); $('#dev-sup').classList.toggle('sel',!!prefs.supporter); renderTier(); }
+// what the two tiers get (v10). Free: everything playable, earned by play; ads on the result screen only. Supporter, A$1.99 once: no ads, all cosmetics, pro lengths, a star
+function renderTier(){ const y='<b class="y">✓</b>'; const rows=[['','free','supporter'],['every game and mode','earned by play','earned by play'],['ads','result screen only','none'],['colours, backgrounds, sounds','earned by achievements','all open + colour wheel'],['pro length · 60s Quick Tap and Dots','—',y+' own boards'],['profile star','—',y],['achievements','same','same · never bought']];
+  $('#tierbox').innerHTML=rows.map(r=>`<div>${r.map((c,i)=>i?`<span>${c}</span>`:'').join('')}</div>`).join(''); $('#tierbox').firstElementChild.style.gridTemplateColumns='1fr 1fr';
+  $('#support-title').textContent=prefs.supporter?'Supporter · thank you':'Support · A$1.99 · once'; $('#support-text').textContent=prefs.supporter?'No ads. Every cosmetic open, the colour wheel, pro lengths with their own boards, and the star on your profile.':'No ads, ever. Every colour, background and sound pack open from day one, plus the colour wheel. A pro 60-second length in Quick Tap and Dots, with its own boards. A star on your profile.'; }
+// colours are per game (v6): prefs.col[game] = {sq, lead}. The old global sq/lead seed every game once
+if(!prefs.col){ prefs.col={}; for(const g in GAMES) prefs.col[g]={sq:prefs.sq||'#FFFFFF',lead:prefs.lead||'#C8322A'}; }
+for(const g in GAMES) if(!prefs.col[g]) prefs.col[g]={sq:'#FFFFFF',lead:'#C8322A'};
+const colOf=g=>prefs.col[g]||prefs.col['quick-tap'];
+function applyPrefs(g){ const r=document.documentElement.style; const c=colOf(g||sel?.game||prefs.lastGame); r.setProperty('--sq-live',c.sq); r.setProperty('--cue',c.lead); r.setProperty('--ground',prefs.tint||DESIGNS[prefs.bg].tint); save('ne.prefs',prefs); }
+applyPrefs(prefs.lastGame);
+const pvTry={};  // a locked item being previewed: {set, v, by}
+function renderCustom(){
+  const wheelIt=set=>ITEMS[set].find(i=>i.v==='wheel');
+  for(const set of ['sq','lead','bg']) $('#c-'+set).innerHTML = ITEMS[set].map(it=>{ const L=lockedBy(it); const isWheel=it.v==='wheel';
+    const curC=colOf(F.pv.g)[set];
+    const selNow = isWheel ? (set==='bg'?!!prefs.tint:!ITEMS[set].some(o=>o.v===curC)) : (set==='bg'?prefs.bg===it.v&&!prefs.tint:curC===it.v);
+    const cls=`${selNow?'sel':''} ${L?'locked':''} ${pvTry.set===set&&pvTry.v===it.v?'pvw':''} ${isWheel?'wheel':''} ${set==='bg'&&!isWheel?'bg-'+it.v:''}`;
+    const style=set==='bg'?`background-color:${DESIGNS[it.v]?.tint||'transparent'}`:isWheel?'':`background:${it.v}`;
+    return `<button data-v="${it.v}" class="${cls}" data-lock="${L?L.id:''}" style="${style}" aria-label="${it.v}${L?' locked':''}"></button>`; }).join('');
+  for(const set of ['snd','music']) $('#c-'+set).innerHTML = ITEMS[set].map(it=>{ const L=lockedBy(it); return `<button data-v="${it.v}" class="opt ${String(prefs[set])===String(it.v)?'sel':''} ${L?'locked':''}" data-lock="${L?L.id:''}">${it.label}</button>`; }).join('');
+  $('#pv-g').innerHTML=Object.entries(GAMES).map(([id,x])=>`<button class="chip" data-chip="pv-g" data-v="${id}">${x.name}</button>`).join(''); chips('pv','g',F.pv.g);
+  $('#pv').dataset.g=F.pv.g; $('#g-lead').style.display=GAMES[F.pv.g].lead?'':'none';
+  if(F.pv.g==='spot'&&!$('#pvsp').children.length){ const sh=['','c','t']; $('#pvsp').innerHTML=Array.from({length:14},(_,i)=>`<i class="${i===9?'c':sh[i%2?0:2]}"></i>`).join(''); }
+  $('#s-custom .eyebrow').textContent=`customise · ${GAMES[F.pv.g].name} · colours are per game`;
+  const pv=$('#pv').style; pv.setProperty('--sq-live',colOf(F.pv.g).sq); pv.setProperty('--cue',colOf(F.pv.g).lead); pv.removeProperty('background');
+  const lockBtn=$('#pvlock');
+  if(pvTry.set){ const L=ACH.find(a=>a.id===pvTry.by); const map={sq:'--sq-live',lead:'--cue'}; if(map[pvTry.set]&&pvTry.v!=='wheel') pv.setProperty(map[pvTry.set],pvTry.v); if(pvTry.set==='bg'&&DESIGNS[pvTry.v]) pv.background=DESIGNS[pvTry.v].tint; lockBtn.innerHTML=`Locked · ${L.name} — ${L.how} · <u>show me</u>`; lockBtn.dataset.ach=L.id; }
+  // v11: an unlocked colour says nothing when tapped — the red requirement line is for locked ones only
+  else if(pvSeen.by&&!got()[pvSeen.by]&&!prefs.allOpen&&!prefs.supporter){ const L=ACH.find(a=>a.id===pvSeen.by); lockBtn.innerHTML=`Locked · ${L.name} — ${L.how} · <u>show me</u>`; lockBtn.dataset.ach=L.id; }
+  else { lockBtn.textContent=''; lockBtn.dataset.ach=''; }
+}
+const pvSeen={};  // the last unlocked item tapped, so what earned it shows on touch (v5)
+/* previews (v9): every game's preview is played by the same finger as the pre-game demo — it shows the tap and what comes of it, on a loop */
+const PV={k:0,n:1,last:''};
+const pvG=(x,y)=>{ const g=$('#pvg'); g.style.left=x+'%'; g.style.top=y+'%'; g.classList.add('on'); };
+const pvTap=()=>{ const g=$('#pvg'); g.classList.remove('tap'); void g.offsetWidth; g.classList.add('tap'); };
+const pvPop=el=>{ el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); };
+function pvStep(){
+  if(!$('#s-custom').classList.contains('on')) return;
+  const g=F.pv.g; if(g!==PV.last){ PV.last=g; PV.k=0; $('#pvg').classList.remove('on','hold'); } const k=PV.k++;
+  if(g==='quick-tap'){ const ph=k%3; if(ph===0){ PV.n=Math.random()<.5?0:1; [0,1].forEach(i=>$('#pv'+i).style.setProperty('--v',PV.n===i?1:0)); pvG(PV.n?75:25,80); } else if(ph===1){ pvTap(); pvPop($('#pv'+PV.n)); } }
+  else if(g==='dots'){ const ph=k%3; const d=$('#pvdot'), l=$('#pvlead'); if(ph===0){ PV.pos=PV.next||{x:.4,y:.3}; PV.next={x:Math.random()*.76,y:Math.random()*.62}; d.style.left=PV.pos.x*100+'%'; d.style.top=PV.pos.y*100+'%'; l.style.left=PV.next.x*100+'%'; l.style.top=PV.next.y*100+'%'; d.classList.add('on'); l.classList.add('on'); pvG(PV.pos.x*100+11,PV.pos.y*100+17); } else if(ph===1) pvTap(); }
+  else if(g==='hold'){ const ph=k%7, m=$('.pvhold .m'), t=$('#pvhtxt'), f=$('#pvg'); if(ph===0){ m.setAttribute('r',0); t.innerHTML='tap and hold'; f.classList.remove('hold'); pvG(50,86); } else if(ph===1){ f.classList.add('hold'); t.innerHTML=''; m.setAttribute('r',26+Math.random()*9); } else if(ph===3){ f.classList.remove('hold'); const r=+m.getAttribute('r'), pct=r*r/900*100, err=Math.abs(pct-100); t.innerHTML=`<b class="${err<=8?'g':'r'}">${pct.toFixed(1)}%</b>${err<=8?'close':pct>100?'too much':'too little'}`; } }
+  else if(g==='sequence'){ const ks=$$('.pvseq i'), ph=k%6; if(ph===0){ PV.a=Math.random()*5|0; PV.b=(PV.a+1+(Math.random()*3|0))%5; ks.forEach(x=>x.classList.remove('lit')); $('#pvg').classList.remove('on'); ks[PV.a].classList.add('lit'); } else if(ph===1){ ks.forEach(x=>x.classList.remove('lit')); ks[PV.b].classList.add('lit'); } else if(ph===2){ ks.forEach(x=>x.classList.remove('lit')); pvG(10+PV.a*20,60); } else if(ph===3){ pvTap(); ks[PV.a].classList.add('lit'); pvG(10+PV.b*20,60); } else if(ph===4){ pvTap(); ks[PV.a].classList.remove('lit'); ks[PV.b].classList.add('lit'); } else ks.forEach(x=>x.classList.remove('lit')); }
+  else if(g==='timing'){ const ph=k%9, c=$('#pvclk'), r=$('#pvtmres'); if(ph===0){ c.textContent='0.00'; c.style.opacity=1; r.innerHTML=''; pvG(50,84); } else if(ph<6){ const e=ph*1.35; c.textContent=e.toFixed(2); c.style.opacity=e<1.5?1:Math.max(0,1-(e-1.5)/1.2); } else if(ph===6){ pvTap(); const e=6.75+Math.random()*.6; c.textContent=e.toFixed(2); c.style.opacity=1; const err=Math.abs(e-7); r.innerHTML=`<b class="${err<=.1?'g':err<=.3?'':'r'}">${err.toFixed(2)}s</b>${e>7?'late':'early'}`; } }
+  else if(g==='reaction'){ const p=$('#pvrx'), ph=k%6; if(ph===0){ p.classList.remove('lit'); p.textContent='wait for it'; pvG(50,86); } else if(ph===3){ p.classList.add('lit'); p.textContent='tap'; } else if(ph===4){ pvTap(); p.classList.remove('lit'); p.innerHTML=`<b>${180+(Math.random()*90|0)} ms</b>`; } }
+  else if(g==='spot'){ const ks=$$('#pvsp i'), ph=k%5; if(!ks.length) return; if(ph===0){ ks.forEach(x=>x.classList.remove('odd','dim')); $('#pvg').classList.remove('on'); } else if(ph===2){ const o=ks[9], r=o.getBoundingClientRect(), b=$('#pv').getBoundingClientRect(); pvG((r.left+r.width/2-b.left)/b.width*100,(r.top+r.height/2-b.top)/b.height*100); } else if(ph===3){ pvTap(); ks[9].classList.add('odd'); ks.forEach((x,i)=>{ if(i!==9) x.classList.add('dim'); }); } }
+}
+setInterval(pvStep,520);
+
+/* colour wheel: hue around, saturation outward. Writes straight into prefs[set] (bg → tint) */
+const Wheel=(()=>{ const cv=$('#wheel'), cx=cv.getContext('2d'); let set='sq', drawn=false, col='#ffffff';
+  function draw(){ const R=240; const img=cx.createImageData(480,480); const d=img.data; for(let y=0;y<480;y++) for(let x=0;x<480;x++){ const dx=x-R, dy=y-R, r=Math.hypot(dx,dy); const i=(y*480+x)*4; if(r>R){ d[i+3]=0; continue; } const h=(Math.atan2(dy,dx)*180/Math.PI+360)%360, s=r/R, [rr,gg,bb]=hsl(h,s,set==='bg'?.08:.6); d[i]=rr; d[i+1]=gg; d[i+2]=bb; d[i+3]=255; } cx.putImageData(img,0,0); drawn=true; }
+  function hsl(h,s,l){ const c=(1-Math.abs(2*l-1))*s, x=c*(1-Math.abs((h/60)%2-1)), m=l-c/2; let r,g,b; if(h<60)[r,g,b]=[c,x,0]; else if(h<120)[r,g,b]=[x,c,0]; else if(h<180)[r,g,b]=[0,c,x]; else if(h<240)[r,g,b]=[0,x,c]; else if(h<300)[r,g,b]=[x,0,c]; else [r,g,b]=[c,0,x]; return [r,g,b].map(v=>Math.round((v+m)*255)); }
+  function pick(e){ const b=cv.getBoundingClientRect(); const x=(e.clientX-b.left)/b.width*480, y=(e.clientY-b.top)/b.height*480; const dx=x-240, dy=y-240, r=Math.min(240,Math.hypot(dx,dy)); const h=(Math.atan2(dy,dx)*180/Math.PI+360)%360; const [rr,gg,bb]=hsl(h,r/240,set==='bg'?.08:.6); col='#'+[rr,gg,bb].map(v=>v.toString(16).padStart(2,'0')).join(''); $('#wheelout').style.background=col; if(set==='bg') prefs.tint=col; else prefs.col[F.pv.g][set]=col; applyPrefs(F.pv.g); $('#pv').style.setProperty(set==='sq'?'--sq-live':'--cue',col); }
+  cv.addEventListener('pointerdown',e=>{ e.preventDefault(); pick(e); cv.setPointerCapture(e.pointerId); }); cv.addEventListener('pointermove',e=>{ if(e.buttons) pick(e); });
+  return { open(s){ set=s; draw(); $('#wheel-title').textContent=`${ITEM_WORD[s]} · ${GAMES[F.pv.g].name} · drag to pick`; $('#wheelout').style.background=s==='bg'?(prefs.tint||DESIGNS[prefs.bg].tint):colOf(F.pv.g)[s]; $('#wheelwrap').classList.add('on'); }, close(){ $('#wheelwrap').classList.remove('on'); renderCustom(); } }; })();
+
+/* ---------- navigation: every sub-screen goes back on a tap that isn't on a control ---------- */
+if(!GAMES[prefs.lastGame]) prefs.lastGame='quick-tap';
+const sel={ game:prefs.lastGame, diff:GAMES[prefs.lastGame].modes[0], secs:5, practice:0, scale:prefs.scale||'penta', vs:0 };
+// vs a friend (v9): pass-and-play. Player 1 is the profile, player 2 is FRIEND; only player 1's run goes on the board
+const VS={ on:false, stage:0, p1:null, p2:null, reset(){ this.on=false; this.stage=0; this.p1=null; this.p2=null; } };
+const F={ bd:{g:prefs.lastGame,d:GAMES[prefs.lastGame].modes[0],s:5}, pv:{g:prefs.lastGame}, ach:{g:'all'} };
+let stage='grid', shownAt=0;
+function show(id){ $$('.screen').forEach(s=>s.classList.toggle('on',s.id===id)); $('#game').classList.remove('on','versus','bigc','live','shake'); $('#stars').style.opacity=1; shownAt=performance.now(); applyPrefs(sel.game);
+  if(id==='s-menu'){ setPendingAim(''); renderMenu(); } if(id==='s-pick'){ renderTiles(); setStage('grid'); } if(id==='s-board'){ renderBoard(); renderRadar(); } if(id==='s-ach') renderAch(); if(id==='s-custom'){ F.pv.g=sel.game; pvTry.set=null; pvSeen.by=null; renderCustom(); } if(id==='s-about') devState(); }
+// first open only: title fades up, then the menu fades in under it (v7). The class comes off once it has played so hover/focus opacity works again
+function menuIn(){ $('#s-menu').classList.add('intro'); setTimeout(()=>$('#s-menu').classList.remove('intro'),2400); }
+// first experience (v10): until one run is on the record only Play is live. v11: the rest are crossed out, and the strike wipes off the moment they open
+const firstRun=()=>!prefs.played&&!Scores.runs().length&&!prefs.allOpen;
+let menuWasFirst=false;
+function renderMenu(){ const first=firstRun(); const opening=menuWasFirst&&!first; menuWasFirst=first;
+  $$('#s-menu .item').forEach(b=>{ const x=first&&b.dataset.go!=='s-pick'; b.classList.toggle('dim',x); b.classList.remove('unx'); if(opening&&b.dataset.go!=='s-pick'){ b.classList.add('unx'); b.style.pointerEvents='none'; setTimeout(()=>{ b.classList.remove('unx'); b.style.pointerEvents=''; },700); } });
+  $('#menu-note').textContent=first?'play one run · the rest opens':'';
+  const ng=nextGoal(); const nx=$('#nextup'); $('#menu-tag').hidden=!ng; if(ng){ nx.innerHTML=`<span>${ng.text}</span>`; nx.hidden=false; nextWhere=Object.assign({need:ng.need},ng.where); } else { nx.hidden=true; nextWhere=null; } }
+let nextWhere=null;
+/* the intro (v11): three lines, one after another, then the title lands. About → replay the intro brings it back */
+const Story={ open(){ show('s-story'); const st=$('#s-story'); st.classList.remove('run'); void st.offsetWidth; st.classList.add('run'); }, next(){ Snd.click(); prefs.story=1; save('ne.prefs',prefs); show('s-menu'); menuIn(); } };
+// the two-player pictures (v10): pass & play hands the phone over; versus is one phone, both ends
+const VS_ART={ 1:['<svg viewBox="0 0 120 56"><rect x="6" y="8" width="30" height="42" rx="4"/><rect x="84" y="8" width="30" height="42" rx="4"/><path d="M44 29h32M68 21l8 8-8 8"/><path d="M14 44h14M92 44h14"/></svg>','pass &amp; play · take turns on one phone','%LEN%'],
+                2:['<svg viewBox="0 0 120 56"><rect x="35" y="2" width="50" height="52" rx="6"/><path d="M35 28h50"/><rect x="42" y="36" width="16" height="12"/><rect x="62" y="36" width="16" height="12"/><rect x="42" y="8" width="16" height="12"/><rect x="62" y="8" width="16" height="12"/></svg>','versus · one phone, both ends','%VS%'] };
+function passLine(g,d){ if(g==='sequence') return 'take turns copying · the computer adds a note each time · a miss loses'; if(g==='spot'&&d==='count') return 'same flash, both answer · 10 rounds · speed wins, 0.35s of leeway'; return (PASS_LEN[g]?PASS_LEN[g]+' seconds each':'one run each')+', then the scores side by side'; }
+function vsLine(g,d){ if(g==='sequence') return 'Compose · tap in up to 8 notes, the other copies · then swap'; if(g==='reaction') return 'first to tap after the flash wins the round · early tap loses it'; return 'first to lead by '+VS_LEAD+' wins'; }
+function renderVsArt(){ const box=$('#vsart'); if(!sel.vs){ box.classList.remove('on'); $('#sheet').classList.remove('two'); return; }
+  const [svg,line,sub]=VS_ART[sel.vs]; box.innerHTML=svg+`<span>${line}</span><small>${sel.vs===1?passLine(sel.game,sel.diff):vsLine(sel.game,sel.diff)}</small><small>${pWho(0)} · ${pWho(1)}</small>`; box.classList.add('on'); $('#sheet').classList.add('two'); }
+// the player row (v11): Solo / With a friend, and under a friend, Pass & play / Versus where versus exists
+function renderVsRow(){ const g=sel.game; const vsOk=versusOf(g,sel.diff); if(sel.vs===2&&!vsOk) sel.vs=1;
+  $$('#vs-row [data-vs]').forEach(c=>c.classList.toggle('sel',(c.dataset.vs==='0')===(sel.vs===0)));
+  const sub=$('#vs-sub'); const showSub=sel.vs>0; sub.hidden=!showSub; sub.querySelector('[data-vs2="2"]').hidden=!vsOk; $$('#vs-sub [data-vs2]').forEach(c=>c.classList.toggle('sel',+c.dataset.vs2===sel.vs)); }
+function setStage(st){ stage=st; const g=GAMES[sel.game]; $('#grid').classList.toggle('dim',st!=='grid'); $('#sheet').classList.toggle('up',st!=='grid'); $('#sheet').classList.toggle('len',st==='len');
+  $('#diff-row').classList.toggle('single',g.modes.length===1);
+  $('#seq-opts').style.display='none'; $('#vs-wrap').style.display=st==='mode'||(st==='len'&&g.modes.length===1)?'':'none'; renderVsRow();
+  if(st==='grid'){ $$('.tile').forEach(t=>t.classList.remove('keep')); } $('#sheet-title').textContent=g.name+(sel.vs===1?' · pass & play':sel.vs===2?' · versus':''); $('#len-title').textContent=GC(sel.game,sel.diff).lenWord||'';
+  renderVsArt(); $('#lvl-mode').textContent=MODE_NAME[sel.diff]||''; $('#lvl-back').style.display=g.modes.length>1?'':'none'; }
+// locked games are greyed with the condition on the tile (v6). Each tile wears its own game's colours (v10). v11: a padlock badge; the first visit reveals the grid tile by tile; a padlock wipes off when its game opens
+function renderTiles(){ const seen=load('ne.tileSeen',{}); let ch=false; const reveal=!prefs.gridSeen; if(reveal){ prefs.gridSeen=1; save('ne.prefs',prefs); }
+  $$('.tile[data-game]').forEach((t,i)=>{ const g=t.dataset.game, open=gameOpen(g); t.classList.toggle('locked',!open); t.querySelector('.pic').dataset.need=open?'':'to unlock: '+needFor(g,GAMES[g].modes[0]); const c=colOf(g); t.style.setProperty('--sq-live',c.sq); t.style.setProperty('--cue',c.lead);
+    t.classList.remove('reveal','unlocking'); t.style.animationDelay=''; if(reveal){ t.classList.add('reveal'); t.style.animationDelay=(i*120)+'ms'; }
+    if(open&&!seen[g]){ seen[g]=1; ch=true; if(g!=='quick-tap'&&!reveal){ t.classList.add('unlocking'); setTimeout(()=>t.classList.remove('unlocking'),700); } } });
+  if(ch) save('ne.tileSeen',seen); }
+// a locked mode (v11) is crossed out, not just greyed; tapping it says what it takes
+function fillSheet(){ const g=GAMES[sel.game]; $('#diff-row').innerHTML=g.modes.map(d=>{ const open=isOpen(sel.game,d); return `<button class="choice ${open?'':'locked'}" data-diff="${d}"><span class="pic">${g.pic(d)}</span><span class="txt"><b class="${open?'':'x'}">${MODE_NAME[d]}</b><small>${open?g[d]:'To unlock: '+needFor(sel.game,d)}</small></span></button>`; }).join(''); }
+function back(){ if(performance.now()-shownAt<450) return; const s=$('.screen.on'); if(!s) return;
+  if(s.id==='s-pick'){ if(stage==='len'){ if(GAMES[sel.game].modes.length===1) setStage('grid'); else setStage('mode'); } else if(stage==='mode') setStage('grid'); else show('s-menu'); return; }
+  if(s.dataset.back) show(s.dataset.back); }
+// the length face (v11): the name with its seconds beside it on the pick sheet, the best underneath; a locked length is crossed out
+const lenFace=(g,s,d)=>{ if(g==='sequence') return `<span class="keys">${'<i></i>'.repeat(s)}</span>`; const sub=lenSub(g,s,d); return `${lenName(g,s,d)}${sub?`<small>${sub}</small>`:''}`; };
+// the length buttons only select (v10); Go starts. The whole block slides up together, the same for every game. Pass & play fixes the length; versus has none (Reaction versus has a best-of)
+function fillTimes(){ const g=GAMES[sel.game], c=GC(sel.game,sel.diff); const seq=sel.game==='sequence'; const versus=sel.vs===2&&versusOf(sel.game,sel.diff); const lens=lensOf(sel.game,sel.diff,versus?2:0); if(!lens.includes(sel.secs)||!versus&&!lenOpen(sel.game,sel.diff,sel.secs)) sel.secs=lens.find(s=>versus||lenOpen(sel.game,sel.diff,s))||lens[0];
+  const fixed=sel.vs===1&&(PASS_LEN[sel.game]||SHARED2(sel.game,sel.diff)), hideLen=fixed||(versus&&!c.vsLens);
+  $('#time-row').style.display=hideLen?'none':''; $('#len-title').style.display=hideLen?'none':''; $('#len-title').textContent=versus?'best of':c.lenWord||'';
+  $('#time-row').innerHTML=lens.map(s=>{ const best=Scores.best(sel.game,sel.diff,s); const pro=s===c.pro, L=versus?null:lenLock(sel.game,sel.diff,s); return `<button class="tbtn ${sel.secs===s?'sel':''} ${L?'locked':''}" data-time="${s}"><b class="${L?'x':''}">${lenFace(sel.game,s,sel.diff)}</b><small>${pro?'pro · ':''}${seq?s+' keys · ':''}${L?'locked':best!==null?`${c.lower?'closest':'best'} ${scoreTxt(sel.game,best,sel.diff,s)}`:'no run yet'}</small></button>`; }).join('');
+  $('#scale-row').innerHTML=`<span class="chip lbl">scale</span>`+Object.entries(SCALES).map(([k,v])=>`<button class="chip ${sel.scale===k?'sel':''}" data-scale="${k}">${v.name}</button>`).join('');
+  $('#prac-row').innerHTML=`<span class="chip lbl">practice from</span>`+[0,5,10,15].map(n=>`<button class="chip ${sel.practice===n?'sel':''}" data-prac="${n}">${n||'off'}</button>`).join('');
+  $('#seq-opts').style.display=seq&&stage==='len'&&!sel.vs?'flex':'none';
+  $('#go-btn').textContent=versus?'Go · versus':fixed?(PASS_LEN[sel.game]&&!SHARED2(sel.game,sel.diff)?`Go · ${PASS_LEN[sel.game]}s each`:'Go · pass & play'):'Go'; }
+// the "beat my score" share (v11): navigator.share, or the clipboard with a toast
+function shareRun(){ const r=lastRun; if(!r) return; const c=GC(r.g,r.d,r.s); const bits=['No Excuses',c.name+(MODE_NAME[r.d]?' '+MODE_NAME[r.d]:''),lenName(r.g,r.s,r.d),scoreTxt(r.g,r.hits,r.d,r.s)+(c.scoreWord&&!c.suffix?' '+c.scoreWord:'')]; if(c.timed) bits.push((r.hits/r.s).toFixed(1)+'/s');
+  const text=bits.join(' · ')+' — beat my score: '+PUB_URL;
+  if(navigator.share){ navigator.share({text}).catch(()=>{}); return; } if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(()=>toast('Copied · paste it anywhere'),()=>toast(text)); } else toast(text); }
+let eggTaps=0;
+// a tap on a control that picks something is a select(); everything else is a click() (v11)
+const isPick=b=>b.classList.contains('chip')||b.classList.contains('choice')||b.classList.contains('tbtn')||b.classList.contains('tile')||b.classList.contains('mch')||b.classList.contains('opt')||b.dataset.vs2!==undefined||!!b.closest('.sw');
+const fmtScore=(g,v,d,s)=>{ const c=GC(g,d,s); return c.fmt?c.fmt(v):v; };
+function rows(g,d,s,list,curT){ const cfg=GC(g,d,s), c=cfg.cols; return list.length ? list.map((r,i)=>`<tr class="${i===0&&(r.hits>0||cfg.lower)?'best':''} ${r.t===curT?'cur':''}"><td>${i+1}</td><td></td><td>${fmtScore(g,r.hits,d,s)}</td><td>${c[0][1](r)}</td><td>${c[1][1](r)}</td><td>${new Date(r.t).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'2-digit'})}</td></tr>`).join('') : '<tr><td colspan="6">No runs here yet.</td></tr>'; }
+// the profile radar (v9): one axis per game, your best quality 0..1 in any mode and length of it. Every lower-is-better config's quality() already runs 1 − (score/limit), so the radar reads the same way for every game (checked v11)
+function renderRadar(){ const all=Scores.runs(), ids=Object.keys(GAMES), n=ids.length, C=100, R=88; const vals=ids.map(g=>Math.min(1,Math.max(0,...all.filter(r=>r.g===g&&!r.practice).map(r=>{ try{ return GC(g,r.d,r.s).quality(r)||0; }catch(e){ return 0; } }))));
+  const pt=(i,k)=>{ const a=-Math.PI/2+i/n*2*Math.PI; return [C+Math.cos(a)*R*k,C+Math.sin(a)*R*k]; }; const P=k=>ids.map((_,i)=>pt(i,k).map(v=>v.toFixed(1)).join(',')).join(' ');
+  $('#radar').innerHTML=[.25,.5,.75,1].map(k=>`<polygon class="web" points="${P(k)}"/>`).join('')+ids.map((_,i)=>{ const [x,y]=pt(i,1); return `<line x1="${C}" y1="${C}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`; }).join('')
+    +`<polygon class="me" points="${ids.map((_,i)=>pt(i,Math.max(.03,vals[i])).map(v=>v.toFixed(1)).join(',')).join(' ')}"/>`+ids.map((_,i)=>{ const [x,y]=pt(i,Math.max(.03,vals[i])); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.5"/>`; }).join('')
+    +ids.map((g,i)=>{ const [x,y]=pt(i,1.19); return `<text x="${x.toFixed(1)}" y="${(y+3).toFixed(1)}" text-anchor="middle">${GAMES[g].name} ${Math.round(vals[i]*100)}</text>`; }).join(''); }
+function chips(scope,key,val){ $$(`[data-chip="${scope}-${key}"]`).forEach(c=>c.classList.toggle('sel',String(c.dataset.v)===String(val))); }
+function renderBoard(){ $('#pstar').textContent=prefs.supporter?'★':''; const g=F.bd.g; if(!GAMES[g].modes.includes(F.bd.d)) F.bd.d=GAMES[g].modes[0]; const lens=lensOf(g,F.bd.d); if(!lens.includes(F.bd.s)) F.bd.s=lens[0];
+  $('#bd-g').innerHTML=Object.entries(GAMES).map(([id,x])=>`<button class="chip" data-chip="bd-g" data-v="${id}">${x.name}</button>`).join('');
+  $('#bd-d').innerHTML=GAMES[g].modes.length>1?GAMES[g].modes.map(d=>`<button class="chip" data-chip="bd-d" data-v="${d}">${MODE_NAME[d]}</button>`).join(''):'';
+  $('#bd-s').innerHTML=lens.length>1?lens.map(s=>`<button class="chip" data-chip="bd-s" data-v="${s}">${lenName(g,s,F.bd.d)}${s===GC(g,F.bd.d).pro?' · pro':''}</button>`).join(''):'';
+  chips('bd','g',g); chips('bd','d',F.bd.d); chips('bd','s',F.bd.s);
+  const cfg=GC(g,F.bd.d,F.bd.s), c=cfg.cols; $('#runs-h').innerHTML=`<tr><th>rank</th><th></th><th>${cfg.scoreWord||'score'}${cfg.lower?' ▼':''}</th><th>${c[0][0]}</th><th>${c[1][0]}</th><th>date</th></tr>`;
+  $('#runs').innerHTML=rows(g,F.bd.d,F.bd.s,Scores.of(g,F.bd.d,F.bd.s).slice(0,10),lastRun?.t); }
+let lastRun=null;
+// the result screen's options (v10): players, mode, length, scale — pick, then Go. What you were just playing is pre-selected. v11: Solo / With a friend, then Pass & play / Versus; locked modes and lengths are crossed out and cannot be picked
+function renderOverChips(){ const g=GAMES[sel.game]; const vsOk=versusOf(sel.game,sel.diff); if(sel.vs===2&&!vsOk) sel.vs=1;
+  $('#over-vs').innerHTML=`<button class="chip ${sel.vs===0?'sel':''}" data-chip="over-vs" data-v="0">solo</button><button class="chip ${sel.vs?'sel':''}" data-chip="over-vs" data-v="f">with a friend</button>`+(sel.vs?`<span class="chip lbl">·</span><button class="chip ${sel.vs===1?'sel':''}" data-chip="over-vs2" data-v="1">pass &amp; play</button>${vsOk?`<button class="chip ${sel.vs===2?'sel':''}" data-chip="over-vs2" data-v="2">versus</button>`:''}`:'');
+  $('#over-chips').innerHTML=g.modes.length>1?g.modes.map(d=>{ const open=isOpen(sel.game,d); return `<button class="mch ${d===sel.diff?'sel':''} ${open?'':'locked'}" data-chip="over-d" data-v="${d}"><span class="pic">${g.pic(d)}</span><b class="${open?'':'x'}">${MODE_NAME[d]}</b></button>`; }).join(''):'';
+  const versus=sel.vs===2&&vsOk, c=GC(sel.game,sel.diff), lens=lensOf(sel.game,sel.diff,versus?2:0), fixed=sel.vs===1&&(PASS_LEN[sel.game]||SHARED2(sel.game,sel.diff));
+  if(!lens.includes(sel.secs)||!versus&&!lenOpen(sel.game,sel.diff,sel.secs)) sel.secs=lens.find(s=>versus||lenOpen(sel.game,sel.diff,s))||lens[0];
+  $('#over-chips2').innerHTML=lens.length>1&&!fixed&&(!versus||c.vsLens)?lens.map(s=>{ const L=versus?null:lenLock(sel.game,sel.diff,s); return `<button class="chip ${s===sel.secs?'sel':''} ${L?'locked x':''}" data-chip="over-s" data-v="${s}">${lenName(sel.game,s,sel.diff)}${s===c.pro?' · pro':''}</button>`; }).join(''):'';
+  $('#over-chips3').innerHTML=sel.game==='sequence'&&!sel.vs?Object.entries(SCALES).map(([k,v])=>`<button class="chip ${k===sel.scale?'sel':''}" data-chip="over-sc" data-v="${k}">${v.name}</button>`).join(''):'';
+  $('#again').textContent=versus?'Go · versus':fixed?(PASS_LEN[sel.game]&&!SHARED2(sel.game,sel.diff)?`Go · ${PASS_LEN[sel.game]}s each`:'Go · pass & play'):'Go'; }
+// the top 10 under the result (v11) follows the mode and length picked in the chips, not only the run just played
+function renderOverTop(){ const run=lastRun; const g=GC(sel.game,sel.diff,sel.secs); const two=sel.vs>0; $('#over-top').style.display=two||(run&&run.practice)?'none':''; if(two) return;
+  const top=Scores.of(sel.game,sel.diff,sel.secs).slice(0,10);
+  $('#over-top-title').textContent=`top 10 · ${g.name}${MODE_NAME[sel.diff]?' · '+MODE_NAME[sel.diff]:''} · ${lenName(sel.game,sel.secs,sel.diff)}${g.lower?' · closest first':''}`;
+  $('#over-runs').innerHTML=top.length?top.map((r,i)=>`<tr class="${run&&r.t===run.t?'cur':''}"><td>${i+1}</td><td></td><td>${scoreTxt(sel.game,r.hits,r.d,r.s)}</td><td>${new Date(r.t).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'2-digit'})}</td></tr>`).join(''):'<tr><td colspan="4">No runs here yet.</td></tr>'; }
+function renderOver(run){ const g=GC(run.g,run.d,run.s);
+  renderOverChips();
+  // vs (v9): both scores side by side, the winner in green. Versus (v10) carries its own pair of counts. v11: Player 1 red, Player 2 blue
+  const vb=$('#vsbox');
+  if(run.vs2){ const {a,b}=run.vs2, tie=a===b; const lo=run.vs2.lower; const w1=lo?a<b:a>b; vb.innerHTML=`<div class="${!tie&&w1?'win':''}">${pWho(0)}<b>${run.vs2.txt?run.vs2.txt[0]:a}</b></div><em>vs</em><div class="${!tie&&!w1?'win':''}">${pWho(1)}<b>${run.vs2.txt?run.vs2.txt[1]:b}</b></div>`; vb.classList.add('on'); }
+  else if(VS.on&&VS.stage===2&&VS.p1&&VS.p2){ const lo=g.lower, a=VS.p1.hits, b=VS.p2.hits, tie=a===b, w1=lo?a<b:a>b; vb.innerHTML=`<div class="${!tie&&w1?'win':''}">${pWho(0)}<b>${scoreTxt(run.g,a,run.d,run.s)}</b></div><em>vs</em><div class="${!tie&&!w1?'win':''}">${pWho(1)}<b>${scoreTxt(run.g,b,run.d,run.s)}</b></div>`; vb.classList.add('on'); } else vb.classList.remove('on');
+  const two=!!run.vs2||VS.on; $('#adslot').classList.toggle('off',!!prefs.supporter); $('#share').hidden=!!run.practice||two||(run.fail&&!run.hits);
+  renderOverTop();
+  if(run.practice||two){ $('#over-stats').innerHTML=''; $('#over-rank').innerHTML=run.practice?'practice · nothing recorded':'two players · nothing recorded'; return; }
+  const best=Scores.best(run.g,run.d,run.s);
+  const peak=run.peak?`<span>peak <b>${run.peak.toFixed(1)}/s</b></span>`:'';
+  $('#over-stats').innerHTML=`<span>${g.cols[0][0]} <b>${g.cols[0][1](run)}</b></span><span>${g.lower?'closest':'best'} <b>${best===null?'—':scoreTxt(run.g,best,run.d,run.s)}</b></span><span>${g.cols[1][0]} <b>${g.cols[1][1](run)}</b></span>${peak}`;
+  const rk=Scores.rank(run); $('#over-rank').innerHTML = rk&&rk<=10 ? `rank <b>${rk}</b> of 10 · ${prefs.name||'you'}` : `outside the top 10 · ${prefs.name||'you'}`; }
+
+function setLastRun(v){ lastRun=v; }
+function setMenuWasFirst(v){ menuWasFirst=v; }
+function bumpEggTaps(){ eggTaps++; }
+
+
+export { DESIGNS, F, ITEMS, PV, Story, VS, VS_ART, Wheel, applyPrefs, back, bumpEggTaps, chips, colOf, devState, eggTaps, fillSheet, fillTimes, firstRun, fmtScore, freshGame, isPick, lastRun, lenFace, lockedBy, menuIn, menuWasFirst, nextWhere, passLine, prefs, pvG, pvPop, pvSeen, pvStep, pvTap, pvTry, renderBoard, renderCustom, renderMenu, renderOver, renderOverChips, renderOverTop, renderRadar, renderTier, renderTiles, renderVsArt, renderVsRow, rows, sel, setLastRun, setMenuWasFirst, setStage, shareRun, show, shownAt, stage, vsLine };
