@@ -11,7 +11,6 @@ import { CHAL } from "./core/platform.js";
 import { sel } from "./core/state.js";
 import { prefs, save } from "./core/store.js";
 import { G, cur } from "./engine-core.js";
-import { DT } from "./games/dots/index.js";
 import { HD } from "./games/estimate/index.js";
 import { SQ } from "./games/sequence/index.js";
 import { Story, firstRun, menuIn, setMenuWasFirst } from "./menu.js";
@@ -47,7 +46,7 @@ const ptr=(e,type,more)=>Object.assign({ type, x:e.clientX, y:e.clientY, el:e.ta
 $$('[data-vs-side]').forEach(p=>p.addEventListener('pointerdown',e=>{ e.preventDefault(); const [pl,i]=p.dataset.vsSide.split(':').map(Number); inp(ptr(e,'down',{player:pl,target:i})); }));
 $('#vfield').addEventListener('pointerdown',e=>{ e.preventDefault(); inp(ptr(e,'down')); });
 $$('.pad[data-side]').forEach(p=>p.addEventListener('pointerdown',e=>{ e.preventDefault(); inp(ptr(e,'down',{target:+p.dataset.side}),()=>tapAt(+p.dataset.side===G.target)); }));
-$('#field').addEventListener('pointerdown',e=>{ e.preventDefault(); inp(ptr(e,'down'),()=>DT.onDown(e)); });
+$('#field').addEventListener('pointerdown',e=>{ e.preventDefault(); inp(ptr(e,'down')); });
 $('#hfield').addEventListener('pointerdown',e=>{ e.preventDefault(); inp(ptr(e,'down'),()=>HD.down(e)); });
 $('#hfield').addEventListener('pointermove',e=>{ inp(ptr(e,'move'),()=>HD.cutMove(e)); });
 ['pointerup','pointercancel','pointerleave'].forEach(ev=>$('#hfield').addEventListener(ev,e=>inp(ptr(e,'up'),()=>HD.up())));

@@ -4,11 +4,12 @@
    keep their formatters and predicates under those keys. */
 import { GAMES, LEN_NAME, STREAK } from "../config/games.js";
 import VX from "./_shared/versus.js";
+import DT from "./dots/index.js";
 import QT from "./quick-tap/index.js";
 
 // build 17 (refactor stage 3): the engines by id — run/run.js is the only caller. A new game = one folder + one line here + config rows.
 // VERSUS is the one-phone-two-ends engine Quick Tap and Dots share. Ported one engine per commit; an id missing here still runs through app.js
-const ENGINES={ 'quick-tap':QT };
+const ENGINES={ 'quick-tap':QT, 'dots':DT };
 const VERSUS=VX;
 
 const N_GAMES=Object.keys(GAMES).length;

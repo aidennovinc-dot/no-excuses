@@ -11,7 +11,6 @@ import { Ads } from "./ui/ads.js";
 import { F, VS, sel } from "./core/state.js";
 import { load, prefs, save } from "./core/store.js";
 import { G, cur, setCur } from "./engine-core.js";
-import { DT } from "./games/dots/index.js";
 import { HD } from "./games/estimate/index.js";
 import { RX } from "./games/reaction/index.js";
 import { GAMES, GC, SHARED2, lenName, versusOf } from "./games/registry.js";
@@ -24,7 +23,7 @@ import { Scores, UNLOCKS, chalRun, checkAch, checkUnlocks, goalFor, isOpen, lenO
 import { scoreTxt } from "./ui/format.js";
 import { toast } from "./ui/toast.js";
 // build 17 transition: the engines not yet ported to run/run.js. Each port removes one; the last removes this file
-const ENGINE={ 'dots':DT, 'hold':HD, 'sequence':SQ, 'timing':TM, 'reaction':RX, 'spot':SP };
+const ENGINE={ 'hold':HD, 'sequence':SQ, 'timing':TM, 'reaction':RX, 'spot':SP };
 
 /* ---------- first play of a mode (v6): a ghost finger plays two or three beats under a one-liner, then the countdown. Tap to skip ---------- */
 const Intro=(()=>{
@@ -36,9 +35,6 @@ const Intro=(()=>{
   const move=el=>{ const c=centre(el); at(c.x,c.y); ghost.classList.add('on'); };
   function clear(){ timers.forEach(clearTimeout); timers=[]; ghost.classList.remove('on','hold','tap'); ghost.style.transition='none'; $('#intro').classList.remove('on'); }
   const SCRIPT={
-    'dots'(){ G.pos=DT.rnd(null); G.prevPos=null; G.nextPos=DT.rnd(G.pos); DT.render(true); const f=()=>$('#field').getBoundingClientRect(); const dot=()=>{ const r=f(); at(r.left+G.pos.x+DT.sz/2,r.top+G.pos.y+DT.sz/2); ghost.classList.add('on'); };
-      const step=()=>{ tap(); DT.advance(); DT.render(true); DT.ring(); };
-      later(dot,250); later(step,850); later(dot,1000); later(step,1700); later(dot,1850); later(()=>{ tap(); DT.render(false); },2550); return 3000; },
     'hold'(){ HD.begin(); const c=()=>centre($('#hfield')); let t=0;
       const poll=()=>{ if(HD.st==='wait'){ const p=c(); at(p.x,p.y+40); ghost.classList.add('on'); later(()=>{ ghost.classList.add('hold'); HD.down(); const dur=HD.target/(CFG.holdRate*vmin())*1000; later(()=>{ HD.up(); ghost.classList.remove('hold'); HD.clearT(); later(()=>done&&done(),1300); },dur); },400); } else if(t++<60) later(poll,100); };
       later(poll,200); return 0; },
