@@ -11,10 +11,10 @@ import { $, $$, T } from "../core.js";
 import { CHAL } from "../core/platform.js";
 import { F, VS, sel } from "../core/state.js";
 import { prefs, save } from "../core/store.js";
-import { SQ } from "../games/sequence/index.js";
 import { GAMES, GC } from "../games/registry.js";
 import { Story, Wheel, applyPrefs, askUnlock, back, bumpEggTaps, devState, eggTaps, fillSheet, fillTimes, freshGame, gotoAch, isPick, itemsOf, jumpTo, lockGo, nextWhere, openChallenge, openSheet, pvSeen, pvTry, renderAch, renderBoard, renderCustom, renderOverChips, renderOverTop, renderVsArt, renderVsRow, setStage, shareRun, show, stage } from "../menu.js";
 import { achById, got, isOpen, lenOpen, unlockHtml } from "../progress.js";
+import * as Run from "../run/run.js";
 import { Ads } from "./ads.js";
 import { toast } from "./toast.js";
 
@@ -26,7 +26,7 @@ const ACTIONS={
   none(b){ return isPick(b)?'pick':'click'; },
   quit(){ abort(); return 'click'; },
   'wheel-done'(){ Wheel.close(); return 'click'; },
-  seqdone(){ SQ.done(); return 'click'; },
+  seqdone(){ Run.input({type:'act',target:'seqdone'}); return 'click'; },
   'over-back'(){ openSheet(sel.game,GAMES[sel.game].modes.length>1?sel.diff:undefined); return 'click'; },
   share(){ shareRun(); return 'click'; },
   back(){ back(); return 'click'; },

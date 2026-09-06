@@ -15,7 +15,6 @@ import { HD } from "./games/estimate/index.js";
 import { RX } from "./games/reaction/index.js";
 import { GAMES, GC, SHARED2, lenName, versusOf } from "./games/registry.js";
 import { rxBar } from "./games/_shared/round.js";
-import { SQ } from "./games/sequence/index.js";
 import { SP } from "./games/spot/index.js";
 import { TM } from "./games/timing/index.js";
 import { applyPrefs, askUnlock, renderOver, renderOverChips, setLastRun, show } from "./menu.js";
@@ -23,7 +22,7 @@ import { Scores, UNLOCKS, chalRun, checkAch, checkUnlocks, goalFor, isOpen, lenO
 import { scoreTxt } from "./ui/format.js";
 import { toast } from "./ui/toast.js";
 // build 17 transition: the engines not yet ported to run/run.js. Each port removes one; the last removes this file
-const ENGINE={ 'hold':HD, 'sequence':SQ, 'timing':TM, 'reaction':RX, 'spot':SP };
+const ENGINE={ 'hold':HD, 'timing':TM, 'reaction':RX, 'spot':SP };
 
 /* ---------- first play of a mode (v6): a ghost finger plays two or three beats under a one-liner, then the countdown. Tap to skip ---------- */
 const Intro=(()=>{
@@ -38,8 +37,6 @@ const Intro=(()=>{
     'hold'(){ HD.begin(); const c=()=>centre($('#hfield')); let t=0;
       const poll=()=>{ if(HD.st==='wait'){ const p=c(); at(p.x,p.y+40); ghost.classList.add('on'); later(()=>{ ghost.classList.add('hold'); HD.down(); const dur=HD.target/(CFG.holdRate*vmin())*1000; later(()=>{ HD.up(); ghost.classList.remove('hold'); HD.clearT(); later(()=>done&&done(),1300); },dur); },400); } else if(t++<60) later(poll,100); };
       later(poll,200); return 0; },
-    'sequence'(){ const k=i=>$(`.key[data-k="${i}"]`); later(()=>SQ.light(0,500,300),300); later(()=>SQ.light(2,500,300),800);
-      later(()=>move(k(0)),1300); later(()=>{ tap(); SQ.light(0,700,180); },1650); later(()=>move(k(2)),1850); later(()=>{ tap(); SQ.light(2,700,180); },2200); return 2900; },
   };
   return {
     run(cb){ const key=sel.game+':'+sel.diff, s=load('ne.intro',{}); if(s[key]) return cb(); s[key]=Date.now(); save('ne.intro',s);
@@ -78,9 +75,8 @@ function start(){
   pbShow(); setPendingAim(''); setPendingGoal(null);
   Music.start(sel.game,G,sel.secs);
   if(g.timed) cur.render(false);
-  if(sel.game==='sequence') SQ.build();
   // first time in a mode: the ghost demo, then the countdown (v6). The keys run the scale under the 3-2-1 (v5)
-  Intro.run(()=>{ if(sel.game==='sequence') SQ.demo();
+  Intro.run(()=>{
     countdown(()=>{
       if(!g.timed){ cur.begin(); return; }
       G.t0=performance.now(); G.end=G.t0+sel.secs*1000; cur.begin(); G.armed=true; arm();

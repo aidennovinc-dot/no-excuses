@@ -12,7 +12,6 @@ import { sel } from "./core/state.js";
 import { prefs, save } from "./core/store.js";
 import { G, cur } from "./engine-core.js";
 import { HD } from "./games/estimate/index.js";
-import { SQ } from "./games/sequence/index.js";
 import { Story, firstRun, menuIn, setMenuWasFirst } from "./menu.js";
 import { ACH, got, seedSeen, seenAll, unlockHtml } from "./progress.js";
 import * as Run from "./run/run.js";
@@ -50,7 +49,7 @@ $('#field').addEventListener('pointerdown',e=>{ e.preventDefault(); inp(ptr(e,'d
 $('#hfield').addEventListener('pointerdown',e=>{ e.preventDefault(); inp(ptr(e,'down'),()=>HD.down(e)); });
 $('#hfield').addEventListener('pointermove',e=>{ inp(ptr(e,'move'),()=>HD.cutMove(e)); });
 ['pointerup','pointercancel','pointerleave'].forEach(ev=>$('#hfield').addEventListener(ev,e=>inp(ptr(e,'up'),()=>HD.up())));
-$('#seq').addEventListener('pointerdown',e=>{ const k=e.target.closest('.key'); if(k){ e.preventDefault(); inp(ptr(e,'down',{target:+k.dataset.k}),()=>SQ.press(+k.dataset.k)); } });
+$('#seq').addEventListener('pointerdown',e=>{ const k=e.target.closest('.key'); if(k){ e.preventDefault(); inp(ptr(e,'down',{target:+k.dataset.k})); } });
 $('#gen').addEventListener('pointerdown',e=>{ e.preventDefault(); inp(ptr(e,'down'),()=>{ if(cur&&cur.onDown&&G.on) cur.onDown(e); }); });
 // the keyboard, for the desk: Escape quits; space is the tap in Timing, Reaction and Estimate; arrows are Quick Tap's pads; 1–7 are Sequence's keys
 window.addEventListener('keydown',e=>{ if(!(Run.active()||G.on)||e.repeat) return;
@@ -59,7 +58,7 @@ window.addEventListener('keydown',e=>{ if(!(Run.active()||G.on)||e.repeat) retur
   if((sel.game==='timing'||sel.game==='reaction')&&e.key===' ') inp(key,()=>cur.onDown({target:document.body,clientX:0,clientY:0}));
   if(sel.game==='quick-tap'){ const m={ArrowLeft:0,ArrowRight:1,ArrowUp:2,ArrowDown:3}; if(e.key in m) inp({...key,target:m[e.key]},()=>tapAt(G.target===m[e.key])); }
   if(sel.game==='hold'&&e.key===' ') inp(key,()=>HD.down());
-  if(sel.game==='sequence'&&/^[1-7]$/.test(e.key)) inp({...key,target:+e.key-1},()=>SQ.press(+e.key-1)); });
+  if(sel.game==='sequence'&&/^[1-7]$/.test(e.key)) inp({...key,target:+e.key-1}); });
 window.addEventListener('keyup',e=>{ if(sel.game==='hold'&&e.key===' ') inp({ type:'up', x:0, y:0, el:document.body },()=>HD.up()); });
 
 startAtmosphere();
