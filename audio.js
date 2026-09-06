@@ -59,5 +59,9 @@ const Music=(()=>{
            stop(){ clearInterval(timer); tr=null; } };
 })();
 
+// build 18 (refactor stage 4, was in boot.js): every touch and every return to the foreground checks the context is running; the first touch unlocks it
+document.addEventListener('pointerdown',()=>{ if(ac&&ac.state!=='running'){ try{ ac.resume(); }catch(e){} } },{capture:true,passive:true});
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&ac&&ac.state!=='running'){ try{ ac.resume(); }catch(e){} } });
+document.addEventListener('pointerdown',()=>Snd.unlock(),{once:true});
 
 export { AC, Music, Snd, ac };

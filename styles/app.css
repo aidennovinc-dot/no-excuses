@@ -1,0 +1,869 @@
+/* No Excuses — styles (build 18, refactor stage 4). One file, in sections that match the folders: a change to one screen
+   or one game touches one section. Within a section the rules keep the order they had in build 13 — the later "v10 / v11 /
+   v13" layers sit under the base rules they refine. The gate's cssdiff tool (_smoke/cssdiff.mjs) proved the computed styles
+   identical to the single-block version across every screen and game state when this split was made. */
+
+/* ==================================================================
+   shell — index.html, core/ — the root, type, buttons, chips, the screen frame, tables, the build bar
+   ================================================================== */
+  /* No Excuses — styles (build 18, refactor stage 4). Moved out of index.html as one block; the sections come next. */
+  #build{position:fixed;left:0;right:0;bottom:max(6px,env(safe-area-inset-bottom));text-align:center;font:500 11px/1 var(--mono);color:var(--mute);pointer-events:none;z-index:50;opacity:.7}
+  #update{display:none;position:fixed;left:16px;right:16px;bottom:max(28px,calc(env(safe-area-inset-bottom) + 24px));z-index:60;padding:14px;border-radius:12px;background:var(--ok);color:#000;font:800 14px var(--display);text-align:center;border:0}
+  #update.on{display:block}
+  :root{
+    --ground:#050506; --ink:#E8E6E1; --mute:#6E6C68;
+    --panel:color-mix(in srgb,var(--ground) 94%,#fff); --line:color-mix(in srgb,var(--ground) 86%,#fff); --sq:color-mix(in srgb,var(--ground) 90%,#fff);
+    --sq-live:#FFFFFF; --cue:#C8322A; --miss:#B3261E; --ok:#3DD68C;
+    --glow:rgba(232,230,225,.30);
+    --title:"Syncopate","Michroma",var(--display); --display:"Archivo",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  /* v13 (3.1): a `.chips` row set display:flex, which outranks the browser's own [hidden] rule — that is why Solo still showed Pass & play / Versus */
+  [hidden]{display:none!important}
+  html,body{height:100%;background:var(--ground);color:var(--ink);font-family:var(--display);overflow:hidden;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  body{position:fixed;inset:0}
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;padding-top:max(24px,env(safe-area-inset-top))}
+  .screen.on{display:flex}
+  .screen.top{justify-content:flex-start;gap:12px;padding-top:max(18px,env(safe-area-inset-top))}
+  .wordmark{font-family:var(--title);font-weight:700;font-size:clamp(24px,6.6vw,44px);letter-spacing:.2em;text-transform:uppercase;text-align:center;padding-left:.2em;color:var(--ink);pointer-events:none;
+    text-shadow:0 0 12px var(--glow);animation:breathe 14s ease-in-out infinite,float 13s ease-in-out infinite}
+  @keyframes breathe{50%{text-shadow:0 0 22px var(--glow),0 0 44px rgba(232,230,225,.10)}}
+  @keyframes float{0%,100%{translate:0 0;rotate:0deg}30%{translate:4px -5px;rotate:.4deg}65%{translate:-4px 3px;rotate:-.35deg}}
+  .glow{animation:softglow 9s ease-in-out infinite}
+  @keyframes softglow{50%{text-shadow:0 0 10px rgba(232,230,225,.22)}}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--mute)}
+  button{font:inherit;color:var(--ink);background:none;border:0;cursor:pointer}
+  button:focus-visible{outline:1px solid var(--ink);outline-offset:4px}
+  .item{font-weight:500;font-size:20px;letter-spacing:.14em;text-transform:uppercase;padding:11px 18px;opacity:.85}
+  .item:hover,.item:focus-visible{opacity:1;outline:none;text-decoration:underline;text-underline-offset:8px}
+  .item.sub{font-size:17px}
+  .item.big{font-size:22px;border:1px solid var(--ink);padding:14px 40px;opacity:1}
+  .explain{max-width:36ch;text-align:center;color:var(--mute);font-size:15px;line-height:1.55}
+  .row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;align-items:center}
+  .back{font-family:var(--mono);font-size:12px;letter-spacing:.18em;color:var(--mute);padding:10px 14px;margin-bottom:6px;align-self:flex-start}
+  .hint{font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--mute);opacity:.6;text-transform:uppercase;margin-top:8px;text-align:center;line-height:1.6}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+  .chip{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;padding:7px 11px;border:1px solid var(--line);color:var(--mute)}
+  .chip.sel{color:var(--ink);border-color:var(--ink)}
+  .chip.lbl{border:0;padding-left:0;padding-right:4px}
+  .big{font-family:var(--mono);font-weight:700;font-size:clamp(56px,15vw,110px);line-height:1;font-variant-numeric:tabular-nums}
+  .big.sm{font-size:clamp(40px,11vw,80px)}
+  /* lists */
+  table{border-collapse:collapse;font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;width:min(92vw,440px)}
+  th{font-weight:500;color:var(--mute);letter-spacing:.16em;text-transform:uppercase;font-size:10px;text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+  td{padding:9px 8px;border-bottom:1px solid var(--line);color:var(--mute);white-space:nowrap}
+  td:nth-child(3){color:var(--ink);font-weight:700}
+  td:nth-child(2){color:var(--ink);letter-spacing:.06em}
+  tr.best td{color:var(--sq-live)}
+  tr.cur td{background:color-mix(in srgb,var(--ink) 6%,transparent)}
+  .scroll{max-height:60vh;overflow-y:auto;width:min(92vw,440px)}
+  /* ---------- v11 ---------- */
+  :root{--p1:#E0453B;--p2:#6EC6FF}
+  .p1{color:var(--p1)}
+  .p2{color:var(--p2)}
+  @keyframes brighten{0%{opacity:.35}100%{opacity:.85}}
+  .chip.x::after{left:6px;right:6px}
+  /* everything that appears on a tap rises in (v11): ~12px and a fade over 180ms */
+  @keyframes rise{0%{opacity:0;translate:0 12px}100%{opacity:1;translate:0 0}}
+  .big .dn{font-size:.32em;vertical-align:.5em;color:var(--mute);margin-left:.1em}
+  /* ---------- v13 ---------- */
+  /* 2.1 / L8: anything newly unlocked swells and tints green the first time it is on screen, then is marked seen. One animation, every screen */
+  @keyframes newthing{0%{scale:1;background-color:color-mix(in srgb,var(--ok) 34%,transparent)}30%{scale:1.06;background-color:color-mix(in srgb,var(--ok) 34%,transparent)}100%{scale:1;background-color:transparent}}
+  .newthing{animation:newthing .6s ease-out both!important;border-color:var(--ok)!important}
+  /* 7.2: a locked chip on the pick sheet reads like every other locked thing */
+  .chip.locked{opacity:.5;pointer-events:none}
+
+/* ==================================================================
+   atmosphere — ui/atmosphere.js
+   ================================================================== */
+  #stars{position:absolute;inset:0;width:100%;height:100%;display:block;transition:opacity .3s}
+
+/* ==================================================================
+   title — ui/screens/title.js
+   ================================================================== */
+  /* first open (v9): a tap-through in four cards — what this is, how modes open, how the look is earned */
+  #s-story{gap:22px;justify-content:center;cursor:pointer}
+  #s-story .card{display:flex;flex-direction:column;gap:16px;align-items:center;max-width:34ch;text-align:center;animation:rvin .5s ease-out both}
+  #s-story h2{font-family:var(--title);font-size:clamp(18px,5.4vw,30px);letter-spacing:.2em;text-transform:uppercase;padding-left:.2em}
+  #s-story p{color:var(--ink);opacity:.8;font-size:16px;line-height:1.6}
+  #s-story .dots{display:flex;gap:8px}
+  #s-story .dots i{width:6px;height:6px;border-radius:50%;background:var(--line)}
+  #s-story .dots i.on{background:var(--ink)}
+  /* ---------- v10 ---------- */
+  /* the intro is the menu screen without the menu (v10): wordmark, one line, tap anywhere */
+  #s-story{gap:26px;justify-content:center;cursor:pointer}
+  #s-story .tagline{max-width:30ch;text-align:center;color:var(--ink);opacity:.8;font-size:17px;line-height:1.65;animation:rvin .9s ease-out .9s both}
+  #s-story .tagline b{display:block;font-family:var(--title);letter-spacing:.2em;text-transform:uppercase;font-size:13px;margin-top:14px;color:var(--ink);opacity:.9}
+  #s-story .hint{animation:rvin .9s ease-out 2s both}
+  /* title sequence (v11): two lines fade in and out one after another, then the title lands, then the hint. Nothing flashes past */
+  #s-story{gap:0;justify-content:center;cursor:pointer}
+  #s-story .stline{position:absolute;left:24px;right:24px;top:40%;text-align:center;font-family:var(--title);font-size:clamp(14px,4.4vw,24px);letter-spacing:.2em;text-transform:uppercase;color:var(--ink);opacity:0;line-height:1.6}
+  #s-story #st2{top:48%}
+  /* line 1 in at 0.3s, line 2 in at 1.5s, both readable until 3.6s, both gone by 4.1s; the title lands at 4.3s, the hint at 5.6s. Fades are 0.5s */
+  #s-story.run #st1{animation:stline1 3.8s ease-in-out .3s both}
+  #s-story.run #st2{animation:stline2 2.6s ease-in-out 1.5s both}
+  @keyframes stline1{0%{opacity:0;translate:0 6px}13%{opacity:.9;translate:0 0}87%{opacity:.9}100%{opacity:0}}
+  @keyframes stline2{0%{opacity:0;translate:0 6px}19%{opacity:.9;translate:0 0}81%{opacity:.9}100%{opacity:0}}
+  #s-story .wordmark{opacity:0}
+  #s-story.run .wordmark{animation:titlein 1.2s ease-out 4.3s both,breathe 14s ease-in-out 5.5s infinite,float 13s ease-in-out 5.5s infinite}
+  #s-story .hint{opacity:0}
+  #s-story.run .hint{animation:rvin .9s ease-out 5.6s both}
+
+/* ==================================================================
+   menu — ui/screens/menu.js
+   ================================================================== */
+  /* first open (v7): the title fades up over 1.1s, then each menu item fades in under it, 140ms apart. A fade, not a drop */
+  #s-menu.intro .wordmark{animation:titlein 1.1s ease-out both,breathe 14s ease-in-out 1.1s infinite,float 13s ease-in-out 1.1s infinite}
+  @keyframes titlein{0%{opacity:0;scale:.98}100%{opacity:1;scale:1}}
+  #s-menu.intro .item{animation:menufade .7s ease-out both}
+  #s-menu.intro .item:nth-of-type(1){animation-delay:.9s}
+  #s-menu.intro .item:nth-of-type(2){animation-delay:1.04s}
+  #s-menu.intro .item:nth-of-type(3){animation-delay:1.18s}
+  #s-menu.intro .item:nth-of-type(4){animation-delay:1.32s}
+  #s-menu.intro .item:nth-of-type(5){animation-delay:1.46s}
+  @keyframes menufade{0%{opacity:0}100%{opacity:.85}}
+  @keyframes menuin{0%{opacity:0;translate:0 -16px}100%{opacity:.85;translate:0 0}}
+  /* first open: only Play is live until one run is on the record */
+  .item.dim{opacity:.18;pointer-events:none;text-decoration:none}
+  .menu-note{font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--mute);text-transform:uppercase;text-align:center;margin-top:-6px}
+  .menu-tag{font-family:var(--title);font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--mute);margin-top:-6px}
+  #s-menu.intro .menu-tag{animation:menufade .7s ease-out .8s both}
+  /* crossed out (v11): a line drawn across a locked item, wiping off when it opens */
+  .x,.item.dim{position:relative}
+  .x::after,.item.dim::after,.item.unx::after{content:"";position:absolute;left:-4px;right:-4px;top:50%;height:2px;background:var(--cue);transform-origin:left center;pointer-events:none}
+  .item.dim{opacity:.35;pointer-events:none;text-decoration:none}
+  .item.dim::after{left:14px;right:14px}
+  .item.unx{opacity:.85;animation:brighten .5s ease-out both}
+  .item.unx::after{left:14px;right:14px;animation:unstrike .5s ease-out both}
+  @keyframes unstrike{0%{scale:1 1;opacity:1}100%{scale:0 1;opacity:.6}}
+  /* next up (v11): one line under Play, from the same data as the in-run goal line */
+  .nextup{cursor:pointer;font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);border:1px solid var(--line);padding:8px 12px;max-width:92vw;line-height:1.5;text-align:center;margin-top:-6px}
+  .nextup span{color:var(--ink);display:block}
+  .nextup em{display:block;font-style:normal;font-family:var(--title);font-size:9px;letter-spacing:.26em;color:var(--mute);margin-bottom:6px}
+  #s-menu.intro .nextup{animation:menufade .7s ease-out 1.1s both}
+
+/* ==================================================================
+   pick — ui/screens/pick.js
+   ================================================================== */
+  /* game picker */
+  /* eight games (v7): three across so the whole set fits one phone screen */
+  .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 10px;width:min(94vw,520px)}
+  @media (min-width:700px){.grid{grid-template-columns:repeat(4,1fr)}}
+  .tile{display:flex;flex-direction:column;gap:6px;text-align:left;transition:opacity .35s}
+  .tile .name{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink);transition:color .35s;white-space:nowrap}
+  .mini i.c{border-radius:50%}
+  .mini i.t{clip-path:polygon(50% 0,100% 100%,0 100%);border-radius:0}
+  .mini i.h{flex:none;height:22%;align-self:center;width:100%}
+  .mini.tm{align-items:center}
+  .mini.tm i.w{flex:none;width:36%;height:36%;border-radius:50%}
+  .mini.tm i.h{flex:1;height:14%}
+  .mini.rx i{background:var(--sq-live);opacity:.9}
+  .mini.ct{flex-wrap:wrap;gap:12%}
+  .mini.ct i{flex:none;width:28%;height:28%}
+  .mini.fd{flex-wrap:wrap;gap:10%}
+  .mini.fd i{flex:none;width:26%;height:26%}
+  .tile .pic{aspect-ratio:1;border:1px solid var(--line);background:var(--panel);display:grid;place-items:center;position:relative;overflow:hidden;transition:opacity .35s}
+  .tile.soon .name,.grid.dim .tile:not(.keep) .name{color:var(--mute);animation:none;text-shadow:none}
+  .tile.soon .pic,.grid.dim .tile:not(.keep) .pic{opacity:.45}
+  .tile.soon .pic::after{content:"soon";position:absolute;bottom:8px;right:10px;font-family:var(--mono);font-size:9px;letter-spacing:.2em;color:var(--mute);text-transform:uppercase}
+  /* locked game: greyed, the condition written on the tile so the goal is always in view (v6) */
+  .tile.locked .name{color:var(--mute)}
+  .tile.locked .pic{opacity:.4}
+  .tile.locked .pic::after{content:attr(data-need);position:absolute;inset:auto 5px 5px 5px;font-family:var(--mono);font-size:8px;letter-spacing:.08em;color:var(--ink);text-transform:uppercase;line-height:1.4;text-align:left}
+  .tile.locked .mini{opacity:.35}
+  .choice.locked{opacity:.45}
+  .choice.locked b::after{content:" · locked";color:var(--cue);letter-spacing:.1em}
+  .grid.dim .tile:not(.keep){pointer-events:none}
+  .mini{display:flex;gap:8%;width:56%;height:56%}
+  .mini i{flex:1;background:var(--sq);border-radius:1px;position:relative}
+  .mini i.w{background:var(--sq-live)}
+  .mini i.r::after{content:"";position:absolute;left:0;right:0;top:-14%;height:16%;background:var(--cue);border-radius:2px}
+  .mini.dots i{background:none;display:grid;place-items:center}
+  .mini.dots i::before{content:"";width:46%;aspect-ratio:1;border-radius:50%;background:var(--sq)}
+  .mini.dots i.w::before{background:var(--sq-live)}
+  .mini.dots i.r::after{content:none}
+  .mini.dots i.r::before{background:color-mix(in srgb,var(--cue) 25%,transparent);border:2px solid var(--cue)}
+  /* Estimate (v9): Grow shows a dashed target with a filled shape inside it; Cut shows a shape with a dotted line through it and a result */
+  .mini.hold{align-items:flex-end}
+  .mini.hold i{height:100%;background:none}
+  .mini.hold i::before{content:"";position:absolute;left:0;right:0;bottom:0;height:64%;background:none;border:2px dashed var(--cue)}
+  .mini.hold i.w::before{height:52%;background:var(--sq-live);border:0}
+  .mini.hold i.e::before{border-radius:50%;height:70%}
+  .mini.cut{display:grid;place-items:center;position:relative;width:70%;height:70%}
+  .mini.cut i{position:absolute;inset:4% 18% 30% 18%;background:var(--sq-live);clip-path:polygon(0 30%,55% 0,100% 45%,80% 100%,20% 90%)}
+  .mini.cut i.ln{inset:auto;left:-6%;right:-6%;top:38%;height:0;border-top:2px dashed var(--cue);background:none;clip-path:none;rotate:-14deg}
+  .mini.cut b{position:absolute;left:-20%;right:-20%;bottom:-6%;text-align:center;font:700 8px var(--mono);color:var(--ok);letter-spacing:.06em;white-space:nowrap}
+  .mini.four{flex-wrap:wrap;gap:8%}
+  .mini.four i{flex:none;width:46%;height:46%}
+  .mini.tmw{flex-direction:column;align-items:center;justify-content:center;gap:6%;width:80%}
+  .mini.tmw i{flex:none;background:none;width:100%;text-align:center;font:700 13px var(--mono);color:var(--sq-live);letter-spacing:0;height:auto}
+  .mini.tmw i.u{font-size:10px;color:var(--mute);font-weight:500}
+  .mini.tmw i.u b{color:var(--ok);font-weight:500}
+  .mini.tmh{position:relative;width:76%;height:56%;display:block}
+  .mini.tmh i{position:absolute;background:none}
+  .mini.tmh i.b{left:0;top:32%;width:22%;height:36%;border-radius:50%;background:var(--sq-live)}
+  .mini.tmh i.wall{left:42%;right:0;top:0;bottom:0;background:var(--panel);border-left:1px solid var(--line)}
+  .mini.tmh i.m{left:64%;top:32%;width:22%;height:36%;border-radius:50%;border:2px dashed var(--cue)}
+  .mini.rx{background:var(--sq-live);width:100%;height:100%}
+  .mini.rx i{display:none}
+  .mini.nogo{gap:14%;align-items:center;justify-content:center}
+  .mini.nogo i{flex:none;width:34%;height:34%;background:var(--sq-live)}
+  .mini.nogo i.x::after{content:"";position:absolute;inset:-30%;background:linear-gradient(45deg,transparent 44%,var(--miss) 44%,var(--miss) 56%,transparent 56%),linear-gradient(-45deg,transparent 44%,var(--miss) 44%,var(--miss) 56%,transparent 56%)}
+  .mini.seq i{background:var(--sq)}
+  .mini.seq i:nth-child(1){background:var(--sq-live)}
+  .mini.seq i:nth-child(2){background:#8a8883}
+  .mini.seq i:nth-child(3){background:#45443f}
+  /* bottom sheet: mode row stays, dims to the unpicked one, and the length row builds on it */
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);padding:18px 22px max(28px,env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .32s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;gap:12px;align-items:center}
+  .sheet.up{transform:none}
+  .diffs{display:flex;flex-direction:column;gap:10px;width:min(88vw,400px);transition:gap .18s}
+  .diffs.single{display:none}
+  .choice{display:flex;flex-direction:row;align-items:center;gap:16px;padding:10px 12px;border:1px solid var(--line);text-align:left;width:100%;transition:opacity .18s,padding .18s}
+  .choice .pic{width:92px;height:92px;flex:none;border:1px solid var(--line);background:var(--ground);display:grid;place-items:center;transition:width .18s,height .18s}
+  .choice .txt{display:flex;flex-direction:column;gap:6px;min-width:0}
+  .choice b{font-family:var(--mono);font-weight:700;font-size:13px;letter-spacing:.22em;text-transform:uppercase}
+  .choice small{color:var(--mute);font-size:14px;line-height:1.45;max-height:60px;overflow:hidden;transition:max-height .18s,opacity .18s}
+  .choice:hover,.choice:focus-visible,.choice.sel{border-color:var(--ink);outline:none}
+  .sheet.len .diffs{gap:6px}
+  .sheet.len .choice:not(.sel){opacity:.3}
+  .sheet.len .choice{padding:6px 12px}
+  .sheet.len .choice .pic{width:56px;height:56px}
+  .sheet.len .choice small{max-height:0;opacity:0}
+  #lenwrap{display:flex;flex-direction:column;gap:12px;align-items:center;max-height:0;opacity:0;overflow:hidden;transition:max-height .18s cubic-bezier(.2,.8,.2,1),opacity .18s;width:100%}
+  .sheet.len #lenwrap{max-height:340px;opacity:1}
+  .times{display:flex;gap:8px;justify-content:center;width:min(88vw,400px)}
+  .tbtn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 10px;border:1px solid var(--line);min-width:76px;flex:1;max-width:150px}
+  .tbtn b{font-weight:500;font-size:16px;letter-spacing:.08em;white-space:nowrap}
+  .tbtn b small{display:block;font-size:12px;color:var(--mute);letter-spacing:.06em;text-transform:none}
+  .tbtn .lsub{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--mute);text-transform:none;line-height:1.35;text-align:center;max-width:15ch}
+  .tbtn small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--mute);text-transform:uppercase}
+  .tbtn:hover,.tbtn:focus-visible,.tbtn.sel{border-color:var(--ink);outline:none}
+  /* the pick sheet: mode is one level, length is the next — the mode row leaves when the length row arrives (v6) */
+  /* the picked mode keeps its picture while the length is chosen (v8); the other mode leaves */
+  .sheet.len .diffs{display:flex}
+  .sheet.len .choice:not(.sel){display:none}
+  .sheet.len .choice.sel{opacity:1}
+  .sheet .lvl{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--mute);text-transform:uppercase;padding:6px 10px;display:none}
+  .sheet.len .lvl{display:none}
+  /* pick sheet (v10): the length buttons only select; a Go button under them starts. The options slide up together for every game */
+  #go-btn{margin-top:2px}
+  .sheet.len #lenwrap{max-height:420px}
+  /* two-player pictures on the pick sheet (v10): you cannot mistake pass & play or versus for solo */
+  #vs-row .chip{display:flex;align-items:center;gap:7px}
+  #vs-row .chip svg{width:22px;height:16px;overflow:visible}
+  #vs-row .chip svg *{stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  #vsart{display:none;flex-direction:column;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ok);text-align:center;line-height:1.6}
+  #vsart.on{display:flex}
+  #vsart svg{width:120px;height:56px;overflow:visible}
+  #vsart svg *{stroke:var(--ok);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  #vsart small{color:var(--mute);letter-spacing:.12em;text-transform:none;font-size:12px}
+  .sheet.two{border-top:2px solid var(--ok);background:color-mix(in srgb,var(--ok) 5%,var(--panel))}
+  .choice.locked{opacity:.5}
+  .choice.locked b::after{content:""}
+  .tbtn.locked{opacity:.5}
+  .tbtn b.x::after{top:45%}
+  /* the grid reveal (v11): tiles arrive one by one on the first visit; locked tiles wear a padlock that wipes off when the game opens */
+  .tile.reveal{animation:tilein .5s ease-out both}
+  @keyframes tilein{0%{opacity:0;translate:0 10px;scale:.96}100%{opacity:1;translate:0 0;scale:1}}
+  .tile .pic::before{content:"";position:absolute;top:6px;right:6px;width:14px;height:16px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 16'%3E%3Crect x='1' y='7' width='12' height='8' rx='1.5' fill='%23E8E6E1'/%3E%3Cpath d='M4 7V4.5a3 3 0 0 1 6 0V7' fill='none' stroke='%23E8E6E1' stroke-width='1.8'/%3E%3C/svg%3E") center/contain no-repeat;opacity:0;transition:opacity .3s;z-index:2}
+  .tile.locked .pic::before,.tile.unlocking .pic::before{opacity:.9}
+  .tile.unlocking .pic::before{animation:padoff .5s ease-in both}
+  @keyframes padoff{0%{opacity:.9;scale:1}100%{opacity:0;scale:.2}}
+  .tile.unlocking .pic{animation:brightpic .5s ease-out both}
+  @keyframes brightpic{0%{opacity:.4}100%{opacity:1}}
+  .tile.newthing{border-color:transparent!important}
+  .tile.newthing .pic{border-color:var(--ok)}
+  #chal{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ok);border:1px solid var(--ok);padding:8px 12px;text-align:center;line-height:1.5}
+  #chal b{color:var(--ink);font-size:15px;letter-spacing:0}
+
+/* ==================================================================
+   board — ui/screens/board.js
+   ================================================================== */
+  /* profile (v9): the name and a radar of your best across the games sit on top of the scores */
+  .prof{display:flex;flex-direction:column;align-items:center;gap:6px;flex:none}
+  #radar{width:min(58vw,230px);height:min(58vw,230px);overflow:visible}
+  #radar polygon.web{fill:none;stroke:var(--line)}
+  #radar line{stroke:var(--line)}
+  #radar polygon.me{fill:color-mix(in srgb,var(--sq-live) 22%,transparent);stroke:var(--sq-live);stroke-width:2;stroke-linejoin:round}
+  #radar text{fill:var(--mute);font-family:var(--mono);font-size:8px;letter-spacing:.12em;text-transform:uppercase}
+  #radar circle{fill:var(--sq-live)}
+  .who{display:flex;align-items:baseline;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--mute)}
+  .who input{font:inherit;color:var(--ink);background:none;border:0;border-bottom:1px solid var(--line);width:11ch;text-transform:uppercase;letter-spacing:.18em;padding:4px 0;outline:none;text-align:center}
+  .who input:focus{border-color:var(--ink)}
+  /* supporter (v10): a star by the name, a tier line on the About screen */
+  .who .star{color:#FFB020;font-size:14px}
+
+/* ==================================================================
+   achievements — ui/screens/achievements.js
+   ================================================================== */
+  .ach{display:flex;flex-direction:column;width:min(92vw,440px);font-family:var(--mono);font-size:12px}
+  .ach h4{font-weight:500;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink);padding:18px 4px 6px;display:flex;justify-content:space-between;align-items:baseline}
+  .ach h4 span{color:var(--mute);letter-spacing:.06em;text-transform:none;font-size:11px}
+  .ach h4.secret{color:var(--cue)}
+  .ach button.a{display:grid;grid-template-columns:1fr auto;gap:3px 12px;padding:10px 4px;border-bottom:1px solid var(--line);text-align:left;width:100%;font:inherit;color:inherit}
+  .ach button.a.jump:active{background:color-mix(in srgb,var(--ink) 6%,transparent)}
+  .ach .a small{grid-column:1/-1;color:var(--mute);letter-spacing:.04em;line-height:1.4}
+  .ach .lock>span:first-child{color:var(--mute)}
+  .ach .a>span:first-child i{font-style:normal;color:var(--mute);font-size:9px;letter-spacing:.16em;margin-left:8px;text-transform:uppercase}
+  .ach em{font-style:normal;color:var(--mute);font-size:10px;letter-spacing:.12em;text-transform:uppercase;align-self:start}
+  .ach .lock em.u{color:var(--cue)}
+  .ach .done>span:first-child,.ach .done em{color:var(--ok)}
+  .ach .done .pbar i{background:var(--ok)}
+  .ach .a small.go{color:var(--ink);opacity:.7}
+  .pbar{grid-column:1/-1;height:3px;background:var(--line);margin-top:4px;position:relative}
+  .pbar i{position:absolute;left:0;top:0;bottom:0;background:var(--ink)}
+  .pbar.s i{background:var(--cue)}
+  .ach .a.flash{animation:achflash 1.6s ease-out}
+  /* earned rows slide in on every visit; ones earned since the last visit come in green (v8) */
+  .ach .a.done{animation:achin .5s ease-out both}
+  .ach .a.new{animation:achnew 1.6s ease-out both}
+  @keyframes achin{0%{opacity:0;translate:-10px 0}100%{opacity:1;translate:0 0}}
+  @keyframes achnew{0%{background:color-mix(in srgb,var(--ok) 40%,transparent);translate:-14px 0;opacity:0}25%{opacity:1;translate:0 0;background:color-mix(in srgb,var(--ok) 40%,transparent)}100%{background:none}}
+  @keyframes achflash{0%{background:color-mix(in srgb,var(--ink) 18%,transparent)}100%{background:none}}
+  .ach .a.done{animation:achin .5s ease-out both}
+
+/* ==================================================================
+   customise — ui/screens/customise.js
+   ================================================================== */
+  /* customise */
+  #s-custom{gap:12px;justify-content:flex-start;padding-top:max(18px,env(safe-area-inset-top));overflow-y:auto}
+  .pv{width:min(84vw,320px);aspect-ratio:16/10;background:var(--ground);border:1px solid var(--line);position:relative;overflow:hidden;pointer-events:none;flex:none}
+  /* v9: every preview has the same finger as the pre-game demo, and shows the tap and what comes of it */
+  #pvg{position:absolute;left:0;top:0;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;border:2px solid var(--ink);outline:2px solid #0a0a0b;background:color-mix(in srgb,var(--ink) 18%,transparent);opacity:0;transition:left .4s cubic-bezier(.3,.7,.3,1),top .4s cubic-bezier(.3,.7,.3,1),opacity .2s;box-shadow:inset 0 0 0 2px #0a0a0b;z-index:5}
+  #pvg.on{opacity:.95}
+  #pvg.tap{animation:gtap .22s ease-out}
+  #pvg.hold{scale:.86;background:color-mix(in srgb,var(--ink) 40%,transparent)}
+  .pvtxt{position:absolute;left:0;right:0;text-align:center;font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute)}
+  .pvtxt b{display:block;font-size:22px;color:var(--ink);letter-spacing:0;font-variant-numeric:tabular-nums}
+  .pvtxt b.g{color:var(--ok)}
+  .pvtxt b.r{color:var(--miss)}
+  .pv>div{position:absolute;inset:0;display:none}
+  .pv[data-g="quick-tap"] .pvqt,.pv[data-g="dots"] .pvdots,.pv[data-g="hold"] .pvhold,.pv[data-g="sequence"] .pvseq{display:block}
+  .pvgen{display:none;align-items:center;justify-content:center;gap:8%}
+  /* v8 previews drawn from the real games: a ball and wall, a flash pane, a field of shapes */
+  .pvtm{display:none}
+  .pv[data-g="timing"] .pvtm{display:block}
+  .pvrx{display:none;place-items:center;font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);transition:background .05s}
+  .pv[data-g="reaction"] .pvrx{display:grid}
+  .pvrx b{display:block;font-size:24px;color:var(--ink);letter-spacing:0;text-align:center}
+  .pvrx.lit{background:var(--sq-live);color:var(--ground)}
+  .pvsp{display:none;flex-wrap:wrap;gap:5% 7%;padding:8% 10%;align-content:center;justify-content:center}
+  .pv[data-g="spot"] .pvsp{display:flex}
+  .pvsp i{width:11%;aspect-ratio:1;background:var(--sq-live);transition:opacity .3s}
+  .pvsp i.c{border-radius:50%}
+  .pvsp i.t{clip-path:polygon(50% 0,100% 100%,0 100%)}
+  .pvsp i.odd{box-shadow:0 0 0 3px var(--ok)}
+  .pvsp i.dim{opacity:.2}
+  .pvgen i{width:16%;aspect-ratio:1;background:var(--sq-live)}
+  .pvgen i.c{border-radius:50%}
+  .pvgen i.t{clip-path:polygon(50% 0,100% 100%,0 100%)}
+  .pvgen i.ld{background:none;border:2px dashed var(--cue);border-radius:50%}
+  .pvdots{--dsz:22%}
+  .pvdots b{position:absolute;left:0;top:0;width:var(--dsz);aspect-ratio:1;border-radius:50%;background:var(--sq-live);opacity:0;transition:opacity .08s}
+  .pvdots b.on{opacity:1}
+  .pvdots b.ld{background:color-mix(in srgb,var(--cue) 22%,transparent);border:2px solid var(--cue)}
+  .pvhold svg{width:100%;height:100%}
+  .pvhold .t{fill:none;stroke:var(--sq-live);stroke-width:2}
+  .pvhold .m{fill:color-mix(in srgb,var(--sq-live) 55%,var(--cue));transition:r .9s linear}
+  .pvtm .clk{top:36%}
+  .pvtm .tgt{top:8%}
+  .pvtm .tgt b{font-size:14px}
+  .pvseq{display:none;gap:4px;padding:16% 6% 6%}
+  .pv[data-g="sequence"] .pvseq{display:flex}
+  .pvseq i{flex:1;background:var(--sq);border-radius:0 0 4px 4px}
+  .pvseq i.lit{background:var(--sq-live)}
+  #pvlock{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--cue);text-transform:uppercase;min-height:16px;text-align:center;max-width:36ch;line-height:1.5;padding:6px 10px}
+  #pvlock u{color:var(--ink);text-decoration:underline;text-underline-offset:4px}
+  .cgroup{display:flex;flex-direction:column;gap:8px;align-items:center}
+  .clabel{font-family:var(--mono);font-size:13px;letter-spacing:.24em;text-transform:uppercase;color:var(--ink)}
+  .sw{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+  .sw button{width:38px;height:38px;border:1px solid var(--line);border-radius:2px;position:relative;background-size:cover}
+  .sw button.sel{outline:2px solid var(--ink);outline-offset:2px}
+  .sw button.pvw{outline:2px solid var(--cue);outline-offset:2px}
+  .sw button.locked{opacity:.32}
+  .sw button.locked::after{content:"";position:absolute;inset:-1px;background:linear-gradient(135deg,transparent 46%,var(--ground) 46%,var(--ground) 54%,transparent 54%)}
+  .sw button.wheel{background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);border-radius:50%}
+  .sw button.wheel::before{content:"";position:absolute;inset:11px;border-radius:50%;background:var(--ground)}
+  .sw button.wheel.locked::after{border-radius:50%}
+  .sw button.bg-stars{background-image:radial-gradient(circle at 20% 30%,#fff 1px,transparent 1.5px),radial-gradient(circle at 70% 60%,#fff 1px,transparent 1.5px),radial-gradient(circle at 45% 80%,#fff .8px,transparent 1.3px)}
+  .sw button.bg-grid{background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.18) 0 1px,transparent 1px 9px),repeating-linear-gradient(90deg,rgba(255,255,255,.18) 0 1px,transparent 1px 9px)}
+  .sw button.bg-rain{background-image:repeating-linear-gradient(90deg,transparent 0 6px,rgba(255,255,255,.22) 6px 7px,transparent 7px 13px)}
+  .sw button.bg-orbs{background-image:radial-gradient(circle at 30% 35%,rgba(255,255,255,.25),transparent 55%),radial-gradient(circle at 75% 70%,rgba(255,255,255,.18),transparent 50%)}
+  .opt{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;padding:9px 13px;border:1px solid var(--line);color:var(--mute)}
+  .opt.sel{color:var(--ink);border-color:var(--ink)}
+  .opt.locked{opacity:.35;text-decoration:line-through}
+  .earn{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--mute);text-transform:uppercase;text-align:center;max-width:40ch;line-height:1.7}
+  .earn b{color:var(--ink);font-weight:500}
+  #wheelwrap{position:absolute;inset:0;display:none;place-items:center;background:color-mix(in srgb,var(--ground) 82%,transparent);z-index:8}
+  #wheelwrap.on{display:grid}
+  #wheelbox{display:flex;flex-direction:column;gap:14px;align-items:center;background:var(--panel);border:1px solid var(--line);padding:22px}
+  #wheel{width:240px;height:240px;border-radius:50%;touch-action:none;cursor:crosshair}
+  #wheelout{width:60px;height:24px;border:1px solid var(--line)}
+
+/* ==================================================================
+   about — ui/screens/about.js
+   ================================================================== */
+  .support{border:1px solid var(--ink);padding:14px 22px;display:flex;flex-direction:column;gap:6px;align-items:center;max-width:32ch}
+  .support b{font-family:var(--mono);font-weight:700;font-size:12px;letter-spacing:.22em;text-transform:uppercase}
+  .support small{color:var(--mute);font-size:13px;line-height:1.45;text-align:center}
+  .tierbox{display:flex;flex-direction:column;gap:6px;width:min(92vw,380px);font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--mute);line-height:1.6}
+  .tierbox div{display:grid;grid-template-columns:1fr 1fr;gap:10px;border-top:1px solid var(--line);padding:6px 0}
+  .tierbox div:first-child{border:0;color:var(--ink);letter-spacing:.2em;text-transform:uppercase}
+  .tierbox b{color:var(--ink);font-weight:500}
+  .tierbox .y{color:var(--ok)}
+  #s-about{overflow-y:auto;justify-content:flex-start;padding-top:max(18px,env(safe-area-inset-top))}
+  /* 13.1: the supporter block is a thank-you line and three lines of what it includes — no comparison table */
+  .tierbox div{grid-template-columns:1fr}
+  .tierbox div:first-child{border-top:1px solid var(--line);color:var(--mute);letter-spacing:.1em;text-transform:none}
+
+/* ==================================================================
+   pass — ui/screens/pass.js
+   ================================================================== */
+  #s-pass{gap:18px}
+  #s-pass .big{font-size:clamp(28px,8vw,48px);font-family:var(--title);letter-spacing:.16em}
+
+/* ==================================================================
+   result — ui/screens/result.js
+   ================================================================== */
+  /* result */
+  #s-over{gap:14px}
+  #s-over.on .big{animation:scorein .5s cubic-bezier(.2,.9,.3,1.2) both}
+  @keyframes scorein{0%{opacity:0;scale:.35}60%{opacity:1;scale:1.12}100%{scale:1}}
+  .change{display:flex;flex-direction:column;gap:8px;align-items:center;margin-top:4px}
+  .change .chips+.chips{margin-top:2px}
+  /* v9: everything sits lower so an achievement toast has the top of the screen to itself, and each block arrives in turn */
+  #s-over{justify-content:flex-start;overflow-y:auto;padding-top:max(96px,calc(env(safe-area-inset-top) + 84px));gap:10px;padding-bottom:40px}
+  #s-over.on>*{animation:rvin .5s ease-out both}
+  #s-over.on>:nth-child(1){animation-delay:0s}
+  #s-over.on>:nth-child(2){animation-delay:.1s}
+  #s-over.on>:nth-child(3){animation-delay:.6s}
+  #s-over.on>:nth-child(4){animation-delay:1s}
+  #s-over.on>:nth-child(5){animation-delay:1.35s}
+  #s-over.on>:nth-child(6){animation-delay:1.65s}
+  #s-over.on>:nth-child(7){animation-delay:1.95s}
+  #s-over.on>:nth-child(8){animation-delay:2.2s}
+  #s-over.on>:nth-child(9){animation-delay:2.4s}
+  #s-over.on>:nth-child(10){animation-delay:2.6s}
+  #s-over.on>:nth-child(11){animation-delay:2.7s}
+  @keyframes rvin{0%{opacity:0;translate:0 10px}100%{opacity:1;translate:0 0}}
+  #s-over.on .stats span{animation:rvin .4s ease-out both}
+  #s-over.on .stats span:nth-child(2){animation-delay:.25s}
+  #s-over.on .stats span:nth-child(3){animation-delay:.5s}
+  #s-over.on .stats span:nth-child(4){animation-delay:.75s}
+  #to-games{margin-top:22px;font-size:20px;padding:16px 44px}
+  .mchips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .mch{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 10px;border:1px solid var(--line);opacity:.55;min-width:84px}
+  .mch .pic{width:64px;height:64px;border:1px solid var(--line);background:var(--ground);display:grid;place-items:center}
+  .mch b{font-family:var(--mono);font-weight:700;font-size:10px;letter-spacing:.18em;text-transform:uppercase}
+  .mch.sel{border-color:var(--ink);opacity:1}
+  #vsbox{display:none;width:min(92vw,360px);grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute)}
+  #vsbox.on{display:grid}
+  #vsbox b{display:block;font-size:clamp(30px,9vw,54px);color:var(--ink);letter-spacing:0;font-variant-numeric:tabular-nums}
+  #vsbox .win b{color:var(--ok)}
+  #vsbox .win{color:var(--ok)}
+  #vsbox em{font-style:normal;font-family:var(--title);font-size:14px;color:var(--mute)}
+  #over-top{width:min(92vw,360px);font-size:11px}
+  #over-top td,#over-top th{padding:5px 6px}
+  #over-top .eyebrow{text-align:center;margin-bottom:4px}
+  .stats{font-family:var(--mono);color:var(--mute);font-size:13px;letter-spacing:.14em;text-transform:uppercase;display:flex;gap:22px}
+  .stats b{color:var(--ink);font-weight:500}
+  .verdict{font-family:var(--title);font-size:11px;letter-spacing:.16em;text-transform:uppercase;text-align:center;max-width:32ch;line-height:1.8}
+  .rank{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--mute)}
+  .rank b{color:var(--sq-live);font-weight:700}
+  .change{display:flex;flex-direction:column;gap:8px;align-items:center;margin-top:4px}
+  /* result screen (v10): options first, then Go, then the board. An ad slot sits under the board for non-supporters */
+  #s-over .change{margin-top:0}
+  #again{margin-top:6px;font-size:22px;padding:16px 60px}
+  .adslot{width:min(92vw,360px);height:64px;border:1px dashed var(--line);display:grid;place-items:center;font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);flex:none}
+  .adslot.off{display:none}
+  .mch.locked{opacity:.35}
+  /* result screen (v11): the eyebrow carries only a status; the score marks lower-is-better; a full stop hides under the top 10 */
+  #over-eyebrow:empty{display:none}
+  #egg{width:6px;height:6px;border-radius:50%;background:var(--mute);opacity:.35;padding:0;margin:0 auto;flex:none;border:0;position:relative}
+  #egg::before{content:"";position:absolute;inset:-14px}
+  #over-vs .lbl{padding:0 2px}
+  /* 3.4: Back sits at the top left of the result screen, not beside the share button */
+  #over-back{position:absolute;left:6px;top:max(10px,env(safe-area-inset-top));margin:0;padding:12px 14px;font-family:var(--mono);font-size:12px;letter-spacing:.18em;color:var(--mute);z-index:5;animation:none!important}
+  #over-back:hover{color:var(--ink)}
+  /* 3.6: Challenge a friend, with a share icon */
+  .shicon{width:15px;height:15px;vertical-align:-3px;margin-right:9px;overflow:visible}
+  .shicon *{stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round}
+
+/* ==================================================================
+   lockbox — ui/screens/lockbox.js
+   ================================================================== */
+  /* a locked game or mode offers the way there (v10) — a sheet, not a toast */
+  #lockwrap{position:absolute;inset:0;display:none;place-items:center;background:color-mix(in srgb,var(--ground) 84%,transparent);z-index:8;padding:24px}
+  #lockwrap.on{display:grid}
+  #lockbox{display:flex;flex-direction:column;gap:14px;align-items:center;background:var(--panel);border:1px solid var(--cue);padding:22px 20px;max-width:34ch;text-align:center}
+  #lockbox h3{font-family:var(--title);font-size:14px;letter-spacing:.2em;text-transform:uppercase;color:var(--cue)}
+  #lockbox p{font-size:15px;line-height:1.55;color:var(--ink)}
+  #lockbox p b{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink);display:block;margin-top:8px}
+  #lockbox .row{gap:10px}
+  /* 3.7: the underline sits under "unlock" only */
+  #lock-go,#lock-go:hover,#lock-go:focus-visible{text-decoration:none}
+  #lock-go u{text-decoration:underline;text-underline-offset:7px}
+
+/* ==================================================================
+   toast — ui/toast.js
+   ================================================================== */
+  .ach em i.sw,#toast i.sw{display:inline-block;width:10px;height:10px;vertical-align:-1px;margin-left:6px;border:1px solid var(--line)}
+  #toast{position:absolute;left:50%;top:max(20px,env(safe-area-inset-top));transform:translate(-50%,-30px);background:var(--panel);border:1px solid var(--ink);padding:10px 16px;font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;opacity:0;transition:.22s;pointer-events:none;max-width:88vw;text-align:center;line-height:1.5;z-index:9}
+  #toast.on{opacity:1;transform:translate(-50%,0)}
+  /* on the result screen the toast sits low so it never covers the score and try-again (v8); an achievement toast is tappable */
+  #toast.tap{pointer-events:auto;cursor:pointer;border-color:var(--ok)}
+  #toast.tap::after{content:' · tap';color:var(--mute)}
+  /* a green toast for an unlock the moment it lands (v10) */
+  #toast.ok{border-color:var(--ok);color:var(--ok)}
+
+/* ==================================================================
+   ads — ui/ads.js
+   ================================================================== */
+  #adbreak{position:absolute;inset:0;display:none;place-items:center;background:var(--ground);z-index:40;flex-direction:column;gap:12px;text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute)}
+  #adbreak.on{display:grid}
+  #adbreak .box{width:min(80vw,320px);aspect-ratio:1;border:1px dashed var(--line);display:grid;place-items:center;margin:0 auto 14px}
+  #adbreak button{font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink);border:1px solid var(--line);padding:10px 18px}
+  #adbreak button[disabled]{opacity:.35}
+
+/* ==================================================================
+   run — run/run.js, games/_shared/hud.js — the game layer, HUD, countdown, goal line, ghost finger
+   ================================================================== */
+  /* game */
+  #game{display:none;position:absolute;inset:0}
+  #game.on{display:block}
+  /* v10: Spot was still listed here as count/find — the v8 rename never reached this line, so #gen stayed hidden and neither mode could start */
+  #game[data-g="timing"] #gen,#game[data-g="reaction"] #gen,#game[data-g="spot"] #gen{display:block}
+  .pop{animation:pop .22s ease-out}
+  @keyframes pop{0%{scale:1}40%{scale:1.05}100%{scale:1}}
+  .go{animation:ring .28s ease-out}
+  @keyframes ring{0%{opacity:.9;scale:1}100%{opacity:0;scale:1.06}}
+  /* the four v7 games share one layer, #gen, and draw their own screen into it */
+  #gen{overflow:hidden}
+  .glbl{position:absolute;left:0;right:0;text-align:center;font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);pointer-events:none;line-height:1.7}
+  .glbl.top{top:0}
+  .glbl.bot{bottom:4%}
+  .glbl b{color:var(--ink);font-weight:700;font-size:26px;letter-spacing:0;display:block}
+  .glbl b.g{color:var(--ok)}
+  .glbl b.r{color:var(--miss)}
+  .fs{position:absolute;width:var(--fsz);height:var(--fsz);background:var(--sq-live);pointer-events:none;transition:opacity .2s}
+  .fs.circle{border-radius:50%}
+  .fs.tri{clip-path:polygon(50% 0,100% 100%,0 100%)}
+  .fs.bad{background:var(--miss)}
+  .fs.dim{opacity:.18}
+  .fs.odd{box-shadow:0 0 0 4px var(--ok)}
+  #hud-time.you{color:var(--sq-live);font-weight:700}
+  .hud{position:absolute;left:0;right:0;top:max(14px,env(safe-area-inset-top));padding:0 16px 0 60px;display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--mute);font-size:13px;letter-spacing:.14em;pointer-events:none}
+  #score{font-weight:700;font-size:clamp(32px,8vw,60px);color:var(--ink);letter-spacing:0}
+  #quit{position:absolute;left:8px;top:max(8px,env(safe-area-inset-top));width:44px;height:44px;display:grid;place-items:center;font-family:var(--mono);font-size:22px;color:var(--mute);z-index:6}
+  #quit:hover{color:var(--ink)}
+  #count{position:absolute;inset:0;display:none;place-items:center;font-family:var(--mono);font-weight:700;font-size:clamp(80px,26vw,180px);color:var(--ink);pointer-events:none;z-index:5;font-variant-numeric:tabular-nums}
+  #count.on{display:grid}
+  #count span{animation:cpop .3s ease-out}
+  @keyframes cpop{0%{scale:1.25;opacity:.4}100%{scale:1;opacity:1}}
+  #bar{position:absolute;left:0;bottom:0;height:3px;background:var(--ink);width:100%;transform-origin:left;pointer-events:none}
+  /* rate meter (v6): a thin bar down the right edge, fills with hits per second between the mode's floor and ceiling */
+  #rate{position:absolute;right:6px;top:calc(22% + env(safe-area-inset-top));bottom:calc(30% + env(safe-area-inset-bottom));width:4px;background:var(--line);pointer-events:none;display:none;z-index:4}
+  #game.timed #rate{display:block}
+  #rate i{position:absolute;left:0;right:0;bottom:0;height:0;background:var(--sq-live);transition:height .18s ease-out}
+  #rate b{position:absolute;right:0;bottom:calc(100% + 8px);font-family:var(--mono);font-weight:500;font-size:11px;letter-spacing:.1em;color:var(--mute);white-space:nowrap;font-variant-numeric:tabular-nums}
+  #edge{position:absolute;inset:0;pointer-events:none;opacity:0;box-shadow:inset 0 0 40px 6px var(--sq-live);transition:opacity .25s;z-index:1}
+  /* ghost finger and one-liner for a mode's first play (v6) */
+  #intro{position:absolute;inset:0;display:none;pointer-events:none;z-index:7}
+  #intro.on{display:block}
+  #intro p{position:absolute;left:16px;right:16px;top:calc(27% + env(safe-area-inset-top));text-align:center;font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink);line-height:1.6}
+  /* the one-liner arrives a word at a time (v8), and cannot be skipped — a stray touch used to wipe it */
+  #intro p .w{display:inline-block;opacity:0;animation:wordin .4s ease-out both;margin-right:.4em}
+  @keyframes wordin{0%{opacity:0;translate:0 6px}100%{opacity:1;translate:0 0}}
+  #intro p small{display:block;font-size:10px;color:var(--mute);margin-top:6px;letter-spacing:.18em}
+  /* ghost finger (v8): a dark ring inside and outside the white one, so it reads on a white pad and on the black ground alike */
+  #ghost{position:absolute;left:0;top:0;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;border:2px solid var(--ink);outline:2px solid #0a0a0b;background:color-mix(in srgb,var(--ink) 18%,transparent);opacity:0;transition:transform .45s cubic-bezier(.3,.7,.3,1),opacity .2s;box-shadow:inset 0 0 0 3px #0a0a0b,0 0 18px rgba(232,230,225,.25)}
+  #ghost.on{opacity:.9}
+  #ghost.tap{animation:gtap .22s ease-out}
+  #ghost.hold{scale:.86;background:color-mix(in srgb,var(--ink) 40%,transparent)}
+  /* the tap (v9) rings outward instead of shrinking */
+  @keyframes gtap{0%{scale:1;box-shadow:inset 0 0 0 3px #0a0a0b,0 0 0 0 rgba(232,230,225,.6)}60%{scale:1.25;box-shadow:inset 0 0 0 3px #0a0a0b,0 0 0 14px rgba(232,230,225,0)}100%{scale:1;box-shadow:inset 0 0 0 3px #0a0a0b,0 0 0 0 rgba(232,230,225,0)}}
+  #flash{position:absolute;inset:0;background:var(--miss);opacity:0;pointer-events:none}
+  #game.shake{animation:shake .32s linear}
+  @keyframes shake{0%,100%{transform:translate(0)}20%{transform:translate(-8px,3px)}40%{transform:translate(7px,-4px)}60%{transform:translate(-5px,2px)}80%{transform:translate(4px,-2px)}}
+  @media (prefers-reduced-motion:reduce){#game.shake,.pop,.go,.wordmark,.glow,#lead.on b,#count span{animation:none}}
+  /* the next unlock, in view while you play (v8) */
+  #goal{position:absolute;left:50%;top:calc(9.5% + env(safe-area-inset-top));transform:translateX(-50%);font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);border:1px solid var(--line);padding:5px 10px;white-space:nowrap;pointer-events:none;display:none;z-index:4;max-width:92vw;overflow:hidden;text-overflow:ellipsis}
+  #goal.on{display:block}
+  #goal b{color:var(--ink);font-weight:500}
+  #goal.hit{border-color:var(--ok);color:var(--ok);animation:pop .3s ease-out}
+  #goal.hit b{color:var(--ok)}
+  #game.bigc #score{visibility:hidden}
+  #intro p{background:color-mix(in srgb,var(--ground) 88%,#fff);border:1px solid var(--line);padding:12px 14px;left:24px;right:24px}
+  #game.timed #rate{display:none}
+  #game.timed.live #rate{display:block}
+  /* PB (v11): a thin marker on the rate bar at your best pace; a "best" ghost beside the running figure on the others */
+  #rate u{position:absolute;left:-4px;right:-4px;height:2px;background:var(--cue);bottom:0;display:none;text-decoration:none}
+  #rate u.on{display:block}
+  #pbghost{position:absolute;left:50%;top:calc(max(14px,env(safe-area-inset-top)) + 52px);translate:-50% 0;font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);display:none;pointer-events:none}
+  #pbghost.on{display:block}
+  #game.versus #pbghost,#game.bigc #pbghost{display:none}
+  #hud-mode .p1,#hud-mode .p2{font-weight:700}
+
+/* ==================================================================
+   quick-tap — games/quick-tap/
+   ================================================================== */
+  /* pads sit low and short (v7): no taller than 26% of the screen, so the cue has a lane to fall down */
+  .pad{position:absolute;bottom:calc(3% + env(safe-area-inset-bottom));width:48%;height:min(36vw,22vh)}
+  .pad.l{left:0}
+  .pad.r{right:0}
+  /* Four (v9): a second row of pads above the first. Lead is gone from Quick Tap */
+  .pad.up{display:none}
+  #game[data-d="four"] .pad.up{display:block;bottom:calc(3% + env(safe-area-inset-bottom) + min(36vw,22vh) + 8px)}
+  #game[data-d="four"] .cue{display:none}
+  .sq{position:absolute;inset:0;--v:0;background:color-mix(in srgb,var(--sq-live) calc(var(--v)*100%),var(--sq));transition:transform .12s}
+  .pad.l .sq{right:6px;border-radius:0 4px 4px 0}
+  .pad.r .sq{left:6px;border-radius:4px 0 0 4px}
+  /* lead cue: a square that drops from above and comes to rest just over the next pad — it never covers the white */
+  .cue{position:absolute;left:50%;bottom:calc(100% + 10px);width:34%;aspect-ratio:1;margin-left:-17%;background:var(--cue);opacity:0;border-radius:4px;z-index:2;pointer-events:none}
+  .pad.l .cue{margin-left:calc(-17% - 3px)}
+  .pad.r .cue{margin-left:calc(-17% + 3px)}
+  #game[data-g="quick-tap"] .cue{display:none}
+  .cue.on{opacity:1;animation:fall 1.1s cubic-bezier(.3,0,.7,1) forwards}
+  @keyframes fall{0%{transform:translateY(-560%);background:var(--cue);opacity:.7}70%{background:color-mix(in srgb,var(--cue) 55%,var(--sq-live))}100%{transform:translateY(0);background:var(--sq-live);opacity:.55}}
+  .ring{position:absolute;inset:0;border:2px solid var(--sq-live);opacity:0;pointer-events:none}
+  .pad.l .ring{right:6px;border-radius:0 4px 4px 0}
+  .pad.r .ring{left:6px;border-radius:4px 0 0 4px}
+  .pvqt .pad{height:38%}
+  .pvqt .pad.up{display:none}
+  .pv[data-d="four"] .pvqt .pad.up{display:block;bottom:calc(4% + 38% + 4px)}
+  .pvqt .pad{bottom:4%;height:32%}
+  /* big live count for Quick Tap solo (v10): the number sits in the middle of the screen, pops on every hit */
+  #bigcount{position:absolute;left:0;right:0;top:34%;text-align:center;font-family:var(--mono);font-weight:700;font-size:clamp(80px,26vw,180px);color:var(--ink);pointer-events:none;display:none;font-variant-numeric:tabular-nums;line-height:1;z-index:2;opacity:.92}
+  #game.bigc #bigcount{display:block}
+  #bigcount.pop{animation:cpop .18s ease-out}
+  /* the live count and the rate bar (v11) wait for the countdown to finish */
+  #game.bigc #bigcount{display:none}
+  #game.bigc.live #bigcount{display:block}
+
+/* ==================================================================
+   dots — games/dots/
+   ================================================================== */
+  #game[data-g="quick-tap"] #qt,#game[data-g="dots"] #field{display:block}
+  #field{--dsz:clamp(64px,18vmin,110px)}
+  #dot,#lead,#dring{position:absolute;left:0;top:0;width:var(--dsz);height:var(--dsz);border-radius:50%;will-change:transform}
+  #dot{background:var(--sq-live);opacity:0}
+  #dot.on{opacity:1}
+  /* lead ring: just fades in, no effects (v5) */
+  #lead{border:2px solid var(--cue);background:color-mix(in srgb,var(--cue) 22%,transparent);opacity:0;pointer-events:none;transition:opacity .1s}
+  #lead.on{opacity:1}
+  /* landing ring: starts pushed along the line of travel and settles onto the dot as it fades (v5) */
+  #dring{border:2px solid var(--sq-live);opacity:0;pointer-events:none}
+  #dring.go{animation:none;transition:transform .3s ease-out,opacity .3s ease-out}
+  #game.versus #qt,#game.versus #field,#game.versus .hud,#game.versus #rate,#game.versus #goal,#game.versus #bar{display:none}
+
+/* ==================================================================
+   estimate — games/estimate/
+   ================================================================== */
+  /* hold: three svg layers — target (solid while growing), ghost (dotted outline), mine (filled) */
+  #game[data-g="hold"] #hfield{display:block}
+  #hfield svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+  #hfield path{fill:var(--sq-live);transition:opacity .15s}
+  #hfield #hg path{fill:none;stroke:var(--cue);stroke-width:2;stroke-dasharray:5 6}
+  #hfield #hm path{fill:color-mix(in srgb,var(--sq-live) 55%,var(--cue))}
+  #hfield #ht path{fill:none;stroke:var(--sq-live);stroke-width:2}
+  #hfield.show #ht path{fill:var(--sq-live);stroke:none}
+  #hfield #hcut path{fill:var(--cutp,var(--sq-live))}
+  #hfield #hcut path.b{fill:color-mix(in srgb,var(--cutp,var(--sq-live)) 40%,var(--ground))}
+  #hfield line{stroke:var(--cue);stroke-width:3;stroke-dasharray:8 8;stroke-linecap:round;pointer-events:none}
+  /* what to do, written large and faint behind the shape (v9) — "tap and hold" / "tap and draw a line" */
+  #hbg{position:absolute;left:0;right:0;top:40%;text-align:center;font-family:var(--title);font-size:clamp(14px,4.2vw,28px);letter-spacing:.16em;text-transform:uppercase;color:var(--ink);opacity:0;pointer-events:none;transition:opacity .3s;line-height:1.5;padding:0 12px}
+  #hbg.on{opacity:.13}
+  /* the reveal (v9): a centred panel with two bars that fill while the px² count, then the difference, then the % */
+  #hcalc{position:absolute;left:8%;right:8%;top:50%;transform:translateY(-50%);display:none;flex-direction:column;gap:12px;background:color-mix(in srgb,var(--ground) 82%,transparent);border:1px solid var(--line);padding:18px 16px;font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);pointer-events:none;z-index:3}
+  #hcalc.on{display:flex}
+  .hrow{display:grid;grid-template-columns:56px 1fr 84px;gap:10px;align-items:center}
+  .hrow .bar{height:14px;background:var(--line);position:relative;overflow:hidden}
+  .hrow .bar i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--sq-live)}
+  .hrow.m .bar i{background:color-mix(in srgb,var(--sq-live) 55%,var(--cue))}
+  .hrow.b .bar i{background:color-mix(in srgb,var(--sq-live) 30%,var(--ground))}
+  /* v13 (6.5): the Cut reveal is ONE bar — the whole shape — with the piece filling it from the left in the same two colours as the shape */
+  .hrow.cutbar .bar{background:color-mix(in srgb,var(--cutp,var(--sq-live)) 40%,var(--ground))}
+  .hrow.cutbar .bar i{background:var(--cutp,var(--sq-live))}
+  .hrow .bar u{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--cue);left:0;text-decoration:none}
+  .hrow b{color:var(--ink);text-align:right;font-variant-numeric:tabular-nums;letter-spacing:0;font-size:13px}
+  #hres{text-align:center;opacity:0;transition:opacity .25s;line-height:1.9}
+  #hres.on{opacity:1}
+  #hres b{display:block;font-size:30px;color:var(--ink);letter-spacing:0}
+  #hres b.g{color:var(--ok)}
+  #hres b.r{color:var(--miss)}
+  #hres i{font-style:normal;color:var(--ink)}
+  #hlbl{position:absolute;left:0;right:0;bottom:6%;text-align:center;font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);pointer-events:none}
+  #hlbl b{color:var(--ink);font-weight:700;font-size:26px;letter-spacing:0;display:block;margin-bottom:6px}
+  #hlbl b.g{color:var(--ok)}
+  #hlbl b.r{color:var(--miss)}
+  #hdiff.pop{animation:pop .3s ease-out}
+  /* estimate: the shape you'll hold, shown as a picture top-right so nobody has to read it (v6) */
+  #hicon{position:absolute;right:14px;top:8px;width:13vmin;height:13vmin;overflow:visible;opacity:0;transition:opacity .2s}
+  #hicon.on{opacity:1}
+  #hicon path{fill:none;stroke:var(--sq-live);stroke-width:2}
+  #hicon text{fill:var(--mute);font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase}
+  /* the cut hint (v9): a finger drags a dotted line through a small shape, top right, before every Cut shape */
+  #hicon line{stroke:var(--cue);stroke-width:2.5;stroke-dasharray:5 5;stroke-dashoffset:120;animation:cutline 2.2s ease-in-out infinite}
+  #hicon circle.fg{fill:color-mix(in srgb,var(--ink) 25%,transparent);stroke:var(--ink);stroke-width:2;animation:cutfg 2.2s ease-in-out infinite}
+  @keyframes cutline{0%,15%{stroke-dashoffset:120;opacity:0}20%{opacity:1}70%,100%{stroke-dashoffset:0;opacity:1}}
+  @keyframes cutfg{0%,15%{cx:6px;cy:70px;opacity:0}20%{opacity:1}70%{cx:94px;cy:30px;opacity:1}85%,100%{cx:94px;cy:30px;opacity:0}}
+  #hicon.big{width:26vmin;height:26vmin;right:auto;left:50%;top:14%;margin-left:-13vmin}
+  /* Estimate (v10): what to do sits top-middle in ink, never behind the shape; the Cut share counts up from 0 so the eye lands on it; the shape sits lower */
+  #hbg{top:11%;opacity:0;font-size:clamp(13px,3.8vw,22px);letter-spacing:.2em}
+  #hbg.on{opacity:.85}
+  #hshare{position:absolute;left:0;right:0;top:19%;text-align:center;font-family:var(--mono);font-weight:700;font-size:clamp(44px,15vw,96px);color:var(--sq-live);letter-spacing:0;font-variant-numeric:tabular-nums;pointer-events:none;opacity:0;transition:opacity .2s;line-height:1;z-index:2}
+  #hshare.on{opacity:1}
+  #hshare small{display:block;font-family:var(--mono);font-weight:500;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--mute);margin-top:6px}
+  /* v10: `#hfield svg` (inset 0, 100%) outranked `#hicon` on specificity, so the parked icon was drawn across the whole field — that was the big white outline in Grow and the clutter in Cut */
+  #hfield #hicon{position:absolute;left:auto;bottom:auto;right:14px;top:4px;width:13vmin;height:13vmin}
+  #hfield #hicon.big{width:22vmin;height:22vmin;right:auto;left:50%;top:1%;margin-left:-11vmin}
+  .sheet.len #lenwrap,.choice,#vsart.on,#vs-sub:not([hidden]),#lockwrap.on #lockbox,#wheelwrap.on #wheelbox,.mch,#over-vs .chip,#over-chips2 .chip,#over-chips3 .chip,.ach .a.lock,.ach h4,#pvlock:not(:empty),#hcalc.on,#adbreak.on>div,.tbtn,#s-pass.on>*,#nextup:not([hidden]){animation:rise .18s ease-out both}
+  /* Estimate (v11): the target's outline stays up while you grow */
+  #hfield #hg path{stroke:var(--cue)}
+
+/* ==================================================================
+   sequence — games/sequence/
+   ================================================================== */
+  #qt,#field,#hfield,#seq,#gen{display:none}
+  #field,#hfield,#seq,#gen{position:absolute;top:calc(16% + env(safe-area-inset-top));bottom:calc(3% + env(safe-area-inset-bottom));left:0;right:0}
+  /* sequence: your turn is unmissable (v7) — keys dim while it plays, light up with a lit top edge when it's you */
+  #seq.watch .key{opacity:.5}
+  #seq.input .key{border-top:4px solid var(--sq-live);box-shadow:inset 0 6px 18px color-mix(in srgb,var(--sq-live) 22%,transparent)}
+  #seq.input{background:color-mix(in srgb,var(--sq-live) 4%,transparent)}
+  #turn{position:absolute;left:0;right:0;top:36%;text-align:center;font-family:var(--title);font-size:clamp(22px,7vw,40px);letter-spacing:.2em;text-transform:uppercase;color:var(--sq-live);pointer-events:none;opacity:0;z-index:4;text-shadow:0 0 18px var(--glow)}
+  #turn.on{animation:turnin 1.1s ease-out both}
+  @keyframes turnin{0%{opacity:0;scale:1.6}25%{opacity:1;scale:1}70%{opacity:1}100%{opacity:0;scale:.9}}
+  /* sequence */
+  #game[data-g="sequence"] #seq{display:flex;flex-direction:row;gap:6px;padding:0 6px}
+  /* keys (v9): a mid grey, not the pad grey — only the white ones could be seen */
+  .key{flex:1;background:color-mix(in srgb,var(--ground) 62%,#fff);border-radius:0 0 6px 6px;position:relative;transition:background .08s;border-top:2px solid color-mix(in srgb,var(--ground) 40%,#fff)}
+  .key.lit{background:var(--sq-live)}
+  .key.bad{background:var(--miss)}
+  .key::after{content:attr(data-n);position:absolute;bottom:10px;left:0;right:0;text-align:center;font-family:var(--mono);font-size:10px;color:var(--ground);opacity:.7;letter-spacing:.2em}
+  .key.lit::after{color:var(--ground)}
+  .tbtn .keys{display:flex;gap:2px;height:22px;width:66px;margin-bottom:2px}
+  .tbtn .keys i{flex:1;background:var(--sq);border-radius:0 0 3px 3px;border-top:1px solid var(--line)}
+  .tbtn .keys i:first-child{background:var(--sq-live)}
+  /* Sequence keys (v11): idle keys are white at reduced opacity, clearly dimmer than a lit key */
+  .key{background:var(--ink);opacity:.3;border-top:2px solid var(--ink)}
+  .key.lit{background:var(--sq-live);opacity:1}
+  .key.bad{background:var(--miss);opacity:1}
+  #seq.watch .key{opacity:.18}
+  #seq.watch .key.lit{opacity:1}
+  #seq.input .key{border-top:4px solid var(--sq-live);opacity:.42}
+  #seq.input .key.lit{opacity:1}
+  .key::after{color:var(--ground);opacity:.9}
+  /* the two cues (v11) sit on a contrasting backing, so they read on any key colour */
+  #turn{top:30%;font-size:clamp(18px,5.6vw,32px);left:50%;right:auto;translate:-50% 0;background:color-mix(in srgb,var(--ground) 90%,#fff);border:1px solid var(--sq-live);padding:14px 22px;white-space:nowrap}
+  #turn.on{animation:turnin 1.3s ease-out both}
+  #turn.p1{color:var(--p1);border-color:var(--p1)}
+  #turn.p2{color:var(--p2);border-color:var(--p2)}
+  #turn.stay{animation:none;opacity:1}
+  #seqdone{position:absolute;left:50%;bottom:calc(6% + env(safe-area-inset-bottom));translate:-50% 0;z-index:6;font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;border:1px solid var(--ink);padding:10px 18px;background:var(--ground);display:none}
+  #seqdone.on{display:block}
+
+/* ==================================================================
+   timing — games/timing/
+   ================================================================== */
+  /* timing */
+  .tmclock{position:absolute;left:0;right:0;top:34%;text-align:center;font-family:var(--mono);font-weight:700;font-size:clamp(56px,18vw,120px);color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:0;pointer-events:none}
+  .tmtarget{position:absolute;left:0;right:0;top:10%;text-align:center;font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);pointer-events:none}
+  .tmtarget b{display:block;font-size:34px;color:var(--sq-live);letter-spacing:0;font-variant-numeric:tabular-nums}
+  #tmwall{position:absolute;top:9%;bottom:0;background:color-mix(in srgb,var(--ground) 88%,#fff);border-left:1px solid var(--line);transition:opacity .3s;pointer-events:none}
+  #tmball{position:absolute;left:0;top:0;width:var(--fsz);height:var(--fsz);border-radius:50%;background:var(--sq-live);pointer-events:none}
+  #tmmark{position:absolute;width:var(--fsz);height:var(--fsz);border-radius:50%;border:2px dashed var(--cue);pointer-events:none;z-index:2}
+  #tmghost{position:absolute;width:var(--fsz);height:var(--fsz);border-radius:50%;border:2px solid var(--ok);opacity:0;pointer-events:none;z-index:2}
+
+/* ==================================================================
+   reaction — games/reaction/
+   ================================================================== */
+  /* reaction */
+  .rxpane{position:absolute;inset:0;display:grid;place-items:center;transition:background .05s}
+  .rxpane.lit{background:var(--sq-live)}
+  .rxpane.bad{background:color-mix(in srgb,var(--miss) 55%,var(--ground))}
+  .rxpane .rxshape{width:34vmin;height:34vmin;background:var(--sq-live)}
+  .rxpane .rxshape.circle{border-radius:50%}
+  .rxpane .rxshape.tri{clip-path:polygon(50% 0,100% 100%,0 100%)}
+  .rxmsg{position:absolute;left:0;right:0;top:16%;text-align:center;font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);line-height:1.8}
+  .rxmsg b{display:block;font-size:clamp(48px,16vw,110px);color:var(--ink);letter-spacing:0;font-variant-numeric:tabular-nums;font-weight:700}
+  .rxmsg b.fb{font-size:clamp(30px,9vw,60px);font-family:var(--title);letter-spacing:.08em;margin-bottom:10px;line-height:1.2}
+  .rxmsg .sub{display:block;font-size:14px;letter-spacing:.2em;color:var(--ink);margin-top:8px}
+  .rxpane.lit .rxmsg,.rxpane.lit .rxmsg b{color:var(--ground)}
+  .rxrule{display:grid;grid-auto-flow:column;justify-content:center;gap:10px;align-items:center;margin-top:18px;color:var(--ink)}
+  .rxpane .rxshape{transition:none}
+  .rxrule i{display:inline-block;width:18px;height:18px;background:var(--sq-live)}
+  .rxrule i.square{border-radius:1px}
+  .rxrule i.circle{border-radius:50%}
+  .rxrule i.tri{clip-path:polygon(50% 0,100% 100%,0 100%)}
+  /* Reaction (v10): white lands as a large square with burst lines, not the whole screen */
+  .rxpane.lit{background:none}
+  .rxbox{position:absolute;left:50%;top:52%;width:min(86vmin,440px);height:min(86vmin,440px);margin:calc(min(86vmin,440px) / -2) 0 0 calc(min(86vmin,440px) / -2);display:none;overflow:visible;pointer-events:none}
+  .rxpane.lit .rxbox,.rxpane.hit .rxbox{display:block}
+  .rxpane.hit .rxbox{opacity:.28}
+  .rxbox rect{fill:var(--sq-live)}
+  .rxbox line{stroke:var(--sq-live);stroke-width:3;stroke-linecap:round}
+  .rxpane.lit .rxmsg,.rxpane.lit .rxmsg b{color:var(--ink)}
+  .rxpane.hit .rxmsg{z-index:2}
+  /* the rule (v10) lives at the top-middle for the whole attempt, and arrives a word at a time */
+  #rxbar{position:absolute;left:0;right:0;top:calc(16.5% + env(safe-area-inset-top));text-align:center;font-family:var(--mono);font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink);line-height:1.8;z-index:3;pointer-events:none}
+  #rxbar .w{display:inline-block;opacity:0;animation:wordin .4s ease-out both;margin-right:.4em}
+  #rxbar i{display:inline-block;width:20px;height:20px;background:var(--sq-live);vertical-align:-4px;margin:0 4px}
+  #rxbar i.circle{border-radius:50%}
+  #rxbar i.tri{clip-path:polygon(50% 0,100% 100%,0 100%)}
+  #rxbar b{color:var(--ok);font-weight:700}
+  .rxpane .rxmsg{top:22%}
+
+/* ==================================================================
+   spot — games/spot/
+   ================================================================== */
+  /* count keypad */
+  .pad-num{position:absolute;left:8%;right:8%;bottom:6%;display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+  .pad-num button{font-family:var(--mono);font-weight:700;font-size:22px;padding:14px 0;border:1px solid var(--line);color:var(--ink);pointer-events:auto}
+  .pad-num button.sel{border-color:var(--ink);background:color-mix(in srgb,var(--ink) 10%,transparent)}
+  /* versus for Reaction and two-player Count (v11): two zones, the top one turned to face the other player */
+  .vz{position:absolute;left:0;right:0;height:42%;display:grid;place-items:center;font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;pointer-events:none}
+  .vz.top{top:0;rotate:180deg;border-bottom:1px solid var(--line)}
+  .vz.bot{bottom:0;border-top:1px solid var(--line)}
+  .vz b{display:block;font-size:34px;letter-spacing:0;text-align:center}
+  .vz.p1{color:var(--p1)}
+  .vz.p2{color:var(--p2)}
+  .vz .pad-num{position:static;width:84%;pointer-events:auto;grid-template-columns:repeat(5,1fr)}
+  .vz .pad-num button{padding:8px 0;font-size:18px}
+  .vz .pad-num button.sel{border-color:currentColor}
+  .vz.done .pad-num{opacity:.3;pointer-events:none}
+  .vmid{position:absolute;left:0;right:0;top:42%;height:16%;display:grid;place-items:center;font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);text-align:center;line-height:1.7;pointer-events:none}
+  .vmid b{color:var(--ink);font-size:16px;letter-spacing:.1em}
+
+/* ==================================================================
+   versus — games/_shared/versus.js
+   ================================================================== */
+  /* versus (v10): one phone, two ends. The top half is turned to face the second player; the middle carries both counts and the lead */
+  #vs{display:none;position:absolute;inset:0}
+  #game.versus #vs{display:block}
+  .vhalf{position:absolute;left:0;right:0;height:38%}
+  .vhalf.bot{bottom:calc(2% + env(safe-area-inset-bottom))}
+  .vhalf.top{top:calc(2% + env(safe-area-inset-top));rotate:180deg}
+  .vhalf .pad{bottom:0;height:min(34vw,20vh)}
+  .vhalf .vwho{position:absolute;left:0;right:0;bottom:calc(min(34vw,20vh) + 10px);text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);pointer-events:none}
+  .vhalf .vwho b{display:block;font-size:34px;color:var(--ink);letter-spacing:0;font-variant-numeric:tabular-nums;font-weight:700}
+  #vsmid{position:absolute;left:8%;right:8%;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;align-items:center;font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);pointer-events:none;z-index:3}
+  #vsmid .lead{height:8px;width:100%;background:var(--line);position:relative;overflow:hidden}
+  #vsmid .lead i{position:absolute;top:0;bottom:0;left:50%;width:0;background:var(--sq-live);transition:left .12s,width .12s}
+  #vsmid b{color:var(--ink);font-size:13px;letter-spacing:.14em}
+  #vsmid .lead u{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--cue);left:50%;margin-left:-1px}
+  /* versus dots: the field is the whole screen; squares belong to the bottom player, circles to the top one */
+  #vfield{position:absolute;inset:0;display:none}
+  #game.versus[data-g="dots"] #vfield{display:block}
+  #game.versus[data-g="dots"] .vhalf .pad{display:none}
+  #game.versus[data-g="dots"] .vhalf{height:14%;pointer-events:none}
+  #game.versus[data-g="dots"] .vhalf .vwho{bottom:0}
+  .vshape{position:absolute;left:0;top:0;width:var(--dsz,80px);height:var(--dsz,80px);background:var(--sq-live);opacity:0;will-change:transform;transition:opacity .08s}
+  .vshape.on{opacity:1}
+  .vshape.c{border-radius:50%}
+  .vlead{position:absolute;left:0;top:0;width:var(--dsz,80px);height:var(--dsz,80px);border:2px solid var(--cue);background:color-mix(in srgb,var(--cue) 22%,transparent);opacity:0;pointer-events:none;will-change:transform}
+  .vlead.c{border-radius:50%}
+  .vlead.on{opacity:1}
+  #vwin{position:absolute;inset:0;display:none;place-items:center;z-index:6;pointer-events:none}
+  #vwin.on{display:grid}
+  #vwin div{font-family:var(--title);font-size:clamp(22px,7vw,40px);letter-spacing:.2em;text-transform:uppercase;color:var(--ok);text-align:center;text-shadow:0 0 18px var(--glow);animation:turnin 1.6s ease-out both}
+  #vwin div.top{rotate:180deg}

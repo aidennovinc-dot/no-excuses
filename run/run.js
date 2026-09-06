@@ -2,24 +2,27 @@
    engine-core.js. The engine is called only through the contract in ARCHITECTURE.md — mount / start / input / tick / stop /
    result, plus the optional demo (the first-play ghost) and precount (what plays under the 3-2-1) — and talks back through
    ctx.emit: 'finish' with the run record, 'live' with the run so far. Engines never see sel, prefs, the store or each other.
+   Build 18 (refactor stage 4): no screen is imported here. The run tells the screens what happened through core/events.js —
+   run:record, run:pass, run:finish, run:abort, lock:ask — and the result, pass and pick screens take it from there (A4).
 
    ctx = { root, game, cfg, mode, len, players, practice, scale, emit, timers, audio, rand } — the contract's set plus
    practice and scale, which Sequence needs and which used to be read off sel. */
 
 import { Music, Snd } from "../audio.js";
 import { RUN_SCHEMA } from "../config/build.js";
-import { HUD, INTRO, PASS, RESULT, TOAST, VERDICT } from "../config/copy.js";
+import { HUD, INTRO } from "../config/copy.js";
 import { MODE_NAME, PASS_LEN, RATE_MAX } from "../config/games.js";
-import { $, $$, T, pWho } from "../core.js";
-import { F, VS, sel } from "../core/state.js";
-import { load, prefs, save } from "../core/store.js";
+import { $, T, pWho } from "../core.js";
+import { emit } from "../core/events.js";
+import { VS, sel } from "../core/state.js";
+import { prefs, save, store } from "../core/store.js";
 import { makeTimers, tapTime } from "../core/timers.js";
 import * as hud from "../games/_shared/hud.js";
 import { ENGINES, GAMES, GC, SHARED2, VERSUS, lenName, versusOf } from "../games/registry.js";
-import { applyPrefs, askUnlock, renderOver, renderOverChips, setLastRun, show } from "../menu.js";
-import { Scores, UNLOCKS, chalRun, checkAch, checkUnlocks, goalFor, isOpen, lenOpen, lensOf, pendingAim, pendingGoal, setPendingAim, setPendingGoal, unlockHtml, unlockName, unlockToast, unlocked, verdict } from "../progress.js";
-import { Ads } from "../ui/ads.js";
+import { Scores, UNLOCKS, chalRun, goalFor, isOpen, lenOpen, lensOf, pendingAim, pendingGoal, setPendingAim, setPendingGoal, unlockName, unlockToast, unlocked } from "../progress.js";
 import { scoreTxt } from "../ui/format.js";
+import { game as showGame } from "../ui/router.js";
+import { applyPrefs } from "../ui/theme.js";
 import { toast } from "../ui/toast.js";
 
 /* ---------- run state. `id` steps on every start and abort, so anything a dead run left behind can tell it is dead ---------- */
@@ -33,7 +36,7 @@ const Intro=(()=>{
   let done=null, timers=null; const ghost=$('#ghost');
   function clear(){ if(timers) timers.clearT(); ghost.classList.remove('on','hold','tap'); ghost.style.transition='none'; $('#intro').classList.remove('on'); }
   return {
-    run(cb){ const key=sel.game+':'+sel.diff, s=load('ne.intro',{}); if(s[key]) return cb(); s[key]=Date.now(); save('ne.intro',s);
+    run(cb){ const key=sel.game+':'+sel.diff, s=store.intro; if(s[key]) return cb(); s[key]=Date.now(); save();
       const [line,sub]=INTRO[key]||['','']; const words=line.split(' '); $('#intro-text').innerHTML=words.map((w,i)=>`<span class="w" style="animation-delay:${i*110}ms">${w}</span>`).join('')+`<small class="w" style="animation-delay:${words.length*110+150}ms">${sub}</small>`; $('#intro').classList.add('on');
       timers=makeTimers(ctx.timers.alive); const g=hud.makeGhost(Snd,timers);
       ghost.style.transition='none'; const c=g.centre($('#game')); g.at(c.x,c.y); void ghost.offsetWidth; ghost.style.transition='';
@@ -56,7 +59,7 @@ function start(){
   if(sel.vs===1&&!shared&&!VS.on){ VS.on=true; VS.stage=0; VS.p1=VS.p2=null; } if(VS.on) VS.stage++;
   if(VS.on&&PASS_LEN[sel.game]) sel.secs=PASS_LEN[sel.game];
   if(versus&&c.vsLens&&!c.vsLens.includes(sel.secs)) sel.secs=c.vsLens[0];
-  $$('.screen').forEach(s=>s.classList.remove('on')); $('#game').classList.add('on'); $('#game').classList.remove('live','shake'); $('#stars').style.opacity=0; $('#wheelwrap').classList.remove('on'); $('#lockwrap').classList.remove('on');
+  showGame(); $('#game').classList.remove('live','shake');   // the atmosphere fades, the wheel and the lock box close — they listen for screen:change
   $('#game').classList.toggle('versus',vx); $('#game').classList.toggle('bigc',sel.game==='quick-tap'&&!versus);
   const who=VS.on?pWho(VS.stage-1)+' · ':''; $('#hud-mode').innerHTML=who+(MODE_NAME[sel.diff]?MODE_NAME[sel.diff]+' · ':'')+(versus?(c.vsLens?lenName(sel.game,sel.secs,sel.diff):HUD.versus):shared?HUD.pass:lenName(sel.game,sel.secs,sel.diff)); $('#score').textContent=c.lower?'0.00':'0';
   // the next unlock this run could earn, if any, sits under the HUD (v8). Not for two players. v11: a "Try to unlock" or achievement run keeps its goal up as a reminder even when nothing new can unlock
@@ -77,7 +80,7 @@ function start(){
   Intro.run(()=>{ if(eng.precount) eng.precount(ctx); hud.countdown(ctx.timers,Snd,go); });
 }
 // v11: the stale "shake" class used to replay its animation every time #game was shown again — that was the spurious wrong-answer shake at the start of runs. It comes off on every start, abort and show
-function abort(){ if(!R.on) return; R.on=false; R.id++; VS.reset(); Intro.clear(); cancelAnimationFrame(R.raf); ctx.timers.clearT(); Music.stop(); eng.stop(ctx); $('#count').classList.remove('on'); $('#vwin').classList.remove('on'); $('#game').classList.remove('shake','live'); $('#seqdone')?.classList.remove('on'); $('#rxbar').innerHTML=''; show('s-pick'); }
+function abort(){ if(!R.on) return; R.on=false; R.id++; VS.reset(); Intro.clear(); cancelAnimationFrame(R.raf); ctx.timers.clearT(); Music.stop(); eng.stop(ctx); $('#count').classList.remove('on'); $('#vwin').classList.remove('on'); $('#game').classList.remove('shake','live'); $('#seqdone')?.classList.remove('on'); $('#rxbar').innerHTML=''; emit('run:abort'); }
 function tick(now){
   if(!R.on) return;
   if(R.timed){ const left=Math.max(0,R.end-now); $('#hud-time').textContent=(left/1000).toFixed(2); $('#bar').style.transform=`scaleX(${left/(ctx.len*1000)})`; if(now>=R.end) return finish(eng.result(ctx)); }
@@ -88,34 +91,24 @@ function tick(now){
 function input(ev){ if(!R.on) return; ev.t=tapTime(ev.raw); eng.input(ctx,ev); }
 function finish(res){
   R.on=false; R.live=false; cancelAnimationFrame(R.raf); ctx.timers.clearT(); Music.stop(); eng.stop(ctx); Snd.end(); $('#seqdone')?.classList.remove('on');
-  const run=Object.assign({ t:Date.now(), g:sel.game, d:sel.diff, s:sel.secs, n:prefs.name||'', v:RUN_SCHEMA },res||eng.result(ctx)); if(chalRun(run.g,run.d,run.s)) run.chal=1; setLastRun(run); if(!prefs.played){ prefs.played=1; save('ne.prefs',prefs); }
+  const run=Object.assign({ t:Date.now(), g:sel.game, d:sel.diff, s:sel.secs, n:prefs.name||'', v:RUN_SCHEMA },res||eng.result(ctx)); if(chalRun(run.g,run.d,run.s)) run.chal=1; emit('run:record',{run}); if(!prefs.played){ prefs.played=1; save(); }
   // pass & play (v10): neither run is recorded — the board is solo. Player 1 plays, the phone is passed, the two are compared. v11: Player 1 red, Player 2 blue
-  if(VS.on&&VS.stage===1){ VS.p1=run; $('#pass-eyebrow').textContent=T(PASS.eyebrow,{game:`${GAMES[sel.game].name}${MODE_NAME[sel.diff]?' · '+MODE_NAME[sel.diff]:''}`}); $('#pass-who').innerHTML=T(PASS.up,{who:pWho(1)}); $('#pass-text').innerHTML=T(PASS.text,{who:pWho(0),score:scoreTxt(sel.game,run.hits,sel.diff,run.s)}); setTimeout(()=>show('s-pass'),250); return; }
+  if(VS.on&&VS.stage===1){ VS.p1=run; emit('run:pass',{run}); return; }
   if(VS.on&&VS.stage===2) VS.p2=run;
   const two=!!run.vs2||VS.on;
   const isBest = run.practice||(run.fail&&!run.hits)||two ? false : Scores.submit(run);
-  const g=GC(sel.game,sel.diff,run.s);
-  // the header (v11) carries only a status — the board title under the top 10 names the game, mode and length
-  $('#over-eyebrow').textContent=run.practice?RESULT.practice:run.fail?RESULT.fail:isBest?RESULT.best:run.vs2?(sel.vs===1?RESULT.pass:RESULT.versus):VS.on?RESULT.pass:'';
-  // practice shows no score at all (v5). Versus shows the pair of counts. Lower-is-better scores wear a ▼ (v11)
-  $('#over-score').innerHTML=run.vs2?`${run.vs2.txt?run.vs2.txt[0]:run.vs2.a}–${run.vs2.txt?run.vs2.txt[1]:run.vs2.b}`:run.practice||(run.fail&&!run.hits)?RESULT.dash:scoreTxt(sel.game,run.hits,sel.diff,run.s)+(g.lower?RESULT.lowerMark:''); $('#over-score').classList.toggle('sm',!!g.suffix||!!run.vs2);
-  $('#verdict').textContent=run.vs2?(run.vs2.w<0?VERDICT.draw:T(VERDICT.took,{n:run.vs2.w+1,how:run.vs2.how?' '+run.vs2.how:''})):run.practice?VERDICT.practice:verdict(run);
-  F.bd={g:sel.game,d:sel.diff,s:sel.secs}; renderOver(run);
-  // the ad break (v10) comes between the run and the result, every fourth result, never for supporters
-  setTimeout(()=>Ads.after(()=>{ show('s-over'); if(run.practice||two) return;
-    const msgs=checkUnlocks(run).map(u=>[unlockToast(u.key),'','ok'])
-      .concat(checkAch(run).map(a=>[T(TOAST.achievement,{name:a.name})+(a.unlocks?' · '+unlockHtml(a):''),a.id,'']));
-    msgs.forEach(([m,id,cls],i)=>setTimeout(()=>toast(m,id,cls,!!id),i*(id?3400:2600))); renderOverChips(); }),250);
+  // the result screen takes it from here: the header, the ad break, the unlock and achievement toasts (ui/screens/result.js)
+  emit('run:finish',{run,isBest,two});
 }
 // mid-run (v10): engines emit 'live' with the run so far. Any live unlock that now passes lands at once, with a green toast; the goal line ticks
 function liveCheck(part){ if(!R.on||VS.on||sel.vs===2) return; const run=Object.assign({g:sel.game,d:sel.diff,s:sel.secs,hits:0,misses:0,x:999,y:0},part); const u=unlocked(); let ch=false;
   for(const x of UNLOCKS){ if(x.live&&!u[x.key]&&x.test(run)){ u[x.key]=Date.now(); ch=true; R.fresh.push(x.key); toast(unlockToast(x.key),'','ok'); } }
-  if(ch) save('ne.unlock',u);
+  if(ch) save();
   if(R.goal&&!R.goalHit&&(u[R.goal.key]||R.goal.test(run))){ R.goalHit=true; if(R.goal.len) toast(unlockToast(R.goal.key),'','ok'); $('#goal').classList.add('hit'); $('#goal').innerHTML=HUD.goalHit+$('#goal').innerHTML; } }
 // a locked game or mode (v10): the lock box's Try to unlock — straight into the game, with the goal line up
-function goWhere(w){ $('#lockwrap').classList.remove('on'); if(!w) return; const G_=GAMES[w.g]; sel.game=w.g; prefs.lastGame=w.g; save('ne.prefs',prefs);
-  sel.diff=w.d&&isOpen(w.g,w.d)?w.d:(G_.modes.find(d=>isOpen(w.g,d))||G_.modes[0]); if(!isOpen(sel.game,sel.diff)) return askUnlock(sel.game,sel.diff);
+function goWhere(w){ if(!w) return; const G_=GAMES[w.g]; sel.game=w.g; prefs.lastGame=w.g; save();
+  sel.diff=w.d&&isOpen(w.g,w.d)?w.d:(G_.modes.find(d=>isOpen(w.g,d))||G_.modes[0]); if(!isOpen(sel.game,sel.diff)) return emit('lock:ask',{g:sel.game,d:sel.diff});
   const lens=lensOf(w.g,sel.diff); sel.secs=w.s||(lens.includes(sel.secs)&&lenOpen(w.g,sel.diff,sel.secs)?sel.secs:lens.find(s=>lenOpen(w.g,sel.diff,s))); if(!lenOpen(sel.game,sel.diff,sel.secs)) sel.secs=lens[0]; sel.vs=0; sel.practice=0; VS.reset(); setPendingAim(w.need||''); setPendingGoal(w.aim||null); start(); }
 
 const introActive=()=>Intro.active();
-export { R, abort, active, finish, goWhere, input, introActive, liveCheck, start };
+export { R, abort, active, goWhere, input, introActive, liveCheck, start };

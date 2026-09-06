@@ -39,7 +39,7 @@ await page.evaluate(() => document.querySelector('#diff-row').children[0].click(
 await page.evaluate(() => { const b = [...document.querySelectorAll('#time-row .tbtn')].find(x => x.classList.contains('locked')); b && b.click(); }); await sleep(400); await shot('06-lockbox');
 await click('#lock-no'); await sleep(200);
 // all open
-await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('ne.prefs') || '{}'); p.allOpen = true; p.story = 1; p.gridSeen = 1; p.name = 'AIDEN'; localStorage.setItem('ne.prefs', JSON.stringify(p)); });
+await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('ne')); Object.assign(s.prefs, { allOpen: true, story: 1, gridSeen: 1, name: 'AIDEN' }); localStorage.setItem('ne', JSON.stringify(s)); });   // build 18: one key
 await page.reload({ waitUntil: 'networkidle0' }); await sleep(600); await shot('07-menu-open');
 await click('[data-go="s-pick"]'); await sleep(500); await shot('08-grid-open');
 await click('.tile[data-game="dots"]'); await sleep(400);

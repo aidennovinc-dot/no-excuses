@@ -37,17 +37,42 @@ lives beside `BUILD` and does **not** move with it — see the comment there for
 
 ## Structure
 
-**Where the code is going: `ARCHITECTURE.md`** — the target layout, the engine contract, the security
-rules S1–S7 and the code decisions A1–A8. The refactor runs one stage per build (14–18); the stage
-plan is `../2026-09-05_personal_handover_no-excuses-refactor.md`. Until a stage moves a file, the
-build-12 layout below still holds.
+**The shape is `ARCHITECTURE.md`** — the target layout, the engine contract, the security rules S1–S7
+and the code decisions A1–A8. The refactor ran one stage per build (14–18, plan in
+`../2026-09-05_personal_handover_no-excuses-refactor.md`); build 18 completed stage 4 and the layout
+below is the live one. Deviations from `ARCHITECTURE.md` are listed per stage in `../FEATURES.md`.
 
-`boot.js` is the entry (`<script type="module">`) and holds the top-level statements that start the
-app. Since build 15 the module graph is a DAG — `core → core/store → core/state → audio → progress
-→ menu → run/run → ui/actions → boot` — so evaluation order follows the imports and no module reaches
-back up the chain. **Since build 17 there is no cycle at all:** the engines import only
-`games/_shared/`, `core/`, `config/` and `core.js` (the gate asserts it, A3) and never see `sel`,
-`prefs`, the store, audio, the run or each other.
+`boot.js` is the entry (`<script type="module">`), 23 lines: everything else registers itself on import
+(the store loads and migrates, the screens register with the router and define their buttons, the theme
+applies itself) and boot only fixes the order of the first paint. The module graph is a DAG with no
+cycle: `config → core.js → games/registry → core/store → core/state → ui/theme → audio → progress →
+ui/router → ui/actions → run/run → ui/screens/* → boot`. **Screens and the run never import each other
+(A4, asserted by the gate):** the run emits `run:record` / `run:pass` / `run:finish` / `run:abort` /
+`lock:ask` through `core/events.js` and the result, pass, pick and lock-box screens listen; screens
+navigate with `show(id, opts)` and never import another screen. The engines import only
+`games/_shared/`, `core/`, `config/` and `core.js` (A3) and never see `sel`, `prefs`, the store, audio,
+the run or each other.
+
+**Screens — since build 18.** One file per screen under `ui/screens/`, each owning its DOM: `title`,
+`menu`, `pick`, `board`, `achievements`, `customise`, `about`, `pass`, `result`, `lockbox`; `index.js`
+imports them all. A screen calls `register(id, { onShow(opts), onBack() })` on `ui/router.js` and
+`define({ act: handler })` on `ui/actions.js`. `show(id, opts)` puts the screen on and hands it opts —
+`show('s-pick', {g, d, s})` opens a game's sheet at its mode or length row, `show('s-ach', {ach})`
+scrolls to a row, `show('s-custom', {unlocks})` flashes an item. `back()` asks the screen first (`onBack`
+returning true means it moved within itself — the pick sheet's stages), then follows the screen's
+`data-back` in the markup: the parent map is the stack, fixed so Back never lands on the game layer.
+Every change emits `screen:change {id}` (`'game'` for the game layer) — the atmosphere fades and pauses
+its frame loop, the theme re-applies the game's colours, the wheel and the lock box close.
+
+**The store (A5, S3) — since build 18.** One localStorage key, `ne`, holding `{ v, prefs, runs, ach,
+unlock, intro, seen }` (`core/store.js`). On load the migration ladder runs forward (v0 = the seven
+build-13 keys, folded in once with the v8–v11 reshapes and then removed), then every field is
+shape-checked against its default and falls back on its own — a bad colour costs the colour, never the
+boot. `runs` is capped at 600. `save()` writes the whole record; `reset()` is Fresh game. `unlocked()`,
+`got()`, `Scores.runs()` in `progress.js` return the live record's own maps and array. The store reads
+`allOpen` / `supporter` only while `BUILD_FLAGS.dev` is true (S5), and the About screen removes the
+testing row (`[data-dev]`) when it is false. `RUN_SCHEMA` is 2; the legacy migration stamps every
+surviving run with it.
 
 **The engine contract (A3) — since build 17.** `run/run.js` owns start / tick / finish / abort and the
 run state; `games/registry.js` exports `ENGINES` by id (and `VERSUS`, the one-phone-two-ends engine
@@ -77,22 +102,29 @@ both keyed `'g'`, `'g:d'`, `'g:streak'`, `'g:d:streak'` and resolved by `GV()` i
 `progress.js` joins data and predicate: `UNLOCKS` and `ACH` leave it with `test` / `progress` attached.
 A feedback line that changes a number touches `config/` only; if it also needs a rule, the id links them.
 
-`index.html` shell + CSS · `core.js` helpers (`$`, `esc`, `T`, `pWho`, `seqStep`) · `core/store.js`
-load/save, `prefs` and its migrations · `core/state.js` `sel`, `VS`, `F` · `core/platform.js` the
-challenge link · `games/registry.js` `GC`/`GV` and the length names over the config table ·
-`progress.js` unlocks, achievements, scores — pure functions over the store, no DOM · `audio.js` sound
-and music (the run hands `Music.start` its state object; audio never imports the run) · `menu.js`
-customise, navigation, pick sheet, board, result, lock box, achievements screen · `ui/toast.js` ·
-`ui/ads.js` · `ui/atmosphere.js` the menu canvas · `ui/actions.js` every button's handler, keyed by
-`data-act` · `run/run.js` the run itself, plus `liveCheck` and `goWhere` · `games/<id>/index.js` one
-engine per game, `games/_shared/` what they share · `scripts/bump.mjs` the build bump.
+`index.html` the shell: markup, one `<link>` to `styles/app.css`, one module script · `styles/app.css`
+all CSS, in sections that match the folders (shell · atmosphere · one per screen · toast · ads · run ·
+one per game · versus) · `core.js` helpers (`$`, `esc`, `T`, `pWho`, `seqStep`) · `core/events.js`
+on/emit · `core/store.js` the one-key store · `core/state.js` `sel`, `VS` · `core/platform.js` the
+challenge link · `core/timers.js` run-scoped timers · `games/registry.js` `GC`/`GV` and the length names
+over the config table · `progress.js` unlocks, achievements, scores — pure functions over the store, no
+DOM · `audio.js` sound and music (the run hands `Music.start` its state object; audio never imports the
+run) · `ui/router.js` show/back · `ui/actions.js` the click dispatcher and the `define()` registry ·
+`ui/theme.js` the game's colours as CSS variables · `ui/chips.js`, `ui/format.js` shared by the screens ·
+`ui/toast.js` · `ui/ads.js` · `ui/atmosphere.js` the menu canvas · `ui/screens/*` · `run/run.js` the run
+itself, plus `liveCheck` and `goWhere` · `run/input.js` the shell's pointer and key events into the run ·
+`games/<id>/index.js` one engine per game, `games/_shared/` what they share · `scripts/bump.mjs` the
+build bump · `_smoke/cssdiff.mjs` a tool: computed-style diff between two stylesheets, for the next CSS move.
 
-**Every button carries `data-act`.** `ACTIONS[act](btn, ev)` in `ui/actions.js` does the work and
-returns `'pick'` or `'click'` for the sound; a button with no act plays its old sound and does nothing.
-A new button = one attribute in the markup + one entry in `ACTIONS`.
+**Every control carries `data-act`.** `ACTIONS[act](el, ev)` in `ui/actions.js` does the work and
+returns `'pick'` or `'click'` for the sound (undefined for silence); the nearest `data-act` ancestor of
+the tap decides, so the overlays (toast, ad break, lock box, Next card, the full stop) are ordinary acts.
+A button with no act plays its old sound and does nothing. A new button = one attribute in the markup +
+one entry in its screen's `define({...})`. The one exception is the title sequence: while it is on, a tap
+anywhere advances it (`capture()` in `ui/actions.js`).
 
 Bindings written across modules go through setters, because ESM imports are read-only:
-`setPendingAim` / `setPendingGoal` (progress.js), `setLastRun` / `setMenuWasFirst` (menu.js).
+`setPendingAim` / `setPendingGoal` (progress.js).
 
 ## Locked decisions
 
@@ -124,9 +156,12 @@ only when it names the ID (e.g. `A6:`); otherwise it goes under "Proposed" in FE
 **`npm test`** (build 14) spawns its own static server — no Python — and drives headless Chromium at
 390×844 with **zero uncaught errors**. First three static checks: the build number in
 `config/build.js` is the one in `index.html` ×3 and `version.json` (A6), `config/` has no imports
-and no functions (A2), and every engine imports only `_shared` / `core` / `config` (A3, build 17). Then: intro → menu → every pick sheet → one Set run and one Streak
+and no functions (A2), and every engine imports only `_shared` / `core` / `config` (A3, build 17), no screen imports a screen or an
+engine and the run imports no screen (A4, build 18). Then: intro → menu → every pick sheet → one Set run and one Streak
 run per game, driven to the result the way that engine is played → a pass & play Quick Tap → boot on
-three storage fixtures (empty, build-13 layout with runs intact, corrupt) → challenge links with a
+five storage fixtures (empty · build-13 layout, which must migrate to the one key `ne` v1 with runs, unlocks,
+achievements and name intact and the old keys removed · corrupt build-13 keys · a corrupt `ne` v1 that falls back
+field by field · 650 runs, capped at 600) → challenge links with a
 hostile `score`, a bad `s`, and a locked mode the link opened (that run never reaches a board). It
 also asserts the testable locks on a fresh profile — title sequence before the menu (L1), Quick Tap's
 length row is exactly Sprint / Dash / Marathon (L2), Solo shows no Pass & play / Versus (L3), the

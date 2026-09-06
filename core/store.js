@@ -1,40 +1,88 @@
-/* No Excuses — storage and the player's prefs (build 15, refactor stage 1).
-   load/save came from core.js, prefs and its migrations from menu.js. Still the seven build-13 keys
-   (ne.prefs, ne.runs, ne.unlock, ne.ach, ne.seen, ne.intro, ne.tileSeen) — Stage 4 folds them into one
-   versioned `ne` record. Nothing here touches the DOM. */
+/* No Excuses — the store (build 18, refactor stage 4). One key, `ne`, holding { v, prefs, runs, ach, unlock, intro, seen }
+   — not the seven build-13 keys (A5). load() runs the migration ladder forward, then shape-checks every field against its
+   default and falls back per field, never for the whole record: tampered or corrupt storage can cost a player a colour or a
+   run, it can never crash boot (S3). `runs` is capped at 600, oldest first out. save() writes the whole record; there is
+   nothing else to save. Nothing here touches the DOM.
+
+   The ladder: v0 is the build-13 layout (seven keys, no version) — fromLegacy() folds it into one record and applies the
+   v8–v11 reshapes that used to run on every boot. v1 is this record. The next change adds `if(raw.v<2) raw=up2(raw)` below
+   and bumps VERSION; a step never edits an earlier one.
+
+   The storage adapter is the three one-liners read / write / drop. Stage 5's platform.js swaps them for Capacitor Preferences. */
+import { SCALES } from "../config/audio.js";
+import { BUILD_FLAGS, RUN_SCHEMA } from "../config/build.js";
+import { DESIGNS, ITEMS } from "../config/theme.js";
 import { GAMES } from "../games/registry.js";
+import { emit } from "./events.js";
 
-// build 14 (S3): a stored value has to be the same shape as its default — an array where an array is expected, a plain object where an object is — or the default wins. Tampered storage costs progress, never a boot
-function load(k,d){ try{ const v=localStorage.getItem(k); if(!v) return d; const p=JSON.parse(v);
-  if(Array.isArray(d)) return Array.isArray(p)?p:d; if(d&&typeof d==='object') return p&&typeof p==='object'&&!Array.isArray(p)?p:d; return p; }catch(e){ return d; } }
-function save(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+const KEY='ne', VERSION=1, RUNS_CAP=600;
+const LEGACY=['ne.prefs','ne.runs','ne.unlock','ne.ach','ne.seen','ne.intro','ne.tileSeen'];
+const read=k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } };
+const write=(k,v)=>{ try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } };
+const drop=k=>{ try{ localStorage.removeItem(k); }catch(e){} };
+const parse=s=>{ if(s==null) return undefined; try{ return JSON.parse(s); }catch(e){ return undefined; } };
+const isObj=x=>!!x&&typeof x==='object'&&!Array.isArray(x);
+const HEX=/^#[0-9a-f]{6}$/i;
+const hex=(v,d)=>typeof v==='string'&&HEX.test(v)?v:d;
+const SND=ITEMS.snd.map(i=>i.v);
+const SQ='#FFFFFF', LEAD='#C8322A';
 
-/* ---------- prefs ---------- */
-const prefs = Object.assign({ sq:'#FFFFFF', lead:'#C8322A', bg:'stars', tint:'', snd:'space', music:true, musicG:{}, lastGame:'quick-tap', name:'', scale:'penta', allOpen:false, supporter:false, adRuns:0 }, load('ne.prefs',{}));
-if(!prefs.musicG||typeof prefs.musicG!=='object') prefs.musicG={};
-if(prefs.music===false&&!Object.keys(prefs.musicG).length){ for(const g in GAMES) prefs.musicG[g]=false; prefs.music=true; } // v13: the old global switch becomes every game off
+/* ---------- the shape of each field. Anything that is not what its default is becomes the default; the rest is kept ---------- */
+// S5: the two dev flags are read only while BUILD_FLAGS.dev is on — a `supporter: true` planted in storage is nothing in a release build
+function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev;
+  const o={ bg:DESIGNS[p.bg]?p.bg:'stars', tint:hex(p.tint,''), snd:SND.includes(p.snd)?p.snd:'space', musicG:{}, lastGame:GAMES[p.lastGame]?p.lastGame:'quick-tap',
+    name:typeof p.name==='string'?p.name.trim().toUpperCase().slice(0,10):'', scale:SCALES[p.scale]?p.scale:'penta',
+    allOpen:dev&&!!p.allOpen, supporter:dev&&!!p.supporter, adRuns:Number.isInteger(p.adRuns)&&p.adRuns>=0?p.adRuns:0,
+    col:{}, story:p.story?1:0, played:p.played?1:0, gridSeen:p.gridSeen?1:0 };
+  if(isObj(p.musicG)) for(const g in GAMES) if(typeof p.musicG[g]==='boolean') o.musicG[g]=p.musicG[g];
+  // colours are per game (v6): { sq, lead, cut }, each #RRGGBB; cut defaults to the square colour (v13 6.5)
+  const col=isObj(p.col)?p.col:{};
+  for(const g in GAMES){ const c=isObj(col[g])?col[g]:{}; const sq=hex(c.sq,SQ); o.col[g]={ sq, lead:hex(c.lead,LEAD), cut:hex(c.cut,sq) }; }
+  if(Number.isInteger(p.mig11)&&p.mig11>0) o.mig11=p.mig11;
+  return o; }
+const validRun=r=>isObj(r)&&!!GAMES[r.g]&&GAMES[r.g].modes.includes(r.d)&&typeof r.s==='number'&&typeof r.hits==='number'&&typeof r.t==='number';
+const cleanRuns=raw=>Array.isArray(raw)?raw.filter(validRun).slice(0,RUNS_CAP):[];
+// ach / unlock / intro / seen are maps of key → timestamp (or 1). A value that is not a number is not a record
+const cleanMap=raw=>{ const o={}; if(isObj(raw)) for(const k in raw){ const v=raw[k]; if((typeof v==='number'&&Number.isFinite(v))||v===true) o[k]=v; } return o; };
+
+/* ---------- v0 → the one record: the seven build-13 keys, and the reshapes that used to run on every boot (v8–v11) ---------- */
+function fromLegacy(){
+  const L={}; let any=false; for(const k of LEGACY){ const v=parse(read(k)); if(v!==undefined){ any=true; L[k.slice(3)]=v; } }
+  if(!any) return null;
+  const prefs=isObj(L.prefs)?L.prefs:{};
+  if(!isObj(prefs.musicG)) prefs.musicG={};
+  if(prefs.music===false&&!Object.keys(prefs.musicG).length){ for(const g in GAMES) prefs.musicG[g]=false; }   // v13: the old global switch becomes every game off
+  if(!isObj(prefs.col)){ prefs.col={}; for(const g in GAMES) prefs.col[g]={sq:prefs.sq||SQ,lead:prefs.lead||LEAD}; }   // v6: the old global sq/lead seed every game once
+  if(!DESIGNS[prefs.bg]){ prefs.tint=String(prefs.bg).startsWith('#')?prefs.bg:''; prefs.bg='stars'; }   // v3 stored a hex in bg
+  let runs=Array.isArray(L.runs)?L.runs.filter(isObj):[];
+  runs.forEach(r=>{ if(r.g==='count'){ r.g='spot'; r.d='count'; } else if(r.g==='find'){ r.g='spot'; r.d='find'; } });   // v8: Count and Find became Spot · Count / Find
+  runs=runs.filter(r=>{ if(r.g==='quick-tap'&&r.d==='lead') return false; if(r.g==='hold'&&(r.d==='match'||r.d==='estimate')){ if(r.s!==5) return false; r.d='grow'; } return true; });   // v9: Lead is gone; Match/Estimate became Grow, 5-round runs only
+  runs=runs.filter(r=>!(r.g==='timing'&&r.d==='hidden'&&(r.v||0)<10));   // v10: Hidden is scored in pixels now
+  // v11: Blind is Two. Estimate, Timing, Reaction and Count changed their scoring unit — runs from before build 11 retire, once, with a note (prefs.mig11)
+  let c11=0; runs=runs.filter(r=>{ if(r.g==='quick-tap'&&r.d==='blind') r.d='two'; if((r.v||0)<11&&(r.g==='hold'||r.g==='timing'||r.g==='reaction'||(r.g==='spot'&&r.d==='count'))){ c11++; return false; } return true; });
+  if(c11) prefs.mig11=c11;
+  runs.forEach(r=>{ r.v=RUN_SCHEMA; });   // every survivor is valid under the current scoring: it carries the current stamp from here on
+  const ren={ 'quick-tap:lead':'quick-tap:four', 'hold:match':'hold:grow', 'hold:estimate':'hold:cut' };
+  const unlock=isObj(L.unlock)?L.unlock:{};
+  for(const k of Object.keys(unlock)){ if(k.startsWith('count:')){ unlock['spot:count']=unlock[k]; delete unlock[k]; } else if(k.startsWith('find:')){ unlock['spot:find']=unlock[k]; delete unlock[k]; } }
+  for(const k in ren) if(unlock[k]){ unlock[ren[k]]=unlock[k]; delete unlock[k]; }
+  const ach=isObj(L.ach)?L.ach:{}; const am={ct_5:'sp_5',ct_10:'sp_15',fd_fast:'sp_fast',fd_clean:'sp_clean'}; for(const k in am) if(ach[k]){ ach[am[k]]=ach[k]; delete ach[k]; }
+  const intro=isObj(L.intro)?L.intro:{}; for(const k in ren) delete intro[k]; if(intro['quick-tap:blind']){ intro['quick-tap:two']=intro['quick-tap:blind']; delete intro['quick-tap:blind']; }
+  return { v:0, prefs, runs, unlock, ach, intro, seen:L.seen };
+}
+
+function load(){ let raw=parse(read(KEY)), legacy=false;
+  if(!isObj(raw)){ raw=fromLegacy(); legacy=!!raw; if(!raw) raw={}; }
+  // if(raw.v<2) raw=up2(raw);   ← the next step of the ladder goes here
+  return { st:{ v:VERSION, prefs:cleanPrefs(raw.prefs), runs:cleanRuns(raw.runs), ach:cleanMap(raw.ach), unlock:cleanMap(raw.unlock), intro:cleanMap(raw.intro), seen:isObj(raw.seen)?cleanMap(raw.seen):null }, legacy }; }
+
+const { st: store, legacy } = load();
+const prefs = store.prefs;
+function save(){ return write(KEY,JSON.stringify(store)); }
+// the record is written back once at boot — repaired fields stick — and the old keys go only once the new record is safely down
+if(save()&&legacy) LEGACY.forEach(drop);
 const musicOn=g=>prefs.musicG[g]!==false;
-(function migrate(){ // v8: Count and Find became Spot · Count / Find; speed became seconds per key
-  const runs=load('ne.runs',[]); runs.forEach(r=>{ if(r.g==='count'){ r.g='spot'; r.d='count'; } else if(r.g==='find'){ r.g='spot'; r.d='find'; } });
-  const keep=runs.filter(r=>GAMES[r.g]&&GAMES[r.g].modes.includes(r.d)); save('ne.runs',keep);
-  const u=load('ne.unlock',{}); let ch=false; for(const k of Object.keys(u)){ if(k.startsWith('count:')){ u['spot:count']=u[k]; delete u[k]; ch=true; } if(k.startsWith('find:')){ u['spot:find']=u[k]; delete u[k]; ch=true; } } if(ch) save('ne.unlock',u);
-  const a=load('ne.ach',{}); const map={ct_5:'sp_5',ct_10:'sp_15',fd_fast:'sp_fast',fd_clean:'sp_clean'}; let ca=false; for(const k in map) if(a[k]){ a[map[k]]=a[k]; delete a[k]; ca=true; } if(ca) save('ne.ach',a);
-  if(prefs.speed==='normal') prefs.speed=.4; if(prefs.speed==='fast') prefs.speed=.3;
-  // v9: Quick Tap Lead is gone (its runs with it); Hold Match/Estimate became Estimate · Grow, keeping only 5-round runs
-  const r9=load('ne.runs',[]); let c9=false; const k9=r9.filter(r=>{ if(r.g==='quick-tap'&&r.d==='lead'){ c9=true; return false; } if(r.g==='hold'&&(r.d==='match'||r.d==='estimate')){ c9=true; if(r.s!==5) return false; r.d='grow'; } return true; }); if(c9) save('ne.runs',k9);
-  const u9=load('ne.unlock',{}); const m9={'quick-tap:lead':'quick-tap:four','hold:match':'hold:grow','hold:estimate':'hold:cut'}; let cu=false; for(const k in m9) if(u9[k]){ u9[m9[k]]=u9[k]; delete u9[k]; cu=true; } if(cu) save('ne.unlock',u9);
-  const i9=load('ne.intro',{}); let ci=false; for(const k in m9) if(i9[k]){ delete i9[k]; ci=true; } if(ci) save('ne.intro',i9);
-  // v10: Hidden is scored in pixels now; runs scored in seconds cannot sit on the same board
-  const r10=load('ne.runs',[]); const k10=r10.filter(r=>!(r.g==='timing'&&r.d==='hidden'&&(r.v||0)<10)); if(k10.length!==r10.length) save('ne.runs',k10);
-  // v11: Quick Tap Blind is Two (runs, intros and colours keep). Estimate, Timing, Reaction and Count changed their scoring unit — runs from before build 11 cannot sit on the new boards, so they retire, once, with a note. Dots, Sequence and Find keep theirs
-  const r11=load('ne.runs',[]); let c11=0; const k11=r11.filter(r=>{ if(r.g==='quick-tap'&&r.d==='blind') r.d='two'; if((r.v||0)<11&&(r.g==='hold'||r.g==='timing'||r.g==='reaction'||(r.g==='spot'&&r.d==='count'))){ c11++; return false; } return true; }); if(c11||r11.some(r=>r.g==='quick-tap'&&r.d==='two')) save('ne.runs',k11); if(c11) prefs.mig11=c11;
-  const i11=load('ne.intro',{}); if(i11['quick-tap:blind']){ i11['quick-tap:two']=i11['quick-tap:blind']; delete i11['quick-tap:blind']; save('ne.intro',i11); }
-  if(prefs.lastDiff==='blind'&&prefs.lastGame==='quick-tap') prefs.lastDiff='two'; })();
-// colours are per game (v6): prefs.col[game] = {sq, lead}. The old global sq/lead seed every game once
-// build 14 (S3): a col that is not an object of objects is rebuilt, not trusted
-if(!prefs.col||typeof prefs.col!=='object'||Array.isArray(prefs.col)){ prefs.col={}; for(const g in GAMES) prefs.col[g]={sq:prefs.sq||'#FFFFFF',lead:prefs.lead||'#C8322A'}; }
-for(const g in GAMES) if(!prefs.col[g]||typeof prefs.col[g]!=='object') prefs.col[g]={sq:'#FFFFFF',lead:'#C8322A'};
-for(const g in GAMES) if(!prefs.col[g].cut) prefs.col[g].cut=prefs.col[g].sq||'#FFFFFF';
-if(!GAMES[prefs.lastGame]) prefs.lastGame='quick-tap';
+// Fresh game (the About screen's dev switch): progress goes, the look and the name stay
+function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; Object.assign(prefs,{allOpen:false,story:0,adRuns:0,played:0,gridSeen:0}); delete prefs.mig11; save(); emit('store:reset'); }
 
-export { load, musicOn, prefs, save };
+export { musicOn, prefs, reset, save, store };

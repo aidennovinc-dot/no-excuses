@@ -1,16 +1,18 @@
 /* No Excuses — the gate (A7). Run before every push:  npm test
  *
  * Spawns its own static server (no Python), launches the Chrome at CHROME_PATH (Windows default as the fallback)
- * at 390x844, and fails on any uncaught error or failed assertion. What it covers, build 17:
+ * at 390x844, and fails on any uncaught error or failed assertion. What it covers, build 18:
  *   0. static: the build number in config/build.js is the one in index.html (x3) and version.json (A6); config/ is data only (A2);
- *      every engine imports only from games/_shared/, core/, config/ and core.js — never sel, the store, audio, the run or another engine (A3)
+ *      every engine imports only from games/_shared/, core/, config/ and core.js — never sel, the store, audio, the run or another engine (A3);
+ *      no screen imports another screen or an engine, and the run imports no screen (A4)
  *   1. cold start: intro -> menu, and the locked decisions that can be asserted on a fresh profile
  *        L1 title sequence before the menu · L2 Sprint / Dash / Marathon · L3 Solo shows nothing about friends
  *        L7 Quick Tap tile is white before any run · L9 the length row is labelled Mode
  *   2. every pick sheet opens (everything unlocked)
  *   3. one Set run and one Streak run per game, driven to the result screen the way that engine is played
  *   4. a pass & play Quick Tap (both players, the hand-over screen between)
- *   5. boot on three storage fixtures: empty · build-13 layout (runs survive) · corrupt (ne.runs="{}", prefs.scale="foo", prefs.col=42)
+ *   5. boot on five storage fixtures: empty · build-13 layout (migrates to the one key `ne` v1 with runs, unlocks, achievements and name intact,
+ *      the seven old keys removed) · corrupt build-13 keys · a corrupt `ne` v1 (every bad field falls back on its own) · 650 runs (capped at 600)
  *   6. challenge links: a hostile ?score= lands as text (S1); a bad ?s= is no challenge (S2); a run only the link opened is never on a board (S2)
  *   7. every button action (data-act) driven at least once — customise, chips, dev switches, lock box, Next card, full stop, share
  * Pass a base URL as argv[2] to test a server you are already running instead.
@@ -50,6 +52,12 @@ console.log('\nstatic checks');
   const stray = [];
   for (const f of engines) { const shared = f.startsWith('games/_shared/'); const src = strip(fs.readFileSync(path.join(root, f), 'utf8')); for (const m of src.matchAll(/from\s+["']([^"']+)["']/g)) { const p = m[1]; const okPath = shared ? /^(\.\/[\w.-]+\.js$|\.\.\/\.\.\/(core\/|config\/|core\.js$))/.test(p) : /^\.\.\/(_shared\/|\.\.\/(core\/|config\/|core\.js$))/.test(p); if (!okPath) stray.push(`${f} → ${p}`); } }
   stray.length ? bad('A3 engines import only _shared / core / config', stray.join(', ')) : ok(`A3 engines import only _shared / core / config (${engines.length} files)`);
+  // build 18 (A4): a screen never imports another screen or an engine; the run never imports a screen. They talk through core/events.js
+  const screens = fs.readdirSync(path.join(root, 'ui', 'screens')).filter(f => f.endsWith('.js') && f !== 'index.js').map(f => `ui/screens/${f}`);
+  const cross = [];
+  for (const f of screens) { const src = strip(fs.readFileSync(path.join(root, f), 'utf8')); for (const m of src.matchAll(/from\s+["']([^"']+)["']/g)) { if (/^\.\/|\/games\/(?!registry)/.test(m[1])) cross.push(`${f} → ${m[1]}`); } }
+  { const src = strip(fs.readFileSync(path.join(root, 'run', 'run.js'), 'utf8')); for (const m of src.matchAll(/from\s+["']([^"']+)["']/g)) if (/screens\//.test(m[1])) cross.push(`run/run.js → ${m[1]}`); }
+  cross.length ? bad('A4 screens and the run talk by events, not imports', cross.join(', ')) : ok(`A4 no screen imports a screen or an engine, the run imports no screen (${screens.length} screens)`);
 }
 
 const browser = await launch();
@@ -208,8 +216,14 @@ const B13 = {
   'ne.unlock': { 'dots:blind': NOW - 120000 }, 'ne.ach': { first: NOW - 120000, named: NOW - 100000 }, 'ne.seen': { 'game:quick-tap': 1, 'game:dots': 1 }, 'ne.intro': { 'quick-tap:two': NOW - 130000 },
 };
 if (await bootWith('build-13 layout', B13, 's-menu')) {
-  const runs = await getJSON('ne.runs');
+  const ne = await getJSON('ne'); const runs = ne && ne.runs;
   (Array.isArray(runs) && runs.length === 2 && runs[0].hits === 12) ? ok('build-13 layout: both runs survive the boot') : bad('build-13 layout: runs survive', JSON.stringify(runs).slice(0, 80));
+  // build 18 (A5): the seven keys become one versioned record; every surviving run carries the current schema stamp
+  (ne && ne.v === 1 && Array.isArray(runs) && runs.every(r => r.v === 2)) ? ok('build-13 layout: migrated to `ne` v1, runs stamped RUN_SCHEMA 2') : bad('build-13 layout: ne v1 + run stamp', JSON.stringify({ v: ne && ne.v, stamps: runs && runs.map(r => r.v) }));
+  const left = await page.evaluate(() => ['ne.prefs', 'ne.runs', 'ne.unlock', 'ne.ach', 'ne.seen', 'ne.intro', 'ne.tileSeen'].filter(k => localStorage.getItem(k) !== null));
+  left.length === 0 ? ok('build-13 layout: the seven old keys are gone') : bad('build-13 layout: old keys removed', left.join(', '));
+  (ne && ne.unlock['dots:blind'] && ne.ach.first && ne.ach.named && ne.intro['quick-tap:two'] && ne.seen && ne.seen['game:dots']) ? ok('build-13 layout: unlocks, achievements, intros and seen carried over') : bad('build-13 layout: maps carried', JSON.stringify({ u: ne && ne.unlock, a: ne && ne.ach, i: ne && ne.intro, s: ne && ne.seen }).slice(0, 160));
+  (ne && ne.prefs.col['quick-tap'].sq === '#FFE9C4' && ne.prefs.adRuns === 3 && ne.prefs.col.dots && ne.prefs.col.dots.sq === '#FFFFFF') ? ok('build-13 layout: colours and prefs carried, missing games seeded') : bad('build-13 layout: prefs carried', JSON.stringify(ne && ne.prefs).slice(0, 160));
   await click('[data-go="s-board"]'); await sleep(400);
   const row = await page.evaluate(() => document.querySelector('#runs tr.best td:nth-child(3)')?.textContent.trim());
   row === '12' ? ok('build-13 layout: the Quick Tap board shows the 12-hit run first') : bad('build-13 layout: board shows the run', 'first score ' + row);
@@ -217,8 +231,8 @@ if (await bootWith('build-13 layout', B13, 's-menu')) {
   name === 'AIDEN' ? ok('build-13 layout: the profile name is kept') : bad('build-13 layout: profile name', name);
 }
 const CORRUPT = { 'ne.prefs': { story: 1, played: 1, gridSeen: 1, allOpen: true, scale: 'foo', col: 42, snd: 'off', musicG: {} }, 'ne.runs': '{}', 'ne.unlock': '[]', 'ne.ach': 'null', 'ne.seen': '"x"' };
-if (await bootWith('corrupt (ne.runs="{}", prefs.scale="foo", prefs.col=42)', CORRUPT, 's-menu')) {
-  const p = await getJSON('ne.prefs');
+if (await bootWith('corrupt build-13 keys (ne.runs="{}", prefs.scale="foo", prefs.col=42)', CORRUPT, 's-menu')) {
+  const p = (await getJSON('ne')).prefs;
   p.scale === 'penta' ? ok('corrupt: prefs.scale fell back to penta') : bad('corrupt: prefs.scale fallback', String(p.scale));
   (p.col && typeof p.col === 'object' && p.col['quick-tap']) ? ok('corrupt: prefs.col was rebuilt') : bad('corrupt: prefs.col rebuilt', JSON.stringify(p.col));
   // Sequence reads SCALES[sel.scale] the moment a run starts — the crash site the fixture is for
@@ -227,6 +241,18 @@ if (await bootWith('corrupt (ne.runs="{}", prefs.scale="foo", prefs.col=42)', CO
   const before = errors.length; await click('#go-btn'); await sleep(1200);
   ((await inGame()) && errors.length === before) ? ok('corrupt: a Sequence run starts on the fallback scale') : bad('corrupt: Sequence run starts', `${errors.length - before} error(s)`);
   await click('#quit'); await sleep(300);
+}
+// build 18: a corrupt one-key record — every bad field falls back to its own default, the good ones stay; and the 600-run cap
+const CORRUPT2 = { ne: { v: 1, prefs: { story: 1, played: 1, gridSeen: 1, allOpen: true, scale: 'foo', col: 42, snd: 'off', musicG: { dots: false, spot: 'yes' }, bg: '#123456', name: 12, adRuns: 'x', tint: 'red', lastGame: 'dots' }, runs: '{}', unlock: [], ach: null, intro: 'x', seen: 'x' } };
+if (await bootWith('corrupt `ne` v1 (runs="{}", col=42, bg="#123456", name=12, adRuns="x")', CORRUPT2, 's-menu')) {
+  const ne = await getJSON('ne'); const p = ne.prefs;
+  const good = p.scale === 'penta' && p.bg === 'stars' && p.tint === '' && p.name === '' && p.adRuns === 0 && p.snd === 'off' && p.lastGame === 'dots' && p.allOpen === true && p.musicG.dots === false && !('spot' in p.musicG) && p.col['quick-tap'].sq === '#FFFFFF' && Array.isArray(ne.runs) && ne.runs.length === 0 && ne.seen && typeof ne.seen === 'object' && Object.keys(ne.ach).length === 0;   // seen was corrupt → null → boot reseeded it
+  good ? ok('corrupt ne v1: each bad field fell back on its own; scale, bg, tint, name, adRuns, col, runs repaired, seen reseeded; snd, lastGame, allOpen, musicG.dots kept') : bad('corrupt ne v1: per-field fallback', JSON.stringify(ne).slice(0, 220));
+}
+const MANY = Array.from({ length: 650 }, (_, i) => ({ t: NOW - i * 1000, g: 'quick-tap', d: 'two', s: 5, n: '', v: 2, hits: 650 - i, misses: 0 }));
+if (await bootWith('650 runs in `ne`', { ne: { v: 1, prefs: { story: 1, played: 1, gridSeen: 1, snd: 'off' }, runs: MANY, unlock: {}, ach: {}, intro: {}, seen: {} } }, 's-menu')) {
+  const ne = await getJSON('ne');
+  (ne.runs.length === 600 && ne.runs[0].hits === 650) ? ok('runs are capped at 600, newest first kept') : bad('runs cap 600', `${ne.runs.length} runs, first hits ${ne.runs[0] && ne.runs[0].hits}`);
 }
 
 // ---- 6. challenge links ----
@@ -255,7 +281,7 @@ const openChallenge = async (qs) => {
     await click('#go-btn');
     const at = await driveToResult('quick-tap', 'challenge run', 30000);
     if (at === 's-over') {
-      const runs = await getJSON('ne.runs'), ach = await getJSON('ne.ach'), r = await resultLine();
+      const ne = await getJSON('ne'), runs = ne && ne.runs, ach = ne && ne.ach, r = await resultLine();
       (!runs || runs.length === 0) ? ok(`S2 challenge run is not on the board (chal:1) · "${r.score}" · ${r.rank}`) : bad('S2 challenge run is not on the board', JSON.stringify(runs).slice(0, 80));
       (!ach || !ach.first) ? ok('S2 challenge run earns no achievement') : bad('S2 challenge run earns no achievement', JSON.stringify(ach));
     }
@@ -308,7 +334,7 @@ console.log('\nbutton actions (every data-act at least once)');
   await page.evaluate(() => document.body.click()); await sleep(400);
   // the full stop, three taps
   for (let i = 0; i < 3; i++) await tap('#egg', 'egg');
-  const egg = await getJSON('ne.ach');
+  const egg = (await getJSON('ne')).ach;
   egg && egg.egg ? ok('three taps on the full stop earn Excuses') : bad('three taps on the full stop earn Excuses', JSON.stringify(egg));
   // fresh profile: a locked tile opens the lock box, Try to unlock starts the run with the goal line up; the Next card does the same
   await setStorage({ 'ne.prefs': { story: 1, gridSeen: 1, played: 1, snd: 'off', musicG: {} } });
@@ -330,9 +356,10 @@ console.log('\nbutton actions (every data-act at least once)');
   await tap('#share', 'result · share'); await tap('#over-back', 'result · back'); await sleep(300);
   (await onScreen()) === 's-pick' ? ok('result back opens the pick sheet') : bad('result back opens the pick sheet', 'on ' + (await onScreen()));
   await tap('#time-row .tbtn:nth-child(2)', 'sheet · length'); await tap('[data-vs="1"]', 'sheet · with a friend'); await tap('[data-vs2="1"]', 'sheet · pass & play'); await tap('[data-vs="0"]', 'sheet · solo');
-  const expected = ['go', 'back', 'game', 'diff', 'time', 'vs', 'vs2', 'lvl-back', 'go-btn', 'quit', 'over-back', 'share', 'chip', 'item', 'music-pv', 'pvlock', 'ach', 'prac', 'dev-open', 'dev-sup', 'dev-story', 'support', 'wheel-done'];
+  // build 18: the chips are one act per screen, and the overlays (lock box, Next card, the full stop) are acts too
+  const expected = ['go', 'back', 'game', 'diff', 'time', 'vs', 'vs2', 'lvl-back', 'go-btn', 'quit', 'over-back', 'share', 'chip-bd', 'chip-pv', 'chip-ach', 'chip-over', 'item', 'music-pv', 'pvlock', 'ach', 'prac', 'dev-open', 'dev-sup', 'dev-story', 'support', 'wheel-done', 'lock-no', 'lock-go', 'nextup', 'egg'];
   const missing = expected.filter(a => !seen.has(a));
-  missing.length ? bad('every data-act driven once', 'not driven: ' + missing.join(', ')) : ok(`every data-act driven once (${expected.length}) — not covered: again, pass-go, to-games, seqdone, praclock, dev-fresh`);
+  missing.length ? bad('every data-act driven once', 'not driven: ' + missing.join(', ')) : ok(`every data-act driven once (${expected.length}) — not covered: again, pass-go, to-games, seqdone, praclock, dev-fresh, adskip, toast`);
 }
 
 // ---- verdict ----
