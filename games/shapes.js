@@ -1,8 +1,6 @@
 /* No Excuses — shape geometry shared by Estimate
    Split out of index.html at build 12. Behaviour is identical to build 11. */
 
-import { cx, start } from "../app.js";
-import { cur, ring } from "../engine-core.js";
 /* ---------- shapes (v9): every shape is a set of point loops, longest side 1, centred on 0. Holes run the other way round, so the signed area of the loops is the area ---------- */
 const Shapes=(()=>{
   const norm=loops=>{ let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9; loops.forEach(L=>L.forEach(([x,y])=>{ x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y); })); const s=Math.max(x1-x0,y1-y0)||1, cx=(x0+x1)/2, cy=(y0+y1)/2; return loops.map(L=>L.map(([x,y])=>[(x-cx)/s,(y-cy)/s])); };

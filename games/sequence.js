@@ -1,12 +1,11 @@
 /* No Excuses — Sequence — watch and copy
    Split out of index.html at build 12. Behaviour is identical to build 11. */
 
-import { finish } from "../app.js";
-import { Snd } from "../audio.js";
+import { finish, liveCheck } from "../app.js";
+import { SCALES, Snd } from "../audio.js";
 import { $, $$, CFG, pWho, seqStep } from "../core.js";
 import { G } from "../engine-core.js";
-import { sel } from "../menu.js";
-import { SCALES, liveCheck } from "../progress.js";
+import { sel } from "../core/state.js";
 /* ---------- Sequence: streak. Watch, copy, one more each round; a wrong key ends it ---------- */
 const SQ={ st:'idle', keys:0, seq:[], idx:0, round:0, timers:[], p:0, rounds:[0,0], copied:[0,0], phase:0,
   clearT(){ this.timers.forEach(clearTimeout); this.timers=[]; },

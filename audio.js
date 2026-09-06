@@ -1,11 +1,12 @@
 /* No Excuses — synthesised sound effects and the per-game music pad
    Split out of index.html at build 12. Behaviour is identical to build 11. */
 
-import { hit, miss, start, tick } from "./app.js";
+import { sel } from "./core/state.js";
+import { musicOn, prefs } from "./core/store.js";
 import { G } from "./engine-core.js";
 import { GAMES } from "./games/registry.js";
-import { musicOn, prefs, sel } from "./menu.js";
-import { SCALES } from "./progress.js";
+// the scales Sequence plays in (build 15: moved here from progress.js — it is sound, not progress)
+const SCALES={ penta:{name:'Pentatonic',n:[0,2,4,7,9,12,14]}, chinese:{name:'Chinese',n:[0,2,5,7,9,12,14]}, hijaz:{name:'Hijaz',n:[0,1,4,5,7,8,10]}, blues:{name:'Blues',n:[0,3,5,6,7,10,12]} };
 /* ---------- sound: synthesised, tiny, quiet. The pack colours hit / miss / click; tick, go and end are the same everywhere ---------- */
 // v10: iOS marks the context "interrupted" (not "suspended") when the app goes to the background, and only a resume inside a touch brings it back — so every touch checks, and so does coming back to the foreground
 let ac=null; const AC=()=>{ if(!ac){ try{ ac=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } if(ac&&ac.state!=='running'){ try{ ac.resume(); }catch(e){} } return ac; };
@@ -66,4 +67,4 @@ const Music=(()=>{
 })();
 
 
-export { AC, Music, Snd, ac };
+export { AC, Music, SCALES, Snd, ac };

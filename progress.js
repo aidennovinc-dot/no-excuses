@@ -1,14 +1,14 @@
-/* No Excuses — unlocks, achievements, scores, storage — everything that persists
-   Split out of index.html at build 12. Behaviour is identical to build 11. */
+/* No Excuses — unlocks, achievements, scores — the rules of progress, as pure functions over the store
+   Split out of index.html at build 12. Build 15 (refactor stage 1): the screen functions (lock box, achievements list,
+   open-sheet) moved to menu.js, the mid-run check to app.js, the toast to ui/toast.js, SCALES to audio.js. This file
+   imports nothing that touches a screen. */
 
-import { start } from "./app.js";
-import { Snd } from "./audio.js";
-import { $, $$, MODE_NAME, STREAK, load, save } from "./core.js";
-import { G } from "./engine-core.js";
+import { MODE_NAME, STREAK } from "./core.js";
+import { CHAL } from "./core/platform.js";
+import { load, prefs, save } from "./core/store.js";
 import { GAMES, GC, N_GAMES, lenName, scoreTxt } from "./games/registry.js";
-import { CHAL, F, VS, chips, fillSheet, fillTimes, prefs, sel, setStage, show } from "./menu.js";
 // the lengths on offer. v13 (0.3): pro lengths are gone — every player sees the same length row. Versus still has its own (Reaction best-of)
-const lensOf=(g,d,vs)=>{ const c=GC(g,d||sel.diff); if(vs===2&&c.vsLens) return c.vsLens; return c.lens; };
+const lensOf=(g,d,vs)=>{ const c=GC(g,d); if(vs===2&&c.vsLens) return c.vsLens; return c.lens; };
 /* ---------- progression (v6): modes open on easy milestones, each in the mode before it. Quick Tap Blind is open from the start ---------- */
 // live (v10): a threshold unlock fires the moment the run reaches it — a green toast mid-run — not at the end. Averages and "finish a run" still wait for the end
 // v13 section 4 (L6): this table and LEN_RULES below are the one record of the chain. Lock boxes, goal lines and the Next-achievement card all read from here
@@ -71,19 +71,8 @@ function checkUnlocks(run){ const u=unlocked(); const fresh=[]; for(const x of U
 // everything is open (v11): no game, mode or length left to earn — the Next-up card hides
 function nextGoal(){ if(prefs.allOpen) return null; const u=unlocked(); const x=UNLOCKS.find(x=>!u[x.key]); if(x) return { need:x.need, name:unlockName(x.key), gname:GAMES[x.where.g].name, where:x.where };
   for(const g in GAMES) for(const d of GAMES[g].modes){ if(!isOpen(g,d)) continue; for(const sc of GC(g,d).lens){ const L=lenLock(g,d,sc); if(L) return { need:L.need, name:`${GAMES[g].name}${MODE_NAME[d]?' · '+MODE_NAME[d]:''} · ${L.name}`, gname:GAMES[g].name, where:{g,d,s:L.s} }; } } return null; }
-// mid-run (v10): engines call this with the run so far. Any live unlock that now passes lands at once, with a green toast; the goal line ticks
-function liveCheck(part){ if(!G.on||VS.on||sel.vs===2) return; const run=Object.assign({g:sel.game,d:sel.diff,s:sel.secs,hits:0,misses:0,x:999,y:0},part); const u=unlocked(); let ch=false;
-  for(const x of UNLOCKS){ if(x.live&&!u[x.key]&&x.test(run)){ u[x.key]=Date.now(); ch=true; G.fresh.push(x.key); toast(unlockToast(x.key),'','ok'); } }
-  if(ch) save('ne.unlock',u);
-  if(G.goal&&!G.goalHit&&(u[G.goal.key]||G.goal.test(run))){ G.goalHit=true; if(G.goal.len) toast(unlockToast(G.goal.key),'','ok'); $('#goal').classList.add('hit'); $('#goal').innerHTML='✓ '+$('#goal').innerHTML; } }
-// a locked game or mode (v10): say what it takes and offer to go straight there — into the game, with the goal line up
-let lockGo=null, pendingAim='', pendingGoal=null;
-// v13 (3.8): the box shows the goal for the thing that was tapped, and `aim` carries that same goal into the run it starts — never the first unearned step of the chain
-function askUnlock(g,d,s){ if(s!==undefined){ const L=lenLock(g,d,s); if(!L) return; $('#lock-text').innerHTML=`${GAMES[g].name}${MODE_NAME[d]?' · '+MODE_NAME[d]:''} · ${L.name}<b>To unlock: ${L.need}</b>`; lockGo=Object.assign({need:L.need,aim:g+':'+d+':'+s},L); $('#lockwrap').classList.add('on'); return; }
-  const u=UNLOCKS.find(u=>u.key===g+':'+d); if(!u) return; $('#lock-text').innerHTML=`${unlockName(u.key)}<b>To unlock: ${u.need}</b>`; lockGo=Object.assign({need:u.need,aim:u.key},u.where); $('#lockwrap').classList.add('on'); }
-function goWhere(w){ $('#lockwrap').classList.remove('on'); if(!w) return; const G_=GAMES[w.g]; sel.game=w.g; prefs.lastGame=w.g; save('ne.prefs',prefs);
-  sel.diff=w.d&&isOpen(w.g,w.d)?w.d:(G_.modes.find(d=>isOpen(w.g,d))||G_.modes[0]); if(!isOpen(sel.game,sel.diff)) return askUnlock(sel.game,sel.diff);
-  const lens=lensOf(w.g,sel.diff); sel.secs=w.s||(lens.includes(sel.secs)&&lenOpen(w.g,sel.diff,sel.secs)?sel.secs:lens.find(s=>lenOpen(w.g,sel.diff,s))); if(!lenOpen(sel.game,sel.diff,sel.secs)) sel.secs=lens[0]; sel.vs=0; sel.practice=0; VS.reset(); pendingAim=w.need||''; pendingGoal=w.aim||null; start(); }
+// what a 'Try to unlock' or achievement tap carries into the run it starts (set from menu.js/app.js through the setters below)
+let pendingAim='', pendingGoal=null;
 // the one-liner under the ghost demo, the first time a mode is played
 const INTRO = {
   'quick-tap:two':  ['Tap the box when it lights up.','tap it before it goes out'],
@@ -100,7 +89,6 @@ const INTRO = {
   'spot:count':     ['Count the shape you were shown.','the rest are decoys · three mistakes end it'],
   'spot:find':      ['One shape is different. Tap it.','the crowd grows every round'],
 };
-const SCALES={ penta:{name:'Pentatonic',n:[0,2,4,7,9,12,14]}, chinese:{name:'Chinese',n:[0,2,5,7,9,12,14]}, hijaz:{name:'Hijaz',n:[0,1,4,5,7,8,10]}, blues:{name:'Blues',n:[0,3,5,6,7,10,12]} };
 
 /* ---------- score store: the interface a Game Center adapter implements later ---------- */
 const Scores = {
@@ -198,37 +186,6 @@ const BG_NAME={stars:'stars',grid:'grid',rain:'rain',orbs:'orbs'};
 function unlockWord(a){ if(!a.unlocks) return ''; const [k,v]=a.unlocks; if(k==='wheel') return 'unlocks the colour wheel'; if(k==='bg') return 'unlocks '+BG_NAME[v]+' background'; if(k==='snd') return 'unlocks '+v+' sounds'; return 'unlocks '+ITEM_WORD[k]; }
 // the same, with the actual colour as a swatch (v8) — "unlocks lead colour" on its own said nothing
 function unlockHtml(a){ if(!a.unlocks) return ''; const [k,v]=a.unlocks; return unlockWord(a)+((k==='sq'||k==='lead')&&v!=='wheel'?`<i class="sw" style="background:${v}"></i>`:''); }
-function gotoAch(id){ const a=achById(id); if(!a) return; F.ach.g=a.g==='all'?'all':a.g; show('s-ach'); const row=$('#ach-'+a.id); if(row){ row.scrollIntoView({block:'center'}); row.classList.add('flash'); } }
-function renderAch(){
-  const g=got(), all=Scores.runs(), gsel=F.ach.g; const fresh=[]; let k=0;
-  $('#ach-g').innerHTML=`<button class="chip" data-chip="ach-g" data-v="all">All</button>`+Object.entries(GAMES).map(([id,x])=>`<button class="chip" data-chip="ach-g" data-v="${id}">${x.name}</button>`).join(''); chips('ach','g',gsel);
-  const list=achAll().filter(a=>gsel==='all'||a.g===gsel||a.g==='all');
-  const fsGame=gsel==='all'?sel.game:gsel;
-  $('#achlist').innerHTML = Object.keys(TIERS).map(t=>{
-    const items=list.filter(a=>a.tier===t), done=items.filter(a=>g[a.id]).length;
-    if(!items.length) return '';
-    return `<h4 class="${t}">${TIERS[t][0]} · ${done}/${items.length}<span>${TIERS[t][1]}</span></h4>`+items.map(a=>{
-      const isDone=!!g[a.id], secret=a.tier==='secret'&&!isDone;
-      const p=a.progress&&!isDone?Math.min(1,a.progress(all,fsGame)):null;
-      const gname=a.g==='all'?'':`<i>${GAMES[a.g].name}</i>`;
-      const bar=p!==null?`<div class="pbar ${secret?'s':''}"><i style="width:${Math.round(p*100)}%"></i></div>`:'';
-      const jump=a.g!=='all'||a.id==='fullset';
-      const where=jump&&!secret?`<small class="go">→ ${GAMES[a.g==='all'?fsGame:a.g].name}${a.at?.d?' · '+MODE_NAME[a.at.d]:''}${a.at?.s!==undefined?' · '+lenName(a.g,a.at.s,a.at?.d||GAMES[a.g].modes[0]):''}</small>`:'';
-      const nw=isDone?newMark('ach:'+a.id,fresh):''; const dl=isDone?` style="animation-delay:${Math.min(k++,14)*70}ms"`:'';
-      return `<button class="a ${isDone?'done':'lock'}${nw} ${jump?'jump':''}" data-ach="${a.id}" id="ach-${a.id}"${dl}><span>${isDone?'✓ ':''}${secret?'???':a.name}${gname}</span><em class="${a.unlocks&&!isDone?'u':''}">${isDone?'done'+(a.unlocks?' · '+unlockHtml(a):''):a.unlocks?unlockHtml(a):secret?'secret':''}</em><small>${secret?(p!==null?'You are '+Math.round(p*100)+'% of the way to something.':'A stretch past the stretch. You will know.'):a.how+(a.id==='fullset'?` · in ${GAMES[fsGame].name}`:'')}</small>${where}${bar}</button>`; }).join(''); }).join('');
-  markSeen(fresh);
-}
-function jumpTo(a){ const g=a.g==='all'?(F.ach.g==='all'?sel.game:F.ach.g):a.g; const d=a.at?.d||GAMES[g].modes[0]; if(!isOpen(g,d)) return askUnlock(g,d); if(a.at?.s!==undefined&&!lenOpen(g,d,a.at.s)) return askUnlock(g,d,a.at.s); pendingAim=a.how; openSheet(g,a.at?.d,a.at?.s); }
-// open the pick sheet on a game (v11), at the mode row or straight at the length row. Used by achievements and the result screen's Back
-function openSheet(g,d,s){ const G_=GAMES[g]; sel.game=g; prefs.lastGame=g; save('ne.prefs',prefs); show('s-pick');
-  $$('.tile').forEach(t=>t.classList.toggle('keep',t.dataset.game===g)); fillSheet();
-  if(!G_.modes.includes(sel.diff)) sel.diff=G_.modes[0]; if(s!==undefined) sel.secs=s;
-  if(d||G_.modes.length===1){ sel.diff=d||G_.modes[0]; $$('.choice').forEach(c=>c.classList.toggle('sel',c.dataset.diff===sel.diff)); setStage('len'); fillTimes(); }
-  else setStage('mode'); }
-let toastT=0;
-// toast(msg, achId): an achievement toast is tappable and goes to that row; on the result screen every toast sits low, clear of the score (v8)
-// build 14 (S1): the message is text. `html` is the opt-in for the achievement toasts, whose markup is the config swatch and nothing from the player
-function toast(msg,ach,cls,html){ const t=$('#toast'); clearTimeout(toastT); if(html) t.innerHTML=msg; else t.textContent=msg; t.dataset.ach=ach||''; t.classList.toggle('tap',!!ach); t.classList.toggle('ok',cls==='ok'); t.classList.add('on'); cls==='ok'?Snd.go():Snd.click(); toastT=setTimeout(()=>t.classList.remove('on'),ach?3200:cls==='ok'?2600:2000); }
 
 /* ---------- verdicts: tiered by a per-game quality 0..1 ---------- */
 const VERDICTS={
@@ -252,4 +209,4 @@ function setPendingAim(v){ pendingAim=v; }
 function setPendingGoal(v){ pendingGoal=v; }
 
 
-export { ACH, AUTHOR_RECORDS, BG_NAME, INTRO, ITEM_WORD, SCALES, Scores, TIERS, UNLOCKS, VERDICTS, achAll, achById, askUnlock, authorAch, bestRate, bestRound, chalRun, checkAch, checkUnlocks, fullsetProg, gameOpen, goWhere, goalFor, got, gotoAch, isOpen, jumpTo, lenLock, lenOpen, lensOf, liveCheck, lockGo, isNew, LEN_RULES, lowProg, lowTotal, markSeen, needFor, newMark, nextGoal, openSheet, pendingAim, pendingGoal, practiceOpen, rate, renderAch, seedSeen, seenAll, setPendingAim, setPendingGoal, toast, toastT, tourProg, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict };
+export { ACH, AUTHOR_RECORDS, BG_NAME, INTRO, ITEM_WORD, Scores, TIERS, UNLOCKS, VERDICTS, achAll, achById, authorAch, bestRate, bestRound, chalRun, checkAch, checkUnlocks, fullsetProg, gameOpen, goalFor, got, isOpen, lenLock, lenOpen, lensOf, isNew, LEN_RULES, lowProg, lowTotal, markSeen, needFor, newMark, nextGoal, pendingAim, pendingGoal, practiceOpen, rate, seedSeen, seenAll, setPendingAim, setPendingGoal, tourProg, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict };

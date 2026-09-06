@@ -1,7 +1,7 @@
 /* No Excuses — the gate (A7). Run before every push:  npm test
  *
  * Spawns its own static server (no Python), launches the Chrome at CHROME_PATH (Windows default as the fallback)
- * at 390x844, and fails on any uncaught error or failed assertion. What it covers, build 14:
+ * at 390x844, and fails on any uncaught error or failed assertion. What it covers, build 15:
  *   1. cold start: intro -> menu, and the locked decisions that can be asserted on a fresh profile
  *        L1 title sequence before the menu · L2 Sprint / Dash / Marathon · L3 Solo shows nothing about friends
  *        L7 Quick Tap tile is white before any run · L9 the length row is labelled Mode
@@ -10,6 +10,7 @@
  *   4. a pass & play Quick Tap (both players, the hand-over screen between)
  *   5. boot on three storage fixtures: empty · build-13 layout (runs survive) · corrupt (ne.runs="{}", prefs.scale="foo", prefs.col=42)
  *   6. challenge links: a hostile ?score= lands as text (S1); a bad ?s= is no challenge (S2); a run only the link opened is never on a board (S2)
+ *   7. every button action (data-act) driven at least once — customise, chips, dev switches, lock box, Next card, full stop, share
  * Pass a base URL as argv[2] to test a server you are already running instead.
  */
 import { serve } from './server.mjs';
@@ -235,6 +236,79 @@ const openChallenge = async (qs) => {
       (!ach || !ach.first) ? ok('S2 challenge run earns no achievement') : bad('S2 challenge run earns no achievement', JSON.stringify(ach));
     }
   } else bad('challenge link opens a locked mode sheet', JSON.stringify(c));
+}
+
+// ---- 7. every button action once (build 15: ui/actions.js dispatches on data-act) ----
+console.log('\nbutton actions (every data-act at least once)');
+{
+  const seen = new Set();
+  const tap = async (sel, label) => {
+    const before = errors.length;
+    const act = await page.evaluate(s => { const b = document.querySelector(s); if (!b) return null; b.click(); return b.dataset.act || '(none)'; }, sel);
+    await sleep(250);
+    if (act === null) { bad(label || sel, 'no such button'); return null; }
+    seen.add(act);
+    if (errors.length > before) bad(`${label || sel} [${act}]`, errors.slice(before).join(' | '));
+    return act;
+  };
+  // everything open, name set, on the menu
+  await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
+  await setStorage({ 'ne.prefs': { ...OPEN_PREFS, name: 'AIDEN' } });
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+  // customise: swatch, wheel + done, sound pack, scale (Sequence), music on/off + preview, game chip, lock line
+  await tap('[data-go="s-custom"]'); await sleep(300);
+  await tap('#c-sq button:nth-child(2)', 'customise · target colour');
+  await tap('#c-sq button[data-v="wheel"]', 'customise · colour wheel'); await tap('#wheel-done');
+  await tap('#c-bg button:nth-child(2)', 'customise · background');
+  await tap('#c-snd button:nth-child(2)', 'customise · sound pack'); await tap('#c-snd button:nth-child(1)', 'customise · sound pack back');
+  await tap('#pv-g [data-v="sequence"]', 'customise · game chip');
+  await tap('#c-scale button:nth-child(2)', 'customise · scale');
+  await tap('#c-music button:nth-child(2)', 'customise · music off'); await tap('#c-music button:nth-child(1)', 'customise · music on'); await tap('#c-music-pv', 'customise · music preview');
+  await tap('#pvlock', 'customise · lock line');
+  await sleep(400); await tap('#s-custom .back', 'customise · back');
+  // scores: game, mode, length chips
+  await tap('[data-go="s-board"]'); await tap('#bd-g [data-v="dots"]', 'board · game chip'); await tap('#bd-d [data-v="lead"]', 'board · mode chip'); await tap('#bd-s [data-v="15"]', 'board · length chip');
+  await sleep(400); await tap('#s-board .back', 'board · back');
+  // achievements: filter chip, a row that jumps to a sheet (Quick Tap · Clean · Sprint · Four)
+  await tap('[data-go="s-ach"]'); await tap('#ach-g [data-v="quick-tap"]', 'achievements · filter chip');
+  await tap('#ach-qt_clean5', 'achievements · jump row'); await sleep(300);
+  (await onScreen()) === 's-pick' ? ok('achievement row jumps to its pick sheet') : bad('achievement row jumps to its pick sheet', 'on ' + (await onScreen()));
+  await tap('#lvl-back', 'sheet · mode back'); await tap('#diff-row .choice:nth-child(2)', 'sheet · mode');
+  await tap('#prac-row [data-prac]', 'sheet · practice from'); await tap('#grid', 'sheet · grid');
+  await sleep(500); await tap('#s-pick .back', 'grid · back');
+  // about: the dev switches (each toggled back), support, replay the intro
+  await tap('[data-go="s-about"]'); await tap('#dev-sup', 'about · supporter on'); await tap('#dev-sup', 'about · supporter off'); await tap('#support', 'about · support');
+  await tap('#dev-open', 'about · progression on'); await tap('#dev-open', 'about · everything open');
+  await tap('#dev-story', 'about · replay the intro'); await sleep(300);
+  (await onScreen()) === 's-story' ? ok('replay the intro shows the title sequence') : bad('replay the intro', 'on ' + (await onScreen()));
+  await page.evaluate(() => document.body.click()); await sleep(400);
+  // the full stop, three taps
+  for (let i = 0; i < 3; i++) await tap('#egg', 'egg');
+  const egg = await getJSON('ne.ach');
+  egg && egg.egg ? ok('three taps on the full stop earn Excuses') : bad('three taps on the full stop earn Excuses', JSON.stringify(egg));
+  // fresh profile: a locked tile opens the lock box, Try to unlock starts the run with the goal line up; the Next card does the same
+  await setStorage({ 'ne.prefs': { story: 1, gridSeen: 1, played: 1, snd: 'off', musicG: {} } });
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+  await tap('[data-go="s-pick"]'); await tap('.tile[data-game="dots"]', 'locked tile');
+  const boxOn = await page.evaluate(() => document.getElementById('lockwrap').classList.contains('on'));
+  boxOn ? ok('a locked tile opens the lock box') : bad('a locked tile opens the lock box');
+  await tap('#lock-no', 'lock box · not now'); await tap('.tile[data-game="dots"]', 'locked tile again'); await tap('#lock-go', 'lock box · try to unlock'); await sleep(600);
+  const goal = await page.evaluate(() => ({ game: document.getElementById('game').classList.contains('on'), goal: document.getElementById('goal').textContent.trim() }));
+  (goal.game && /30 hits/.test(goal.goal)) ? ok(`try to unlock starts the run with its goal: "${goal.goal}"`) : bad('try to unlock starts the run with its goal', JSON.stringify(goal));
+  await tap('#quit', 'quit'); await sleep(300);
+  await tap('#s-pick .back'); await sleep(300); await tap('#nextup', 'next achievement card'); await sleep(600);
+  (await inGame()) ? ok('the Next achievement card starts its run') : bad('the Next achievement card starts its run', 'on ' + (await onScreen()));
+  await tap('#quit');
+  // the result screen's chips, again, share (clipboard fallback → toast), back
+  await setStorage({ 'ne.prefs': OPEN_PREFS }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+  await openSheet('quick-tap', 0, 0); await tap('#go-btn'); await driveToResult('quick-tap', 'run for the result chips', 30000);
+  await tap('#over-chips [data-v="four"]', 'result · mode chip'); await tap('#over-chips2 [data-v="15"]', 'result · length chip'); await tap('#over-vs [data-v="f"]', 'result · with a friend'); await tap('#over-vs [data-chip="over-vs2"][data-v="1"]', 'result · pass & play'); await tap('#over-vs [data-v="0"]', 'result · solo');
+  await tap('#share', 'result · share'); await tap('#over-back', 'result · back'); await sleep(300);
+  (await onScreen()) === 's-pick' ? ok('result back opens the pick sheet') : bad('result back opens the pick sheet', 'on ' + (await onScreen()));
+  await tap('#time-row .tbtn:nth-child(2)', 'sheet · length'); await tap('[data-vs="1"]', 'sheet · with a friend'); await tap('[data-vs2="1"]', 'sheet · pass & play'); await tap('[data-vs="0"]', 'sheet · solo');
+  const expected = ['go', 'back', 'game', 'diff', 'time', 'vs', 'vs2', 'lvl-back', 'go-btn', 'quit', 'over-back', 'share', 'chip', 'item', 'music-pv', 'pvlock', 'ach', 'prac', 'dev-open', 'dev-sup', 'dev-story', 'support', 'wheel-done'];
+  const missing = expected.filter(a => !seen.has(a));
+  missing.length ? bad('every data-act driven once', 'not driven: ' + missing.join(', ')) : ok(`every data-act driven once (${expected.length}) — not covered: again, pass-go, to-games, seqdone, praclock, dev-fresh`);
 }
 
 // ---- verdict ----

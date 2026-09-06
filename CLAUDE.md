@@ -37,16 +37,26 @@ rules S1–S7 and the code decisions A1–A8. The refactor runs one stage per bu
 plan is `../2026-09-05_personal_handover_no-excuses-refactor.md`. Until a stage moves a file, the
 build-12 layout below still holds.
 
-`boot.js` is the entry (`<script type="module">`), and holds every top-level statement in its
-original order. Modules hold declarations only — that is what keeps evaluation order irrelevant.
+`boot.js` is the entry (`<script type="module">`) and holds the top-level statements that start the
+app. Since build 15 the module graph is a DAG — `core → core/store → core/state → audio → progress
+→ menu → app → ui/actions → boot` — so evaluation order follows the imports and no module reaches
+back up the chain. The one cycle left is `app.js ↔ games/*` (engines call `finish`, `tapAt`,
+`liveCheck`); Stage 3's run contract removes it.
 
-`index.html` shell + CSS · `core.js` helpers · `games/registry.js` the GAMES table ·
-`progress.js` unlocks, achievements, scores, storage · `audio.js` sound and music ·
-`menu.js` prefs, navigation, pick sheet, board, result · `engine-core.js` shared run state ·
-`games/*.js` one per game (plus `round.js`, `shapes.js` shared) · `app.js` the run itself.
+`index.html` shell + CSS · `core.js` helpers · `core/store.js` load/save, `prefs` and its
+migrations · `core/state.js` `sel`, `VS`, `F` · `core/platform.js` the challenge link ·
+`games/registry.js` the GAMES table · `progress.js` unlocks, achievements, scores — pure functions
+over the store, no DOM · `audio.js` sound, music, `SCALES` · `menu.js` customise, navigation, pick
+sheet, board, result, lock box, achievements screen · `ui/toast.js` · `ui/actions.js` every button's
+handler, keyed by `data-act` · `engine-core.js` shared run state · `games/*.js` one per game (plus
+`round.js`, `shapes.js`) · `app.js` the run itself, plus `liveCheck` and `goWhere`.
 
-Two bindings are written across modules and go through setters, because ESM imports are read-only:
-`setPendingAim` (progress.js) and `setLastRun` (menu.js).
+**Every button carries `data-act`.** `ACTIONS[act](btn, ev)` in `ui/actions.js` does the work and
+returns `'pick'` or `'click'` for the sound; a button with no act plays its old sound and does nothing.
+A new button = one attribute in the markup + one entry in `ACTIONS`.
+
+Bindings written across modules go through setters, because ESM imports are read-only:
+`setPendingAim` / `setPendingGoal` (progress.js), `setLastRun` / `setMenuWasFirst` (menu.js), `setCur`.
 
 ## Locked decisions
 

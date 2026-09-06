@@ -13,10 +13,6 @@ const VS_LEAD=10, VS_CAP=60;
 const P1C='#E0453B', P2C='#6EC6FF';
 const pWho=p=>`<span class="${p?'p2':'p1'}">Player ${p+1} · ${p?'blue':'red'}</span>`;
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-// build 14 (S3): a stored value has to be the same shape as its default — an array where an array is expected, a plain object where an object is — or the default wins. Tampered storage costs progress, never a boot
-function load(k,d){ try{ const v=localStorage.getItem(k); if(!v) return d; const p=JSON.parse(v);
-  if(Array.isArray(d)) return Array.isArray(p)?p:d; if(d&&typeof d==='object') return p&&typeof p==='object'&&!Array.isArray(p)?p:d; return p; }catch(e){ return d; } }
-function save(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
 // build 14 (S1): anything that is not from config goes through this before it meets innerHTML
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const vmin=()=>Math.min(innerWidth,innerHeight)/100;
@@ -33,4 +29,4 @@ const sum=a=>a.reduce((x,y)=>x+y,0);
 // v11: a Streak length scores rounds survived — higher wins — whatever the mode's Set scores. `streak` is that override
 const STREAK_CFG={ lower:false, fmt:v=>String(v), suffix:'', scoreWord:'rounds', cols:[['limit',r=>r.lim||''],['worst',r=>r.yTxt||'']], quality:r=>Math.min(1,r.hits/12) };
 
-export { $, $$, CFG, LEN_NAME, MODE_NAME, P1C, P2C, PASS_LEN, PUB_URL, SHAPE_WORD, STREAK, STREAK_CFG, VS_CAP, VS_LEAD, esc, f2, load, mean, pWho, save, seqStep, shapeI, sum, vmin };
+export { $, $$, CFG, LEN_NAME, MODE_NAME, P1C, P2C, PASS_LEN, PUB_URL, SHAPE_WORD, STREAK, STREAK_CFG, VS_CAP, VS_LEAD, esc, f2, mean, pWho, seqStep, shapeI, sum, vmin };

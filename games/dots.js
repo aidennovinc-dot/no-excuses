@@ -3,9 +3,9 @@
 
 import { tapAt } from "../app.js";
 import { $, CFG } from "../core.js";
-import { G, ring } from "../engine-core.js";
+import { G } from "../engine-core.js";
 import { rnd } from "./round.js";
-import { sel } from "../menu.js";
+import { sel } from "../core/state.js";
 const DT={ sz:80,
   // pity (v9): three dots in a row in the same quarter of the screen and the next one is forced elsewhere
   q:-1, qn:0,

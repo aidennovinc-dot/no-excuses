@@ -725,47 +725,47 @@
   <div class="wordmark">No Excuses</div>
   <div class="menu-tag" id="menu-tag">unlock them all</div>
   <div style="height:6px"></div>
-  <button class="item glow" data-go="s-pick">Play</button>
-  <button class="item glow" data-go="s-board">Scores</button>
-  <button class="item glow" data-go="s-ach">Achievements</button>
-  <button class="item glow" data-go="s-custom">Customise</button>
-  <button class="item glow" data-go="s-about">About</button>
+  <button data-act="go" class="item glow" data-go="s-pick">Play</button>
+  <button data-act="go" class="item glow" data-go="s-board">Scores</button>
+  <button data-act="go" class="item glow" data-go="s-ach">Achievements</button>
+  <button data-act="go" class="item glow" data-go="s-custom">Customise</button>
+  <button data-act="go" class="item glow" data-go="s-about">About</button>
   <div class="menu-note" id="menu-note"></div>
 </section>
 
 <section class="screen" id="s-pick" data-back="s-menu">
-  <button class="back">&larr; BACK</button>
+  <button data-act="back" class="back">&larr; BACK</button>
   <div class="grid" id="grid">
-    <button class="tile" data-game="quick-tap"><span class="name glow">Quick Tap</span><span class="pic"><span class="mini"><i class="w"></i><i></i></span></span></button>
-    <button class="tile" data-game="dots"><span class="name glow">Dots</span><span class="pic"><span class="mini dots"><i></i><i class="w"></i></span></span></button>
-    <button class="tile" data-game="hold"><span class="name glow">Estimate</span><span class="pic"><span class="mini hold"><i></i><i class="w"></i></span></span></button>
-    <button class="tile" data-game="sequence"><span class="name glow">Sequence</span><span class="pic"><span class="mini seq"><i></i><i></i><i></i></span></span></button>
-    <button class="tile" data-game="timing"><span class="name glow">Timing</span><span class="pic"><span class="mini tm"><i class="h"></i><i class="w"></i><i class="h"></i></span></span></button>
-    <button class="tile" data-game="reaction"><span class="name glow">Reaction</span><span class="pic"><span class="mini rx"></span></span></button>
-    <button class="tile" data-game="spot"><span class="name glow">Spot</span><span class="pic"><span class="mini fd"><i></i><i class="t"></i><i></i><i class="w c"></i><i class="t"></i><i></i></span></span></button>
+    <button data-act="game" class="tile" data-game="quick-tap"><span class="name glow">Quick Tap</span><span class="pic"><span class="mini"><i class="w"></i><i></i></span></span></button>
+    <button data-act="game" class="tile" data-game="dots"><span class="name glow">Dots</span><span class="pic"><span class="mini dots"><i></i><i class="w"></i></span></span></button>
+    <button data-act="game" class="tile" data-game="hold"><span class="name glow">Estimate</span><span class="pic"><span class="mini hold"><i></i><i class="w"></i></span></span></button>
+    <button data-act="game" class="tile" data-game="sequence"><span class="name glow">Sequence</span><span class="pic"><span class="mini seq"><i></i><i></i><i></i></span></span></button>
+    <button data-act="game" class="tile" data-game="timing"><span class="name glow">Timing</span><span class="pic"><span class="mini tm"><i class="h"></i><i class="w"></i><i class="h"></i></span></span></button>
+    <button data-act="game" class="tile" data-game="reaction"><span class="name glow">Reaction</span><span class="pic"><span class="mini rx"></span></span></button>
+    <button data-act="game" class="tile" data-game="spot"><span class="name glow">Spot</span><span class="pic"><span class="mini fd"><i></i><i class="t"></i><i></i><i class="w c"></i><i class="t"></i><i></i></span></span></button>
   </div>
   <div class="hint">tap empty space to go back</div>
   <div class="sheet" id="sheet">
     <div class="eyebrow" id="sheet-title">quick tap · mode</div>
-    <div id="vs-wrap"><div class="chips" id="vs-row"><button class="chip sel" data-vs="0"><svg viewBox="0 0 22 16"><rect x="7" y="1" width="8" height="14" rx="1.5"/></svg>solo</button><button class="chip" data-vs="1"><svg viewBox="0 0 22 16"><rect x="1" y="2" width="7" height="12" rx="1.5"/><rect x="14" y="2" width="7" height="12" rx="1.5"/></svg>with a friend</button></div>
-    <div class="chips" id="vs-sub" hidden><button class="chip" data-vs2="1"><svg viewBox="0 0 22 16"><rect x="1" y="2" width="7" height="12" rx="1.5"/><rect x="14" y="2" width="7" height="12" rx="1.5"/><path d="M9 8h4M11 6l2 2-2 2"/></svg>pass &amp; play</button><button class="chip" data-vs2="2"><svg viewBox="0 0 22 16"><rect x="1" y="2" width="7" height="12" rx="1.5"/><rect x="14" y="2" width="7" height="12" rx="1.5"/><path d="M11 5v6"/></svg>versus</button></div></div>
+    <div id="vs-wrap"><div class="chips" id="vs-row"><button data-act="vs" class="chip sel" data-vs="0"><svg viewBox="0 0 22 16"><rect x="7" y="1" width="8" height="14" rx="1.5"/></svg>solo</button><button data-act="vs" class="chip" data-vs="1"><svg viewBox="0 0 22 16"><rect x="1" y="2" width="7" height="12" rx="1.5"/><rect x="14" y="2" width="7" height="12" rx="1.5"/></svg>with a friend</button></div>
+    <div class="chips" id="vs-sub" hidden><button data-act="vs2" class="chip" data-vs2="1"><svg viewBox="0 0 22 16"><rect x="1" y="2" width="7" height="12" rx="1.5"/><rect x="14" y="2" width="7" height="12" rx="1.5"/><path d="M9 8h4M11 6l2 2-2 2"/></svg>pass &amp; play</button><button data-act="vs2" class="chip" data-vs2="2"><svg viewBox="0 0 22 16"><rect x="1" y="2" width="7" height="12" rx="1.5"/><rect x="14" y="2" width="7" height="12" rx="1.5"/><path d="M11 5v6"/></svg>versus</button></div></div>
     <div id="vsart"></div>
     <div id="chal" hidden></div>
     <div class="diffs" id="diff-row"></div>
-    <button class="lvl" id="lvl-back">&larr; mode · <b id="lvl-mode"></b></button>
+    <button data-act="lvl-back" class="lvl" id="lvl-back">&larr; mode · <b id="lvl-mode"></b></button>
     <div id="lenwrap">
       <div class="eyebrow" id="len-title">how long</div>
       <div class="times" id="time-row"></div>
       <div id="seq-opts" style="display:none;flex-direction:column;gap:10px;align-items:center;width:100%">
         <div class="chips" id="prac-row"></div>
       </div>
-      <button class="item big" id="go-btn">Go</button>
+      <button data-act="go-btn" class="item big" id="go-btn">Go</button>
     </div>
   </div>
 </section>
 
 <section class="screen top" id="s-board" data-back="s-menu">
-  <button class="back">&larr; BACK</button>
+  <button data-act="back" class="back">&larr; BACK</button>
   <div class="prof"><div class="who">profile <input id="pname" maxlength="10" placeholder="YOU" autocomplete="off"><span class="star" id="pstar"></span></div><svg id="radar" viewBox="-30 -26 260 252"></svg><div class="hint" style="margin-top:0">your best in each game · 0 to 100</div></div>
   <div class="eyebrow">scores · local top 10</div>
   <div class="chips" id="bd-g"></div>
@@ -775,14 +775,14 @@
 </section>
 
 <section class="screen top" id="s-ach" data-back="s-menu">
-  <button class="back">&larr; BACK</button>
+  <button data-act="back" class="back">&larr; BACK</button>
   <div class="eyebrow">achievements · tap one to go play it</div>
   <div class="chips" id="ach-g"></div>
   <div class="ach scroll" id="achlist"></div>
 </section>
 
 <section class="screen top" id="s-custom" data-back="s-menu">
-  <button class="back">&larr; BACK</button>
+  <button data-act="back" class="back">&larr; BACK</button>
   <div class="eyebrow">customise · live preview</div>
   <div class="pv" id="pv" data-g="quick-tap">
     <div class="pvqt"><div class="pad l"><div class="sq" id="pv0"></div></div><div class="pad r"><div class="sq" id="pv1"></div></div><div class="pad l up"><div class="sq" id="pv2"></div></div><div class="pad r up"><div class="sq" id="pv3"></div></div></div>
@@ -794,7 +794,7 @@
     <div class="pvsp" id="pvsp"></div>
     <div id="pvg"></div>
   </div>
-  <button id="pvlock"></button>
+  <button data-act="pvlock" id="pvlock"></button>
   <div class="chips" id="pv-g"></div>
   <div class="cgroup"><div class="clabel">Target colour</div><div class="sw" data-set="sq" id="c-sq"></div></div>
   <div class="cgroup" id="g-lead"><div class="clabel">Lead colour</div><div class="sw" data-set="lead" id="c-lead"></div></div>
@@ -806,14 +806,14 @@
 </section>
 
 <section class="screen" id="s-about" data-back="s-menu">
-  <button class="back">&larr; BACK</button>
+  <button data-act="back" class="back">&larr; BACK</button>
   <div class="wordmark" style="font-size:18px">No Excuses</div>
   <div class="explain">A passion project of simple games of pure skill and minimal frills.<br><br>If you'd like to remove ads, add customisation, and show your support, tap below.</div>
-  <button class="support" id="support"><b id="support-title">Support · A$1.99 · once</b><small id="support-text">No ads, ever. Every colour, background and sound pack open from day one, plus the colour wheel. A pro 60-second length in Quick Tap and Dots, with its own boards. A star on your profile.</small></button>
+  <button data-act="support" class="support" id="support"><b id="support-title">Support · A$1.99 · once</b><small id="support-text">No ads, ever. Every colour, background and sound pack open from day one, plus the colour wheel. A pro 60-second length in Quick Tap and Dots, with its own boards. A star on your profile.</small></button>
   <div class="tierbox" id="tierbox"></div>
-  <div class="hint">build 14 · 6 sept 2026 · github pages</div>
+  <div class="hint">build 15 · refactor 0.1 · 6 sept 2026</div>
   <div class="eyebrow">testing</div>
-  <div class="chips"><button class="chip" id="dev-fresh">fresh game · wipe everything</button><button class="chip" id="dev-open">open everything</button><button class="chip" id="dev-story">replay the intro</button><button class="chip" id="dev-sup">supporter</button></div>
+  <div class="chips"><button data-act="dev-fresh" class="chip" id="dev-fresh">fresh game · wipe everything</button><button data-act="dev-open" class="chip" id="dev-open">open everything</button><button data-act="dev-story" class="chip" id="dev-story">replay the intro</button><button data-act="dev-sup" class="chip" id="dev-sup">supporter</button></div>
   <div class="hint" id="dev-state"></div>
 </section>
 
@@ -822,7 +822,7 @@
   <div class="eyebrow" id="pass-who"></div>
   <div class="big" id="pass-title">Pass the phone</div>
   <div class="explain" id="pass-text"></div>
-  <button class="item big" id="pass-go">Ready</button>
+  <button data-act="pass-go" class="item big" id="pass-go">Ready</button>
 </section>
 
 <section class="screen" id="s-over" data-back="s-pick">
@@ -833,13 +833,13 @@
   <div class="stats" id="over-stats"></div>
   <div class="rank" id="over-rank"></div>
   <div class="change"><div class="chips" id="over-vs"></div><div class="mchips" id="over-chips"></div><div class="chips" id="over-chips2"></div><div class="chips" id="over-chips3"></div></div>
-  <button class="item big" id="again">Go</button>
-  <button class="item sub" id="over-back">&larr; Back</button>
-  <div class="row"><button class="item sub" id="share"><svg class="shicon" viewBox="0 0 16 16"><circle cx="12" cy="3.2" r="2"/><circle cx="4" cy="8" r="2"/><circle cx="12" cy="12.8" r="2"/><path d="M5.8 7.1 10.2 4.3M5.8 8.9l4.4 2.8"/></svg>Challenge a friend</button></div>
+  <button data-act="again" class="item big" id="again">Go</button>
+  <button data-act="over-back" class="item sub" id="over-back">&larr; Back</button>
+  <div class="row"><button data-act="share" class="item sub" id="share"><svg class="shicon" viewBox="0 0 16 16"><circle cx="12" cy="3.2" r="2"/><circle cx="4" cy="8" r="2"/><circle cx="12" cy="12.8" r="2"/><path d="M5.8 7.1 10.2 4.3M5.8 8.9l4.4 2.8"/></svg>Challenge a friend</button></div>
   <div id="over-top"><div class="eyebrow" id="over-top-title">top 10</div><table><tbody id="over-runs"></tbody></table></div>
   <button id="egg" aria-label="."></button>
   <div class="adslot" id="adslot">ad · result screen only · supporters never see this</div>
-  <button class="item big" id="to-games">Game select</button>
+  <button data-act="to-games" class="item big" id="to-games">Game select</button>
 </section>
 <div id="adbreak"><div><div class="box">ad break</div>every fourth result · never during a run<br><br><button id="adskip" disabled>skip</button></div></div>
 <div id="lockwrap"><div id="lockbox"><h3>Locked</h3><p id="lock-text"></p><div class="row"><button class="item big" id="lock-go">Try to <u>unlock</u></button><button class="item sub" id="lock-no">Not now</button></div></div></div>
@@ -853,7 +853,7 @@
   </div>
   <div id="field"><div id="lead"><b></b></div><div id="dot"></div><div id="dring"></div></div>
   <div id="hfield"><svg id="ht"><clipPath id="tclip"><rect id="tclipr" x="-9999" y="-9999" width="99999" height="99999"/></clipPath><path clip-path="url(#tclip)" fill-rule="evenodd"/></svg><svg id="hg"><path fill-rule="evenodd"/></svg><svg id="hm"><clipPath id="hclip"><rect id="hclipr" x="-9999" y="-9999" width="99999" height="99999"/></clipPath><path clip-path="url(#hclip)" fill-rule="evenodd"/></svg><svg id="hcut"><clipPath id="aclip"><rect id="aclipr" x="-9999" y="-9999" width="99999" height="99999"/></clipPath><clipPath id="bclip"><rect id="bclipr" x="-9999" y="-9999" width="99999" height="99999"/></clipPath><path class="a" clip-path="url(#aclip)" fill-rule="evenodd"/><path class="b" clip-path="url(#bclip)" fill-rule="evenodd"/><line id="hline" x1="0" y1="0" x2="0" y2="0" style="opacity:0"/></svg><div id="hbg"></div><svg id="hicon" viewBox="0 0 100 100"><path/><text x="50" y="98" text-anchor="middle"></text></svg><div id="hshare"></div><div id="hcalc"></div><div id="hlbl"></div></div>
-  <div id="seq"></div><div id="turn">your turn</div><button id="seqdone">Done · they copy it</button>
+  <div id="seq"></div><div id="turn">your turn</div><button data-act="seqdone" id="seqdone">Done · they copy it</button>
   <div id="gen"></div>
   <div id="rxbar"></div>
   <div id="bigcount">0</div>
@@ -866,7 +866,7 @@
   </div>
   <div class="hud"><span id="hud-mode"></span><span id="score">0</span><span id="hud-time">0.00</span></div>
   <div id="pbghost"></div>
-  <button id="quit" aria-label="quit">×</button>
+  <button data-act="quit" id="quit" aria-label="quit">×</button>
   <div id="rate"><i></i><u id="pbmark"></u><b>0.0/s</b></div>
   <div id="edge"></div>
   <div id="goal"></div>
@@ -876,16 +876,16 @@
   <div id="bar"></div>
 </div>
 <div id="toast"></div>
-<div id="wheelwrap"><div id="wheelbox"><div class="eyebrow" id="wheel-title">pick a colour</div><canvas id="wheel" width="480" height="480"></canvas><div id="wheelout"></div><button class="item sub" id="wheel-done">Done</button></div></div>
+<div id="wheelwrap"><div id="wheelbox"><div class="eyebrow" id="wheel-title">pick a colour</div><canvas id="wheel" width="480" height="480"></canvas><div id="wheelout"></div><button data-act="wheel-done" class="item sub" id="wheel-done">Done</button></div></div>
 
 <script type="module" src="./boot.js"></script>
 
-<div id="build">build 14</div>
+<div id="build">build 15</div>
 <button id="update">New build available — tap to reload</button>
 <script>
 // build check: version.json is fetched with no-store, so a stale cached page still learns a newer build exists
 (function(){
-  const BUILD="14";
+  const BUILD="15";
   async function check(){
     try{
       const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});

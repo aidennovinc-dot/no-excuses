@@ -1,20 +1,16 @@
-/* No Excuses — prefs, customise, navigation, pick sheet, scoreboard, result screen
-   Split out of index.html at build 12. Behaviour is identical to build 11. */
+/* No Excuses — customise, navigation, pick sheet, scoreboard, result screen, lock box, achievements screen
+   Split out of index.html at build 12. Build 15 (refactor stage 1): prefs live in core/store.js, sel/VS/F in core/state.js,
+   the challenge link in core/platform.js; the screen functions that were in progress.js (lock box, open-sheet,
+   achievements list) live here. This file never imports app.js. */
 
-import { cv, cx } from "./app.js";
-import { Snd } from "./audio.js";
-import { $, $$, MODE_NAME, PASS_LEN, PUB_URL, VS_LEAD, esc, load, pWho, save } from "./core.js";
+import { SCALES, Snd } from "./audio.js";
+import { $, $$, MODE_NAME, PASS_LEN, PUB_URL, VS_LEAD, esc, pWho } from "./core.js";
+import { CHAL } from "./core/platform.js";
+import { F, VS, sel } from "./core/state.js";
+import { musicOn, prefs, save } from "./core/store.js";
 import { GAMES, GC, SHARED2, lenName, lenSub, scoreTxt, versusOf } from "./games/registry.js";
-import { ACH, ITEM_WORD, SCALES, Scores, UNLOCKS, achById, gameOpen, got, isOpen, lenLock, lenOpen, lensOf, markSeen, needFor, newMark, nextGoal, practiceOpen, renderAch, seedSeen, setPendingAim, toast, unlocked } from "./progress.js";
-/* ---------- a challenge link (v13, 3.6): ?g=quick-tap&d=two&s=5&score=31 opens that pick sheet after the title sequence,
-   with the game open for this run only. Nothing is written to the unlock store ---------- */
-// build 14 (S2): one parser. g must be a game, d one of its modes (absent → the first), s an integer in that mode's lengths (absent → none), score a finite number (else none). Anything else is no challenge at all
-function parseChallenge(search){ try{ const q=new URLSearchParams(search); const g=q.get('g'); if(!g||!GAMES[g]) return null;
-  const dq=q.get('d'); if(dq!==null&&!GAMES[g].modes.includes(dq)) return null; const d=dq===null?GAMES[g].modes[0]:dq;
-  const sq=q.get('s'); let s; if(sq!==null){ if(!/^-?\d+$/.test(sq)) return null; s=parseInt(sq,10); if(!GC(g,d).lens.includes(s)) return null; }
-  const scq=q.get('score'); const n=scq===null||scq===''?NaN:Number(scq); const score=Number.isFinite(n)?n:'';
-  return { g, d, s, score }; }catch(e){ return null; } }
-const CHAL=parseChallenge(location.search);
+import { ACH, ITEM_WORD, Scores, TIERS, UNLOCKS, achAll, achById, gameOpen, got, isOpen, lenLock, lenOpen, lensOf, markSeen, needFor, newMark, nextGoal, practiceOpen, seedSeen, setPendingAim, unlockHtml, unlockName, unlocked } from "./progress.js";
+import { toast } from "./ui/toast.js";
 /* ---------- prefs / customise ---------- */
 const DESIGNS={ stars:{tint:'#050506'}, grid:{tint:'#070A14'}, rain:{tint:'#0B1008'}, orbs:{tint:'#0E0608'} };
 const ITEMS = {
@@ -27,29 +23,8 @@ const ITEMS = {
   // v13 (6.5): the Cut pieces are a pair. This picks the cut-off piece; the rest is the same colour at 40%
   cut: [{v:'#FFFFFF'},{v:'#FFE9C4',by:'first'},{v:'#9BE8FF',by:'qt_clean5'},{v:'#FFD1DC',by:'dt_pin'},{v:'#F3D9FF',by:'hd_steady'},{v:'#C6FF7A',by:'qt_clean30'},{v:'#FFF3A0',by:'sq_12'},{v:'wheel',by:'fullset'}],
 };
-// v13 (7.1): the scale list is built on demand — SCALES lives in progress.js, which evaluates after this module, so it cannot be read at declaration time
 const itemsOf=set=>set==='scale'?Object.entries(SCALES).map(([k,v])=>({v:k,label:v.name})):ITEMS[set];
-const prefs = Object.assign({ sq:'#FFFFFF', lead:'#C8322A', bg:'stars', tint:'', snd:'space', music:true, musicG:{}, lastGame:'quick-tap', name:'', scale:'penta', allOpen:false, supporter:false, adRuns:0 }, load('ne.prefs',{}));
-if(!prefs.musicG||typeof prefs.musicG!=='object') prefs.musicG={};
-if(prefs.music===false&&!Object.keys(prefs.musicG).length){ for(const g in GAMES) prefs.musicG[g]=false; prefs.music=true; } // v13: the old global switch becomes every game off
-const musicOn=g=>prefs.musicG[g]!==false;
 if(!DESIGNS[prefs.bg]){ prefs.tint=String(prefs.bg).startsWith('#')?prefs.bg:''; prefs.bg='stars'; } // v3 stored a hex here
-(function migrate(){ // v8: Count and Find became Spot · Count / Find; speed became seconds per key
-  const runs=load('ne.runs',[]); runs.forEach(r=>{ if(r.g==='count'){ r.g='spot'; r.d='count'; } else if(r.g==='find'){ r.g='spot'; r.d='find'; } });
-  const keep=runs.filter(r=>GAMES[r.g]&&GAMES[r.g].modes.includes(r.d)); save('ne.runs',keep);
-  const u=load('ne.unlock',{}); let ch=false; for(const k of Object.keys(u)){ if(k.startsWith('count:')){ u['spot:count']=u[k]; delete u[k]; ch=true; } if(k.startsWith('find:')){ u['spot:find']=u[k]; delete u[k]; ch=true; } } if(ch) save('ne.unlock',u);
-  const a=load('ne.ach',{}); const map={ct_5:'sp_5',ct_10:'sp_15',fd_fast:'sp_fast',fd_clean:'sp_clean'}; let ca=false; for(const k in map) if(a[k]){ a[map[k]]=a[k]; delete a[k]; ca=true; } if(ca) save('ne.ach',a);
-  if(prefs.speed==='normal') prefs.speed=.4; if(prefs.speed==='fast') prefs.speed=.3;
-  // v9: Quick Tap Lead is gone (its runs with it); Hold Match/Estimate became Estimate · Grow, keeping only 5-round runs
-  const r9=load('ne.runs',[]); let c9=false; const k9=r9.filter(r=>{ if(r.g==='quick-tap'&&r.d==='lead'){ c9=true; return false; } if(r.g==='hold'&&(r.d==='match'||r.d==='estimate')){ c9=true; if(r.s!==5) return false; r.d='grow'; } return true; }); if(c9) save('ne.runs',k9);
-  const u9=load('ne.unlock',{}); const m9={'quick-tap:lead':'quick-tap:four','hold:match':'hold:grow','hold:estimate':'hold:cut'}; let cu=false; for(const k in m9) if(u9[k]){ u9[m9[k]]=u9[k]; delete u9[k]; cu=true; } if(cu) save('ne.unlock',u9);
-  const i9=load('ne.intro',{}); let ci=false; for(const k in m9) if(i9[k]){ delete i9[k]; ci=true; } if(ci) save('ne.intro',i9);
-  // v10: Hidden is scored in pixels now; runs scored in seconds cannot sit on the same board
-  const r10=load('ne.runs',[]); const k10=r10.filter(r=>!(r.g==='timing'&&r.d==='hidden'&&(r.v||0)<10)); if(k10.length!==r10.length) save('ne.runs',k10);
-  // v11: Quick Tap Blind is Two (runs, intros and colours keep). Estimate, Timing, Reaction and Count changed their scoring unit — runs from before build 11 cannot sit on the new boards, so they retire, once, with a note. Dots, Sequence and Find keep theirs
-  const r11=load('ne.runs',[]); let c11=0; const k11=r11.filter(r=>{ if(r.g==='quick-tap'&&r.d==='blind') r.d='two'; if((r.v||0)<11&&(r.g==='hold'||r.g==='timing'||r.g==='reaction'||(r.g==='spot'&&r.d==='count'))){ c11++; return false; } return true; }); if(c11||r11.some(r=>r.g==='quick-tap'&&r.d==='two')) save('ne.runs',k11); if(c11) prefs.mig11=c11;
-  const i11=load('ne.intro',{}); if(i11['quick-tap:blind']){ i11['quick-tap:two']=i11['quick-tap:blind']; delete i11['quick-tap:blind']; save('ne.intro',i11); }
-  if(prefs.lastDiff==='blind'&&prefs.lastGame==='quick-tap') prefs.lastDiff='two'; })();
 // supporters (v10) have every cosmetic open; "open everything" is the testing switch for the same thing
 const lockedBy=it=> it.by && !got()[it.by] && !prefs.allOpen && !prefs.supporter ? ACH.find(a=>a.id===it.by) : null;
 function freshGame(){ ['ne.runs','ne.ach','ne.unlock','ne.intro','ne.tileSeen','ne.seen'].forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} }); prefs.allOpen=false; prefs.story=0; prefs.adRuns=0; prefs.played=0; prefs.gridSeen=0; save('ne.prefs',prefs); lastRun=null; menuWasFirst=true; seedSeen(); Story.open(); }
@@ -57,11 +32,6 @@ function devState(){ const u=Object.keys(unlocked()).length, a=Object.keys(got()
 // what supporting gets (v13, 13.1): no comparison table — a thank-you line and three lines of what is included. Pro lengths are gone (0.3)
 function renderTier(){ $('#tierbox').innerHTML=['No ads, ever.','Every colour, background and sound pack open from day one, plus the colour wheel.','A star on your profile.'].map(t=>`<div><span>${t}</span></div>`).join('');
   $('#support-title').textContent=prefs.supporter?'Supporter · thank you':'Support · A$1.99 · once'; $('#support-text').textContent=prefs.supporter?'Thank you — it keeps this going.':'A one-off, if you want to back it.'; }
-// colours are per game (v6): prefs.col[game] = {sq, lead}. The old global sq/lead seed every game once
-// build 14 (S3): a col that is not an object of objects is rebuilt, not trusted
-if(!prefs.col||typeof prefs.col!=='object'||Array.isArray(prefs.col)){ prefs.col={}; for(const g in GAMES) prefs.col[g]={sq:prefs.sq||'#FFFFFF',lead:prefs.lead||'#C8322A'}; }
-for(const g in GAMES) if(!prefs.col[g]||typeof prefs.col[g]!=='object') prefs.col[g]={sq:'#FFFFFF',lead:'#C8322A'};
-for(const g in GAMES) if(!prefs.col[g].cut) prefs.col[g].cut=prefs.col[g].sq||'#FFFFFF';
 const colOf=g=>prefs.col[g]||prefs.col['quick-tap'];
 function applyPrefs(g){ const r=document.documentElement.style; const c=colOf(g||sel?.game||prefs.lastGame); r.setProperty('--sq-live',c.sq); r.setProperty('--cue',c.lead); r.setProperty('--cutp',c.cut||c.sq); r.setProperty('--ground',prefs.tint||DESIGNS[prefs.bg].tint); save('ne.prefs',prefs); }
 applyPrefs(prefs.lastGame);
@@ -74,11 +44,11 @@ function renderCustom(){
     const nw=L?'':newMark('cos:'+set+':'+it.v,fresh);
     const cls=`${selNow?'sel':''} ${L?'locked':''}${nw} ${pvTry.set===set&&pvTry.v===it.v?'pvw':''} ${isWheel?'wheel':''} ${set==='bg'&&!isWheel?'bg-'+it.v:''}`;
     const style=set==='bg'?`background-color:${DESIGNS[it.v]?.tint||'transparent'}`:isWheel?'':`background:${it.v}`;
-    return `<button data-v="${it.v}" class="${cls}" data-lock="${L?L.id:''}" style="${style}" aria-label="${it.v}${L?' locked':''}"></button>`; }).join('');
-  for(const set of ['snd','scale']) $('#c-'+set).innerHTML = itemsOf(set).map(it=>{ const L=lockedBy(it); const nw=L?'':newMark('cos:'+set+':'+it.v,fresh); return `<button data-v="${it.v}" class="opt ${String(prefs[set])===String(it.v)?'sel':''} ${L?'locked':''}${nw}" data-lock="${L?L.id:''}">${it.label}</button>`; }).join('');
+    return `<button data-act="item" data-v="${it.v}" class="${cls}" data-lock="${L?L.id:''}" style="${style}" aria-label="${it.v}${L?' locked':''}"></button>`; }).join('');
+  for(const set of ['snd','scale']) $('#c-'+set).innerHTML = itemsOf(set).map(it=>{ const L=lockedBy(it); const nw=L?'':newMark('cos:'+set+':'+it.v,fresh); return `<button data-act="item" data-v="${it.v}" class="opt ${String(prefs[set])===String(it.v)?'sel':''} ${L?'locked':''}${nw}" data-lock="${L?L.id:''}">${it.label}</button>`; }).join('');
   // music is per game now (12.1): the row switches this game's track and previews it
-  $('#c-music').innerHTML = itemsOf('music').map(it=>`<button data-v="${it.v}" class="opt ${musicOn(F.pv.g)===it.v?'sel':''}">${it.label}</button>`).join('')+`<button class="opt" id="c-music-pv">Preview</button>`;
-  $('#pv-g').innerHTML=Object.entries(GAMES).map(([id,x])=>`<button class="chip" data-chip="pv-g" data-v="${id}">${x.name}</button>`).join(''); chips('pv','g',F.pv.g);
+  $('#c-music').innerHTML = itemsOf('music').map(it=>`<button data-act="item" data-v="${it.v}" class="opt ${musicOn(F.pv.g)===it.v?'sel':''}">${it.label}</button>`).join('')+`<button data-act="music-pv" class="opt" id="c-music-pv">Preview</button>`;
+  $('#pv-g').innerHTML=Object.entries(GAMES).map(([id,x])=>`<button class="chip" data-act="chip" data-chip="pv-g" data-v="${id}">${x.name}</button>`).join(''); chips('pv','g',F.pv.g);
   $('#pv').dataset.g=F.pv.g; $('#g-lead').style.display=GAMES[F.pv.g].lead?'':'none';
   $('#g-cut').style.display=F.pv.g==='hold'?'':'none'; $('#g-scale').style.display=F.pv.g==='sequence'?'':'none';
   $('#c-music-label').textContent=`Music · ${GAMES[F.pv.g].name}`;
@@ -120,11 +90,6 @@ const Wheel=(()=>{ const cv=$('#wheel'), cx=cv.getContext('2d'); let set='sq', d
   return { open(s){ set=s; draw(); $('#wheel-title').textContent=`${ITEM_WORD[s]||s} · ${GAMES[F.pv.g].name} · drag to pick`; $('#wheelout').style.background=s==='bg'?(prefs.tint||DESIGNS[prefs.bg].tint):colOf(F.pv.g)[s]; $('#wheelwrap').classList.add('on'); }, close(){ $('#wheelwrap').classList.remove('on'); renderCustom(); } }; })();
 
 /* ---------- navigation: every sub-screen goes back on a tap that isn't on a control ---------- */
-if(!GAMES[prefs.lastGame]) prefs.lastGame='quick-tap';
-const sel={ game:prefs.lastGame, diff:GAMES[prefs.lastGame].modes[0], secs:5, practice:0, scale:prefs.scale||'penta', vs:0 };
-// vs a friend (v9): pass-and-play. Player 1 is the profile, player 2 is FRIEND; only player 1's run goes on the board
-const VS={ on:false, stage:0, p1:null, p2:null, reset(){ this.on=false; this.stage=0; this.p1=null; this.p2=null; } };
-const F={ bd:{g:prefs.lastGame,d:GAMES[prefs.lastGame].modes[0],s:5}, pv:{g:prefs.lastGame}, ach:{g:'all'} };
 let stage='grid', shownAt=0;
 function show(id){ $$('.screen').forEach(s=>s.classList.toggle('on',s.id===id)); $('#game').classList.remove('on','versus','bigc','live','shake'); $('#stars').style.opacity=1; shownAt=performance.now(); applyPrefs(sel.game);
   if(id==='s-menu'){ setPendingAim(''); renderMenu(); } if(id==='s-pick'){ renderTiles(); setStage('grid'); } if(id==='s-board'){ renderBoard(); renderRadar(); } if(id==='s-ach') renderAch(); if(id==='s-custom'){ F.pv.g=sel.game; pvTry.set=null; pvSeen.by=null; renderCustom(); } if(id==='s-about') devState(); }
@@ -167,7 +132,7 @@ function renderTiles(){ const reveal=!prefs.gridSeen; if(reveal){ prefs.gridSeen
     if(open&&!reveal){ const nw=newMark('game:'+g,fresh); if(nw) t.classList.add('newthing'); } });
   markSeen(fresh); }
 // a locked mode (v11) is crossed out, not just greyed; tapping it says what it takes
-function fillSheet(){ const g=GAMES[sel.game]; const fresh=[]; $('#diff-row').innerHTML=g.modes.map(d=>{ const open=isOpen(sel.game,d); const nw=open?newMark('mode:'+sel.game+':'+d,fresh):''; return `<button class="choice ${open?'':'locked'}${nw}" data-diff="${d}"><span class="pic">${g.pic(d)}</span><span class="txt"><b class="${open?'':'x'}">${MODE_NAME[d]}</b><small>${open?g[d]:'To unlock: '+needFor(sel.game,d)}</small></span></button>`; }).join(''); markSeen(fresh); }
+function fillSheet(){ const g=GAMES[sel.game]; const fresh=[]; $('#diff-row').innerHTML=g.modes.map(d=>{ const open=isOpen(sel.game,d); const nw=open?newMark('mode:'+sel.game+':'+d,fresh):''; return `<button data-act="diff" class="choice ${open?'':'locked'}${nw}" data-diff="${d}"><span class="pic">${g.pic(d)}</span><span class="txt"><b class="${open?'':'x'}">${MODE_NAME[d]}</b><small>${open?g[d]:'To unlock: '+needFor(sel.game,d)}</small></span></button>`; }).join(''); markSeen(fresh); }
 function back(){ if(performance.now()-shownAt<450) return; const s=$('.screen.on'); if(!s) return;
   if(s.id==='s-pick'){ if(stage==='len'){ if(GAMES[sel.game].modes.length===1) setStage('grid'); else setStage('mode'); } else if(stage==='mode') setStage('grid'); else show('s-menu'); return; }
   if(s.dataset.back) show(s.dataset.back); }
@@ -180,10 +145,10 @@ function fillTimes(){ const g=GAMES[sel.game], c=GC(sel.game,sel.diff); const se
   $('#time-row').style.display=hideLen?'none':''; $('#len-title').style.display=hideLen?'none':''; $('#len-title').textContent='Mode';
   // v13 (3.3): NAME on one line, what it costs on the next, the best under that — nothing can overlap, and the layout is the same for every game
   $('#time-row').innerHTML=lens.map(s=>{ const best=Scores.best(sel.game,sel.diff,s); const L=versus?null:lenLock(sel.game,sel.diff,s); const sub=versus?'':lenSub(sel.game,s,sel.diff); const nw=L?'':newMark('len:'+sel.game+':'+sel.diff+':'+s,fresh);
-    return `<button class="tbtn ${sel.secs===s?'sel':''} ${L?'locked':''}${nw}" data-time="${s}"><b class="${L?'x':''}">${lenFace(sel.game,s,sel.diff)}</b>${sub?`<small class="lsub">${sub}</small>`:''}<small>${L?'locked':best!==null?`${c.lower?'closest':'best'} ${scoreTxt(sel.game,best,sel.diff,s)}`:'no run yet'}</small></button>`; }).join('');
+    return `<button data-act="time" class="tbtn ${sel.secs===s?'sel':''} ${L?'locked':''}${nw}" data-time="${s}"><b class="${L?'x':''}">${lenFace(sel.game,s,sel.diff)}</b>${sub?`<small class="lsub">${sub}</small>`:''}<small>${L?'locked':best!==null?`${c.lower?'closest':'best'} ${scoreTxt(sel.game,best,sel.diff,s)}`:'no run yet'}</small></button>`; }).join('');
   // v13 (7.1): the scale left for Customise. Practice from is earned (7.2)
   const pOpen=practiceOpen(); if(!pOpen) sel.practice=0;
-  $('#prac-row').innerHTML=`<span class="chip lbl">practice from</span>`+(pOpen?[0,5,10,15].map(n=>`<button class="chip ${sel.practice===n?'sel':''}" data-prac="${n}">${n||'off'}</button>`).join(''):`<button class="chip locked x" data-praclock="1">locked · 8 notes in 7 keys</button>`);
+  $('#prac-row').innerHTML=`<span class="chip lbl">practice from</span>`+(pOpen?[0,5,10,15].map(n=>`<button data-act="prac" class="chip ${sel.practice===n?'sel':''}" data-prac="${n}">${n||'off'}</button>`).join(''):`<button data-act="praclock" class="chip locked x" data-praclock="1">locked · 8 notes in 7 keys</button>`);
   $('#seq-opts').style.display=seq&&stage==='len'&&!sel.vs?'flex':'none';
   markSeen(fresh);
   $('#go-btn').textContent=versus?'Go · versus':fixed?(PASS_LEN[sel.game]&&!SHARED2(sel.game,sel.diff)?`Go · ${PASS_LEN[sel.game]}s each`:'Go · pass & play'):'Go'; }
@@ -199,6 +164,38 @@ function shareRun(){ const r=lastRun; if(!r) return; const c=GC(r.g,r.d,r.s); co
 function openChallenge(){ if(!CHAL) return false; openSheetSafe(); return true; }
 // build 14 (S1): the score came off a URL — it is built as text nodes, never markup
 function openSheetSafe(){ const el=$('#chal'); if(el){ el.textContent=''; if(CHAL.score!==''){ const b=document.createElement('b'); b.textContent=String(CHAL.score); el.append('A friend scored ',b,' — beat it'); } else el.textContent='A friend sent you this one'; el.hidden=false; } }
+// a locked game or mode (v10): say what it takes and offer to go straight there — into the game, with the goal line up
+let lockGo=null;
+// v13 (3.8): the box shows the goal for the thing that was tapped, and `aim` carries that same goal into the run it starts — never the first unearned step of the chain
+function askUnlock(g,d,s){ if(s!==undefined){ const L=lenLock(g,d,s); if(!L) return; $('#lock-text').innerHTML=`${GAMES[g].name}${MODE_NAME[d]?' · '+MODE_NAME[d]:''} · ${L.name}<b>To unlock: ${L.need}</b>`; lockGo=Object.assign({need:L.need,aim:g+':'+d+':'+s},L); $('#lockwrap').classList.add('on'); return; }
+  const u=UNLOCKS.find(u=>u.key===g+':'+d); if(!u) return; $('#lock-text').innerHTML=`${unlockName(u.key)}<b>To unlock: ${u.need}</b>`; lockGo=Object.assign({need:u.need,aim:u.key},u.where); $('#lockwrap').classList.add('on'); }
+function gotoAch(id){ const a=achById(id); if(!a) return; F.ach.g=a.g==='all'?'all':a.g; show('s-ach'); const row=$('#ach-'+a.id); if(row){ row.scrollIntoView({block:'center'}); row.classList.add('flash'); } }
+function renderAch(){
+  const g=got(), all=Scores.runs(), gsel=F.ach.g; const fresh=[]; let k=0;
+  $('#ach-g').innerHTML=`<button class="chip" data-act="chip" data-chip="ach-g" data-v="all">All</button>`+Object.entries(GAMES).map(([id,x])=>`<button class="chip" data-act="chip" data-chip="ach-g" data-v="${id}">${x.name}</button>`).join(''); chips('ach','g',gsel);
+  const list=achAll().filter(a=>gsel==='all'||a.g===gsel||a.g==='all');
+  const fsGame=gsel==='all'?sel.game:gsel;
+  $('#achlist').innerHTML = Object.keys(TIERS).map(t=>{
+    const items=list.filter(a=>a.tier===t), done=items.filter(a=>g[a.id]).length;
+    if(!items.length) return '';
+    return `<h4 class="${t}">${TIERS[t][0]} · ${done}/${items.length}<span>${TIERS[t][1]}</span></h4>`+items.map(a=>{
+      const isDone=!!g[a.id], secret=a.tier==='secret'&&!isDone;
+      const p=a.progress&&!isDone?Math.min(1,a.progress(all,fsGame)):null;
+      const gname=a.g==='all'?'':`<i>${GAMES[a.g].name}</i>`;
+      const bar=p!==null?`<div class="pbar ${secret?'s':''}"><i style="width:${Math.round(p*100)}%"></i></div>`:'';
+      const jump=a.g!=='all'||a.id==='fullset';
+      const where=jump&&!secret?`<small class="go">→ ${GAMES[a.g==='all'?fsGame:a.g].name}${a.at?.d?' · '+MODE_NAME[a.at.d]:''}${a.at?.s!==undefined?' · '+lenName(a.g,a.at.s,a.at?.d||GAMES[a.g].modes[0]):''}</small>`:'';
+      const nw=isDone?newMark('ach:'+a.id,fresh):''; const dl=isDone?` style="animation-delay:${Math.min(k++,14)*70}ms"`:'';
+      return `<button data-act="ach" class="a ${isDone?'done':'lock'}${nw} ${jump?'jump':''}" data-ach="${a.id}" id="ach-${a.id}"${dl}><span>${isDone?'✓ ':''}${secret?'???':a.name}${gname}</span><em class="${a.unlocks&&!isDone?'u':''}">${isDone?'done'+(a.unlocks?' · '+unlockHtml(a):''):a.unlocks?unlockHtml(a):secret?'secret':''}</em><small>${secret?(p!==null?'You are '+Math.round(p*100)+'% of the way to something.':'A stretch past the stretch. You will know.'):a.how+(a.id==='fullset'?` · in ${GAMES[fsGame].name}`:'')}</small>${where}${bar}</button>`; }).join(''); }).join('');
+  markSeen(fresh);
+}
+function jumpTo(a){ const g=a.g==='all'?(F.ach.g==='all'?sel.game:F.ach.g):a.g; const d=a.at?.d||GAMES[g].modes[0]; if(!isOpen(g,d)) return askUnlock(g,d); if(a.at?.s!==undefined&&!lenOpen(g,d,a.at.s)) return askUnlock(g,d,a.at.s); setPendingAim(a.how); openSheet(g,a.at?.d,a.at?.s); }
+// open the pick sheet on a game (v11), at the mode row or straight at the length row. Used by achievements and the result screen's Back
+function openSheet(g,d,s){ const G_=GAMES[g]; sel.game=g; prefs.lastGame=g; save('ne.prefs',prefs); show('s-pick');
+  $$('.tile').forEach(t=>t.classList.toggle('keep',t.dataset.game===g)); fillSheet();
+  if(!G_.modes.includes(sel.diff)) sel.diff=G_.modes[0]; if(s!==undefined) sel.secs=s;
+  if(d||G_.modes.length===1){ sel.diff=d||G_.modes[0]; $$('.choice').forEach(c=>c.classList.toggle('sel',c.dataset.diff===sel.diff)); setStage('len'); fillTimes(); }
+  else setStage('mode'); }
 let eggTaps=0;
 // a tap on a control that picks something is a select(); everything else is a click() (v11)
 const isPick=b=>b.classList.contains('chip')||b.classList.contains('choice')||b.classList.contains('tbtn')||b.classList.contains('tile')||b.classList.contains('mch')||b.classList.contains('opt')||b.dataset.vs2!==undefined||!!b.closest('.sw');
@@ -212,20 +209,20 @@ function renderRadar(){ const all=Scores.runs(), ids=Object.keys(GAMES), n=ids.l
     +ids.map((g,i)=>{ const [x,y]=pt(i,1.19); return `<text x="${x.toFixed(1)}" y="${(y+3).toFixed(1)}" text-anchor="middle">${GAMES[g].name} ${Math.round(vals[i]*100)}</text>`; }).join(''); }
 function chips(scope,key,val){ $$(`[data-chip="${scope}-${key}"]`).forEach(c=>c.classList.toggle('sel',String(c.dataset.v)===String(val))); }
 function renderBoard(){ $('#pstar').textContent=prefs.supporter?'★':''; const g=F.bd.g; if(!GAMES[g].modes.includes(F.bd.d)) F.bd.d=GAMES[g].modes[0]; const lens=lensOf(g,F.bd.d); if(!lens.includes(F.bd.s)) F.bd.s=lens[0];
-  $('#bd-g').innerHTML=Object.entries(GAMES).map(([id,x])=>`<button class="chip" data-chip="bd-g" data-v="${id}">${x.name}</button>`).join('');
-  $('#bd-d').innerHTML=GAMES[g].modes.length>1?GAMES[g].modes.map(d=>`<button class="chip" data-chip="bd-d" data-v="${d}">${MODE_NAME[d]}</button>`).join(''):'';
-  $('#bd-s').innerHTML=lens.length>1?lens.map(s=>`<button class="chip" data-chip="bd-s" data-v="${s}">${lenName(g,s,F.bd.d)}</button>`).join(''):'';
+  $('#bd-g').innerHTML=Object.entries(GAMES).map(([id,x])=>`<button class="chip" data-act="chip" data-chip="bd-g" data-v="${id}">${x.name}</button>`).join('');
+  $('#bd-d').innerHTML=GAMES[g].modes.length>1?GAMES[g].modes.map(d=>`<button class="chip" data-act="chip" data-chip="bd-d" data-v="${d}">${MODE_NAME[d]}</button>`).join(''):'';
+  $('#bd-s').innerHTML=lens.length>1?lens.map(s=>`<button class="chip" data-act="chip" data-chip="bd-s" data-v="${s}">${lenName(g,s,F.bd.d)}</button>`).join(''):'';
   chips('bd','g',g); chips('bd','d',F.bd.d); chips('bd','s',F.bd.s);
   const cfg=GC(g,F.bd.d,F.bd.s), c=cfg.cols; $('#runs-h').innerHTML=`<tr><th>rank</th><th></th><th>${cfg.scoreWord||'score'}${cfg.lower?' ▼':''}</th><th>${c[0][0]}</th><th>${c[1][0]}</th><th>date</th></tr>`;
   $('#runs').innerHTML=rows(g,F.bd.d,F.bd.s,Scores.of(g,F.bd.d,F.bd.s).slice(0,10),lastRun?.t); }
 let lastRun=null;
 // the result screen's options (v10): players, mode, length, scale — pick, then Go. What you were just playing is pre-selected. v11: Solo / With a friend, then Pass & play / Versus; locked modes and lengths are crossed out and cannot be picked
 function renderOverChips(){ const g=GAMES[sel.game]; const vsOk=versusOf(sel.game,sel.diff); if(sel.vs===2&&!vsOk) sel.vs=1; const fresh=[];
-  $('#over-vs').innerHTML=`<button class="chip ${sel.vs===0?'sel':''}" data-chip="over-vs" data-v="0">solo</button><button class="chip ${sel.vs?'sel':''}" data-chip="over-vs" data-v="f">with a friend</button>`+(sel.vs?`<span class="chip lbl">·</span><button class="chip ${sel.vs===1?'sel':''}" data-chip="over-vs2" data-v="1">pass &amp; play</button>${vsOk?`<button class="chip ${sel.vs===2?'sel':''}" data-chip="over-vs2" data-v="2">versus</button>`:''}`:'');
-  $('#over-chips').innerHTML=g.modes.length>1?g.modes.map(d=>{ const open=isOpen(sel.game,d); const nw=open?newMark('mode:'+sel.game+':'+d,fresh):''; return `<button class="mch ${d===sel.diff?'sel':''} ${open?'':'locked'}${nw}" data-chip="over-d" data-v="${d}"><span class="pic">${g.pic(d)}</span><b class="${open?'':'x'}">${MODE_NAME[d]}</b></button>`; }).join(''):'';
+  $('#over-vs').innerHTML=`<button class="chip ${sel.vs===0?'sel':''}" data-act="chip" data-chip="over-vs" data-v="0">solo</button><button class="chip ${sel.vs?'sel':''}" data-act="chip" data-chip="over-vs" data-v="f">with a friend</button>`+(sel.vs?`<span class="chip lbl">·</span><button class="chip ${sel.vs===1?'sel':''}" data-act="chip" data-chip="over-vs2" data-v="1">pass &amp; play</button>${vsOk?`<button class="chip ${sel.vs===2?'sel':''}" data-act="chip" data-chip="over-vs2" data-v="2">versus</button>`:''}`:'');
+  $('#over-chips').innerHTML=g.modes.length>1?g.modes.map(d=>{ const open=isOpen(sel.game,d); const nw=open?newMark('mode:'+sel.game+':'+d,fresh):''; return `<button class="mch ${d===sel.diff?'sel':''} ${open?'':'locked'}${nw}" data-act="chip" data-chip="over-d" data-v="${d}"><span class="pic">${g.pic(d)}</span><b class="${open?'':'x'}">${MODE_NAME[d]}</b></button>`; }).join(''):'';
   const versus=sel.vs===2&&vsOk, c=GC(sel.game,sel.diff), lens=lensOf(sel.game,sel.diff,versus?2:0), fixed=sel.vs===1&&(PASS_LEN[sel.game]||SHARED2(sel.game,sel.diff));
   if(!lens.includes(sel.secs)||!versus&&!lenOpen(sel.game,sel.diff,sel.secs)) sel.secs=lens.find(s=>versus||lenOpen(sel.game,sel.diff,s))||lens[0];
-  $('#over-chips2').innerHTML=lens.length>1&&!fixed&&(!versus||c.vsLens)?lens.map(s=>{ const L=versus?null:lenLock(sel.game,sel.diff,s); const nw=L?'':newMark('len:'+sel.game+':'+sel.diff+':'+s,fresh); return `<button class="chip ${s===sel.secs?'sel':''} ${L?'locked x':''}${nw}" data-chip="over-s" data-v="${s}">${lenName(sel.game,s,sel.diff)}</button>`; }).join(''):'';
+  $('#over-chips2').innerHTML=lens.length>1&&!fixed&&(!versus||c.vsLens)?lens.map(s=>{ const L=versus?null:lenLock(sel.game,sel.diff,s); const nw=L?'':newMark('len:'+sel.game+':'+sel.diff+':'+s,fresh); return `<button class="chip ${s===sel.secs?'sel':''} ${L?'locked x':''}${nw}" data-act="chip" data-chip="over-s" data-v="${s}">${lenName(sel.game,s,sel.diff)}</button>`; }).join(''):'';
   $('#over-chips3').innerHTML='';
   markSeen(fresh);
   $('#again').textContent=versus?'Go · versus':fixed?(PASS_LEN[sel.game]&&!SHARED2(sel.game,sel.diff)?`Go · ${PASS_LEN[sel.game]}s each`:'Go · pass & play'):'Go'; }
@@ -258,4 +255,4 @@ function setMenuWasFirst(v){ menuWasFirst=v; }
 function bumpEggTaps(){ eggTaps++; }
 
 
-export { CHAL, DESIGNS, F, ITEMS, itemsOf, PV, Story, VS, VS_ART, Wheel, applyPrefs, back, bumpEggTaps, chips, colOf, devState, eggTaps, fillSheet, fillTimes, firstRun, fmtScore, freshGame, isPick, lastRun, lenFace, lockedBy, menuIn, menuWasFirst, musicOn, nextWhere, openChallenge, parseChallenge, passLine, prefs, pvG, pvPop, pvSeen, pvStep, pvTap, pvTry, renderBoard, renderCustom, renderMenu, renderOver, renderOverChips, renderOverTop, renderRadar, renderTier, renderTiles, renderVsArt, renderVsRow, rows, sel, setLastRun, setMenuWasFirst, setStage, shareRun, show, shownAt, stage, vsLine };
+export { DESIGNS, ITEMS, itemsOf, PV, Story, VS_ART, Wheel, applyPrefs, askUnlock, back, bumpEggTaps, chips, colOf, devState, eggTaps, fillSheet, fillTimes, firstRun, fmtScore, freshGame, gotoAch, isPick, jumpTo, lastRun, lenFace, lockGo, lockedBy, menuIn, menuWasFirst, nextWhere, openChallenge, openSheet, passLine, pvG, pvPop, pvSeen, pvStep, pvTap, pvTry, renderAch, renderBoard, renderCustom, renderMenu, renderOver, renderOverChips, renderOverTop, renderRadar, renderTier, renderTiles, renderVsArt, renderVsRow, rows, setLastRun, setMenuWasFirst, setStage, shareRun, show, shownAt, stage, vsLine };

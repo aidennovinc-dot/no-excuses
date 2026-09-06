@@ -1,12 +1,11 @@
 /* No Excuses — Spot — Count and Find
    Split out of index.html at build 12. Rebuilt for build 13: the ramp is the difficulty, and both modes are Set or Streak. */
 
-import { finish } from "../app.js";
+import { finish, liveCheck } from "../app.js";
 import { Snd } from "../audio.js";
 import { $, $$, SHAPE_WORD, STREAK, f2, pWho, shapeI } from "../core.js";
 import { genRect, rnd, roundEngine, rxBar, scatter, shapeHtml } from "./round.js";
-import { sel } from "../menu.js";
-import { liveCheck } from "../progress.js";
+import { sel } from "../core/state.js";
 /* Spot (v8) — Count: shapes flash up, count the ones you were shown; decoys, count and flash length all ramp through the run. Find: one shape is different, tap it.
    v13 (10.1–10.3): Normal / Hard are gone — round number IS the difficulty. Count scores total miscount, Find cumulative seconds; both lower is better.
    Set = 10 rounds. Streak = a budget: 5 miscounts for Count, 10 seconds for Find, and the score is rounds. */

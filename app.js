@@ -2,7 +2,9 @@
    Split out of index.html at build 12. Behaviour is identical to build 11. */
 
 import { Music, Snd } from "./audio.js";
-import { $, $$, CFG, MODE_NAME, PASS_LEN, VS_CAP, VS_LEAD, load, pWho, save, vmin } from "./core.js";
+import { $, $$, CFG, MODE_NAME, PASS_LEN, VS_CAP, VS_LEAD, pWho, vmin } from "./core.js";
+import { F, VS, sel } from "./core/state.js";
+import { load, prefs, save } from "./core/store.js";
 import { G, cur, setCur } from "./engine-core.js";
 import { DT } from "./games/dots.js";
 import { HD } from "./games/estimate.js";
@@ -13,8 +15,9 @@ import { rxBar } from "./games/round.js";
 import { SQ } from "./games/sequence.js";
 import { SP } from "./games/spot.js";
 import { TM } from "./games/timing.js";
-import { F, VS, applyPrefs, prefs, renderOver, renderOverChips, sel, setLastRun, show } from "./menu.js";
-import { INTRO, Scores, UNLOCKS, chalRun, checkAch, checkUnlocks, goalFor, liveCheck, pendingAim, pendingGoal, setPendingAim, setPendingGoal, toast, unlockHtml, unlockName, unlockToast, verdict } from "./progress.js";
+import { applyPrefs, askUnlock, renderOver, renderOverChips, setLastRun, show } from "./menu.js";
+import { INTRO, Scores, UNLOCKS, chalRun, checkAch, checkUnlocks, goalFor, isOpen, lenOpen, lensOf, pendingAim, pendingGoal, setPendingAim, setPendingGoal, unlockHtml, unlockName, unlockToast, unlocked, verdict } from "./progress.js";
+import { toast } from "./ui/toast.js";
 const ENGINE={ 'quick-tap':QT, 'dots':DT, 'hold':HD, 'sequence':SQ, 'timing':TM, 'reaction':RX, 'spot':SP };
 
 /* ---------- first play of a mode (v6): a ghost finger plays two or three beats under a one-liner, then the countdown. Tap to skip ---------- */
@@ -161,6 +164,16 @@ function finish(res){
       .concat(checkAch(run).map(a=>['Achievement · '+a.name+(a.unlocks?' · '+unlockHtml(a):''),a.id,'']));
     msgs.forEach(([m,id,cls],i)=>setTimeout(()=>toast(m,id,cls,!!id),i*(id?3400:2600))); renderOverChips(); }),250);
 }
+// build 15 (stage 1): the two run-time functions that were in progress.js — they need G, sel, VS and start(), which progress.js no longer imports
+// mid-run (v10): engines call this with the run so far. Any live unlock that now passes lands at once, with a green toast; the goal line ticks
+function liveCheck(part){ if(!G.on||VS.on||sel.vs===2) return; const run=Object.assign({g:sel.game,d:sel.diff,s:sel.secs,hits:0,misses:0,x:999,y:0},part); const u=unlocked(); let ch=false;
+  for(const x of UNLOCKS){ if(x.live&&!u[x.key]&&x.test(run)){ u[x.key]=Date.now(); ch=true; G.fresh.push(x.key); toast(unlockToast(x.key),'','ok'); } }
+  if(ch) save('ne.unlock',u);
+  if(G.goal&&!G.goalHit&&(u[G.goal.key]||G.goal.test(run))){ G.goalHit=true; if(G.goal.len) toast(unlockToast(G.goal.key),'','ok'); $('#goal').classList.add('hit'); $('#goal').innerHTML='✓ '+$('#goal').innerHTML; } }
+// a locked game or mode (v10): the lock box's Try to unlock — straight into the game, with the goal line up
+function goWhere(w){ $('#lockwrap').classList.remove('on'); if(!w) return; const G_=GAMES[w.g]; sel.game=w.g; prefs.lastGame=w.g; save('ne.prefs',prefs);
+  sel.diff=w.d&&isOpen(w.g,w.d)?w.d:(G_.modes.find(d=>isOpen(w.g,d))||G_.modes[0]); if(!isOpen(sel.game,sel.diff)) return askUnlock(sel.game,sel.diff);
+  const lens=lensOf(w.g,sel.diff); sel.secs=w.s||(lens.includes(sel.secs)&&lenOpen(w.g,sel.diff,sel.secs)?sel.secs:lens.find(s=>lenOpen(w.g,sel.diff,s))); if(!lenOpen(sel.game,sel.diff,sel.secs)) sel.secs=lens[0]; sel.vs=0; sel.practice=0; VS.reset(); setPendingAim(w.need||''); setPendingGoal(w.aim||null); start(); }
 /* ---------- menu atmosphere: four designs, all quiet ---------- */
 const cv=$('#stars'), cx=cv.getContext('2d'); let W,H,pts=[],dpr=1;
 function size(){ dpr=devicePixelRatio||1; W=cv.width=innerWidth*dpr; H=cv.height=innerHeight*dpr;
@@ -175,4 +188,4 @@ const DRAW={
   orbs(t){ for(const p of pts.slice(0,6)){ const x=p.x+(reduce?0:Math.sin(t/4000+p.ph)*40*dpr), y=p.y+(reduce?0:Math.cos(t/5200+p.ph)*30*dpr); const gr=cx.createRadialGradient(x,y,0,x,y,p.R); gr.addColorStop(0,'rgba(232,230,225,.09)'); gr.addColorStop(1,'rgba(232,230,225,0)'); cx.globalAlpha=1; cx.fillStyle=gr; cx.beginPath(); cx.arc(x,y,p.R,0,6.28); cx.fill(); } },
 };
 
-export { Ads, DRAW, ENGINE, H, Intro, RATE_MAX, VX, W, abort, arm, countdown, cv, cx, dpr, finish, hit, miss, pbShow, peakRate, pts, rateMeter, reduce, size, start, tapAt, tick };
+export { Ads, DRAW, ENGINE, H, Intro, RATE_MAX, VX, W, abort, arm, countdown, cv, cx, dpr, finish, goWhere, hit, liveCheck, miss, pbShow, peakRate, pts, rateMeter, reduce, size, start, tapAt, tick };
