@@ -4,17 +4,18 @@
    The overlays that used to sit above the button chain (toast, title sequence, ad break, lock box, the Next card, the
    full stop, and a tap on nothing) keep their old order at the top of onClick. A button without data-act, or with an
    unknown one, plays the sound it always did and does nothing else. */
-import { Ads, abort, goWhere, start } from "../app.js";
+import { abort, goWhere, start } from "../app.js";
 import { Music, Snd } from "../audio.js";
 import { TOAST } from "../config/copy.js";
 import { $, $$, T } from "../core.js";
 import { CHAL } from "../core/platform.js";
 import { F, VS, sel } from "../core/state.js";
 import { prefs, save } from "../core/store.js";
-import { SQ } from "../games/sequence.js";
+import { SQ } from "../games/sequence/index.js";
 import { GAMES, GC } from "../games/registry.js";
 import { Story, Wheel, applyPrefs, askUnlock, back, bumpEggTaps, devState, eggTaps, fillSheet, fillTimes, freshGame, gotoAch, isPick, itemsOf, jumpTo, lockGo, nextWhere, openChallenge, openSheet, pvSeen, pvTry, renderAch, renderBoard, renderCustom, renderOverChips, renderOverTop, renderVsArt, renderVsRow, setStage, shareRun, show, stage } from "../menu.js";
 import { achById, got, isOpen, lenOpen, unlockHtml } from "../progress.js";
+import { Ads } from "./ads.js";
 import { toast } from "./toast.js";
 
 // v13 (3.6): a challenge link waits for the title sequence, then opens its pick sheet

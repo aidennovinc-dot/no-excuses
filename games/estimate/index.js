@@ -1,14 +1,14 @@
 /* No Excuses — Estimate — Grow and Cut
    Split out of index.html at build 12. Behaviour is identical to build 11. */
 
-import { finish, liveCheck } from "../app.js";
-import { Snd } from "../audio.js";
-import { ESTIMATE as CP } from "../config/copy.js";
-import { CFG, ESTIMATE as EST, STREAK } from "../config/games.js";
-import { $, $$, T, f2, mean, vmin } from "../core.js";
-import { G } from "../engine-core.js";
-import { Shapes } from "./shapes.js";
-import { sel } from "../core/state.js";
+import { finish, liveCheck } from "../../app.js";
+import { Snd } from "../../audio.js";
+import { ESTIMATE as CP } from "../../config/copy.js";
+import { CFG, ESTIMATE as EST, STREAK } from "../../config/games.js";
+import { $, $$, T, f2, mean, vmin } from "../../core.js";
+import { G } from "../../engine-core.js";
+import { Shapes } from "../_shared/shapes.js";
+import { sel } from "../../core/state.js";
 /* ---------- Estimate (v9, was Hold). Grow: a shape grows with a wobble and vanishes; tap and hold to grow yours to the same area — the same shape on odd rounds, a different one on even. Cut: a shape appears; drag a line through it that splits off the share asked for. Score is % off, lower is better. Five rounds ---------- */
 const HD={ st:'idle', round:0, total:0, errs:[], target:0, rot:0, shape:null, mine:null, t0:0, raf:0, timers:[], p0:null, p1:null, share:50,
   est(){ return sel.diff==='grow'&&this.round%2===0; },

@@ -1,9 +1,9 @@
 /* No Excuses — the round-based engine base shared by Timing, Reaction and Spot
    Split out of index.html at build 12. Behaviour is identical to build 11. */
 
-import { $ } from "../core.js";
-import { G } from "../engine-core.js";
-import { sel } from "../core/state.js";
+import { $ } from "../../core.js";
+import { G } from "../../engine-core.js";
+import { sel } from "../../core/state.js";
 /* ---------- v7 engines. All four share #gen, a round counter, and `later` timers that die with the run ---------- */
 // the rule bar (v10): what to look for, top-middle, a word at a time, staying up for the whole attempt. null clears it
 function rxBar(words){ const b=$('#rxbar'); if(!words){ b.innerHTML=''; return; } b.innerHTML=words.map((w,i)=>`<span class="w" style="animation-delay:${i*220}ms">${w}</span>`).join(''); }

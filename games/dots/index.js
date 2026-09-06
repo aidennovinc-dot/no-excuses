@@ -1,12 +1,12 @@
 /* No Excuses — Dots — Blind and Lead
    Split out of index.html at build 12. Behaviour is identical to build 11. */
 
-import { tapAt } from "../app.js";
-import { CFG } from "../config/games.js";
-import { $ } from "../core.js";
-import { G } from "../engine-core.js";
-import { rnd } from "./round.js";
-import { sel } from "../core/state.js";
+import { tapAt } from "../../app.js";
+import { CFG } from "../../config/games.js";
+import { $ } from "../../core.js";
+import { G } from "../../engine-core.js";
+import { rnd } from "../_shared/round.js";
+import { sel } from "../../core/state.js";
 const DT={ sz:80,
   // pity (v9): three dots in a row in the same quarter of the screen and the next one is forced elsewhere
   q:-1, qn:0,

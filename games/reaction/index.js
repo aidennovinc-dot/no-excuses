@@ -1,13 +1,13 @@
 /* No Excuses — Reaction — Flash and Go/No-go
    Split out of index.html at build 12. Behaviour is identical to build 11. */
 
-import { finish, liveCheck } from "../app.js";
-import { Snd } from "../audio.js";
-import { REACTION as CP } from "../config/copy.js";
-import { SHAPE_WORD, STREAK } from "../config/games.js";
-import { $, $$, T, mean, pWho, shapeI, vmin } from "../core.js";
-import { genRect, rnd, roundEngine, rxBar, rxBox } from "./round.js";
-import { sel } from "../core/state.js";
+import { finish, liveCheck } from "../../app.js";
+import { Snd } from "../../audio.js";
+import { REACTION as CP } from "../../config/copy.js";
+import { SHAPE_WORD, STREAK } from "../../config/games.js";
+import { $, $$, T, mean, pWho, shapeI, vmin } from "../../core.js";
+import { genRect, rnd, roundEngine, rxBar, rxBox } from "../_shared/round.js";
+import { sel } from "../../core/state.js";
 /* Reaction — Flash: white after a random wait, tap. Go/No-go (v8): shapes cycle past in different spots; tap the rule shape the moment it shows. A wrong shape ends the run. Score is ms, averaged */
 // the clock (v8): t0 is taken two frames after the change is queued, i.e. when it has actually been painted; the tap is timed from the event's own timestamp, not from when the handler ran
 const tapTime=e=>{ const n=performance.now(); const ts=e&&e.timeStamp; return ts&&ts<=n+1&&ts>n-5000?ts:n; };

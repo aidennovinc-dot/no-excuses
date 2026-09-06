@@ -4,8 +4,6 @@
 import { SCALES, TRACKS } from "./config/audio.js";
 import { sel } from "./core/state.js";
 import { musicOn, prefs } from "./core/store.js";
-import { G } from "./engine-core.js";
-import { GAMES } from "./games/registry.js";
 /* ---------- sound: synthesised, tiny, quiet. The pack colours hit / miss / click; tick, go and end are the same everywhere ---------- */
 // v10: iOS marks the context "interrupted" (not "suspended") when the app goes to the background, and only a resume inside a touch brings it back — so every touch checks, and so does coming back to the foreground
 let ac=null; const AC=()=>{ if(!ac){ try{ ac=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } if(ac&&ac.state!=='running'){ try{ ac.resume(); }catch(e){} } return ac; };
@@ -47,14 +45,16 @@ const Music=(()=>{
   const TR=TRACKS;
   let tr=null, timer=0, next=0, bar=0;
   // v11 audit: the end-of-run tempo/volume ramp read G.end, which start() never reset — so under the 3-2-1 of the NEXT run "time left" was hugely negative, the ramp went past 1.7× and the volume up 35%. That was the wild countdown music. Now the ramp only runs once the clock is live, and the whole track ducks −12dB until then
-  function ramp(){ if(!G.on||!G.live||!GAMES[sel.game].timed||!G.end) return 1; const left=(G.end-performance.now())/1000, w={5:2.2,15:4.5,30:7}[sel.secs]||4; return left<w? 1+.7*(1-Math.max(0,left)/w) : 1; }
-  function loop(){ const a=AC(); if(!a||!tr) return; while(next<a.currentTime+.25){ const r=ramp(), dur=60/tr.bpm*4/r, vol=(r>1?1.35:1)*(G.on&&!G.live?.25:1);
+  // build 17 (refactor stage 3): the run hands over its state object and length at start() — audio reads on / live / end off it and never imports the run
+  let st=null, secs=0;
+  function ramp(){ if(!st||!st.on||!st.live||!st.end) return 1; const left=(st.end-performance.now())/1000, w={5:2.2,15:4.5,30:7}[secs]||4; return left<w? 1+.7*(1-Math.max(0,left)/w) : 1; }
+  function loop(){ const a=AC(); if(!a||!tr) return; while(next<a.currentTime+.25){ const r=ramp(), dur=60/tr.bpm*4/r, vol=(r>1?1.35:1)*(st&&st.on&&!st.live?.25:1);
       const c=tr.ch[bar%4]; c.forEach((n,i)=>Snd.tone(tr.root*2*Math.pow(2,n/12),tr.root*2*Math.pow(2,n/12),dur*1000*.98,'triangle',.022*vol*(i===0?1.2:1),next,dur*280,true));
       Snd.tone(tr.root/2*Math.pow(2,tr.bass[bar%4]/12),tr.root/2*Math.pow(2,tr.bass[bar%4]/12),dur*1000*.9,'sine',.07*vol,next,90,true);
       next+=dur; bar++; } }
-  return { start(g){ if(!musicOn(g)) return; const a=AC(); if(!a) return; tr=TR[g]||TR.hold; bar=0; next=a.currentTime+.05; clearInterval(timer); timer=setInterval(loop,80); loop(); },
+  return { start(g,state,len){ st=state||null; secs=len||0; if(!musicOn(g)) return; const a=AC(); if(!a) return; tr=TR[g]||TR.hold; bar=0; next=a.currentTime+.05; clearInterval(timer); timer=setInterval(loop,80); loop(); },
            // preview one game's track on its own, from Customise (12.1) — four bars, then it stops itself
-           preview(g,ms){ const a=AC(); if(!a) return; tr=TR[g]||TR.hold; bar=0; next=a.currentTime+.05; clearInterval(timer); timer=setInterval(loop,80); loop(); setTimeout(()=>this.stop(),ms||4200); },
+           preview(g,ms){ st=null; const a=AC(); if(!a) return; tr=TR[g]||TR.hold; bar=0; next=a.currentTime+.05; clearInterval(timer); timer=setInterval(loop,80); loop(); setTimeout(()=>this.stop(),ms||4200); },
            tracks(){ return Object.keys(TR); },
            stop(){ clearInterval(timer); tr=null; } };
 })();

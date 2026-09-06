@@ -3,6 +3,13 @@
    function up in a table keyed the same way ('g', 'g:d', 'g:streak', 'g:d:streak') — ui/format.js and progress/rules.js
    keep their formatters and predicates under those keys. */
 import { GAMES, LEN_NAME, STREAK } from "../config/games.js";
+import VX from "./_shared/versus.js";
+import QT from "./quick-tap/index.js";
+
+// build 17 (refactor stage 3): the engines by id — run/run.js is the only caller. A new game = one folder + one line here + config rows.
+// VERSUS is the one-phone-two-ends engine Quick Tap and Dots share. Ported one engine per commit; an id missing here still runs through app.js
+const ENGINES={ 'quick-tap':QT };
+const VERSUS=VX;
 
 const N_GAMES=Object.keys(GAMES).length;
 // a game's config for one mode and length (v11): `per` overrides by mode, `streak` overrides by length. GC(g,d) without a length is the Set config
@@ -21,4 +28,4 @@ const versusOf=(g,d)=>{ const v=GAMES[g].versus; return v===true||(Array.isArray
 // two-player runs the engine handles on one screen (v11): Sequence and Count. Everything else passes the phone through VS
 const SHARED2=(g,d)=>g==='sequence'||(g==='spot'&&d==='count');
 
-export { GAMES, GC, GV, N_GAMES, SHARED2, isStreak, lenFull, lenLabel, lenName, lenSub, versusOf };
+export { ENGINES, GAMES, GC, GV, N_GAMES, SHARED2, VERSUS, isStreak, lenFull, lenLabel, lenName, lenSub, versusOf };

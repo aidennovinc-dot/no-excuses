@@ -1,13 +1,13 @@
 /* No Excuses — Timing — Stopwatch and Hidden
    Split out of index.html at build 12. Behaviour is identical to build 11. */
 
-import { finish, liveCheck } from "../app.js";
-import { Snd } from "../audio.js";
-import { TIMING as CP } from "../config/copy.js";
-import { STREAK } from "../config/games.js";
-import { $, T, f2, mean, sum } from "../core.js";
-import { genRect, rnd, roundEngine } from "./round.js";
-import { sel } from "../core/state.js";
+import { finish, liveCheck } from "../../app.js";
+import { Snd } from "../../audio.js";
+import { TIMING as CP } from "../../config/copy.js";
+import { STREAK } from "../../config/games.js";
+import { $, T, f2, mean, sum } from "../../core.js";
+import { genRect, rnd, roundEngine } from "../_shared/round.js";
+import { sel } from "../../core/state.js";
 /* Timing — Stopwatch: a clock counts up and fades at 1.5s, tap on the target. Hidden: a ball rolls behind a wall, tap when it is at the marker. Score is seconds off, averaged */
 const TM=Object.assign(roundEngine(),{ errs:[], target:0, t0:0, ball:null, targets:[], out:false, tot:0,
   streak(){ return sel.secs===STREAK; }, hid(){ return sel.diff==='hidden'; },
