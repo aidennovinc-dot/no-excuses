@@ -1,4 +1,11 @@
 {
+  "name": "no-excuses",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node _smoke/smoke.mjs",
+    "review": "node _smoke/review/catalogue.mjs && node _smoke/review/progression.mjs"
+  },
   "dependencies": {
     "puppeteer-core": "^25.10.0"
   }

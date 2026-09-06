@@ -26,11 +26,13 @@ import { HD } from "./games/estimate.js";
 import { GAMES, GC } from "./games/registry.js";
 import { SQ } from "./games/sequence.js";
 import { CHAL, F, ITEMS, itemsOf, Story, VS, Wheel, applyPrefs, back, bumpEggTaps, devState, eggTaps, fillSheet, fillTimes, firstRun, freshGame, isPick, menuIn, nextWhere, openChallenge, prefs, pvSeen, pvTry, renderBoard, renderCustom, renderOverChips, renderOverTop, renderVsArt, renderVsRow, sel, setMenuWasFirst, setStage, shareRun, show, stage } from "./menu.js";
-import { ACH, achById, askUnlock, goWhere, got, gotoAch, isOpen, jumpTo, lenOpen, lockGo, openSheet, renderAch, seedSeen, seenAll, toast, unlockHtml } from "./progress.js";
+import { ACH, SCALES, achById, askUnlock, goWhere, got, gotoAch, isOpen, jumpTo, lenOpen, lockGo, openSheet, renderAch, seedSeen, seenAll, toast, unlockHtml } from "./progress.js";
 document.addEventListener('pointerdown',()=>{ if(ac&&ac.state!=='running'){ try{ ac.resume(); }catch(e){} } },{capture:true,passive:true});
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&ac&&ac.state!=='running'){ try{ ac.resume(); }catch(e){} } });
 // v7: nothing is force-open any more. Cosmetics and modes both follow the one "open everything" switch on the About screen
 delete prefs.pack;
+// build 14 (S3): a scale that is not in SCALES falls back to penta. SCALES evaluates after menu.js, so the check lives here, not beside prefs
+if(!SCALES[prefs.scale]){ prefs.scale='penta'; sel.scale='penta'; save('ne.prefs',prefs); }
 setMenuWasFirst(firstRun());
 // v13 (2.1): everything already open on this profile counts as seen, so nothing flashes green on day one
 if(!seenAll()) seedSeen();
@@ -41,7 +43,7 @@ if(prefs.mig11){ setTimeout(()=>toast(`Build 11 · ${prefs.mig11} old Estimate /
 document.addEventListener('pointerdown', ()=>Snd.unlock(), {once:true});
 $('#pname').value=prefs.name; $('#pname').addEventListener('input',e=>{ prefs.name=e.target.value.trim().toUpperCase().slice(0,10); save('ne.prefs',prefs);
   // Signed in is earned the moment a name goes in (v8) — it used to wait for the next finished run, which made it look impossible
-  if(prefs.name&&!got().named){ const g=got(); g.named=Date.now(); save('ne.ach',g); const a=ACH.find(x=>x.id==='named'); toast('Achievement · '+a.name+' · '+unlockHtml(a),a.id); } });
+  if(prefs.name&&!got().named){ const g=got(); g.named=Date.now(); save('ne.ach',g); const a=ACH.find(x=>x.id==='named'); toast('Achievement · '+a.name+' · '+unlockHtml(a),a.id,'',true); } });
 $('#pname').addEventListener('click',e=>e.stopPropagation());
 document.addEventListener('click', e=>{
   const b=e.target.closest('button');
@@ -50,7 +52,7 @@ document.addEventListener('click', e=>{
   if($('#adbreak').classList.contains('on')){ if(b&&b.id==='adskip'&&!b.disabled) Ads.close(); return; }
   if($('#lockwrap').classList.contains('on')){ if(b&&b.id==='lock-go'){ Snd.click(); return goWhere(lockGo); } if(!e.target.closest('#lockbox')||(b&&b.id==='lock-no')){ Snd.click(); $('#lockwrap').classList.remove('on'); } return; }
   if(e.target.closest('#nextup')){ Snd.click(); if(nextWhere) goWhere(nextWhere); return; }
-  if(e.target.closest('#egg')){ bumpEggTaps(); if(eggTaps>=3&&!got().egg){ const g=got(); g.egg=Date.now(); save('ne.ach',g); const a=achById('egg'); toast('Achievement · '+a.name+' · '+unlockHtml(a),a.id); } return; }
+  if(e.target.closest('#egg')){ bumpEggTaps(); if(eggTaps>=3&&!got().egg){ const g=got(); g.egg=Date.now(); save('ne.ach',g); const a=achById('egg'); toast('Achievement · '+a.name+' · '+unlockHtml(a),a.id,'',true); } return; }
   if(!b){ if(e.target.closest('.sheet')||e.target.closest('#game')||e.target.closest('input')||e.target.closest('#wheelwrap')) return; if($('.screen.on')){ Snd.click(); back(); } return; }
   isPick(b)?Snd.select():Snd.click();
   if(b.id==='quit') return abort();

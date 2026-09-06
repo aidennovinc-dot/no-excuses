@@ -14,7 +14,7 @@ import { SQ } from "./games/sequence.js";
 import { SP } from "./games/spot.js";
 import { TM } from "./games/timing.js";
 import { F, VS, applyPrefs, prefs, renderOver, renderOverChips, sel, setLastRun, show } from "./menu.js";
-import { INTRO, Scores, UNLOCKS, checkAch, checkUnlocks, goalFor, liveCheck, pendingAim, pendingGoal, setPendingAim, setPendingGoal, toast, unlockHtml, unlockName, unlockToast, verdict } from "./progress.js";
+import { INTRO, Scores, UNLOCKS, chalRun, checkAch, checkUnlocks, goalFor, liveCheck, pendingAim, pendingGoal, setPendingAim, setPendingGoal, toast, unlockHtml, unlockName, unlockToast, verdict } from "./progress.js";
 const ENGINE={ 'quick-tap':QT, 'dots':DT, 'hold':HD, 'sequence':SQ, 'timing':TM, 'reaction':RX, 'spot':SP };
 
 /* ---------- first play of a mode (v6): a ghost finger plays two or three beats under a one-liner, then the countdown. Tap to skip ---------- */
@@ -142,7 +142,7 @@ function miss(now){
 }
 function finish(res){
   G.on=false; G.live=false; cancelAnimationFrame(G.raf); G.timers.forEach(clearTimeout); G.timers=[]; Music.stop(); if(cur.clearT) cur.clearT(); Snd.end(); $('#seqdone')?.classList.remove('on');
-  const run=Object.assign({ t:Date.now(), g:sel.game, d:sel.diff, s:sel.secs, n:prefs.name||'', v:13 },res); setLastRun(run); if(!prefs.played){ prefs.played=1; save('ne.prefs',prefs); }
+  const run=Object.assign({ t:Date.now(), g:sel.game, d:sel.diff, s:sel.secs, n:prefs.name||'', v:13 },res); if(chalRun(run.g,run.d,run.s)) run.chal=1; setLastRun(run); if(!prefs.played){ prefs.played=1; save('ne.prefs',prefs); }
   // pass & play (v10): neither run is recorded — the board is solo. Player 1 plays, the phone is passed, the two are compared. v11: Player 1 red, Player 2 blue
   if(VS.on&&VS.stage===1){ VS.p1=run; $('#pass-eyebrow').textContent=`${GAMES[sel.game].name}${MODE_NAME[sel.diff]?' · '+MODE_NAME[sel.diff]:''} · pass & play`; $('#pass-who').innerHTML=`${pWho(1)} · you're up`; $('#pass-text').innerHTML=`${pWho(0)} scored <b>${scoreTxt(sel.game,run.hits,sel.diff,run.s)}</b>.<br>Hand the phone over.`; setTimeout(()=>show('s-pass'),250); return; }
   if(VS.on&&VS.stage===2) VS.p2=run;
@@ -159,7 +159,7 @@ function finish(res){
   setTimeout(()=>Ads.after(()=>{ show('s-over'); if(run.practice||two) return;
     const msgs=checkUnlocks(run).map(u=>[unlockToast(u.key),'','ok'])
       .concat(checkAch(run).map(a=>['Achievement · '+a.name+(a.unlocks?' · '+unlockHtml(a):''),a.id,'']));
-    msgs.forEach(([m,id,cls],i)=>setTimeout(()=>toast(m,id,cls),i*(id?3400:2600))); renderOverChips(); }),250);
+    msgs.forEach(([m,id,cls],i)=>setTimeout(()=>toast(m,id,cls,!!id),i*(id?3400:2600))); renderOverChips(); }),250);
 }
 /* ---------- menu atmosphere: four designs, all quiet ---------- */
 const cv=$('#stars'), cx=cv.getContext('2d'); let W,H,pts=[],dpr=1;

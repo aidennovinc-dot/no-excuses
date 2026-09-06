@@ -37,7 +37,7 @@ const LEN_RULES = {
 const unlocked=()=>load('ne.unlock',{});
 /* ---------- new things (v13, 2.1 / L8): anything newly unlocked swells and tints green the first time it is on screen, then is marked seen.
    The store survives a reload and is cleared by Fresh game. Everything open on a brand-new profile is seeded as already seen, so nothing flashes on day one ---------- */
-const seenAll=()=>load('ne.seen',null);
+const seenAll=()=>{ const s=load('ne.seen',null); return s&&typeof s==='object'&&!Array.isArray(s)?s:null; }; // build 14 (S3): anything but a map reseeds
 function markSeen(keys){ const st=seenAll()||{}; let ch=false; for(const k of keys) if(!st[k]){ st[k]=1; ch=true; } if(ch) save('ne.seen',st); }
 const isNew=k=>{ const st=seenAll(); return !!st&&!st[k]; };
 // the class to put on a freshly-unlocked element, and the key to mark once it has been rendered
@@ -46,7 +46,7 @@ function openKeys(){ const k=[]; for(const g in GAMES){ if(gameOpen(g)) k.push('
   if(practiceOpen()) k.push('len:sequence:solo:practice'); const a=got(); for(const id in a) k.push('ach:'+id); return k; }
 function seedSeen(){ const st={}; for(const k of openKeys()) st[k]=1; save('ne.seen',st); }
 // progressive lengths (v13): LEN_RULES holds the requirement per game, mode and index; everything else opens on one finished run of the length before it. The first length is always open
-function lenLock(g,d,s){ if(prefs.allOpen) return null; if(chalAt(g,d)&&CHAL.s===s) return null; const c=GC(g,d), lens=c.lens, i=lens.indexOf(s); if(i<=0) return null; const prev=lens[i-1], runs=Scores.runs().filter(r=>r.g===g&&r.d===d&&r.s===prev&&!r.practice);
+function lenLock(g,d,s,noChal){ if(prefs.allOpen) return null; if(!noChal&&chalAt(g,d)&&CHAL.s===s) return null; const c=GC(g,d), lens=c.lens, i=lens.indexOf(s); if(i<=0) return null; const prev=lens[i-1], runs=Scores.runs().filter(r=>r.g===g&&r.d===d&&r.s===prev&&!r.practice);
   const rule=(LEN_RULES[g]||[])[i];
   if(rule) return runs.some(rule.test)?null:{g,d,s:prev,need:rule.need(lenName(g,prev,d)),name:lenName(g,s,d)};
   if(s===STREAK) return runs.length?null:{g,d,s:prev,need:`finish one ${lenName(g,prev,d)}`,name:'Streak'};
@@ -56,7 +56,10 @@ const lenOpen=(g,d,s)=>!lenLock(g,d,s);
 function goalFor(g,d,s){ if(prefs.allOpen) return null; const u=unlocked(); const x=UNLOCKS.find(x=>!u[x.key]&&x.where.g===g&&(!x.where.d||x.where.d===d)&&(!x.where.s||x.where.s===s)); if(x) return x;
   const c=GC(g,d), i=c.lens.indexOf(s); if(i>=0&&i<c.lens.length-1){ const nxt=c.lens[i+1], L=lenLock(g,d,nxt); if(L){ const rule=(LEN_RULES[g]||[])[i+1]; return { key:g+':'+d+':'+nxt, need:L.need, where:{g,d,s}, live:1, len:L, test:r=>r.g===g&&r.d===d&&r.s===s&&(rule?rule.test(r):true) }; } } return null; }
 const chalAt=(g,d)=>!!CHAL&&CHAL.g===g&&CHAL.d===d;
-const isOpen=(g,d)=>!!prefs.allOpen||chalAt(g,d)||g==='quick-tap'&&d==='two'||!!unlocked()[g+':'+d]||!UNLOCKS.some(u=>u.key===g+':'+d);
+const modeOpen=(g,d,noChal)=>!!prefs.allOpen||(!noChal&&chalAt(g,d))||g==='quick-tap'&&d==='two'||!!unlocked()[g+':'+d]||!UNLOCKS.some(u=>u.key===g+':'+d);
+const isOpen=(g,d)=>modeOpen(g,d,false);
+// build 14 (S2): a run that only the challenge link let happen — a mode or length still locked on this profile — is tagged chal:1 at finish and never reaches a board or an achievement
+const chalRun=(g,d,s)=>chalAt(g,d)&&(!modeOpen(g,d,true)||!!lenLock(g,d,s,true));
 // Sequence's practice-from row is earned like a length (7.2 - a guess Aiden corrects next batch)
 const practiceOpen=()=>!!prefs.allOpen||!!unlocked()['sequence:practice'];
 const gameOpen=g=>GAMES[g].modes.some(d=>isOpen(g,d));
@@ -104,7 +107,7 @@ const Scores = {
   runs(){ return load('ne.runs',[]); },
   of(g,d,s){ const lo=GC(g,d,s).lower; return this.runs().filter(r=>r.g===g&&r.d===d&&r.s===s).sort((a,b)=>lo?(a.hits-b.hits||a.t-b.t):(b.hits-a.hits||a.misses-b.misses||a.t-b.t)); },
   best(g,d,s){ const r=this.of(g,d,s)[0]; return r?r.hits:null; },
-  submit(run){ const prev=this.best(run.g,run.d,run.s); const runs=this.runs(); runs.unshift(run); save('ne.runs',runs.slice(0,600)); const lo=GC(run.g,run.d,run.s).lower; return prev===null ? run.hits>0||lo : (lo ? run.hits<prev : run.hits>prev); },
+  submit(run){ if(run.chal) return false; const prev=this.best(run.g,run.d,run.s); const runs=this.runs(); runs.unshift(run); save('ne.runs',runs.slice(0,600)); const lo=GC(run.g,run.d,run.s).lower; return prev===null ? run.hits>0||lo : (lo ? run.hits<prev : run.hits>prev); },
   rank(run){ return this.of(run.g,run.d,run.s).findIndex(r=>r.t===run.t)+1; }
 };
 
@@ -189,7 +192,7 @@ function authorAch(){ const out=[]; for(const g in GAMES) for(const d of GAMES[g
 const achAll=()=>ACH.concat(authorAch());
 const achById=id=>ACH.find(a=>a.id===id)||authorAch().find(a=>a.id===id);
 const got=()=>load('ne.ach',{});
-function checkAch(run){ const g=got(); const all=Scores.runs(); const fresh=[]; for(const a of ACH){ if(!g[a.id]&&a.test(run,all)){ g[a.id]=Date.now(); fresh.push(a); } } save('ne.ach',g); return fresh; }
+function checkAch(run){ if(run.chal) return []; const g=got(); const all=Scores.runs(); const fresh=[]; for(const a of ACH){ if(!g[a.id]&&a.test(run,all)){ g[a.id]=Date.now(); fresh.push(a); } } save('ne.ach',g); return fresh; }
 const ITEM_WORD={sq:'target colour',lead:'lead colour',cut:'cut piece colour',bg:'background',snd:'sound pack',scale:'scale',wheel:'colour wheel'};
 const BG_NAME={stars:'stars',grid:'grid',rain:'rain',orbs:'orbs'};
 function unlockWord(a){ if(!a.unlocks) return ''; const [k,v]=a.unlocks; if(k==='wheel') return 'unlocks the colour wheel'; if(k==='bg') return 'unlocks '+BG_NAME[v]+' background'; if(k==='snd') return 'unlocks '+v+' sounds'; return 'unlocks '+ITEM_WORD[k]; }
@@ -224,7 +227,8 @@ function openSheet(g,d,s){ const G_=GAMES[g]; sel.game=g; prefs.lastGame=g; save
   else setStage('mode'); }
 let toastT=0;
 // toast(msg, achId): an achievement toast is tappable and goes to that row; on the result screen every toast sits low, clear of the score (v8)
-function toast(msg,ach,cls){ const t=$('#toast'); clearTimeout(toastT); t.innerHTML=msg; t.dataset.ach=ach||''; t.classList.toggle('tap',!!ach); t.classList.toggle('ok',cls==='ok'); t.classList.add('on'); cls==='ok'?Snd.go():Snd.click(); toastT=setTimeout(()=>t.classList.remove('on'),ach?3200:cls==='ok'?2600:2000); }
+// build 14 (S1): the message is text. `html` is the opt-in for the achievement toasts, whose markup is the config swatch and nothing from the player
+function toast(msg,ach,cls,html){ const t=$('#toast'); clearTimeout(toastT); if(html) t.innerHTML=msg; else t.textContent=msg; t.dataset.ach=ach||''; t.classList.toggle('tap',!!ach); t.classList.toggle('ok',cls==='ok'); t.classList.add('on'); cls==='ok'?Snd.go():Snd.click(); toastT=setTimeout(()=>t.classList.remove('on'),ach?3200:cls==='ok'?2600:2000); }
 
 /* ---------- verdicts: tiered by a per-game quality 0..1 ---------- */
 const VERDICTS={
@@ -248,4 +252,4 @@ function setPendingAim(v){ pendingAim=v; }
 function setPendingGoal(v){ pendingGoal=v; }
 
 
-export { ACH, AUTHOR_RECORDS, BG_NAME, INTRO, ITEM_WORD, SCALES, Scores, TIERS, UNLOCKS, VERDICTS, achAll, achById, askUnlock, authorAch, bestRate, bestRound, checkAch, checkUnlocks, fullsetProg, gameOpen, goWhere, goalFor, got, gotoAch, isOpen, jumpTo, lenLock, lenOpen, lensOf, liveCheck, lockGo, isNew, LEN_RULES, lowProg, lowTotal, markSeen, needFor, newMark, nextGoal, openSheet, pendingAim, pendingGoal, practiceOpen, rate, renderAch, seedSeen, seenAll, setPendingAim, setPendingGoal, toast, toastT, tourProg, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict };
+export { ACH, AUTHOR_RECORDS, BG_NAME, INTRO, ITEM_WORD, SCALES, Scores, TIERS, UNLOCKS, VERDICTS, achAll, achById, askUnlock, authorAch, bestRate, bestRound, chalRun, checkAch, checkUnlocks, fullsetProg, gameOpen, goWhere, goalFor, got, gotoAch, isOpen, jumpTo, lenLock, lenOpen, lensOf, liveCheck, lockGo, isNew, LEN_RULES, lowProg, lowTotal, markSeen, needFor, newMark, nextGoal, openSheet, pendingAim, pendingGoal, practiceOpen, rate, renderAch, seedSeen, seenAll, setPendingAim, setPendingGoal, toast, toastT, tourProg, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict };

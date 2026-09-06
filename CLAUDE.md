@@ -32,6 +32,11 @@ A mismatch between 3 and 4 makes every phone show the green "new build" bar fore
 
 ## Structure
 
+**Where the code is going: `ARCHITECTURE.md`** — the target layout, the engine contract, the security
+rules S1–S7 and the code decisions A1–A8. The refactor runs one stage per build (14–18); the stage
+plan is `../2026-09-05_personal_handover_no-excuses-refactor.md`. Until a stage moves a file, the
+build-12 layout below still holds.
+
 `boot.js` is the entry (`<script type="module">`), and holds every top-level statement in its
 original order. Modules hold declarations only — that is what keeps evaluation order irrelevant.
 
@@ -65,11 +70,22 @@ file that changes a rule, threshold, name, unlock or screen layout is not built 
 
 Locked as of build 13 (FEEDBACK-v13 §L, 2026-09-05).
 
+**Code decisions A1–A8 in `ARCHITECTURE.md` — same quote-the-ID rule.** A feedback line changes one
+only when it names the ID (e.g. `A6:`); otherwise it goes under "Proposed" in FEATURES.md.
+
 ## The gate
 
-Headless Chromium at 390×844: intro → menu → every pick sheet opens → one full Quick Tap run →
-result screen, with **zero uncaught errors**. It also asserts the testable locks on a fresh profile —
-title sequence before the menu (L1), Quick Tap's length row is exactly Sprint / Dash / Marathon (L2),
-Solo shows no Pass & play / Versus (L3), the Quick Tap tile is white before any run (L7). **A failing
-assertion blocks the push.** Run it before every push. No bundler, no build step —
-GitHub Pages serves the modules directly, so every import path stays relative (`./games/dots.js`).
+**`npm test`** (build 14) spawns its own static server — no Python — and drives headless Chromium at
+390×844 with **zero uncaught errors**: intro → menu → every pick sheet → one Set run and one Streak
+run per game, driven to the result the way that engine is played → a pass & play Quick Tap → boot on
+three storage fixtures (empty, build-13 layout with runs intact, corrupt) → challenge links with a
+hostile `score`, a bad `s`, and a locked mode the link opened (that run never reaches a board). It
+also asserts the testable locks on a fresh profile — title sequence before the menu (L1), Quick Tap's
+length row is exactly Sprint / Dash / Marathon (L2), Solo shows no Pass & play / Versus (L3), the
+Quick Tap tile is white before any run (L7), the length row is labelled Mode (L9). **A failing
+assertion blocks the push.** Run it before every push; ~4 minutes. `CHROME_PATH` overrides the
+Windows default Chrome. **`npm run review`** regenerates `../_review/catalogue.html` and
+`progression.html` for Cowork to publish — it never publishes.
+
+No bundler, no build step — GitHub Pages serves the modules directly, so every import path stays
+relative (`./games/dots.js`).

@@ -3,13 +3,18 @@
 
 import { cv, cx } from "./app.js";
 import { Snd } from "./audio.js";
-import { $, $$, MODE_NAME, PASS_LEN, PUB_URL, VS_LEAD, load, pWho, save } from "./core.js";
+import { $, $$, MODE_NAME, PASS_LEN, PUB_URL, VS_LEAD, esc, load, pWho, save } from "./core.js";
 import { GAMES, GC, SHARED2, lenName, lenSub, scoreTxt, versusOf } from "./games/registry.js";
 import { ACH, ITEM_WORD, SCALES, Scores, UNLOCKS, achById, gameOpen, got, isOpen, lenLock, lenOpen, lensOf, markSeen, needFor, newMark, nextGoal, practiceOpen, renderAch, seedSeen, setPendingAim, toast, unlocked } from "./progress.js";
 /* ---------- a challenge link (v13, 3.6): ?g=quick-tap&d=two&s=5&score=31 opens that pick sheet after the title sequence,
    with the game open for this run only. Nothing is written to the unlock store ---------- */
-const CHAL=(()=>{ try{ const q=new URLSearchParams(location.search); const g=q.get('g'); if(!g||!GAMES[g]) return null;
-  const d=q.get('d')&&GAMES[g].modes.includes(q.get('d'))?q.get('d'):GAMES[g].modes[0]; return { g, d, s:q.get('s')?+q.get('s'):undefined, score:q.get('score')||'' }; }catch(e){ return null; } })();
+// build 14 (S2): one parser. g must be a game, d one of its modes (absent → the first), s an integer in that mode's lengths (absent → none), score a finite number (else none). Anything else is no challenge at all
+function parseChallenge(search){ try{ const q=new URLSearchParams(search); const g=q.get('g'); if(!g||!GAMES[g]) return null;
+  const dq=q.get('d'); if(dq!==null&&!GAMES[g].modes.includes(dq)) return null; const d=dq===null?GAMES[g].modes[0]:dq;
+  const sq=q.get('s'); let s; if(sq!==null){ if(!/^-?\d+$/.test(sq)) return null; s=parseInt(sq,10); if(!GC(g,d).lens.includes(s)) return null; }
+  const scq=q.get('score'); const n=scq===null||scq===''?NaN:Number(scq); const score=Number.isFinite(n)?n:'';
+  return { g, d, s, score }; }catch(e){ return null; } }
+const CHAL=parseChallenge(location.search);
 /* ---------- prefs / customise ---------- */
 const DESIGNS={ stars:{tint:'#050506'}, grid:{tint:'#070A14'}, rain:{tint:'#0B1008'}, orbs:{tint:'#0E0608'} };
 const ITEMS = {
@@ -53,8 +58,9 @@ function devState(){ const u=Object.keys(unlocked()).length, a=Object.keys(got()
 function renderTier(){ $('#tierbox').innerHTML=['No ads, ever.','Every colour, background and sound pack open from day one, plus the colour wheel.','A star on your profile.'].map(t=>`<div><span>${t}</span></div>`).join('');
   $('#support-title').textContent=prefs.supporter?'Supporter · thank you':'Support · A$1.99 · once'; $('#support-text').textContent=prefs.supporter?'Thank you — it keeps this going.':'A one-off, if you want to back it.'; }
 // colours are per game (v6): prefs.col[game] = {sq, lead}. The old global sq/lead seed every game once
-if(!prefs.col){ prefs.col={}; for(const g in GAMES) prefs.col[g]={sq:prefs.sq||'#FFFFFF',lead:prefs.lead||'#C8322A'}; }
-for(const g in GAMES) if(!prefs.col[g]) prefs.col[g]={sq:'#FFFFFF',lead:'#C8322A'};
+// build 14 (S3): a col that is not an object of objects is rebuilt, not trusted
+if(!prefs.col||typeof prefs.col!=='object'||Array.isArray(prefs.col)){ prefs.col={}; for(const g in GAMES) prefs.col[g]={sq:prefs.sq||'#FFFFFF',lead:prefs.lead||'#C8322A'}; }
+for(const g in GAMES) if(!prefs.col[g]||typeof prefs.col[g]!=='object') prefs.col[g]={sq:'#FFFFFF',lead:'#C8322A'};
 for(const g in GAMES) if(!prefs.col[g].cut) prefs.col[g].cut=prefs.col[g].sq||'#FFFFFF';
 const colOf=g=>prefs.col[g]||prefs.col['quick-tap'];
 function applyPrefs(g){ const r=document.documentElement.style; const c=colOf(g||sel?.game||prefs.lastGame); r.setProperty('--sq-live',c.sq); r.setProperty('--cue',c.lead); r.setProperty('--cutp',c.cut||c.sq); r.setProperty('--ground',prefs.tint||DESIGNS[prefs.bg].tint); save('ne.prefs',prefs); }
@@ -191,7 +197,8 @@ function shareRun(){ const r=lastRun; if(!r) return; const c=GC(r.g,r.d,r.s); co
   if(navigator.share){ navigator.share({text}).catch(()=>{}); return; } if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(()=>toast('Copied · paste it anywhere'),()=>toast(text)); } else toast(text); }
 // the challenge line on the pick sheet, and the sheet itself
 function openChallenge(){ if(!CHAL) return false; openSheetSafe(); return true; }
-function openSheetSafe(){ const el=$('#chal'); if(el){ el.innerHTML=CHAL.score?`A friend scored <b>${CHAL.score}</b> — beat it`:'A friend sent you this one'; el.hidden=false; } }
+// build 14 (S1): the score came off a URL — it is built as text nodes, never markup
+function openSheetSafe(){ const el=$('#chal'); if(el){ el.textContent=''; if(CHAL.score!==''){ const b=document.createElement('b'); b.textContent=String(CHAL.score); el.append('A friend scored ',b,' — beat it'); } else el.textContent='A friend sent you this one'; el.hidden=false; } }
 let eggTaps=0;
 // a tap on a control that picks something is a select(); everything else is a click() (v11)
 const isPick=b=>b.classList.contains('chip')||b.classList.contains('choice')||b.classList.contains('tbtn')||b.classList.contains('tile')||b.classList.contains('mch')||b.classList.contains('opt')||b.dataset.vs2!==undefined||!!b.closest('.sw');
@@ -244,11 +251,11 @@ function renderOver(run){ const g=GC(run.g,run.d,run.s);
   const cell=c=>`<span>${c[0]} <b>${c[1](run)}</b></span>`;
   const rec=`<span>${g.lower?'closest':'best'} <b>${best===null?'—':scoreTxt(run.g,best,run.d,run.s)}</b></span>`;
   $('#over-stats').innerHTML=[dupe(g.cols[0])?'':cell(g.cols[0]),rec,dupe(g.cols[1])?'':cell(g.cols[1])].join('')+peak;
-  const rk=Scores.rank(run); $('#over-rank').innerHTML = rk&&rk<=10 ? `rank <b>${rk}</b> of 10 · ${prefs.name||'you'}` : `outside the top 10 · ${prefs.name||'you'}`; }
+  const rk=Scores.rank(run); $('#over-rank').innerHTML = rk&&rk<=10 ? `rank <b>${rk}</b> of 10 · ${esc(prefs.name||'you')}` : `outside the top 10 · ${esc(prefs.name||'you')}`; }
 
 function setLastRun(v){ lastRun=v; }
 function setMenuWasFirst(v){ menuWasFirst=v; }
 function bumpEggTaps(){ eggTaps++; }
 
 
-export { CHAL, DESIGNS, F, ITEMS, itemsOf, PV, Story, VS, VS_ART, Wheel, applyPrefs, back, bumpEggTaps, chips, colOf, devState, eggTaps, fillSheet, fillTimes, firstRun, fmtScore, freshGame, isPick, lastRun, lenFace, lockedBy, menuIn, menuWasFirst, musicOn, nextWhere, openChallenge, passLine, prefs, pvG, pvPop, pvSeen, pvStep, pvTap, pvTry, renderBoard, renderCustom, renderMenu, renderOver, renderOverChips, renderOverTop, renderRadar, renderTier, renderTiles, renderVsArt, renderVsRow, rows, sel, setLastRun, setMenuWasFirst, setStage, shareRun, show, shownAt, stage, vsLine };
+export { CHAL, DESIGNS, F, ITEMS, itemsOf, PV, Story, VS, VS_ART, Wheel, applyPrefs, back, bumpEggTaps, chips, colOf, devState, eggTaps, fillSheet, fillTimes, firstRun, fmtScore, freshGame, isPick, lastRun, lenFace, lockedBy, menuIn, menuWasFirst, musicOn, nextWhere, openChallenge, parseChallenge, passLine, prefs, pvG, pvPop, pvSeen, pvStep, pvTap, pvTry, renderBoard, renderCustom, renderMenu, renderOver, renderOverChips, renderOverTop, renderRadar, renderTier, renderTiles, renderVsArt, renderVsRow, rows, sel, setLastRun, setMenuWasFirst, setStage, shareRun, show, shownAt, stage, vsLine };
