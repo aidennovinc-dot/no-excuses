@@ -8,11 +8,12 @@ import DT from "./dots/index.js";
 import QT from "./quick-tap/index.js";
 import RX from "./reaction/index.js";
 import SQ from "./sequence/index.js";
+import SP from "./spot/index.js";
 import TM from "./timing/index.js";
 
 // build 17 (refactor stage 3): the engines by id — run/run.js is the only caller. A new game = one folder + one line here + config rows.
 // VERSUS is the one-phone-two-ends engine Quick Tap and Dots share. Ported one engine per commit; an id missing here still runs through app.js
-const ENGINES={ 'quick-tap':QT, 'dots':DT, 'sequence':SQ, 'timing':TM, 'reaction':RX };
+const ENGINES={ 'quick-tap':QT, 'dots':DT, 'sequence':SQ, 'timing':TM, 'reaction':RX, 'spot':SP };
 const VERSUS=VX;
 
 const N_GAMES=Object.keys(GAMES).length;
