@@ -12,7 +12,6 @@ import { F, VS, sel } from "./core/state.js";
 import { load, prefs, save } from "./core/store.js";
 import { G, cur, setCur } from "./engine-core.js";
 import { HD } from "./games/estimate/index.js";
-import { RX } from "./games/reaction/index.js";
 import { GAMES, GC, SHARED2, lenName, versusOf } from "./games/registry.js";
 import { rxBar } from "./games/_shared/round.js";
 import { SP } from "./games/spot/index.js";
@@ -21,7 +20,7 @@ import { Scores, UNLOCKS, chalRun, checkAch, checkUnlocks, goalFor, isOpen, lenO
 import { scoreTxt } from "./ui/format.js";
 import { toast } from "./ui/toast.js";
 // build 17 transition: the engines not yet ported to run/run.js. Each port removes one; the last removes this file
-const ENGINE={ 'hold':HD, 'reaction':RX, 'spot':SP };
+const ENGINE={ 'hold':HD, 'spot':SP };
 
 /* ---------- first play of a mode (v6): a ghost finger plays two or three beats under a one-liner, then the countdown. Tap to skip ---------- */
 const Intro=(()=>{
