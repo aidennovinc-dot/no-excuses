@@ -3,6 +3,7 @@
    here, the engine supplies begin / onDown / result; timers are the run's (ctx.timers), the length is ctx.len.
    Behaviour is identical to build 11. */
 
+import { STREAK } from "../../config/games.js";
 import { $ } from "../../core.js";
 /* ---------- v7 engines. All four share #gen, a round counter, and `later` timers that die with the run ---------- */
 // the rule bar (v10): what to look for, top-middle, a word at a time, staying up for the whole attempt. null clears it
@@ -13,6 +14,7 @@ const genRect=()=>$('#gen').getBoundingClientRect();
 const rnd=n=>Math.random()*n|0;
 const roundEngine=()=>({ ctx:null, raf:0, round:0, st:'idle',
   mount(ctx){ this.ctx=ctx; },
+  streak(){ return this.ctx.len===STREAK; },
   start(){ this.begin(); },
   stop(){ this.clearT(); },
   input(ctx,ev){ this.onDown(ev); },

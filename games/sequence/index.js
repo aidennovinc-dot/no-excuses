@@ -4,7 +4,7 @@
 import { SCALES } from "../../config/audio.js";
 import { SEQ as CP } from "../../config/copy.js";
 import { CFG } from "../../config/games.js";
-import { $, $$, T, pWho, seqStep } from "../../core.js";
+import { $, $$, T, pWho, seqStep, winner } from "../../core.js";
 import * as hud from "../_shared/hud.js";
 /* ---------- Sequence: streak. Watch, copy, one more each round; a wrong key ends it ---------- */
 const SQ={ id:'sequence', ctx:null, st:'idle', keys:0, seq:[], idx:0, round:0, p:0, rounds:[0,0], copied:[0,0], phase:0,
@@ -56,7 +56,7 @@ const SQ={ id:'sequence', ctx:null, st:'idle', keys:0, seq:[], idx:0, round:0, p
     this.cue(`${pWho(p)}<br><small style="font-size:.6em;letter-spacing:.2em">${CP.listen}</small>`,true,p); hud.timeHtml(T(CP.listenHud,{who:pWho(p)}));
     this.seq.forEach((k,i)=>this.later(()=>this.light(k,step*1.6,step*.7),900+i*step)); this.later(()=>this.yourTurn(p),900+this.seq.length*step+150); },
   swap(){ $('#seq').classList.remove('input','watch'); $$('.key').forEach(k=>k.classList.remove('bad','lit')); if(this.phase===0){ this.phase=1; return this.compose(1); }
-    const a=this.copied[0], b=this.copied[1], w=a>b?0:b>a?1:-1; this.cue(w<0?CP.draw:T(CP.wins,{who:pWho(w)}),true,w<0?undefined:w); this.later(()=>this.ctx.emit('finish',{hits:a,misses:0,vs2:{a,b,w,how:CP.longer,txt:[T(CP.notes,{n:a}),T(CP.notes,{n:b})]}}),1600); } };
+    const a=this.copied[0], b=this.copied[1], w=winner(a,b); this.cue(w<0?CP.draw:T(CP.wins,{who:pWho(w)}),true,w<0?undefined:w); this.later(()=>this.ctx.emit('finish',{hits:a,misses:0,vs2:{a,b,w,how:CP.longer,txt:[T(CP.notes,{n:a}),T(CP.notes,{n:b})]}}),1600); } };
 
 export default SQ;
 export { SQ };

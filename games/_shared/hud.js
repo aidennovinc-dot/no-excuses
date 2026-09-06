@@ -18,6 +18,11 @@ const flash=ms=>{ const f=$('#flash'); f.style.transition='none'; f.style.opacit
 // live hits per second (v9): from the gaps between the last six taps, so it moves in tenths — counting hits over two seconds could only ever show halves. It sags when you stop
 function rate(game,hitT,now){ const t=hitT; let r=0; if(t.length>=2){ const k=Math.min(t.length-1,6); const avg=(t[t.length-1]-t[t.length-1-k])/k; const since=now-t[t.length-1]; r=1000/Math.max(avg,since>avg?since:avg); } else if(t.length===1){ r=Math.min(1,1000/Math.max(1,now-t[0])); } const k=Math.min(1,r/(RATE_MAX[game]||6));
   $('#rate i').style.height=Math.round(k*100)+'%'; $('#rate b').textContent=r.toFixed(1)+'/s'; $('#edge').style.opacity=k>.4?((k-.4)/.6*.4).toFixed(2):0; }
+// v13 (6.7 / 8.2): a Streak's round figure counts down to 0 while the running total counts up by the same amount, together, with the whoosh.
+// el shows the round figure through fmt; each frame calls onFrame(total); alive() ends it early; done(total) runs at the end
+function addUp({audio,from,err,ms,el,fmt,alive,onFrame,done}){ const t0=performance.now(); audio.whoosh(ms,140,760);
+  const step=now=>{ if(!alive()) return; const k=Math.min(1,(now-t0)/ms); const tot=from+err*k; if(el) el.textContent=fmt(err*(1-k)); onFrame(tot); if(k<1) requestAnimationFrame(step); else done(from+err); };
+  requestAnimationFrame(step); }
 // 3-2-1, then go. The steps ride the run's timers, so an abort mid-count stops it
 function countdown(timers,audio,cb){ const c=$('#count'); let n=3; c.classList.add('on');
   const step=()=>{ if(n>0){ c.innerHTML=`<span>${n}</span>`; audio.tick(); n--; timers.later(step,CFG.countStep); } else { c.classList.remove('on'); c.innerHTML=''; audio.go(); cb(); } };
@@ -34,4 +39,4 @@ function makeGhost(audio,timers){ const ghost=$('#ghost');
     tap(){ ghost.classList.remove('tap'); void ghost.offsetWidth; ghost.classList.add('tap'); audio.hit(); },
     hold(on){ ghost.classList.toggle('hold',!!on); } }; }
 
-export { bigcount, countdown, flash, makeGhost, mode, rate, reset, scorePop, score, scoreVisible, shake, time, timeHtml, you };
+export { addUp, bigcount, countdown, flash, makeGhost, mode, rate, reset, scorePop, score, scoreVisible, shake, time, timeHtml, you };

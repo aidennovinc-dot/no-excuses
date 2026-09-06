@@ -18,5 +18,8 @@ const seqStep=round=>Math.max(SEQ_STEP.floor,Math.round(SEQ_STEP.start-(round-1)
 const shapeI=s=>`<i class="${s}"></i>`;
 const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
 const sum=a=>a.reduce((x,y)=>x+y,0);
+// build 17 (refactor stage 3): the two lines every engine had its own copy of. winner: 0 / 1 / -1 for a draw. minMax: [best, worst] of a list, [0, 0] when empty
+const winner=(a,b)=>a>b?0:b>a?1:-1;
+const minMax=a=>a.length?[Math.min(...a),Math.max(...a)]:[0,0];
 
-export { $, $$, T, esc, f2, mean, pWho, seqStep, shapeI, sum, vmin };
+export { $, $$, T, esc, f2, mean, minMax, pWho, seqStep, shapeI, sum, vmin, winner };

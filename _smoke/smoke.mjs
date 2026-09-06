@@ -1,8 +1,9 @@
 /* No Excuses — the gate (A7). Run before every push:  npm test
  *
  * Spawns its own static server (no Python), launches the Chrome at CHROME_PATH (Windows default as the fallback)
- * at 390x844, and fails on any uncaught error or failed assertion. What it covers, build 16:
- *   0. static: the build number in config/build.js is the one in index.html (x3) and version.json (A6); config/ is data only (A2)
+ * at 390x844, and fails on any uncaught error or failed assertion. What it covers, build 17:
+ *   0. static: the build number in config/build.js is the one in index.html (x3) and version.json (A6); config/ is data only (A2);
+ *      every engine imports only from games/_shared/, core/, config/ and core.js — never sel, the store, audio, the run or another engine (A3)
  *   1. cold start: intro -> menu, and the locked decisions that can be asserted on a fresh profile
  *        L1 title sequence before the menu · L2 Sprint / Dash / Marathon · L3 Solo shows nothing about friends
  *        L7 Quick Tap tile is white before any run · L9 the length row is labelled Mode
@@ -44,6 +45,11 @@ console.log('\nstatic checks');
   const cfg = fs.readdirSync(path.join(root, 'config')).filter(f => f.endsWith('.js'));
   const dirty = cfg.filter(f => /\bimport\b|=>|\bfunction\b/.test(strip(fs.readFileSync(path.join(root, 'config', f), 'utf8'))));
   dirty.length ? bad('A2 config/ is data only', dirty.join(', ')) : ok(`A2 config/ is data only (${cfg.length} files: no imports, no functions)`);
+  // build 17 (A3): an engine's imports name only _shared, core, config or core.js. sel, prefs, audio, the run and the other engines reach it through ctx, or not at all
+  const engines = fs.readdirSync(path.join(root, 'games'), { withFileTypes: true }).filter(d => d.isDirectory() && !d.name.startsWith('_')).map(d => `games/${d.name}/index.js`).concat(fs.readdirSync(path.join(root, 'games', '_shared')).map(f => `games/_shared/${f}`));
+  const stray = [];
+  for (const f of engines) { const shared = f.startsWith('games/_shared/'); const src = strip(fs.readFileSync(path.join(root, f), 'utf8')); for (const m of src.matchAll(/from\s+["']([^"']+)["']/g)) { const p = m[1]; const okPath = shared ? /^(\.\/[\w.-]+\.js$|\.\.\/\.\.\/(core\/|config\/|core\.js$))/.test(p) : /^\.\.\/(_shared\/|\.\.\/(core\/|config\/|core\.js$))/.test(p); if (!okPath) stray.push(`${f} → ${p}`); } }
+  stray.length ? bad('A3 engines import only _shared / core / config', stray.join(', ')) : ok(`A3 engines import only _shared / core / config (${engines.length} files)`);
 }
 
 const browser = await launch();

@@ -44,9 +44,25 @@ build-12 layout below still holds.
 
 `boot.js` is the entry (`<script type="module">`) and holds the top-level statements that start the
 app. Since build 15 the module graph is a DAG — `core → core/store → core/state → audio → progress
-→ menu → app → ui/actions → boot` — so evaluation order follows the imports and no module reaches
-back up the chain. The one cycle left is `app.js ↔ games/*` (engines call `finish`, `tapAt`,
-`liveCheck`); Stage 3's run contract removes it.
+→ menu → run/run → ui/actions → boot` — so evaluation order follows the imports and no module reaches
+back up the chain. **Since build 17 there is no cycle at all:** the engines import only
+`games/_shared/`, `core/`, `config/` and `core.js` (the gate asserts it, A3) and never see `sel`,
+`prefs`, the store, audio, the run or each other.
+
+**The engine contract (A3) — since build 17.** `run/run.js` owns start / tick / finish / abort and the
+run state; `games/registry.js` exports `ENGINES` by id (and `VERSUS`, the one-phone-two-ends engine
+Quick Tap and Dots share). Every engine is `games/<id>/index.js` exporting one object: `mount(ctx)`,
+`start(ctx)`, `input(ctx, ev)`, optional `tick(ctx, now)`, `stop(ctx)`, `result(ctx)`, plus the optional
+`demo(ctx, ghost, done)` (the first-play ghost finger) and `precount(ctx)` (what plays under the 3-2-1).
+`ctx = { root, game, cfg, mode, len, players, practice, scale, emit, timers, audio, rand }`; the engine
+talks back only through `ctx.emit('finish', record)` and `ctx.emit('live', partial)`. Every tap reaches the
+engine through `run.input(ev)` as `{ type: 'down' | 'move' | 'up' | 'act', x, y, el, target, player, raw, t }`
+— `boot.js` binds the shell's pointer and key events to it and never names an engine. `core/timers.js`
+gives each run its own `later` / `frame` / `clearT`, keyed to the run; a callback from a dead run never
+fires. `games/_shared/`: `hud.js` (countdown, rate bar, score and clock slots, shake, flash, ghost, the
+add-up animation), `timed.js` (the Quick Tap / Dots base: hits, misses, lockout, rate), `round.js` (the
+Timing / Reaction / Spot base), `versus.js`, `shapes.js`. The game markup stays static in `index.html`;
+`mount` resets an engine's own nodes rather than building them.
 
 **`config/` is data only (A2) — since build 16.** Every number, name and string a feedback batch might
 change: `build.js` (BUILD, LABEL, RUN_SCHEMA, PUB_URL) · `games.js` (GAMES, the lengths, mode names,
@@ -65,17 +81,18 @@ A feedback line that changes a number touches `config/` only; if it also needs a
 load/save, `prefs` and its migrations · `core/state.js` `sel`, `VS`, `F` · `core/platform.js` the
 challenge link · `games/registry.js` `GC`/`GV` and the length names over the config table ·
 `progress.js` unlocks, achievements, scores — pure functions over the store, no DOM · `audio.js` sound
-and music · `menu.js` customise, navigation, pick sheet, board, result, lock box, achievements screen ·
-`ui/toast.js` · `ui/actions.js` every button's handler, keyed by `data-act` · `engine-core.js` shared
-run state · `games/*.js` one per game (plus `round.js`, `shapes.js`) · `app.js` the run itself, plus
-`liveCheck` and `goWhere` · `scripts/bump.mjs` the build bump.
+and music (the run hands `Music.start` its state object; audio never imports the run) · `menu.js`
+customise, navigation, pick sheet, board, result, lock box, achievements screen · `ui/toast.js` ·
+`ui/ads.js` · `ui/atmosphere.js` the menu canvas · `ui/actions.js` every button's handler, keyed by
+`data-act` · `run/run.js` the run itself, plus `liveCheck` and `goWhere` · `games/<id>/index.js` one
+engine per game, `games/_shared/` what they share · `scripts/bump.mjs` the build bump.
 
 **Every button carries `data-act`.** `ACTIONS[act](btn, ev)` in `ui/actions.js` does the work and
 returns `'pick'` or `'click'` for the sound; a button with no act plays its old sound and does nothing.
 A new button = one attribute in the markup + one entry in `ACTIONS`.
 
 Bindings written across modules go through setters, because ESM imports are read-only:
-`setPendingAim` / `setPendingGoal` (progress.js), `setLastRun` / `setMenuWasFirst` (menu.js), `setCur`.
+`setPendingAim` / `setPendingGoal` (progress.js), `setLastRun` / `setMenuWasFirst` (menu.js).
 
 ## Locked decisions
 
@@ -105,9 +122,9 @@ only when it names the ID (e.g. `A6:`); otherwise it goes under "Proposed" in FE
 ## The gate
 
 **`npm test`** (build 14) spawns its own static server — no Python — and drives headless Chromium at
-390×844 with **zero uncaught errors**. First two static checks (build 16): the build number in
-`config/build.js` is the one in `index.html` ×3 and `version.json` (A6), and `config/` has no imports
-and no functions (A2). Then: intro → menu → every pick sheet → one Set run and one Streak
+390×844 with **zero uncaught errors**. First three static checks: the build number in
+`config/build.js` is the one in `index.html` ×3 and `version.json` (A6), `config/` has no imports
+and no functions (A2), and every engine imports only `_shared` / `core` / `config` (A3, build 17). Then: intro → menu → every pick sheet → one Set run and one Streak
 run per game, driven to the result the way that engine is played → a pass & play Quick Tap → boot on
 three storage fixtures (empty, build-13 layout with runs intact, corrupt) → challenge links with a
 hostile `score`, a bad `s`, and a locked mode the link opened (that run never reaches a board). It
@@ -119,4 +136,4 @@ Windows default Chrome. **`npm run review`** regenerates `../_review/catalogue.h
 `progression.html` for Cowork to publish — it never publishes.
 
 No bundler, no build step — GitHub Pages serves the modules directly, so every import path stays
-relative (`./games/dots.js`).
+relative (`./games/dots/index.js`).

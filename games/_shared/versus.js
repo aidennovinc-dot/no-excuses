@@ -4,7 +4,7 @@
    Build 17 (refactor stage 3): an engine on the contract, picked by run/run.js for a Quick Tap or Dots versus run. Was VX in app.js. */
 import { HUD } from "../../config/copy.js";
 import { CFG, VS_CAP, VS_LEAD } from "../../config/games.js";
-import { $, T, pWho, vmin } from "../../core.js";
+import { $, T, pWho, vmin, winner } from "../../core.js";
 
 const VX={ id:'versus', noIntro:true, ctx:null, n:[0,0], tgt:[0,0], lock:[0,0], streak:[0,0], pos:[null,null], next:[null,null], raf:0, t0:0, done:false,
   qt(){ return this.ctx.game==='quick-tap'; },
@@ -28,7 +28,7 @@ const VX={ id:'versus', noIntro:true, ctx:null, n:[0,0], tgt:[0,0], lock:[0,0], 
     for(let p=0;p<2;p++){ const q=this.pos[p]; if(Math.hypot(x-(q.x+c),y-(q.y+c))<=c*CFG.dotLeeway+8) hitP=p; } if(hitP<0) return;
     // whose finger? the bottom 50% is the bottom player's reach, the top the top player's. A tap on the other player's shape hands them the point
     this.score(hitP); const lead=this.ctx.mode==='lead'; this.pos[hitP]=lead?this.next[hitP]:this.spot(hitP,this.pos[hitP]); this.next[hitP]=this.spot(hitP,this.pos[hitP]); this.renderDT(); },
-  end(){ if(this.done) return; this.done=true; cancelAnimationFrame(this.raf); const a=this.n[0], b=this.n[1]; const w=a>b?0:b>a?1:-1; const win=$('#vwin'); win.innerHTML=w<0?`<div>${HUD.draw}</div>`:`<div class="${w?'top p2':'p1'}">${T(HUD.wins,{n:w+1})}</div>`; win.classList.add('on'); this.ctx.audio.end();
+  end(){ if(this.done) return; this.done=true; cancelAnimationFrame(this.raf); const a=this.n[0], b=this.n[1]; const w=winner(a,b); const win=$('#vwin'); win.innerHTML=w<0?`<div>${HUD.draw}</div>`:`<div class="${w?'top p2':'p1'}">${T(HUD.wins,{n:w+1})}</div>`; win.classList.add('on'); this.ctx.audio.end();
     this.ctx.timers.later(()=>this.ctx.emit('finish',{hits:a,misses:0,vs2:{a,b,w,how:Math.abs(a-b)>=VS_LEAD?T(HUD.byLead,{n:VS_LEAD}):HUD.onClock}}),1900); },
   result(){ return {hits:this.n[0],misses:0}; } };
 

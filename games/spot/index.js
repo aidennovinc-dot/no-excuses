@@ -3,22 +3,22 @@
    Build 17 (refactor stage 3): the engine contract, on the round base. */
 
 import { SPOT as CP } from "../../config/copy.js";
-import { SHAPE_WORD, SPOT_RAMP, STREAK } from "../../config/games.js";
-import { $, $$, T, f2, pWho, shapeI } from "../../core.js";
+import { SHAPE_WORD, SPOT_RAMP } from "../../config/games.js";
+import { $, $$, T, f2, minMax, pWho, shapeI, winner } from "../../core.js";
 import * as hud from "../_shared/hud.js";
 import { genRect, rnd, roundEngine, rxBar, scatter, shapeHtml } from "../_shared/round.js";
 /* Spot (v8) — Count: shapes flash up, count the ones you were shown; decoys, count and flash length all ramp through the run. Find: one shape is different, tap it.
    v13 (10.1–10.3): Normal / Hard are gone — round number IS the difficulty. Count scores total miscount, Find cumulative seconds; both lower is better.
    Set = 10 rounds. Streak = a budget: 5 miscounts for Count, 10 seconds for Find, and the score is rounds. */
 const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pts:[], size:40, times:[], pen:0, t0:0, odd:'', target:'circle', flash:0, bestFlash:0, two:false, picks:[null,null], pickT:[0,0], vsN:[0,0], off:0, tot:0,
-  streak(){ return this.ctx.len===STREAK; }, find(){ return this.ctx.mode==='find'; },
+  find(){ return this.ctx.mode==='find'; },
   begin(){ this.round=0; this.right=0; this.wrong=0; this.times=[]; this.bestFlash=0; this.off=0; this.tot=0; this.two=this.ctx.players===1&&this.ctx.mode==='count'; this.vsN=[0,0]; hud.score(this.find()?'0.00':'0'); hud.scoreVisible(!this.two); this.next(); },
   // Find's crowd still grows across ten rounds; a Streak holds at the round-10 crowd
   p(){ return Math.min(1,(this.round-1)/9); },
   // v13 (10.1): round r deals 2 + floor(r/2) targets (cap 12) and floor(r/1.5) decoys (cap 10); the flash falls from 1340ms to 350ms;
   // from round 6 the shapes drift, from round 9 they turn as well, and everything shrinks as the count grows
   ramp(r){ const R=SPOT_RAMP; return { n:Math.min(R.nCap,R.nBase+Math.floor(r/R.nPer)), decoys:Math.min(R.decoyCap,Math.floor(r/R.decoyDiv)), flash:Math.max(R.flashMin,R.flashMax-R.flashPer*r), drift:r>=R.driftFrom?R.driftBase+(r-R.driftFrom)*R.driftPer:0, spin:r>=R.spinFrom?R.spinBase+(r-R.spinFrom)*R.spinPer:0 }; },
-  result(){ const x=this.bestFlash, best=this.times.length?Math.min(...this.times):0, worst=this.times.length?Math.max(...this.times):0;
+  result(){ const x=this.bestFlash, [best,worst]=minMax(this.times);
     if(this.find()) return this.streak()?{hits:this.times.length,misses:this.wrong,x:best,y:worst,lim:'10s'}:{hits:Math.round(this.tot*100)/100,misses:this.wrong,x:best,y:worst};
     const rounds=Math.max(0,this.round-1);
     return this.streak()?{hits:rounds,misses:this.wrong,x,y:this.worstOff||0,rounds,lim:'5 miscounts'}:{hits:this.off,misses:this.wrong,x,y:this.worstOff||0,rounds}; },
@@ -57,7 +57,7 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
     if(ok[0]&&ok[1]){ const d=this.pickT[0]-this.pickT[1]; if(Math.abs(d)<=350){ pts=[1,1]; line=CP.tie; } else { const w=d<0?0:1; pts[w]=1; line=T(CP.faster,{n:w+1}); } }
     else if(ok[0]||ok[1]){ const w=ok[0]?0:1; pts[w]=1; line=T(CP.had,{n:w+1}); } else line=CP.nobody;
     this.vsN[0]+=pts[0]; this.vsN[1]+=pts[1]; $('#gen').innerHTML=this.pts.map(q=>shapeHtml(q,this.size,q.shape!==this.target?'dim':'')).join('')+`<div class="glbl bot"><b>${this.answer}</b>${line}<br><span class="p1">${this.picks[0]===null?'—':this.picks[0]}</span> · <span class="p2">${this.picks[1]===null?'—':this.picks[1]}</span></div>`; (pts[0]||pts[1])?this.ctx.audio.hit():this.ctx.audio.miss(); this.later(()=>this.next(),1600); },
-  twoEnd(){ const [a,b]=this.vsN; const w=a>b?0:b>a?1:-1; $('#gen').innerHTML=`<div class="glbl top" style="top:40%"><b class="${w<0?'':w?'p2':'p1'}">${w<0?CP.draw:T(CP.wins,{n:w+1})}</b>${a} – ${b}</div>`; this.ctx.audio.end(); this.later(()=>this.ctx.emit('finish',{hits:a,misses:0,vs2:{a,b,w,how:T(CP.over10,{a,b})}}),1600); },
+  twoEnd(){ const [a,b]=this.vsN; const w=winner(a,b); $('#gen').innerHTML=`<div class="glbl top" style="top:40%"><b class="${w<0?'':w?'p2':'p1'}">${w<0?CP.draw:T(CP.wins,{n:w+1})}</b>${a} – ${b}</div>`; this.ctx.audio.end(); this.later(()=>this.ctx.emit('finish',{hits:a,misses:0,vs2:{a,b,w,how:T(CP.over10,{a,b})}}),1600); },
   onDown(ev){
     if(this.st==='ask'){ if(this.two) return this.twoPick(ev); const b=ev.el.closest('[data-num]'); if(!b) return; const k=+b.dataset.num, ok=k===this.answer;
       // v13 (10.2): the score is total miscount — 2 for 4 costs 2, 6 for 4 costs 2. Lower is better
