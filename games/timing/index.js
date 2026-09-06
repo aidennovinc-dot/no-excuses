@@ -1,26 +1,24 @@
 /* No Excuses — Timing — Stopwatch and Hidden
-   Split out of index.html at build 12. Behaviour is identical to build 11. */
+   Split out of index.html at build 12. Build 17 (refactor stage 3): the engine contract, on the round base. Behaviour is identical to build 11. */
 
-import { finish, liveCheck } from "../../app.js";
-import { Snd } from "../../audio.js";
 import { TIMING as CP } from "../../config/copy.js";
 import { STREAK } from "../../config/games.js";
 import { $, T, f2, mean, sum } from "../../core.js";
+import * as hud from "../_shared/hud.js";
 import { genRect, rnd, roundEngine } from "../_shared/round.js";
-import { sel } from "../../core/state.js";
 /* Timing — Stopwatch: a clock counts up and fades at 1.5s, tap on the target. Hidden: a ball rolls behind a wall, tap when it is at the marker. Score is seconds off, averaged */
-const TM=Object.assign(roundEngine(),{ errs:[], target:0, t0:0, ball:null, targets:[], out:false, tot:0,
-  streak(){ return sel.secs===STREAK; }, hid(){ return sel.diff==='hidden'; },
+const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, ball:null, targets:[], out:false, tot:0,
+  streak(){ return this.ctx.len===STREAK; }, hid(){ return this.ctx.mode==='hidden'; },
   // v13 (8.2 / 8.3 / L5): a Streak is a cumulative budget, not one bad attempt — Stopwatch adds up the seconds off to 2.0s, Hidden the pixels off to 100px. Score is attempts completed
   budget(){ return this.hid()?100:2; }, budTxt(){ return this.hid()?CP.budPx:CP.budS; }, totTxt(){ return this.hid()?Math.round(this.tot)+'px':f2(this.tot)+'s'; },
   // targets are dealt in pairs either side of 7s so every run averages about 7 (v8) — a run of long targets used to be an easy win. A Streak deals as it goes
   deal(n){ const mid=this.hid()?1.2:7, sp=this.hid()?[.15,.5]:[.6,2.6]; const t=[]; for(let i=0;i<Math.floor(n/2);i++){ const d=sp[0]+Math.random()*sp[1]; t.push(mid-d,mid+d); } if(n%2) t.push(mid-.25+Math.random()*.5); for(let i=t.length-1;i>0;i--){ const j=rnd(i+1); [t[i],t[j]]=[t[j],t[i]]; } return t; },
-  begin(){ this.round=0; this.errs=[]; this.out=false; this.tot=0; this.targets=this.deal(this.streak()?40:sel.secs); $('#score').textContent=this.streak()?'0':'0.00'; this.next(); },
+  begin(){ this.round=0; this.errs=[]; this.out=false; this.tot=0; this.targets=this.deal(this.streak()?40:this.ctx.len); hud.score(this.streak()?'0':'0.00'); this.next(); },
   // v11: Stopwatch Set = 5 attempts, average absolute s off. Hidden Set = 10 runs, total px off. Streak = attempts until one is more than 2.0s (150px) off, score attempts completed. Every figure is an absolute difference — early never cancels late
   result(){ const x=this.errs.length?Math.min(...this.errs):0, y=this.errs.length?Math.max(...this.errs):0;
     if(this.streak()) return {hits:this.errs.length,misses:0,x,y,lim:this.budTxt()}; return {hits:this.hid()?Math.round(sum(this.errs)):Math.round(mean(this.errs)*100)/100,misses:0,x,y}; },
-  hud(){ $('#hud-time').textContent=this.streak()?T(CP.hudStreak,{n:this.round,tot:this.totTxt(),bud:this.budTxt()}):T(CP.hudSet,{n:this.round,s:sel.secs}); },
-  next(){ this.clearT(); this.round++; if(this.out||(!this.streak()&&this.round>sel.secs)) return finish(this.result()); if(this.round>this.targets.length) this.targets=this.targets.concat(this.deal(20)); this.hud(); this.st='arm'; this.hid()?this.hidden():this.watch(); },
+  hud(){ hud.time(this.streak()?T(CP.hudStreak,{n:this.round,tot:this.totTxt(),bud:this.budTxt()}):T(CP.hudSet,{n:this.round,s:this.ctx.len})); },
+  next(){ this.clearT(); this.round++; if(this.out||(!this.streak()&&this.round>this.ctx.len)) return this.ctx.emit('finish',this.result()); if(this.round>this.targets.length) this.targets=this.targets.concat(this.deal(20)); this.hud(); this.st='arm'; this.hid()?this.hidden():this.watch(); },
   watch(){ this.target=Math.round((this.targets[this.round-1]||7)*100)/100;
     $('#gen').innerHTML=`<div class="tmtarget">${CP.target}<b>${f2(this.target)}</b></div><div class="tmclock" id="tmclock">0.00</div><div class="glbl bot" id="tmhint">${CP.stop}</div>`;
     this.later(()=>{ this.st='run'; this.t0=performance.now(); const el=$('#tmclock'); const loop=now=>{ if(this.st!=='run') return; const e=(now-this.t0)/1000; el.textContent=f2(e); el.style.opacity=e<1.5?1:Math.max(0,1-(e-1.5)/.5); if(e>this.target+5) return this.onDown(); this.raf=requestAnimationFrame(loop); }; this.raf=requestAnimationFrame(loop); },700); },
@@ -43,22 +41,22 @@ const TM=Object.assign(roundEngine(),{ errs:[], target:0, t0:0, ball:null, targe
     if(hid){ const b=this.ball; const off=b.t-b.markT; err=Math.round(Math.abs(off)); note=off>0?CP.late:CP.early; $('#tmwall').style.opacity=.12; const g=$('#tmghost'), p=b.pos(b.t); g.style.left=p.x+'px'; g.style.top=p.y+'px'; g.style.opacity=1; }
     else { const e=(now-this.t0)/1000; err=Math.abs(e-this.target); note=e>this.target?CP.late:CP.early; const el=$('#tmclock'); el.style.opacity=1; el.textContent=f2(e); err=Math.round(err*100)/100; }
     this.errs.push(err);
-    $('#score').textContent=this.streak()?String(this.errs.length):hid?Math.round(sum(this.errs)):f2(mean(this.errs));
+    hud.score(this.streak()?String(this.errs.length):hid?Math.round(sum(this.errs)):f2(mean(this.errs)));
     // v13 (8.4): Hidden shows every round's result — px off, dead on / early / late — then moves on
     const good=hid?err<=10:err<=.1, ok=hid?err<=35:err<=.3;
     $('#gen').insertAdjacentHTML('beforeend',`<div class="glbl bot" id="tmres"><b class="${good?'g':ok?'':'r'}" id="tmerr">${hid?err+'px':f2(err)+'s'}</b>${good?CP.dead:ok?CP.close:note}</div>`); const h=$('#tmhint'); if(h) h.remove();
-    ok?Snd.hit():Snd.miss(); if(!ok&&navigator.vibrate) navigator.vibrate(30);
+    ok?this.ctx.audio.hit():this.ctx.audio.miss(); if(!ok&&navigator.vibrate) navigator.vibrate(30);
     if(this.streak()) return this.addUp(err,hid);
-    liveCheck(this.result()); this.later(()=>this.next(),hid?700:1500); },
+    this.ctx.emit('live',this.result()); this.later(()=>this.next(),hid?700:1500); },
   // v13 (8.2 / 8.3): the attempt's figure counts down to 0 while the running total counts up by the same amount, together, with the whoosh (6.7)
-  addUp(err,hid){ const from=this.tot, t0=performance.now(), ms=800, el=$('#tmerr'); Snd.whoosh(ms,140,760);
+  addUp(err,hid){ const from=this.tot, t0=performance.now(), ms=800, el=$('#tmerr'); this.ctx.audio.whoosh(ms,140,760);
     const step=now=>{ if(this.st!=='show') return; const k=Math.min(1,(now-t0)/ms); this.tot=from+err*k;
       if(el) el.textContent=hid?Math.round(err*(1-k))+'px':f2(err*(1-k))+'s';
-      $('#hud-time').textContent=T(CP.hudStreak,{n:this.round,tot:this.totTxt(),bud:this.budTxt()});
+      hud.time(T(CP.hudStreak,{n:this.round,tot:this.totTxt(),bud:this.budTxt()}));
       if(k<1) requestAnimationFrame(step); else { this.tot=from+err; if(this.tot>=this.budget()) this.out=true; this.hud();
         if(this.out){ const r=$('#tmres'); if(r) r.insertAdjacentHTML('beforeend',`<br>${T(CP.over,{bud:this.budTxt()})}`); }
-        liveCheck(this.result()); this.later(()=>this.next(),this.out?1600:hid?700:900); } };
+        this.ctx.emit('live',this.result()); this.later(()=>this.next(),this.out?1600:hid?700:900); } };
     requestAnimationFrame(step); } });
 
-
+export default TM;
 export { TM };
