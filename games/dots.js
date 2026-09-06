@@ -2,7 +2,8 @@
    Split out of index.html at build 12. Behaviour is identical to build 11. */
 
 import { tapAt } from "../app.js";
-import { $, CFG } from "../core.js";
+import { CFG } from "../config/games.js";
+import { $ } from "../core.js";
 import { G } from "../engine-core.js";
 import { rnd } from "./round.js";
 import { sel } from "../core/state.js";

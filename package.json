@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "test": "node _smoke/smoke.mjs",
+    "bump": "node scripts/bump.mjs",
     "review": "node _smoke/review/catalogue.mjs && node _smoke/review/progression.mjs"
   },
   "dependencies": {

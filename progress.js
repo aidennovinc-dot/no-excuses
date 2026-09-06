@@ -1,38 +1,25 @@
 /* No Excuses — unlocks, achievements, scores — the rules of progress, as pure functions over the store
-   Split out of index.html at build 12. Build 15 (refactor stage 1): the screen functions (lock box, achievements list,
-   open-sheet) moved to menu.js, the mid-run check to app.js, the toast to ui/toast.js, SCALES to audio.js. This file
-   imports nothing that touches a screen. */
+   Split out of index.html at build 12. Build 15 (refactor stage 1): no screen code in here. Build 16 (refactor stage 2): the
+   tables are data in config/ (unlocks.js, achievements.js, copy.js) and the predicates are in progress/rules.js under the
+   same key or id; this file joins the two — UNLOCKS and ACH leave here with their `test` / `progress` attached, so the
+   screens and the run read them as they always did. Nothing here touches the DOM. */
 
-import { MODE_NAME, STREAK } from "./core.js";
+import { AUTHOR_RECORDS, ACH as ACH_ROWS } from "./config/achievements.js";
+import { BG_NAME, ITEM_WORD, PROGRESS, TOAST, UNLOCK_WORD, VERDICT, VERDICTS } from "./config/copy.js";
+import { MODE_NAME, STREAK } from "./config/games.js";
+import { LEN_RULES, UNLOCKS as UNLOCK_ROWS } from "./config/unlocks.js";
+import { T } from "./core.js";
 import { CHAL } from "./core/platform.js";
 import { load, prefs, save } from "./core/store.js";
-import { GAMES, GC, N_GAMES, lenName, scoreTxt } from "./games/registry.js";
+import { GAMES, GC, N_GAMES, lenName } from "./games/registry.js";
+import { ACH_PROGRESS, ACH_TEST, LEN_TEST, UNLOCK_TEST, quality } from "./progress/rules.js";
+import { scoreTxt } from "./ui/format.js";
 // the lengths on offer. v13 (0.3): pro lengths are gone — every player sees the same length row. Versus still has its own (Reaction best-of)
 const lensOf=(g,d,vs)=>{ const c=GC(g,d); if(vs===2&&c.vsLens) return c.vsLens; return c.lens; };
 /* ---------- progression (v6): modes open on easy milestones, each in the mode before it. Quick Tap Blind is open from the start ---------- */
 // live (v10): a threshold unlock fires the moment the run reaches it — a green toast mid-run — not at the end. Averages and "finish a run" still wait for the end
-// v13 section 4 (L6): this table and LEN_RULES below are the one record of the chain. Lock boxes, goal lines and the Next-achievement card all read from here
-const UNLOCKS = [
-  { key:'quick-tap:four', need:'9 hits, no misses, in a Dash', where:{g:'quick-tap',d:'two',s:15}, live:1, test:r=>r.g==='quick-tap'&&r.s===15&&r.misses===0&&r.hits>=9 },
-  { key:'dots:blind',     need:'30 hits in any Quick Tap run',  where:{g:'quick-tap'},               live:1, test:r=>r.g==='quick-tap'&&r.hits>=30 },
-  { key:'dots:lead',      need:'6 hits, no misses, in a Sprint Dots', where:{g:'dots',d:'blind',s:5}, live:1, test:r=>r.g==='dots'&&r.s===5&&r.misses===0&&r.hits>=6 },
-  { key:'hold:grow',      need:'Reach 2 hits per second in any Dots mode', where:{g:'dots'},         live:1, test:r=>r.g==='dots'&&r.hits>=2*r.s },
-  { key:'hold:cut',       need:'one Grow round within 15%',      where:{g:'hold',d:'grow',s:7},      live:1, test:r=>r.g==='hold'&&r.d==='grow'&&r.x<=15 },
-  { key:'sequence:solo',  need:'Finish one Cut round within 0.5% of the target', where:{g:'hold',d:'cut'}, live:1, test:r=>r.g==='hold'&&r.d==='cut'&&r.x<=.5 },
-  { key:'sequence:practice', need:'8 notes in 7 keys',           where:{g:'sequence',s:7},           live:1, test:r=>r.g==='sequence'&&r.s===7&&r.hits>=8 },
-  { key:'timing:stopwatch', need:'Reach round 6 in Sequence · 7 keys', where:{g:'sequence',s:7},     live:1, test:r=>r.g==='sequence'&&r.s===7&&r.hits>=6 },
-  { key:'timing:hidden',    need:'one Stopwatch attempt within 0.30s', where:{g:'timing',d:'stopwatch',s:5}, live:1, test:r=>r.g==='timing'&&r.d==='stopwatch'&&r.x<=.3 },
-  { key:'reaction:flash',   need:'Reach round 6 in Timing · Stopwatch · Streak', where:{g:'timing',d:'stopwatch',s:STREAK}, live:1, test:r=>r.g==='timing'&&r.d==='stopwatch'&&r.s===STREAK&&r.hits>=6 },
-  { key:'reaction:nogo',    need:'Finish a Flash Set averaging under 300ms', where:{g:'reaction',d:'flash',s:3}, test:r=>r.g==='reaction'&&r.d==='flash'&&r.s===3&&r.hits<=300 },
-  { key:'spot:count',       need:'finish any Reaction run',      where:{g:'reaction'},                test:r=>r.g==='reaction' },
-  { key:'spot:find',        need:'reach round 5 in Count',       where:{g:'spot',d:'count'},          live:1, test:r=>r.g==='spot'&&r.d==='count'&&(r.rounds||0)>=5 },
-];
-// length locks (v13 section 4): per game and mode, the requirement for the length at index i. A missing rule means one finished run of the length before it
-const LEN_RULES = {
-  'quick-tap':[null,{need:p=>`7 hits, no misses, in a ${p}`,test:r=>r.misses===0&&r.hits>=7},{need:p=>`20 hits in a ${p}`,test:r=>r.hits>=20}],
-  'dots':     [null,{need:p=>`7 hits, no misses, in a ${p}`,test:r=>r.misses===0&&r.hits>=7},{need:p=>`35 hits in a ${p}`,test:r=>r.hits>=35}],
-  'sequence': [null,{need:()=>'6 notes in 3 keys',test:r=>r.s===3&&r.hits>=6},{need:()=>'6 notes in 5 keys',test:r=>r.s===5&&r.hits>=6}],
-};
+// v13 section 4 (L6): config/unlocks.js (UNLOCKS + LEN_RULES) is the one record of the chain. Lock boxes, goal lines and the Next-achievement card all read from here
+const UNLOCKS = UNLOCK_ROWS.map(u=>Object.assign({},u,{test:UNLOCK_TEST[u.key]}));
 
 const unlocked=()=>load('ne.unlock',{});
 /* ---------- new things (v13, 2.1 / L8): anything newly unlocked swells and tints green the first time it is on screen, then is marked seen.
@@ -47,14 +34,14 @@ function openKeys(){ const k=[]; for(const g in GAMES){ if(gameOpen(g)) k.push('
 function seedSeen(){ const st={}; for(const k of openKeys()) st[k]=1; save('ne.seen',st); }
 // progressive lengths (v13): LEN_RULES holds the requirement per game, mode and index; everything else opens on one finished run of the length before it. The first length is always open
 function lenLock(g,d,s,noChal){ if(prefs.allOpen) return null; if(!noChal&&chalAt(g,d)&&CHAL.s===s) return null; const c=GC(g,d), lens=c.lens, i=lens.indexOf(s); if(i<=0) return null; const prev=lens[i-1], runs=Scores.runs().filter(r=>r.g===g&&r.d===d&&r.s===prev&&!r.practice);
-  const rule=(LEN_RULES[g]||[])[i];
-  if(rule) return runs.some(rule.test)?null:{g,d,s:prev,need:rule.need(lenName(g,prev,d)),name:lenName(g,s,d)};
-  if(s===STREAK) return runs.length?null:{g,d,s:prev,need:`finish one ${lenName(g,prev,d)}`,name:'Streak'};
-  return runs.length?null:{g,d,s:prev,need:`finish a ${lenName(g,prev,d)}`,name:lenName(g,s,d)}; }
+  const rule=(LEN_RULES[g]||[])[i], test=(LEN_TEST[g]||[])[i];
+  if(rule) return runs.some(test)?null:{g,d,s:prev,need:T(rule,{prev:lenName(g,prev,d)}),name:lenName(g,s,d)};
+  if(s===STREAK) return runs.length?null:{g,d,s:prev,need:T(PROGRESS.finishOne,{prev:lenName(g,prev,d)}),name:PROGRESS.streak};
+  return runs.length?null:{g,d,s:prev,need:T(PROGRESS.finishA,{prev:lenName(g,prev,d)}),name:lenName(g,s,d)}; }
 const lenOpen=(g,d,s)=>!lenLock(g,d,s);
 // the next mode this run could open, if the game, mode and length line up — shown while you play (v8). v11: a length unlock counts too
 function goalFor(g,d,s){ if(prefs.allOpen) return null; const u=unlocked(); const x=UNLOCKS.find(x=>!u[x.key]&&x.where.g===g&&(!x.where.d||x.where.d===d)&&(!x.where.s||x.where.s===s)); if(x) return x;
-  const c=GC(g,d), i=c.lens.indexOf(s); if(i>=0&&i<c.lens.length-1){ const nxt=c.lens[i+1], L=lenLock(g,d,nxt); if(L){ const rule=(LEN_RULES[g]||[])[i+1]; return { key:g+':'+d+':'+nxt, need:L.need, where:{g,d,s}, live:1, len:L, test:r=>r.g===g&&r.d===d&&r.s===s&&(rule?rule.test(r):true) }; } } return null; }
+  const c=GC(g,d), i=c.lens.indexOf(s); if(i>=0&&i<c.lens.length-1){ const nxt=c.lens[i+1], L=lenLock(g,d,nxt); if(L){ const test=(LEN_TEST[g]||[])[i+1]; return { key:g+':'+d+':'+nxt, need:L.need, where:{g,d,s}, live:1, len:L, test:r=>r.g===g&&r.d===d&&r.s===s&&(test?test(r):true) }; } } return null; }
 const chalAt=(g,d)=>!!CHAL&&CHAL.g===g&&CHAL.d===d;
 const modeOpen=(g,d,noChal)=>!!prefs.allOpen||(!noChal&&chalAt(g,d))||g==='quick-tap'&&d==='two'||!!unlocked()[g+':'+d]||!UNLOCKS.some(u=>u.key===g+':'+d);
 const isOpen=(g,d)=>modeOpen(g,d,false);
@@ -64,31 +51,15 @@ const chalRun=(g,d,s)=>chalAt(g,d)&&(!modeOpen(g,d,true)||!!lenLock(g,d,s,true))
 const practiceOpen=()=>!!prefs.allOpen||!!unlocked()['sequence:practice'];
 const gameOpen=g=>GAMES[g].modes.some(d=>isOpen(g,d));
 const needFor=(g,d)=>{ const u=UNLOCKS.find(u=>u.key===g+':'+d); return u?u.need:''; };
-const unlockName=key=>{ if(key==='sequence:practice') return 'Practice from'; const [g,d,s]=key.split(':'); if(s!==undefined) return lenName(g,+s,d); return GAMES[g].name+(MODE_NAME[d]?' · '+MODE_NAME[d]:''); };
+const unlockName=key=>{ if(key==='sequence:practice') return PROGRESS.practiceFrom; const [g,d,s]=key.split(':'); if(s!==undefined) return lenName(g,+s,d); return GAMES[g].name+(MODE_NAME[d]?' · '+MODE_NAME[d]:''); };
 // toast wording (v11): "Unlock game: Dots" for a game, "Unlock: Dash" for a mode or length
-function unlockToast(key){ if(key==='sequence:practice') return 'Unlock: Practice from'; const [g,d,s]=key.split(':'); if(s!==undefined) return 'Unlock: '+lenName(g,+s,d); const first=!GAMES[g].modes.some(m=>m!==d&&unlocked()[g+':'+m])&&!(g==='quick-tap'); return (first?'Unlock game: '+GAMES[g].name:'Unlock: '+(MODE_NAME[d]||GAMES[g].name)); }
+function unlockToast(key){ if(key==='sequence:practice') return TOAST.unlockPractice; const [g,d,s]=key.split(':'); if(s!==undefined) return T(TOAST.unlock,{name:lenName(g,+s,d)}); const first=!GAMES[g].modes.some(m=>m!==d&&unlocked()[g+':'+m])&&!(g==='quick-tap'); return first?T(TOAST.unlockGame,{name:GAMES[g].name}):T(TOAST.unlock,{name:MODE_NAME[d]||GAMES[g].name}); }
 function checkUnlocks(run){ const u=unlocked(); const fresh=[]; for(const x of UNLOCKS){ if(!u[x.key]&&x.test(run)){ u[x.key]=Date.now(); fresh.push(x); } } save('ne.unlock',u); return fresh; }
 // everything is open (v11): no game, mode or length left to earn — the Next-up card hides
 function nextGoal(){ if(prefs.allOpen) return null; const u=unlocked(); const x=UNLOCKS.find(x=>!u[x.key]); if(x) return { need:x.need, name:unlockName(x.key), gname:GAMES[x.where.g].name, where:x.where };
   for(const g in GAMES) for(const d of GAMES[g].modes){ if(!isOpen(g,d)) continue; for(const sc of GC(g,d).lens){ const L=lenLock(g,d,sc); if(L) return { need:L.need, name:`${GAMES[g].name}${MODE_NAME[d]?' · '+MODE_NAME[d]:''} · ${L.name}`, gname:GAMES[g].name, where:{g,d,s:L.s} }; } } return null; }
 // what a 'Try to unlock' or achievement tap carries into the run it starts (set from menu.js/app.js through the setters below)
 let pendingAim='', pendingGoal=null;
-// the one-liner under the ghost demo, the first time a mode is played
-const INTRO = {
-  'quick-tap:two':  ['Tap the box when it lights up.','tap it before it goes out'],
-  'quick-tap:four': ['Tap the white pad.','four of them now'],
-  'dots:blind':     ['Tap the dot where it lands.','anywhere on the screen'],
-  'dots:lead':      ['Tap the dot where it lands.','the red ring shows the next spot'],
-  'hold:grow':      ['Watch it grow. Tap and hold until yours matches.','the outline stays — match its area'],
-  'hold:cut':       ['Draw a line through the shape.','cut off the share it asks for'],
-  'sequence:solo':  ['Copy the notes.','then it is your turn · one more each round'],
-  'timing:stopwatch':['Tap to stop the timer.','on the target · the clock fades at 1.5s'],
-  'timing:hidden':  ['Tap when the ball reaches the marker.','it goes behind the wall first'],
-  'reaction:flash': ['Tap the moment it goes white.','tap early and you start that one again'],
-  'reaction:nogo':  ['Tap only the shape you were told.','three wrong taps end the run · the rule changes'],
-  'spot:count':     ['Count the shape you were shown.','the rest are decoys · three mistakes end it'],
-  'spot:find':      ['One shape is different. Tap it.','the crowd grows every round'],
-};
 
 /* ---------- score store: the interface a Game Center adapter implements later ---------- */
 const Scores = {
@@ -100,113 +71,29 @@ const Scores = {
 };
 
 /* ---------- achievements: per game, three tiers. progress() gives 0..1 for the bar; at{} is where tapping the row takes you ---------- */
-const rate=r=>r.hits/r.s;
-const bestRate=(all,g,s,d)=>Math.max(0,...all.filter(r=>r.g===g&&(!s||r.s===s)&&(!d||r.d===d)).map(rate));
-const bestRound=(all,keys)=>Math.max(0,...all.filter(r=>r.g==='sequence'&&(!keys||r.s===keys)).map(r=>r.hits));
-const lowTotal=(all,d,s)=>{ const v=all.filter(r=>r.g==='hold'&&(!d||r.d===d)&&(!s||r.s===s)).map(r=>r.hits); return v.length?Math.min(...v):null; };
-const lowProg=(v,target)=>v===null?0:Math.min(1,target/Math.max(v,target));
-const tourProg=all=>{ const cells=Object.entries(GAMES).flatMap(([g,x])=>x.modes.map(d=>all.some(r=>r.g===g&&r.d===d))); return cells.filter(Boolean).length/cells.length; };
-const fullsetProg=(all,g)=>{ const G_=GAMES[g]; const cells=G_.modes.flatMap(d=>GC(g,d).lens.map(s=>all.some(x=>x.g===g&&x.d===d&&x.s===s))); return cells.filter(Boolean).length/cells.length; };
-const ACH = [
-  // everywhere
-  { id:'first',   g:'all', tier:'unlock', name:'Showed up',   how:'Finish any run', unlocks:['sq','#FFE9C4'], test:()=>true },
-  { id:'named',   g:'all', tier:'unlock', name:'Signed in',   how:'Put a name on your profile, top of the Scores screen', unlocks:['bg','grid'], test:()=>!!prefs.name },
-  { id:'every',   g:'all', tier:'unlock', name:'Every game',  how:'Finish a run in every game', unlocks:['lead','#FFB020'],
-      progress:all=>Object.keys(GAMES).filter(g=>all.some(x=>x.g===g)).length/N_GAMES, test:(r,all)=>Object.keys(GAMES).every(g=>all.some(x=>x.g===g)) },
-  { id:'fullset', g:'all', tier:'pro', name:'Full set',   how:'In one game, every mode at every length', unlocks:['wheel'],
-      progress:(all,g)=>fullsetProg(all,g), test:(r,all)=>fullsetProg(all,r.g)===1 },
-  // v8: the first "big" unlock — a sound pack that is mostly a joke
-  { id:'tour',    g:'all', tier:'pro', name:'Grand tour',  how:'Finish a run in every mode of every game', unlocks:['snd','sigh'],
-      progress:all=>tourProg(all), test:(r,all)=>tourProg(all)===1 },
-  // v11: the easter egg. Three taps on the full stop under the top 10. Never earned by a run
-  { id:'egg',     g:'all', tier:'secret',  name:'Excuses',     how:'Found the full stop', unlocks:['sq','#FF7A59'], test:()=>false },
-  // quick tap — every one is Two or Four, never "any mode" (v6). Four (v9) took Lead's slots; its pads are further apart, so its numbers sit under Two's
-  { id:'qt_clean5',  g:'quick-tap', tier:'unlock',  name:'Clean · Sprint · Four', how:'Four · Sprint, no misses, at least 7 hits', unlocks:['sq','#9BE8FF'], at:{d:'four',s:5}, test:r=>r.g==='quick-tap'&&r.d==='four'&&r.s===5&&r.misses===0&&r.hits>=7 },
-  { id:'qt_bclean5', g:'quick-tap', tier:'unlock',  name:'Clean · Sprint · Two',   how:'Two · Sprint, no misses, at least 8 hits', at:{d:'two',s:5}, test:r=>r.g==='quick-tap'&&r.d==='two'&&r.s===5&&r.misses===0&&r.hits>=8 },
-  { id:'qt_r4',      g:'quick-tap', tier:'unlock',  name:'Quick',                how:'Four · 3 hits a second, any length', unlocks:['snd','click'], at:{d:'four'}, progress:all=>bestRate(all,'quick-tap',0,'four')/3, test:r=>r.g==='quick-tap'&&r.d==='four'&&rate(r)>=3 },
-  { id:'qt_clean15', g:'quick-tap', tier:'unlock',  name:'Clean · Dash',         how:'Four · Dash, no misses, at least 24 hits', unlocks:['bg','rain'], at:{d:'four',s:15}, test:r=>r.g==='quick-tap'&&r.d==='four'&&r.s===15&&r.misses===0&&r.hits>=24 },
-  { id:'qt_clean30', g:'quick-tap', tier:'pro', name:'Clean · Marathon',     how:'Four · Marathon, no misses, at least 50 hits', unlocks:['sq','#C6FF7A'], at:{d:'four',s:30}, test:r=>r.g==='quick-tap'&&r.d==='four'&&r.s===30&&r.misses===0&&r.hits>=50 },
-  { id:'qt_r5',      g:'quick-tap', tier:'pro', name:'Quicker',              how:'Four · 4 hits a second across a Dash', unlocks:['lead','#4FD9FF'], at:{d:'four',s:15}, progress:all=>bestRate(all,'quick-tap',15,'four')/4, test:r=>r.g==='quick-tap'&&r.d==='four'&&r.s===15&&rate(r)>=4 },
-  { id:'qt_br4',     g:'quick-tap', tier:'pro', name:'Two quick',            how:'Two · 4 hits a second across a Dash', at:{d:'two',s:15}, progress:all=>bestRate(all,'quick-tap',15,'two')/4, test:r=>r.g==='quick-tap'&&r.d==='two'&&r.s===15&&rate(r)>=4 },
-  { id:'qt_eyes',    g:'quick-tap', tier:'pro', name:'Eyes shut',            how:'Two · clean Marathon, at least 60 hits', unlocks:['lead','#FF4FD8'], at:{d:'two',s:30}, test:r=>r.g==='quick-tap'&&r.d==='two'&&r.s===30&&r.misses===0&&r.hits>=60 },
-  { id:'qt_sab',     g:'quick-tap', tier:'pro', name:'Committed',            how:'Two · a run of nothing but misses, at least five', at:{d:'two'}, test:r=>r.g==='quick-tap'&&r.d==='two'&&r.hits===0&&r.misses>=5 },
-  { id:'qt_s5',      g:'quick-tap', tier:'secret',  name:'No excuses',           how:'Four · 5 hits a second on a Sprint', at:{d:'four',s:5}, progress:all=>bestRate(all,'quick-tap',5,'four')/5, test:r=>r.g==='quick-tap'&&r.d==='four'&&r.s===5&&rate(r)>=5 },
-  { id:'qt_s15',     g:'quick-tap', tier:'secret',  name:'Still no excuses',     how:'Four · 5 hits a second, held for a Dash', at:{d:'four',s:15}, progress:all=>bestRate(all,'quick-tap',15,'four')/5, test:r=>r.g==='quick-tap'&&r.d==='four'&&r.s===15&&rate(r)>=5 },
-  { id:'qt_s30',     g:'quick-tap', tier:'secret',  name:'Not normal',           how:'Four · 5 hits a second, held for a Marathon', at:{d:'four',s:30}, progress:all=>bestRate(all,'quick-tap',30,'four')/5, test:r=>r.g==='quick-tap'&&r.d==='four'&&r.s===30&&rate(r)>=5 },
-  { id:'qt_bs5',     g:'quick-tap', tier:'secret',  name:'Two faith',            how:'Two · 5 hits a second on a Sprint', at:{d:'two',s:5}, progress:all=>bestRate(all,'quick-tap',5,'two')/5, test:r=>r.g==='quick-tap'&&r.d==='two'&&r.s===5&&rate(r)>=5 },
-  // dots
-  { id:'dt_pin',   g:'dots', tier:'unlock',  name:'Pinpoint',        how:'Lead · a clean Sprint with at least 8 hits', unlocks:['sq','#FFD1DC'], at:{d:'lead',s:5}, test:r=>r.g==='dots'&&r.d==='lead'&&r.s===5&&r.misses===0&&r.hits>=8 },
-  { id:'dt_bpin',  g:'dots', tier:'unlock',  name:'Pinpoint · Blind', how:'Blind · a clean Sprint with at least 6 hits', at:{d:'blind',s:5}, test:r=>r.g==='dots'&&r.d==='blind'&&r.s===5&&r.misses===0&&r.hits>=6 },
-  { id:'dt_sweep', g:'dots', tier:'unlock',  name:'Sweep',           how:'Lead · 3 hits a second over a Dash', unlocks:['lead','#7CFFB2'], at:{d:'lead',s:15}, progress:all=>bestRate(all,'dots',15,'lead')/3, test:r=>r.g==='dots'&&r.d==='lead'&&r.s===15&&rate(r)>=3 },
-  { id:'dt_land',  g:'dots', tier:'pro', name:'Landing',         how:'Lead · a clean Marathon with at least 45 hits', unlocks:['bg','orbs'], at:{d:'lead',s:30}, test:r=>r.g==='dots'&&r.d==='lead'&&r.s===30&&r.misses===0&&r.hits>=45 },
-  { id:'dt_blind', g:'dots', tier:'pro', name:'Homing',          how:'Blind · 3 a second over a Dash', at:{d:'blind',s:15}, progress:all=>bestRate(all,'dots',15,'blind')/3, test:r=>r.g==='dots'&&r.d==='blind'&&r.s===15&&rate(r)>=3 },
-  { id:'dt_s',     g:'dots', tier:'secret',  name:'Radar',           how:'Lead · 4.5 a second held for a Marathon', at:{d:'lead',s:30}, progress:all=>bestRate(all,'dots',30,'lead')/4.5, test:r=>r.g==='dots'&&r.d==='lead'&&r.s===30&&rate(r)>=4.5 },
-  { id:'dt_bs',    g:'dots', tier:'secret',  name:'Sonar',           how:'Blind · 3.5 a second held for a Marathon', at:{d:'blind',s:30}, progress:all=>bestRate(all,'dots',30,'blind')/3.5, test:r=>r.g==='dots'&&r.d==='blind'&&r.s===30&&rate(r)>=3.5 },
-  // hold (v11: a Set scores the average % off across 7 rounds — lower is better; a Streak scores rounds)
-  { id:'hd_money', g:'hold', tier:'unlock',  name:'On the money', how:'One round within 2.00%', unlocks:['snd','wood'], test:r=>r.g==='hold'&&r.x<=2 },
-  { id:'hd_steady',g:'hold', tier:'unlock',  name:'Steady hand',  how:'Grow · a Set averaging under 3% off', unlocks:['sq','#F3D9FF'], at:{d:'grow',s:7}, progress:all=>lowProg(lowTotal(all,'grow',7),3), test:r=>r.g==='hold'&&r.d==='grow'&&r.s===7&&r.hits<=3 },
-  { id:'hd_est',   g:'hold', tier:'pro', name:'Good eye',     how:'Cut · a Set averaging under 4% off', unlocks:['lead','#FFFFFF'], at:{d:'cut',s:7}, progress:all=>lowProg(lowTotal(all,'cut',7),4), test:r=>r.g==='hold'&&r.d==='cut'&&r.s===7&&r.hits<=4 },
-  { id:'hd_run',   g:'hold', tier:'pro', name:'Long haul',    how:'A Streak of 15 rounds, either mode', at:{s:STREAK}, progress:all=>Math.max(0,...all.filter(r=>r.g==='hold'&&r.s===STREAK).map(r=>r.hits))/15, test:r=>r.g==='hold'&&r.s===STREAK&&r.hits>=15 },
-  { id:'hd_s',     g:'hold', tier:'secret',  name:'Machine',      how:'Every round of a Set within 4.00%', at:{s:7}, test:r=>r.g==='hold'&&r.s===7&&r.y<=4 },
-  // sequence
-  { id:'sq_7',   g:'sequence', tier:'unlock',  name:'Seven',      how:'Reach round 7 on any keys', unlocks:['bg','stars'], progress:all=>bestRound(all)/7, test:r=>r.g==='sequence'&&r.hits>=7 },
-  { id:'sq_12',  g:'sequence', tier:'pro', name:'Twelve',     how:'Reach round 12 on any keys', unlocks:['sq','#FFF3A0'], progress:all=>bestRound(all)/12, test:r=>r.g==='sequence'&&r.hits>=12 },
-  { id:'sq_7x8', g:'sequence', tier:'pro', name:'Wide open',  how:'Round 8 on seven keys', at:{s:7}, progress:all=>bestRound(all,7)/8, test:r=>r.g==='sequence'&&r.s===7&&r.hits>=8 },
-  { id:'sq_5x10',g:'sequence', tier:'pro', name:'Ten on five', how:'Round 10 on five keys', at:{s:5}, progress:all=>bestRound(all,5)/10, test:r=>r.g==='sequence'&&r.s===5&&r.hits>=10 },
-  { id:'sq_s20', g:'sequence', tier:'secret',  name:'Twenty',     how:'Round 20 on any keys', progress:all=>bestRound(all)/20, test:r=>r.g==='sequence'&&r.hits>=20 },
-  { id:'sq_s15', g:'sequence', tier:'secret',  name:'The long one', how:'Round 15 on seven keys', at:{s:7}, progress:all=>bestRound(all,7)/15, test:r=>r.g==='sequence'&&r.s===7&&r.hits>=15 },
-  // v7 games — a starter set, no cosmetics attached yet. v11 units: Stopwatch Set = average s, Hidden Set = total px over 10, Flash Set = average ms, Go/No-go Set = ms + penalties
-  { id:'tm_close', g:'timing',   tier:'unlock',  name:'Dead on',      how:'Stopwatch · one attempt within 0.10s', at:{d:'stopwatch'}, test:r=>r.g==='timing'&&r.d==='stopwatch'&&r.x<=.1 },
-  { id:'tm_wall',  g:'timing',   tier:'pro', name:'X-ray',        how:'Hidden · a Set under 300px off in total', at:{d:'hidden',s:10}, test:r=>r.g==='timing'&&r.d==='hidden'&&r.s===10&&r.hits<=300 },
-  { id:'tm_run',   g:'timing',   tier:'pro', name:'Keeps going',  how:'Stopwatch · a Streak of 10 attempts', at:{d:'stopwatch',s:STREAK}, test:r=>r.g==='timing'&&r.d==='stopwatch'&&r.s===STREAK&&r.hits>=10 },
-  { id:'tm_s',     g:'timing',   tier:'secret',  name:'Metronome',    how:'Stopwatch · a Set averaging under 0.12s', at:{d:'stopwatch',s:5}, test:r=>r.g==='timing'&&r.d==='stopwatch'&&r.s===5&&r.hits<=.12 },
-  { id:'rx_200',   g:'reaction', tier:'unlock',  name:'Under 200',    how:'Flash · one tap under 200ms', at:{d:'flash'}, test:r=>r.g==='reaction'&&r.d==='flash'&&r.x<200 },
-  { id:'rx_clean', g:'reaction', tier:'pro', name:'Disciplined',  how:'Go / No-go · a Set with no wrong taps', at:{d:'nogo',s:20}, test:r=>r.g==='reaction'&&r.d==='nogo'&&r.s===20&&r.misses===0 },
-  { id:'rx_run',   g:'reaction', tier:'pro', name:'Steady',       how:'Flash · a Streak of 8 attempts', at:{d:'flash',s:STREAK}, test:r=>r.g==='reaction'&&r.d==='flash'&&r.s===STREAK&&r.hits>=8 },
-  { id:'rx_s',     g:'reaction', tier:'secret',  name:'Twitch',       how:'Flash · a Set averaging under 180ms', at:{d:'flash',s:3}, test:r=>r.g==='reaction'&&r.d==='flash'&&r.s===3&&r.hits<180 },
-  { id:'sp_5',     g:'spot',     tier:'unlock',  name:'Eight',        how:'Count · reach round 8 in a Streak', at:{d:'count',s:STREAK}, progress:all=>Math.max(0,...all.filter(r=>r.g==='spot'&&r.d==='count'&&r.s===STREAK).map(r=>r.hits))/8, test:r=>r.g==='spot'&&r.d==='count'&&r.s===STREAK&&r.hits>=8 },
-  { id:'sp_15',    g:'spot',     tier:'pro', name:'Dead count',   how:'Count · a Set with 2 or less miscount in total', at:{d:'count',s:10}, test:r=>r.g==='spot'&&r.d==='count'&&r.s===10&&r.hits<=2 },
-  { id:'sp_fast',  g:'spot',     tier:'unlock',  name:'Spotter',      how:'Find · a Set under 20.00s in total', at:{d:'find',s:10}, test:r=>r.g==='spot'&&r.d==='find'&&r.s===10&&r.hits<20 },
-  { id:'sp_clean', g:'spot',     tier:'pro', name:'No wrong taps', how:'Find · a Set with not one wrong tap', at:{d:'find',s:10}, test:r=>r.g==='spot'&&r.d==='find'&&r.s===10&&r.misses===0 },
-];
-// v13: Stretch is Pro (11.1); the Unlocks line says what the tier is for (11.2); Author (11.3) is Aiden's own records, placeholders until the final build
-const TIERS = { unlock:['Unlocks','Earned along the way — every one opens something new.'], pro:['Pro','harder. bragging rights, a few unlock things'], author:['Author','beat the numbers Aiden set. placeholders until the final build'], secret:['Secret','they exist. what earns them is not written down'] };
+const ACH = ACH_ROWS.map(a=>{ const o=Object.assign({},a,{test:ACH_TEST[a.id]}); if(ACH_PROGRESS[a.id]) o.progress=ACH_PROGRESS[a.id]; return o; });
 // one row per game, mode and length. `rec` is null until Aiden fills it in — a null record can never be beaten, so the row stays locked and shows —
-const AUTHOR_RECORDS={};
 function authorAch(){ const out=[]; for(const g in GAMES) for(const d of GAMES[g].modes) for(const sc of GC(g,d).lens){ const id=`au_${g}_${d}_${sc}`, rec=AUTHOR_RECORDS[id]; const lo=GC(g,d,sc).lower;
-    out.push({ id, g, tier:'author', name:`${GAMES[g].name}${MODE_NAME[d]?' · '+MODE_NAME[d]:''} · ${lenName(g,sc,d)}`, how:`Beat Aiden — ${rec===undefined||rec===null?'—':scoreTxt(g,rec,d,sc)}`, at:{d,s:sc},
+    out.push({ id, g, tier:'author', name:`${GAMES[g].name}${MODE_NAME[d]?' · '+MODE_NAME[d]:''} · ${lenName(g,sc,d)}`, how:T(PROGRESS.beat,{rec:rec===undefined||rec===null?PROGRESS.none:scoreTxt(g,rec,d,sc)}), at:{d,s:sc},
       test:r=>rec!==undefined&&rec!==null&&r.g===g&&r.d===d&&r.s===sc&&(lo?r.hits<=rec:r.hits>=rec) }); }
   return out; }
 const achAll=()=>ACH.concat(authorAch());
 const achById=id=>ACH.find(a=>a.id===id)||authorAch().find(a=>a.id===id);
 const got=()=>load('ne.ach',{});
 function checkAch(run){ if(run.chal) return []; const g=got(); const all=Scores.runs(); const fresh=[]; for(const a of ACH){ if(!g[a.id]&&a.test(run,all)){ g[a.id]=Date.now(); fresh.push(a); } } save('ne.ach',g); return fresh; }
-const ITEM_WORD={sq:'target colour',lead:'lead colour',cut:'cut piece colour',bg:'background',snd:'sound pack',scale:'scale',wheel:'colour wheel'};
-const BG_NAME={stars:'stars',grid:'grid',rain:'rain',orbs:'orbs'};
-function unlockWord(a){ if(!a.unlocks) return ''; const [k,v]=a.unlocks; if(k==='wheel') return 'unlocks the colour wheel'; if(k==='bg') return 'unlocks '+BG_NAME[v]+' background'; if(k==='snd') return 'unlocks '+v+' sounds'; return 'unlocks '+ITEM_WORD[k]; }
+function unlockWord(a){ if(!a.unlocks) return ''; const [k,v]=a.unlocks; if(k==='wheel') return UNLOCK_WORD.wheel; if(k==='bg') return T(UNLOCK_WORD.bg,{bg:BG_NAME[v]}); if(k==='snd') return T(UNLOCK_WORD.snd,{v}); return T(UNLOCK_WORD.item,{word:ITEM_WORD[k]}); }
 // the same, with the actual colour as a swatch (v8) — "unlocks lead colour" on its own said nothing
 function unlockHtml(a){ if(!a.unlocks) return ''; const [k,v]=a.unlocks; return unlockWord(a)+((k==='sq'||k==='lead')&&v!=='wheel'?`<i class="sw" style="background:${v}"></i>`:''); }
 
-/* ---------- verdicts: tiered by a per-game quality 0..1 ---------- */
-const VERDICTS={
-  'quick-tap':['Warming up. Go again.','Solid. Now stop looking, start moving.','Quick. The next tier is close.','Sharp. Very sharp.','That is not normal. Keep it.'],
-  'dots':['Finding the screen. Go again.','Landing them. Faster now.','Quick hands.','Sharp. Very sharp.','Radar. That is not normal.'],
-  'hold':['Nowhere near. Feel the rate, not the shape.','Close-ish. Trust the count.','Good eye.','Machine-adjacent.','That is not normal. Keep it.'],
-  'hold:cut':['Way off. Look at the whole shape first.','Getting there. Think in halves.','Good eye.','Surgical.','That is not normal. Keep it.'],
-  'sequence':['Short memory. Go again.','Building. Say it out loud.','Long memory.','Very long memory.','That is not normal. Keep it.'],
-  'timing':['Way off. Count it out loud.','Getting the rhythm.','Good clock.','Very good clock.','That is not normal. Keep it.'],
-  'reaction':['Asleep. Go again.','Awake.','Quick.','Very quick.','That is not normal. Keep it.'],
-  'spot:count':['Guessing. Slow down.','Half of them. Look at the whole screen.','Good eye.','Nearly all of them.','That is not normal. Keep it.'],
-  'spot:find':['Slow. Scan, do not stare.','Finding them.','Quick eye.','Very quick eye.','That is not normal. Keep it.'],
-};
+/* ---------- verdicts: tiered by a per-game quality 0..1 (progress/rules.js) ---------- */
 function verdict(r){
-  if(r.fail) return r.g==='reaction'&&r.d==='nogo'?'Three wrong taps. Run over — go again.':'Run over — go again.';
-  if(GAMES[r.g].timed){ if(r.hits===0) return 'Nothing landed. That was a choice.'; if(r.misses>r.hits) return 'More misses than hits. You know what you did.'; }
-  const q=GC(r.g,r.d,r.s).quality(r); const i=q>=1?4:q>=.75?3:q>=.5?2:q>=.25?1:0; return (VERDICTS[r.g+':'+r.d]||VERDICTS[r.g])[i];
+  if(r.fail) return r.g==='reaction'&&r.d==='nogo'?VERDICT.nogoFail:VERDICT.fail;
+  if(GAMES[r.g].timed){ if(r.hits===0) return VERDICT.nothing; if(r.misses>r.hits) return VERDICT.moreMisses; }
+  const q=quality(r.g,r.d,r.s,r); const i=q>=1?4:q>=.75?3:q>=.5?2:q>=.25?1:0; return (VERDICTS[r.g+':'+r.d]||VERDICTS[r.g])[i];
 }
 
 function setPendingAim(v){ pendingAim=v; }
 function setPendingGoal(v){ pendingGoal=v; }
 
 
-export { ACH, AUTHOR_RECORDS, BG_NAME, INTRO, ITEM_WORD, Scores, TIERS, UNLOCKS, VERDICTS, achAll, achById, authorAch, bestRate, bestRound, chalRun, checkAch, checkUnlocks, fullsetProg, gameOpen, goalFor, got, isOpen, lenLock, lenOpen, lensOf, isNew, LEN_RULES, lowProg, lowTotal, markSeen, needFor, newMark, nextGoal, pendingAim, pendingGoal, practiceOpen, rate, seedSeen, seenAll, setPendingAim, setPendingGoal, tourProg, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict };
+export { ACH, Scores, UNLOCKS, achAll, achById, authorAch, chalRun, checkAch, checkUnlocks, gameOpen, goalFor, got, isNew, isOpen, lenLock, lenOpen, lensOf, markSeen, needFor, newMark, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict };

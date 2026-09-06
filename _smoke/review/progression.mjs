@@ -21,14 +21,15 @@ const page = await browser.newPage();
 await page.setViewport({ width: 390, height: 844 });
 await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' }); await new Promise(r => setTimeout(r, 800));
 const data = await page.evaluate(async () => {
-  const P = await import('./progress.js'); const R = await import('./games/registry.js'); const C = await import('./core.js');
-  const STREAK = C.STREAK;
+  // build 16: the tables are data in config/ — read them from there; ACH still comes hydrated from progress.js so `hasProgress` is real
+  const P = await import('./progress.js'); const R = await import('./games/registry.js'); const G = await import('./config/games.js'); const U = await import('./config/unlocks.js'); const C = await import('./config/copy.js');
+  const STREAK = G.STREAK;
   const games = Object.fromEntries(Object.entries(R.GAMES).map(([k, g]) => [k, { name: g.name, modes: g.modes, lens: g.lens.map(s => s === STREAK ? 'streak' : s), lower: !!g.lower, versus: !!g.versus,
     modeText: Object.fromEntries(g.modes.map(d => [d, g[d]])), lenNames: g.lenNames || null, lenSubs: g.lenSubs || null, per: g.per ? Object.fromEntries(Object.entries(g.per).map(([d, p]) => [d, { lens: (p.lens || []).map(s => s === STREAK ? 'streak' : s), lenSubs: p.lenSubs || null }])) : null }]));
   const unlocks = P.UNLOCKS.map(u => ({ key: u.key, need: u.need, where: { ...u.where, s: u.where.s === STREAK ? 'streak' : u.where.s }, live: !!u.live }));
-  const lenRules = Object.fromEntries(Object.entries(P.LEN_RULES).map(([g, rules]) => [g, rules.map((r, i) => r ? r.need(C.LEN_NAME?.[R.GAMES[g].lens[i - 1]] || 'previous length') : null)]));
+  const lenRules = Object.fromEntries(Object.entries(U.LEN_RULES).map(([g, rules]) => [g, rules.map((r, i) => r ? r.replace('{prev}', G.LEN_NAME?.[R.GAMES[g].lens[i - 1]] || 'previous length') : null)]));
   const ach = P.ACH.map(a => ({ id: a.id, g: a.g, tier: a.tier, name: a.name, how: a.how, unlocks: a.unlocks || null, at: a.at ? { ...a.at, s: a.at.s === STREAK ? 'streak' : a.at.s } : null, hasProgress: !!a.progress }));
-  return { games, unlocks, lenRules, ach, tiers: P.TIERS, modeName: C.MODE_NAME, lenName: C.LEN_NAME, itemWord: P.ITEM_WORD, bgName: P.BG_NAME, streakCfg: C.STREAK_CFG && Object.keys(C.STREAK_CFG) };
+  return { games, unlocks, lenRules, ach, tiers: C.TIERS, modeName: G.MODE_NAME, lenName: G.LEN_NAME, itemWord: C.ITEM_WORD, bgName: C.BG_NAME, streakCfg: G.STREAK_CFG && Object.keys(G.STREAK_CFG) };
 });
 await browser.close(); srv.close();
 const json = path.join(BUILD, 'progression.json');

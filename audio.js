@@ -1,12 +1,11 @@
 /* No Excuses — synthesised sound effects and the per-game music pad
-   Split out of index.html at build 12. Behaviour is identical to build 11. */
+   Split out of index.html at build 12. Build 16 (refactor stage 2): the scales and the seven tracks are data in config/audio.js. */
 
+import { SCALES, TRACKS } from "./config/audio.js";
 import { sel } from "./core/state.js";
 import { musicOn, prefs } from "./core/store.js";
 import { G } from "./engine-core.js";
 import { GAMES } from "./games/registry.js";
-// the scales Sequence plays in (build 15: moved here from progress.js — it is sound, not progress)
-const SCALES={ penta:{name:'Pentatonic',n:[0,2,4,7,9,12,14]}, chinese:{name:'Chinese',n:[0,2,5,7,9,12,14]}, hijaz:{name:'Hijaz',n:[0,1,4,5,7,8,10]}, blues:{name:'Blues',n:[0,3,5,6,7,10,12]} };
 /* ---------- sound: synthesised, tiny, quiet. The pack colours hit / miss / click; tick, go and end are the same everywhere ---------- */
 // v10: iOS marks the context "interrupted" (not "suspended") when the app goes to the background, and only a resume inside a touch brings it back — so every touch checks, and so does coming back to the foreground
 let ac=null; const AC=()=>{ if(!ac){ try{ ac=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } if(ac&&ac.state!=='running'){ try{ ac.resume(); }catch(e){} } return ac; };
@@ -44,14 +43,8 @@ const Snd = (()=>{
 })();
 /* music: one sustained pad-and-bass loop per game. No percussion — taps must never be confused with the track. Timed runs ramp tempo and volume in the last stretch */
 const Music=(()=>{
-  // v13 (12.1): one module per game — seven tracks, each its own entry, each previewable on its own from Customise. Nothing borrows any more
-  const TR={ 'quick-tap':{root:110,  bpm:126, ch:[[0,7,12,16],[5,12,17,21],[3,10,15,19],[7,14,19,22]], bass:[0,5,3,7]},
-             'dots':     {root:130.8,bpm:112, ch:[[0,4,7,11],[5,9,12,16],[3,7,10,14],[7,11,14,17]], bass:[0,5,3,7]},
-             'hold':     {root:98,   bpm:84,  ch:[[0,7,12,14],[-4,3,8,12],[-2,5,10,12],[0,7,12,16]], bass:[0,-4,-2,0]},
-             'sequence': {root:146.8,bpm:104, ch:[[0,3,7,10],[3,7,10,14],[5,8,12,15],[7,10,14,17]], bass:[0,3,5,7]},
-             'timing':   {root:87.3, bpm:72,  ch:[[0,7,14,19],[-5,2,9,14],[0,5,12,17],[-3,4,11,16]], bass:[0,-5,0,-3]},
-             'reaction': {root:123.5,bpm:138, ch:[[0,5,12,19],[2,7,14,21],[0,5,12,17],[-2,5,10,17]], bass:[0,2,0,-2]},
-             'spot':     {root:116.5,bpm:96,  ch:[[0,4,9,14],[2,6,11,16],[-3,4,7,12],[0,4,9,16]], bass:[0,2,-3,0]} };
+  // v13 (12.1): one module per game — seven tracks in config/audio.js, each its own entry, each previewable on its own from Customise. Nothing borrows any more
+  const TR=TRACKS;
   let tr=null, timer=0, next=0, bar=0;
   // v11 audit: the end-of-run tempo/volume ramp read G.end, which start() never reset — so under the 3-2-1 of the NEXT run "time left" was hugely negative, the ramp went past 1.7× and the volume up 35%. That was the wild countdown music. Now the ramp only runs once the clock is live, and the whole track ducks −12dB until then
   function ramp(){ if(!G.on||!G.live||!GAMES[sel.game].timed||!G.end) return 1; const left=(G.end-performance.now())/1000, w={5:2.2,15:4.5,30:7}[sel.secs]||4; return left<w? 1+.7*(1-Math.max(0,left)/w) : 1; }
@@ -67,4 +60,4 @@ const Music=(()=>{
 })();
 
 
-export { AC, Music, SCALES, Snd, ac };
+export { AC, Music, Snd, ac };

@@ -3,8 +3,10 @@
    challenge link come from core/. The module graph is a DAG through core → store → state → audio → progress → menu → app,
    so evaluation order no longer depends on this import list. */
 import { DRAW, H, Intro, VX, W, abort, cx, size, start, tapAt } from "./app.js";
-import { SCALES, Snd, ac } from "./audio.js";
-import { $, $$ } from "./core.js";
+import { Snd, ac } from "./audio.js";
+import { SCALES } from "./config/audio.js";
+import { TOAST } from "./config/copy.js";
+import { $, $$, T } from "./core.js";
 import { CHAL } from "./core/platform.js";
 import { sel } from "./core/state.js";
 import { prefs, save } from "./core/store.js";
@@ -27,11 +29,11 @@ setMenuWasFirst(firstRun());
 if(!seenAll()) seedSeen();
 // v13 (3.6): a challenge link waits for the title sequence, then opens its pick sheet
 if(!prefs.story) Story.open(); else { menuIn(); if(CHAL) setTimeout(goChallenge,300); }
-if(prefs.mig11){ setTimeout(()=>toast(`Build 11 · ${prefs.mig11} old Estimate / Timing / Reaction / Count run${prefs.mig11>1?'s':''} retired — the scoring changed`),1200); delete prefs.mig11; save('ne.prefs',prefs); }
+if(prefs.mig11){ const n=prefs.mig11; setTimeout(()=>toast(T(TOAST.mig11,{n,s:n>1?'s':''})),1200); delete prefs.mig11; save('ne.prefs',prefs); }
 document.addEventListener('pointerdown', ()=>Snd.unlock(), {once:true});
 $('#pname').value=prefs.name; $('#pname').addEventListener('input',e=>{ prefs.name=e.target.value.trim().toUpperCase().slice(0,10); save('ne.prefs',prefs);
   // Signed in is earned the moment a name goes in (v8) — it used to wait for the next finished run, which made it look impossible
-  if(prefs.name&&!got().named){ const g=got(); g.named=Date.now(); save('ne.ach',g); const a=ACH.find(x=>x.id==='named'); toast('Achievement · '+a.name+' · '+unlockHtml(a),a.id,'',true); } });
+  if(prefs.name&&!got().named){ const g=got(); g.named=Date.now(); save('ne.ach',g); const a=ACH.find(x=>x.id==='named'); toast(T(TOAST.achievement,{name:a.name})+' · '+unlockHtml(a),a.id,'',true); } });
 $('#pname').addEventListener('click',e=>e.stopPropagation());
 document.addEventListener('click', onClick);
 // a tap during the intro does nothing at all (v8) — it used to skip, and a stray touch left people confused

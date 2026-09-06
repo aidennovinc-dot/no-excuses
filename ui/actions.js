@@ -6,7 +6,8 @@
    unknown one, plays the sound it always did and does nothing else. */
 import { Ads, abort, goWhere, start } from "../app.js";
 import { Music, Snd } from "../audio.js";
-import { $, $$ } from "../core.js";
+import { TOAST } from "../config/copy.js";
+import { $, $$, T } from "../core.js";
 import { CHAL } from "../core/platform.js";
 import { F, VS, sel } from "../core/state.js";
 import { prefs, save } from "../core/store.js";
@@ -35,9 +36,9 @@ const ACTIONS={
   diff(b){ if(stage==='len'){ setStage('mode'); return 'pick'; } if(b.classList.contains('locked')){ askUnlock(sel.game,b.dataset.diff); return 'pick'; } sel.diff=b.dataset.diff; $$('.choice').forEach(c=>c.classList.toggle('sel',c===b));
     setStage('len'); fillTimes(); return 'pick'; },
   'lvl-back'(){ setStage('mode'); return 'click'; },
-  'dev-open'(){ prefs.allOpen=!prefs.allOpen; save('ne.prefs',prefs); devState(); toast(prefs.allOpen?'Everything open · modes and cosmetics':'Progression back on · only what you earned'); return 'pick'; },
-  'dev-sup'(){ prefs.supporter=!prefs.supporter; save('ne.prefs',prefs); devState(); toast(prefs.supporter?'Supporter ON · no ads, all cosmetics, pro length':'Free tier · ads back on'); return 'pick'; },
-  'dev-fresh'(){ freshGame(); devState(); toast('Fresh game · runs, unlocks, achievements and intros wiped'); return 'pick'; },
+  'dev-open'(){ prefs.allOpen=!prefs.allOpen; save('ne.prefs',prefs); devState(); toast(prefs.allOpen?TOAST.devOpenOn:TOAST.devOpenOff); return 'pick'; },
+  'dev-sup'(){ prefs.supporter=!prefs.supporter; save('ne.prefs',prefs); devState(); toast(prefs.supporter?TOAST.supOn:TOAST.supOff); return 'pick'; },
+  'dev-fresh'(){ freshGame(); devState(); toast(TOAST.fresh); return 'pick'; },
   time(b){ const v=+b.dataset.time; if(b.classList.contains('locked')){ askUnlock(sel.game,sel.diff,v); return 'pick'; } sel.secs=v; $$('[data-time]').forEach(c=>c.classList.toggle('sel',c===b)); return 'pick'; },
   'go-btn'(){ if(sel.game!=='sequence') sel.practice=0; VS.reset(); start(); return 'click'; },
   vs(b){ sel.vs=b.dataset.vs==='0'?0:(sel.vs||1); renderVsRow(); $('#sheet-title').textContent=GAMES[sel.game].name+(sel.vs===1?' · pass & play':sel.vs===2?' · versus':''); renderVsArt(); if(stage==='len') fillTimes(); return 'pick'; },
@@ -45,10 +46,10 @@ const ACTIONS={
   'pass-go'(){ start(); return 'click'; },
   'to-games'(){ VS.reset(); show('s-pick'); return 'click'; },
   'dev-story'(){ Story.open(); return 'pick'; },
-  praclock(){ toast('Locked · Practice from · 8 notes in 7 keys'); return 'pick'; },
+  praclock(){ toast(TOAST.pracLocked); return 'pick'; },
   prac(b){ sel.practice=+b.dataset.prac; $$('[data-prac]').forEach(c=>c.classList.toggle('sel',c===b)); return 'pick'; },
   again(){ VS.reset(); if(sel.game!=='sequence') sel.practice=0; start(); return 'click'; },
-  support(){ if(prefs.supporter) toast('Already a supporter · thank you'); else toast('Purchases arrive in the app build · About → testing → supporter to try it'); return 'click'; },
+  support(){ if(prefs.supporter) toast(TOAST.supAlready); else toast(TOAST.supLater); return 'click'; },
   pvlock(b){ if(b.dataset.ach) gotoAch(b.dataset.ach); return 'click'; },
   // an earned achievement (v11) opens Customise at what it unlocked; a locked one still offers the run
   ach(b){ const a=achById(b.dataset.ach); if(!a) return 'click'; if(got()[a.id]){ if(a.g!=='all') sel.game=a.g; show('s-custom'); if(a.unlocks){ const [k,v]=a.unlocks; const grp=$('#c-'+(k==='wheel'?'sq':k)); if(grp){ grp.closest('.cgroup').scrollIntoView({block:'center',behavior:'smooth'}); const sw=grp.querySelector(`[data-v="${v}"]`); if(sw){ sw.classList.add('pvw'); setTimeout(()=>sw.classList.remove('pvw'),1800); } } } return 'click'; }
@@ -60,7 +61,7 @@ const ACTIONS={
   'music-pv'(){ Music.preview(F.pv.g); return 'pick'; },
   // a Customise item: colour, background, sound pack, scale, music switch — the group is the closest [data-set]
   item(b){ const set=b.closest('[data-set]'); if(!set) return 'pick'; const k=set.dataset.set;
-    if(b.classList.contains('locked')){ const L=achById(b.dataset.lock); Object.assign(pvTry,{set:k,v:b.dataset.v,by:L.id}); renderCustom(); toast('Locked · '+L.name); return 'pick'; }
+    if(b.classList.contains('locked')){ const L=achById(b.dataset.lock); Object.assign(pvTry,{set:k,v:b.dataset.v,by:L.id}); renderCustom(); toast(T(TOAST.locked,{name:L.name})); return 'pick'; }
     pvTry.set=null; const it=(itemsOf(k)||[]).find(i=>String(i.v)===b.dataset.v); pvSeen.by=it&&it.by||null; if(b.dataset.v==='wheel'){ Wheel.open(k); return 'pick'; }
     if(k==='bg'){ prefs.bg=b.dataset.v; prefs.tint=''; }
     else if(k==='sq'||k==='lead'||k==='cut') prefs.col[F.pv.g][k]=b.dataset.v;
@@ -82,7 +83,7 @@ function onClick(e){
   if($('#adbreak').classList.contains('on')){ if(b&&b.id==='adskip'&&!b.disabled) Ads.close(); return; }
   if($('#lockwrap').classList.contains('on')){ if(b&&b.id==='lock-go'){ Snd.click(); return goWhere(lockGo); } if(!e.target.closest('#lockbox')||(b&&b.id==='lock-no')){ Snd.click(); $('#lockwrap').classList.remove('on'); } return; }
   if(e.target.closest('#nextup')){ Snd.click(); if(nextWhere) goWhere(nextWhere); return; }
-  if(e.target.closest('#egg')){ bumpEggTaps(); if(eggTaps>=3&&!got().egg){ const g=got(); g.egg=Date.now(); save('ne.ach',g); const a=achById('egg'); toast('Achievement · '+a.name+' · '+unlockHtml(a),a.id,'',true); } return; }
+  if(e.target.closest('#egg')){ bumpEggTaps(); if(eggTaps>=3&&!got().egg){ const g=got(); g.egg=Date.now(); save('ne.ach',g); const a=achById('egg'); toast(T(TOAST.achievement,{name:a.name})+' · '+unlockHtml(a),a.id,'',true); } return; }
   // a tap that isn't on a control: every sub-screen goes back
   if(!b){ if(e.target.closest('.sheet')||e.target.closest('#game')||e.target.closest('input')||e.target.closest('#wheelwrap')) return; if($('.screen.on')){ Snd.click(); back(); } return; }
   const h=ACTIONS[b.dataset.act]||ACTIONS.none; const snd=h(b,e);

@@ -1,7 +1,8 @@
 /* No Excuses — the gate (A7). Run before every push:  npm test
  *
  * Spawns its own static server (no Python), launches the Chrome at CHROME_PATH (Windows default as the fallback)
- * at 390x844, and fails on any uncaught error or failed assertion. What it covers, build 15:
+ * at 390x844, and fails on any uncaught error or failed assertion. What it covers, build 16:
+ *   0. static: the build number in config/build.js is the one in index.html (x3) and version.json (A6); config/ is data only (A2)
  *   1. cold start: intro -> menu, and the locked decisions that can be asserted on a fresh profile
  *        L1 title sequence before the menu · L2 Sprint / Dash / Marathon · L3 Solo shows nothing about friends
  *        L7 Quick Tap tile is white before any run · L9 the length row is labelled Mode
@@ -13,6 +14,9 @@
  *   7. every button action (data-act) driven at least once — customise, chips, dev switches, lock box, Next card, full stop, share
  * Pass a base URL as argv[2] to test a server you are already running instead.
  */
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { serve } from './server.mjs';
 import { launch, phonePage, IGNORED_REQUEST } from './chrome.mjs';
 
@@ -27,6 +31,20 @@ const fail = [];
 const ok = (label) => console.log('  ok   ' + label);
 const bad = (label, why) => { fail.push(label + (why ? ' — ' + why : '')); console.log('  FAIL ' + label + (why ? ' — ' + why : '')); };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// ---- 0. static: one build number (A6), config/ is data only (A2) ----
+console.log('\nstatic checks');
+{
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const { BUILD } = await import(pathToFileURL(path.join(root, 'config', 'build.js')).href);
+  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8'); const vj = JSON.parse(fs.readFileSync(path.join(root, 'version.json'), 'utf8'));
+  const places = [html.match(/<div class="hint">build (\d+) ·/)?.[1], html.match(/<div id="build">build (\d+)<\/div>/)?.[1], html.match(/const BUILD="(\d+)";/)?.[1], String(vj.build)];
+  places.every(p => p === String(BUILD)) ? ok(`A6 build ${BUILD} in config/build.js = index.html ×3 = version.json`) : bad('A6 one build number', JSON.stringify(places) + ' vs config ' + BUILD);
+  const strip = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
+  const cfg = fs.readdirSync(path.join(root, 'config')).filter(f => f.endsWith('.js'));
+  const dirty = cfg.filter(f => /\bimport\b|=>|\bfunction\b/.test(strip(fs.readFileSync(path.join(root, 'config', f), 'utf8'))));
+  dirty.length ? bad('A2 config/ is data only', dirty.join(', ')) : ok(`A2 config/ is data only (${cfg.length} files: no imports, no functions)`);
+}
 
 const browser = await launch();
 const page = await phonePage(browser);
