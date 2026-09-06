@@ -1,8 +1,7 @@
 /* No Excuses — entry point. The top-level statements that start the app, in their original order, after every module has evaluated.
    Split out of index.html at build 12. Build 15 (refactor stage 1): the click dispatcher is ui/actions.js; prefs, sel and the
    challenge link come from core/. Build 17 (refactor stage 3): every tap on the game screen goes to run/run.js as one input
-   event — the engine behind it is never named here. The old loop in app.js still takes the engines not yet ported. */
-import { Intro, abort, tapAt } from "./app.js";
+   event — the engine behind it is never named here. */
 import { Snd, ac } from "./audio.js";
 import { SCALES } from "./config/audio.js";
 import { TOAST } from "./config/copy.js";
@@ -10,11 +9,9 @@ import { $, $$, T } from "./core.js";
 import { CHAL } from "./core/platform.js";
 import { sel } from "./core/state.js";
 import { prefs, save } from "./core/store.js";
-import { G, cur } from "./engine-core.js";
-import { HD } from "./games/estimate/index.js";
 import { Story, firstRun, menuIn, setMenuWasFirst } from "./menu.js";
 import { ACH, got, seedSeen, seenAll, unlockHtml } from "./progress.js";
-import * as Run from "./run/run.js";
+import { abort, active, input, introActive } from "./run/run.js";
 import { goChallenge, onClick } from "./ui/actions.js";
 import { startAtmosphere } from "./ui/atmosphere.js";
 import { toast } from "./ui/toast.js";
@@ -37,28 +34,26 @@ $('#pname').value=prefs.name; $('#pname').addEventListener('input',e=>{ prefs.na
 $('#pname').addEventListener('click',e=>e.stopPropagation());
 document.addEventListener('click', onClick);
 // a tap during the intro does nothing at all (v8) — it used to skip, and a stray touch left people confused
-document.addEventListener('pointerdown',e=>{ if((Run.introActive()||Intro.active())&&e.target.closest('#game')&&!e.target.closest('#quit')){ e.stopPropagation(); e.preventDefault(); } },true);
+document.addEventListener('pointerdown',e=>{ if(introActive()&&e.target.closest('#game')&&!e.target.closest('#quit')){ e.stopPropagation(); e.preventDefault(); } },true);
 
-/* ---------- the game screen: every pointer event becomes one input for the run. build 17 transition: an engine still on the old loop gets its old call ---------- */
-const inp=(ev,old)=>{ if(Run.active()) Run.input(ev); else if(old) old(); };
+/* ---------- the game screen: every pointer event becomes one input for the run — { type, x, y, el, target, player, raw } ---------- */
 const ptr=(e,type,more)=>Object.assign({ type, x:e.clientX, y:e.clientY, el:e.target, raw:e },more);
-$$('[data-vs-side]').forEach(p=>p.addEventListener('pointerdown',e=>{ e.preventDefault(); const [pl,i]=p.dataset.vsSide.split(':').map(Number); inp(ptr(e,'down',{player:pl,target:i})); }));
-$('#vfield').addEventListener('pointerdown',e=>{ e.preventDefault(); inp(ptr(e,'down')); });
-$$('.pad[data-side]').forEach(p=>p.addEventListener('pointerdown',e=>{ e.preventDefault(); inp(ptr(e,'down',{target:+p.dataset.side}),()=>tapAt(+p.dataset.side===G.target)); }));
-$('#field').addEventListener('pointerdown',e=>{ e.preventDefault(); inp(ptr(e,'down')); });
-$('#hfield').addEventListener('pointerdown',e=>{ e.preventDefault(); inp(ptr(e,'down'),()=>HD.down(e)); });
-$('#hfield').addEventListener('pointermove',e=>{ inp(ptr(e,'move'),()=>HD.cutMove(e)); });
-['pointerup','pointercancel','pointerleave'].forEach(ev=>$('#hfield').addEventListener(ev,e=>inp(ptr(e,'up'),()=>HD.up())));
-$('#seq').addEventListener('pointerdown',e=>{ const k=e.target.closest('.key'); if(k){ e.preventDefault(); inp(ptr(e,'down',{target:+k.dataset.k})); } });
-$('#gen').addEventListener('pointerdown',e=>{ e.preventDefault(); inp(ptr(e,'down'),()=>{ if(cur&&cur.onDown&&G.on) cur.onDown(e); }); });
+$$('[data-vs-side]').forEach(p=>p.addEventListener('pointerdown',e=>{ e.preventDefault(); const [pl,i]=p.dataset.vsSide.split(':').map(Number); input(ptr(e,'down',{player:pl,target:i})); }));
+$('#vfield').addEventListener('pointerdown',e=>{ e.preventDefault(); input(ptr(e,'down')); });
+$$('.pad[data-side]').forEach(p=>p.addEventListener('pointerdown',e=>{ e.preventDefault(); input(ptr(e,'down',{target:+p.dataset.side})); }));
+$('#field').addEventListener('pointerdown',e=>{ e.preventDefault(); input(ptr(e,'down')); });
+$('#hfield').addEventListener('pointerdown',e=>{ e.preventDefault(); input(ptr(e,'down')); });
+$('#hfield').addEventListener('pointermove',e=>{ input(ptr(e,'move')); });
+['pointerup','pointercancel','pointerleave'].forEach(ev=>$('#hfield').addEventListener(ev,e=>input(ptr(e,'up'))));
+$('#seq').addEventListener('pointerdown',e=>{ const k=e.target.closest('.key'); if(k){ e.preventDefault(); input(ptr(e,'down',{target:+k.dataset.k})); } });
+$('#gen').addEventListener('pointerdown',e=>{ e.preventDefault(); input(ptr(e,'down')); });
 // the keyboard, for the desk: Escape quits; space is the tap in Timing, Reaction and Estimate; arrows are Quick Tap's pads; 1–7 are Sequence's keys
-window.addEventListener('keydown',e=>{ if(!(Run.active()||G.on)||e.repeat) return;
+window.addEventListener('keydown',e=>{ if(!active()||e.repeat) return;
   if(e.key==='Escape') return abort();
   const key={ type:'down', x:0, y:0, el:document.body };
-  if((sel.game==='timing'||sel.game==='reaction')&&e.key===' ') inp(key,()=>cur.onDown({target:document.body,clientX:0,clientY:0}));
-  if(sel.game==='quick-tap'){ const m={ArrowLeft:0,ArrowRight:1,ArrowUp:2,ArrowDown:3}; if(e.key in m) inp({...key,target:m[e.key]},()=>tapAt(G.target===m[e.key])); }
-  if(sel.game==='hold'&&e.key===' ') inp(key,()=>HD.down());
-  if(sel.game==='sequence'&&/^[1-7]$/.test(e.key)) inp({...key,target:+e.key-1}); });
-window.addEventListener('keyup',e=>{ if(sel.game==='hold'&&e.key===' ') inp({ type:'up', x:0, y:0, el:document.body },()=>HD.up()); });
+  if((sel.game==='timing'||sel.game==='reaction'||sel.game==='hold')&&e.key===' ') input(key);
+  if(sel.game==='quick-tap'){ const m={ArrowLeft:0,ArrowRight:1,ArrowUp:2,ArrowDown:3}; if(e.key in m) input({...key,target:m[e.key]}); }
+  if(sel.game==='sequence'&&/^[1-7]$/.test(e.key)) input({...key,target:+e.key-1}); });
+window.addEventListener('keyup',e=>{ if(sel.game==='hold'&&e.key===' ') input({ type:'up', x:0, y:0, el:document.body }); });
 
 startAtmosphere();
