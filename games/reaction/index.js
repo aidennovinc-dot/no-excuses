@@ -11,7 +11,7 @@ import { genRect, rnd, roundEngine, rxBar } from "../_shared/round.js";
 // v14 (6.2 / L5): a Go / No-go Streak is a cumulative
 // TIME budget like every other Streak, not a count of wrong taps: everything over 300ms is spent, a wrong tap costs 150ms
 // (the same 150ms the Set adds, v14 section A.2), and the run ends at 1000ms. Score is shapes survived, as L5 says
-const RX=Object.assign(roundEngine(),{ id:'reaction', times:[], faults:0, t0:0, rule:'circle', shown:'', armed:false, dry:0, over:0, out:false, wrong:0, seen:0, vsN:[0,0], vsDone:false, last1:'', last2:'',
+const RX=Object.assign(roundEngine(),{ id:'reaction', times:[], faults:0, t0:0, rule:'circle', shown:'', armed:false, over:0, out:false, wrong:0, seen:0, vsN:[0,0], vsDone:false, last1:'', last2:'',
   // Flash's 200/500 is L5's own number and v14 6.8 did not quote L5, so it stands (see FEATURES, Skipped — locked)
   FLASH_FREE:200, FLASH_BUD:500, NOGO_FREE:300, NOGO_BUD:1000, NOGO_WRONG:150,
   nogo(){ return this.ctx.mode==='nogo'; }, versus(){ return this.ctx.players===2; },
@@ -63,7 +63,7 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', times:[], faults:0, t0:0, 
   // shapes, announced top-middle. Set = 5 rounds, average ms on the right taps plus 150ms a wrong tap (v14 A.2), over after
   // three wrong taps. v14 (6.2 / L5): a Streak is a cumulative TIME budget like every other Streak — ms over 300 plus 150ms a
   // wrong tap, out at 1000ms — and the score is shapes survived, not a count of what went wrong
-  nogoBegin(){ this.rule=['circle','square','tri'][rnd(3)]; this.round=1; this.ruleAt=0; this.dry=0; this.last1=''; this.last2=''; this.hudNogo(); this.rulePause(); },
+  nogoBegin(){ this.rule=['circle','square','tri'][rnd(3)]; this.round=1; this.ruleAt=0; this.last1=''; this.last2=''; this.hudNogo(); this.rulePause(); },
   // v14 (6.26): a Streak was too fast to react to. It runs on a slower beat than the Set
   beatMs(){ return this.streak()?1150:800; },
   hudNogo(){ hud.time(this.streak()?T(CP.hudNogoStreak,{n:this.seen+1,over:Math.round(this.over),bud:this.NOGO_BUD}):T(CP.hudNogo,{n:Math.min(this.ctx.len,this.seen+1),s:this.ctx.len,w:this.wrong})); },
