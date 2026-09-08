@@ -5,7 +5,7 @@
   "scripts": {
     "test": "node _smoke/smoke.mjs",
     "bump": "node scripts/bump.mjs",
-    "review": "node ../_review/scripts/catalogue.mjs && node ../_review/scripts/build-catalogue.mjs && node ../_review/scripts/progression.mjs && node ../_review/scripts/build-progression.mjs"
+    "review": "node ../_review/scripts/catalogue.mjs && node ../_review/scripts/build-catalogue.mjs"
   },
   "dependencies": {
     "puppeteer-core": "^25.10.0"

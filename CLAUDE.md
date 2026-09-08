@@ -189,8 +189,8 @@ Quick Tap tile is white before any run (L7), the length row is labelled Mode (L9
 assertion blocks the push.** Run it before every push; ~4 minutes. `CHROME_PATH` overrides the
 Windows default Chrome. **`npm run review` is live again — build 21 (#368 closed).** It drives
 `../_review/scripts/` (54+ cards, data-driven), ported from Playwright to the same puppeteer-core the gate uses and
-spawning its own server, so it takes no arguments: capture → `build-catalogue.mjs` → capture the progression tables →
-`build-progression.mjs`. **The older 29-card copy under `_smoke/review/` is deleted** — there is one generator now, and
+spawning its own server, so it takes no arguments: capture → `build-catalogue.mjs`. **The progression pair is not in it —
+`progression.mjs` reads the pre-build-16 module layout and throws (#370).** **The older 29-card copy under `_smoke/review/` is deleted** — there is one generator now, and
 a build that changes a screen changes it in one place. Cowork still publishes the page; nothing here publishes.
 
 No bundler, no build step — GitHub Pages serves the modules directly, so every import path stays
