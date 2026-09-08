@@ -14,19 +14,20 @@ const lowProg=(v,target)=>v===null?0:Math.min(1,target/Math.max(v,target));
 const tourProg=all=>{ const cells=Object.entries(GAMES).flatMap(([g,x])=>x.modes.map(d=>all.some(r=>r.g===g&&r.d===d))); return cells.filter(Boolean).length/cells.length; };
 const fullsetProg=(all,g)=>{ const G_=GAMES[g]; const cells=G_.modes.flatMap(d=>GC(g,d).lens.map(s=>all.some(x=>x.g===g&&x.d===d&&x.s===s))); return cells.filter(Boolean).length/cells.length; };
 
-/* ---------- the unlock chain (L6): one predicate per UNLOCKS key ---------- */
+/* ---------- the unlock chain (L6): one predicate per UNLOCKS key. v14 (9.1): Sequence opens at 3.5% of the Cut target, was 0.5%.
+   The Set round counts these read (Cut 10, Flash 5, Go / No-go 5) come from SET_COPY in config/games.js since build 19 ---------- */
 const UNLOCK_TEST = {
   'quick-tap:four':    r=>r.g==='quick-tap'&&r.s===15&&r.misses===0&&r.hits>=9,
   'dots:blind':        r=>r.g==='quick-tap'&&r.hits>=30,
   'dots:lead':         r=>r.g==='dots'&&r.s===5&&r.misses===0&&r.hits>=6,
   'hold:grow':         r=>r.g==='dots'&&r.hits>=2*r.s,
   'hold:cut':          r=>r.g==='hold'&&r.d==='grow'&&r.x<=15,
-  'sequence:solo':     r=>r.g==='hold'&&r.d==='cut'&&r.x<=.5,
+  'sequence:solo':     r=>r.g==='hold'&&r.d==='cut'&&r.x<=3.5,
   'sequence:practice': r=>r.g==='sequence'&&r.s===7&&r.hits>=8,
   'timing:stopwatch':  r=>r.g==='sequence'&&r.s===7&&r.hits>=6,
   'timing:hidden':     r=>r.g==='timing'&&r.d==='stopwatch'&&r.x<=.3,
   'reaction:flash':    r=>r.g==='timing'&&r.d==='stopwatch'&&r.s===STREAK&&r.hits>=6,
-  'reaction:nogo':     r=>r.g==='reaction'&&r.d==='flash'&&r.s===3&&r.hits<=300,
+  'reaction:nogo':     r=>r.g==='reaction'&&r.d==='flash'&&r.s===5&&r.hits<=300,
   'spot:count':        r=>r.g==='reaction',
   'spot:find':         r=>r.g==='spot'&&r.d==='count'&&(r.rounds||0)>=5,
 };
@@ -62,15 +63,15 @@ const ACH_TEST = {
   dt_bs:r=>r.g==='dots'&&r.d==='blind'&&r.s===30&&rate(r)>=3.5,
   hd_money:r=>r.g==='hold'&&r.x<=2,
   hd_steady:r=>r.g==='hold'&&r.d==='grow'&&r.s===7&&r.hits<=3,
-  hd_est:r=>r.g==='hold'&&r.d==='cut'&&r.s===7&&r.hits<=4,
+  hd_est:r=>r.g==='hold'&&r.d==='cut'&&r.s===10&&r.hits<=4,
   hd_run:r=>r.g==='hold'&&r.s===STREAK&&r.hits>=15,
   hd_s:r=>r.g==='hold'&&r.s===7&&r.y<=4,
   sq_7:r=>r.g==='sequence'&&r.hits>=7, sq_12:r=>r.g==='sequence'&&r.hits>=12, sq_7x8:r=>r.g==='sequence'&&r.s===7&&r.hits>=8, sq_5x10:r=>r.g==='sequence'&&r.s===5&&r.hits>=10,
   sq_s20:r=>r.g==='sequence'&&r.hits>=20, sq_s15:r=>r.g==='sequence'&&r.s===7&&r.hits>=15,
   tm_close:r=>r.g==='timing'&&r.d==='stopwatch'&&r.x<=.1, tm_wall:r=>r.g==='timing'&&r.d==='hidden'&&r.s===10&&r.hits<=300,
   tm_run:r=>r.g==='timing'&&r.d==='stopwatch'&&r.s===STREAK&&r.hits>=10, tm_s:r=>r.g==='timing'&&r.d==='stopwatch'&&r.s===5&&r.hits<=.12,
-  rx_200:r=>r.g==='reaction'&&r.d==='flash'&&r.x<200, rx_clean:r=>r.g==='reaction'&&r.d==='nogo'&&r.s===20&&r.misses===0,
-  rx_run:r=>r.g==='reaction'&&r.d==='flash'&&r.s===STREAK&&r.hits>=8, rx_s:r=>r.g==='reaction'&&r.d==='flash'&&r.s===3&&r.hits<180,
+  rx_200:r=>r.g==='reaction'&&r.d==='flash'&&r.x<200, rx_clean:r=>r.g==='reaction'&&r.d==='nogo'&&r.s===5&&r.misses===0,
+  rx_run:r=>r.g==='reaction'&&r.d==='flash'&&r.s===STREAK&&r.hits>=8, rx_s:r=>r.g==='reaction'&&r.d==='flash'&&r.s===5&&r.hits<180,
   sp_5:r=>r.g==='spot'&&r.d==='count'&&r.s===STREAK&&r.hits>=8, sp_15:r=>r.g==='spot'&&r.d==='count'&&r.s===10&&r.hits<=2,
   sp_fast:r=>r.g==='spot'&&r.d==='find'&&r.s===10&&r.hits<20, sp_clean:r=>r.g==='spot'&&r.d==='find'&&r.s===10&&r.misses===0,
 };
@@ -79,7 +80,7 @@ const ACH_PROGRESS = {
   qt_r4:all=>bestRate(all,'quick-tap',0,'four')/3, qt_r5:all=>bestRate(all,'quick-tap',15,'four')/4, qt_br4:all=>bestRate(all,'quick-tap',15,'two')/4,
   qt_s5:all=>bestRate(all,'quick-tap',5,'four')/5, qt_s15:all=>bestRate(all,'quick-tap',15,'four')/5, qt_s30:all=>bestRate(all,'quick-tap',30,'four')/5, qt_bs5:all=>bestRate(all,'quick-tap',5,'two')/5,
   dt_sweep:all=>bestRate(all,'dots',15,'lead')/3, dt_blind:all=>bestRate(all,'dots',15,'blind')/3, dt_s:all=>bestRate(all,'dots',30,'lead')/4.5, dt_bs:all=>bestRate(all,'dots',30,'blind')/3.5,
-  hd_steady:all=>lowProg(lowTotal(all,'grow',7),3), hd_est:all=>lowProg(lowTotal(all,'cut',7),4), hd_run:all=>Math.max(0,...all.filter(r=>r.g==='hold'&&r.s===STREAK).map(r=>r.hits))/15,
+  hd_steady:all=>lowProg(lowTotal(all,'grow',7),3), hd_est:all=>lowProg(lowTotal(all,'cut',10),4), hd_run:all=>Math.max(0,...all.filter(r=>r.g==='hold'&&r.s===STREAK).map(r=>r.hits))/15,
   sq_7:all=>bestRound(all)/7, sq_12:all=>bestRound(all)/12, sq_7x8:all=>bestRound(all,7)/8, sq_5x10:all=>bestRound(all,5)/10, sq_s20:all=>bestRound(all)/20, sq_s15:all=>bestRound(all,7)/15,
   sp_5:all=>Math.max(0,...all.filter(r=>r.g==='spot'&&r.d==='count'&&r.s===STREAK).map(r=>r.hits))/8,
 };

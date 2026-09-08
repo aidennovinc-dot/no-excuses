@@ -1,6 +1,5 @@
 /* No Excuses — every screen, in one import (build 18, refactor stage 4). Importing a screen registers it with the router
    and defines its buttons; nothing here runs until boot.js shows the first screen. */
-import "./title.js";
 import "./menu.js";
 import "./pick.js";
 import "./board.js";

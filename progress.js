@@ -35,10 +35,10 @@ function openKeys(){ const k=[]; for(const g in GAMES){ if(gameOpen(g)) k.push('
 function seedSeen(){ const st={}; for(const k of openKeys()) st[k]=1; store.seen=st; save(); }
 // progressive lengths (v13): LEN_RULES holds the requirement per game, mode and index; everything else opens on one finished run of the length before it. The first length is always open
 function lenLock(g,d,s,noChal){ if(prefs.allOpen) return null; if(!noChal&&chalAt(g,d)&&CHAL.s===s) return null; const c=GC(g,d), lens=c.lens, i=lens.indexOf(s); if(i<=0) return null; const prev=lens[i-1], runs=Scores.runs().filter(r=>r.g===g&&r.d===d&&r.s===prev&&!r.practice);
-  const rule=(LEN_RULES[g]||[])[i], test=(LEN_TEST[g]||[])[i];
-  if(rule) return runs.some(test)?null:{g,d,s:prev,need:T(rule,{prev:lenName(g,prev,d)}),name:lenName(g,s,d)};
-  if(s===STREAK) return runs.length?null:{g,d,s:prev,need:T(PROGRESS.finishOne,{prev:lenName(g,prev,d)}),name:PROGRESS.streak};
-  return runs.length?null:{g,d,s:prev,need:T(PROGRESS.finishA,{prev:lenName(g,prev,d)}),name:lenName(g,s,d)}; }
+  const rule=(LEN_RULES[g]||[])[i], test=(LEN_TEST[g]||[])[i], gname=GAMES[g].name;   // v14 (3.2): {game} names the game in every requirement
+  if(rule) return runs.some(test)?null:{g,d,s:prev,need:T(rule,{game:gname,prev:lenName(g,prev,d)}),name:lenName(g,s,d)};
+  if(s===STREAK) return runs.length?null:{g,d,s:prev,need:T(PROGRESS.finishOne,{game:gname,prev:lenName(g,prev,d)}),name:PROGRESS.streak};
+  return runs.length?null:{g,d,s:prev,need:T(PROGRESS.finishA,{game:gname,prev:lenName(g,prev,d)}),name:lenName(g,s,d)}; }
 const lenOpen=(g,d,s)=>!lenLock(g,d,s);
 // the next mode this run could open, if the game, mode and length line up — shown while you play (v8). v11: a length unlock counts too
 function goalFor(g,d,s){ if(prefs.allOpen) return null; const u=unlocked(); const x=UNLOCKS.find(x=>!u[x.key]&&x.where.g===g&&(!x.where.d||x.where.d===d)&&(!x.where.s||x.where.s===s)); if(x) return x;

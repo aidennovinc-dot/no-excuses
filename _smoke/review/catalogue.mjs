@@ -30,7 +30,7 @@ await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
 await page.evaluate(() => localStorage.clear());
 await page.reload({ waitUntil: 'networkidle0' });
 await sleep(1500); await shot('01-title');
-for (let i = 0; i < 8 && (await on()) === 's-story'; i++) { await page.evaluate(() => document.body.click()); await sleep(350); }
+for (let i = 0; i < 8 && (await page.evaluate(() => document.querySelector('#s-menu').classList.contains('story'))); i++) { await page.evaluate(() => document.body.click()); await sleep(350); }
 await sleep(600); await shot('02-menu-fresh');
 await click('[data-go="s-pick"]'); await sleep(500); await shot('03-grid-fresh');
 await click('.tile[data-game="quick-tap"]'); await sleep(500); await shot('04-sheet-mode');

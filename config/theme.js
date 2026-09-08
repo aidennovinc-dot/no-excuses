@@ -14,8 +14,9 @@ export const ITEMS = {
   // v13 (6.5): the Cut pieces are a pair. This picks the cut-off piece; the rest is the same colour at 40%
   cut: [{v:'#FFFFFF'},{v:'#FFE9C4',by:'first'},{v:'#9BE8FF',by:'qt_clean5'},{v:'#FFD1DC',by:'dt_pin'},{v:'#F3D9FF',by:'hd_steady'},{v:'#C6FF7A',by:'qt_clean30'},{v:'#FFF3A0',by:'sq_12'},{v:'wheel',by:'fullset'}],
 };
-// the two-player pictures (v10): pass & play hands the phone over; versus is one phone, both ends. [svg, caption]
+// the two-player pictures (v10). v14: the caption is gone (4.2), the phones are phone-shaped (4.4) and versus draws a player at
+// each end of the one phone (4.5). The labels are drawn beside them by ui/screens/pick.js, so they carry the player colours
 export const VS_ART = {
-  1:['<svg viewBox="0 0 120 56"><rect x="6" y="8" width="30" height="42" rx="4"/><rect x="84" y="8" width="30" height="42" rx="4"/><path d="M44 29h32M68 21l8 8-8 8"/><path d="M14 44h14M92 44h14"/></svg>','pass &amp; play · take turns on one phone'],
-  2:['<svg viewBox="0 0 120 56"><rect x="35" y="2" width="50" height="52" rx="6"/><path d="M35 28h50"/><rect x="42" y="36" width="16" height="12"/><rect x="62" y="36" width="16" height="12"/><rect x="42" y="8" width="16" height="12"/><rect x="62" y="8" width="16" height="12"/></svg>','versus · one phone, both ends'],
+  1:'<svg viewBox="0 0 120 74"><rect x="20" y="4" width="26" height="66" rx="4"/><rect x="74" y="4" width="26" height="66" rx="4"/><path d="M52 37h16M62 31l6 6-6 6"/><path d="M27 62h12M81 62h12"/></svg>',
+  2:'<svg viewBox="0 0 120 74"><rect x="44" y="2" width="32" height="70" rx="5"/><path d="M44 37h32" stroke-dasharray="3 3"/><circle cx="60" cy="15" r="5"/><path d="M52 26a8 8 0 0 1 16 0"/><circle cx="60" cy="59" r="5"/><path d="M68 48a8 8 0 0 0-16 0"/></svg>',
 };

@@ -3,9 +3,9 @@
    walks them before it leaves the screen. show('s-pick', {g, d, s}) opens a game's sheet straight at its mode or length row
    (the result screen's Back, an achievement row, a challenge link). Locked things ask the lock box through lock:ask. */
 import { SHEET } from "../../config/copy.js";
-import { MODE_NAME, PASS_LEN, VS_LEAD } from "../../config/games.js";
+import { MODE_NAME, PASS_LEN, VS_LEAD, VS_TARGET } from "../../config/games.js";
 import { VS_ART } from "../../config/theme.js";
-import { PASS_LINE, VS_LINE } from "../../config/copy.js";
+import { VS_LINE } from "../../config/copy.js";
 import { $, $$, T, pWho } from "../../core.js";
 import { emit, on } from "../../core/events.js";
 import { VS, sel } from "../../core/state.js";
@@ -20,18 +20,22 @@ import { applyPrefs, colOf } from "../theme.js";
 import { toast } from "../toast.js";
 import { TOAST } from "../../config/copy.js";
 
-let stage='grid';
+let stage='grid', pickT=0;
 const ask=(g,d,s)=>emit('lock:ask',{g,d,s});
-// the line under the two-player picture (v10 / v11): a table in config/copy.js, picked by game and mode
-function passLine(g,d){ if(g==='sequence') return PASS_LINE.sequence; if(g==='spot'&&d==='count') return PASS_LINE['spot:count']; return PASS_LEN[g]?T(PASS_LINE.timed,{n:PASS_LEN[g]}):PASS_LINE.once; }
-function vsLine(g,d){ if(g==='sequence') return VS_LINE.sequence; if(g==='reaction') return VS_LINE.reaction; return T(VS_LINE.lead,{n:VS_LEAD}); }
-function renderVsArt(){ const box=$('#vsart'); if(!sel.vs){ box.classList.remove('on'); $('#sheet').classList.remove('two'); return; }
-  const [svg,line]=VS_ART[sel.vs]; box.innerHTML=svg+`<span>${line}</span><small>${sel.vs===1?passLine(sel.game,sel.diff):vsLine(sel.game,sel.diff)}</small><small>${pWho(0)} · ${pWho(1)}</small>`; box.classList.add('on'); $('#sheet').classList.add('two'); }
+// v14 (4.2): the caption and the grey sub-line under the picture are gone. Versus keeps one line, because 4.14 changed what wins
+function vsLine(g,d){ if(g==='sequence') return VS_LINE.sequence; if(g==='reaction') return VS_LINE.reaction; return T(VS_LINE.lead,{n:VS_LEAD,t:VS_TARGET[g]||VS_LEAD}); }
+// the two-player picture (v10). v14 (4.3 / 4.5): the phones wear the player labels — side by side for pass & play, one at each
+// end of the one phone for versus, which is the thing versus actually is
+function renderVsArt(){ const box=$('#vsart'); if(!sel.vs){ box.classList.remove('on','vs2'); $('#sheet').classList.remove('two'); return; }
+  const versus=sel.vs===2, svg=VS_ART[sel.vs];
+  box.innerHTML=versus?`<span class="vsp">${pWho(1)}</span>${svg}<span class="vsp">${pWho(0)}</span><small>${vsLine(sel.game,sel.diff)}</small>`
+    :`${svg}<span class="vsp two">${pWho(0)}${pWho(1)}</span>`;
+  box.classList.toggle('vs2',versus); box.classList.add('on'); $('#sheet').classList.add('two'); }
 // the player row (v11): Solo / With a friend, and under a friend, Pass & play / Versus where versus exists
 function renderVsRow(){ const g=sel.game; const vsOk=versusOf(g,sel.diff); if(sel.vs===2&&!vsOk) sel.vs=1;
   $$('#vs-row [data-vs]').forEach(c=>c.classList.toggle('sel',(c.dataset.vs==='0')===(sel.vs===0)));
   const sub=$('#vs-sub'); const showSub=sel.vs>0; sub.hidden=!showSub; sub.querySelector('[data-vs2="2"]').hidden=!vsOk; $$('#vs-sub [data-vs2]').forEach(c=>c.classList.toggle('sel',+c.dataset.vs2===sel.vs)); }
-function setStage(st){ stage=st; const g=GAMES[sel.game]; $('#grid').classList.toggle('dim',st!=='grid'); $('#sheet').classList.toggle('up',st!=='grid'); $('#sheet').classList.toggle('len',st==='len');
+function setStage(st){ stage=st; const g=GAMES[sel.game]; $('#diff-row').classList.remove('picking'); $('#grid').classList.toggle('dim',st!=='grid'); $('#sheet').classList.toggle('up',st!=='grid'); $('#sheet').classList.toggle('len',st==='len');
   $('#diff-row').classList.toggle('single',g.modes.length===1);
   $('#seq-opts').style.display='none'; $('#vs-wrap').style.display=st==='mode'||(st==='len'&&g.modes.length===1)?'':'none'; renderVsRow();
   if(st==='grid'){ $$('.tile').forEach(t=>t.classList.remove('keep')); } $('#sheet-title').textContent=g.name+(sel.vs===1?SHEET.passTitle:sel.vs===2?SHEET.versusTitle:''); $('#len-title').textContent=SHEET.mode;
@@ -46,9 +50,9 @@ function renderTiles(){ const reveal=!prefs.gridSeen; if(reveal){ prefs.gridSeen
     if(open&&!reveal){ const nw=newMark('game:'+g,fresh); if(nw) t.classList.add('newthing'); } });
   markSeen(fresh); }
 // a locked mode (v11) is crossed out, not just greyed; tapping it says what it takes
-function fillSheet(){ const g=GAMES[sel.game]; const fresh=[]; $('#diff-row').innerHTML=g.modes.map(d=>{ const open=isOpen(sel.game,d); const nw=open?newMark('mode:'+sel.game+':'+d,fresh):''; return `<button data-act="diff" class="choice ${open?'':'locked'}${nw}" data-diff="${d}"><span class="pic">${picOf(sel.game,d)}</span><span class="txt"><b class="${open?'':'x'}">${MODE_NAME[d]}</b><small>${open?g[d]:T(SHEET.toUnlock,{need:needFor(sel.game,d)})}</small></span></button>`; }).join(''); markSeen(fresh); }
+function fillSheet(){ const g=GAMES[sel.game]; const fresh=[]; $('#diff-row').innerHTML=g.modes.map(d=>{ const open=isOpen(sel.game,d); const nw=open?newMark('mode:'+sel.game+':'+d,fresh):''; return `<button data-act="diff" class="choice ${open?'':'locked'}${nw}" data-diff="${d}"><span class="pic">${picOf(sel.game,d)}</span><span class="txt"><b class="${open?'':'x'}">${MODE_NAME[d]}</b><small class="${open?'':'need'}">${open?g[d]:T(SHEET.toUnlock,{need:needFor(sel.game,d)})}</small></span></button>`; }).join(''); markSeen(fresh); }
 // the length face (v11): the name with its seconds beside it on the pick sheet, the best underneath; a locked length is crossed out
-const lenFace=(g,s,d)=>{ if(g==='sequence') return `<span class="keys">${'<i></i>'.repeat(s)}</span>${lenName(g,s,d)}`; return lenName(g,s,d); };
+const lenFace=(g,s,d,vs)=>{ if(g==='sequence') return `<span class="keys">${'<i></i>'.repeat(s)}</span>${lenName(g,s,d,vs)}`; return lenName(g,s,d,vs); };
 // the length buttons only select (v10); Go starts. The whole block slides up together, the same for every game. Pass & play fixes the length; versus has none (Reaction versus has a best-of)
 function fillTimes(){ const c=GC(sel.game,sel.diff); const seq=sel.game==='sequence'; const versus=sel.vs===2&&versusOf(sel.game,sel.diff); const lens=lensOf(sel.game,sel.diff,versus?2:0); if(!lens.includes(sel.secs)||!versus&&!lenOpen(sel.game,sel.diff,sel.secs)) sel.secs=lens.find(s=>versus||lenOpen(sel.game,sel.diff,s))||lens[0];
   const fixed=sel.vs===1&&(PASS_LEN[sel.game]||SHARED2(sel.game,sel.diff)), hideLen=fixed||(versus&&!c.vsLens);
@@ -56,7 +60,7 @@ function fillTimes(){ const c=GC(sel.game,sel.diff); const seq=sel.game==='seque
   $('#time-row').style.display=hideLen?'none':''; $('#len-title').style.display=hideLen?'none':''; $('#len-title').textContent=SHEET.mode;
   // v13 (3.3): NAME on one line, what it costs on the next, the best under that — nothing can overlap, and the layout is the same for every game
   $('#time-row').innerHTML=lens.map(s=>{ const best=Scores.best(sel.game,sel.diff,s); const L=versus?null:lenLock(sel.game,sel.diff,s); const sub=versus?'':lenSub(sel.game,s,sel.diff); const nw=L?'':newMark('len:'+sel.game+':'+sel.diff+':'+s,fresh);
-    return `<button data-act="time" class="tbtn ${sel.secs===s?'sel':''} ${L?'locked':''}${nw}" data-time="${s}"><b class="${L?'x':''}">${lenFace(sel.game,s,sel.diff)}</b>${sub?`<small class="lsub">${sub}</small>`:''}<small>${L?SHEET.locked:best!==null?`${c.lower?SHEET.closest:SHEET.best} ${scoreTxt(sel.game,best,sel.diff,s)}`:SHEET.noRun}</small></button>`; }).join('');
+    return `<button data-act="time" class="tbtn ${sel.secs===s?'sel':''} ${L?'locked':''}${nw}" data-time="${s}"><b class="${L?'x':''}">${lenFace(sel.game,s,sel.diff,versus)}</b>${sub?`<small class="lsub">${sub}</small>`:''}<small>${L?SHEET.locked:best!==null?`<i class="bw">${c.lower?SHEET.closest:SHEET.best}</i> ${scoreTxt(sel.game,best,sel.diff,s)}`:SHEET.noRun}</small></button>`; }).join('');
   // v13 (7.1): the scale left for Customise. Practice from is earned (7.2)
   const pOpen=practiceOpen(); if(!pOpen) sel.practice=0;
   $('#prac-row').innerHTML=`<span class="chip lbl">${SHEET.practiceFrom}</span>`+(pOpen?[0,5,10,15].map(n=>`<button data-act="prac" class="chip ${sel.practice===n?'sel':''}" data-prac="${n}">${n||SHEET.off}</button>`).join(''):`<button data-act="praclock" class="chip locked x" data-praclock="1">${SHEET.pracLocked}</button>`);
@@ -82,8 +86,10 @@ define({
   game(b){ if(b.classList.contains('locked')){ ask(b.dataset.game,GAMES[b.dataset.game].modes[0]); return 'pick'; }
     sel.game=b.dataset.game; prefs.lastGame=sel.game; save(); applyPrefs(sel.game); $$('.tile').forEach(t=>t.classList.toggle('keep',t===b)); fillSheet();
     if(GAMES[sel.game].modes.length===1){ sel.diff=GAMES[sel.game].modes[0]; setStage('len'); fillTimes(); } else setStage('mode'); return 'pick'; },
-  diff(b){ if(stage==='len'){ setStage('mode'); return 'pick'; } if(b.classList.contains('locked')){ ask(sel.game,b.dataset.diff); return 'pick'; } sel.diff=b.dataset.diff; $$('.choice').forEach(c=>c.classList.toggle('sel',c===b));
-    setStage('len'); fillTimes(); return 'pick'; },
+  diff(b){ if(stage==='len'){ setStage('mode'); return 'pick'; } if(b.classList.contains('locked')){ ask(sel.game,b.dataset.diff); return 'pick'; } sel.diff=b.dataset.diff;
+    // v14 (4.6): the picked mode turns green and the other darkens, then the length row and Go push up — no jump cut
+    $$('.choice').forEach(c=>{ c.classList.toggle('sel',c===b); c.classList.toggle('picked',c===b); }); $('#diff-row').classList.add('picking');
+    clearTimeout(pickT); pickT=setTimeout(()=>{ $('#diff-row').classList.remove('picking'); $$('.choice').forEach(c=>c.classList.remove('picked')); if(stage==='mode'){ setStage('len'); fillTimes(); } },170); return 'pick'; },
   'lvl-back'(){ setStage('mode'); return 'click'; },
   time(b){ const v=+b.dataset.time; if(b.classList.contains('locked')){ ask(sel.game,sel.diff,v); return 'pick'; } sel.secs=v; $$('[data-time]').forEach(c=>c.classList.toggle('sel',c===b)); return 'pick'; },
   'go-btn'(){ if(sel.game!=='sequence') sel.practice=0; VS.reset(); start(); return 'click'; },

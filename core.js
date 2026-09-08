@@ -12,7 +12,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const T=(s,v)=>String(s).replace(/\{(\w+)\}/g,(_,k)=>v&&v[k]!=null?v[k]:'');
 const vmin=()=>Math.min(innerWidth,innerHeight)/100;
 const f2=n=>(Math.round(n*100)/100).toFixed(2);
-const pWho=p=>`<span class="${p?'p2':'p1'}">${T(PLAYER.who,{n:p+1,col:p?PLAYER.blue:PLAYER.red})}</span>`;
+const pWho=p=>`<span class="${p?'p2':'p1'}">${T(PLAYER.who,{n:p+1})}</span>`;
 // sequence speed is not a choice any more (v9): it starts at 0.5s a key and tightens 15ms a round, floor 0.28s (SEQ_STEP)
 const seqStep=round=>Math.max(SEQ_STEP.floor,Math.round(SEQ_STEP.start-(round-1)*SEQ_STEP.step));
 const shapeI=s=>`<i class="${s}"></i>`;

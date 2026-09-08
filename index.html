@@ -15,11 +15,9 @@
 </head><body>
 <canvas id="stars"></canvas>
 
-<section class="screen" id="s-story"><div class="stline" id="st1">games of pure skill</div><div class="stline" id="st2">the only thing to blame is yourself</div><div class="wordmark">No Excuses</div><div class="hint">tap to begin</div></section>
-
 <section class="screen on" id="s-menu">
   <div class="nextup" id="nextup" data-act="nextup" hidden></div>
-  <div class="wordmark">No Excuses</div>
+  <div class="titlewrap"><div class="stline" id="st1">games of pure skill</div><div class="wmin"><div class="wordmark" id="wordmark">No Excuses</div></div><div class="stline" id="st2">the only thing to blame is yourself</div></div>
   <div class="menu-tag" id="menu-tag">unlock them all</div>
   <div style="height:6px"></div>
   <button data-act="go" class="item glow" data-go="s-pick">Play</button>
@@ -28,6 +26,7 @@
   <button data-act="go" class="item glow" data-go="s-custom">Customise</button>
   <button data-act="go" class="item glow" data-go="s-about">About</button>
   <div class="menu-note" id="menu-note"></div>
+  <div class="hint" id="storyhint">tap to begin</div>
 </section>
 
 <section class="screen" id="s-pick" data-back="s-menu">
@@ -108,7 +107,7 @@
   <div class="explain">A passion project of simple games of pure skill and minimal frills.<br><br>If you'd like to remove ads, add customisation, and show your support, tap below.</div>
   <button data-act="support" class="support" id="support"><b id="support-title">Support · A$1.99 · once</b><small id="support-text">No ads, ever. Every colour, background and sound pack open from day one, plus the colour wheel. A pro 60-second length in Quick Tap and Dots, with its own boards. A star on your profile.</small></button>
   <div class="tierbox" id="tierbox"></div>
-  <div class="hint">build 18 · refactor 0.4 · 6 sept 2026</div>
+  <div class="hint">build 19 · batch 10 · surface · 8 sept 2026</div>
   <div class="eyebrow" data-dev>testing</div>
   <div class="chips" data-dev><button data-act="dev-fresh" class="chip" id="dev-fresh">fresh game · wipe everything</button><button data-act="dev-open" class="chip" id="dev-open">open everything</button><button data-act="dev-story" class="chip" id="dev-story">replay the intro</button><button data-act="dev-sup" class="chip" id="dev-sup">supporter</button></div>
   <div class="hint" id="dev-state" data-dev></div>
@@ -116,10 +115,11 @@
 
 <section class="screen" id="s-pass">
   <div class="eyebrow" id="pass-eyebrow">vs</div>
-  <div class="eyebrow" id="pass-who"></div>
-  <div class="big" id="pass-title">Pass the phone</div>
-  <div class="explain" id="pass-text"></div>
+  <div class="pwho" id="pass-who"></div>
+  <div class="pturnline" id="pass-turn">your turn</div>
+  <div class="pbeat" id="pass-beat"></div>
   <button data-act="pass-go" class="item big" id="pass-go">Ready</button>
+  <div class="hint" id="pass-hand">hand the phone over</div>
 </section>
 
 <section class="screen" id="s-over" data-back="s-pick">
@@ -155,10 +155,11 @@
   <div id="rxbar"></div>
   <div id="bigcount">0</div>
   <div id="vs">
+    <div id="vslean"></div>
     <div id="vfield"></div>
-    <div class="vhalf top p2"><div class="vwho" id="vwho1"><span class="p2">Player 2 · blue</span><b id="vn1">0</b></div><div class="pad l" data-vs-side="1:0"><div class="sq" id="vsq10"></div></div><div class="pad r" data-vs-side="1:1"><div class="sq" id="vsq11"></div></div></div>
+    <div class="vhalf top p2"><div class="vwho" id="vwho1"><span class="p2">Player 2</span><b id="vn1">0</b></div><div class="pad l" data-vs-side="1:0"><div class="sq" id="vsq10"></div></div><div class="pad r" data-vs-side="1:1"><div class="sq" id="vsq11"></div></div><div class="pad l up" data-vs-side="1:2"><div class="sq" id="vsq12"></div></div><div class="pad r up" data-vs-side="1:3"><div class="sq" id="vsq13"></div></div></div>
     <div id="vsmid"><b id="vsdiff">first to lead by 10</b><div class="lead"><i id="vslead"></i><u></u></div><span id="vsnote"></span></div>
-    <div class="vhalf bot p1"><div class="vwho" id="vwho0"><span class="p1">Player 1 · red</span><b id="vn0">0</b></div><div class="pad l" data-vs-side="0:0"><div class="sq" id="vsq00"></div></div><div class="pad r" data-vs-side="0:1"><div class="sq" id="vsq01"></div></div></div>
+    <div class="vhalf bot p1"><div class="vwho" id="vwho0"><span class="p1">Player 1</span><b id="vn0">0</b></div><div class="pad l" data-vs-side="0:0"><div class="sq" id="vsq00"></div></div><div class="pad r" data-vs-side="0:1"><div class="sq" id="vsq01"></div></div><div class="pad l up" data-vs-side="0:2"><div class="sq" id="vsq02"></div></div><div class="pad r up" data-vs-side="0:3"><div class="sq" id="vsq03"></div></div></div>
     <div id="vwin"></div>
   </div>
   <div class="hud"><span id="hud-mode"></span><span id="score">0</span><span id="hud-time">0.00</span></div>
@@ -177,12 +178,12 @@
 
 <script type="module" src="./boot.js"></script>
 
-<div id="build">build 18</div>
+<div id="build">build 19</div>
 <button id="update">New build available — tap to reload</button>
 <script>
 // build check: version.json is fetched with no-store, so a stale cached page still learns a newer build exists
 (function(){
-  const BUILD="18";
+  const BUILD="19";
   async function check(){
     try{
       const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});

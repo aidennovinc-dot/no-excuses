@@ -2,8 +2,8 @@
    `{name}` placeholders are filled by T() in core.js. Markup inside a string here is trusted (S1: it is config, not
    player data); anything player-typed is escaped by the caller before it is interpolated. Grouped by where it shows. */
 
-// the two players (v11 / L4) — the span class carries the colour
-export const PLAYER = { who:'Player {n} · {col}', red:'red', blue:'blue' };
+// the two players (v11 / L4) — the span class carries the colour, so v14 (4.1) drops the colour word beside the name
+export const PLAYER = { who:'Player {n}' };
 
 export const TOAST = {
   devOpenOn:'Everything open · modes and cosmetics', devOpenOff:'Progression back on · only what you earned',
@@ -23,7 +23,7 @@ export const BG_NAME = { stars:'stars', grid:'grid', rain:'rain', orbs:'orbs' };
 // v13: Stretch is Pro (11.1); the Unlocks line says what the tier is for (11.2); Author (11.3) is Aiden's own records, placeholders until the final build
 export const TIERS = { unlock:['Unlocks','Earned along the way — every one opens something new.'], pro:['Pro','harder. bragging rights, a few unlock things'], author:['Author','beat the numbers Aiden set. placeholders until the final build'], secret:['Secret','they exist. what earns them is not written down'] };
 // the progress rules' own wording: length locks without a rule, the practice row, the Author rows
-export const PROGRESS = { finishOne:'finish one {prev}', finishA:'finish a {prev}', streak:'Streak', practiceFrom:'Practice from', beat:'Beat Aiden — {rec}', none:'—' };
+export const PROGRESS = { finishOne:'finish one {game} {prev}', finishA:'finish a {game} {prev}', streak:'Streak', practiceFrom:'Practice from', beat:'Beat Aiden — {rec}', none:'—' };
 
 // the one-liner under the ghost demo, the first time a mode is played
 export const INTRO = {
@@ -39,7 +39,7 @@ export const INTRO = {
   'reaction:flash': ['Tap the moment it goes white.','tap early and you start that one again'],
   'reaction:nogo':  ['Tap only the shape you were told.','three wrong taps end the run · the rule changes'],
   'spot:count':     ['Count the shape you were shown.','the rest are decoys · three mistakes end it'],
-  'spot:find':      ['One shape is different. Tap it.','the crowd grows every round'],
+  'spot:find':      ['Find the shape you were shown.','the crowd grows every round'],
 };
 // verdicts: tiered by a per-game quality 0..1 (progress/rules.js QUALITY) — five steps, worst first
 export const VERDICTS = {
@@ -64,16 +64,17 @@ export const SHEET = { mode:'Mode', toUnlock:'To unlock: {need}', tileUnlock:'to
   go:'Go', goVersus:'Go · versus', goEach:'Go · {n}s each', goPass:'Go · pass & play', passTitle:' · pass & play', versusTitle:' · versus',
   chalScored:'A friend scored ', chalBeat:' — beat it', chalSent:'A friend sent you this one' };
 export const LOCK = { text:'{name}<b>To unlock: {need}</b>' };
-// the line under the two-player picture (v10 / v11)
-export const PASS_LINE = { sequence:'take turns copying · the computer adds a note each time · a miss loses', 'spot:count':'same flash, both answer · 10 rounds · speed wins, 0.35s of leeway',
-  timed:'{n} seconds each, then the scores side by side', once:'one run each, then the scores side by side' };
-export const VS_LINE = { sequence:'Compose · tap in up to 8 notes, the other copies · then swap', reaction:'first to tap after the flash wins the round · early tap loses it', lead:'first to lead by {n} wins' };
+// v14 (4.2): the sub-copy under the two-player picture is gone — no "take turns on one phone", no "{n} seconds each", no grey
+// line under Pass and Play. The phones carry the player labels instead (4.3 / 4.5). Versus keeps one line, because 4.14 changed what wins
+export const VS_LINE = { sequence:'Compose · tap in up to 8 notes, the other copies · then swap', reaction:'first to tap after the flash wins the round · early tap loses it', lead:'first to {t} · or lead by {n}' };
 
 // the run's HUD and the versus / pass & play screens
-export const HUD = { goal:'goal · <b>{need}</b> · unlocks {name}', aim:'goal · <b>{aim}</b>', goalHit:'✓ ', best:'best {score}', versus:'versus', pass:'pass & play',
-  vsLead:'first to lead by {n}', vsQt:'tap your white square', vsDots:'squares vs circles · wrong shape gives them the point', level:'level', lead:'{who} +{n}',
+export const HUD = { goal:'<i>goal · <b>{need}</b></i><u>unlocks {name}</u>', aim:'<i>goal · <b>{aim}</b></i>', goalHit:'✓ ', best:'best {score}', versus:'versus', pass:'pass & play',
+  vsLead:'first to {t} · or lead by {n}', vsQt:'tap your white square', vsDots:'squares vs circles · wrong shape gives them the point', level:'level', lead:'{who} +{n}',
   draw:'draw', wins:'Player {n} wins', byLead:'by {n}', onClock:'on the clock', skipIn:'skip in {n}', skip:'skip' };
-export const PASS = { eyebrow:'{game} · pass & play', up:"{who} · you're up", text:'{who} scored <b>{score}</b>.<br>Hand the phone over.' };
+// v14 (4.7 / 4.9): the game name sits in its usual place at the top, whose turn it is is the biggest thing on the screen, and
+// player 2 is told what there is to beat — the score, and the pace behind it where the game has one
+export const PASS = { eyebrow:'{game} · pass & play', up:'your turn', hand:'hand the phone over', beat:'to beat', rate:'{n}/s' };
 export const RESULT = { practice:'practice', fail:'run over', best:'new best', pass:'pass & play', versus:'versus', dash:'—', lowerMark:'<span class="dn">▼</span>',
   rank:'rank <b>{n}</b> of 10 · {name}', outside:'outside the top 10 · {name}', you:'you', practiceNote:'practice · nothing recorded', twoNote:'two players · nothing recorded',
   top:'top 10 · {where}', closestFirst:' · closest first', noRuns:'No runs here yet.', peak:'peak', notes:'{n} notes' };

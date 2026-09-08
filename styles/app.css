@@ -79,41 +79,34 @@
   #stars{position:absolute;inset:0;width:100%;height:100%;display:block;transition:opacity .3s}
 
 /* ==================================================================
-   title — ui/screens/title.js
+   title — the sequence that opens the menu (ui/screens/menu.js)
    ================================================================== */
-  /* first open (v9): a tap-through in four cards — what this is, how modes open, how the look is earned */
-  #s-story{gap:22px;justify-content:center;cursor:pointer}
-  #s-story .card{display:flex;flex-direction:column;gap:16px;align-items:center;max-width:34ch;text-align:center;animation:rvin .5s ease-out both}
-  #s-story h2{font-family:var(--title);font-size:clamp(18px,5.4vw,30px);letter-spacing:.2em;text-transform:uppercase;padding-left:.2em}
-  #s-story p{color:var(--ink);opacity:.8;font-size:16px;line-height:1.6}
-  #s-story .dots{display:flex;gap:8px}
-  #s-story .dots i{width:6px;height:6px;border-radius:50%;background:var(--line)}
-  #s-story .dots i.on{background:var(--ink)}
-  /* ---------- v10 ---------- */
-  /* the intro is the menu screen without the menu (v10): wordmark, one line, tap anywhere */
-  #s-story{gap:26px;justify-content:center;cursor:pointer}
-  #s-story .tagline{max-width:30ch;text-align:center;color:var(--ink);opacity:.8;font-size:17px;line-height:1.65;animation:rvin .9s ease-out .9s both}
-  #s-story .tagline b{display:block;font-family:var(--title);letter-spacing:.2em;text-transform:uppercase;font-size:13px;margin-top:14px;color:var(--ink);opacity:.9}
-  #s-story .hint{animation:rvin .9s ease-out 2s both}
-  /* title sequence (v11): two lines fade in and out one after another, then the title lands, then the hint. Nothing flashes past */
-  #s-story{gap:0;justify-content:center;cursor:pointer}
-  #s-story .stline{position:absolute;left:24px;right:24px;top:40%;text-align:center;font-family:var(--title);font-size:clamp(14px,4.4vw,24px);letter-spacing:.2em;text-transform:uppercase;color:var(--ink);opacity:0;line-height:1.6}
-  #s-story #st2{top:48%}
-  /* line 1 in at 0.3s, line 2 in at 1.5s, both readable until 3.6s, both gone by 4.1s; the title lands at 4.3s, the hint at 5.6s. Fades are 0.5s */
-  #s-story.run #st1{animation:stline1 3.8s ease-in-out .3s both}
-  #s-story.run #st2{animation:stline2 2.6s ease-in-out 1.5s both}
-  @keyframes stline1{0%{opacity:0;translate:0 6px}13%{opacity:.9;translate:0 0}87%{opacity:.9}100%{opacity:0}}
-  @keyframes stline2{0%{opacity:0;translate:0 6px}19%{opacity:.9;translate:0 0}81%{opacity:.9}100%{opacity:0}}
-  #s-story .wordmark{opacity:0}
-  #s-story.run .wordmark{animation:titlein 1.2s ease-out 4.3s both,breathe 14s ease-in-out 5.5s infinite,float 13s ease-in-out 5.5s infinite}
-  #s-story .hint{opacity:0}
-  #s-story.run .hint{animation:rvin .9s ease-out 5.6s both}
+  /* v14 (1.2): there is one NO EXCUSES, it lives on the menu screen, and the sequence plays around it — so it never moves,
+     never re-renders and never re-animates when the menu arrives. `.story` hides the menu's own rows WITHOUT taking their
+     space, so the layout the title sits in is already final; `.run` drives the three beats; `.storyend` fades the lines out. */
+  .titlewrap{position:relative;display:flex;flex-direction:column;align-items:center}
+  #s-menu .stline{position:absolute;left:50%;transform:translateX(-50%);width:92vw;text-align:center;font-family:var(--title);font-size:clamp(12px,3.8vw,20px);letter-spacing:.2em;text-transform:uppercase;color:var(--ink);opacity:0;line-height:1.6;pointer-events:none;display:none}
+  #st1{bottom:calc(100% + 26px)}
+  #st2{top:calc(100% + 26px)}
+  #storyhint{position:absolute;left:0;right:0;bottom:max(34px,calc(env(safe-area-inset-bottom) + 30px));opacity:0;display:none;margin:0}
+  #s-menu.story .stline,#s-menu.story #storyhint{display:block}
+  #s-menu.story .nextup,#s-menu.story .menu-tag,#s-menu.story .item,#s-menu.story .menu-note{visibility:hidden}
+  /* 1.1 — three beats: the first line at the top, NO EXCUSES in the middle, the second line under it. The title's own
+     arrival is on .wmin, never on .wordmark, so breathe and float are never restarted underneath it */
+  #s-menu.story .wmin{opacity:0}
+  #s-menu.story.run #st1{animation:stline .8s ease-out .3s both}
+  #s-menu.story.run .wmin{animation:titlein 1.1s ease-out 1.9s both}
+  #s-menu.story.run #st2{animation:stline .8s ease-out 3.3s both}
+  #s-menu.story.run #storyhint{animation:stline .8s ease-out 4.6s both}
+  @keyframes stline{0%{opacity:0;translate:0 6px}100%{opacity:.9;translate:0 0}}
+  #s-menu.storyend .stline,#s-menu.storyend #storyhint{animation:stout .3s ease-out both!important}
+  @keyframes stout{0%{opacity:.9}100%{opacity:0}}
 
 /* ==================================================================
    menu — ui/screens/menu.js
    ================================================================== */
-  /* first open (v7): the title fades up over 1.1s, then each menu item fades in under it, 140ms apart. A fade, not a drop */
-  #s-menu.intro .wordmark{animation:titlein 1.1s ease-out both,breathe 14s ease-in-out 1.1s infinite,float 13s ease-in-out 1.1s infinite}
+  /* v14 (1.3): the first menu a profile ever sees reveals its items one at a time, 140ms apart; every open after that is
+     instant. The title is NOT in this — it is already on screen and animating it again would be the jump 1.2 asks us to stop */
   @keyframes titlein{0%{opacity:0;scale:.98}100%{opacity:1;scale:1}}
   #s-menu.intro .item{animation:menufade .7s ease-out both}
   #s-menu.intro .item:nth-of-type(1){animation-delay:.9s}
@@ -204,7 +197,12 @@
   .mini.tmh i.b{left:0;top:32%;width:22%;height:36%;border-radius:50%;background:var(--sq-live)}
   .mini.tmh i.wall{left:42%;right:0;top:0;bottom:0;background:var(--panel);border-left:1px solid var(--line)}
   .mini.tmh i.m{left:64%;top:32%;width:22%;height:36%;border-radius:50%;border:2px dashed var(--cue)}
-  .mini.rx{background:var(--sq-live);width:100%;height:100%}
+  /* v14 (2.2): Reaction reads as a press — a smaller white square with lines coming out of it, not a filled block */
+  .mini.rx{background:none;width:100%;height:100%;display:grid;place-items:center;position:relative}
+  .mini.rx::before{content:"";width:34%;height:34%;background:var(--sq-live)}
+  .mini.rx::after{content:"";position:absolute;inset:14%;opacity:.85;
+    background:linear-gradient(to right,var(--sq-live) 0 13%,transparent 13% 87%,var(--sq-live) 87% 100%) center/100% 7% no-repeat,
+               linear-gradient(to bottom,var(--sq-live) 0 13%,transparent 13% 87%,var(--sq-live) 87% 100%) center/7% 100% no-repeat}
   .mini.rx i{display:none}
   .mini.nogo{gap:14%;align-items:center;justify-content:center}
   .mini.nogo i{flex:none;width:34%;height:34%;background:var(--sq-live)}
@@ -264,7 +262,8 @@
   .tbtn b.x::after{top:45%}
   /* the grid reveal (v11): tiles arrive one by one on the first visit; locked tiles wear a padlock that wipes off when the game opens */
   .tile.reveal{animation:tilein .5s ease-out both}
-  @keyframes tilein{0%{opacity:0;translate:0 10px;scale:.96}100%{opacity:1;translate:0 0;scale:1}}
+  /* v14 (2.1): unseen to being seen — each tile pulses up from nothing rather than sliding in */
+  @keyframes tilein{0%{opacity:0;scale:.15}65%{opacity:1;scale:1.08}100%{opacity:1;scale:1}}
   .tile .pic::before{content:"";position:absolute;top:6px;right:6px;width:14px;height:16px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 16'%3E%3Crect x='1' y='7' width='12' height='8' rx='1.5' fill='%23E8E6E1'/%3E%3Cpath d='M4 7V4.5a3 3 0 0 1 6 0V7' fill='none' stroke='%23E8E6E1' stroke-width='1.8'/%3E%3C/svg%3E") center/contain no-repeat;opacity:0;transition:opacity .3s;z-index:2}
   .tile.locked .pic::before,.tile.unlocking .pic::before{opacity:.9}
   .tile.unlocking .pic::before{animation:padoff .5s ease-in both}
@@ -273,6 +272,23 @@
   @keyframes brightpic{0%{opacity:.4}100%{opacity:1}}
   .tile.newthing{border-color:transparent!important}
   .tile.newthing .pic{border-color:var(--ok)}
+  /* v14 (3.1): the requirement under a locked mode is the way in, so it reads in the same green everything unlockable wears */
+  .choice small.need{color:var(--ok)}
+  /* v14 (3.4): "best" / "closest" is green on every best-of row, on the sheet and on the result screen */
+  .tbtn small i.bw,.stats i.bw{font-style:normal;color:var(--ok)}
+  /* v14 (4.6): picking a mode turns it green and darkens the other for a beat, then the length row and Go push up */
+  .choice.picked{border-color:var(--ok)!important;background:color-mix(in srgb,var(--ok) 12%,transparent)}
+  .diffs.picking .choice:not(.picked){opacity:.25}
+  .diffs .choice{transition:opacity .18s,padding .18s,background .18s,border-color .18s}
+  .sheet.len #go-btn{animation:goup .3s cubic-bezier(.2,.8,.2,1) .06s both}
+  @keyframes goup{0%{opacity:0;translate:0 28px}100%{opacity:1;translate:0 0}}
+  /* v14 (4.2 / 4.3 / 4.5): no caption, no grey sub-line — the phones carry the player labels, in the player colours */
+  #vsart svg{width:120px;height:74px}
+  #vsart .vsp{display:flex;justify-content:center;font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--mute)}
+  #vsart .vsp.two{width:180px}
+  #vsart .vsp>span{white-space:nowrap}
+  #vsart .vsp.two>span{flex:1;text-align:center}
+  #vsart .vsp .p1,#vsart .vsp .p2{font-weight:700}
   #chal{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ok);border:1px solid var(--ok);padding:8px 12px;text-align:center;line-height:1.5}
   #chal b{color:var(--ink);font-size:15px;letter-spacing:0}
 
@@ -419,8 +435,15 @@
 /* ==================================================================
    pass — ui/screens/pass.js
    ================================================================== */
-  #s-pass{gap:18px}
-  #s-pass .big{font-size:clamp(28px,8vw,48px);font-family:var(--title);letter-spacing:.16em}
+  /* v14 (4.7): whose turn it is is the biggest thing on the screen and wears that player's colour; the game name is back at
+     the top where it belongs; 4.9 puts what there is to beat under it, with the pace behind it as a bar */
+  #s-pass{gap:14px}
+  #s-pass .pwho{font-family:var(--title);font-size:clamp(28px,9.5vw,52px);letter-spacing:.14em;text-transform:uppercase;text-align:center;line-height:1.2}
+  .pturnline{font-family:var(--mono);font-size:13px;letter-spacing:.3em;text-transform:uppercase;color:var(--ink)}
+  .pbeat{display:flex;flex-direction:column;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--mute);border:1px solid var(--line);padding:14px 24px;min-width:min(80vw,260px)}
+  .pbeat b{font-size:clamp(34px,11vw,56px);color:var(--ink);letter-spacing:0;font-variant-numeric:tabular-nums;font-weight:700;line-height:1}
+  .pbeat .pbar{width:100%;height:4px;background:var(--line);position:relative;margin:0}
+  .pbeat .pbar i{position:absolute;left:0;top:0;bottom:0;background:var(--sq-live)}
 
 /* ==================================================================
    result — ui/screens/result.js
@@ -529,8 +552,13 @@
    run — run/run.js, games/_shared/hud.js — the game layer, HUD, countdown, goal line, ghost finger
    ================================================================== */
   /* game */
-  #game{display:none;position:absolute;inset:0}
+  /* v14 (4.10): the game layer claims every touch itself. body's `touch-action:manipulation` let the browser treat a second
+     simultaneous finger as the start of a pinch and cancel BOTH pointers — which is exactly the versus bug: two players
+     tapping at the same time cancelled each other out. `none` means no gesture is ever a candidate, so every finger lands */
+  #game{display:none;position:absolute;inset:0;touch-action:none}
   #game.on{display:block}
+  /* v14 (4.8): a pass & play run is outlined in the colour of whoever is playing it */
+  #game.pturn::after{content:"";position:absolute;inset:0;border:3px solid var(--pc,var(--p1));pointer-events:none;z-index:6}
   /* v10: Spot was still listed here as count/find — the v8 rename never reached this line, so #gen stayed hidden and neither mode could start */
   #game[data-g="timing"] #gen,#game[data-g="reaction"] #gen,#game[data-g="spot"] #gen{display:block}
   .pop{animation:pop .22s ease-out}
@@ -592,6 +620,14 @@
   #goal b{color:var(--ink);font-weight:500}
   #goal.hit{border-color:var(--ok);color:var(--ok);animation:pop .3s ease-out}
   #goal.hit b{color:var(--ok)}
+  /* v14 (3.3): one line high, showing the requirement, then what it unlocks — it scrolls between the two rather than
+     cramming both in. run/run.js takes the game's own name back out of the requirement while you are inside that game */
+  #goal{height:22px;padding:0 10px;text-overflow:clip}
+  #goal>i,#goal>u{display:block;font-style:normal;text-decoration:none;line-height:22px;white-space:nowrap;text-align:center}
+  #goal>u{color:var(--mute)}
+  #goal.roll>i,#goal.roll>u{animation:goalroll 9s ease-in-out infinite}
+  @keyframes goalroll{0%,40%{translate:0 0}50%,90%{translate:0 -22px}100%{translate:0 0}}
+  #goal.hit>i::before{content:"\2713 "}
   #game.bigc #score{visibility:hidden}
   #intro p{background:color-mix(in srgb,var(--ground) 88%,#fff);border:1px solid var(--line);padding:12px 14px;left:24px;right:24px}
   #game.timed #rate{display:none}
@@ -867,3 +903,18 @@
   #vwin.on{display:grid}
   #vwin div{font-family:var(--title);font-size:clamp(22px,7vw,40px);letter-spacing:.2em;text-transform:uppercase;color:var(--ok);text-align:center;text-shadow:0 0 18px var(--glow);animation:turnin 1.6s ease-out both}
   #vwin div.top{rotate:180deg}
+  /* v14 (4.11): Four is four pads a player in versus too — the half makes room for the second row and the count moves up */
+  .vhalf .pad.up{display:none}
+  #game.versus[data-d="four"] .vhalf .pad{height:min(28vw,15vh)}
+  #game.versus[data-d="four"] .vhalf .pad.up{display:block;bottom:calc(min(28vw,15vh) + 8px)}
+  #game.versus[data-d="four"] .vhalf .vwho{bottom:calc(2 * min(28vw,15vh) + 18px)}
+  /* v14 (4.12): a wrong tap reads the way it does in solo — red over that player's half, not a blank screen */
+  .vhalf.miss::after{content:"";position:absolute;inset:0;background:var(--miss);pointer-events:none;animation:vsmiss .5s ease-out both}
+  @keyframes vsmiss{0%{opacity:.34}100%{opacity:0}}
+  /* v14 (4.15): the screen leans towards whoever is ahead, and shakes gently once the end is in sight */
+  #vslean{position:absolute;inset:0;pointer-events:none;opacity:calc(var(--lk,0) * .55);transition:opacity .3s}
+  #vslean.p1{background:radial-gradient(140% 62% at 50% 100%,var(--p1),transparent 72%)}
+  #vslean.p2{background:radial-gradient(140% 62% at 50% 0%,var(--p2),transparent 72%)}
+  #vs.close{animation:vsclose 1.5s ease-in-out infinite}
+  @keyframes vsclose{0%,100%{transform:translate(0)}25%{transform:translate(-2px,1px)}75%{transform:translate(2px,-1px)}}
+  @media (prefers-reduced-motion:reduce){#vs.close{animation:none}}

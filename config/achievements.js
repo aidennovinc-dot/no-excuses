@@ -37,7 +37,7 @@ export const ACH = [
   // hold (v11: a Set scores the average % off across 7 rounds — lower is better; a Streak scores rounds)
   { id:'hd_money',  g:'hold', tier:'unlock', name:'On the money', how:'One round within 2.00%', unlocks:['snd','wood'] },
   { id:'hd_steady', g:'hold', tier:'unlock', name:'Steady hand',  how:'Grow · a Set averaging under 3% off', unlocks:['sq','#F3D9FF'], at:{d:'grow',s:7} },
-  { id:'hd_est',    g:'hold', tier:'pro',    name:'Good eye',     how:'Cut · a Set averaging under 4% off', unlocks:['lead','#FFFFFF'], at:{d:'cut',s:7} },
+  { id:'hd_est',    g:'hold', tier:'pro',    name:'Good eye',     how:'Cut · a Set averaging under 4% off', unlocks:['lead','#FFFFFF'], at:{d:'cut',s:10} },
   { id:'hd_run',    g:'hold', tier:'pro',    name:'Long haul',    how:'A Streak of 15 rounds, either mode', at:{s:-1} },
   { id:'hd_s',      g:'hold', tier:'secret', name:'Machine',      how:'Every round of a Set within 4.00%', at:{s:7} },
   // sequence
@@ -53,9 +53,9 @@ export const ACH = [
   { id:'tm_run',   g:'timing',   tier:'pro',    name:'Keeps going',   how:'Stopwatch · a Streak of 10 attempts', at:{d:'stopwatch',s:-1} },
   { id:'tm_s',     g:'timing',   tier:'secret', name:'Metronome',     how:'Stopwatch · a Set averaging under 0.12s', at:{d:'stopwatch',s:5} },
   { id:'rx_200',   g:'reaction', tier:'unlock', name:'Under 200',     how:'Flash · one tap under 200ms', at:{d:'flash'} },
-  { id:'rx_clean', g:'reaction', tier:'pro',    name:'Disciplined',   how:'Go / No-go · a Set with no wrong taps', at:{d:'nogo',s:20} },
+  { id:'rx_clean', g:'reaction', tier:'pro',    name:'Disciplined',   how:'Go / No-go · a Set with no wrong taps', at:{d:'nogo',s:5} },
   { id:'rx_run',   g:'reaction', tier:'pro',    name:'Steady',        how:'Flash · a Streak of 8 attempts', at:{d:'flash',s:-1} },
-  { id:'rx_s',     g:'reaction', tier:'secret', name:'Twitch',        how:'Flash · a Set averaging under 180ms', at:{d:'flash',s:3} },
+  { id:'rx_s',     g:'reaction', tier:'secret', name:'Twitch',        how:'Flash · a Set averaging under 180ms', at:{d:'flash',s:5} },
   { id:'sp_5',     g:'spot',     tier:'unlock', name:'Eight',         how:'Count · reach round 8 in a Streak', at:{d:'count',s:-1} },
   { id:'sp_15',    g:'spot',     tier:'pro',    name:'Dead count',    how:'Count · a Set with 2 or less miscount in total', at:{d:'count',s:10} },
   { id:'sp_fast',  g:'spot',     tier:'unlock', name:'Spotter',       how:'Find · a Set under 20.00s in total', at:{d:'find',s:10} },

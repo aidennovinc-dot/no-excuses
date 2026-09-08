@@ -12,6 +12,7 @@ import { Music, Snd } from "../audio.js";
 import { RUN_SCHEMA } from "../config/build.js";
 import { HUD, INTRO } from "../config/copy.js";
 import { MODE_NAME, PASS_LEN, RATE_MAX } from "../config/games.js";
+import { P1C, P2C } from "../config/theme.js";
 import { $, T, pWho } from "../core.js";
 import { emit } from "../core/events.js";
 import { VS, sel } from "../core/state.js";
@@ -26,10 +27,15 @@ import { applyPrefs } from "../ui/theme.js";
 import { toast } from "../ui/toast.js";
 
 /* ---------- run state. `id` steps on every start and abort, so anything a dead run left behind can tell it is dead ---------- */
-const R={ on:false, live:false, id:0, timed:false, t0:0, end:0, raf:0, goal:null, goalHit:false, fresh:[] };
+const R={ on:false, live:false, id:0, timed:false, t0:0, end:0, raf:0, goal:null, goalHit:false, fresh:[], tension:0 };
 let eng=null, ctx=null;
 const isVx=()=>sel.vs===2&&(sel.game==='quick-tap'||sel.game==='dots');
 const active=()=>R.on;
+
+// v14 (3.3): every requirement names its game (3.2), which is noise once you are inside that game — the in-run goal line takes
+// the name back out, so "30 hits in any Quick Tap run" reads "30 hits in any run" while you are playing Quick Tap. The line
+// scrolls between the requirement and what it unlocks (the CSS) rather than trying to fit both at once
+const here=need=>{ const n=GAMES[sel.game].name; return String(need).split(n+' · ').join('').split(n+' ').join(''); };
 
 /* ---------- first play of a mode (v6): a ghost finger plays two or three beats under a one-liner, then the countdown. Tap to skip ---------- */
 const Intro=(()=>{
@@ -61,14 +67,16 @@ function start(){
   if(versus&&c.vsLens&&!c.vsLens.includes(sel.secs)) sel.secs=c.vsLens[0];
   showGame(); $('#game').classList.remove('live','shake');   // the atmosphere fades, the wheel and the lock box close — they listen for screen:change
   $('#game').classList.toggle('versus',vx); $('#game').classList.toggle('bigc',sel.game==='quick-tap'&&!versus);
-  const who=VS.on?pWho(VS.stage-1)+' · ':''; $('#hud-mode').innerHTML=who+(MODE_NAME[sel.diff]?MODE_NAME[sel.diff]+' · ':'')+(versus?(c.vsLens?lenName(sel.game,sel.secs,sel.diff):HUD.versus):shared?HUD.pass:lenName(sel.game,sel.secs,sel.diff)); $('#score').textContent=c.lower?'0.00':'0';
+  // v14 (4.8): whose turn it is is never in doubt — a pass & play run is outlined in that player's colour
+  $('#game').classList.toggle('pturn',!!VS.on); if(VS.on) $('#game').style.setProperty('--pc',VS.stage===2?P2C:P1C);
+  const who=VS.on?pWho(VS.stage-1)+' · ':''; $('#hud-mode').innerHTML=who+(MODE_NAME[sel.diff]?MODE_NAME[sel.diff]+' · ':'')+(versus?(c.vsLens?lenName(sel.game,sel.secs,sel.diff,true):HUD.versus):shared?HUD.pass:lenName(sel.game,sel.secs,sel.diff)); $('#score').textContent=c.lower?'0.00':'0';
   // the next unlock this run could earn, if any, sits under the HUD (v8). Not for two players. v11: a "Try to unlock" or achievement run keeps its goal up as a reminder even when nothing new can unlock
   // v13 (3.8): a "Try to unlock" run keeps the goal for the thing that was tapped — not whatever the chain would offer next
-  R.goal=VS.on||sel.vs?null:((pendingGoal&&UNLOCKS.find(u=>u.key===pendingGoal))||goalFor(sel.game,sel.diff,sel.secs)); const gl=$('#goal'); gl.classList.remove('hit'); gl.classList.toggle('on',!!R.goal||(!!pendingAim&&!sel.vs)); if(R.goal){ gl.innerHTML=T(HUD.goal,{need:R.goal.need,name:unlockName(R.goal.key)}); } else if(pendingAim&&!sel.vs) gl.innerHTML=T(HUD.aim,{aim:pendingAim}); else gl.innerHTML=''; $('#bar').style.display=g.timed?'':'none'; $('#bar').style.transform='scaleX(1)';
+  R.goal=VS.on||sel.vs?null:((pendingGoal&&UNLOCKS.find(u=>u.key===pendingGoal))||goalFor(sel.game,sel.diff,sel.secs)); const gl=$('#goal'); gl.classList.remove('hit'); gl.classList.toggle('roll',!!R.goal); gl.classList.toggle('on',!!R.goal||(!!pendingAim&&!sel.vs)); if(R.goal){ gl.innerHTML=T(HUD.goal,{need:here(R.goal.need),name:unlockName(R.goal.key)}); } else if(pendingAim&&!sel.vs) gl.innerHTML=T(HUD.aim,{aim:here(pendingAim)}); else gl.innerHTML=''; $('#bar').style.display=g.timed?'':'none'; $('#bar').style.transform='scaleX(1)';
   $('#hud-time').textContent=g.timed?sel.secs.toFixed(2):'';
   hud.reset(); applyPrefs(sel.game); $('#game').classList.toggle('timed',!!g.timed&&!versus);
   if(ctx) ctx.timers.clearT();
-  R.id++; Object.assign(R,{on:true,live:false,timed:!!g.timed&&!vx,t0:0,end:0,goalHit:false,fresh:[]});
+  R.id++; Object.assign(R,{on:true,live:false,timed:!!g.timed&&!vx,t0:0,end:0,goalHit:false,fresh:[],tension:0});
   eng=vx?VERSUS:ENGINES[sel.game]; ctx=makeCtx();
   pbShow(); setPendingAim(''); setPendingGoal(null);
   Music.start(sel.game,R,sel.secs);
@@ -101,10 +109,13 @@ function finish(res){
   emit('run:finish',{run,isBest,two});
 }
 // mid-run (v10): engines emit 'live' with the run so far. Any live unlock that now passes lands at once, with a green toast; the goal line ticks
-function liveCheck(part){ if(!R.on||VS.on||sel.vs===2) return; const run=Object.assign({g:sel.game,d:sel.diff,s:sel.secs,hits:0,misses:0,x:999,y:0},part); const u=unlocked(); let ch=false;
+function liveCheck(part){ if(!R.on) return;
+  // v14 (4.15): versus hands its closeness up as part of the live payload; audio.js reads it off the run state and swaps bed
+  if(part&&part.vsTension!==undefined) R.tension=part.vsTension;
+  if(VS.on||sel.vs===2) return; const run=Object.assign({g:sel.game,d:sel.diff,s:sel.secs,hits:0,misses:0,x:999,y:0},part); const u=unlocked(); let ch=false;
   for(const x of UNLOCKS){ if(x.live&&!u[x.key]&&x.test(run)){ u[x.key]=Date.now(); ch=true; R.fresh.push(x.key); toast(unlockToast(x.key),'','ok'); } }
   if(ch) save();
-  if(R.goal&&!R.goalHit&&(u[R.goal.key]||R.goal.test(run))){ R.goalHit=true; if(R.goal.len) toast(unlockToast(R.goal.key),'','ok'); $('#goal').classList.add('hit'); $('#goal').innerHTML=HUD.goalHit+$('#goal').innerHTML; } }
+  if(R.goal&&!R.goalHit&&(u[R.goal.key]||R.goal.test(run))){ R.goalHit=true; if(R.goal.len) toast(unlockToast(R.goal.key),'','ok'); $('#goal').classList.add('hit'); } }
 // a locked game or mode (v10): the lock box's Try to unlock — straight into the game, with the goal line up
 function goWhere(w){ if(!w) return; const G_=GAMES[w.g]; sel.game=w.g; prefs.lastGame=w.g; save();
   sel.diff=w.d&&isOpen(w.g,w.d)?w.d:(G_.modes.find(d=>isOpen(w.g,d))||G_.modes[0]); if(!isOpen(sel.game,sel.diff)) return emit('lock:ask',{g:sel.game,d:sel.diff});

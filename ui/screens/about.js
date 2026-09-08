@@ -17,7 +17,7 @@ function devState(){ renderTier(); if(!BUILD_FLAGS.dev) return; const u=Object.k
   $('#dev-state').textContent=(prefs.allOpen?ABOUT.devOpen:T(ABOUT.devProg,{u,nu:UNLOCKS.length,a,na:ACH.length}))+T(ABOUT.devRuns,{r})+(prefs.supporter?ABOUT.devSup:ABOUT.devFree);
   $('#dev-open').classList.toggle('sel',!!prefs.allOpen); $('#dev-sup').classList.toggle('sel',!!prefs.supporter); }
 // Fresh game: progress goes, the look and the name stay, and the title sequence plays again (L1)
-function freshGame(){ reset(); seedSeen(); show('s-story'); }
+function freshGame(){ reset(); seedSeen(); show('s-menu',{story:true}); }
 
 if(!BUILD_FLAGS.dev) $('#testing').remove();
 register('s-about',{ onShow(){ devState(); } });
@@ -26,5 +26,5 @@ define({
   'dev-open'(){ prefs.allOpen=!prefs.allOpen; save(); devState(); toast(prefs.allOpen?TOAST.devOpenOn:TOAST.devOpenOff); return 'pick'; },
   'dev-sup'(){ prefs.supporter=!prefs.supporter; save(); devState(); toast(prefs.supporter?TOAST.supOn:TOAST.supOff); return 'pick'; },
   'dev-fresh'(){ freshGame(); devState(); toast(TOAST.fresh); return 'pick'; },
-  'dev-story'(){ show('s-story'); return 'pick'; },
+  'dev-story'(){ show('s-menu',{story:true}); return 'pick'; },
 });

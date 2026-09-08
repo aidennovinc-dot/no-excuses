@@ -1,30 +1,47 @@
-/* No Excuses — the menu (build 18, refactor stage 4; was renderMenu / menuIn / firstRun in menu.js). Five items, the Next
-   achievement card above the title (v13 1.3) and the first-experience dimming (v10 / v11). The card's tap starts the run
-   it names through run.goWhere. */
+/* No Excuses — the menu, and the title sequence that opens it (build 19; the sequence was ui/screens/title.js until build 18).
+   Five items, the Next achievement card above the title (v13 1.3) and the first-experience dimming (v10 / v11).
+
+   v14 (1.2) put the two together on purpose. NO EXCUSES used to be one element on #s-story and a second one on #s-menu, so
+   the title re-rendered and jumped the moment the sequence ended. Now there is one title node, in one screen: the sequence is
+   the `story` class on #s-menu, which hides the menu's own rows without taking their space, and the two lines are absolutely
+   positioned above and below the title (1.1 — line one at the top, NO EXCUSES in the middle, line two under it). The menu is
+   rendered before the sequence starts, so nothing about the layout can change while it plays. */
 import { MENU } from "../../config/copy.js";
 import { $, $$, T } from "../../core.js";
 import { emit, on } from "../../core/events.js";
 import { CHAL } from "../../core/platform.js";
-import { prefs } from "../../core/store.js";
+import { prefs, save } from "../../core/store.js";
 import { Scores, nextGoal, setPendingAim } from "../../progress.js";
 import { goWhere } from "../../run/run.js";
-import { define } from "../actions.js";
-import { register } from "../router.js";
+import { capture, define } from "../actions.js";
+import { register, show } from "../router.js";
+import { Snd } from "../../audio.js";
 
 // first experience (v10): until one run is on the record only Play is live. v11: the rest are crossed out, and the strike wipes off the moment they open
 const firstRun=()=>!prefs.played&&!Scores.runs().length&&!prefs.allOpen;
-let menuWasFirst=firstRun(), nextWhere=null;
-// first open only: title fades up, then the menu fades in under it (v7). The class comes off once it has played so hover/focus opacity works again
-function menuIn(){ $('#s-menu').classList.add('intro'); setTimeout(()=>$('#s-menu').classList.remove('intro'),2400); }
+let menuWasFirst=firstRun(), nextWhere=null, storyOn=false;
+// v14 (1.3): the first menu a profile ever sees reveals its items one at a time; every open after that is instant
+function menuIn(){ if(prefs.menuSeen) return; prefs.menuSeen=1; save(); const m=$('#s-menu'); m.classList.add('intro'); setTimeout(()=>m.classList.remove('intro'),2400); }
 function renderMenu(){ const first=firstRun(); const opening=menuWasFirst&&!first; menuWasFirst=first;
   $$('#s-menu .item').forEach(b=>{ const x=first&&b.dataset.go!=='s-pick'; b.classList.toggle('dim',x); b.classList.remove('unx'); if(opening&&b.dataset.go!=='s-pick'){ b.classList.add('unx'); b.style.pointerEvents='none'; setTimeout(()=>{ b.classList.remove('unx'); b.style.pointerEvents=''; },700); } });
   $('#menu-note').textContent=first?MENU.note:'';
   // v13 (1.3): the card sits above the title, labelled Next achievement; the box holds the requirement and what it opens, nothing else
   const ng=nextGoal(); const nx=$('#nextup'); $('#menu-tag').hidden=!ng; if(ng){ nx.innerHTML=T(MENU.next,{need:ng.need,game:ng.gname,name:ng.name}); nx.hidden=false; nextWhere=Object.assign({need:ng.need},ng.where); } else { nx.hidden=true; nextWhere=null; } }
-// a returning player boots straight onto the menu the markup already shows: the fade plays, and a challenge link opens its sheet
-function enterMenu(){ menuIn(); if(CHAL) setTimeout(()=>emit('challenge',CHAL),300); }
 
-register('s-menu',{ onShow({intro}){ setPendingAim(''); renderMenu(); if(intro) menuIn(); } });
+/* ---------- the title sequence (L1). Three beats: the first line at the top, the title in the middle, the second line under it.
+   A tap anywhere ends it — that is the one capture in ui/actions.js — and the menu builds around the title that is already there ---------- */
+function storyStart(){ const m=$('#s-menu'); storyOn=true; m.classList.remove('storyend','intro'); m.classList.add('story'); void m.offsetWidth; m.classList.add('run'); }
+function storyEnd(){ if(!storyOn) return; storyOn=false; const m=$('#s-menu'); Snd.click(); prefs.story=1; save();
+  m.classList.add('storyend'); setTimeout(()=>{ m.classList.remove('story','run','storyend'); menuIn(); },320);
+  // v13 (3.6): a challenge link waits for the title sequence, then opens its pick sheet
+  if(CHAL) setTimeout(()=>emit('challenge',CHAL),570); }
+capture(()=>{ if(!storyOn) return false; storyEnd(); return true; });
+
+// a returning player boots straight onto the menu the markup already shows: the reveal plays once, and a challenge link opens its sheet
+function enterMenu(){ renderMenu(); menuIn(); if(CHAL) setTimeout(()=>emit('challenge',CHAL),300); }
+
+register('s-menu',{ onShow({intro,story}){ setPendingAim(''); storyOn=false; $('#s-menu').classList.remove('story','run','storyend');
+  renderMenu(); if(story) storyStart(); else if(intro) menuIn(); } });
 define({ nextup(){ if(nextWhere) goWhere(nextWhere); return 'click'; } });
 on('store:reset',()=>{ menuWasFirst=true; });
 

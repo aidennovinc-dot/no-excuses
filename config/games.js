@@ -14,7 +14,10 @@ export const MODE_NAME = { two:'Two', blind:'Blind', four:'Four', lead:'Lead', g
 export const SHAPE_WORD = { circle:'circle', tri:'triangle', square:'square' };
 // two-player lengths (v10): pass & play is a fixed 7s of Quick Tap or 10s of Dots; versus runs until one player leads by VS_LEAD, or VS_CAP seconds
 export const PASS_LEN = { 'quick-tap':7, 'dots':10 };
-export const VS_LEAD = 10, VS_CAP = 60;
+export const VS_LEAD = 10, VS_CAP = 120;
+// v14 (4.14): versus ends on first to VS_TARGET as well as first to lead by VS_LEAD. 100 is the number Aiden gave on Quick Tap;
+// every other game's figure is set from its own scale (a guess Aiden corrects next batch). VS_CAP is the backstop, not a win condition
+export const VS_TARGET = { 'quick-tap':100, 'dots':60 };
 // the rate bar's top, hits per second, for the timed games
 export const RATE_MAX = { 'quick-tap':6, 'dots':4.5 };
 // v11: a Streak length scores rounds survived — higher wins — whatever the mode's Set scores. `streak` on a game is that override
@@ -26,29 +29,44 @@ export const GAMES = {
   'quick-tap': { name:'Quick Tap', modes:['two','four'], lens:[5,15,30], unit:'s', timed:true, versus:true,
     two:'Tap the box when it lights up.', four:'Four squares. Tap the white one.' },
   'dots': { name:'Dots', modes:['blind','lead'], lens:[5,15,30], unit:'s', timed:true, lead:true, versus:true,
-    blind:'Tap the dots where they land.', lead:'Tap the dots. Red shows the next one.' },
+    blind:'Tap the dots as they appear.', lead:'The outline leads the way.' },
   // Estimate (v9, was Hold). v11: Set = 7 rounds, score the average % difference (lower wins); Streak = endless, the differences add up, the run ends at 100%, score rounds
-  'hold': { name:'Estimate', modes:['grow','cut'], lens:[7,STREAK], lenNames:{7:'Set',[STREAK]:'Streak'}, lenSubs:{7:'7 rounds · average % off',[STREAK]:'until the total reaches 100%'}, unit:' rounds', timed:false, lower:true, lead:true,
+  'hold': { name:'Estimate', modes:['grow','cut'], unit:' rounds', timed:false, lower:true, lead:true,
     grow:'Grow your shape to the same area.', cut:'Draw a line that cuts off the share asked.',
     suffix:'%', scoreWord:'% off', streak:{ ...STREAK_CFG } },
   'sequence': { name:'Sequence', modes:['solo'], lens:[3,5,7], unit:' keys', timed:false, versus:true,
     solo:'Watch the notes, then play them back.' },
   // v7 — four new games. v11: Set / Streak per mode; every timing figure is an absolute difference
-  'timing': { name:'Timing', modes:['stopwatch','hidden'], lens:[5,STREAK], lenNames:{5:'Set',10:'Set',[STREAK]:'Streak'}, lenSubs:{5:'5 attempts · average s off',10:'10 runs · total px off',[STREAK]:'the s off add up · ends at 2.0s'}, unit:' attempts', timed:false, lower:true, lead:true,
+  'timing': { name:'Timing', modes:['stopwatch','hidden'], unit:' attempts', timed:false, lower:true, lead:true,
     stopwatch:'Tap when you think the time is right.', hidden:'Tap when the ball has reached the marker.',
     suffix:'s', scoreWord:'s off', streak:{ ...STREAK_CFG },
     // hidden (v10) is scored in pixels off the marker, not seconds. v11: Set is 10 runs, total px
-    per:{ hidden:{ lens:[10,STREAK], lenSubs:{10:'10 runs · total px off',[STREAK]:'the px off add up · ends at 100px'}, suffix:'px', scoreWord:'px off', streak:{ ...STREAK_CFG } } } },
-  'reaction': { name:'Reaction', modes:['flash','nogo'], lens:[3,STREAK], lenNames:{3:'Set',20:'Set',[STREAK]:'Streak',5:'Best of 5',9:'Best of 9',15:'Best of 15'}, lenSubs:{3:'3 attempts · average ms',20:'20 shapes · ms + 150 per wrong tap',[STREAK]:'ms over 200 add up · ends at 500'}, unit:' attempts', timed:false, lower:true, versus:['flash'], vsLens:[5,9,15],
+    per:{ hidden:{ suffix:'px', scoreWord:'px off', streak:{ ...STREAK_CFG } } } },
+  'reaction': { name:'Reaction', modes:['flash','nogo'], lenNames:{5:'Best of 5',9:'Best of 9',15:'Best of 15'}, unit:' attempts', timed:false, lower:true, versus:['flash'], vsLens:[5,9,15],
     flash:'Tap the moment it flashes white.', nogo:'Tap only your shape. Three wrong taps end it.',
     suffix:'ms', scoreWord:'ms', streak:{ ...STREAK_CFG },
     // Go/No-go (v11): Set = 20 shapes, average ms on right taps + 150ms per wrong tap; Streak = shapes survived until three wrong taps
-    per:{ nogo:{ lens:[20,STREAK], lenSubs:{20:'20 shapes · ms + 150 per wrong tap',[STREAK]:'shapes until three wrong taps'}, streak:{ ...STREAK_CFG, scoreWord:'shapes' } } } },
+    per:{ nogo:{ streak:{ ...STREAK_CFG, scoreWord:'shapes' } } } },
   // v8: Count and Find merged into Spot. v13: Normal/Hard are gone — the ramp is the difficulty (10.1). Count scores total miscount, Find cumulative seconds; both lower is better, both Set (10 rounds) or Streak (a budget)
-  'spot': { name:'Spot', modes:['count','find'], lens:[10,STREAK], lenNames:{10:'Set',[STREAK]:'Streak'}, lenSubs:{10:'10 rounds · total miscount',[STREAK]:'the miscounts add up · ends at 5'}, unit:' rounds', timed:false, lower:true,
-    count:'Count the shapes flashed. Ignore the decoys.', find:'Tap the odd one out.',
+  'spot': { name:'Spot', modes:['count','find'], unit:' rounds', timed:false, lower:true,
+    count:'Count the shapes flashed. Ignore the decoys.', find:'Find the shape you were shown.',
     suffix:'', scoreWord:'miscount', streak:{ ...STREAK_CFG },
-    per:{ find:{ lens:[10,STREAK], lenSubs:{10:'10 rounds · total seconds',[STREAK]:'10 seconds of finding'}, lower:true, suffix:'s', scoreWord:'s total', streak:{ ...STREAK_CFG } } } },
+    per:{ find:{ lower:true, suffix:'s', scoreWord:'s total', streak:{ ...STREAK_CFG } } } },
+};
+
+// Set and Streak, in one table (L5 / v14 section 5, 2026-09-08). `rounds` is the Set length and `set` / `streak` are the
+// lines under the length name on the pick sheet. This is the ONE place either lives: GC lays [rounds, STREAK] over a game's
+// config and lenName / lenSub read the two lines, so no game carries its own Set or Streak copy any more.
+// A game with no row here is timed (Quick Tap, Dots) or has its own length family (Sequence) and is unchanged.
+export const SET_COPY = {
+  'hold:grow':        { rounds:7,  set:'7 rounds, lowest average % off wins',            streak:'Highest round wins!' },
+  'hold:cut':         { rounds:10, set:'10 rounds, lowest % difference wins',            streak:'Highest round wins!' },
+  'timing:stopwatch': { rounds:5,  set:'5 rounds, lowest average time difference wins',  streak:'Highest round wins!' },
+  'timing:hidden':    { rounds:10, set:'10 rounds, lowest total pixels off wins',        streak:'Highest round wins!' },
+  'reaction:flash':   { rounds:5,  set:'5 rounds, lowest time wins',                     streak:'Highest round wins!' },
+  'reaction:nogo':    { rounds:5,  set:'5 rounds, lowest average reaction time wins',    streak:'Highest round wins!' },
+  'spot:count':       { rounds:10, set:'10 rounds, lowest time wins',                    streak:'Highest round wins!' },
+  'spot:find':        { rounds:10, set:'10 rounds, lowest total time wins',              streak:'Highest round wins!' },
 };
 
 // Estimate · Cut (v11 / v13 6.4): the shapes with an axis of symmetry never ask for 50%; the pools and the shares asked, by

@@ -53,9 +53,11 @@ navigate with `show(id, opts)` and never import another screen. The engines impo
 `games/_shared/`, `core/`, `config/` and `core.js` (A3) and never see `sel`, `prefs`, the store, audio,
 the run or each other.
 
-**Screens — since build 18.** One file per screen under `ui/screens/`, each owning its DOM: `title`,
-`menu`, `pick`, `board`, `achievements`, `customise`, `about`, `pass`, `result`, `lockbox`; `index.js`
-imports them all. A screen calls `register(id, { onShow(opts), onBack() })` on `ui/router.js` and
+**Screens — since build 18.** One file per screen under `ui/screens/`, each owning its DOM: `menu`,
+`pick`, `board`, `achievements`, `customise`, `about`, `pass`, `result`, `lockbox`; `index.js`
+imports them all. **`title.js` is gone since build 19 (L1 / v14 1.2):** the title sequence is the `story`
+class on the menu screen, not a screen of its own, so NO EXCUSES is one node that never moves or
+re-renders — `show('s-menu', {story: true})` plays it. A screen calls `register(id, { onShow(opts), onBack() })` on `ui/router.js` and
 `define({ act: handler })` on `ui/actions.js`. `show(id, opts)` puts the screen on and hands it opts —
 `show('s-pick', {g, d, s})` opens a game's sheet at its mode or length row, `show('s-ach', {ach})`
 scrolls to a row, `show('s-custom', {unlocks})` flashes an item. `back()` asks the screen first (`onBack`
@@ -91,7 +93,7 @@ Timing / Reaction / Spot base), `versus.js`, `shapes.js`. The game markup stays 
 
 **`config/` is data only (A2) — since build 16.** Every number, name and string a feedback batch might
 change: `build.js` (BUILD, LABEL, RUN_SCHEMA, PUB_URL) · `games.js` (GAMES, the lengths, mode names,
-CFG, the Estimate and Spot tuning) · `unlocks.js` (UNLOCKS + LEN_RULES — L6) · `achievements.js` (ACH,
+CFG, **`SET_COPY` — the one Set round count and both description lines per mode, L5**, the Estimate and Spot tuning) · `unlocks.js` (UNLOCKS + LEN_RULES — L6) · `achievements.js` (ACH,
 AUTHOR_RECORDS) · `copy.js` (every toast, HUD, verdict, intro and screen string, grouped by where it
 shows; `{name}` placeholders are filled by `T()` in `core.js`) · `theme.js` (P1/P2 colours, DESIGNS,
 ITEMS, VS_ART) · `audio.js` (SCALES, TRACKS). Nothing in `config/` imports anything; the gate asserts
@@ -135,18 +137,18 @@ file that changes a rule, threshold, name, unlock or screen layout is not built 
 
 | ID | Decision |
 |---|---|
-| L1 | The title sequence (three lines → NO EXCUSES → tap to begin) plays for every new profile and after Fresh game. Never removed or shortened. |
+| L1 | The title sequence plays for every new profile and after Fresh game. Never removed or shortened. **Re-staged (v14 1.1):** "games of pure skill" arrives first at the top, **NO EXCUSES second, between the two lines in time and in position**, "the only thing to blame is yourself" third, below the title. **NO EXCUSES never moves or re-renders between the title sequence and the menu (v14 1.2)** — same element, same position, no reload, no re-animation; the menu builds around it. |
 | L2 | Quick Tap lengths are Sprint / Dash / Marathon. Nothing added. |
 | L3 | Solo shows nothing about friends. With a friend → Pass & play / Versus, every game that has them. |
 | L4 | Player 1 red `#E0453B`, Player 2 light blue `#6EC6FF`, everywhere. |
-| L5 | Every mode offers Set and Streak. **Streak = a cumulative budget** (Estimate 100%, Stopwatch 2.0s, Hidden 100px, Flash 500ms over 200, Count 5 miscounts, Find 10s); score = rounds completed. Set = fixed rounds, score = the total or average stated on the sheet. |
-| L6 | The unlock chain and thresholds are the §4 table in the latest FEEDBACK file that names L6. Lock boxes, goal lines and the Next-achievement card all read from one table (`UNLOCKS` + `LEN_RULES` — in `config/unlocks.js` since build 16, with the predicates beside it in `progress/rules.js`). |
+| L5 | Every mode offers Set and Streak. **Streak = a cumulative budget** (Estimate 100%, Stopwatch 2.0s, Hidden 100px, Flash 500ms over 200, Count 5 miscounts, Find 10s); score = rounds completed, and every sheet reads "Highest round wins!". Set = a fixed number of rounds, scored by the line on the sheet. **The round count and both description lines come from one table — `SET_COPY` in `config/games.js` (v14 §5, 2026-09-08)** — which the pick sheets, lock boxes and result screens all read through `GC` / `lenName` / `lenSub`. No game carries its own Set or Streak copy. |
+| L6 | The unlock chain and thresholds are the §4 table in the latest FEEDBACK file that names L6. **Sequence unlocks at one Cut round within 3.5% of the target (v14 9.1; was 0.5%).** Lock boxes, goal lines and the Next-achievement card all read from one table (`UNLOCKS` + `LEN_RULES` — in `config/unlocks.js` since build 16, with the predicates beside it in `progress/rules.js`), and every requirement names its game (v14 3.2). |
 | L7 | A game tile is white until that game has been played once. |
 | L8 | Anything newly unlocked gets the green first-seen highlight once, then is marked seen. |
 | L9 | The length row is labelled "Mode" in every game. One pick-sheet layout, no per-game special cases. |
 | L10 | Two-player runs never go on a board. |
 
-Locked as of build 13 (FEEDBACK-v13 §L, 2026-09-05).
+Locked as of build 13 (FEEDBACK-v13 §L, 2026-09-05). **L1, L5 and L6 amended at build 19 (FEEDBACK-v14 §L, 2026-09-08).**
 
 **Code decisions A1–A8 in `ARCHITECTURE.md` — same quote-the-ID rule.** A feedback line changes one
 only when it names the ID (e.g. `A6:`); otherwise it goes under "Proposed" in FEATURES.md.
@@ -163,7 +165,8 @@ five storage fixtures (empty · build-13 layout, which must migrate to the one k
 achievements and name intact and the old keys removed · corrupt build-13 keys · a corrupt `ne` v1 that falls back
 field by field · 650 runs, capped at 600) → challenge links with a
 hostile `score`, a bad `s`, and a locked mode the link opened (that run never reaches a board). It
-also asserts the testable locks on a fresh profile — title sequence before the menu (L1), Quick Tap's
+also asserts that every mode’s Set and Streak lines come from `SET_COPY` (L5) and that the title element is the same node
+in the same place before and after the menu builds (v14 1.2), plus the testable locks on a fresh profile — title sequence before the menu (L1), Quick Tap's
 length row is exactly Sprint / Dash / Marathon (L2), Solo shows no Pass & play / Versus (L3), the
 Quick Tap tile is white before any run (L7), the length row is labelled Mode (L9). **A failing
 assertion blocks the push.** Run it before every push; ~4 minutes. `CHROME_PATH` overrides the

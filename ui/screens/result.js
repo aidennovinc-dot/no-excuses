@@ -25,7 +25,7 @@ function renderOverChips(){ const g=GAMES[sel.game]; const vsOk=versusOf(sel.gam
   $('#over-chips').innerHTML=g.modes.length>1?g.modes.map(d=>{ const open=isOpen(sel.game,d); const nw=open?newMark('mode:'+sel.game+':'+d,fresh):''; return `<button class="mch ${d===sel.diff?'sel':''} ${open?'':'locked'}${nw}" data-act="chip-over" data-chip="over-d" data-v="${d}"><span class="pic">${picOf(sel.game,d)}</span><b class="${open?'':'x'}">${MODE_NAME[d]}</b></button>`; }).join(''):'';
   const versus=sel.vs===2&&vsOk, c=GC(sel.game,sel.diff), lens=lensOf(sel.game,sel.diff,versus?2:0), fixed=sel.vs===1&&(PASS_LEN[sel.game]||SHARED2(sel.game,sel.diff));
   if(!lens.includes(sel.secs)||!versus&&!lenOpen(sel.game,sel.diff,sel.secs)) sel.secs=lens.find(s=>versus||lenOpen(sel.game,sel.diff,s))||lens[0];
-  $('#over-chips2').innerHTML=lens.length>1&&!fixed&&(!versus||c.vsLens)?lens.map(s=>{ const L=versus?null:lenLock(sel.game,sel.diff,s); const nw=L?'':newMark('len:'+sel.game+':'+sel.diff+':'+s,fresh); return `<button class="chip ${s===sel.secs?'sel':''} ${L?'locked x':''}${nw}" data-act="chip-over" data-chip="over-s" data-v="${s}">${lenName(sel.game,s,sel.diff)}</button>`; }).join(''):'';
+  $('#over-chips2').innerHTML=lens.length>1&&!fixed&&(!versus||c.vsLens)?lens.map(s=>{ const L=versus?null:lenLock(sel.game,sel.diff,s); const nw=L?'':newMark('len:'+sel.game+':'+sel.diff+':'+s,fresh); return `<button class="chip ${s===sel.secs?'sel':''} ${L?'locked x':''}${nw}" data-act="chip-over" data-chip="over-s" data-v="${s}">${lenName(sel.game,s,sel.diff,versus)}</button>`; }).join(''):'';
   $('#over-chips3').innerHTML='';
   markSeen(fresh);
   $('#again').textContent=goLabel(sel.game,sel.diff,versus,fixed); }
@@ -49,7 +49,7 @@ function renderOver(run){ const g=GC(run.g,run.d,run.s);
   // v13 (8.1): where lower is better, "closest" already IS the best try — whichever column repeats it comes out. Same rule on Estimate, Timing, Hidden and Reaction
   const dupe=c=>!!g.lower&&/^best /.test(c[0]);
   const cell=c=>`<span>${c[0]} <b>${c[1](run)}</b></span>`;
-  const rec=`<span>${g.lower?SHEET.closest:SHEET.best} <b>${best===null?RESULT.dash:scoreTxt(run.g,best,run.d,run.s)}</b></span>`;
+  const rec=`<span><i class="bw">${g.lower?SHEET.closest:SHEET.best}</i> <b>${best===null?RESULT.dash:scoreTxt(run.g,best,run.d,run.s)}</b></span>`;
   $('#over-stats').innerHTML=[dupe(cols[0])?'':cell(cols[0]),rec,dupe(cols[1])?'':cell(cols[1])].join('')+peak;
   const rk=Scores.rank(run); $('#over-rank').innerHTML = rk&&rk<=10 ? T(RESULT.rank,{n:rk,name:esc(prefs.name||RESULT.you)}) : T(RESULT.outside,{name:esc(prefs.name||RESULT.you)}); }
 // the "beat my score" share (v11): navigator.share, or the clipboard with a toast
@@ -68,7 +68,9 @@ on('run:finish',({run,isBest,two})=>{ const g=GC(run.g,run.d,run.s);
   // the header (v11) carries only a status — the board title under the top 10 names the game, mode and length
   $('#over-eyebrow').textContent=run.practice?RESULT.practice:run.fail?RESULT.fail:isBest?RESULT.best:run.vs2?(sel.vs===1?RESULT.pass:RESULT.versus):VS.on?RESULT.pass:'';
   // practice shows no score at all (v5). Versus shows the pair of counts. Lower-is-better scores wear a ▼ (v11)
-  $('#over-score').innerHTML=run.vs2?`${run.vs2.txt?run.vs2.txt[0]:run.vs2.a}–${run.vs2.txt?run.vs2.txt[1]:run.vs2.b}`:run.practice||(run.fail&&!run.hits)?RESULT.dash:scoreTxt(run.g,run.hits,run.d,run.s)+(g.lower?RESULT.lowerMark:''); $('#over-score').classList.toggle('sm',!!g.suffix||!!run.vs2);
+  // v14 (4.16): a versus run drops the white score strip entirely — #vsbox below is the result, and it only needs saying once
+  $('#over-score').hidden=!!run.vs2;
+  $('#over-score').innerHTML=run.vs2?'':run.practice||(run.fail&&!run.hits)?RESULT.dash:scoreTxt(run.g,run.hits,run.d,run.s)+(g.lower?RESULT.lowerMark:''); $('#over-score').classList.toggle('sm',!!g.suffix);
   $('#verdict').textContent=run.vs2?(run.vs2.w<0?VERDICT.draw:T(VERDICT.took,{n:run.vs2.w+1,how:run.vs2.how?' '+run.vs2.how:''})):run.practice?VERDICT.practice:verdict(run);
   renderOver(run);
   // the ad break (v10) comes between the run and the result, every fourth result, never for supporters

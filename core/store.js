@@ -33,7 +33,7 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
   const o={ bg:DESIGNS[p.bg]?p.bg:'stars', tint:hex(p.tint,''), snd:SND.includes(p.snd)?p.snd:'space', musicG:{}, lastGame:GAMES[p.lastGame]?p.lastGame:'quick-tap',
     name:typeof p.name==='string'?p.name.trim().toUpperCase().slice(0,10):'', scale:SCALES[p.scale]?p.scale:'penta',
     allOpen:dev&&!!p.allOpen, supporter:dev&&!!p.supporter, adRuns:Number.isInteger(p.adRuns)&&p.adRuns>=0?p.adRuns:0,
-    col:{}, story:p.story?1:0, played:p.played?1:0, gridSeen:p.gridSeen?1:0 };
+    col:{}, story:p.story?1:0, played:p.played?1:0, gridSeen:p.gridSeen?1:0, menuSeen:p.menuSeen?1:0 };
   if(isObj(p.musicG)) for(const g in GAMES) if(typeof p.musicG[g]==='boolean') o.musicG[g]=p.musicG[g];
   // colours are per game (v6): { sq, lead, cut }, each #RRGGBB; cut defaults to the square colour (v13 6.5)
   const col=isObj(p.col)?p.col:{};
@@ -83,6 +83,6 @@ function save(){ return write(KEY,JSON.stringify(store)); }
 if(save()&&legacy) LEGACY.forEach(drop);
 const musicOn=g=>prefs.musicG[g]!==false;
 // Fresh game (the About screen's dev switch): progress goes, the look and the name stay
-function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; Object.assign(prefs,{allOpen:false,story:0,adRuns:0,played:0,gridSeen:0}); delete prefs.mig11; save(); emit('store:reset'); }
+function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; Object.assign(prefs,{allOpen:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0}); delete prefs.mig11; save(); emit('store:reset'); }
 
 export { musicOn, prefs, reset, save, store };

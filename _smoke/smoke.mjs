@@ -5,10 +5,11 @@
  *   0. static: the build number in config/build.js is the one in index.html (x3) and version.json (A6); config/ is data only (A2);
  *      every engine imports only from games/_shared/, core/, config/ and core.js — never sel, the store, audio, the run or another engine (A3);
  *      no screen imports another screen or an engine, and the run imports no screen (A4)
- *   1. cold start: intro -> menu, and the locked decisions that can be asserted on a fresh profile
- *        L1 title sequence before the menu · L2 Sprint / Dash / Marathon · L3 Solo shows nothing about friends
+ *   1. cold start: the title sequence -> the menu, and the locked decisions that can be asserted on a fresh profile
+ *        L1 title sequence before the menu · v14 1.2 NO EXCUSES is the SAME node in the same place before and after the menu builds
+ *        L2 Sprint / Dash / Marathon · L3 Solo shows nothing about friends
  *        L7 Quick Tap tile is white before any run · L9 the length row is labelled Mode
- *   2. every pick sheet opens (everything unlocked)
+ *   2. every pick sheet opens (everything unlocked), and every Set / Streak line on every sheet comes from SET_COPY (L5, v14 section 5)
  *   3. one Set run and one Streak run per game, driven to the result screen the way that engine is played
  *   4. a pass & play Quick Tap (both players, the hand-over screen between)
  *   5. boot on five storage fixtures: empty · build-13 layout (migrates to the one key `ne` v1 with runs, unlocks, achievements and name intact,
@@ -118,7 +119,7 @@ async function openSheet(g, mi, li, vs = 0) {
   await click('[data-go="s-pick"]'); await sleep(260);
   await page.evaluate(g => document.querySelector(`.tile[data-game="${g}"]`).click(), g); await sleep(260);
   if (vs) { await click('[data-vs="1"]'); await sleep(200); await click(`[data-vs2="${vs}"]`); await sleep(200); }
-  await page.evaluate(mi => { const c = document.querySelectorAll('#diff-row .choice'); (c[mi] || c[0]).click(); }, mi); await sleep(240);
+  await page.evaluate(mi => { const c = document.querySelectorAll('#diff-row .choice'); (c[mi] || c[0]).click(); }, mi); await sleep(420);
   const face = await page.evaluate(li => { const t = [...document.querySelectorAll('#time-row .tbtn')]; const b = li === 'streak' ? t.find(x => x.dataset.time === '-1') : t[li]; if (!b) return null; b.click(); return b.querySelector('b').textContent.trim(); }, li); await sleep(160);
   return face;
 }
@@ -130,11 +131,19 @@ await page.evaluate(() => localStorage.clear());
 await page.reload({ waitUntil: 'networkidle0' });
 await sleep(400);
 let at = await onScreen();
-const sawStory = at === 's-story';
-sawStory ? ok('intro screen shows') : bad('intro screen shows', 'on ' + at);
-for (let i = 0; i < 8 && (await onScreen()) === 's-story'; i++) { await page.evaluate(() => document.body.click()); await sleep(350); }
+const storyOn = () => page.evaluate(() => !!document.querySelector('#s-menu.story'));
+const sawStory = at === 's-menu' && (await storyOn());
+sawStory ? ok('the title sequence shows') : bad('the title sequence shows', 'on ' + at);
+// v14 (1.2): mark the title node and the box it sits in, so the same node in the same place can be proved after the menu builds
+const titleBefore = await page.evaluate(() => { const w = document.getElementById('wordmark'); if (!w) return null; w.dataset.probe = 'ne'; const r = document.querySelector('.titlewrap').getBoundingClientRect(); return { n: document.querySelectorAll('#s-menu .wordmark').length, x: Math.round(r.left), y: Math.round(r.top), t: w.textContent }; });
+for (let i = 0; i < 8 && (await storyOn()); i++) { await page.evaluate(() => document.body.click()); await sleep(350); }
+await sleep(600);
 at = await onScreen();
-at === 's-menu' ? ok('intro leads to the menu') : bad('intro leads to the menu', 'on ' + at);
+at === 's-menu' ? ok('the title sequence leads to the menu') : bad('the title sequence leads to the menu', 'on ' + at);
+const titleAfter = await page.evaluate(() => { const w = document.getElementById('wordmark'); if (!w) return null; const r = document.querySelector('.titlewrap').getBoundingClientRect(); return { probe: w.dataset.probe === 'ne', n: document.querySelectorAll('#s-menu .wordmark').length, x: Math.round(r.left), y: Math.round(r.top), t: w.textContent }; });
+(titleBefore && titleAfter && titleAfter.probe && titleBefore.n === 1 && titleAfter.n === 1 && titleAfter.x === titleBefore.x && titleAfter.y === titleBefore.y && titleAfter.t === titleBefore.t)
+  ? ok('1.2 NO EXCUSES is the same node, in the same place, before and after the menu builds')
+  : bad('1.2 NO EXCUSES never moves or re-renders between the title and the menu', JSON.stringify({ titleBefore, titleAfter }));
 
 // ---- 1b. the locked decisions that can be asserted, on this fresh profile ----
 console.log('\nlocked decisions (fresh profile)');
@@ -145,7 +154,7 @@ const tileCol = await page.evaluate(() => { const t = document.querySelector('.t
 await click('.tile[data-game="quick-tap"]'); await sleep(320);
 const soloSub = await page.evaluate(() => { const sub = document.querySelector('#vs-sub'); return { hidden: sub.hasAttribute('hidden'), shown: getComputedStyle(sub).display !== 'none' }; });
 (soloSub.hidden && !soloSub.shown) ? ok('L3 Solo shows no Pass & play / Versus') : bad('L3 Solo shows no Pass & play / Versus', JSON.stringify(soloSub));
-await page.evaluate(() => document.querySelector('#diff-row').children[0].click()); await sleep(280);
+await page.evaluate(() => document.querySelector('#diff-row').children[0].click()); await sleep(420);
 const lens = await page.evaluate(() => [...document.querySelectorAll('#time-row .tbtn b')].map(b => b.childNodes[0].textContent.trim()));
 (lens.length === 3 && lens[0] === 'Sprint' && lens[1] === 'Dash' && lens[2] === 'Marathon') ? ok('L2 Quick Tap lengths are Sprint / Dash / Marathon') : bad('L2 Quick Tap lengths are Sprint / Dash / Marathon', JSON.stringify(lens));
 const lenTitle = await page.evaluate(() => document.querySelector('#len-title').textContent.trim());
@@ -160,13 +169,28 @@ await click('[data-go="s-pick"]'); await sleep(400);
 (await onScreen()) === 's-pick' ? ok('Play opens the grid') : bad('Play opens the grid');
 for (const g of GAMES) {
   await page.evaluate(g => document.querySelector(`.tile[data-game="${g}"]`).click(), g); await sleep(320);
-  await page.evaluate(() => document.querySelector('#diff-row').children[0]?.click()); await sleep(280);
+  await page.evaluate(() => document.querySelector('#diff-row').children[0]?.click()); await sleep(420);
   const state = await page.evaluate(() => ({ screen: document.querySelector('.screen.on')?.id, modes: document.querySelector('#diff-row').children.length, lens: document.querySelector('#time-row').children.length, title: document.querySelector('#sheet-title').textContent.trim() }));
   (state.screen === 's-pick' && state.modes > 0 && state.lens > 0) ? ok(`${g} sheet — ${state.modes} mode(s), ${state.lens} length(s) · "${state.title}"`) : bad(`${g} sheet`, JSON.stringify(state));
   await click('#grid'); await sleep(200);
 }
 // the other screens open and render
 for (const s of ['s-board', 's-ach', 's-custom', 's-about']) { await click('.back'); await sleep(250); await click(`[data-go="${s}"]`); await sleep(600); (await onScreen()) === s ? ok(`${s} opens`) : bad(`${s} opens`, 'on ' + (await onScreen())); }
+
+// ---- 2b. the Set and Streak lines on every sheet come from the one table (L5 / v14 section 5) ----
+console.log('\nsheet copy comes from SET_COPY (L5)');
+{
+  const cfgRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const { SET_COPY, GAMES: TABLE } = await import(pathToFileURL(path.join(cfgRoot, 'config', 'games.js')).href);
+  for (const key of Object.keys(SET_COPY)) {
+    const [g, d] = key.split(':'); const mi = TABLE[g].modes.indexOf(d); const want = SET_COPY[key];
+    await openSheet(g, mi, 0);
+    const rows = await page.evaluate(() => [...document.querySelectorAll('#time-row .tbtn')].map(b => ({ name: b.querySelector('b').textContent.trim(), sub: (b.querySelector('.lsub') || { textContent: '' }).textContent.trim() })));
+    (rows.length === 2 && rows[0].name === 'Set' && rows[0].sub === want.set && rows[1].name === 'Streak' && rows[1].sub === want.streak)
+      ? ok(`${key} \u2014 "${want.set}" / "${want.streak}"`)
+      : bad(`${key} sheet copy comes from SET_COPY`, JSON.stringify(rows));
+  }
+}
 
 // ---- 3. one Set run and one Streak run per game ----
 console.log('\none Set run and one Streak run per game (first mode)');
@@ -208,7 +232,7 @@ const bootWith = async (name, storage, expectScreen) => {
   (at === expectScreen && errors.length === before) ? ok(`${name}: boots to ${at}`) : bad(`${name}: boots to ${expectScreen}`, `on ${at}, ${errors.length - before} new error(s)`);
   return at === expectScreen;
 };
-await bootWith('empty', {}, 's-story');
+await bootWith('empty', {}, 's-menu');   // v14 (1.2): the title sequence is the menu screen wearing .story
 const NOW = Date.now();
 const B13 = {
   'ne.prefs': { sq: '#FFFFFF', lead: '#C8322A', bg: 'stars', tint: '', snd: 'space', music: true, musicG: {}, lastGame: 'quick-tap', name: 'AIDEN', scale: 'penta', allOpen: false, supporter: false, adRuns: 3, story: 1, played: 1, gridSeen: 1, col: { 'quick-tap': { sq: '#FFE9C4', lead: '#C8322A', cut: '#FFE9C4' } } },
@@ -260,7 +284,7 @@ console.log('\nchallenge links');
 const openChallenge = async (qs) => {
   await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' }); await page.evaluate(() => localStorage.clear());
   await page.goto(BASE + '/index.html' + qs, { waitUntil: 'networkidle0' }); await sleep(400);
-  for (let i = 0; i < 8 && (await onScreen()) === 's-story'; i++) { await page.evaluate(() => document.body.click()); await sleep(350); }
+  for (let i = 0; i < 8 && (await page.evaluate(() => !!document.querySelector('#s-menu.story'))); i++) { await page.evaluate(() => document.body.click()); await sleep(350); }
   await sleep(500);
   return page.evaluate(() => { const c = document.getElementById('chal'); return { screen: document.querySelector('.screen.on')?.id, shown: !c.hidden, img: !!c.querySelector('img'), html: c.innerHTML, text: c.textContent.trim() }; });
 };
@@ -330,7 +354,7 @@ console.log('\nbutton actions (every data-act at least once)');
   await tap('[data-go="s-about"]'); await tap('#dev-sup', 'about · supporter on'); await tap('#dev-sup', 'about · supporter off'); await tap('#support', 'about · support');
   await tap('#dev-open', 'about · progression on'); await tap('#dev-open', 'about · everything open');
   await tap('#dev-story', 'about · replay the intro'); await sleep(300);
-  (await onScreen()) === 's-story' ? ok('replay the intro shows the title sequence') : bad('replay the intro', 'on ' + (await onScreen()));
+  (await page.evaluate(() => !!document.querySelector('#s-menu.story'))) ? ok('replay the intro shows the title sequence') : bad('replay the intro', 'on ' + (await onScreen()));
   await page.evaluate(() => document.body.click()); await sleep(400);
   // the full stop, three taps
   for (let i = 0; i < 3; i++) await tap('#egg', 'egg');
