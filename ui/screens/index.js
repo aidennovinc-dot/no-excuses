@@ -6,6 +6,7 @@ import "./board.js";
 import "./achievements.js";
 import "./customise.js";
 import "./about.js";
+import "./testing.js";
 import "./pass.js";
 import "./result.js";
 import "./lockbox.js";

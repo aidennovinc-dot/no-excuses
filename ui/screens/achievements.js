@@ -24,12 +24,23 @@ function renderAch(){
     return `<h4 class="${t}">${TIERS[t][0]} · ${done}/${items.length}<span>${TIERS[t][1]}</span></h4>`+items.map(a=>{
       const isDone=!!g[a.id], secret=a.tier==='secret'&&!isDone;
       const p=a.progress&&!isDone?Math.min(1,a.progress(all,fsGame)):null;
+      // v14 (8.3): the game name leads the title. v14 (8.4): so it is written once — the jump line below repeats it only for
+      // the rows that have no game of their own ("Every game", "Full set") or that name no mode and no length to point at
+      const wg=a.g==='all'?fsGame:a.g;
       const gname=a.g==='all'?'':`<i>${GAMES[a.g].name}</i>`;
       const bar=p!==null?`<div class="pbar ${secret?'s':''}"><i style="width:${Math.round(p*100)}%"></i></div>`:'';
       const jump=a.g!=='all'||a.id==='fullset';
-      const where=jump&&!secret?`<small class="go">→ ${GAMES[a.g==='all'?fsGame:a.g].name}${a.at?.d?' · '+MODE_NAME[a.at.d]:''}${a.at?.s!==undefined?' · '+lenName(a.g,a.at.s,a.at?.d||GAMES[a.g].modes[0]):''}</small>`:'';
+      const wbits=[]; if(a.at?.d) wbits.push(MODE_NAME[a.at.d]); if(a.at?.s!==undefined) wbits.push(lenName(a.g,a.at.s,a.at?.d||GAMES[wg].modes[0]));
+      if(a.g==='all'||!wbits.length) wbits.unshift(GAMES[wg].name);
+      const where=jump&&!secret?`<small class="go">→ ${wbits.join(' · ')}</small>`:'';
+      // v14 (8.1): a requirement that is a set of things names the ones still outstanding
+      const left=!isDone&&a.left?a.left(all):null;
+      const leftTxt=left&&left.length?T(ACH_SCREEN.left,{names:left.join(', ')}):'';
+      // v14 (8.5): a secret row is described. The name stays ???; the hint says what kind of thing earns it, never the number
+      const line=secret?(a.hint||ACH_SCREEN.stretch)+(p!==null?T(ACH_SCREEN.progress,{p:Math.round(p*100)}):'')
+                       :a.how+(a.id==='fullset'?T(ACH_SCREEN.inGame,{game:GAMES[fsGame].name}):'')+leftTxt;
       const nw=isDone?newMark('ach:'+a.id,fresh):''; const dl=isDone?` style="animation-delay:${Math.min(k++,14)*70}ms"`:'';
-      return `<button data-act="ach" class="a ${isDone?'done':'lock'}${nw} ${jump?'jump':''}" data-ach="${a.id}" id="ach-${a.id}"${dl}><span>${isDone?'✓ ':''}${secret?ACH_SCREEN.hidden:a.name}${gname}</span><em class="${a.unlocks&&!isDone?'u':''}">${isDone?ACH_SCREEN.done+(a.unlocks?' · '+unlockHtml(a):''):a.unlocks?unlockHtml(a):secret?ACH_SCREEN.secret:''}</em><small>${secret?(p!==null?T(ACH_SCREEN.progress,{p:Math.round(p*100)}):ACH_SCREEN.stretch):a.how+(a.id==='fullset'?T(ACH_SCREEN.inGame,{game:GAMES[fsGame].name}):'')}</small>${where}${bar}</button>`; }).join(''); }).join('');
+      return `<button data-act="ach" class="a ${isDone?'done':'lock'}${nw} ${jump?'jump':''}" data-ach="${a.id}" id="ach-${a.id}"${dl}><span>${gname}${isDone?'✓ ':''}${secret?ACH_SCREEN.hidden:a.name}</span><em class="${a.unlocks&&!isDone?'u':''}">${isDone?ACH_SCREEN.done+(a.unlocks?' · '+unlockHtml(a):''):a.unlocks?unlockHtml(a):secret?ACH_SCREEN.secret:''}</em><small>${line}</small>${where}${bar}</button>`; }).join(''); }).join('');
   markSeen(fresh);
 }
 // a locked row: straight to the sheet it is earned on, at the mode and length it names; a locked mode or length asks the box first

@@ -56,7 +56,9 @@
   td:nth-child(2){color:var(--ink);letter-spacing:.06em}
   tr.best td{color:var(--sq-live)}
   tr.cur td{background:color-mix(in srgb,var(--ink) 6%,transparent)}
-  .scroll{max-height:60vh;overflow-y:auto;width:min(92vw,440px)}
+  /* v14 (8.2): overflow-y:auto makes the other axis `auto` too, so a stray sideways drag panned a scroller and it stayed
+     panned. `contain` stops it chaining out of the box; the achievements list also loses the axis outright, below */
+  .scroll{max-height:60vh;overflow-y:auto;width:min(92vw,440px);overscroll-behavior:contain}
   /* ---------- v11 ---------- */
   :root{--p1:#E0453B;--p2:#6EC6FF}
   .p1{color:var(--p1)}
@@ -68,7 +70,10 @@
   .big .dn{font-size:.32em;vertical-align:.5em;color:var(--mute);margin-left:.1em}
   /* ---------- v13 ---------- */
   /* 2.1 / L8: anything newly unlocked swells and tints green the first time it is on screen, then is marked seen. One animation, every screen */
-  @keyframes newthing{0%{scale:1;background-color:color-mix(in srgb,var(--ok) 34%,transparent)}30%{scale:1.06;background-color:color-mix(in srgb,var(--ok) 34%,transparent)}100%{scale:1;background-color:transparent}}
+  /* v14 (8.7): the 100% frame must NOT name background-color. `both` holds the last frame forever, so ending on `transparent`
+     left every first-seen Customise swatch permanently blank — which is exactly "target colours are blank on first load".
+     Leaving it out ends the animation on the element's own background instead: the green fades off, the colour comes back. */
+  @keyframes newthing{0%{scale:1;background-color:color-mix(in srgb,var(--ok) 34%,transparent)}30%{scale:1.06;background-color:color-mix(in srgb,var(--ok) 34%,transparent)}100%{scale:1}}
   .newthing{animation:newthing .6s ease-out both!important;border-color:var(--ok)!important}
   /* 7.2: a locked chip on the pick sheet reads like every other locked thing */
   .chip.locked{opacity:.5;pointer-events:none}
@@ -303,6 +308,10 @@
   #radar polygon.me{fill:color-mix(in srgb,var(--sq-live) 22%,transparent);stroke:var(--sq-live);stroke-width:2;stroke-linejoin:round}
   #radar text{fill:var(--mute);font-family:var(--mono);font-size:8px;letter-spacing:.12em;text-transform:uppercase}
   #radar circle{fill:var(--sq-live)}
+  /* v14 (8.6): past the Author's number is past the outer ring, and it is marked — the shape and the axis that did it go green */
+  #radar polygon.me.past{stroke:var(--ok)}
+  #radar circle.past{fill:var(--ok)}
+  #radar text.past{fill:var(--ok)}
   .who{display:flex;align-items:baseline;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--mute)}
   .who input{font:inherit;color:var(--ink);background:none;border:0;border-bottom:1px solid var(--line);width:11ch;text-transform:uppercase;letter-spacing:.18em;padding:4px 0;outline:none;text-align:center}
   .who input:focus{border-color:var(--ink)}
@@ -312,7 +321,11 @@
 /* ==================================================================
    achievements — ui/screens/achievements.js
    ================================================================== */
-  .ach{display:flex;flex-direction:column;width:min(92vw,440px);font-family:var(--mono);font-size:12px}
+  /* v14 (8.2): no horizontal axis at all here — an accidental left-swipe left the rows off-centre with their text clipped,
+     and nothing snapped them back. The board keeps its sideways axis, because a wide score table needs it */
+  .ach{display:flex;flex-direction:column;width:min(92vw,440px);font-family:var(--mono);font-size:12px;overflow-x:hidden}
+  /* and nothing inside a row may widen it: a grid child's default min-width is its content, which is what let it grow */
+  .ach .a>span:first-child,.ach .a small,.ach em{min-width:0;overflow-wrap:anywhere}
   .ach h4{font-weight:500;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink);padding:18px 4px 6px;display:flex;justify-content:space-between;align-items:baseline}
   .ach h4 span{color:var(--mute);letter-spacing:.06em;text-transform:none;font-size:11px}
   .ach h4.secret{color:var(--cue)}
@@ -320,7 +333,8 @@
   .ach button.a.jump:active{background:color-mix(in srgb,var(--ink) 6%,transparent)}
   .ach .a small{grid-column:1/-1;color:var(--mute);letter-spacing:.04em;line-height:1.4}
   .ach .lock>span:first-child{color:var(--mute)}
-  .ach .a>span:first-child i{font-style:normal;color:var(--mute);font-size:9px;letter-spacing:.16em;margin-left:8px;text-transform:uppercase}
+  /* v14 (8.3): the game name leads the title, so it sits before the name and not after it */
+  .ach .a>span:first-child i{font-style:normal;color:var(--mute);font-size:9px;letter-spacing:.16em;margin-right:8px;text-transform:uppercase}
   .ach em{font-style:normal;color:var(--mute);font-size:10px;letter-spacing:.12em;text-transform:uppercase;align-self:start}
   .ach .lock em.u{color:var(--cue)}
   .ach .done>span:first-child,.ach .done em{color:var(--ok)}
@@ -379,8 +393,16 @@
   .pvdots b.on{opacity:1}
   .pvdots b.ld{background:color-mix(in srgb,var(--cue) 22%,transparent);border:2px solid var(--cue)}
   .pvhold svg{width:100%;height:100%}
+  .pvhold #pvhcut{display:none}
+  .pvhold.cut #pvhgrow{display:none}
+  .pvhold.cut #pvhcut{display:block}
   .pvhold .t{fill:none;stroke:var(--sq-live);stroke-width:2}
   .pvhold .m{fill:color-mix(in srgb,var(--sq-live) 55%,var(--cue));transition:r .9s linear}
+  /* v14 (8.8): the Cut pieces swatch had nothing in the preview to colour. Same pair as the run: the cut-off piece full, the
+     rest of the shape at 40% — so picking a Cut colour shows what it does instead of changing nothing on screen */
+  .pvhold #pvhcut .pa{fill:var(--cutp,var(--sq-live))}
+  .pvhold #pvhcut .pb{fill:color-mix(in srgb,var(--cutp,var(--sq-live)) 40%,var(--ground))}
+  .pvhold #pvhcut line{stroke:var(--ink);stroke-width:1.5;opacity:.7}
   .pvtm .clk{top:36%}
   .pvtm .tgt{top:8%}
   .pvtm .tgt b{font-size:14px}
@@ -413,7 +435,10 @@
   #wheelwrap{position:absolute;inset:0;display:none;place-items:center;background:color-mix(in srgb,var(--ground) 82%,transparent);z-index:8}
   #wheelwrap.on{display:grid}
   #wheelbox{display:flex;flex-direction:column;gap:14px;align-items:center;background:var(--panel);border:1px solid var(--line);padding:22px}
-  #wheel{width:240px;height:240px;border-radius:50%;touch-action:none;cursor:crosshair}
+  #wheelpad{position:relative;width:240px;height:240px}
+  #wheel{width:240px;height:240px;border-radius:50%;touch-action:none;cursor:crosshair;display:block}
+  /* v14 (8.11): a small ring on the wheel at the colour currently chosen, so the wheel opens showing where you already are */
+  #wheelmark{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border:2px solid var(--ink);border-radius:50%;box-shadow:0 0 0 1px var(--ground);pointer-events:none;transition:left .12s,top .12s}
   #wheelout{width:60px;height:24px;border:1px solid var(--line)}
 
 /* ==================================================================

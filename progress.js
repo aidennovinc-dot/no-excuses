@@ -13,7 +13,7 @@ import { T } from "./core.js";
 import { CHAL } from "./core/platform.js";
 import { prefs, save, store } from "./core/store.js";
 import { GAMES, GC, N_GAMES, lenName } from "./games/registry.js";
-import { ACH_PROGRESS, ACH_TEST, LEN_TEST, UNLOCK_TEST, quality } from "./progress/rules.js";
+import { ACH_LEFT, ACH_PROGRESS, ACH_TEST, LEN_TEST, UNLOCK_TEST, quality } from "./progress/rules.js";
 import { scoreTxt } from "./ui/format.js";
 // the lengths on offer. v13 (0.3): pro lengths are gone — every player sees the same length row. Versus still has its own (Reaction best-of)
 const lensOf=(g,d,vs)=>{ const c=GC(g,d); if(vs===2&&c.vsLens) return c.vsLens; return c.lens; };
@@ -72,13 +72,24 @@ const Scores = {
 };
 
 /* ---------- achievements: per game, three tiers. progress() gives 0..1 for the bar; at{} is where tapping the row takes you ---------- */
-const ACH = ACH_ROWS.map(a=>{ const o=Object.assign({},a,{test:ACH_TEST[a.id]}); if(ACH_PROGRESS[a.id]) o.progress=ACH_PROGRESS[a.id]; return o; });
+const ACH = ACH_ROWS.map(a=>{ const o=Object.assign({},a,{test:ACH_TEST[a.id]}); if(ACH_PROGRESS[a.id]) o.progress=ACH_PROGRESS[a.id]; if(ACH_LEFT[a.id]) o.left=ACH_LEFT[a.id]; return o; });
 // one row per game, mode and length. `rec` is null until Aiden fills it in — a null record can never be beaten, so the row stays locked and shows —
 function authorAch(){ const out=[]; for(const g in GAMES) for(const d of GAMES[g].modes) for(const sc of GC(g,d).lens){ const id=`au_${g}_${d}_${sc}`, rec=AUTHOR_RECORDS[id]; const lo=GC(g,d,sc).lower;
     out.push({ id, g, tier:'author', name:`${GAMES[g].name}${MODE_NAME[d]?' · '+MODE_NAME[d]:''} · ${lenName(g,sc,d)}`, how:T(PROGRESS.beat,{rec:rec===undefined||rec===null?PROGRESS.none:scoreTxt(g,rec,d,sc)}), at:{d,s:sc},
       test:r=>rec!==undefined&&rec!==null&&r.g===g&&r.d===d&&r.s===sc&&(lo?r.hits<=rec:r.hits>=rec) }); }
   return out; }
 const achAll=()=>ACH.concat(authorAch());
+/* v14 (8.6): the radar is drawn against the AUTHOR's record, not against an internal curve — 1.0 is Aiden's number and a
+   better score pushes the shape outside the web. One ratio per game: the best any run of it managed against the Author row for
+   that exact mode and length, lower-is-better inverted so both directions read the same way. `null` where there is no Author
+   record to measure against — every row is null today (AUTHOR_RECORDS is empty until the final build, v13 11.3 / Open 5), and
+   the screen falls back to quality() for those games, which is what it has always drawn. */
+function authorRatio(g,runs){ let best=null;
+  for(const r of runs){ if(r.g!==g||r.practice) continue; const rec=AUTHOR_RECORDS[`au_${g}_${r.d}_${r.s}`];
+    if(rec===undefined||rec===null||!(rec>0)) continue;
+    const v=GC(g,r.d,r.s).lower ? (r.hits>0?rec/r.hits:0) : r.hits/rec;
+    if(Number.isFinite(v)&&(best===null||v>best)) best=v; }
+  return best; }
 const achById=id=>ACH.find(a=>a.id===id)||authorAch().find(a=>a.id===id);
 const got=()=>store.ach;
 function checkAch(run){ if(run.chal) return []; const g=got(); const all=Scores.runs(); const fresh=[]; for(const a of ACH){ if(!g[a.id]&&a.test(run,all)){ g[a.id]=Date.now(); fresh.push(a); } } save(); return fresh; }
@@ -97,4 +108,4 @@ function setPendingAim(v){ pendingAim=v; }
 function setPendingGoal(v){ pendingGoal=v; }
 
 
-export { ACH, Scores, UNLOCKS, achAll, achById, authorAch, chalRun, checkAch, checkUnlocks, gameOpen, goalFor, got, isNew, isOpen, lenLock, lenOpen, lensOf, markSeen, needFor, newMark, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict };
+export { ACH, Scores, UNLOCKS, achAll, achById, authorAch, authorRatio, chalRun, checkAch, checkUnlocks, gameOpen, goalFor, got, isNew, isOpen, lenLock, lenOpen, lensOf, markSeen, needFor, newMark, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict };

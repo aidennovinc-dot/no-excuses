@@ -9,12 +9,15 @@ const DT=Object.assign(timedEngine(),{ id:'dots', lockMs:500, hideOnMiss:false, 
   reset(){ this.pos=null; this.nextPos=null; this.prevPos=null; this.demoOn=false; },
   // v14 (6.9): the dots are random. The v9 quadrant pity — three in a row in the same quarter forced the next one elsewhere,
   // and the count carried across runs — was the one thing making the placement predictable, so it is gone. The only rule left
-  // is separation: a new dot never lands on the one before it. v14 (6.10): while the intro demo plays the dots stay in the
-  // lower part of the field, so the ghost finger works BELOW the one-liner instead of behind it
+  // is separation (v14 section B.4): a new dot never lands on the one before it. B.4 asks for a floor of one dot RADIUS;
+  // GAP is 1.8 dot-widths, well past that, because true randomness clusters and a cluster reads as a bug rather than variety.
+  // It is tried a handful of times and then given up on — B.4: place rather than loop — but the fallback takes the farthest of a
+  // few samples instead of a free one, because the red lead ring must not land on the white dot (v11). v14 (6.10): while the
+  // intro demo plays the dots stay in the lower part of the field, so the ghost finger works BELOW the one-liner
+  GAP:1.8,
   rnd(avoid){ const f=$('#field').getBoundingClientRect(); this.sz=parseFloat(getComputedStyle($('#dot')).width)||80; const mx=Math.max(1,f.width-this.sz), my=Math.max(1,f.height-this.sz);
-    const top=this.demoOn?my*.45:0, span=Math.max(1,my-top);
-    for(let i=0;i<60;i++){ const p={x:Math.random()*mx,y:top+Math.random()*span}; if(avoid&&Math.hypot(p.x-avoid.x,p.y-avoid.y)<this.sz*1.8) continue; return p; }
-    // v11: never fall back to an unchecked spot — the red ring must not sit on the white dot. Take the farthest of a few samples
+    const top=this.demoOn?my*.45:0, span=Math.max(1,my-top), gap=this.sz*this.GAP;
+    for(let i=0;i<24;i++){ const p={x:Math.random()*mx,y:top+Math.random()*span}; if(avoid&&Math.hypot(p.x-avoid.x,p.y-avoid.y)<gap) continue; return p; }
     let best=null,bd=-1; for(let i=0;i<8;i++){ const p={x:Math.random()*mx,y:top+Math.random()*span}; const d=avoid?Math.hypot(p.x-avoid.x,p.y-avoid.y):1e9; if(d>bd){ bd=d; best=p; } } return best; },
   begin(){ this.demoOn=false; this.pos=this.rnd(null); this.prevPos=null; this.nextPos=this.rnd(this.pos); },
   advance(){ this.prevPos=this.pos; this.pos = this.ctx.mode==='lead'?this.nextPos:this.rnd(this.pos); this.nextPos=this.rnd(this.pos); },

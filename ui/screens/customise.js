@@ -42,7 +42,6 @@ function renderCustom(){
   $('#g-rate').style.display=GAMES[F.g].timed?'':'none';
   $('#c-music-label').textContent=T(CUSTOM.music,{game:GAMES[F.g].name});
   if(F.g==='spot'&&!$('#pvsp').children.length){ const sh=['','c','t']; $('#pvsp').innerHTML=Array.from({length:14},(_,i)=>`<i class="${i===9?'c':sh[i%2?0:2]}"></i>`).join(''); }
-  $('#s-custom .eyebrow').textContent=T(CUSTOM.eyebrow,{game:GAMES[F.g].name});
   const pv=$('#pv').style; pv.setProperty('--sq-live',colOf(F.g).sq); pv.setProperty('--cue',colOf(F.g).lead); pv.setProperty('--cutp',colOf(F.g).cut||colOf(F.g).sq); pv.removeProperty('background');
   const lockBtn=$('#pvlock');
   if(pvTry.set){ const L=ACH.find(a=>a.id===pvTry.by); const map={sq:'--sq-live',lead:'--cue',cut:'--cutp'}; if(map[pvTry.set]&&pvTry.v!=='wheel') pv.setProperty(map[pvTry.set],pvTry.v); if(pvTry.set==='bg'&&DESIGNS[pvTry.v]) pv.background=DESIGNS[pvTry.v].tint; lockBtn.innerHTML=T(CUSTOM.lockLine,{name:L.name,how:L.how}); lockBtn.dataset.ach=L.id; }
@@ -61,7 +60,18 @@ function pvStep(){
   const g=F.g; if(g!==PV.last){ PV.last=g; PV.k=0; $('#pvg').classList.remove('on','hold'); } const k=PV.k++;
   if(g==='quick-tap'){ const ph=k%3; if(ph===0){ PV.n=Math.random()<.5?0:1; [0,1].forEach(i=>$('#pv'+i).style.setProperty('--v',PV.n===i?1:0)); pvG(PV.n?75:25,80); } else if(ph===1){ pvTap(); pvPop($('#pv'+PV.n)); } }
   else if(g==='dots'){ const ph=k%3; const d=$('#pvdot'), l=$('#pvlead'); if(ph===0){ PV.pos=PV.next||{x:.4,y:.3}; PV.next={x:Math.random()*.76,y:Math.random()*.62}; d.style.left=PV.pos.x*100+'%'; d.style.top=PV.pos.y*100+'%'; l.style.left=PV.next.x*100+'%'; l.style.top=PV.next.y*100+'%'; d.classList.add('on'); l.classList.add('on'); pvG(PV.pos.x*100+11,PV.pos.y*100+17); } else if(ph===1) pvTap(); }
-  else if(g==='hold'){ const ph=k%7, m=$('.pvhold .m'), t=$('#pvhtxt'), f=$('#pvg'); if(ph===0){ m.setAttribute('r',0); t.innerHTML='tap and hold'; f.classList.remove('hold'); pvG(50,86); } else if(ph===1){ f.classList.add('hold'); t.innerHTML=''; m.setAttribute('r',26+Math.random()*9); } else if(ph===3){ f.classList.remove('hold'); const r=+m.getAttribute('r'), pct=r*r/900*100, err=Math.abs(pct-100); t.innerHTML=`<b class="${err<=8?'g':'r'}">${pct.toFixed(1)}%</b>${err<=8?'close':pct>100?'too much':'too little'}`; } }
+  // v14 (8.8): Estimate is two modes and the screen offers a swatch for each, so the preview plays both — seven beats of Grow,
+  // then seven of Cut, where the finger draws a line and the two pieces land in the Cut pieces colour
+  else if(g==='hold'){ const ph=k%14, box=$('.pvhold'), t=$('#pvhtxt'), f=$('#pvg');
+    if(ph<7){ box.classList.remove('cut'); const m=$('.pvhold .m'); const q=ph;
+      if(q===0){ m.setAttribute('r',0); t.innerHTML='tap and hold'; f.classList.remove('hold'); pvG(50,86); }
+      else if(q===1){ f.classList.add('hold'); t.innerHTML=''; m.setAttribute('r',26+Math.random()*9); }
+      else if(q===3){ f.classList.remove('hold'); const r=+m.getAttribute('r'), pct=r*r/900*100, err=Math.abs(pct-100); t.innerHTML=`<b class="${err<=8?'g':'r'}">${pct.toFixed(1)}%</b>${err<=8?'close':pct>100?'too much':'too little'}`; } }
+    else { box.classList.add('cut'); const q=ph-7, a=$('#pvhcut .pa'), b=$('#pvhcut .pb'), ln=$('#pvhline');
+      if(q===0){ PV.cut=30+Math.random()*40; a.setAttribute('d','M50 22h60v60H50z'); b.setAttribute('d','M50 22h60v60H50z'); ln.setAttribute('x1',50); ln.setAttribute('x2',50); t.innerHTML='draw a line'; f.classList.remove('hold'); pvG(34,52); }
+      else if(q===1){ pvTap(); pvG(34+PV.cut*.6,52); }
+      else if(q===2){ const x=(50+PV.cut*.6).toFixed(0); ln.setAttribute('x1',x); ln.setAttribute('x2',x); a.setAttribute('d',`M50 22H${x}v60H50z`); b.setAttribute('d',`M${x} 22h${(110-x).toFixed(0)}v60H${x}z`); t.innerHTML=''; }
+      else if(q===4){ t.innerHTML=`<b class="g">${Math.round(PV.cut)}%</b>cut off`; } } }
   else if(g==='sequence'){ const ks=$$('.pvseq i'), ph=k%6; if(ph===0){ PV.a=Math.random()*5|0; PV.b=(PV.a+1+(Math.random()*3|0))%5; ks.forEach(x=>x.classList.remove('lit')); $('#pvg').classList.remove('on'); ks[PV.a].classList.add('lit'); } else if(ph===1){ ks.forEach(x=>x.classList.remove('lit')); ks[PV.b].classList.add('lit'); } else if(ph===2){ ks.forEach(x=>x.classList.remove('lit')); pvG(10+PV.a*20,60); } else if(ph===3){ pvTap(); ks[PV.a].classList.add('lit'); pvG(10+PV.b*20,60); } else if(ph===4){ pvTap(); ks[PV.a].classList.remove('lit'); ks[PV.b].classList.add('lit'); } else ks.forEach(x=>x.classList.remove('lit')); }
   else if(g==='timing'){ const ph=k%9, c=$('#pvclk'), r=$('#pvtmres'); if(ph===0){ c.textContent='0.00'; c.style.opacity=1; r.innerHTML=''; pvG(50,84); } else if(ph<6){ const e=ph*1.35; c.textContent=e.toFixed(2); c.style.opacity=e<1.5?1:Math.max(0,1-(e-1.5)/1.2); } else if(ph===6){ pvTap(); const e=6.75+Math.random()*.6; c.textContent=e.toFixed(2); c.style.opacity=1; const err=Math.abs(e-7); r.innerHTML=`<b class="${err<=.1?'g':err<=.3?'':'r'}">${err.toFixed(2)}s</b>${e>7?'late':'early'}`; } }
   else if(g==='reaction'){ const p=$('#pvrx'), ph=k%6; if(ph===0){ p.classList.remove('lit'); p.textContent='wait for it'; pvG(50,86); } else if(ph===3){ p.classList.add('lit'); p.textContent='tap'; } else if(ph===4){ pvTap(); p.classList.remove('lit'); p.innerHTML=`<b>${180+(Math.random()*90|0)} ms</b>`; } }
@@ -71,11 +81,22 @@ setInterval(pvStep,520);
 
 /* colour wheel: hue around, saturation outward. Writes straight into prefs[set] (bg → tint) */
 const Wheel=(()=>{ const cv=$('#wheel'), cx=cv.getContext('2d'); let set='sq', drawn=false, col='#ffffff';
+  // v14 (8.11): the wheel opens with a ring on the colour already chosen, and the ring follows the finger. hueSat() is the
+  // inverse of hsl() — it turns the stored hex back into the angle and radius it came off, so the ring lands where it was picked
+  function hueSat(hex){ const m=/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex||''); if(!m) return null;
+    const [r,g,b]=[1,2,3].map(i=>parseInt(m[i],16)/255); const mx=Math.max(r,g,b), mn=Math.min(r,g,b), d=mx-mn;
+    let h=0; if(d){ h=mx===r?((g-b)/d+(g<b?6:0)):mx===g?((b-r)/d+2):((r-g)/d+4); h*=60; }
+    const l=(mx+mn)/2, sat=d===0?0:d/(1-Math.abs(2*l-1)); return { h, s:Math.min(1,sat) }; }
+  function mark(h,sv){ const el=$('#wheelmark'); if(!el) return; if(h===null){ el.style.display='none'; return; }
+    const a=h*Math.PI/180, r=Math.min(1,sv)*50; el.style.display=''; el.style.left=(50+Math.cos(a)*r)+'%'; el.style.top=(50+Math.sin(a)*r)+'%'; }
   function draw(){ const R=240; const img=cx.createImageData(480,480); const d=img.data; for(let y=0;y<480;y++) for(let x=0;x<480;x++){ const dx=x-R, dy=y-R, r=Math.hypot(dx,dy); const i=(y*480+x)*4; if(r>R){ d[i+3]=0; continue; } const h=(Math.atan2(dy,dx)*180/Math.PI+360)%360, s=r/R, [rr,gg,bb]=hsl(h,s,set==='bg'?.08:.6); d[i]=rr; d[i+1]=gg; d[i+2]=bb; d[i+3]=255; } cx.putImageData(img,0,0); drawn=true; }
   function hsl(h,s,l){ const c=(1-Math.abs(2*l-1))*s, x=c*(1-Math.abs((h/60)%2-1)), m=l-c/2; let r,g,b; if(h<60)[r,g,b]=[c,x,0]; else if(h<120)[r,g,b]=[x,c,0]; else if(h<180)[r,g,b]=[0,c,x]; else if(h<240)[r,g,b]=[0,x,c]; else if(h<300)[r,g,b]=[x,0,c]; else [r,g,b]=[c,0,x]; return [r,g,b].map(v=>Math.round((v+m)*255)); }
-  function pick(e){ const b=cv.getBoundingClientRect(); const x=(e.clientX-b.left)/b.width*480, y=(e.clientY-b.top)/b.height*480; const dx=x-240, dy=y-240, r=Math.min(240,Math.hypot(dx,dy)); const h=(Math.atan2(dy,dx)*180/Math.PI+360)%360; const [rr,gg,bb]=hsl(h,r/240,set==='bg'?.08:.6); col='#'+[rr,gg,bb].map(v=>v.toString(16).padStart(2,'0')).join(''); $('#wheelout').style.background=col; if(set==='bg') prefs.tint=col; else prefs.col[F.g][set]=col; applyPrefs(F.g); $('#pv').style.setProperty(set==='sq'?'--sq-live':set==='cut'?'--cutp':'--cue',col); }
+  function pick(e){ const b=cv.getBoundingClientRect(); const x=(e.clientX-b.left)/b.width*480, y=(e.clientY-b.top)/b.height*480; const dx=x-240, dy=y-240, r=Math.min(240,Math.hypot(dx,dy)); const h=(Math.atan2(dy,dx)*180/Math.PI+360)%360; const [rr,gg,bb]=hsl(h,r/240,set==='bg'?.08:.6); col='#'+[rr,gg,bb].map(v=>v.toString(16).padStart(2,'0')).join(''); $('#wheelout').style.background=col; mark(h,r/240); if(set==='bg') prefs.tint=col; else prefs.col[F.g][set]=col; applyPrefs(F.g); $('#pv').style.setProperty(set==='sq'?'--sq-live':set==='cut'?'--cutp':'--cue',col); }
   cv.addEventListener('pointerdown',e=>{ e.preventDefault(); pick(e); cv.setPointerCapture(e.pointerId); }); cv.addEventListener('pointermove',e=>{ if(e.buttons) pick(e); });
-  return { open(s){ set=s; draw(); $('#wheel-title').textContent=T(CUSTOM.wheel,{word:ITEM_WORD[s]||s,game:GAMES[F.g].name}); $('#wheelout').style.background=s==='bg'?(prefs.tint||DESIGNS[prefs.bg].tint):colOf(F.g)[s]; $('#wheelwrap').classList.add('on'); }, close(){ $('#wheelwrap').classList.remove('on'); renderCustom(); } }; })();
+  return { open(s){ set=s; draw(); $('#wheel-title').textContent=T(CUSTOM.wheel,{word:ITEM_WORD[s]||s,game:GAMES[F.g].name});
+      const cur=s==='bg'?(prefs.tint||DESIGNS[prefs.bg].tint):colOf(F.g)[s]; $('#wheelout').style.background=cur;
+      const hs=hueSat(cur); mark(hs?hs.h:null,hs?hs.s:0); $('#wheelwrap').classList.add('on'); },
+    close(){ $('#wheelwrap').classList.remove('on'); renderCustom(); } }; })();
 
 register('s-custom',{ onShow({unlocks}){ F.g=sel.game; pvTry.set=null; pvSeen.by=null; renderCustom();
   // arrived from an earned achievement (v11): scroll to the group and flash the item it opened

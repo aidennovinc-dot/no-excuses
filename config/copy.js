@@ -90,8 +90,12 @@ export const ABOUT = { tier:['No ads, ever.','Every colour, background and sound
   supTitleOn:'Supporter · thank you', supTitleOff:'Support · A$1.99 · once', supTextOn:'Thank you — it keeps this going.', supTextOff:'A one-off, if you want to back it.',
   devOpen:'open everything is ON · every mode and cosmetic available', devProg:'progression ON · {u} of {nu} modes earned · {a} of {na} achievements',
   devRuns:' · {r} runs on record · ', devSup:'supporter ON', devFree:'free tier · ads on' };
-export const CUSTOM = { eyebrow:'customise · {game} · colours are per game', music:'Music · {game}', preview:'Preview', lockLine:'Locked · {name} — {how} · <u>show me</u>', wheel:'{word} · {game} · drag to pick' };
-export const ACH_SCREEN = { all:'All', done:'done', secret:'secret', hidden:'???', progress:'You are {p}% of the way to something.', stretch:'A stretch past the stretch. You will know.', inGame:' · in {game}' };
+// v14 (8.9): the `customise · {game} · colours are per game` line at the top is gone — the game chips and the group labels
+// under the preview say both, and the eyebrow was the first thing on a screen that did not need an introduction
+export const CUSTOM = { music:'Music · {game}', preview:'Preview', lockLine:'Locked · {name} — {how} · <u>show me</u>', wheel:'{word} · {game} · drag to pick' };
+// v14 (8.1): a row whose requirement is a SET of things says which are left, not just how far along the bar is.
+// v14 (8.5): a secret row shows its own `hint` where an ordinary row shows `how`; `stretch` is the fallback for one without
+export const ACH_SCREEN = { all:'All', done:'done', secret:'secret', hidden:'???', progress:' · {p}% of the way there', stretch:'A stretch past the stretch. You will know.', inGame:' · in {game}', left:' · still to play: {names}' };
 
 // the engines' own words
 export const SEQ = { copy:'copy the notes', yourTurn:'your turn', whoTurn:'{who} · your turn', watch:'round {n} · watch', round:'round {n}',
@@ -107,8 +111,9 @@ export const TIMING = { target:'target', stop:'tap to stop the timer', marker:'t
   over:'{bud} reached · run over', hudStreak:'attempt {n} · {tot} of {bud}', hudSet:'{n} / {s}', budS:'2.0s', budPx:'100px',
   // v14 (6.18): what the game has asked for so far, against what it will have asked for by the end of the Set
   askedSet:'{tot}s of {all}s asked', asked:'{tot}s asked' };
-// v14: the budgets are the engine's constants now, not numbers baked into a string — a Flash Streak spends what is over 200ms
-// against 500ms (L5), a Go / No-go Streak what is over 300ms against 1000ms (6.2 / L5), and a wrong tap costs 150ms in both scorings
+// v14: the budgets are the engine's constants now, not numbers baked into a string — a Flash Streak spends what is over 250ms
+// against 500ms (L5 / B.1), a Go / No-go Streak what is over 300ms against 1000ms (6.2 / L5). A wrong tap ADDS 150ms to a Go /
+// No-go Set average (A.2) and SPENDS 300ms of a Streak budget (B.2): two currencies, two numbers, not to be harmonised (B.3)
 export const REACTION = { wait:'wait for it', tap:'TAP', slow:'too slow', early:'too early', noTap:'no tap', reached:'{bud}ms reached', ms:' ms', quick:'quick', good:'good', slowWord:'slow',
   again:'try again · attempt {n}{of}', of:' of {s}', takes:'Player {n} takes it', tappedEarly:'Player {n} tapped early', draw:'draw', wins:'Player {n} wins',
   ruleTap:['tap','only','the'], ruleNow:['now','only','the'], wrong:'wrong tap · {n} of 3', wrongS:'wrong tap', three:'three wrong taps', over:'run over',

@@ -75,6 +75,11 @@ const ACH_TEST = {
   sp_5:r=>r.g==='spot'&&r.d==='count'&&r.s===STREAK&&r.hits>=8, sp_15:r=>r.g==='spot'&&r.d==='count'&&r.s===10&&r.hits<=2,
   sp_fast:r=>r.g==='spot'&&r.d==='find'&&r.s===10&&r.hits<20, sp_clean:r=>r.g==='spot'&&r.d==='find'&&r.s===10&&r.misses===0,
 };
+/* v14 (8.1): what is still MISSING, for the rows whose requirement is a set of things rather than one number. The bar says
+   how far; this says which. Keyed by id like everything else, so a row without an entry simply shows no list. */
+const ACH_LEFT = {
+  every:all=>Object.entries(GAMES).filter(([g])=>!all.some(x=>x.g===g)).map(([,x])=>x.name),
+};
 const ACH_PROGRESS = {
   every:all=>Object.keys(GAMES).filter(g=>all.some(x=>x.g===g)).length/N_GAMES, fullset:(all,g)=>fullsetProg(all,g), tour:all=>tourProg(all),
   qt_r4:all=>bestRate(all,'quick-tap',0,'four')/3, qt_r5:all=>bestRate(all,'quick-tap',15,'four')/4, qt_br4:all=>bestRate(all,'quick-tap',15,'two')/4,
@@ -95,4 +100,4 @@ const QUALITY = {
 };
 const quality=(g,d,s,r)=>GV(QUALITY,g,d,s,()=>0)(r);
 
-export { ACH_PROGRESS, ACH_TEST, LEN_TEST, QUALITY, UNLOCK_TEST, bestRate, bestRound, fullsetProg, lowProg, lowTotal, quality, rate, tourProg };
+export { ACH_LEFT, ACH_PROGRESS, ACH_TEST, LEN_TEST, QUALITY, UNLOCK_TEST, bestRate, bestRound, fullsetProg, lowProg, lowTotal, quality, rate, tourProg };

@@ -25,6 +25,7 @@
   <button data-act="go" class="item glow" data-go="s-ach">Achievements</button>
   <button data-act="go" class="item glow" data-go="s-custom">Customise</button>
   <button data-act="go" class="item glow" data-go="s-about">About</button>
+  <button data-act="go" class="item glow" data-go="s-testing" data-dev>Testing</button>
   <div class="menu-note" id="menu-note"></div>
   <div class="hint" id="storyhint">tap to begin</div>
 </section>
@@ -62,7 +63,7 @@
 
 <section class="screen top" id="s-board" data-back="s-menu">
   <button data-act="back" class="back">&larr; BACK</button>
-  <div class="prof"><div class="who">profile <input id="pname" maxlength="10" placeholder="YOU" autocomplete="off"><span class="star" id="pstar"></span></div><svg id="radar" viewBox="-30 -26 260 252"></svg><div class="hint" style="margin-top:0">your best in each game · 0 to 100</div></div>
+  <div class="prof"><div class="who">profile <input id="pname" maxlength="10" placeholder="YOU" autocomplete="off"><span class="star" id="pstar"></span></div><svg id="radar" viewBox="-30 -26 260 252"></svg><div class="hint" style="margin-top:0">your best in each game · 100 is Aiden's record</div></div>
   <div class="eyebrow">scores · local top 10</div>
   <div class="chips" id="bd-g"></div>
   <div class="chips" id="bd-d"></div>
@@ -79,11 +80,10 @@
 
 <section class="screen top" id="s-custom" data-back="s-menu">
   <button data-act="back" class="back">&larr; BACK</button>
-  <div class="eyebrow">customise · live preview</div>
   <div class="pv" id="pv" data-g="quick-tap">
     <div class="pvqt"><div class="pad l"><div class="sq" id="pv0"></div></div><div class="pad r"><div class="sq" id="pv1"></div></div><div class="pad l up"><div class="sq" id="pv2"></div></div><div class="pad r up"><div class="sq" id="pv3"></div></div></div>
     <div class="pvdots"><b class="ld" id="pvlead"></b><b id="pvdot"></b></div>
-    <div class="pvhold"><svg viewBox="0 0 160 100"><circle class="t" cx="80" cy="52" r="30"/><circle class="m" cx="80" cy="52" r="0"/></svg><div class="pvtxt" id="pvhtxt" style="bottom:6%"></div></div>
+    <div class="pvhold"><svg viewBox="0 0 160 100" id="pvhgrow"><circle class="t" cx="80" cy="52" r="30"/><circle class="m" cx="80" cy="52" r="0"/></svg><svg viewBox="0 0 160 100" id="pvhcut"><path class="pa" d="M50 22h60v60H50z"/><path class="pb" d="M50 22h60v60H50z"/><line id="pvhline" x1="50" y1="22" x2="50" y2="82"/></svg><div class="pvtxt" id="pvhtxt" style="bottom:6%"></div></div>
     <div class="pvseq"><i></i><i></i><i></i><i></i><i></i></div>
     <div class="pvtm"><div class="pvtxt tgt">target<b>7.00</b></div><div class="pvtxt clk"><b id="pvclk">0.00</b></div><div class="pvtxt" id="pvtmres" style="bottom:8%"></div></div>
     <div class="pvrx" id="pvrx">wait for it</div>
@@ -108,10 +108,15 @@
   <div class="explain">A passion project of simple games of pure skill and minimal frills.<br><br>If you'd like to remove ads, add customisation, and show your support, tap below.</div>
   <button data-act="support" class="support" id="support"><b id="support-title">Support · A$1.99 · once</b><small id="support-text">No ads, ever. Every colour, background and sound pack open from day one, plus the colour wheel. A pro 60-second length in Quick Tap and Dots, with its own boards. A star on your profile.</small></button>
   <div class="tierbox" id="tierbox"></div>
-  <div class="hint">build 20 · batch 10 · the runs · 8 sept 2026</div>
-  <div class="eyebrow" data-dev>testing</div>
-  <div class="chips" data-dev><button data-act="dev-fresh" class="chip" id="dev-fresh">fresh game · wipe everything</button><button data-act="dev-open" class="chip" id="dev-open">open everything</button><button data-act="dev-story" class="chip" id="dev-story">replay the intro</button><button data-act="dev-sup" class="chip" id="dev-sup">supporter</button></div>
-  <div class="hint" id="dev-state" data-dev></div>
+  <div class="hint">build 21 · batch 10 · side screens · 8 sept 2026</div>
+</section>
+
+<section class="screen" id="s-testing" data-back="s-menu" data-dev>
+  <button data-act="back" class="back">&larr; BACK</button>
+  <div class="eyebrow">testing</div>
+  <div class="explain">Not in the released app. Everything here changes what is on this phone only.</div>
+  <div class="chips"><button data-act="dev-fresh" class="chip" id="dev-fresh">fresh game · wipe everything</button><button data-act="dev-open" class="chip" id="dev-open">open everything</button><button data-act="dev-story" class="chip" id="dev-story">replay the intro</button><button data-act="dev-sup" class="chip" id="dev-sup">supporter</button></div>
+  <div class="hint" id="dev-state"></div>
 </section>
 
 <section class="screen" id="s-pass">
@@ -176,16 +181,16 @@
   <div id="bar"></div>
 </div>
 <div id="toast" data-act="toast"></div>
-<div id="wheelwrap"><div id="wheelbox"><div class="eyebrow" id="wheel-title">pick a colour</div><canvas id="wheel" width="480" height="480"></canvas><div id="wheelout"></div><button data-act="wheel-done" class="item sub" id="wheel-done">Done</button></div></div>
+<div id="wheelwrap"><div id="wheelbox"><div class="eyebrow" id="wheel-title">pick a colour</div><div id="wheelpad"><canvas id="wheel" width="480" height="480"></canvas><i id="wheelmark"></i></div><div id="wheelout"></div><button data-act="wheel-done" class="item sub" id="wheel-done">Done</button></div></div>
 
 <script type="module" src="./boot.js"></script>
 
-<div id="build">build 20</div>
+<div id="build">build 21</div>
 <button id="update">New build available — tap to reload</button>
 <script>
 // build check: version.json is fetched with no-store, so a stale cached page still learns a newer build exists
 (function(){
-  const BUILD="20";
+  const BUILD="21";
   async function check(){
     try{
       const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});

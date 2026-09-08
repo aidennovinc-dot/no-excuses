@@ -7,7 +7,7 @@ import { $, T } from "../../core.js";
 import { on } from "../../core/events.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, lenName } from "../../games/registry.js";
-import { ACH, Scores, got, lensOf, unlockHtml } from "../../progress.js";
+import { ACH, Scores, authorRatio, got, lensOf, unlockHtml } from "../../progress.js";
 import { quality } from "../../progress/rules.js";
 import { define } from "../actions.js";
 import { chips } from "../chips.js";
@@ -18,12 +18,19 @@ import { toast } from "../toast.js";
 const F={ g:prefs.lastGame, d:GAMES[prefs.lastGame].modes[0], s:5 };
 let curT=null;   // the run just played, marked in its row
 function rows(g,d,s,list){ const cfg=GC(g,d,s), c=colsOf(g,d,s); return list.length ? list.map((r,i)=>`<tr class="${i===0&&(r.hits>0||cfg.lower)?'best':''} ${r.t===curT?'cur':''}"><td>${i+1}</td><td></td><td>${fmtScore(g,r.hits,d,s)}</td><td>${c[0][1](r)}</td><td>${c[1][1](r)}</td><td>${new Date(r.t).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'2-digit'})}</td></tr>`).join('') : `<tr><td colspan="6">${RESULT.noRuns}</td></tr>`; }
-// the profile radar (v9): one axis per game, your best quality 0..1 in any mode and length of it. Every lower-is-better config's quality() already runs 1 − (score/limit), so the radar reads the same way for every game (checked v11)
-function renderRadar(){ const all=Scores.runs(), ids=Object.keys(GAMES), n=ids.length, C=100, R=88; const vals=ids.map(g=>Math.min(1,Math.max(0,...all.filter(r=>r.g===g&&!r.practice).map(r=>{ try{ return quality(g,r.d,r.s,r)||0; }catch(e){ return 0; } }))));
+/* the profile radar (v9): one axis per game, your best in any mode and length of it.
+   v14 (8.6): 1.0 — the outer ring — is the AUTHOR's record for that game, and a score past it pushes the shape OUTSIDE the web
+   instead of flattening against it. The cap is 1.15 so a vertex can never reach the game's own label at 1.19. Where there is no
+   Author record to measure against — every game today, AUTHOR_RECORDS is empty until the final build — the axis falls back to
+   quality(), which is what it has always drawn; three of those curves are themselves unbounded, so those can pass 1.0 too. */
+const RMAX=1.15;
+function renderRadar(){ const all=Scores.runs(), ids=Object.keys(GAMES), n=ids.length, C=100, R=88;
+  const vals=ids.map(g=>{ const au=authorRatio(g,all); if(au!==null) return Math.min(RMAX,Math.max(0,au));
+    return Math.min(RMAX,Math.max(0,...all.filter(r=>r.g===g&&!r.practice).map(r=>{ try{ return quality(g,r.d,r.s,r)||0; }catch(e){ return 0; } }))); });
   const pt=(i,k)=>{ const a=-Math.PI/2+i/n*2*Math.PI; return [C+Math.cos(a)*R*k,C+Math.sin(a)*R*k]; }; const P=k=>ids.map((_,i)=>pt(i,k).map(v=>v.toFixed(1)).join(',')).join(' ');
   $('#radar').innerHTML=[.25,.5,.75,1].map(k=>`<polygon class="web" points="${P(k)}"/>`).join('')+ids.map((_,i)=>{ const [x,y]=pt(i,1); return `<line x1="${C}" y1="${C}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`; }).join('')
-    +`<polygon class="me" points="${ids.map((_,i)=>pt(i,Math.max(.03,vals[i])).map(v=>v.toFixed(1)).join(',')).join(' ')}"/>`+ids.map((_,i)=>{ const [x,y]=pt(i,Math.max(.03,vals[i])); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.5"/>`; }).join('')
-    +ids.map((g,i)=>{ const [x,y]=pt(i,1.19); return `<text x="${x.toFixed(1)}" y="${(y+3).toFixed(1)}" text-anchor="middle">${GAMES[g].name} ${Math.round(vals[i]*100)}</text>`; }).join(''); }
+    +`<polygon class="me${vals.some(v=>v>1)?' past':''}" points="${ids.map((_,i)=>pt(i,Math.max(.03,vals[i])).map(v=>v.toFixed(1)).join(',')).join(' ')}"/>`+ids.map((_,i)=>{ const [x,y]=pt(i,Math.max(.03,vals[i])); return `<circle class="${vals[i]>1?'past':''}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.5"/>`; }).join('')
+    +ids.map((g,i)=>{ const [x,y]=pt(i,1.19); return `<text class="${vals[i]>1?'past':''}" x="${x.toFixed(1)}" y="${(y+3).toFixed(1)}" text-anchor="middle">${GAMES[g].name} ${Math.round(vals[i]*100)}</text>`; }).join(''); }
 function renderBoard(){ $('#pstar').textContent=prefs.supporter?'★':''; const g=F.g; if(!GAMES[g].modes.includes(F.d)) F.d=GAMES[g].modes[0]; const lens=lensOf(g,F.d); if(!lens.includes(F.s)) F.s=lens[0];
   $('#bd-g').innerHTML=Object.entries(GAMES).map(([id,x])=>`<button class="chip" data-act="chip-bd" data-chip="bd-g" data-v="${id}">${x.name}</button>`).join('');
   $('#bd-d').innerHTML=GAMES[g].modes.length>1?GAMES[g].modes.map(d=>`<button class="chip" data-act="chip-bd" data-chip="bd-d" data-v="${d}">${MODE_NAME[d]}</button>`).join(''):'';

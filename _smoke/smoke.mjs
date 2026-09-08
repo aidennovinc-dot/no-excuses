@@ -15,6 +15,9 @@
  *   5. boot on five storage fixtures: empty · build-13 layout (migrates to the one key `ne` v1 with runs, unlocks, achievements and name intact,
  *      the seven old keys removed) · corrupt build-13 keys · a corrupt `ne` v1 (every bad field falls back on its own) · 650 runs (capped at 600)
  *   6. challenge links: a hostile ?score= lands as text (S1); a bad ?s= is no challenge (S2); a run only the link opened is never on a board (S2)
+ *   6b. the side screens (v14 section 8): a first-seen Customise swatch still shows its colour (8.7), the achievements list has no
+ *       sideways axis (8.2), the title leads with the game name (8.3), a secret row is described (8.5), and Testing is its own
+ *       screen with About left clean (8.10). Plus the two Reaction Streak thresholds L5 names (v14 B.1 / B.2 / B.3)
  *   7. every button action (data-act) driven at least once — customise, chips, dev switches, lock box, Next card, full stop, share
  * Pass a base URL as argv[2] to test a server you are already running instead.
  */
@@ -53,6 +56,15 @@ console.log('\nstatic checks');
   const stray = [];
   for (const f of engines) { const shared = f.startsWith('games/_shared/'); const src = strip(fs.readFileSync(path.join(root, f), 'utf8')); for (const m of src.matchAll(/from\s+["']([^"']+)["']/g)) { const p = m[1]; const okPath = shared ? /^(\.\/[\w.-]+\.js$|\.\.\/\.\.\/(core\/|config\/|core\.js$))/.test(p) : /^\.\.\/(_shared\/|\.\.\/(core\/|config\/|core\.js$))/.test(p); if (!okPath) stray.push(`${f} → ${p}`); } }
   stray.length ? bad('A3 engines import only _shared / core / config', stray.join(', ')) : ok(`A3 engines import only _shared / core / config (${engines.length} files)`);
+  // v14 B.1 / B.2 / B.3 (L5): Flash spends what is over 250ms of 500; a Go / No-go Streak spends what is over 300ms of 1000 and
+  // 300ms a wrong tap, while its SET still ADDS 150ms a wrong tap. Two currencies — the gate holds them apart so nobody harmonises them
+  { const rx = fs.readFileSync(path.join(root, 'games', 'reaction', 'index.js'), 'utf8');
+    const num = k => { const m = rx.match(new RegExp(k + ':\\s*(\\d+)')); return m ? +m[1] : null; };
+    const want = { FLASH_FREE: 250, FLASH_BUD: 500, NOGO_FREE: 300, NOGO_BUD: 1000, NOGO_WRONG_SET: 150, NOGO_WRONG_STREAK: 300 };
+    const got = Object.fromEntries(Object.keys(want).map(k => [k, num(k)]));
+    const wrong = Object.keys(want).filter(k => got[k] !== want[k]);
+    wrong.length ? bad('L5 the Reaction budgets', wrong.map(k => `${k}=${got[k]} want ${want[k]}`).join(', ')) : ok('L5 Flash 500/250, Go / No-go 1000/300, wrong tap 300 in a Streak and 150 in a Set (v14 B.1–B.3)');
+    /(this\.NOGO_WRONG_SET|NOGO_WRONG_STREAK)/.test(rx) && !/this\.NOGO_WRONG\b/.test(rx) ? ok('B.3 no bare NOGO_WRONG left to blur the two currencies') : bad('B.3 the two wrong-tap costs are separate constants'); }
   // build 18 (A4): a screen never imports another screen or an engine; the run never imports a screen. They talk through core/events.js
   const screens = fs.readdirSync(path.join(root, 'ui', 'screens')).filter(f => f.endsWith('.js') && f !== 'index.js').map(f => `ui/screens/${f}`);
   const cross = [];
@@ -186,7 +198,7 @@ for (const g of GAMES) {
   await click('#grid'); await sleep(200);
 }
 // the other screens open and render
-for (const s of ['s-board', 's-ach', 's-custom', 's-about']) { await click('.back'); await sleep(250); await click(`[data-go="${s}"]`); await sleep(600); (await onScreen()) === s ? ok(`${s} opens`) : bad(`${s} opens`, 'on ' + (await onScreen())); }
+for (const s of ['s-board', 's-ach', 's-custom', 's-about', 's-testing']) { await click('.back'); await sleep(250); await click(`[data-go="${s}"]`); await sleep(600); (await onScreen()) === s ? ok(`${s} opens`) : bad(`${s} opens`, 'on ' + (await onScreen())); }
 
 // ---- 2b. the Set and Streak lines on every sheet come from the one table (L5 / v14 section 5) ----
 console.log('\nsheet copy comes from SET_COPY (L5)');
@@ -341,6 +353,45 @@ const openChallenge = async (qs) => {
   } else bad('challenge link opens a locked mode sheet', JSON.stringify(c));
 }
 
+// ---- 6b. the side screens (v14 section 8) ----
+console.log('\nside screens (v14 section 8)');
+{
+  await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
+  await setStorage({});                        // a brand-new profile: everything unseen, which is what 8.7 broke
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(500);
+  await page.evaluate(() => document.body.click()); await sleep(900);
+  await click('[data-go="s-custom"]'); await sleep(1400);   // past the .6s first-seen highlight
+  // 8.7: the highlight used to end on `background-color:transparent` under animation-fill-mode:both, which held forever —
+  // so every first-seen swatch was left blank. The target colours must still be their own colour once it has played
+  const sw = await page.evaluate(() => { const b = document.querySelector('#c-sq button'); if (!b) return null;
+    const bg = getComputedStyle(b).backgroundColor; const a = /rgba?\(([^)]+)\)/.exec(bg); const parts = a ? a[1].split(',') : [];
+    return { cls: b.className.trim(), bg, alpha: parts.length > 3 ? parseFloat(parts[3]) : 1 }; });
+  (sw && sw.alpha > .9) ? ok(`8.7 a first-seen target colour still shows its colour (${sw.bg})`) : bad('8.7 target colours blank on first load', JSON.stringify(sw));
+  (await page.evaluate(() => !document.querySelector('#s-custom .eyebrow'))) ? ok('8.9 the Customise eyebrow line is gone') : bad('8.9 the Customise eyebrow line is gone');
+  await click('#s-custom .back'); await sleep(400);
+  await click('[data-go="s-ach"]'); await sleep(500);
+  const ach = await page.evaluate(() => {
+    const row = document.getElementById('ach-qt_clean5'), sec = document.getElementById('ach-qt_s5'), ev = document.getElementById('ach-every');
+    return { ox: getComputedStyle(document.getElementById('achlist')).overflowX,
+      lead: row ? (row.querySelector('span i') || {}).textContent : null,
+      leadFirst: row ? row.querySelector('span').firstElementChild?.tagName : null,
+      secret: sec ? (sec.querySelector('small') || {}).textContent : null,
+      left: ev ? (ev.querySelector('small') || {}).textContent : null };
+  });
+  (ach.ox === 'hidden') ? ok('8.2 the achievements list has no sideways axis to be left panned on') : bad('8.2 achievements list overflow-x', ach.ox);
+  (ach.leadFirst === 'I' && ach.lead === 'Quick Tap') ? ok('8.3 the game name leads the achievement title') : bad('8.3 the game name leads the title', JSON.stringify(ach));
+  (ach.secret && !/^A stretch past/.test(ach.secret)) ? ok(`8.5 a secret row is described: "${ach.secret.slice(0, 46)}…"`) : bad('8.5 secret achievements get descriptions', ach.secret);
+  (ach.left && /still to play/.test(ach.left)) ? ok('8.1 "Finish a run in every game" names the games left') : bad('8.1 which games are left', ach.left);
+  await click('#s-ach .back'); await sleep(400);
+  // 8.10: Testing is its own item below About, and About no longer carries it
+  const moved = await page.evaluate(() => ({ item: !!document.querySelector('#s-menu [data-go="s-testing"]'),
+    below: document.querySelector('#s-menu [data-go="s-about"]')?.nextElementSibling?.dataset.go,
+    inAbout: document.querySelectorAll('#s-about [data-dev]').length, inTesting: document.querySelectorAll('#s-testing [data-act^="dev-"]').length }));
+  (moved.item && moved.below === 's-testing' && moved.inAbout === 0 && moved.inTesting === 4)
+    ? ok('8.10 Testing is its own item directly below About, with all four switches and none left in About')
+    : bad('8.10 Testing moved out of About', JSON.stringify(moved));
+}
+
 // ---- 7. every button action once (build 15: ui/actions.js dispatches on data-act) ----
 console.log('\nbutton actions (every data-act at least once)');
 {
@@ -379,10 +430,12 @@ console.log('\nbutton actions (every data-act at least once)');
   await tap('#lvl-back', 'sheet · mode back'); await tap('#diff-row .choice:nth-child(2)', 'sheet · mode');
   await tap('#prac-row [data-prac]', 'sheet · practice from'); await tap('#grid', 'sheet · grid');
   await sleep(500); await tap('#s-pick .back', 'grid · back');
-  // about: the dev switches (each toggled back), support, replay the intro
-  await tap('[data-go="s-about"]'); await tap('#dev-sup', 'about · supporter on'); await tap('#dev-sup', 'about · supporter off'); await tap('#support', 'about · support');
-  await tap('#dev-open', 'about · progression on'); await tap('#dev-open', 'about · everything open');
-  await tap('#dev-story', 'about · replay the intro'); await sleep(300);
+  // about: support. v14 (8.10): the dev switches live on their own screen now, one menu item below About
+  await tap('[data-go="s-about"]'); await tap('#support', 'about · support');
+  await sleep(400); await tap('#s-about .back', 'about · back');
+  await tap('[data-go="s-testing"]'); await tap('#dev-sup', 'testing · supporter on'); await tap('#dev-sup', 'testing · supporter off');
+  await tap('#dev-open', 'testing · progression on'); await tap('#dev-open', 'testing · everything open');
+  await tap('#dev-story', 'testing · replay the intro'); await sleep(300);
   (await page.evaluate(() => !!document.querySelector('#s-menu.story'))) ? ok('replay the intro shows the title sequence') : bad('replay the intro', 'on ' + (await onScreen()));
   await page.evaluate(() => document.body.click()); await sleep(400);
   // the full stop, three taps
