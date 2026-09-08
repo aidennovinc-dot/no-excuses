@@ -34,6 +34,18 @@ lives beside `BUILD` and does **not** move with it — see the comment there for
   the player to work out which direction wins.
 - A new game is one entry in `GAMES` (`config/games.js`) plus an engine in `games/`, its formatters in
   `ui/format.js` and its quality predicate in `progress/rules.js`, all under the same id.
+- **There are TWO progression systems and they share nothing but a screen** (v14 9.2, build 22). The **unlock chain**
+  (`config/unlocks.js`, L6) is sequential and gates which games are playable. **The key** (`progress/key.js`,
+  `config/key-bars.js`) is concurrent, gates nothing, and every unlocked game feeds it independently. Never describe
+  one in terms of the other — that mistake is what sank mock-up option C.
+- **A clearance bar is a one-off threshold, not a score to hold.** Beat it once in a solo run and that combination is
+  cleared for good; re-clearing does nothing and plays nothing. Pass & play, versus, practice and challenge-link runs
+  never contribute (9.4, consistent with L10). **Call them clearance bars, never "minimum bars"** (C.7) — eight of the
+  thirty-one are ceilings, so "minimum" is wrong for a quarter of them.
+- **The key's contributor list is built from the config, never listed.** `GAMES` × modes × `GC(g,d).lens` — a game with
+  a `SET_COPY` row contributes Set and Streak per mode, a timed game contributes its lengths, Sequence its key counts.
+  31 today; a new mode joins the key with one row in `config/key-bars.js` and no code change. The gate fails on a
+  literal `31` in `progress/key.js`, and on any combination without a bar or any bar without a combination.
 
 ## Structure
 
@@ -54,8 +66,10 @@ navigate with `show(id, opts)` and never import another screen. The engines impo
 the run or each other.
 
 **Screens — since build 18.** One file per screen under `ui/screens/`, each owning its DOM: `menu`,
-`pick`, `board`, `achievements`, `customise`, `about`, `testing`, `pass`, `result`, `lockbox`; `index.js`
-imports them all. **`testing.js` is new at build 21 (v14 8.10):** the dev switches are their own menu item
+`pick`, `board`, `achievements`, `key`, `customise`, `about`, `testing`, `pass`, `result`, `lockbox`; `index.js`
+imports them all. **`key.js` is new at build 22 (v14 §9.2–9.7)** — the second progression system, its own menu item
+below Achievements. It is the one screen with two ways in: from the menu, and from a result screen that just cleared a
+bar, which passes `{advance, from:'s-over'}` so the root animates and Back returns to the run rather than the menu. **`testing.js` is new at build 21 (v14 8.10):** the dev switches are their own menu item
 directly below About, not a block at the bottom of it, and that file owns the one `[data-dev]` sweep. **`title.js` is gone since build 19 (L1 / v14 1.2):** the title sequence is the `story`
 class on the menu screen, not a screen of its own, so NO EXCUSES is one node that never moves or
 re-renders — `show('s-menu', {story: true})` plays it. A screen calls `register(id, { onShow(opts), onBack() })` on `ui/router.js` and
@@ -68,7 +82,9 @@ Every change emits `screen:change {id}` (`'game'` for the game layer) — the at
 its frame loop, the theme re-applies the game's colours, the wheel and the lock box close.
 
 **The store (A5, S3) — since build 18.** One localStorage key, `ne`, holding `{ v, prefs, runs, ach,
-unlock, intro, seen }` (`core/store.js`). On load the migration ladder runs forward (v0 = the seven
+unlock, intro, seen, bars }` (`core/store.js`). **`bars` is new at build 22** — the key's cleared combinations, a map of
+`'<game>:<mode>:<length>'` → when it first cleared, written only by `progress/key.js`. It needed no ladder step: a v1
+record without one shape-checks to `{}`, which is the right answer for a profile that has never met the key. On load the migration ladder runs forward (v0 = the seven
 build-13 keys, folded in once with the v8–v11 reshapes and then removed), then every field is
 shape-checked against its default and falls back on its own — a bad colour costs the colour, never the
 boot. `runs` is capped at 600. `save()` writes the whole record; `reset()` is Fresh game. `unlocked()`,
@@ -101,7 +117,10 @@ Timing / Reaction / Spot base), `versus.js`, `shapes.js`. The game markup stays 
 change: `build.js` (BUILD, LABEL, RUN_SCHEMA, PUB_URL) · `games.js` (GAMES, the lengths, mode names,
 CFG, **`SET_COPY` — the one Set round count and both description lines per mode, L5**, the Estimate and Spot tuning —
 `ESTIMATE`, `SPOT_RAMP` and `SPOT_FIND`) · `unlocks.js` (UNLOCKS + LEN_RULES — L6) · `achievements.js` (ACH — every secret row carries a `hint`, the description
-shown in place of its name since build 21 / v14 8.5 — and AUTHOR_RECORDS) · `copy.js` (every banner, HUD, verdict, intro and screen string, grouped by where it
+shown in place of its name since build 21 / v14 8.5 — and AUTHOR_RECORDS) · **`key-bars.js` (KEY_BARS + KEY_NOTE — the
+key's 31 clearance bars, build 22, keyed `'<game>:<mode>:<length>'` exactly as `progress/key.js` builds them; each row
+carries its `bar`, its `dir`, and the `conf` / `basis` the catalogue prints. Aiden amends these during play-test and a
+corrected number is an edit to that file alone)** · `copy.js` (every banner, HUD, verdict, intro and screen string, grouped by where it
 shows; `{name}` placeholders are filled by `T()` in `core.js`) · `theme.js` (P1/P2 colours, DESIGNS,
 ITEMS, VS_ART) · `audio.js` (SCALES, TRACKS). Nothing in `config/` imports anything; the gate asserts
 it. **The functions that used to sit in those tables live under the same id elsewhere:** predicates in
@@ -117,7 +136,7 @@ one per game · versus) · `core.js` helpers (`$`, `esc`, `T`, `pWho`, `seqStep`
 on/emit · `core/store.js` the one-key store · `core/state.js` `sel`, `VS` · `core/platform.js` the
 challenge link · `core/timers.js` run-scoped timers · `games/registry.js` `GC`/`GV` and the length names
 over the config table · `progress.js` unlocks, achievements, scores — pure functions over the store, no
-DOM · `audio.js` sound and music (the run hands `Music.start` its state object; audio never imports the
+DOM · `progress/key.js` the key: the contributor list, the clearance test and each game's root fraction · `audio.js` sound and music (the run hands `Music.start` its state object; audio never imports the
 run) · `ui/router.js` show/back · `ui/actions.js` the click dispatcher and the `define()` registry ·
 `ui/theme.js` the game's colours as CSS variables · `ui/chips.js`, `ui/format.js` shared by the screens ·
 `ui/toast.js` · `ui/ads.js` · `ui/atmosphere.js` the menu canvas · `ui/screens/*` · `run/run.js` the run
@@ -148,7 +167,7 @@ file that changes a rule, threshold, name, unlock or screen layout is not built 
 | L2 | Quick Tap lengths are Sprint / Dash / Marathon. Nothing added. |
 | L3 | Solo shows nothing about friends. With a friend → Pass & play / Versus, every game that has them. |
 | L4 | Player 1 red `#E0453B`, Player 2 light blue `#6EC6FF`, everywhere. |
-| L5 | Every mode offers Set and Streak. **Streak = a cumulative budget** (Estimate 100%, Stopwatch 2.0s, Hidden 100px, **Flash 500ms over 250 — v14 B.1, build 21**, **Go / No-go 1000ms over 300 with a wrong tap costing 300ms — v14 6.2 at build 20, the wrong-tap cost set at build 21 by v14 B.2**, Count 5 miscounts, Find 10s); score = rounds completed, and every sheet reads "Highest round wins!". Set = a fixed number of rounds, scored by the line on the sheet. **Go / No-go's Set is a different currency and keeps its own number: a wrong tap ADDS 150ms to the average (v14 A.2). B.3 forbids harmonising the two.** **The round count and both description lines come from one table — `SET_COPY` in `config/games.js` (v14 §5, 2026-09-08)** — which the pick sheets, lock boxes and result screens all read through `GC` / `lenName` / `lenSub`. No game carries its own Set or Streak copy. |
+| L5 | Every mode offers Set and Streak. **Streak = a cumulative budget** (Estimate 100%, Stopwatch 2.0s, Hidden 100px, **Flash 500ms over 150 — v14 C.1, build 22**, **Go / No-go 1000ms over 150 with a wrong tap costing 200ms — v14 C.2, build 22**, Count 5 miscounts, Find 10s); score = rounds completed, and every sheet reads "Highest round wins!". Set = a fixed number of rounds, scored by the line on the sheet. **Go / No-go's Set is a different currency and keeps its own number: a wrong tap ADDS 150ms to the average (v14 A.2), and three wrong taps end a Set. B.3 / C.3 forbid harmonising the two even though the numbers now sit close.** **A Streak has no wrong-tap run-ender at all — C.4 retired the three-wrong-taps contract rather than restoring it, because the budget is spent by the overspend on legal taps as well as by mistakes. The budget is the only limit.** **The round count and both description lines come from one table — `SET_COPY` in `config/games.js` (v14 §5, 2026-09-08)** — which the pick sheets, lock boxes and result screens all read through `GC` / `lenName` / `lenSub`. No game carries its own Set or Streak copy. |
 | L6 | The unlock chain and thresholds are the §4 table in the latest FEEDBACK file that names L6. **Sequence unlocks at one Cut round within 3.5% of the target (v14 9.1; was 0.5%).** Lock boxes, goal lines and the Next-achievement card all read from one table (`UNLOCKS` + `LEN_RULES` — in `config/unlocks.js` since build 16, with the predicates beside it in `progress/rules.js`), and every requirement names its game (v14 3.2). |
 | L7 | A game tile is white until that game has been played once. |
 | L8 | Anything newly unlocked gets the green first-seen highlight once, then is marked seen. |
@@ -156,9 +175,12 @@ file that changes a rule, threshold, name, unlock or screen layout is not built 
 | L10 | Two-player runs never go on a board. |
 
 Locked as of build 13 (FEEDBACK-v13 §L, 2026-09-05). **L1, L5 and L6 amended at build 19 (FEEDBACK-v14 §L, 2026-09-08);
-L5 gained Go / No-go's Streak budget at build 20 (v14 6.2) and its two thresholds at build 21 (v14 B.1 and B.2, both of
-which quote L5).** Build 20 skipped 6.8 because it asked for 150ms, named no lock and was filed under Quick Tap, which has
-no Streak at all (L2); **B.1 answers it — it meant Reaction · Flash, it quotes L5, and the number is 250, not 150.**
+L5 gained Go / No-go's Streak budget at build 20 (v14 6.2), its two thresholds at build 21 (v14 B.1 / B.2) and the numbers
+it carries now at build 22 (v14 C.1–C.4, all of which quote L5).** Build 20 skipped 6.8 because it asked for 150ms, named
+no lock and was filed under Quick Tap, which has no Streak at all (L2); **B.1 read it as Reaction · Flash and set 250.
+Aiden overruled that at build 22: C.1 puts Flash back to the 150 that 6.8 asked for and C.2 does the same to Go / No-go,
+with a 200ms wrong tap. Both budgets are unchanged. The runs are deliberately shorter — four or five rounds, not ten —
+and that is the intended effect, not a regression.**
 
 **Code decisions A1–A8 in `ARCHITECTURE.md` — same quote-the-ID rule.** A feedback line changes one
 only when it names the ID (e.g. `A6:`); otherwise it goes under "Proposed" in FEATURES.md.
@@ -181,16 +203,27 @@ tapped (v14 6.3 — a game that never raises `#game.tapon` auto-advanced)** and 
 ask for exactly 35.00s (v14 6.18)**, **the side screens (v14 §8, build 21)** — a first-seen Customise swatch still shows its own colour (8.7), the
 achievements list has no sideways axis to be left panned on (8.2), the game name leads the achievement title (8.3), a
 secret row is described (8.5), "every game" names the games left (8.1), and Testing is its own item below About with
-nothing left in About (8.10) — **and the two Reaction Streak currencies L5 names**: Flash 500/250, Go / No-go 1000/300
-with a wrong tap costing 300ms in a Streak and 150ms in a Set, held apart as separate constants (v14 B.1–B.3);
+nothing left in About (8.10), **the key (v14 §9, build 22)** — the contributor list is exactly `GAMES` × modes ×
+`GC(g,d).lens` and `progress/key.js` contains no literal 31 (C.5), every combination has a clearance bar and every bar
+has a combination (C.6), all 31 directions agree with `GC(g,d,s).lower` (C.7), a bar clears once and only from a solo
+run (9.3 / 9.4), and the ring draws seven games and 31 root segments (9.6) — **and the two Reaction Streak currencies L5 names**: Flash 500/150, Go / No-go 1000/150
+with a wrong tap costing 200ms in a Streak and 150ms in a Set, held apart as separate constants, and every
+`wrong >= 3` test behind a `!streak()` guard so the retired run-ender cannot come back (v14 C.1–C.4);
 plus the testable locks on a fresh profile — title sequence before the menu (L1), Quick Tap's
 length row is exactly Sprint / Dash / Marathon (L2), Solo shows no Pass & play / Versus (L3), the
 Quick Tap tile is white before any run (L7), the length row is labelled Mode (L9). **A failing
 assertion blocks the push.** Run it before every push; ~4 minutes. `CHROME_PATH` overrides the
 Windows default Chrome. **`npm run review` is live again — build 21 (#368 closed).** It drives
 `../_review/scripts/` (54+ cards, data-driven), ported from Playwright to the same puppeteer-core the gate uses and
-spawning its own server, so it takes no arguments: capture → `build-catalogue.mjs`. **The progression pair is not in it —
-`progression.mjs` reads the pre-build-16 module layout and throws (#370).** **The older 29-card copy under `_smoke/review/` is deleted** — there is one generator now, and
+spawning its own server, so it takes no arguments: capture → `build-catalogue.mjs`. **The progression map is retired,
+not repaired — #370 closed at build 22.** `progression.mjs`, `build-progression.mjs`, `progression.template.html`,
+`build-progression.py` and the last `progression.html` moved to `../_review/_retired/` (a README there says why); the
+catalogue's own Unlock requirements section is the replacement and, unlike that page, it cannot drift from the build.
+**The catalogue gained "The key · clearance bars" (`#keybars`) at build 22 (v14 C.6)** — 31 rows with a bar and a
+"best seen" input each, saving to the artifact's db doc `bars/current` as `{bars, best, free, defaults, build, updated}`.
+The rows come out of the running app like every other reference section, so the page always shows the numbers the build
+is actually playing; a mismatch between `config/key-bars.js` and the config prints a red strip on the page and a warning
+in the console rather than dropping a row. **The older 29-card copy under `_smoke/review/` is deleted** — there is one generator now, and
 a build that changes a screen changes it in one place. Cowork still publishes the page; nothing here publishes.
 
 No bundler, no build step — GitHub Pages serves the modules directly, so every import path stays

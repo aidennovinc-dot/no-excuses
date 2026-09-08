@@ -97,6 +97,16 @@ export const CUSTOM = { music:'Music · {game}', preview:'Preview', lockLine:'Lo
 // v14 (8.5): a secret row shows its own `hint` where an ordinary row shows `how`; `stretch` is the fallback for one without
 export const ACH_SCREEN = { all:'All', done:'done', secret:'secret', hidden:'???', progress:' · {p}% of the way there', stretch:'A stretch past the stretch. You will know.', inGame:' · in {game}', left:' · still to play: {names}' };
 
+/* the key (build 22, v14 §9.2–9.7). A second progression system, not a picture of the first: seven roots growing inward
+   as clearance bars are cleared. "clearance bar", never "minimum bar" — nineteen of the thirty-one are ceilings (C.7) */
+export const KEY = { title:'the key', hint:'tap a game · solo runs only',
+  lede:'Beat a clearance bar once in a solo run and it is cleared for good. A root grows by the share of that game’s own combinations cleared.',
+  count:'{done} of {total} cleared', whole:'the key is whole', root:'{done}/{total}',
+  cleared:'cleared', open:'not yet', floor:'{bar} or more', ceil:'{bar} or less',
+  advance:'{game} · {name} cleared', toast:'Key · {game} · {name} cleared',
+  none:'no bar set', mismatch:'{n} combination(s) have no clearance bar: {keys}',
+  conf:{ high:'anchored', med:'reasoned', low:'judgement' } };
+
 // the engines' own words
 export const SEQ = { copy:'copy the notes', yourTurn:'your turn', whoTurn:'{who} · your turn', watch:'round {n} · watch', round:'round {n}',
   compose:'tap in a tune · up to 8 notes', composeHud:'{who} · compose · up to 8', composeN:'{who} · {n} of 8', listen:'listen · then copy it', listenHud:'{who} · listen',

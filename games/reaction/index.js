@@ -9,20 +9,22 @@ import { genRect, rnd, roundEngine, rxBar } from "../_shared/round.js";
 /* Reaction — Flash: white after a random wait, tap. Go/No-go (v8): shapes cycle past in different spots; tap the rule shape the moment it shows. A wrong shape ends the run. Score is ms, averaged */
 // the clock (v8): t0 is taken two frames after the change is queued, i.e. when it has actually been painted; the tap is timed from the event's own timestamp (ev.t, set by the run), not from when the handler ran
 // v14 (6.2 / L5): a Go / No-go Streak is a cumulative
-// TIME budget like every other Streak, not a count of wrong taps: everything over 300ms is spent and the run ends at 1000ms.
-// Score is shapes survived, as L5 says. v14 section B.2 (L5): a wrong tap in a Streak costs 300ms, NOT the 150ms the Set adds
-// — three mistakes spend 900 of the 1000ms budget, which is the "three wrong taps end it" the Set has always had, and a wrong
-// tap costs the same as the worst legal tap. B.3 is explicit that the two currencies differ and must not be harmonised.
+// TIME budget like every other Streak, not a count of wrong taps: everything over 150ms is spent and the run ends at 1000ms.
+// Score is shapes survived, as L5 says. v14 section C.2 (L5, build 22): the threshold is 150ms and a wrong tap costs 200ms
+// — B.2's 300 / 300 is withdrawn. C.4 retires the "three wrong taps ends the run" contract outright rather than restoring
+// it: the budget is spent by the reaction-time overspend on legal taps as well as by wrong taps, so mistakes do not have to
+// exhaust it on their own. The Streak has no wrong-tap counter and must not gain one. B.3 still stands — the SET keeps its
+// own 150ms-added penalty and its own three-wrong-taps ending; the two currencies differ and must not be harmonised.
 const RX=Object.assign(roundEngine(),{ id:'reaction', times:[], faults:0, t0:0, rule:'circle', shown:'', armed:false, over:0, out:false, wrong:0, seen:0, vsN:[0,0], vsDone:false, last1:'', last2:'',
-  // v14 section B.1 (L5): a Flash Streak spends everything over 250ms of its 500ms budget. 6.8 asked for 150 and named no lock;
-  // B.1 quotes L5 and sets 250, because the Go / No-go unlock already calls a 300ms Flash average a good result, so at 150 every
-  // tap on a phone would cost something and "anything faster costs nothing" would be a clause that never fired. Budget unchanged.
-  // NOGO_WRONG_SET is the 150ms a wrong tap ADDS to the Set average (v14 A.2); NOGO_WRONG_STREAK is the 300ms it SPENDS from the
-  // Streak budget (v14 B.2). Different currencies, deliberately different numbers — B.3 says do not harmonise them.
-  FLASH_FREE:250, FLASH_BUD:500, NOGO_FREE:300, NOGO_BUD:1000, NOGO_WRONG_SET:150, NOGO_WRONG_STREAK:300,
+  // v14 section C.1 (L5, build 22): a Flash Streak spends everything over 150ms of its 500ms budget — the number 6.8 asked for.
+  // B.1's 250 was Cowork's reasoning and Aiden overruled it. A good phone tap is ~250–280ms, so nearly every rep spends
+  // 100–130ms and a run lasts four or five rounds instead of ten. That is the intended effect, not a regression. Budget unchanged.
+  // NOGO_WRONG_SET is the 150ms a wrong tap ADDS to the Set average (v14 A.2); NOGO_WRONG_STREAK is the 200ms it SPENDS from the
+  // Streak budget (v14 C.2). Different currencies, deliberately close numbers — B.3 / C.3 say do not harmonise them.
+  FLASH_FREE:150, FLASH_BUD:500, NOGO_FREE:150, NOGO_BUD:1000, NOGO_WRONG_SET:150, NOGO_WRONG_STREAK:200,
   nogo(){ return this.ctx.mode==='nogo'; }, versus(){ return this.ctx.players===2; },
   begin(){ this.round=0; this.times=[]; this.faults=0; this.over=0; this.out=false; this.wrong=0; this.seen=0; this.vsN=[0,0]; this.vsDone=false; hud.score('0'); if(this.versus()) return this.vsRound(); if(this.nogo()) return this.nogoBegin(); this.next(); },
-  // Flash (v11 / v14 section 5): Set = 5 attempts, average ms. Streak = every ms above 250 (B.1) adds to a total; the run ends at 500, score attempts
+  // Flash (v11 / v14 section 5): Set = 5 attempts, average ms. Streak = every ms above 150 (C.1) adds to a total; the run ends at 500, score attempts
   result(){ const [x,y]=minMax(this.times); if(this.streak()) return {hits:this.times.length,misses:this.faults,x,y,lim:this.FLASH_BUD+'ms'}; return {hits:this.times.length?Math.round(mean(this.times)):0,misses:this.faults,x,y}; },
   hud(){ hud.time(this.streak()?T(CP.hudStreak,{n:this.round,over:Math.round(this.over)}):T(CP.hudSet,{n:this.round,s:this.ctx.len})); },
   next(){ this.clearT(); this.round++; if(this.out||(!this.streak()&&this.round>this.ctx.len)) return this.ctx.emit('finish',this.result()); this.hud(); this.again(); },
@@ -32,7 +34,7 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', times:[], faults:0, t0:0, 
   arm(){ this.armed=false; requestAnimationFrame(()=>requestAnimationFrame(()=>{ if(this.st==='go'){ this.t0=performance.now(); this.armed=true; } })); },
   // v14 (6.22): white is the WHOLE screen. The large square with burst lines was the preview screen's picture of the game, never the game
   go(){ const pane=$('#rxpane'); this.st='go'; pane.classList.add('lit'); const m=$('#rxmsg'); if(m) m.textContent=CP.tap; this.arm();
-    // v13 (9.1): in a Streak, sitting on your hands is an attempt worth 600ms — 400 against the 500 budget — not a fault you can retake
+    // v13 (9.1): in a Streak, sitting on your hands is an attempt worth 600ms — 450 against the 500 budget (C.1) — not a fault you can retake
     if(!this.versus()) this.later(()=>{ if(this.st==='go'){ if(this.streak()) return this.noTap(); this.faults++; this.fault(CP.slow); } },1500); },
   noTap(){ const ms=600; this.st='show'; this.times.push(ms); const add=Math.max(0,ms-this.FLASH_FREE);
     hud.score(String(this.times.length)); const pane=$('#rxpane'); pane.classList.remove('lit'); pane.classList.add('hit');
@@ -67,8 +69,9 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', times:[], faults:0, t0:0, 
   vsEnd(){ const [a,b]=this.vsN; const w=winner(a,b); this.st='over'; $('#gen').innerHTML=`<div class="rxpane"><div class="rxmsg" style="top:40%"><b class="fb ${w<0?'':w?'p2':'p1'}" style="font-size:clamp(18px,5vw,30px)">${w<0?CP.draw:T(CP.wins,{n:w+1})}</b><span class="sub">${a} – ${b}</span></div></div>`; this.ctx.audio.end(); this.later(()=>this.ctx.emit('finish',{hits:a,misses:0,vs2:{a,b,w,how:`${a}–${b}`}}),1600); },
   // Go / No-go (v11): shapes arrive on a fixed beat — the skill is inhibition, not prediction. The rule changes every five
   // shapes, announced top-middle. Set = 5 rounds, average ms on the right taps plus 150ms a wrong tap (v14 A.2), over after
-  // three wrong taps. v14 (6.2 / L5 / B.2): a Streak is a cumulative TIME budget like every other Streak — ms over 300 plus 300ms a
-  // wrong tap, out at 1000ms — and the score is shapes survived, not a count of what went wrong
+  // three wrong taps. v14 (6.2 / L5 / C.2): a Streak is a cumulative TIME budget like every other Streak — ms over 150 plus 200ms a
+  // wrong tap, out at 1000ms — and the score is shapes survived, not a count of what went wrong. The three-wrong-taps ending
+  // belongs to the SET only (C.4 retired it for the Streak); the mode line still says it because the Set is what it describes
   nogoBegin(){ this.rule=['circle','square','tri'][rnd(3)]; this.round=1; this.ruleAt=0; this.last1=''; this.last2=''; this.hudNogo(); this.rulePause(); },
   // v14 (6.26): a Streak was too fast to react to. It runs on a slower beat than the Set
   beatMs(){ return this.streak()?1150:800; },
@@ -100,7 +103,7 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', times:[], faults:0, t0:0, 
       pane.innerHTML=`<div class="rxmsg" style="top:40%"><b style="font-size:clamp(28px,9vw,60px)">${ms}<small style="font-size:12px;letter-spacing:.2em">${CP.ms}</small></b>${this.streak()?`<span class="sub">+${add}${CP.ms}</span>`:''}</div>`;
       this.ctx.audio.hit(); hud.score(this.streak()?this.seen:Math.round(mean(this.times)+this.NOGO_WRONG_SET*this.wrong)); this.hudNogo(); this.ctx.emit('live',this.nogoScore()); return; }
     if(this.st==='hit'||this.st==='go'||this.st==='wrongshow') return; // the rule shape before it has painted, a second tap on a hit, or a tap during the wrong-tap card: nothing
-    // a decoy, the wait period, or nothing at all: a wrong tap. It spends 300ms of a Streak's budget (B.2); three end a Set
+    // a decoy, the wait period, or nothing at all: a wrong tap. It spends 200ms of a Streak's budget (C.2); three end a Set
     this.wrong++; if(this.streak()) this.over+=this.NOGO_WRONG_STREAK;
     this.st='wrongshow'; pane.classList.add('bad'); pane.innerHTML=`<div class="rxmsg" style="top:40%"><b class="fb" style="font-size:clamp(18px,6vw,36px)">${this.streak()?CP.wrongS:T(CP.wrong,{n:this.wrong})}</b>${this.streak()?`<span class="sub">+${this.NOGO_WRONG_STREAK}${CP.ms}</span>`:''}</div>`; this.ctx.audio.miss(); if(navigator.vibrate) navigator.vibrate(40); hud.score(this.streak()?this.seen:Math.round((this.times.length?mean(this.times):600)+this.NOGO_WRONG_SET*this.wrong)); this.hudNogo();
     if(this.streak()&&this.over>=this.NOGO_BUD){ this.clearT(); this.st='over'; hud.shake(); pane.innerHTML=`<div class="rxmsg" style="top:40%">${T(CP.reached,{bud:this.NOGO_BUD})}<b style="font-size:28px">${CP.over}</b></div>`; return this.later(()=>this.nogoEnd(),1300); }

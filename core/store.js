@@ -1,4 +1,4 @@
-/* No Excuses — the store (build 18, refactor stage 4). One key, `ne`, holding { v, prefs, runs, ach, unlock, intro, seen }
+/* No Excuses — the store (build 18, refactor stage 4). One key, `ne`, holding { v, prefs, runs, ach, unlock, intro, seen, bars }
    — not the seven build-13 keys (A5). load() runs the migration ladder forward, then shape-checks every field against its
    default and falls back per field, never for the whole record: tampered or corrupt storage can cost a player a colour or a
    run, it can never crash boot (S3). `runs` is capped at 600, oldest first out. save() writes the whole record; there is
@@ -7,6 +7,10 @@
    The ladder: v0 is the build-13 layout (seven keys, no version) — fromLegacy() folds it into one record and applies the
    v8–v11 reshapes that used to run on every boot. v1 is this record. The next change adds `if(raw.v<2) raw=up2(raw)` below
    and bumps VERSION; a step never edits an earlier one.
+
+   `bars` (build 22) is the key's cleared combinations — a map of '<game>:<mode>:<length>' → when it first cleared. It needs
+   no ladder step: a v1 record without one shape-checks to {} like every other map, which is exactly right for a profile
+   that has never met the key. progress/key.js is the only writer.
 
    The storage adapter is the three one-liners read / write / drop. Stage 5's platform.js swaps them for Capacitor Preferences. */
 import { SCALES } from "../config/audio.js";
@@ -75,7 +79,7 @@ function fromLegacy(){
 function load(){ let raw=parse(read(KEY)), legacy=false;
   if(!isObj(raw)){ raw=fromLegacy(); legacy=!!raw; if(!raw) raw={}; }
   // if(raw.v<2) raw=up2(raw);   ← the next step of the ladder goes here
-  return { st:{ v:VERSION, prefs:cleanPrefs(raw.prefs), runs:cleanRuns(raw.runs), ach:cleanMap(raw.ach), unlock:cleanMap(raw.unlock), intro:cleanMap(raw.intro), seen:isObj(raw.seen)?cleanMap(raw.seen):null }, legacy }; }
+  return { st:{ v:VERSION, prefs:cleanPrefs(raw.prefs), runs:cleanRuns(raw.runs), ach:cleanMap(raw.ach), unlock:cleanMap(raw.unlock), intro:cleanMap(raw.intro), seen:isObj(raw.seen)?cleanMap(raw.seen):null, bars:cleanMap(raw.bars) }, legacy }; }
 
 const { st: store, legacy } = load();
 const prefs = store.prefs;
@@ -84,6 +88,6 @@ function save(){ return write(KEY,JSON.stringify(store)); }
 if(save()&&legacy) LEGACY.forEach(drop);
 const musicOn=g=>prefs.musicG[g]!==false;
 // Fresh game (the About screen's dev switch): progress goes, the look and the name stay
-function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; Object.assign(prefs,{allOpen:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0}); delete prefs.mig11; save(); emit('store:reset'); }
+function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0}); delete prefs.mig11; save(); emit('store:reset'); }
 
 export { musicOn, prefs, reset, save, store };

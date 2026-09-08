@@ -23,6 +23,7 @@
   <button data-act="go" class="item glow" data-go="s-pick">Play</button>
   <button data-act="go" class="item glow" data-go="s-board">Scores</button>
   <button data-act="go" class="item glow" data-go="s-ach">Achievements</button>
+  <button data-act="go" class="item glow" data-go="s-key">The key</button>
   <button data-act="go" class="item glow" data-go="s-custom">Customise</button>
   <button data-act="go" class="item glow" data-go="s-about">About</button>
   <button data-act="go" class="item glow" data-go="s-testing" data-dev>Testing</button>
@@ -78,6 +79,18 @@
   <div class="ach scroll" id="achlist"></div>
 </section>
 
+<!-- the key (build 22, v14 9.2-9.7). Option A: the key dead centre, seven games on a ring, a root per game growing
+     inward. ui/screens/key.js draws the whole ring and the panel; nothing about which combinations exist is in this markup -->
+<section class="screen top" id="s-key" data-back="s-menu">
+  <button data-act="back" class="back">&larr; BACK</button>
+  <div class="eyebrow" id="key-title">the key</div>
+  <svg id="key-ring" viewBox="0 0 300 300" aria-hidden="true"></svg>
+  <div class="keycount" id="key-count"></div>
+  <div class="hint" id="key-hint">tap a game &middot; solo runs only</div>
+  <div class="hint warn" id="key-warn" hidden></div>
+  <div class="scroll" id="key-list" hidden></div>
+</section>
+
 <section class="screen top" id="s-custom" data-back="s-menu">
   <button data-act="back" class="back">&larr; BACK</button>
   <div class="pv" id="pv" data-g="quick-tap">
@@ -108,7 +121,7 @@
   <div class="explain">A passion project of simple games of pure skill and minimal frills.<br><br>If you'd like to remove ads, add customisation, and show your support, tap below.</div>
   <button data-act="support" class="support" id="support"><b id="support-title">Support · A$1.99 · once</b><small id="support-text">No ads, ever. Every colour, background and sound pack open from day one, plus the colour wheel. A pro 60-second length in Quick Tap and Dots, with its own boards. A star on your profile.</small></button>
   <div class="tierbox" id="tierbox"></div>
-  <div class="hint">build 21 · batch 10 · side screens · 8 sept 2026</div>
+  <div class="hint">build 22 · batch 10 · the key · 9 sept 2026</div>
 </section>
 
 <section class="screen" id="s-testing" data-back="s-menu" data-dev>
@@ -185,12 +198,12 @@
 
 <script type="module" src="./boot.js"></script>
 
-<div id="build">build 21</div>
+<div id="build">build 22</div>
 <button id="update">New build available — tap to reload</button>
 <script>
 // build check: version.json is fetched with no-store, so a stale cached page still learns a newer build exists
 (function(){
-  const BUILD="21";
+  const BUILD="22";
   async function check(){
     try{
       const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});

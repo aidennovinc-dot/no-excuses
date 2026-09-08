@@ -17,7 +17,10 @@
  *   6. challenge links: a hostile ?score= lands as text (S1); a bad ?s= is no challenge (S2); a run only the link opened is never on a board (S2)
  *   6b. the side screens (v14 section 8): a first-seen Customise swatch still shows its colour (8.7), the achievements list has no
  *       sideways axis (8.2), the title leads with the game name (8.3), a secret row is described (8.5), and Testing is its own
- *       screen with About left clean (8.10). Plus the two Reaction Streak thresholds L5 names (v14 B.1 / B.2 / B.3)
+ *       screen with About left clean (8.10). Plus the two Reaction Streak thresholds L5 names (v14 C.1 / C.2 / C.3 / C.4)
+ *   6c. the key (v14 section 9, build 22): the contributor list comes from GAMES + SET_COPY and not from a literal, every
+ *       combination has a clearance bar and every bar has a combination, each bar's direction agrees with the game's own
+ *       scoring, a bar clears ONCE (9.3) and only from a solo run (9.4)
  *   7. every button action (data-act) driven at least once — customise, chips, dev switches, lock box, Next card, full stop, share
  * Pass a base URL as argv[2] to test a server you are already running instead.
  */
@@ -56,15 +59,19 @@ console.log('\nstatic checks');
   const stray = [];
   for (const f of engines) { const shared = f.startsWith('games/_shared/'); const src = strip(fs.readFileSync(path.join(root, f), 'utf8')); for (const m of src.matchAll(/from\s+["']([^"']+)["']/g)) { const p = m[1]; const okPath = shared ? /^(\.\/[\w.-]+\.js$|\.\.\/\.\.\/(core\/|config\/|core\.js$))/.test(p) : /^\.\.\/(_shared\/|\.\.\/(core\/|config\/|core\.js$))/.test(p); if (!okPath) stray.push(`${f} → ${p}`); } }
   stray.length ? bad('A3 engines import only _shared / core / config', stray.join(', ')) : ok(`A3 engines import only _shared / core / config (${engines.length} files)`);
-  // v14 B.1 / B.2 / B.3 (L5): Flash spends what is over 250ms of 500; a Go / No-go Streak spends what is over 300ms of 1000 and
-  // 300ms a wrong tap, while its SET still ADDS 150ms a wrong tap. Two currencies — the gate holds them apart so nobody harmonises them
+  // v14 C.1 / C.2 / C.3 (L5, build 22): Flash spends what is over 150ms of 500; a Go / No-go Streak spends what is over 150ms
+  // of 1000 and 200ms a wrong tap, while its SET still ADDS 150ms a wrong tap. Two currencies — the gate holds them apart so
+  // nobody harmonises them. C.4: the Streak has no wrong-tap run-ender, so the `wrong>=3` test must stay inside a !streak() branch
   { const rx = fs.readFileSync(path.join(root, 'games', 'reaction', 'index.js'), 'utf8');
     const num = k => { const m = rx.match(new RegExp(k + ':\\s*(\\d+)')); return m ? +m[1] : null; };
-    const want = { FLASH_FREE: 250, FLASH_BUD: 500, NOGO_FREE: 300, NOGO_BUD: 1000, NOGO_WRONG_SET: 150, NOGO_WRONG_STREAK: 300 };
+    const want = { FLASH_FREE: 150, FLASH_BUD: 500, NOGO_FREE: 150, NOGO_BUD: 1000, NOGO_WRONG_SET: 150, NOGO_WRONG_STREAK: 200 };
     const got = Object.fromEntries(Object.keys(want).map(k => [k, num(k)]));
     const wrong = Object.keys(want).filter(k => got[k] !== want[k]);
-    wrong.length ? bad('L5 the Reaction budgets', wrong.map(k => `${k}=${got[k]} want ${want[k]}`).join(', ')) : ok('L5 Flash 500/250, Go / No-go 1000/300, wrong tap 300 in a Streak and 150 in a Set (v14 B.1–B.3)');
-    /(this\.NOGO_WRONG_SET|NOGO_WRONG_STREAK)/.test(rx) && !/this\.NOGO_WRONG\b/.test(rx) ? ok('B.3 no bare NOGO_WRONG left to blur the two currencies') : bad('B.3 the two wrong-tap costs are separate constants'); }
+    wrong.length ? bad('L5 the Reaction budgets', wrong.map(k => `${k}=${got[k]} want ${want[k]}`).join(', ')) : ok('L5 Flash 500/150, Go / No-go 1000/150, wrong tap 200 in a Streak and 150 in a Set (v14 C.1–C.3)');
+    /(this\.NOGO_WRONG_SET|NOGO_WRONG_STREAK)/.test(rx) && !/this\.NOGO_WRONG\b/.test(rx) ? ok('B.3 no bare NOGO_WRONG left to blur the two currencies') : bad('B.3 the two wrong-tap costs are separate constants');
+    // C.4: three wrong taps ends a SET and nothing else. Any `wrong >= 3` not guarded by !this.streak() has restored the retired contract
+    const enders = [...rx.matchAll(/[^\n]*wrong\s*>=\s*3[^\n]*/g)].map(m => m[0].trim());
+    enders.every(l => /!this\.streak\(\)/.test(l)) ? ok(`C.4 the three-wrong-taps ending is Set-only (${enders.length} test${enders.length === 1 ? '' : 's'}, all behind !streak())`) : bad('C.4 the three-wrong-taps run-ender is retired for a Streak', enders.join(' | ')); }
   // build 18 (A4): a screen never imports another screen or an engine; the run never imports a screen. They talk through core/events.js
   const screens = fs.readdirSync(path.join(root, 'ui', 'screens')).filter(f => f.endsWith('.js') && f !== 'index.js').map(f => `ui/screens/${f}`);
   const cross = [];
@@ -198,7 +205,7 @@ for (const g of GAMES) {
   await click('#grid'); await sleep(200);
 }
 // the other screens open and render
-for (const s of ['s-board', 's-ach', 's-custom', 's-about', 's-testing']) { await click('.back'); await sleep(250); await click(`[data-go="${s}"]`); await sleep(600); (await onScreen()) === s ? ok(`${s} opens`) : bad(`${s} opens`, 'on ' + (await onScreen())); }
+for (const s of ['s-board', 's-ach', 's-key', 's-custom', 's-about', 's-testing']) { await click('.back'); await sleep(250); await click(`[data-go="${s}"]`); await sleep(600); (await onScreen()) === s ? ok(`${s} opens`) : bad(`${s} opens`, 'on ' + (await onScreen())); }
 
 // ---- 2b. the Set and Streak lines on every sheet come from the one table (L5 / v14 section 5) ----
 console.log('\nsheet copy comes from SET_COPY (L5)');
@@ -390,6 +397,59 @@ console.log('\nside screens (v14 section 8)');
   (moved.item && moved.below === 's-testing' && moved.inAbout === 0 && moved.inTesting === 4)
     ? ok('8.10 Testing is its own item directly below About, with all four switches and none left in About')
     : bad('8.10 Testing moved out of About', JSON.stringify(moved));
+}
+
+// ---- 6c. the key (v14 section 9 / C.5 / C.6 / C.7, build 22) ----
+console.log('\nthe key (v14 section 9)');
+{
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const { KEY_BARS } = await import(pathToFileURL(path.join(root, 'config', 'key-bars.js')).href);
+  // C.5: the list is BUILT, never listed. A literal count or an array of ids in the CODE means a new mode would not join
+  // the key. Comments come off first — the header is allowed to say what 31 is made of, the code is not allowed to know it
+  const src = fs.readFileSync(path.join(root, 'progress', 'key.js'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
+  (!/\b31\b/.test(src) && !/['"]quick-tap:/.test(src)) ? ok('C.5 progress/key.js hard-codes neither 31 nor a list of combinations') : bad('C.5 the contributor list must come from GAMES + SET_COPY');
+  await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
+  await setStorage({ 'ne.prefs': OPEN_PREFS }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(500);
+  const k = await page.evaluate(async () => { const K = await import('./progress/key.js'); const R = await import('./games/registry.js'); const G = await import('./config/games.js');
+    const want = []; for (const g in R.GAMES) for (const d of R.GAMES[g].modes) for (const sc of R.GC(g, d).lens) want.push(`${g}:${d}:${sc}`);
+    return { combos: K.COMBOS.map(c => c.key), want, missing: K.barsMissing(), orphan: K.barsOrphan(),
+      dirs: K.COMBOS.map(c => ({ key: c.key, dir: c.bar && c.bar.dir, lower: !!R.GC(c.g, c.d, c.s).lower })),
+      setRows: Object.keys(G.SET_COPY).length, state: K.keyState().total }; });
+  (k.combos.join('|') === k.want.join('|')) ? ok(`C.5 the key's ${k.combos.length} combinations are exactly GAMES x modes x GC(g,d).lens`) : bad('C.5 the contributor list', `${k.combos.length} vs ${k.want.length}`);
+  (k.combos.length === 31) ? ok('C.5 6 + 6 + 4 + 3 + 4 + 4 + 4 = 31 combinations today') : bad('C.5 31 combinations today', String(k.combos.length));
+  // C.6: the config decides which combinations exist. Either way round is a mismatch someone has to fix, never a silent drop
+  (!k.missing.length) ? ok('C.6 every combination the config makes has a clearance bar') : bad('C.6 combinations with no bar (config wins — add a row to config/key-bars.js)', k.missing.join(', '));
+  (!k.orphan.length) ? ok('C.6 every clearance bar belongs to a combination the config makes') : bad('C.6 orphan rows in config/key-bars.js', k.orphan.join(', '));
+  // C.7: direction is read from the data, and nineteen of the thirty-one are ceilings. It must still agree with the game's own scoring
+  { const off = k.dirs.filter(d => (d.dir === 'lower') !== d.lower);
+    const ceils = k.dirs.filter(d => d.dir === 'lower').length;
+    off.length ? bad('C.7 a bar direction disagrees with the game it scores', off.map(d => d.key).join(', ')) : ok(`C.7 all ${k.dirs.length} directions match GC(g,d,s).lower — ${ceils} ceilings, ${k.dirs.length - ceils} floors`); }
+  // 9.3 / 9.4 / 9.5: a bar clears once, from a solo run only. Re-clearing returns null, which is what plays nothing
+  const clear = await page.evaluate(async () => { const K = await import('./progress/key.js'); const S = await import('./core/store.js');
+    S.store.bars = {}; const bar = K.COMBOS.find(c => c.g === 'quick-tap' && c.s === 5).bar;
+    const base = { g: 'quick-tap', d: 'two', s: 5, misses: 0, t: Date.now(), hits: bar.bar + 5 };
+    const under = { ...base, hits: bar.bar - 5 };
+    const a = K.checkKey({ ...under }, false);                 // short of the bar: nothing
+    const b = K.checkKey({ ...base }, false);                  // over it, first time: a clear
+    const c = K.checkKey({ ...base }, false);                  // over it again: nothing
+    S.store.bars = {};
+    const two = K.checkKey({ ...base }, true);                 // versus / pass & play never contribute (9.4, L10)
+    const prac = K.checkKey({ ...base, practice: 1 }, false);
+    const chal = K.checkKey({ ...base, chal: 1 }, false);
+    const done = Object.keys(S.store.bars).length; S.store.bars = {};
+    return { a: !!a, b: b && b.key, c: !!c, two: !!two, prac: !!prac, chal: !!chal, done, was: b && b.was, total: b && b.total }; });
+  (!clear.a && clear.b === 'quick-tap:two:5' && !clear.c) ? ok(`9.3 a clearance bar is a one-off: beaten -> cleared (segment ${clear.was + 1} of ${clear.total}), beaten again -> nothing`) : bad('9.3 a bar clears once', JSON.stringify(clear));
+  (!clear.two && !clear.prac && !clear.chal && clear.done === 0) ? ok('9.4 pass & play, versus, practice and challenge runs never feed the key') : bad('9.4 solo runs only', JSON.stringify(clear));
+  // the screen itself draws a root segment per combination and says how far the key is
+  await click('[data-go="s-key"]'); await sleep(600);
+  const ui = await page.evaluate(() => ({ screen: document.querySelector('.screen.on')?.id,
+    segs: document.querySelectorAll('#key-ring .kroot').length, nodes: document.querySelectorAll('#key-ring .knode').length,
+    count: (document.getElementById('key-count') || {}).textContent, warn: !document.getElementById('key-warn').hidden }));
+  (ui.screen === 's-key' && ui.nodes === GAMES.length && ui.segs === 31) ? ok(`9.6 the ring draws ${ui.nodes} games and ${ui.segs} root segments — "${ui.count}"`) : bad('9.6 the key ring', JSON.stringify(ui));
+  (!ui.warn) ? ok('C.6 no mismatch warning on the key screen') : bad('C.6 the key screen is warning about missing bars');
+  await page.evaluate(() => document.querySelector('.knode[data-kg="quick-tap"]').dispatchEvent(new MouseEvent('click', { bubbles: true }))); await sleep(350);
+  const rows = await page.evaluate(() => ({ rows: document.querySelectorAll('#key-list .krow').length, nobar: document.querySelectorAll('#key-list .krow.nobar').length, first: (document.querySelector('#key-list .krow i') || {}).textContent }));
+  (rows.rows === 6 && !rows.nobar) ? ok(`9.3 tapping Quick Tap lists its 6 combinations — first reads "${rows.first}"`) : bad('9.3 the key panel', JSON.stringify(rows));
 }
 
 // ---- 7. every button action once (build 15: ui/actions.js dispatches on data-act) ----

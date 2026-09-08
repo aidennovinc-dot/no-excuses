@@ -2,7 +2,7 @@
    run/run.js). run:finish arrives with the record: the header, the pair or the stats, the option chips, the top 10 (never for
    two players, L10), then — after the ad break every fourth result — the unlock and achievement toasts. Go plays again with
    whatever the chips say; Back reopens the sheet; Challenge a friend shares a link that carries the score. */
-import { RESULT, SHARE, SHEET, TOAST, VERDICT } from "../../config/copy.js";
+import { KEY, RESULT, SHARE, SHEET, TOAST, VERDICT } from "../../config/copy.js";
 import { PUB_URL } from "../../config/build.js";
 import { MODE_NAME, PASS_LEN } from "../../config/games.js";
 import { $, T, esc, pWho } from "../../core.js";
@@ -11,6 +11,7 @@ import { VS, sel } from "../../core/state.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, SHARED2, lenName, versusOf } from "../../games/registry.js";
 import { Scores, achById, checkAch, checkUnlocks, got, isOpen, lenLock, lenOpen, lensOf, markSeen, newMark, unlockHtml, unlockToast, verdict } from "../../progress.js";
+import { checkKey } from "../../progress/key.js";
 import { start } from "../../run/run.js";
 import { define } from "../actions.js";
 import { Ads } from "../ads.js";
@@ -78,9 +79,15 @@ on('run:finish',({run,isBest,two})=>{ const g=GC(run.g,run.d,run.s);
   renderOver(run);
   // the ad break (v10) comes between the run and the result, every fourth result, never for supporters
   setTimeout(()=>Ads.after(()=>{ show('s-over'); if(run.practice||two) return;
+    // v14 (9.3 / 9.4 / 9.5): a solo run that beats a clearance bar for the FIRST time clears that combination for good and
+    // takes the player to the key to watch its root advance one segment. Re-clearing returns null and plays nothing, and
+    // Back from there comes straight back here — the run is not finished with. Two-player and practice never get this far
+    const adv=checkKey(run,two);
     const msgs=checkUnlocks(run).map(u=>[unlockToast(u.key),'','ok'])
-      .concat(checkAch(run).map(a=>[T(TOAST.achievement,{name:a.name})+(a.unlocks?' · '+unlockHtml(a):''),a.id,'']));
-    msgs.forEach(([m,id,cls],i)=>setTimeout(()=>toast(m,id,cls,!!id),i*(id?3400:2600))); renderOverChips(); }),250); });
+      .concat(checkAch(run).map(a=>[T(TOAST.achievement,{name:a.name})+(a.unlocks?' · '+unlockHtml(a):''),a.id,'']))
+      .concat(adv?[[T(KEY.toast,{game:GAMES[adv.g].name,name:lenName(adv.g,adv.s,adv.d)}),'','ok']]:[]);
+    msgs.forEach(([m,id,cls],i)=>setTimeout(()=>toast(m,id,cls,!!id),i*(id?3400:2600))); renderOverChips();
+    if(adv) setTimeout(()=>show('s-key',{advance:adv,from:'s-over'}),msgs.length*2600+900); }),250); });
 define({
   'over-back'(){ show('s-pick',{g:sel.game,d:GAMES[sel.game].modes.length>1?sel.diff:undefined}); return 'click'; },
   share(){ shareRun(); return 'click'; },
