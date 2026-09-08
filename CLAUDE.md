@@ -170,8 +170,11 @@ in the same place before and after the menu builds (v14 1.2), plus the testable 
 length row is exactly Sprint / Dash / Marathon (L2), Solo shows no Pass & play / Versus (L3), the
 Quick Tap tile is white before any run (L7), the length row is labelled Mode (L9). **A failing
 assertion blocks the push.** Run it before every push; ~4 minutes. `CHROME_PATH` overrides the
-Windows default Chrome. **`npm run review`** regenerates `../_review/catalogue.html` and
-`progression.html` for Cowork to publish — it never publishes.
+Windows default Chrome. **`npm run review` is STALE — corrected 2026-09-08 (build 19).** It drives `_smoke/review/`, an
+older 29-card copy of the generator. The live one is `../_review/scripts/catalogue.mjs` (54 cards,
+data-driven), which is what the 2026-09-08 rebuild ran and what Cowork publishes. **A build that
+changes a screen must update the live script too** — build 19 removed the `s-story` screen and both
+copies needed the same fix. #368 retires the duplicate.
 
 No bundler, no build step — GitHub Pages serves the modules directly, so every import path stays
 relative (`./games/dots/index.js`).
