@@ -16,10 +16,11 @@ export const SHAPE_WORD = { circle:'circle', tri:'triangle', square:'square' };
 export const PASS_LEN = { 'quick-tap':7, 'dots':10 };
 export const VS_LEAD = 10, VS_CAP = 120;
 // v14 (4.14): versus ends on first to VS_TARGET as well as first to lead by VS_LEAD. 100 is the number Aiden gave on Quick Tap;
-// every other game's figure is set from its own scale (a guess Aiden corrects next batch). VS_CAP is the backstop, not a win condition
+// Dots 60 was build 19's guess and Aiden confirmed it 2026-09-08 (v14 section A.4). VS_CAP is the backstop, not a win condition
 export const VS_TARGET = { 'quick-tap':100, 'dots':60 };
-// the rate bar's top, hits per second, for the timed games
-export const RATE_MAX = { 'quick-tap':6, 'dots':4.5 };
+// the rate bar's top, hits per second, for the timed games. v14 (6.6): Quick Tap tops out at 4/s — 6 put every real run in the
+// bottom half of the bar, so the bar never moved where the player actually plays
+export const RATE_MAX = { 'quick-tap':4, 'dots':4.5 };
 // v11: a Streak length scores rounds survived — higher wins — whatever the mode's Set scores. `streak` on a game is that override
 export const STREAK_CFG = { lower:false, suffix:'', scoreWord:'rounds' };
 
@@ -45,7 +46,7 @@ export const GAMES = {
   'reaction': { name:'Reaction', modes:['flash','nogo'], lenNames:{5:'Best of 5',9:'Best of 9',15:'Best of 15'}, unit:' attempts', timed:false, lower:true, versus:['flash'], vsLens:[5,9,15],
     flash:'Tap the moment it flashes white.', nogo:'Tap only your shape. Three wrong taps end it.',
     suffix:'ms', scoreWord:'ms', streak:{ ...STREAK_CFG },
-    // Go/No-go (v11): Set = 20 shapes, average ms on right taps + 150ms per wrong tap; Streak = shapes survived until three wrong taps
+    // Go/No-go (v11): Set = 5 rounds (v14 section 5), average ms on right taps + 150ms per wrong tap (v14 A.2); v14 (6.2 / L5): Streak = shapes survived on a 1000ms budget
     per:{ nogo:{ streak:{ ...STREAK_CFG, scoreWord:'shapes' } } } },
   // v8: Count and Find merged into Spot. v13: Normal/Hard are gone — the ramp is the difficulty (10.1). Count scores total miscount, Find cumulative seconds; both lower is better, both Set (10 rounds) or Streak (a budget)
   'spot': { name:'Spot', modes:['count','find'], unit:' rounds', timed:false, lower:true,
@@ -54,6 +55,8 @@ export const GAMES = {
     per:{ find:{ lower:true, suffix:'s', scoreWord:'s total', streak:{ ...STREAK_CFG } } } },
 };
 
+// v14 section A (2026-09-08, build 20): Count's Set line is scored in miscounts, not time, and Go / No-go's names the 150ms
+// wrong-tap penalty the engine has always applied — both are copy corrections to the section 5 table, no scoring change.
 // Set and Streak, in one table (L5 / v14 section 5, 2026-09-08). `rounds` is the Set length and `set` / `streak` are the
 // lines under the length name on the pick sheet. This is the ONE place either lives: GC lays [rounds, STREAK] over a game's
 // config and lenName / lenSub read the two lines, so no game carries its own Set or Streak copy any more.
@@ -64,18 +67,26 @@ export const SET_COPY = {
   'timing:stopwatch': { rounds:5,  set:'5 rounds, lowest average time difference wins',  streak:'Highest round wins!' },
   'timing:hidden':    { rounds:10, set:'10 rounds, lowest total pixels off wins',        streak:'Highest round wins!' },
   'reaction:flash':   { rounds:5,  set:'5 rounds, lowest time wins',                     streak:'Highest round wins!' },
-  'reaction:nogo':    { rounds:5,  set:'5 rounds, lowest average reaction time wins',    streak:'Highest round wins!' },
-  'spot:count':       { rounds:10, set:'10 rounds, lowest time wins',                    streak:'Highest round wins!' },
+  'reaction:nogo':    { rounds:5,  set:'5 rounds, lowest average reaction time wins — wrong taps add 150ms', streak:'Highest round wins!' },
+  'spot:count':       { rounds:10, set:'10 rounds, lowest total miscount wins',          streak:'Highest round wins!' },
   'spot:find':        { rounds:10, set:'10 rounds, lowest total time wins',              streak:'Highest round wins!' },
 };
 
 // Estimate · Cut (v11 / v13 6.4): the shapes with an axis of symmetry never ask for 50%; the pools and the shares asked, by
 // level (min(8, round)) — the first entry whose level is >= the round applies. No pool past level 4 = every Cut shape
+// v14 (6.14): Cut is 10 rounds now, so the ramp runs to 10 — it starts easy on three plain shapes at gentle shares and the
+// pool widens every two rounds, which is the "more shape variation as it goes" Aiden asked for. No pool past level 8 = every Cut shape
 export const ESTIMATE = {
   SYM: ['square','circle','triangle','bar','ring','plus','star'],
-  CUT_POOLS: [[2,['square','circle','triangle','bar']],[4,['ring','star','plus','stairs','tetris','crescent','blob']]],
-  CUT_SHARES: [[2,[30,35,40,45]],[4,[40,35,45,30,40]],[6,[30,25,35,20,25]],[8,[25,20,15,10,25,30]]],
+  CUT_POOLS: [[2,['square','circle','bar']],[4,['square','circle','triangle','bar','ring']],[6,['triangle','ring','star','plus','crescent']],[8,['ring','star','plus','stairs','tetris','crescent','blob']]],
+  CUT_SHARES: [[2,[40,45,35]],[4,[30,35,40,45]],[6,[25,30,35,45]],[8,[20,25,30,35,40]],[10,[10,15,20,25,30,35]]],
 };
 // Spot · Count (v13 10.1): round r deals nBase + floor(r/nPer) targets (cap nCap) and floor(r/decoyDiv) decoys (cap decoyCap);
 // the flash falls flashPer ms a round from flashMax to flashMin; from driftFrom the shapes drift, from spinFrom they turn as well
-export const SPOT_RAMP = { nBase:2, nPer:2, nCap:12, decoyDiv:1.5, decoyCap:10, flashMax:1400, flashPer:60, flashMin:350, driftFrom:6, driftBase:10, driftPer:5, spinFrom:9, spinBase:18, spinPer:7 };
+// v14 (6.27): round 1 used to be two shapes for 1.34s, which nobody gets wrong. It opens on five targets and a decoy, adds one
+// target and one decoy every round, and the flash is shorter throughout — the score is total miscount, so it should feel like a
+// judgement call, not something you always get right. The full difficulty review Aiden asked for is section 12.1 / #366
+export const SPOT_RAMP = { nBase:4, nPer:1, nCap:16, decoyDiv:1, decoyCap:12, flashMax:1200, flashPer:70, flashMin:320, driftFrom:4, driftBase:10, driftPer:5, spinFrom:7, spinBase:18, spinPer:7 };
+// Spot · Find. v14 (6.30): the first half-second of a find is free — anything faster SUBTRACTS from the total, so a fast find
+// is rewarded rather than merely cheap. v14 (6.29): the crowd and the movement both ramp harder than they did; the opening is unchanged
+export const SPOT_FIND = { leeway:0.5, nBase:16, nSpan:54, drift:34 };

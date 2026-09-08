@@ -83,7 +83,14 @@ const ptr = (type, sel, dx = .5, dy = .5) => page.evaluate((type, s, dx, dy) => 
 const down = (sel, dx, dy) => ptr('pointerdown', sel, dx, dy);
 const up = (sel, dx, dy) => ptr('pointerup', sel, dx, dy);
 
-// one poke per game, state-aware from the DOM alone, so a run of any length reaches its result
+// v14 (6.3): a round's result stays up until it is tapped, so nothing advances until the tap lands. #game.tapon is the cue,
+// and the tap goes to the layer that game's engine listens on. It runs even in the no-tap drive (Reaction's Streak, which ends
+// by never tapping the flash) — the held card is not the flash, and without this the run would sit there forever
+const heldSeen = new Set();
+async function clearHeld(g) {
+  if (!(await page.evaluate(() => document.getElementById('game').classList.contains('tapon')))) return false;
+  heldSeen.add(g); await down(g === 'hold' ? '#hfield' : '#gen'); return true;
+}
 async function poke(g) {
   if (g === 'quick-tap') { const i = await page.evaluate(() => { for (let i = 0; i < 4; i++) if (document.getElementById('sq' + i)?.style.getPropertyValue('--v').trim() === '1') return i; return -1; }); if (i >= 0) await down(`.pad[data-side="${i}"]`); return; }
   if (g === 'dots') { await page.evaluate(() => { const d = document.getElementById('dot'), f = document.getElementById('field'); if (!d.classList.contains('on')) return; const r = d.getBoundingClientRect(); f.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1 })); }); return; }
@@ -96,12 +103,16 @@ async function poke(g) {
 // the ad break (every fourth result) has a 2s skip; press it when it is live
 const skipAd = () => page.evaluate(() => { const a = document.getElementById('adbreak'), b = document.getElementById('adskip'); if (a.classList.contains('on') && !b.disabled) { b.click(); return true; } return false; });
 
+let askedLine = '';
 async function driveToResult(g, label, ms = 90000, noTap = false) {
+  askedLine = '';
   const deadline = Date.now() + ms;
   while (Date.now() < deadline) {
     const at = await onScreen(); if (at === 's-over' || at === 's-pass') break;
     if (await skipAd()) continue;
-    if (at === null || (await inGame())) { if (!noTap) await poke(g); }
+    if (at === null || (await inGame())) { if (!(await clearHeld(g)) && !noTap) await poke(g); }
+    // v14 (6.18): the last thing Stopwatch said it had asked for, kept so the total can be checked against the stated average
+    if (g === 'timing') { const t = await page.evaluate(() => document.getElementById('tmasked')?.textContent.trim() || ''); if (t) askedLine = t; }
     await sleep(45);
   }
   const at = await onScreen();
@@ -194,6 +205,7 @@ console.log('\nsheet copy comes from SET_COPY (L5)');
 
 // ---- 3. one Set run and one Streak run per game ----
 console.log('\none Set run and one Streak run per game (first mode)');
+let askedSet = '';
 const RUNS = [['quick-tap', 0, 0], ['dots', 0, 0], ['hold', 0, 0], ['hold', 0, 'streak'], ['sequence', 0, 0], ['timing', 0, 0], ['timing', 0, 'streak'], ['reaction', 0, 0], ['reaction', 0, 'streak'], ['spot', 0, 0], ['spot', 0, 'streak']];
 for (const [g, mi, li] of RUNS) {
   const face = await openSheet(g, mi, li);
@@ -201,7 +213,24 @@ for (const [g, mi, li] of RUNS) {
   if (!face) { bad(label, 'no length button'); continue; }
   await click('#go-btn');
   const at = await driveToResult(g, label, 90000, g === 'reaction' && li === 'streak');
+  if (g === 'timing' && li === 0) askedSet = askedLine;   // the Stopwatch Set's last "asked" line, for the 6.18 check below
   if (at === 's-over') { const r = await resultLine(); r.score ? ok(`${label} → "${r.score}" · ${r.verdict} · ${r.stats}`) : bad(label, 'result screen has no score'); }
+}
+// v14 (6.3): every round-based game held at least one result until it was tapped. A game that never raised #game.tapon
+// auto-advanced, which is the thing this batch removed
+{
+  const want = ['hold', 'timing', 'reaction', 'spot'];
+  const missing = want.filter(g => !heldSeen.has(g));
+  missing.length ? bad('6.3 a round result waits for a tap', 'never held: ' + missing.join(', ')) : ok(`6.3 every round game holds its result until it is tapped (${want.join(', ')})`);
+}
+// v14 (6.18): five Stopwatch rounds averaging 7s ask for exactly 35.00s — the targets are generated so the total lands on the
+// stated average, so no run is ever dealt a harder set of targets than another
+{
+  const m = askedSet.match(/^([\d.]+)s of ([\d.]+)s asked$/);
+  if (!m) bad('6.18 Stopwatch shows what it has asked for', 'last line was "' + askedSet + '"');
+  else if (m[2] !== '35.00') bad('6.18 five rounds averaging 7s ask for 35.00s', 'the run asked for ' + m[2] + 's');
+  else if (m[1] !== m[2]) bad('6.18 the last round lands on the stated total', m[1] + ' of ' + m[2]);
+  else ok(`6.18 Stopwatch · Set asks for exactly 35.00s over five rounds (last line "${askedSet}")`);
 }
 // the timed games have no Streak (Sprint / Dash / Marathon are seconds) — noted, not a failure
 ok('quick-tap and dots: timed, no Streak length to run (L2)');

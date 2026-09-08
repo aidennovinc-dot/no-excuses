@@ -7,7 +7,7 @@ import { $, $$, T, f2, mean, minMax, vmin } from "../../core.js";
 import * as hud from "../_shared/hud.js";
 import { Shapes } from "../_shared/shapes.js";
 /* ---------- Estimate (v9, was Hold). Grow: a shape grows with a wobble and vanishes; tap and hold to grow yours to the same area — the same shape on odd rounds, a different one on even. Cut: a shape appears; drag a line through it that splits off the share asked for. Score is % off, lower is better. Five rounds ---------- */
-const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, rot:0, shape:null, mine:null, t0:0, raf:0, p0:null, p1:null, share:50,
+const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, rot:0, shape:null, mine:null, t0:0, raf:0, p0:null, p1:null, share:50, pending:null,
   est(){ return this.ctx.mode==='grow'&&this.round%2===0; },
   streak(){ return this.ctx.len===STREAK; },
   cut(){ return this.ctx.mode==='cut'; },
@@ -29,15 +29,18 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
   later(f,ms){ this.ctx.timers.later(f,ms); },
   reset(){ this.st='idle'; ['ht','hg','hm'].forEach(l=>this.set(l,null,0)); $$('#hcut path').forEach(p=>p.setAttribute('d','')); ['tclipr','hclipr','aclipr','bclipr'].forEach(id=>this.clipFull(id)); $('#hline').style.opacity=0; $('#hcalc').classList.remove('on'); $('#hcalc').innerHTML=''; $('#hfield').classList.remove('show'); this.bg(''); this.shareUp(0); this.icon(null); $('#hlbl').innerHTML=''; },
   // the contract: a fresh field before the countdown; the round starts after it; a stop only cancels — the last reveal stays up under the result
-  mount(ctx){ this.ctx=ctx; this.reset(); },
+  mount(ctx){ this.ctx=ctx; this.pending=null; hud.hold(false); this.reset(); },
   start(){ this.begin(); },
-  stop(){ this.st='idle'; this.clearT(); },
-  input(ctx,ev){ if(ev.type==='down') this.down(ev); else if(ev.type==='move') this.cutMove(ev); else if(ev.type==='up') this.up(); },
+  stop(){ this.st='idle'; this.clearT(); this.pending=null; hud.hold(false); },
+  // v14 (6.3): the reveal stays up until it is tapped. That tap is consumed here — it must not start the next round's hold
+  input(ctx,ev){ if(this.pending){ if(ev.type!=='down') return; const f=this.pending; this.pending=null; hud.hold(false); ctx.audio.click(); return f(); }
+    if(ev.type==='down') this.down(ev); else if(ev.type==='move') this.cutMove(ev); else if(ev.type==='up') this.up(); },
+  wait(f){ this.pending=f; hud.hold(true); },
   // first play (v6): Grow — the ghost waits for the target, holds for the right length, lets go, and the reveal plays; Cut has no demo, the one-liner sits for 1.8s
   demo(ctx,g,done){ if(this.cut()) return 1800; this.begin(); const c=()=>g.centre($('#hfield')); let t=0;
     const poll=()=>{ if(this.st==='wait'){ const p=c(); g.at(p.x,p.y+40); g.show(); g.later(()=>{ g.hold(true); this.down({type:'down',x:0,y:0}); const dur=this.target/(CFG.holdRate*vmin())*1000; g.later(()=>{ this.up(); g.hold(false); this.clearT(); g.later(done,1300); },dur); },400); } else if(t++<60) g.later(poll,100); };
     g.later(poll,200); return 0; },
-  begin(){ this.round=0; this.total=0; this.errs=[]; hud.score(this.streak()?'0':'0.00'); this.next(); },
+  begin(){ this.round=0; this.total=0; this.errs=[]; hud.score(this.streak()?'0':'0.00%'); this.next(); },
   pickMine(){ if(!this.est()) return this.shape; const c=this.shape.coef; const ok=Shapes.GROW.filter(n=>n!==this.shape.name).map(n=>Shapes.make(n)).filter(s=>s.coef/c>=.4&&s.coef/c<=2.5); return ok.length?ok[Math.random()*ok.length|0]:Shapes.random(Shapes.GROW); },
   // v11: Set = 7 rounds, score the average % off (lower wins). Streak = the % differences add up; the run ends when the total reaches 100, score rounds
   result(){ const [best,worst]=minMax(this.errs); return this.streak()?{hits:this.errs.length,misses:0,x:best,y:worst,lim:'100%'}:{hits:Math.round(mean(this.errs)*100)/100,misses:0,x:best,y:worst}; },
@@ -45,13 +48,16 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
   hud(){ hud.time(this.streak()?T(CP.hudStreak,{n:this.round,tot:f2(this.total)}):T(CP.hudSet,{n:this.round,s:this.ctx.len})+(this.ctx.mode==='grow'?(this.est()?CP.diff:CP.same):'')); },
   next(){ this.clearT(); this.round++; if(!this.streak()&&this.round>this.ctx.len) return this.ctx.emit('finish',this.result()); if(this.streak()&&this.total>=100) return this.ctx.emit('finish',this.result()); this.reset();
     if(this.cut()) return this.cutRound();
-    this.hud(); const v=vmin(); this.shape=Shapes.random(Shapes.GROW); this.target=(16+Math.random()*42)*v; this.mine=this.pickMine(); this.rot=this.est()?0:[35,60,90,120,145,180,225,270][Math.random()*8|0];
-    this.icon(this.est()?this.mine:null); $('#hlbl').innerHTML=this.est()?CP.watchDiff:CP.watch; $('#hfield').classList.add('show');
+    this.hud(); const v=vmin(); this.shape=Shapes.random(Shapes.GROW); this.target=(16+Math.random()*42)*v; this.mine=this.pickMine();
+    // v14 (6.13): rotating a circle does nothing and rotating a square barely more — a shape with an obvious axis of symmetry is never turned
+    this.rot=(this.est()||EST.SYM.includes(this.shape.name))?0:[35,60,90,120,145,180,225,270][Math.random()*8|0];
+    // v14 (6.11): the shape you are about to grow is always drawn, centre-top, whether or not it is the target's shape
+    this.icon(this.mine); $('#hlbl').innerHTML=this.est()?CP.watchDiff:CP.watch; $('#hfield').classList.add('show');
     this.st='show'; const t0=performance.now(), rate=CFG.holdRate*v, dur=this.target/rate*1000;
     const grow=now=>{ if(!this.live()) return; const p=Math.min(1,(now-t0)/dur); this.set('ht',this.shape,this.target*p,this.wobble(now-t0)); if(p<1) this.raf=requestAnimationFrame(grow); else this.later(()=>this.ready(),420); };
     this.raf=requestAnimationFrame(grow); },
   // v11: the target stays up as a dashed outline while you grow — turned for same-shape rounds — so you can see what you are comparing to
-  ready(){ this.set('ht',null,0); $('#hfield').classList.remove('show'); this.set('hg',this.shape,this.target,{a:this.rot,x:0,y:0}); this.st='wait'; $('#hlbl').innerHTML=this.est()?CP.sameArea:CP.sameShape; this.bg(CP.hold); this.ctx.audio.click(); },
+  ready(){ this.set('ht',null,0); $('#hfield').classList.remove('show'); this.set('hg',this.shape,this.target,{a:this.rot,x:0,y:0}); this.st='wait'; $('#hlbl').innerHTML=this.est()||!this.rot?CP.sameArea:CP.sameShape; this.bg(CP.hold); this.ctx.audio.click(); },
   down(ev){ if(this.cut()) return this.cutDown(ev); if(this.st!=='wait') return; this.st='hold'; this.t0=performance.now(); $('#hlbl').innerHTML=''; this.bg(''); const rate=CFG.holdRate*vmin(), cap=Math.min(this.target*2.8,96*vmin());
     const grow=now=>{ if(this.st!=='hold') return; const el=now-this.t0; this.set('hm',this.mine,Math.min(cap,el/1000*rate)); this.raf=requestAnimationFrame(grow); }; this.raf=requestAnimationFrame(grow); },
   // the reveal (v11): the target fills bottom-up while its px² counts, then yours does the same, then the difference and the %. The two fills and the two numbers are the sum, drawn
@@ -61,7 +67,9 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
     // the target comes back filled, from the bottom up, inside its outline; yours fills the same way
     this.set('hg',null,0); this.set('ht',this.shape,this.target,{a:this.rot,x:0,y:0}); $('#hfield').classList.add('show'); this.clipTo('tclipr',0,this.target); this.clipTo('hclipr',0,size);
     this.calc([[CP.target,tgt,'',0,'',k=>this.clipTo('tclipr',k,this.target)],[CP.yours,mine,'m',0,'',k=>this.clipTo('hclipr',k,size)]],Math.max(tgt,mine)*1.15,()=>{ const diff=Math.round(mine-tgt); return `<b class="${err<=2?'g':err>8?'r':''}" style="font-size:22px">${diff>0?'+':'−'}${Math.abs(diff).toLocaleString()} ${CP.px}</b>`; },
-      `<b class="${err<=2?'g':err>8?'r':''}">${f2(pct)}%</b>${word} · <i>${f2(err)}</i>${CP.off}`, err); },
+      `<b class="${err<=2?'g':err>8?'r':''}">${f2(pct)}%</b>${word} · ${this.errLine(err)}`, err); },
+  // the round's contribution, in the words of the length being played: a Streak adds it to a budget, a Set is a distance off
+  errLine(err){ return this.streak()?`<i>+${f2(err)}%</i>`:`<i>${f2(err)}</i>${CP.off}`; },
   // the panel (v9): rows of bars. v11: both bars share one scale — max × 1.15 — so the bigger sits at ~87% and the smaller shows the real ratio; never both at 100%. Row[5] is a hook that fills the shape as the bar fills
   calc(rowsIn,max,diffHtml,resultHtml,err){ const rows=rowsIn.map((r,i)=>`<div class="hrow ${r[2]}"><span>${r[0]}</span><span class="bar"><i id="hb${i}"></i>${r[3]?`<u style="left:${r[3]}%"></u>`:''}</span><b id="hn${i}">0</b></div>`).join('');
     $('#hcalc').innerHTML=rows+`<div id="hdiff" style="text-align:center;opacity:0;transition:opacity .25s"></div><div id="hres"></div>`; $('#hcalc').classList.add('on');
@@ -74,14 +82,19 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
     chain.then(()=>pause(300))
       .then(()=>{ if(this.st!=='reveal') return; const d=$('#hdiff'); if(d&&diffHtml){ d.innerHTML=diffHtml(); d.style.opacity=1; d.classList.add('pop'); } return pause(diffHtml?800:100); })
       .then(()=>{ if(this.st!=='reveal') return; const v=$('#hres'); if(v){ v.innerHTML=resultHtml; v.classList.add('on'); } err<=8?this.ctx.audio.hit():this.ctx.audio.miss(); if(err>8&&navigator.vibrate) navigator.vibrate(30);
-        this.errs.push(err); hud.score(this.streak()?String(this.errs.length):f2(mean(this.errs))); hud.scorePop();
-        if(this.streak()) return this.addUp(err); this.total+=err; this.hud(); this.ctx.emit('live',this.result()); this.later(()=>this.next(),1900); }); },
+        const was=this.errs.length?mean(this.errs):0; this.errs.push(err);
+        if(this.streak()){ hud.score(String(this.errs.length)); hud.scorePop(); return this.addUp(err); }
+        // v14 (6.1 / 6.16): the Set figure is the running average % difference — the line the sheet promises — and it WALKS to its
+        // new value instead of jumping, the same as a Streak's total. Then the reveal waits for a tap (6.3)
+        hud.countUp({ audio:this.ctx.audio, from:was, to:mean(this.errs), ms:700, fmt:v=>f2(v)+'%', set:t=>hud.score(t), alive:()=>this.st==='reveal',
+          done:()=>{ hud.scorePop(); this.total+=err; this.hud(); this.ctx.emit('live',this.result()); this.wait(()=>this.next()); } }); }); },
   // v13 (6.7): in a Streak the round's % difference visibly walks into the running total — the round figure counts down to 0 while the total counts up by the same amount, together, with the whoosh
-  addUp(err){ hud.addUp({ audio:this.ctx.audio, from:this.total, err, ms:900, el:$('#hres i'), fmt:f2, alive:()=>this.st==='reveal',
+  // v14 (6.15): what the round contributes is written as what it is — "+1%" walking out of the round figure and into the total
+  addUp(err){ hud.addUp({ audio:this.ctx.audio, from:this.total, err, ms:900, el:$('#hres i'), fmt:v=>'+'+f2(v)+'%', alive:()=>this.st==='reveal',
       onFrame:tot=>{ this.total=tot; hud.time(T(CP.hudStreak,{n:this.round,tot:f2(this.total)})); },
-      done:tot=>{ this.total=tot; this.hud(); this.ctx.emit('live',this.result()); this.later(()=>this.next(),900); } }); },
+      done:tot=>{ this.total=tot; this.hud(); this.ctx.emit('live',this.result()); this.wait(()=>this.next()); } }); },
   // Cut (v11): rounds 1–2 are simple shapes at 50%; then harder shapes, and shares that move toward 25% and the awkward numbers as the rounds go on. A Streak keeps ramping to round 8 and holds there
-  cutRound(){ const lvl=Math.min(8,this.round); const poolRow=EST.CUT_POOLS.find(([max])=>lvl<=max); const pool=poolRow?poolRow[1]:Shapes.CUT; this.shape=Shapes.random(pool);
+  cutRound(){ const lvl=Math.min(10,this.round); const poolRow=EST.CUT_POOLS.find(([max])=>lvl<=max); const pool=poolRow?poolRow[1]:Shapes.CUT; this.shape=Shapes.random(pool);
     // v13 (6.4): a shape with an axis of symmetry never asks for 50% — halving one of those is a ruler job, not an estimate. Rounds 1–2 keep the simple shapes but ask 30–45% (the pools and shares are ESTIMATE in config/games.js)
     let shares=(EST.CUT_SHARES.find(([max])=>lvl<=max)||EST.CUT_SHARES[EST.CUT_SHARES.length-1])[1];
     if(EST.SYM.includes(this.shape.name)) shares=shares.filter(v=>v!==50); if(!shares.length) shares=[35];
@@ -106,7 +119,7 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
     // v13 (6.5): ONE bar. It is the whole shape; the cut piece's share fills it from the left while the px² count, and the red target line stays put.
     // The two pieces wear the customisable pair — the piece in --cutp, the rest at 40% of it — and the bar wears the same two colours
     this.clipFull('bclipr');
-    this.calc([[CP.piece,aS,'cutbar',Math.round(want/total*100),'',k=>this.clipTo('aclipr',k,this.target)]],total,()=>{ const diff=Math.round(aS-want); return `<b class="${err<=1.5?'g':err>8?'r':''}" style="font-size:22px">${diff>0?'+':'−'}${Math.abs(diff).toLocaleString()} ${CP.px}</b><br><span style="font-size:10px">${T(CP.targetPx,{n:Math.round(want).toLocaleString()})}</span>`; },`<b class="${err<=1.5?'g':err>8?'r':''}">${f2(share)}%</b>${word} · ${T(CP.targetShare,{n:this.share})} · <i>${f2(err)}</i>${CP.off}`,err); } };
+    this.calc([[CP.piece,aS,'cutbar',Math.round(want/total*100),'',k=>this.clipTo('aclipr',k,this.target)]],total,()=>{ const diff=Math.round(aS-want); return `<b class="${err<=1.5?'g':err>8?'r':''}" style="font-size:22px">${diff>0?'+':'−'}${Math.abs(diff).toLocaleString()} ${CP.px}</b><br><span style="font-size:10px">${T(CP.targetPx,{n:Math.round(want).toLocaleString()})}</span>`; },`<b class="${err<=1.5?'g':err>8?'r':''}">${f2(share)}%</b>${word} · ${T(CP.targetShare,{n:this.share})} · ${this.errLine(err)}`,err); } };
 
 export default HD;
 export { HD };

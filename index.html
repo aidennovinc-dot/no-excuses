@@ -98,6 +98,7 @@
   <div class="cgroup"><div class="clabel">Background</div><div class="sw" data-set="bg" id="c-bg"></div></div>
   <div class="cgroup"><div class="clabel">Tap sound</div><div class="chips" data-set="snd" id="c-snd"></div></div>
   <div class="cgroup" id="g-scale"><div class="clabel">Scale</div><div class="chips" data-set="scale" id="c-scale"></div></div>
+  <div class="cgroup" id="g-rate"><div class="clabel">Taps per second</div><div class="chips" data-set="rate" id="c-rate"></div></div>
   <div class="cgroup"><div class="clabel" id="c-music-label">Music</div><div class="chips" data-set="music" id="c-music"></div></div>
 </section>
 
@@ -107,7 +108,7 @@
   <div class="explain">A passion project of simple games of pure skill and minimal frills.<br><br>If you'd like to remove ads, add customisation, and show your support, tap below.</div>
   <button data-act="support" class="support" id="support"><b id="support-title">Support · A$1.99 · once</b><small id="support-text">No ads, ever. Every colour, background and sound pack open from day one, plus the colour wheel. A pro 60-second length in Quick Tap and Dots, with its own boards. A star on your profile.</small></button>
   <div class="tierbox" id="tierbox"></div>
-  <div class="hint">build 19 · batch 10 · surface · 8 sept 2026</div>
+  <div class="hint">build 20 · batch 10 · the runs · 8 sept 2026</div>
   <div class="eyebrow" data-dev>testing</div>
   <div class="chips" data-dev><button data-act="dev-fresh" class="chip" id="dev-fresh">fresh game · wipe everything</button><button data-act="dev-open" class="chip" id="dev-open">open everything</button><button data-act="dev-story" class="chip" id="dev-story">replay the intro</button><button data-act="dev-sup" class="chip" id="dev-sup">supporter</button></div>
   <div class="hint" id="dev-state" data-dev></div>
@@ -153,6 +154,7 @@
   <div id="seq"></div><div id="turn">your turn</div><button data-act="seqdone" id="seqdone">Done · they copy it</button>
   <div id="gen"></div>
   <div id="rxbar"></div>
+  <div id="tapon">tap to continue</div>
   <div id="bigcount">0</div>
   <div id="vs">
     <div id="vslean"></div>
@@ -178,12 +180,12 @@
 
 <script type="module" src="./boot.js"></script>
 
-<div id="build">build 19</div>
+<div id="build">build 20</div>
 <button id="update">New build available — tap to reload</button>
 <script>
 // build check: version.json is fetched with no-store, so a stale cached page still learns a newer build exists
 (function(){
-  const BUILD="19";
+  const BUILD="20";
   async function check(){
     try{
       const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});

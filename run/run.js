@@ -42,11 +42,11 @@ const Intro=(()=>{
   let done=null, timers=null; const ghost=$('#ghost');
   function clear(){ if(timers) timers.clearT(); ghost.classList.remove('on','hold','tap'); ghost.style.transition='none'; $('#intro').classList.remove('on'); }
   return {
-    run(cb){ const key=sel.game+':'+sel.diff, s=store.intro; if(s[key]) return cb(); s[key]=Date.now(); save();
+    run(cb){ const key=sel.game+':'+sel.diff, s=store.intro; if(s[key]) return cb(false); s[key]=Date.now(); save();
       const [line,sub]=INTRO[key]||['','']; const words=line.split(' '); $('#intro-text').innerHTML=words.map((w,i)=>`<span class="w" style="animation-delay:${i*110}ms">${w}</span>`).join('')+`<small class="w" style="animation-delay:${words.length*110+150}ms">${sub}</small>`; $('#intro').classList.add('on');
       timers=makeTimers(ctx.timers.alive); const g=hud.makeGhost(Snd,timers);
       ghost.style.transition='none'; const c=g.centre($('#game')); g.at(c.x,c.y); void ghost.offsetWidth; ghost.style.transition='';
-      done=()=>{ done=null; clear(); ctx.timers.clearT(); cb(); };
+      done=()=>{ done=null; clear(); ctx.timers.clearT(); cb(true); };
       // an engine without a demo (the v7 games): the one-liner sits for 1.8s, then the countdown. A demo returns its length, or 0 when it calls done itself
       const ms=eng.demo?eng.demo(ctx,g,()=>done&&done()):1800; if(ms) timers.later(()=>done&&done(),ms); },
     active:()=>!!done, clear:()=>{ done=null; clear(); } };
@@ -56,7 +56,7 @@ function pbShow(){ const g=GAMES[sel.game], pb=Scores.best(sel.game,sel.diff,sel
   if(g.timed){ const k=Math.min(1,(pb/sel.secs)/(RATE_MAX[sel.game]||6)); mk.style.bottom=Math.round(k*100)+'%'; mk.classList.add('on'); }
   else { gh.textContent=T(HUD.best,{score:scoreTxt(sel.game,pb,sel.diff,sel.secs)}); gh.classList.add('on'); } }
 function makeCtx(){ const id=R.id; const timers=makeTimers(()=>R.on&&R.id===id);
-  return { root:$('#game'), game:sel.game, cfg:GC(sel.game,sel.diff,sel.secs), mode:sel.diff, len:sel.secs, players:sel.vs, practice:sel.practice||0, scale:sel.scale, timers, audio:Snd, rand:Math.random,
+  return { root:$('#game'), game:sel.game, cfg:GC(sel.game,sel.diff,sel.secs), mode:sel.diff, len:sel.secs, players:sel.vs, practice:sel.practice||0, scale:sel.scale, rateMode:prefs.rate, timers, audio:Snd, rand:Math.random,
     emit(name,data){ if(R.id!==id) return; if(name==='finish') finish(data); else if(name==='live') liveCheck(data); } }; }
 function start(){
   const g=GAMES[sel.game], c=GC(sel.game,sel.diff,sel.secs); $('#game').dataset.g=sel.game; $('#game').dataset.d=sel.diff;
@@ -85,7 +85,9 @@ function start(){
   // versus has no first-play demo: straight to the countdown
   if(eng.noIntro){ hud.countdown(ctx.timers,Snd,go); return; }
   // first time in a mode: the ghost demo, then the countdown (v6). Sequence's keys run the scale under the 3-2-1 (v5)
-  Intro.run(()=>{ if(eng.precount) eng.precount(ctx); hud.countdown(ctx.timers,Snd,go); });
+  // v14 (6.4): the demo is over before the countdown starts. It used to leave its own round running — Estimate · Grow's target
+  // was still being calculated under the 3-2-1 — so the engine is stopped and re-mounted, fresh, the moment the demo ends
+  Intro.run(played=>{ if(played){ eng.stop(ctx); hud.reset(); eng.mount(ctx); } if(eng.precount) eng.precount(ctx); hud.countdown(ctx.timers,Snd,go); });
 }
 // v11: the stale "shake" class used to replay its animation every time #game was shown again — that was the spurious wrong-answer shake at the start of runs. It comes off on every start, abort and show
 function abort(){ if(!R.on) return; R.on=false; R.id++; VS.reset(); Intro.clear(); cancelAnimationFrame(R.raf); ctx.timers.clearT(); Music.stop(); eng.stop(ctx); $('#count').classList.remove('on'); $('#vwin').classList.remove('on'); $('#game').classList.remove('shake','live'); $('#seqdone')?.classList.remove('on'); $('#rxbar').innerHTML=''; emit('run:abort'); }

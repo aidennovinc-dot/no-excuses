@@ -5,19 +5,21 @@
 
 import { STREAK } from "../../config/games.js";
 import { $ } from "../../core.js";
+import * as hud from "./hud.js";
 /* ---------- v7 engines. All four share #gen, a round counter, and `later` timers that die with the run ---------- */
 // the rule bar (v10): what to look for, top-middle, a word at a time, staying up for the whole attempt. null clears it
 function rxBar(words){ const b=$('#rxbar'); if(!words){ b.innerHTML=''; return; } b.innerHTML=words.map((w,i)=>`<span class="w" style="animation-delay:${i*220}ms">${w}</span>`).join(''); }
-// the flash (v10): a large square with burst lines, not a white screen
-const rxBox=()=>`<svg class="rxbox" viewBox="-100 -100 200 200"><rect x="-52" y="-52" width="104" height="104"/>${[0,45,90,135,180,225,270,315].map(a=>`<line x1="0" y1="-70" x2="0" y2="-88" transform="rotate(${a})"/>`).join('')}</svg>`;
 const genRect=()=>$('#gen').getBoundingClientRect();
 const rnd=n=>Math.random()*n|0;
-const roundEngine=()=>({ ctx:null, raf:0, round:0, st:'idle',
-  mount(ctx){ this.ctx=ctx; },
+const roundEngine=()=>({ ctx:null, raf:0, round:0, st:'idle', pending:null,
+  mount(ctx){ this.ctx=ctx; this.pending=null; hud.hold(false); },
   streak(){ return this.ctx.len===STREAK; },
   start(){ this.begin(); },
-  stop(){ this.clearT(); },
-  input(ctx,ev){ this.onDown(ev); },
+  stop(){ this.clearT(); this.pending=null; hud.hold(false); },
+  // v14 (6.3): a result card waits for a tap. The tap that clears it is consumed here and never reaches the round underneath
+  input(ctx,ev){ if(this.pending){ if(ev.type&&ev.type!=='down') return; const f=this.pending; this.pending=null; hud.hold(false); ctx.audio.click(); return f(); } this.onDown(ev); },
+  // hold the card up until it is tapped, then run f. Replaces `this.later(()=>this.next(), ms)` after every reveal
+  wait(f){ this.pending=f; hud.hold(true); },
   clearT(){ if(this.ctx) this.ctx.timers.clearT(); cancelAnimationFrame(this.raf); },
   later(f,ms){ this.ctx.timers.later(f,ms); },
   hud(){ $('#hud-time').textContent=`${this.round} / ${this.ctx.len}`; } });
@@ -27,4 +29,4 @@ function scatter(n,shapes,size,odd){ const r=genRect(); const cell=size*1.45, co
 const shapeHtml=(p,size,extra='')=>`<i class="fs ${p.shape} ${extra}" style="left:${p.x}px;top:${p.y}px;--fsz:${size}px"></i>`;
 
 
-export { genRect, rnd, roundEngine, rxBar, rxBox, scatter, shapeHtml };
+export { genRect, rnd, roundEngine, rxBar, scatter, shapeHtml };

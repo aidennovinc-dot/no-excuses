@@ -26,7 +26,7 @@ function renderMenu(){ const first=firstRun(); const opening=menuWasFirst&&!firs
   $$('#s-menu .item').forEach(b=>{ const x=first&&b.dataset.go!=='s-pick'; b.classList.toggle('dim',x); b.classList.remove('unx'); if(opening&&b.dataset.go!=='s-pick'){ b.classList.add('unx'); b.style.pointerEvents='none'; setTimeout(()=>{ b.classList.remove('unx'); b.style.pointerEvents=''; },700); } });
   $('#menu-note').textContent=first?MENU.note:'';
   // v13 (1.3): the card sits above the title, labelled Next achievement; the box holds the requirement and what it opens, nothing else
-  const ng=nextGoal(); const nx=$('#nextup'); $('#menu-tag').hidden=!ng; if(ng){ nx.innerHTML=T(MENU.next,{need:ng.need,game:ng.gname,name:ng.name}); nx.hidden=false; nextWhere=Object.assign({need:ng.need},ng.where); } else { nx.hidden=true; nextWhere=null; } }
+  const ng=nextGoal(); const nx=$('#nextup'); $('#menu-tag').hidden=!ng; if(ng){ nx.innerHTML=T(MENU.next,{need:ng.need,name:ng.name}); nx.hidden=false; nextWhere=Object.assign({need:ng.need},ng.where); } else { nx.hidden=true; nextWhere=null; } }
 
 /* ---------- the title sequence (L1). Three beats: the first line at the top, the title in the middle, the second line under it.
    A tap anywhere ends it — that is the one capture in ui/actions.js — and the menu builds around the title that is already there ---------- */

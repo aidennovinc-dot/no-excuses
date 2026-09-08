@@ -3,7 +3,7 @@
    Build 17 (refactor stage 3): the engine contract, on the round base. */
 
 import { SPOT as CP } from "../../config/copy.js";
-import { SHAPE_WORD, SPOT_RAMP } from "../../config/games.js";
+import { SHAPE_WORD, SPOT_FIND, SPOT_RAMP } from "../../config/games.js";
 import { $, $$, T, f2, minMax, pWho, shapeI, winner } from "../../core.js";
 import * as hud from "../_shared/hud.js";
 import { genRect, rnd, roundEngine, rxBar, scatter, shapeHtml } from "../_shared/round.js";
@@ -40,6 +40,7 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
     this.later(()=>{ this.st='flash'; $('#gen').innerHTML=this.pts.map(q=>shapeHtml(q,this.size)).join(''); if(R.drift||R.spin) this.move('flash'); this.later(()=>this.ask(),this.flash); },1500); },
   // drift and spin share one loop; it dies the moment the state moves on
   move(state){ const els=$$('#gen .fs'), r=genRect(); let last=performance.now(); const loop=now=>{ if(this.st!==state) return; const dt=(now-last)/1000; last=now;
+      if(state==='find'){ const c=$('#spclock'); if(c) c.textContent=f2((now-this.t0)/1000); }
       this.pts.forEach((q,i)=>{ q.x+=(q.vx||0)*dt; q.y+=(q.vy||0)*dt; q.a=(q.a||0)+(q.va||0)*dt; if(q.x<0||q.x>r.width-this.size) q.vx*=-1; if(q.y<r.height*.08||q.y>r.height-this.size) q.vy*=-1;
         const el=els[i]; if(!el) return; el.style.left=q.x+'px'; el.style.top=q.y+'px'; if(q.va) el.style.rotate=q.a+'deg'; });
       this.raf=requestAnimationFrame(loop); }; this.raf=requestAnimationFrame(loop); },
@@ -47,10 +48,11 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
   ask(){ this.st='ask'; this.t0=performance.now(); cancelAnimationFrame(this.raf); if(this.two){ this.picks=[null,null]; $('#gen').innerHTML=`<div class="vz top p2" id="vz1">${this.keypad()}</div><div class="vmid">${CP.howMany}<br><b>${pWho(0)} ${this.vsN[0]} · ${this.vsN[1]} ${pWho(1)}</b></div><div class="vz bot p1" id="vz0">${this.keypad()}</div>`; this.later(()=>this.twoJudge(),7000); return; }
     $('#gen').innerHTML=`<div class="glbl top" style="top:14%">${CP.howMany}</div>${this.keypad()}`; },
   findRound(){ const p=this.p(), r=genRect(); this.size=Math.max(18,Math.min(r.width,r.height)*(.085-p*.025)); this.pen=0;
-    const all=['circle','square','tri']; this.odd=all[rnd(3)]; const rest=all.filter(s=>s!==this.odd); const n=16+Math.round(p*44), drift=p*26;
+    const all=['circle','square','tri']; this.odd=all[rnd(3)]; const rest=all.filter(s=>s!==this.odd); const n=SPOT_FIND.nBase+Math.round(p*SPOT_FIND.nSpan), drift=p*SPOT_FIND.drift;
     this.pts=scatter(n,rest,this.size,this.odd); this.pts.forEach(q=>{ q.vx=(Math.random()-.5)*drift; q.vy=(Math.random()-.5)*drift; q.va=0; });
     this.st='wait'; $('#gen').innerHTML=''; rxBar([...CP.find,shapeI(this.odd),`<b>${SHAPE_WORD[this.odd]}</b>`]);
-    this.later(()=>{ this.st='find'; this.t0=performance.now(); $('#gen').innerHTML=this.pts.map(q=>shapeHtml(q,this.size)).join(''); if(drift) this.move('find'); },1400); },
+    // v14 (6.31): the round's own clock runs in large grey type behind the crowd, so the cost of staring is visible while you stare
+    this.later(()=>{ this.st='find'; this.t0=performance.now(); $('#gen').innerHTML=`<div class="spclock" id="spclock">0.00</div>`+this.pts.map(q=>shapeHtml(q,this.size)).join(''); this.move('find'); },1400); },
   // Count with a friend (v11): both see the same flash and each picks a count on their own keypad. A right pick scores by speed — but the second player has 0.35s of leeway: a right answer within 0.35s of the first right answer is a tie and both score. 10 rounds
   twoPick(ev){ const b=ev.el.closest('[data-num]'); if(!b) return; const z=b.closest('.vz'); const p=z&&z.id==='vz1'?1:0; if(this.picks[p]!==null) return; this.picks[p]=+b.dataset.num; this.pickT[p]=performance.now()-this.t0; b.classList.add('sel'); z.classList.add('done'); this.ctx.audio.select(); if(this.picks[0]!==null&&this.picks[1]!==null){ this.clearT(); this.twoJudge(); } },
   twoJudge(){ this.st='show'; const ok=[this.picks[0]===this.answer,this.picks[1]===this.answer]; let pts=[0,0], line;
@@ -66,13 +68,25 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
       hud.score(this.streak()?String(Math.max(0,this.round-1)):String(this.off));
       const done=this.streak()?this.off>=5:this.round>=this.ctx.len;
       $('#gen').innerHTML=this.pts.map(q=>shapeHtml(q,this.size,q.shape!==this.target?'dim':'')).join('')+`<div class="glbl bot"><b class="${ok?'g':'r'}">${this.answer}</b>${ok?CP.right:T(CP.said,{k,off})}${this.streak()?T(CP.of5,{off:this.off}):''}${done&&this.streak()?CP.over:''}</div>`;
-      ok?this.ctx.audio.hit():this.ctx.audio.miss(); if(!ok&&navigator.vibrate) navigator.vibrate(30); this.ctx.emit('live',this.result()); this.later(()=>this.next(),1300); return; }
+      ok?this.ctx.audio.hit():this.ctx.audio.miss(); if(!ok&&navigator.vibrate) navigator.vibrate(30);
+      // v14 (6.1 / 6.3): the round's miscount walks into the running total — the Set's score, the Streak's budget — and the
+      // reveal then stays up until it is tapped
+      hud.countUp({ audio:off?this.ctx.audio:null, from:this.off-off, to:this.off, ms:480, fmt:v=>String(Math.round(v)), alive:()=>this.st==='show',
+        set:t=>{ if(this.streak()) hud.time(T(CP.hudCountStreak,{n:this.round,off:t})); else hud.score(t); },
+        done:()=>{ hud.scorePop(); this.ctx.emit('live',this.result()); this.wait(()=>this.next()); } }); return; }
     if(this.st!=='find') return; const r=genRect(); const x=ev.x-r.left, y=ev.y-r.top; let best=null, bd=1e9; this.pts.forEach((q,i)=>{ const d=Math.hypot(x-(q.x+this.size/2),y-(q.y+this.size/2)); if(d<bd){ bd=d; best=i; } }); if(best===null||bd>this.size*.95) return;
-    const els=$$('#gen .fs'); if(this.pts[best].shape===this.odd){ this.st='show'; cancelAnimationFrame(this.raf); const t=Math.round(((performance.now()-this.t0)/1000+this.pen)*100)/100; this.times.push(t); this.tot=Math.round((this.tot+t)*100)/100;
+    const els=$$('#gen .fs'); if(this.pts[best].shape===this.odd){ this.st='show'; cancelAnimationFrame(this.raf); const t=Math.round(((performance.now()-this.t0)/1000+this.pen)*100)/100; this.times.push(t);
       // v13 (10.3): Set totals the seconds over ten rounds; a Streak spends a 10-second budget and scores the rounds it bought
-      hud.score(this.streak()?String(this.times.length):f2(this.tot));
+      // v14 (6.30): the first half-second is free, and anything under it comes OFF the total — a fast find pays you back
+      const add=Math.round((t-SPOT_FIND.leeway)*100)/100, was=this.tot; this.tot=Math.round((this.tot+add)*100)/100;
+      if(this.streak()) hud.score(String(this.times.length));
       els[best].classList.add('odd'); els.forEach((el,i)=>{ if(i!==best) el.classList.add('dim'); });
-      $('#gen').insertAdjacentHTML('beforeend',`<div class="glbl bot"><b class="${t<2?'g':''}">${f2(t)}s</b>${this.streak()?T(CP.of10,{t:f2(this.tot)}):T(CP.total,{t:f2(this.tot)})}${this.pen?T(CP.pen,{pen:this.pen}):''}</div>`); this.ctx.audio.hit(); this.ctx.emit('live',this.result()); this.later(()=>this.next(),1000); }
+      const cl=$('#spclock'); if(cl) cl.remove();
+      $('#gen').insertAdjacentHTML('beforeend',`<div class="glbl bot"><b class="${t<2?'g':''}" id="spt">0.00s</b><span id="sptot">${this.streak()?T(CP.of10,{t:f2(was)}):T(CP.total,{t:f2(was)})}</span>${this.pen?T(CP.pen,{pen:this.pen}):''}${add<0?T(CP.fast,{n:f2(-add)}):''}</div>`); this.ctx.audio.hit();
+      // v14 (6.32 / 6.1): the time taken runs up incrementally and walks into the total; (6.3) the result then waits for a tap
+      hud.countUp({ audio:this.ctx.audio, from:0, to:1, ms:900, fmt:v=>v, alive:()=>this.st==='show',
+        set:k=>{ const b=$('#spt'); if(b) b.textContent=f2(t*k)+'s'; const u=$('#sptot'); if(u) u.textContent=this.streak()?T(CP.of10,{t:f2(was+add*k)}):T(CP.total,{t:f2(was+add*k)}); },
+        done:()=>{ hud.score(this.streak()?String(this.times.length):f2(this.tot)); hud.scorePop(); this.ctx.emit('live',this.result()); this.wait(()=>this.next()); } }); }
     else { this.wrong++; this.pen+=1; els[best].classList.add('bad'); this.ctx.audio.miss(); if(navigator.vibrate) navigator.vibrate(30); } } });
 
 export default SP;

@@ -3,7 +3,7 @@
    everything, replay the intro, supporter. The release build has no testing block at all. */
 import { BUILD_FLAGS } from "../../config/build.js";
 import { ABOUT, TOAST } from "../../config/copy.js";
-import { $, T } from "../../core.js";
+import { $, $$, T } from "../../core.js";
 import { prefs, reset, save } from "../../core/store.js";
 import { ACH, Scores, UNLOCKS, got, seedSeen, unlocked } from "../../progress.js";
 import { define } from "../actions.js";
@@ -19,7 +19,9 @@ function devState(){ renderTier(); if(!BUILD_FLAGS.dev) return; const u=Object.k
 // Fresh game: progress goes, the look and the name stay, and the title sequence plays again (L1)
 function freshGame(){ reset(); seedSeen(); show('s-menu',{story:true}); }
 
-if(!BUILD_FLAGS.dev) $('#testing').remove();
+// S5: a release build has no testing block at all. There is no #testing element — the three nodes carry [data-dev], and the
+// old selector threw on boot the moment `dev` went false (found in build 19, fixed build 20)
+if(!BUILD_FLAGS.dev) $$('#s-about [data-dev]').forEach(el=>el.remove());
 register('s-about',{ onShow(){ devState(); } });
 define({
   support(){ toast(prefs.supporter?TOAST.supAlready:TOAST.supLater); return 'click'; },

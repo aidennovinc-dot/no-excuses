@@ -19,6 +19,9 @@ import { register, show } from "../router.js";
 import { toast } from "../toast.js";
 
 let lastRun=null, eggTaps=0;
+// v14 (7.1): what the run that just finished was — the button reads Try again while the chips still say the same thing
+let played=null;
+const sameAsPlayed=()=>!!played&&played.g===sel.game&&played.d===sel.diff&&played.s===sel.secs&&played.vs===sel.vs;
 // the result screen's options (v10): players, mode, length — pick, then Go. What you were just playing is pre-selected. v11: Solo / With a friend, then Pass & play / Versus; locked modes and lengths are crossed out and cannot be picked
 function renderOverChips(){ const g=GAMES[sel.game]; const vsOk=versusOf(sel.game,sel.diff); if(sel.vs===2&&!vsOk) sel.vs=1; const fresh=[];
   $('#over-vs').innerHTML=`<button class="chip ${sel.vs===0?'sel':''}" data-act="chip-over" data-chip="over-vs" data-v="0">solo</button><button class="chip ${sel.vs?'sel':''}" data-act="chip-over" data-chip="over-vs" data-v="f">with a friend</button>`+(sel.vs?`<span class="chip lbl">·</span><button class="chip ${sel.vs===1?'sel':''}" data-act="chip-over" data-chip="over-vs2" data-v="1">pass &amp; play</button>${vsOk?`<button class="chip ${sel.vs===2?'sel':''}" data-act="chip-over" data-chip="over-vs2" data-v="2">versus</button>`:''}`:'');
@@ -28,7 +31,7 @@ function renderOverChips(){ const g=GAMES[sel.game]; const vsOk=versusOf(sel.gam
   $('#over-chips2').innerHTML=lens.length>1&&!fixed&&(!versus||c.vsLens)?lens.map(s=>{ const L=versus?null:lenLock(sel.game,sel.diff,s); const nw=L?'':newMark('len:'+sel.game+':'+sel.diff+':'+s,fresh); return `<button class="chip ${s===sel.secs?'sel':''} ${L?'locked x':''}${nw}" data-act="chip-over" data-chip="over-s" data-v="${s}">${lenName(sel.game,s,sel.diff,versus)}</button>`; }).join(''):'';
   $('#over-chips3').innerHTML='';
   markSeen(fresh);
-  $('#again').textContent=goLabel(sel.game,sel.diff,versus,fixed); }
+  $('#again').textContent=sameAsPlayed()?SHEET.tryAgain:goLabel(sel.game,sel.diff,versus,fixed); }
 // the top 10 under the result (v11) follows the mode and length picked in the chips, not only the run just played
 // v13 (3.5): a two-player run is never on a board (L10), so the whole top-10 block goes — the side-by-side pair and the chips stay
 function renderOverTop(){ const run=lastRun; const g=GC(sel.game,sel.diff,sel.secs); const two=sel.vs>0; $('#over-top').hidden=two||!!(run&&run.practice); $('#over-top').style.display=two||(run&&run.practice)?'none':''; if(two) return;
@@ -62,8 +65,8 @@ function shareRun(){ const r=lastRun; if(!r) return; const c=GC(r.g,r.d,r.s); co
   if(navigator.share){ navigator.share({text}).catch(()=>{}); return; } if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(()=>toast(TOAST.copied),()=>toast(text)); } else toast(text); }
 
 register('s-over',{});
-on('run:record',({run})=>{ lastRun=run; });
-on('store:reset',()=>{ lastRun=null; });
+on('run:record',({run})=>{ lastRun=run; played={g:run.g,d:run.d,s:run.s,vs:sel.vs}; });
+on('store:reset',()=>{ lastRun=null; played=null; });
 on('run:finish',({run,isBest,two})=>{ const g=GC(run.g,run.d,run.s);
   // the header (v11) carries only a status — the board title under the top 10 names the game, mode and length
   $('#over-eyebrow').textContent=run.practice?RESULT.practice:run.fail?RESULT.fail:isBest?RESULT.best:run.vs2?(sel.vs===1?RESULT.pass:RESULT.versus):VS.on?RESULT.pass:'';

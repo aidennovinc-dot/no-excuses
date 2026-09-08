@@ -27,7 +27,8 @@ export const PROGRESS = { finishOne:'finish one {game} {prev}', finishA:'finish 
 
 // the one-liner under the ghost demo, the first time a mode is played
 export const INTRO = {
-  'quick-tap:two':  ['Tap the box when it lights up.','tap it before it goes out'],
+  // v14 (6.5, carried from v13 5.1): Two says one thing and nothing under it
+  'quick-tap:two':  ['Tap the box when it lights up.',''],
   'quick-tap:four': ['Tap the white pad.','four of them now'],
   'dots:blind':     ['Tap the dot where it lands.','anywhere on the screen'],
   'dots:lead':      ['Tap the dot where it lands.','the red ring shows the next spot'],
@@ -58,10 +59,13 @@ export const VERDICT = { nogoFail:'Three wrong taps. Run over — go again.', fa
   draw:'A draw. Nobody gets to blame anybody.', took:'Player {n} took it{how}. No excuses.', practice:'Practice. Nothing counted — go for real when it feels right.' };
 
 // the menu, the pick sheet, the lock box
-export const MENU = { note:'play one run · the rest opens', next:'<em>Next achievement</em><span>{need} {game} → {name}</span>' };
+// v14 (build 20): 3.2 made every requirement name its own game, so the card's own {game} said it twice — "9 hits, no misses,
+// in a Quick Tap Dash · Quick Tap → Quick Tap · Four". The requirement carries the game now; the card just points at what it opens
+export const MENU = { note:'play one run · the rest opens', next:'<em>Next achievement</em><span>{need} → {name}</span>' };
 export const SHEET = { mode:'Mode', toUnlock:'To unlock: {need}', tileUnlock:'to unlock: {need}', locked:'locked', noRun:'no run yet', best:'best', closest:'closest',
   practiceFrom:'practice from', off:'off', pracLocked:'locked · 8 notes in 7 keys',
-  go:'Go', goVersus:'Go · versus', goEach:'Go · {n}s each', goPass:'Go · pass & play', passTitle:' · pass & play', versusTitle:' · versus',
+  // v14 (7.1): the result screen's button is Try again until something is changed, and only then does it become Go
+  go:'Go', tryAgain:'Try again', goVersus:'Go · versus', goEach:'Go · {n}s each', goPass:'Go · pass & play', passTitle:' · pass & play', versusTitle:' · versus',
   chalScored:'A friend scored ', chalBeat:' — beat it', chalSent:'A friend sent you this one' };
 export const LOCK = { text:'{name}<b>To unlock: {need}</b>' };
 // v14 (4.2): the sub-copy under the two-player picture is gone — no "take turns on one phone", no "{n} seconds each", no grey
@@ -92,17 +96,23 @@ export const ACH_SCREEN = { all:'All', done:'done', secret:'secret', hidden:'???
 // the engines' own words
 export const SEQ = { copy:'copy the notes', yourTurn:'your turn', whoTurn:'{who} · your turn', watch:'round {n} · watch', round:'round {n}',
   compose:'tap in a tune · up to 8 notes', composeHud:'{who} · compose · up to 8', composeN:'{who} · {n} of 8', listen:'listen · then copy it', listenHud:'{who} · listen',
-  wins:'{who} wins', draw:'draw', practice:' · practice', pass:' · pass & play', comp:' · compose', hud:'{scale} · {n} keys{tail}', missNote:'on a missed note', longer:'on the longer copy', notes:'{n} notes' };
-export const ESTIMATE = { watchDiff:'watch · then hold the shape top right to the same area', watch:'watch', sameArea:'same area · your shape is top right', sameShape:'same shape · it has been turned', hold:'tap and hold',
+  wins:'{who} wins', draw:'draw', practice:' · practice', pass:' · pass & play', comp:' · compose', hud:'{n} keys{tail}', missNote:'on a missed note', longer:'on the longer copy', notes:'{n} notes' };
+// v14 (6.11 / 6.12): the shape you grow is drawn centre-top on every round, the same one you are told about, so nothing has to
+// say where it is. "same area · your shape is top right" is gone
+export const ESTIMATE = { watchDiff:'watch · then hold your shape to the same area', watch:'watch', sameArea:'same area', sameShape:'same shape · it has been turned', hold:'tap and hold',
   money:'on the money', close:'close', closeCut:'close!', much:'too much', little:'too little', target:'target', yours:'yours', piece:'piece', px:'px²', targetPx:'target {n} px²', targetShare:'target {n}%', off:' off',
   missed:'the line missed the shape · <b>{share}%</b> again', drag:'tap and drag a line to cut the shape', draw:'tap and draw a line', shareTarget:'<small>target</small>',
   hudStreak:'Round {n} · {tot}% of 100%', hudSet:'Round {n} of {s}', diff:' · different shape', same:' · same shape' };
 export const TIMING = { target:'target', stop:'tap to stop the timer', marker:'tap when the ball has reached the marker', late:'late', early:'early', dead:'dead on', close:'close',
-  over:'{bud} reached · run over', hudStreak:'attempt {n} · {tot} of {bud}', hudSet:'{n} / {s}', budS:'2.0s', budPx:'100px' };
-export const REACTION = { wait:'wait for it', tap:'TAP', slow:'too slow', early:'too early', noTap:'no tap', reached:' · 500 reached', ms:' ms', quick:'quick', good:'good', slowWord:'slow',
+  over:'{bud} reached · run over', hudStreak:'attempt {n} · {tot} of {bud}', hudSet:'{n} / {s}', budS:'2.0s', budPx:'100px',
+  // v14 (6.18): what the game has asked for so far, against what it will have asked for by the end of the Set
+  askedSet:'{tot}s of {all}s asked', asked:'{tot}s asked' };
+// v14: the budgets are the engine's constants now, not numbers baked into a string — a Flash Streak spends what is over 200ms
+// against 500ms (L5), a Go / No-go Streak what is over 300ms against 1000ms (6.2 / L5), and a wrong tap costs 150ms in both scorings
+export const REACTION = { wait:'wait for it', tap:'TAP', slow:'too slow', early:'too early', noTap:'no tap', reached:'{bud}ms reached', ms:' ms', quick:'quick', good:'good', slowWord:'slow',
   again:'try again · attempt {n}{of}', of:' of {s}', takes:'Player {n} takes it', tappedEarly:'Player {n} tapped early', draw:'draw', wins:'Player {n} wins',
-  ruleTap:['tap','only','the'], ruleNow:['now','only','the'], wrong:'wrong tap · {n} of 3', three:'three wrong taps', over:'run over',
-  hudVs:'round {n} · best of {s}', hudNogoStreak:'shape {n} · {w} of 3 wrong', hudNogo:'{n} / {s} · {w} of 3 wrong', hudStreak:'attempt {n} · {over} of 500ms', hudSet:'{n} / {s}' };
+  ruleTap:['tap','only','the'], ruleNow:['now','only','the'], wrong:'wrong tap · {n} of 3', wrongS:'wrong tap', three:'three wrong taps', over:'run over',
+  hudVs:'round {n} · best of {s}', hudNogoStreak:'shape {n} · {over} of {bud}ms', hudNogo:'{n} / {s} · {w} of 3 wrong', hudStreak:'attempt {n} · {over} of {bud}ms', hudSet:'{n} / {s}' };
 export const SPOT = { count:['count','the'], find:['find','the'], howMany:'how many?', right:'right · 0 off', said:'you said {k} · {off} off', of5:' · {off} of 5', over:' · run over',
-  of10:'{t}s of 10s', total:'total {t}s', pen:' · incl. +{pen}s for wrong taps', tie:'both right · a tie', faster:'both right · Player {n} was faster', had:'Player {n} had it', nobody:'nobody had it',
+  of10:'{t}s of 10s', total:'total {t}s', pen:' · incl. +{pen}s for wrong taps', fast:' · under the 0.5s leeway · −{n}s', tie:'both right · a tie', faster:'both right · Player {n} was faster', had:'Player {n} had it', nobody:'nobody had it',
   draw:'draw', wins:'Player {n} wins', hudFindStreak:'Round {n} · {tot}s of 10s', hudFind:'Round {n} of {s} · {tot}s', hudTwo:'round {n} / 10', hudCountStreak:'Round {n} · {off} of 5 off', hudCount:'Round {n} of {s} · {off} off', over10:'{a}–{b} over 10 rounds' };

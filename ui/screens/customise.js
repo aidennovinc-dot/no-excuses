@@ -32,12 +32,14 @@ function renderCustom(){
     const cls=`${selNow?'sel':''} ${L?'locked':''}${nw} ${pvTry.set===set&&pvTry.v===it.v?'pvw':''} ${isWheel?'wheel':''} ${set==='bg'&&!isWheel?'bg-'+it.v:''}`;
     const style=set==='bg'?`background-color:${DESIGNS[it.v]?.tint||'transparent'}`:isWheel?'':`background:${it.v}`;
     return `<button data-act="item" data-v="${it.v}" class="${cls}" data-lock="${L?L.id:''}" style="${style}" aria-label="${it.v}${L?' locked':''}"></button>`; }).join('');
-  for(const set of ['snd','scale']) $('#c-'+set).innerHTML = itemsOf(set).map(it=>{ const L=lockedBy(it); const nw=L?'':newMark('cos:'+set+':'+it.v,fresh); return `<button data-act="item" data-v="${it.v}" class="opt ${String(prefs[set])===String(it.v)?'sel':''} ${L?'locked':''}${nw}" data-lock="${L?L.id:''}">${it.label}</button>`; }).join('');
+  for(const set of ['snd','scale','rate']) $('#c-'+set).innerHTML = itemsOf(set).map(it=>{ const L=lockedBy(it); const nw=L?'':newMark('cos:'+set+':'+it.v,fresh); return `<button data-act="item" data-v="${it.v}" class="opt ${String(prefs[set])===String(it.v)?'sel':''} ${L?'locked':''}${nw}" data-lock="${L?L.id:''}">${it.label}</button>`; }).join('');
   // music is per game now (12.1): the row switches this game's track and previews it
   $('#c-music').innerHTML = itemsOf('music').map(it=>`<button data-act="item" data-v="${it.v}" class="opt ${musicOn(F.g)===it.v?'sel':''}">${it.label}</button>`).join('')+`<button data-act="music-pv" class="opt" id="c-music-pv">${CUSTOM.preview}</button>`;
   $('#pv-g').innerHTML=Object.entries(GAMES).map(([id,x])=>`<button class="chip" data-act="chip-pv" data-chip="pv-g" data-v="${id}">${x.name}</button>`).join(''); chips('pv','g',F.g);
   $('#pv').dataset.g=F.g; $('#g-lead').style.display=GAMES[F.g].lead?'':'none';
   $('#g-cut').style.display=F.g==='hold'?'':'none'; $('#g-scale').style.display=F.g==='sequence'?'':'none';
+  // v14 (6.7): the taps-per-second reading is a choice, and only the timed games have a rate bar to show it on
+  $('#g-rate').style.display=GAMES[F.g].timed?'':'none';
   $('#c-music-label').textContent=T(CUSTOM.music,{game:GAMES[F.g].name});
   if(F.g==='spot'&&!$('#pvsp').children.length){ const sh=['','c','t']; $('#pvsp').innerHTML=Array.from({length:14},(_,i)=>`<i class="${i===9?'c':sh[i%2?0:2]}"></i>`).join(''); }
   $('#s-custom .eyebrow').textContent=T(CUSTOM.eyebrow,{game:GAMES[F.g].name});

@@ -24,7 +24,7 @@ const parse=s=>{ if(s==null) return undefined; try{ return JSON.parse(s); }catch
 const isObj=x=>!!x&&typeof x==='object'&&!Array.isArray(x);
 const HEX=/^#[0-9a-f]{6}$/i;
 const hex=(v,d)=>typeof v==='string'&&HEX.test(v)?v:d;
-const SND=ITEMS.snd.map(i=>i.v);
+const SND=ITEMS.snd.map(i=>i.v), RATES=ITEMS.rate.map(i=>i.v);
 const SQ='#FFFFFF', LEAD='#C8322A';
 
 /* ---------- the shape of each field. Anything that is not what its default is becomes the default; the rest is kept ---------- */
@@ -33,7 +33,8 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
   const o={ bg:DESIGNS[p.bg]?p.bg:'stars', tint:hex(p.tint,''), snd:SND.includes(p.snd)?p.snd:'space', musicG:{}, lastGame:GAMES[p.lastGame]?p.lastGame:'quick-tap',
     name:typeof p.name==='string'?p.name.trim().toUpperCase().slice(0,10):'', scale:SCALES[p.scale]?p.scale:'penta',
     allOpen:dev&&!!p.allOpen, supporter:dev&&!!p.supporter, adRuns:Number.isInteger(p.adRuns)&&p.adRuns>=0?p.adRuns:0,
-    col:{}, story:p.story?1:0, played:p.played?1:0, gridSeen:p.gridSeen?1:0, menuSeen:p.menuSeen?1:0 };
+    col:{}, story:p.story?1:0, played:p.played?1:0, gridSeen:p.gridSeen?1:0, menuSeen:p.menuSeen?1:0,
+    rate:RATES.includes(p.rate)?p.rate:'live' };   // v14 (6.7): which taps-per-second reading the rate bar shows
   if(isObj(p.musicG)) for(const g in GAMES) if(typeof p.musicG[g]==='boolean') o.musicG[g]=p.musicG[g];
   // colours are per game (v6): { sq, lead, cut }, each #RRGGBB; cut defaults to the square colour (v13 6.5)
   const col=isObj(p.col)?p.col:{};

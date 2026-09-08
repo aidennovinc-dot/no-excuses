@@ -15,7 +15,7 @@ const SQ={ id:'sequence', ctx:null, st:'idle', keys:0, seq:[], idx:0, round:0, p
   // keys are built before the countdown so they can run the scale under it (v5)
   mount(ctx){ this.ctx=ctx; this.build(); },
   build(){ this.keys=this.ctx.len; this.st='idle'; $('#seq').innerHTML=Array.from({length:this.keys},(_,i)=>`<div class="key" data-k="${i}" data-n="${i+1}"></div>`).join('');
-    hud.mode(T(CP.hud,{scale:SCALES[this.ctx.scale].name,n:this.keys,tail:this.ctx.practice?CP.practice:this.mode()==='pass'?CP.pass:this.mode()==='compose'?CP.comp:''})); hud.scoreVisible(!(this.ctx.practice||this.ctx.players)); $('#seqdone').classList.remove('on'); },
+    hud.mode(T(CP.hud,{n:this.keys,tail:this.ctx.practice?CP.practice:this.mode()==='pass'?CP.pass:this.mode()==='compose'?CP.comp:''})); hud.scoreVisible(!(this.ctx.practice||this.ctx.players)); $('#seqdone').classList.remove('on'); },
   // the keys run the scale under the 3-2-1 (v5)
   precount(){ const n=this.keys, stepMs=Math.floor((CFG.countStep*3)/n); for(let i=0;i<n;i++) this.later(()=>this.light(i,stepMs*2.2,stepMs*.9),i*stepMs); },
   // first play (v6): two notes play, then the ghost copies them, then the countdown

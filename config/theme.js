@@ -11,6 +11,9 @@ export const ITEMS = {
   snd: [{v:'space',label:'Space'},{v:'click',label:'Click',by:'qt_r4'},{v:'wood',label:'Wood',by:'hd_money'},{v:'sigh',label:'Sigh',by:'tour'},{v:'off',label:'Off'}],
   // v13 (12.1): music is per game — one track each, switched off or previewed on its own row
   music:[{v:true,label:'On'},{v:false,label:'Off'}],
+  // v14 (6.7): the rate bar's two readings. Live is the rolling average over the last few taps; Whole run averages every tap
+  // over the time played so far — at 15s it averages 15s, at 17s it averages 17s. Shown only on the timed games
+  rate:[{v:'live',label:'Live'},{v:'run',label:'Whole run'}],
   // v13 (6.5): the Cut pieces are a pair. This picks the cut-off piece; the rest is the same colour at 40%
   cut: [{v:'#FFFFFF'},{v:'#FFE9C4',by:'first'},{v:'#9BE8FF',by:'qt_clean5'},{v:'#FFD1DC',by:'dt_pin'},{v:'#F3D9FF',by:'hd_steady'},{v:'#C6FF7A',by:'qt_clean30'},{v:'#FFF3A0',by:'sq_12'},{v:'wheel',by:'fullset'}],
 };

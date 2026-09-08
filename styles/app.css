@@ -496,6 +496,8 @@
   .change{display:flex;flex-direction:column;gap:8px;align-items:center;margin-top:4px}
   /* result screen (v10): options first, then Go, then the board. An ad slot sits under the board for non-supporters */
   #s-over .change{margin-top:0}
+  /* v14 (7.1): Go is on screen the moment the result is — a player going straight back in never waits for it to animate in */
+  #s-over.on>#again{animation-delay:0s}
   #again{margin-top:6px;font-size:22px;padding:16px 60px}
   .adslot{width:min(92vw,360px);height:64px;border:1px dashed var(--line);display:grid;place-items:center;font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);flex:none}
   .adslot.off{display:none}
@@ -595,6 +597,11 @@
   #rate i{position:absolute;left:0;right:0;bottom:0;height:0;background:var(--sq-live);transition:height .18s ease-out}
   #rate b{position:absolute;right:0;bottom:calc(100% + 8px);font-family:var(--mono);font-weight:500;font-size:11px;letter-spacing:.1em;color:var(--mute);white-space:nowrap;font-variant-numeric:tabular-nums}
   #edge{position:absolute;inset:0;pointer-events:none;opacity:0;box-shadow:inset 0 0 40px 6px var(--sq-live);transition:opacity .25s;z-index:1}
+  /* v14 (6.3): a round's result stays up until it is tapped. The cue sits under the card, breathing, and never takes the tap
+     itself — the whole game layer is the target, so a tap anywhere advances */
+  #tapon{position:absolute;left:0;right:0;bottom:calc(1% + env(safe-area-inset-bottom));text-align:center;font-family:var(--mono);font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--mute);pointer-events:none;opacity:0;z-index:6}
+  #tapon.on{animation:tapcue 1.6s ease-in-out .25s infinite both}
+  @keyframes tapcue{0%,100%{opacity:.35}50%{opacity:.85}}
   /* ghost finger and one-liner for a mode's first play (v6) */
   #intro{position:absolute;inset:0;display:none;pointer-events:none;z-index:7}
   #intro.on{display:block}
@@ -734,7 +741,7 @@
   #hlbl b.r{color:var(--miss)}
   #hdiff.pop{animation:pop .3s ease-out}
   /* estimate: the shape you'll hold, shown as a picture top-right so nobody has to read it (v6) */
-  #hicon{position:absolute;right:14px;top:8px;width:13vmin;height:13vmin;overflow:visible;opacity:0;transition:opacity .2s}
+  #hicon{position:absolute;left:50%;top:8px;width:13vmin;height:13vmin;margin-left:-6.5vmin;overflow:visible;opacity:0;transition:opacity .2s}
   #hicon.on{opacity:1}
   #hicon path{fill:none;stroke:var(--sq-live);stroke-width:2}
   #hicon text{fill:var(--mute);font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase}
@@ -751,7 +758,9 @@
   #hshare.on{opacity:1}
   #hshare small{display:block;font-family:var(--mono);font-weight:500;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--mute);margin-top:6px}
   /* v10: `#hfield svg` (inset 0, 100%) outranked `#hicon` on specificity, so the parked icon was drawn across the whole field — that was the big white outline in Grow and the clutter in Cut */
-  #hfield #hicon{position:absolute;left:auto;bottom:auto;right:14px;top:4px;width:13vmin;height:13vmin}
+  /* v14 (6.11): the shape you grow is centre-top, always — top right was confusing, and it is shown even when it is the
+     same shape as the target */
+  #hfield #hicon{position:absolute;left:50%;right:auto;bottom:auto;top:4px;width:13vmin;height:13vmin;margin-left:-6.5vmin}
   #hfield #hicon.big{width:22vmin;height:22vmin;right:auto;left:50%;top:1%;margin-left:-11vmin}
   .sheet.len #lenwrap,.choice,#vsart.on,#vs-sub:not([hidden]),#lockwrap.on #lockbox,#wheelwrap.on #wheelbox,.mch,#over-vs .chip,#over-chips2 .chip,#over-chips3 .chip,.ach .a.lock,.ach h4,#pvlock:not(:empty),#hcalc.on,#adbreak.on>div,.tbtn,#s-pass.on>*,#nextup:not([hidden]){animation:rise .18s ease-out both}
   /* Estimate (v11): the target's outline stays up while you grow */
@@ -805,6 +814,8 @@
   .tmclock{position:absolute;left:0;right:0;top:34%;text-align:center;font-family:var(--mono);font-weight:700;font-size:clamp(56px,18vw,120px);color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:0;pointer-events:none}
   .tmtarget{position:absolute;left:0;right:0;top:10%;text-align:center;font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);pointer-events:none}
   .tmtarget b{display:block;font-size:34px;color:var(--sq-live);letter-spacing:0;font-variant-numeric:tabular-nums}
+  /* v14 (6.18): the running total of the time the game has asked for, under the round's target */
+  .tmtarget u{display:block;text-decoration:none;font-size:10px;letter-spacing:.22em;color:var(--mute);font-variant-numeric:tabular-nums;margin-top:2px;min-height:1.2em}
   #tmwall{position:absolute;top:9%;bottom:0;background:color-mix(in srgb,var(--ground) 88%,#fff);border-left:1px solid var(--line);transition:opacity .3s;pointer-events:none}
   #tmball{position:absolute;left:0;top:0;width:var(--fsz);height:var(--fsz);border-radius:50%;background:var(--sq-live);pointer-events:none}
   #tmmark{position:absolute;width:var(--fsz);height:var(--fsz);border-radius:50%;border:2px dashed var(--cue);pointer-events:none;z-index:2}
@@ -831,14 +842,8 @@
   .rxrule i.square{border-radius:1px}
   .rxrule i.circle{border-radius:50%}
   .rxrule i.tri{clip-path:polygon(50% 0,100% 100%,0 100%)}
-  /* Reaction (v10): white lands as a large square with burst lines, not the whole screen */
-  .rxpane.lit{background:none}
-  .rxbox{position:absolute;left:50%;top:52%;width:min(86vmin,440px);height:min(86vmin,440px);margin:calc(min(86vmin,440px) / -2) 0 0 calc(min(86vmin,440px) / -2);display:none;overflow:visible;pointer-events:none}
-  .rxpane.lit .rxbox,.rxpane.hit .rxbox{display:block}
-  .rxpane.hit .rxbox{opacity:.28}
-  .rxbox rect{fill:var(--sq-live)}
-  .rxbox line{stroke:var(--sq-live);stroke-width:3;stroke-linecap:round}
-  .rxpane.lit .rxmsg,.rxpane.lit .rxmsg b{color:var(--ink)}
+  /* v14 (6.22): white is the WHOLE screen again. The v10 square with burst lines was the preview screen's picture of Flash,
+     not the game — the lines are gone and .rxbox with them, so the lit pane is the plain fill defined above */
   .rxpane.hit .rxmsg{z-index:2}
   /* the rule (v10) lives at the top-middle for the whole attempt, and arrives a word at a time */
   #rxbar{position:absolute;left:0;right:0;top:calc(16.5% + env(safe-area-inset-top));text-align:center;font-family:var(--mono);font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink);line-height:1.8;z-index:3;pointer-events:none}
@@ -852,6 +857,8 @@
 /* ==================================================================
    spot — games/spot/
    ================================================================== */
+  /* v14 (6.31): Spot · Find runs its own clock in large grey type BEHIND the shapes — the cost of staring, while you stare */
+  .spclock{position:absolute;left:0;right:0;top:34%;text-align:center;font-family:var(--mono);font-weight:700;font-size:clamp(52px,17vw,110px);color:var(--ink);opacity:.09;font-variant-numeric:tabular-nums;pointer-events:none;z-index:0}
   /* count keypad */
   .pad-num{position:absolute;left:8%;right:8%;bottom:6%;display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
   .pad-num button{font-family:var(--mono);font-weight:700;font-size:22px;padding:14px 0;border:1px solid var(--line);color:var(--ink);pointer-events:auto}
