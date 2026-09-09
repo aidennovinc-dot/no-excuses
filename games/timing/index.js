@@ -9,7 +9,15 @@ import { genRect, rnd, roundEngine } from "../_shared/round.js";
 const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, ball:null, targets:[], out:false, tot:0, asked:0, stopAt:0,
   hid(){ return this.ctx.mode==='hidden'; },
   // v13 (8.2 / 8.3 / L5): a Streak is a cumulative budget, not one bad attempt — Stopwatch adds up the seconds off to 2.0s, Hidden the pixels off to 100px. Score is attempts completed
-  budget(){ return this.hid()?100:2; }, budTxt(){ return this.hid()?CP.budPx:CP.budS; }, totTxt(){ return this.hid()?Math.round(this.tot)+'px':f2(this.tot)+'s'; },
+  // v15 (3.8, L5): the Stopwatch Streak's budget is 25 seconds, and passing round 10 grants five more. It WAS 2.0s —
+  // Aiden read it as "about 2s" and he was exactly right, which is the whole bug: two ordinary attempts against a 7s
+  // target spent it, so the Streak was over before it started. Hidden's 100px is untouched. The budget text is derived
+  // from the number rather than the old CP.budS literal, so a retune can never leave the screen saying something else
+  budget(){ return this.hid()?100:(this.round>10?30:25); }, budTxt(){ return this.hid()?CP.budPx:f2(this.budget())+'s'; }, totTxt(){ return this.hid()?Math.round(this.tot)+'px':f2(this.tot)+'s'; },
+  // v15 (3.8): a Stopwatch Streak's targets start low and climb — 2.5s at round 1, about half a second more each round,
+  // held at 9s — instead of being drawn flat around 7s. The SET keeps v14 6.18's exact-mean deal untouched: that one is
+  // a promise printed on the sheet ("5 rounds averaging 7s ask for 35.00s") and a ramp would make it a lie
+  rampAt(r){ const mid=Math.min(9,2.5+.45*(r-1)); return Math.round((mid+(rnd(2)?1:-1)*Math.random()*.4)*100)/100; },
   // v14 (6.18): the targets are generated so their mean is EXACTLY the stated average — five rounds averaging 7s ask for 35.00s,
   // never 34.6 or 35.4. Random offsets either side, then the mean offset is taken back out of every one, so no player is ever
   // dealt a harder set of targets than another. Aiden's reasoning, and the whole theme: no excuses. A Streak deals as it goes
@@ -30,7 +38,7 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
     if(this.streak()) return {hits:this.errs.length,misses:0,x,y,lim:this.budTxt()}; return {hits:this.hid()?Math.round(sum(this.errs)):Math.round(mean(this.errs)*100)/100,misses:0,x,y}; },
   hud(){ hud.time(this.streak()?T(CP.hudStreak,{n:this.round,tot:this.totTxt(),bud:this.budTxt()}):T(CP.hudSet,{n:this.round,s:this.ctx.len})); },
   next(){ this.clearT(); this.round++; if(this.out||(!this.streak()&&this.round>this.ctx.len)) return this.ctx.emit('finish',this.result()); if(this.round>this.targets.length) this.targets=this.targets.concat(this.deal(20)); this.hud(); this.st='arm'; this.hid()?this.hidden():this.watch(); },
-  watch(){ this.target=Math.round((this.targets[this.round-1]||7)*100)/100;
+  watch(){ this.target=this.streak()?this.rampAt(this.round):Math.round((this.targets[this.round-1]||7)*100)/100;
     // v14 (6.18): every target adds to a visible running total of the time the game has asked for, and it lands exactly on the
     // stated average — the player can see the run was never given a harder deal than anybody else's
     const was=this.asked; this.asked=Math.round((this.asked+this.target)*100)/100;
@@ -77,13 +85,13 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
     // the result stays up until it is tapped
     const past=this.errs.slice(0,-1); const was=past.length?(hid?sum(past):mean(past)):0, to=hid?sum(this.errs):mean(this.errs);
     hud.countUp({ audio:this.ctx.audio, from:was, to, ms:600, fmt:v=>hid?Math.round(v)+'px':f2(v)+'s', set:t=>hud.score(t), alive:()=>this.st==='show',
-      done:()=>{ hud.scorePop(); this.ctx.emit('live',this.result()); this.wait(()=>this.next()); } }); },
+      done:()=>{ hud.scorePop(); this.ctx.emit('live',this.result()); this.after(()=>this.next()); } }); },
   // v13 (8.2 / 8.3): the attempt's figure counts down to 0 while the running total counts up by the same amount, together, with the whoosh (6.7)
   addUp(err,hid){ hud.addUp({ audio:this.ctx.audio, from:this.tot, err, ms:800, el:$('#tmerr'), fmt:v=>hid?Math.round(v)+'px':f2(v)+'s', alive:()=>this.st==='show',
       onFrame:tot=>{ this.tot=tot; hud.time(T(CP.hudStreak,{n:this.round,tot:this.totTxt(),bud:this.budTxt()})); },
       done:tot=>{ this.tot=tot; if(this.tot>=this.budget()) this.out=true; this.hud();
         if(this.out){ const r=$('#tmres'); if(r) r.insertAdjacentHTML('beforeend',`<br>${T(CP.over,{bud:this.budTxt()})}`); }
-        this.ctx.emit('live',this.result()); this.wait(()=>this.next()); } }); } });
+        this.ctx.emit('live',this.result()); this.after(()=>this.next()); } }); } });
 
 export default TM;
 export { TM };

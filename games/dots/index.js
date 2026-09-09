@@ -5,8 +5,12 @@ import { CFG } from "../../config/games.js";
 import { $ } from "../../core.js";
 import { timedEngine } from "../_shared/timed.js";
 // a miss holds the dot where it is for half a second (v8); the dot is never hidden on a miss
-const DT=Object.assign(timedEngine(),{ id:'dots', lockMs:500, hideOnMiss:false, sz:80, pos:null, nextPos:null, prevPos:null, demoOn:false,
-  reset(){ this.pos=null; this.nextPos=null; this.prevPos=null; this.demoOn=false; },
+const DT=Object.assign(timedEngine(),{ id:'dots', lockMs:500, hideOnMiss:false, sz:80, pos:null, nextPos:null, prevPos:null, demoOn:false, preset:false,
+  reset(){ this.pos=null; this.nextPos=null; this.prevPos=null; this.demoOn=false; this.preset=false; },
+  // v15 (3.10): Lead only. The first dot and its lead ring arrive on "1" of the 3-2-1 — two of the three steps in — so the
+  // player is already looking at the right place when the run starts. They cannot be tapped: `armed` is false until
+  // start(), so timedEngine.input turns every tap away before it reaches the field. Blind is untouched, by intent
+  precount(ctx){ if(ctx.mode!=='lead') return; this.begin(); this.preset=true; ctx.timers.later(()=>this.render(true),CFG.countStep*2); },
   // v14 (6.9): the dots are random. The v9 quadrant pity — three in a row in the same quarter forced the next one elsewhere,
   // and the count carried across runs — was the one thing making the placement predictable, so it is gone. The only rule left
   // is separation (v14 section B.4): a new dot never lands on the one before it. B.4 asks for a floor of one dot RADIUS;
@@ -19,7 +23,9 @@ const DT=Object.assign(timedEngine(),{ id:'dots', lockMs:500, hideOnMiss:false, 
     const top=this.demoOn?my*.45:0, span=Math.max(1,my-top), gap=this.sz*this.GAP;
     for(let i=0;i<24;i++){ const p={x:Math.random()*mx,y:top+Math.random()*span}; if(avoid&&Math.hypot(p.x-avoid.x,p.y-avoid.y)<gap) continue; return p; }
     let best=null,bd=-1; for(let i=0;i<8;i++){ const p={x:Math.random()*mx,y:top+Math.random()*span}; const d=avoid?Math.hypot(p.x-avoid.x,p.y-avoid.y):1e9; if(d>bd){ bd=d; best=p; } } return best; },
-  begin(){ this.demoOn=false; this.pos=this.rnd(null); this.prevPos=null; this.nextPos=this.rnd(this.pos); },
+  // precount has already dealt the pair the player has been staring at through the countdown — re-dealing here would
+  // move the dot out from under them on "go", which is the opposite of what 3.10 asks for
+  begin(){ if(this.preset){ this.preset=false; return; } this.demoOn=false; this.pos=this.rnd(null); this.prevPos=null; this.nextPos=this.rnd(this.pos); },
   advance(){ this.prevPos=this.pos; this.pos = this.ctx.mode==='lead'?this.nextPos:this.rnd(this.pos); this.nextPos=this.rnd(this.pos); },
   render(live){ const d=$('#dot'), l=$('#lead'); if(this.pos){ d.style.transform=`translate(${this.pos.x}px,${this.pos.y}px)`; } d.classList.toggle('on',live);
     // the lead ring just appears where the next dot will be — no push, no effect (v5)

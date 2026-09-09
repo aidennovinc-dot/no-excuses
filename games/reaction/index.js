@@ -15,13 +15,26 @@ import { genRect, rnd, roundEngine, rxBar } from "../_shared/round.js";
 // it: the budget is spent by the reaction-time overspend on legal taps as well as by wrong taps, so mistakes do not have to
 // exhaust it on their own. The Streak has no wrong-tap counter and must not gain one. B.3 still stands — the SET keeps its
 // own 150ms-added penalty and its own three-wrong-taps ending; the two currencies differ and must not be harmonised.
-const RX=Object.assign(roundEngine(),{ id:'reaction', times:[], faults:0, t0:0, rule:'circle', shown:'', armed:false, over:0, out:false, wrong:0, seen:0, vsN:[0,0], vsDone:false, last1:'', last2:'',
+const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[], faults:0, t0:0, rule:'circle', shown:'', armed:false, over:0, out:false, wrong:0, seen:0, vsN:[0,0], vsDone:false, last1:'', last2:'',
   // v14 section C.1 (L5, build 22): a Flash Streak spends everything over 150ms of its 500ms budget — the number 6.8 asked for.
   // B.1's 250 was Cowork's reasoning and Aiden overruled it. A good phone tap is ~250–280ms, so nearly every rep spends
   // 100–130ms and a run lasts four or five rounds instead of ten. That is the intended effect, not a regression. Budget unchanged.
   // NOGO_WRONG_SET is the 150ms a wrong tap ADDS to the Set average (v14 A.2); NOGO_WRONG_STREAK is the 200ms it SPENDS from the
   // Streak budget (v14 C.2). Different currencies, deliberately close numbers — B.3 / C.3 say do not harmonise them.
-  FLASH_FREE:150, FLASH_BUD:500, NOGO_FREE:150, NOGO_BUD:1000, NOGO_WRONG_SET:150, NOGO_WRONG_STREAK:200,
+  // v15 section 3.5 (L5, build 24): FLASH_EARLY is a THIRD Flash currency. Tapping before the flash spends 400ms flat —
+  // not 400 over the free allowance — and CONSUMES the attempt instead of being a retakeable fault. Flash only:
+  // Go / No-go's three numbers below are untouched by it. The note arrived on the Go / No-go card and Aiden says in the
+  // note itself that he meant Flash (v15 0.2), which is why it is here and not in nogoTap
+  FLASH_FREE:150, FLASH_BUD:500, FLASH_EARLY:400, NOGO_FREE:150, NOGO_BUD:1000, NOGO_WRONG_SET:150, NOGO_WRONG_STREAK:200,
+  // v15 (3.6): every Flash result reads down the same four lines — the time, the baseline it is measured against, the
+  // difference between them, then where the run stands. The running total is BELOW as well as in the HUD above
+  rxCard(word,ms,add,bad,note){ const pane=$('#rxpane'); if(!pane) return; pane.classList.remove('lit'); pane.classList.add(bad?'bad':'hit');
+    pane.innerHTML=`<div class="rxmsg">${word}<b>${ms}<small style="font-size:14px;letter-spacing:.2em">${CP.ms}</small></b>`
+      +`<span class="sub">${T(CP.baseline,{n:this.FLASH_FREE})}</span><span class="sub" id="rxadd">+${add}${CP.ms}</span>`
+      +`<span class="sub tot" id="rxtot">${this.totLine(this.streak()?this.over+add:mean(this.times))}</span>`
+      +(note?`<span class="sub">${note}</span>`:'')+`</div>`; },
+  totLine(v){ return this.streak()?T(CP.runTotal,{n:Math.round(v),bud:this.FLASH_BUD}):T(CP.runAvg,{n:Math.round(v)}); },
+  setTot(v){ const el=$('#rxtot'); if(el) el.textContent=this.totLine(v); },
   nogo(){ return this.ctx.mode==='nogo'; }, versus(){ return this.ctx.players===2; },
   begin(){ this.round=0; this.times=[]; this.faults=0; this.over=0; this.out=false; this.wrong=0; this.seen=0; this.vsN=[0,0]; this.vsDone=false; hud.score('0'); if(this.versus()) return this.vsRound(); if(this.nogo()) return this.nogoBegin(); this.next(); },
   // Flash (v11 / v14 section 5): Set = 5 attempts, average ms. Streak = every ms above 150 (C.1) adds to a total; the run ends at 500, score attempts
@@ -37,24 +50,32 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', times:[], faults:0, t0:0, 
     // v13 (9.1): in a Streak, sitting on your hands is an attempt worth 600ms — 450 against the 500 budget (C.1) — not a fault you can retake
     if(!this.versus()) this.later(()=>{ if(this.st==='go'){ if(this.streak()) return this.noTap(); this.faults++; this.fault(CP.slow); } },1500); },
   noTap(){ const ms=600; this.st='show'; this.times.push(ms); const add=Math.max(0,ms-this.FLASH_FREE);
-    hud.score(String(this.times.length)); const pane=$('#rxpane'); pane.classList.remove('lit'); pane.classList.add('hit');
-    pane.innerHTML=`<div class="rxmsg">${CP.noTap}<b>600<small style="font-size:14px;letter-spacing:.2em">${CP.ms}</small></b><span class="sub" id="rxadd">+${add}${CP.ms}</span></div>`; this.ctx.audio.miss(); if(navigator.vibrate) navigator.vibrate(30); this.hud(); this.flashAdd(add); },
+    hud.score(String(this.times.length)); this.rxCard(CP.noTap,ms,add,false); this.ctx.audio.miss(); if(navigator.vibrate) navigator.vibrate(30); this.hud(); this.flashAdd(add); },
+  // v15 (3.5): an early tap. It used to be a fault — the attempt was thrown away and retaken, which made jumping the gun
+  // free. Now it costs FLASH_EARLY and the attempt is spent: a Streak loses 400 of its budget, a Set carries 400ms into
+  // its average. Either way `round` moves on, so this is next(), never again()
+  early(){ this.clearT(); this.faults++; const ms=this.FLASH_EARLY; this.st='show'; this.times.push(ms);
+    this.rxCard(CP.earlyTap,ms,ms,true,CP.earlyCost);
+    this.ctx.audio.miss(); if(navigator.vibrate) navigator.vibrate(40);
+    if(this.streak()){ hud.score(String(this.times.length)); this.hud(); return this.flashAdd(ms); }
+    const past=this.times.slice(0,-1), was=past.length?mean(past):0;
+    hud.countUp({ audio:this.ctx.audio, from:was, to:mean(this.times), ms:600, fmt:v=>String(Math.round(v)), set:t=>{ hud.score(t); this.setTot(+t); }, alive:()=>this.st==='show',
+      done:()=>{ hud.scorePop(); this.ctx.emit('live',this.result()); this.wait(()=>this.next()); } }); },
   // v14 (6.1 / 6.2): a Flash Streak SHOWS its running total, and every attempt visibly walks into it — the ms over the free
   // allowance count down out of the attempt and up into the budget, the same animation Estimate and Timing already use
   flashAdd(add){ hud.addUp({ audio:this.ctx.audio, from:this.over, err:add, ms:700, el:$('#rxadd'), fmt:v=>'+'+Math.round(v)+CP.ms, alive:()=>this.st==='show',
-      onFrame:tot=>{ this.over=tot; hud.time(T(CP.hudStreak,{n:this.round,over:Math.round(this.over),bud:this.FLASH_BUD})); },
+      onFrame:tot=>{ this.over=tot; this.setTot(tot); hud.time(T(CP.hudStreak,{n:this.round,over:Math.round(this.over),bud:this.FLASH_BUD})); },
       done:tot=>{ this.over=tot; if(this.over>=this.FLASH_BUD){ this.out=true; const m=$('#rxadd'); if(m) m.insertAdjacentHTML('afterend',`<span class="sub">${T(CP.reached,{bud:this.FLASH_BUD})}</span>`); }
         this.hud(); this.ctx.emit('live',this.result()); this.wait(()=>this.next()); } }); },
   onDown(ev){ if(this.versus()) return this.vsTap(ev); if(this.nogo()) return this.nogoTap(ev);
-    if(this.st==='wait'){ this.faults++; this.fault(CP.early); return; }
+    if(this.st==='wait') return this.early();
     if(this.st!=='go'||!this.armed) return;
     const ms=Math.max(1,Math.round(ev.t-this.t0)); this.st='show'; this.times.push(ms); const add=Math.max(0,ms-this.FLASH_FREE);
-    const pane=$('#rxpane'); pane.classList.remove('lit'); pane.classList.add('hit');
-    pane.innerHTML=`<div class="rxmsg">${ms<200?CP.quick:ms<300?CP.good:CP.slowWord}<b>${ms}<small style="font-size:14px;letter-spacing:.2em">${CP.ms}</small></b>${this.streak()?`<span class="sub" id="rxadd">+${add}${CP.ms}</span>`:''}</div>`; this.ctx.audio.hit(); this.hud();
+    this.rxCard(ms<200?CP.quick:ms<300?CP.good:CP.slowWord,ms,add,false); this.ctx.audio.hit(); this.hud();
     if(this.streak()){ hud.score(String(this.times.length)); return this.flashAdd(add); }
     // v14 (6.1 / 6.3): the Set average walks to its new value, then the attempt stays on screen until it is tapped
     const past=this.times.slice(0,-1), was=past.length?mean(past):0;
-    hud.countUp({ audio:this.ctx.audio, from:was, to:mean(this.times), ms:600, fmt:v=>String(Math.round(v)), set:t=>hud.score(t), alive:()=>this.st==='show',
+    hud.countUp({ audio:this.ctx.audio, from:was, to:mean(this.times), ms:600, fmt:v=>String(Math.round(v)), set:t=>{ hud.score(t); this.setTot(+t); }, alive:()=>this.st==='show',
       done:()=>{ hud.scorePop(); this.ctx.emit('live',this.result()); this.wait(()=>this.next()); } }); },
   // a fault (v9) is big and stays 1.7s — "missed it · again" used to be small type gone in under a second
   fault(msg){ this.st='fault'; this.clearT(); const pane=$('#rxpane'); pane.classList.remove('lit'); pane.classList.add('bad'); pane.innerHTML=`<div class="rxmsg" style="top:30%"><b class="fb">${msg}</b><span class="sub">${T(CP.again,{n:this.round,of:this.streak()?'':T(CP.of,{s:this.ctx.len})})}</span></div>`; this.ctx.audio.miss(); if(navigator.vibrate) navigator.vibrate(40); this.wait(()=>this.again()); },

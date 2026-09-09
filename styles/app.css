@@ -656,7 +656,9 @@
   #game{display:none;position:absolute;inset:0;touch-action:none}
   #game.on{display:block}
   /* v14 (4.8): a pass & play run is outlined in the colour of whoever is playing it */
-  #game.pturn::after{content:"";position:absolute;inset:0;border:3px solid var(--pc,var(--p1));pointer-events:none;z-index:6}
+  /* v15 (3.12): a glow, not a solid line. The 3px rule read as a border on the screen rather than as whose turn it is.
+     Colours are untouched — --pc is still P1 red / P2 light blue (L4) */
+  #game.pturn::after{content:"";position:absolute;inset:0;border:0;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--pc,var(--p1)) 50%,transparent),inset 0 0 30px 7px color-mix(in srgb,var(--pc,var(--p1)) 38%,transparent);pointer-events:none;z-index:6}
   /* v10: Spot was still listed here as count/find — the v8 rename never reached this line, so #gen stayed hidden and neither mode could start */
   #game[data-g="timing"] #gen,#game[data-g="reaction"] #gen,#game[data-g="spot"] #gen{display:block}
   .pop{animation:pop .22s ease-out}
@@ -808,6 +810,10 @@
   #hfield svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
   #hfield path{fill:var(--sq-live);transition:opacity .15s}
   #hfield #hg path{fill:none;stroke:var(--cue);stroke-width:2;stroke-dasharray:5 6}
+  /* v15 (3.3): at the round result the dashed target outline sits OVER your shape, so the difference is readable without
+     motion and without a dismiss — that is why outline-over-shape beat flashing between the two. During the hold it stays
+     underneath, where it has always been; only .rev lifts it */
+  #hfield.rev #hg{z-index:3}
   #hfield #hm path{fill:color-mix(in srgb,var(--sq-live) 55%,var(--cue))}
   #hfield #ht path{fill:none;stroke:var(--sq-live);stroke-width:2}
   #hfield.show #ht path{fill:var(--sq-live);stroke:none}
@@ -1018,6 +1024,11 @@
   #game.versus[data-d="four"] .vhalf .vwho{bottom:calc(2 * min(28vw,15vh) + 18px)}
   /* v14 (4.12): a wrong tap reads the way it does in solo — red over that player's half, not a blank screen */
   .vhalf.miss::after{content:"";position:absolute;inset:0;background:var(--miss);pointer-events:none;animation:vsmiss .5s ease-out both}
+  /* v15 (3.11, L4): the lit square in a Quick Tap versus run is the TAPPING player's colour — P1 red at the bottom,
+     P2 light blue at the top. Both halves lit the same colour before, which is the one thing L4 exists to prevent.
+     This enforces L4, it does not change it: the two values come straight from --p1 / --p2 */
+  #game.versus .vhalf.p1 .sq{--sq-live:var(--p1)}
+  #game.versus .vhalf.p2 .sq{--sq-live:var(--p2)}
   @keyframes vsmiss{0%{opacity:.34}100%{opacity:0}}
   /* v14 (4.15): the screen leans towards whoever is ahead, and shakes gently once the end is in sight */
   #vslean{position:absolute;inset:0;pointer-events:none;opacity:calc(var(--lk,0) * .55);transition:opacity .3s}

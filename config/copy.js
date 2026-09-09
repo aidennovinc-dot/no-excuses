@@ -37,7 +37,9 @@ export const INTRO = {
   'sequence:solo':  ['Copy the notes.','then it is your turn · one more each round'],
   'timing:stopwatch':['Tap to stop the timer.','on the target · the clock fades at 1.5s'],
   'timing:hidden':  ['Tap when the ball reaches the marker.','it goes behind the wall first'],
-  'reaction:flash': ['Tap the moment it goes white.','tap early and you start that one again'],
+  // v15 (3.5): an early tap no longer gives you the attempt back — it costs 400ms and spends it. The old sub-line
+  // ("you start that one again") described the behaviour this build removed and would have taught the wrong thing
+  'reaction:flash': ['Tap the moment it goes white.','tap early and it costs you 400ms'],
   'reaction:nogo':  ['Tap only the shape you were told.','three wrong taps end the run · the rule changes'],
   'spot:count':     ['Count the shape you were shown.','the rest are decoys · three mistakes end it'],
   'spot:find':      ['Find the shape you were shown.','the crowd grows every round'],
@@ -128,7 +130,9 @@ export const ESTIMATE = { watchDiff:'watch · then hold your shape to the same a
   missed:'the line missed the shape · <b>{share}%</b> again', drag:'tap and drag a line to cut the shape', draw:'tap and draw a line', shareTarget:'<small>target</small>',
   hudStreak:'Round {n} · {tot}% of 100%', hudSet:'Round {n} of {s}', diff:' · different shape', same:' · same shape' };
 export const TIMING = { target:'target', stop:'tap to stop the timer', marker:'tap when the ball has reached the marker', late:'late', early:'early', dead:'dead on', close:'close',
-  over:'{bud} reached · run over', hudStreak:'attempt {n} · {tot} of {bud}', hudSet:'{n} / {s}', budS:'2.0s', budPx:'100px',
+  // v15 (3.8): `budS` is gone. The Stopwatch Streak budget changes with the round (25s, 30s past round 10), so the engine
+  // derives the text from the number it is actually playing — a literal here could only ever be a second, drifting copy
+  over:'{bud} reached · run over', hudStreak:'attempt {n} · {tot} of {bud}', hudSet:'{n} / {s}', budPx:'100px',
   // v14 (6.18): what the game has asked for so far, against what it will have asked for by the end of the Set
   askedSet:'{tot}s of {all}s asked', asked:'{tot}s asked' };
 // v14: the budgets are the engine's constants now, not numbers baked into a string — a Flash Streak spends what is over 250ms
@@ -137,7 +141,9 @@ export const TIMING = { target:'target', stop:'tap to stop the timer', marker:'t
 export const REACTION = { wait:'wait for it', tap:'TAP', slow:'too slow', early:'too early', noTap:'no tap', reached:'{bud}ms reached', ms:' ms', quick:'quick', good:'good', slowWord:'slow',
   again:'try again · attempt {n}{of}', of:' of {s}', takes:'Player {n} takes it', tappedEarly:'Player {n} tapped early', draw:'draw', wins:'Player {n} wins',
   ruleTap:['tap','only','the'], ruleNow:['now','only','the'], wrong:'wrong tap · {n} of 3', wrongS:'wrong tap', three:'three wrong taps', over:'run over',
-  hudVs:'round {n} · best of {s}', hudNogoStreak:'shape {n} · {over} of {bud}ms', hudNogo:'{n} / {s} · {w} of 3 wrong', hudStreak:'attempt {n} · {over} of {bud}ms', hudSet:'{n} / {s}' };
+  hudVs:'round {n} · best of {s}', hudNogoStreak:'shape {n} · {over} of {bud}ms', hudNogo:'{n} / {s} · {w} of 3 wrong', hudStreak:'attempt {n} · {over} of {bud}ms', hudSet:'{n} / {s}',
+  // v15 (3.5 / 3.6): the result reads down — what you did, what it is measured against, the difference, then where the run stands
+  baseline:'baseline {n} ms', runTotal:'total {n} of {bud} ms', runAvg:'average {n} ms', earlyTap:'tapped early', earlyCost:'the attempt is spent' };
 export const SPOT = { count:['count','the'], find:['find','the'], howMany:'how many?', right:'right · 0 off', said:'you said {k} · {off} off', of5:' · {off} of 5', over:' · run over',
   of10:'{t}s of 10s', total:'total {t}s', pen:' · incl. +{pen}s for wrong taps', fast:' · under the 0.5s leeway · −{n}s', tie:'both right · a tie', faster:'both right · Player {n} was faster', had:'Player {n} had it', nobody:'nobody had it',
   draw:'draw', wins:'Player {n} wins', hudFindStreak:'Round {n} · {tot}s of 10s', hudFind:'Round {n} of {s} · {tot}s', hudTwo:'round {n} / 10', hudCountStreak:'Round {n} · {off} of 5 off', hudCount:'Round {n} of {s} · {off} off', over10:'{a}–{b} over 10 rounds' };

@@ -238,9 +238,13 @@ for (const [g, mi, li] of RUNS) {
 // v14 (6.3): every round-based game held at least one result until it was tapped. A game that never raised #game.tapon
 // auto-advanced, which is the thing this batch removed
 {
-  const want = ['hold', 'timing', 'reaction', 'spot'];
+  // v15 (3.9) narrows the list: only a result with something to read waits. Timing and Spot lost the cue this build,
+  // so they must NOT hold — the assertion runs both ways or "removed it" and "broke it" look identical
+  const want = ['hold', 'reaction'], gone = ['timing', 'spot'];
   const missing = want.filter(g => !heldSeen.has(g));
-  missing.length ? bad('6.3 a round result waits for a tap', 'never held: ' + missing.join(', ')) : ok(`6.3 every round game holds its result until it is tapped (${want.join(', ')})`);
+  const stillHolding = gone.filter(g => heldSeen.has(g));
+  missing.length ? bad('6.3 a complicated result waits for a tap', 'never held: ' + missing.join(', ')) : ok(`6.3 Estimate and Reaction hold their result until it is tapped (${want.join(', ')})`);
+  stillHolding.length ? bad('3.9 Timing and Spot no longer wait for a tap', 'still holding: ' + stillHolding.join(', ')) : ok(`3.9 tap-to-continue is gone from ${gone.join(' and ')} — they advance on their own`);
 }
 // v14 (6.18): five Stopwatch rounds averaging 7s ask for exactly 35.00s — the targets are generated so the total lands on the
 // stated average, so no run is ever dealt a harder set of targets than another
@@ -501,7 +505,9 @@ console.log('\nthe chain and its screens (v15 sections 1 and 2)');
       leadMar: [L('dots', 'lead', 2)({ hits: 28 }), L('dots', 'lead', 2)({ hits: 27 })],
       cutStreak: [L('hold', 'cut', 1)({ y: 81 }), L('hold', 'cut', 1)({ y: 80 })],
       flashStreak: [L('reaction', 'flash', 1)({ hits: 501 }), L('reaction', 'flash', 1)({ hits: 500 })] };
-    out.hdMax = [R.ACH_TEST.hd_max({ g: 'hold', d: 'grow', s: 7, y: 684 }), R.ACH_TEST.hd_max({ g: 'hold', d: 'grow', s: 7, y: 120 })];
+    // build 24: Greedy is the engine's `mx` flag — the hold ran to its ceiling — not a % threshold. A big overshoot
+    // with no `mx` must NOT earn it, or the row is just "miss by a lot" under another name
+    out.hdMax = [R.ACH_TEST.hd_max({ g: 'hold', d: 'grow', s: 7, mx: 1, y: 174 }), R.ACH_TEST.hd_max({ g: 'hold', d: 'grow', s: 7, y: 684 }), R.ACH_TEST.hd_max({ g: 'hold', d: 'grow', s: 7, y: 120 })];
     // 1.0d: ONE record of the chain. Every requirement the app can show for a length is the string lenNeed builds
     const G = await import('./games/registry.js');
     out.oneRecord = [];
@@ -578,6 +584,87 @@ console.log('\nthe chain and its screens (v15 sections 1 and 2)');
         stray: needs.filter(n => n && !known.has(n)) }; });
     (u.screen === 's-unl' && u.rows > 0 && u.heads === 3) ? ok(`2.4 the Unlocks screen lists ${u.rows} rows under ${u.heads} headings`) : bad('2.4 the Unlocks screen', JSON.stringify(u));
     (!u.stray.length) ? ok('2.4 / L6 every requirement on the Unlocks screen comes from UNLOCKS or lenNeed — no second copy') : bad('2.4 a requirement written twice', u.stray.join(' | ')); }
+}
+
+// ---- 6e. the runs (v15 section 3), build 24 ----
+console.log('\nthe runs (v15 section 3)');
+{
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const css = fs.readFileSync(path.join(root, 'styles', 'app.css'), 'utf8');
+  // 3.12: a glow, not a solid line. The old rule is the thing that must be gone, so test for its absence too
+  { const rule = (css.match(/#game\.pturn::after\{[^}]*\}/) || [''])[0];
+    const glow = /box-shadow:\s*inset/.test(rule), solid = /border:\s*\d+px solid/.test(rule);
+    (glow && !solid) ? ok('3.12 the pass & play outline is a glow, not a solid line') : bad('3.12 the pass & play outline', `glow ${glow} · still a solid border ${solid}`); }
+  // 3.11 / L4: the two halves must resolve to DIFFERENT colours. Both lit the same before, which is the one thing L4 exists to stop
+  { const p1 = /#game\.versus \.vhalf\.p1 \.sq\{--sq-live:var\(--p1\)\}/.test(css), p2 = /#game\.versus \.vhalf\.p2 \.sq\{--sq-live:var\(--p2\)\}/.test(css);
+    (p1 && p2) ? ok('3.11 / L4 the lit versus square takes the tapping player\'s colour — P1 red, P2 light blue') : bad('3.11 versus square colours', `p1 ${p1} · p2 ${p2}`); }
+  // 3.3: the outline is lifted over the fill at the reveal only — a permanent lift would change the hold as well
+  { const rev = /#hfield\.rev #hg\{z-index:\d+\}/.test(css);
+    rev ? ok('3.3 the target outline sits over your shape at the round result') : bad('3.3 the target outline at the reveal', 'no #hfield.rev #hg rule'); }
+
+  await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
+  await setStorage({}); await page.reload({ waitUntil: 'networkidle0' }); await sleep(600);
+  const S3 = await page.evaluate(async () => {
+    const out = {};
+    const HD = (await import('./games/estimate/index.js')).default;
+    const RX = (await import('./games/reaction/index.js')).default;
+    const TM = (await import('./games/timing/index.js')).default;
+    const { ESTIMATE, STREAK } = await import('./config/games.js');
+    const v = Math.min(innerWidth, innerHeight) / 100;
+    // 3.1: no Grow target lands under the floor, at any shape. Measured in vmin², which is the point of the item —
+    // a raw-pixel floor would mean something different on every screen
+    let worst = Infinity;
+    for (let i = 0; i < 4000; i++) { HD.shape = HD.pickTarget(); const t = HD.growTarget() * v; worst = Math.min(worst, HD.shape.coef * t * t / (v * v)); }
+    out.floor = { want: ESTIMATE.MIN_AREA, worst: Math.round(worst), px: Math.round(ESTIMATE.MIN_AREA * v * v) };
+    // 3.5: Flash's third currency, held apart from the other two exactly as C.1-C.3 hold theirs apart
+    out.flash = { early: RX.FLASH_EARLY, free: RX.FLASH_FREE, bud: RX.FLASH_BUD, nogoFree: RX.NOGO_FREE, nogoWrong: RX.NOGO_WRONG_STREAK };
+    // 3.8: 25 seconds, 30 once round 10 is passed, and Hidden's 100px untouched
+    TM.ctx = { mode: 'stopwatch', len: STREAK };
+    TM.round = 1; const b1 = TM.budget(), t1 = TM.budTxt();
+    TM.round = 11; const b2 = TM.budget();
+    TM.ctx = { mode: 'hidden', len: STREAK }; const bh = TM.budget();
+    out.stopwatch = { early: b1, late: b2, hidden: bh, txt: t1 };
+    // 3.8: the Streak's targets climb; the SET's exact-mean deal is untouched (6.18 checks that separately)
+    TM.ctx = { mode: 'stopwatch', len: STREAK };
+    out.ramp = [1, 2, 5, 10, 20].map(r => TM.rampAt(r));
+    // answer 2, the ceiling Aiden asked for: at the largest target the vmin clamp bites first, so 600% is unreachable
+    const pctAt = t => { const cap = Math.min(t * 2.8, 96); return (cap / t) ** 2 * 100 - 100; };
+    out.ceiling = { small: Math.round(pctAt(ESTIMATE.TMIN)), large: Math.round(pctAt(ESTIMATE.TMAX)), crossover: +(96 / Math.sqrt(7)).toFixed(1) };
+    return out; });
+  { const f = S3.floor;
+    (f.worst >= f.want) ? ok(`3.1 every Grow target clears the ${f.want} vmin² floor (${f.px} px² here) — smallest dealt in 4,000 rounds was ${f.worst} vmin²`)
+      : bad('3.1 the Grow minimum shape size', `floor ${f.want} vmin², smallest dealt ${f.worst} vmin²`); }
+  { const f = S3.flash;
+    (f.early === 400 && f.free === 150 && f.bud === 500 && f.nogoFree === 150 && f.nogoWrong === 200)
+      ? ok('3.5 / L5 an early Flash tap spends 400ms, held apart from Flash 500/150 and Go / No-go 1000/150/200')
+      : bad('3.5 the Flash early-tap penalty', JSON.stringify(f)); }
+  { const s = S3.stopwatch;
+    (s.early === 25 && s.late === 30 && s.hidden === 100 && s.txt === '25.00s')
+      ? ok('3.8 / L5 the Stopwatch Streak budget is 25s, 30s past round 10; Hidden stays 100px and the screen says so')
+      : bad('3.8 the Stopwatch Streak budget', JSON.stringify(s)); }
+  { const r = S3.ramp, climbs = r.every((x, i) => !i || x > r[i - 1] - 0.9), low = r[0] < 4, high = r[4] > 7;
+    (climbs && low && high) ? ok(`3.8 Stopwatch Streak targets climb — rounds 1/2/5/10/20 dealt ${r.join('s · ')}s`)
+      : bad('3.8 the Stopwatch Streak ramp', JSON.stringify(r)); }
+  // the finding behind Greedy's rewrite, asserted so it cannot quietly go back to a % threshold
+  { const c = S3.ceiling;
+    (c.large < 600 && c.small >= 600) ? ok(`3.x Greedy: a maxed hold reaches ${c.small}% off on the smallest target but only ${c.large}% on the largest (96vmin bites above ${c.crossover} vmin) — which is why the test is the cap, not a percentage`)
+      : bad('the Greedy ceiling', JSON.stringify(c)); }
+  // 3.10: Dots · Lead is set up before the run starts; Blind is not. Sampled during the 3-2-1, before #game.live
+  for (const [mode, want] of [['lead', true], ['blind', false]]) {
+    const seen = await page.evaluate(async d => {
+      const RUN = await import('./run/run.js'); const S = await import('./core/store.js'); const ST = await import('./core/state.js');
+      S.store.intro['dots:' + d] = Date.now(); S.save();
+      Object.assign(ST.sel, { game: 'dots', diff: d, secs: 15, vs: 0, practice: 0 });
+      RUN.start();
+      return new Promise(res => setTimeout(() => res({
+        dot: document.getElementById('dot').classList.contains('on'),
+        lead: document.getElementById('lead').classList.contains('on'),
+        live: document.getElementById('game').classList.contains('live') }), 720)); }, mode);
+    await page.evaluate(async () => { const RUN = await import('./run/run.js'); RUN.abort(); }); await sleep(300);
+    if (seen.live) bad(`3.10 sampling Dots · ${mode} under the 3-2-1`, 'the run was already live');
+    else if (seen.dot === want) ok(want ? `3.10 Dots · Lead shows the next dot and its ring on "1", before the run starts (lead ring ${seen.lead})` : '3.10 Dots · Blind is unchanged — nothing on screen under the 3-2-1');
+    else bad(`3.10 Dots · ${mode} under the 3-2-1`, JSON.stringify(seen));
+  }
 }
 
 // ---- 7. every button action once (build 15: ui/actions.js dispatches on data-act) ----

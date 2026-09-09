@@ -84,7 +84,13 @@ const ACH_TEST = {
      and about 2.74× on the largest one — 684% and 174% off. `y` is the run's WORST single round, so 600 sits above
      anything a player reaches by merely overshooting and below the ceiling of every round with a target under ~34vmin.
      No engine change: this reads a field the record already carries (build 24 owns the engines, not this build). */
-  hd_max:r=>r.g==='hold'&&r.d==='grow'&&r.y>=600,
+  /* v15 (build 24, Aiden's answer 2): Greedy asks for a hold that ran ALL THE WAY to its limit, and `mx` is the engine
+     saying exactly that. The build-23 test was `r.y >= 600` — a % threshold derived from the cap arithmetic, not from
+     play — and it is only reachable while the target is under 36.3vmin, because the cap is min(target × 2.8, 96vmin)
+     and above that the vmin clamp bites first. On the largest target the most a maxed hold can reach is 174% off, so
+     600 was unreachable on roughly half of all rounds and on several shapes never. `mx` is true at every target size,
+     on every screen, and is what the row's own words already promised. Numbers in FEATURES.md. */
+  hd_max:r=>r.g==='hold'&&r.d==='grow'&&r.mx===1,
   sq_7:r=>r.g==='sequence'&&r.hits>=7, sq_12:r=>r.g==='sequence'&&r.hits>=12, sq_7x8:r=>r.g==='sequence'&&r.s===7&&r.hits>=8, sq_5x10:r=>r.g==='sequence'&&r.s===5&&r.hits>=10,
   sq_s20:r=>r.g==='sequence'&&r.hits>=20, sq_s15:r=>r.g==='sequence'&&r.s===7&&r.hits>=15,
   tm_close:r=>r.g==='timing'&&r.d==='stopwatch'&&r.x<=.1, tm_wall:r=>r.g==='timing'&&r.d==='hidden'&&r.s===10&&r.hits<=300,

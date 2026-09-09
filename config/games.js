@@ -76,7 +76,12 @@ export const SET_COPY = {
 // level (min(8, round)) — the first entry whose level is >= the round applies. No pool past level 4 = every Cut shape
 // v14 (6.14): Cut is 10 rounds now, so the ramp runs to 10 — it starts easy on three plain shapes at gentle shares and the
 // pool widens every two rounds, which is the "more shape variation as it goes" Aiden asked for. No pool past level 8 = every Cut shape
+// v15 (3.1): Grow's target never lands under MIN_AREA. It is a vmin² fraction, not raw pixels — the same mistake already
+// logged against Timing · Hidden's bars, which do not travel across screen sizes. 460 vmin² is 7,000 px² on a 390-wide
+// phone (Aiden's number, measured there) and stays the same share of the screen everywhere else. TMIN/TMAX are the
+// linear range in vmin; a shape too thin to reach the floor even at TMAX is re-dealt rather than shrunk to a reaction test.
 export const ESTIMATE = {
+  MIN_AREA: 460, TMIN: 16, TMAX: 58,
   SYM: ['square','circle','triangle','bar','ring','plus','star'],
   CUT_POOLS: [[2,['square','circle','bar']],[4,['square','circle','triangle','bar','ring']],[6,['triangle','ring','star','plus','crescent']],[8,['ring','star','plus','stairs','tetris','crescent','blob']]],
   CUT_SHARES: [[2,[40,45,35]],[4,[30,35,40,45]],[6,[25,30,35,45]],[8,[20,25,30,35,40]],[10,[10,15,20,25,30,35]]],
