@@ -10,8 +10,7 @@ import { emit, on } from "../../core/events.js";
 import { VS, sel } from "../../core/state.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, SHARED2, lenName, versusOf } from "../../games/registry.js";
-import { Scores, achById, checkAch, checkUnlocks, got, isOpen, lenLock, lenOpen, lensOf, markSeen, newMark, unlockHtml, unlockToast, verdict } from "../../progress.js";
-import { checkKey } from "../../progress/key.js";
+import { Scores, achById, got, isOpen, lenLock, lenOpen, lensOf, markSeen, newMark, unlockHtml, unlockToast, verdict } from "../../progress.js";
 import { start } from "../../run/run.js";
 import { define } from "../actions.js";
 import { Ads } from "../ads.js";
@@ -68,7 +67,7 @@ function shareRun(){ const r=lastRun; if(!r) return; const c=GC(r.g,r.d,r.s); co
 register('s-over',{});
 on('run:record',({run})=>{ lastRun=run; played={g:run.g,d:run.d,s:run.s,vs:sel.vs}; });
 on('store:reset',()=>{ lastRun=null; played=null; });
-on('run:finish',({run,isBest,two})=>{ const g=GC(run.g,run.d,run.s);
+on('run:finish',({run,isBest,two,fresh,ach,adv})=>{ const g=GC(run.g,run.d,run.s);
   // the header (v11) carries only a status — the board title under the top 10 names the game, mode and length
   $('#over-eyebrow').textContent=run.practice?RESULT.practice:run.fail?RESULT.fail:isBest?RESULT.best:run.vs2?(sel.vs===1?RESULT.pass:RESULT.versus):VS.on?RESULT.pass:'';
   // practice shows no score at all (v5). Versus shows the pair of counts. Lower-is-better scores wear a ▼ (v11)
@@ -78,13 +77,15 @@ on('run:finish',({run,isBest,two})=>{ const g=GC(run.g,run.d,run.s);
   $('#verdict').textContent=run.vs2?(run.vs2.w<0?VERDICT.draw:T(VERDICT.took,{n:run.vs2.w+1,how:run.vs2.how?' '+run.vs2.how:''})):run.practice?VERDICT.practice:verdict(run);
   renderOver(run);
   // the ad break (v10) comes between the run and the result, every fourth result, never for supporters
+  /* v15 (2.5): what was earned is already in the store — run/run.js banked it the moment the record existed, and hands the
+     three lists down on the event. This block only SHOWS them. It used to do the earning too, inside this callback, so a
+     player who closed the app on the ad break lost every unlock and achievement the run had made. Silent data loss.
+     v14 (9.3 / 9.4 / 9.5): a solo run that beats a clearance bar for the FIRST time clears it for good and takes the player
+     to the key to watch its root advance one segment. Re-clearing hands down null and plays nothing, and Back from there
+     comes straight back here — the run is not finished with. Two-player and practice never get this far. */
   setTimeout(()=>Ads.after(()=>{ show('s-over'); if(run.practice||two) return;
-    // v14 (9.3 / 9.4 / 9.5): a solo run that beats a clearance bar for the FIRST time clears that combination for good and
-    // takes the player to the key to watch its root advance one segment. Re-clearing returns null and plays nothing, and
-    // Back from there comes straight back here — the run is not finished with. Two-player and practice never get this far
-    const adv=checkKey(run,two);
-    const msgs=checkUnlocks(run).map(u=>[unlockToast(u.key),'','ok'])
-      .concat(checkAch(run).map(a=>[T(TOAST.achievement,{name:a.name})+(a.unlocks?' · '+unlockHtml(a):''),a.id,'']))
+    const msgs=(fresh||[]).map(u=>[unlockToast(u.key),'','ok'])
+      .concat((ach||[]).map(a=>[T(TOAST.achievement,{name:a.name})+(a.unlocks?' · '+unlockHtml(a):''),a.id,'']))
       .concat(adv?[[T(KEY.toast,{game:GAMES[adv.g].name,name:lenName(adv.g,adv.s,adv.d)}),'','ok']]:[]);
     msgs.forEach(([m,id,cls],i)=>setTimeout(()=>toast(m,id,cls,!!id),i*(id?3400:2600))); renderOverChips();
     if(adv) setTimeout(()=>show('s-key',{advance:adv,from:'s-over'}),msgs.length*2600+900); }),250); });

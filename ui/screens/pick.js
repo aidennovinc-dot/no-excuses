@@ -86,7 +86,10 @@ define({
   game(b){ if(b.classList.contains('locked')){ ask(b.dataset.game,GAMES[b.dataset.game].modes[0]); return 'pick'; }
     sel.game=b.dataset.game; prefs.lastGame=sel.game; save(); applyPrefs(sel.game); $$('.tile').forEach(t=>t.classList.toggle('keep',t===b)); fillSheet();
     if(GAMES[sel.game].modes.length===1){ sel.diff=GAMES[sel.game].modes[0]; setStage('len'); fillTimes(); } else setStage('mode'); return 'pick'; },
-  diff(b){ if(stage==='len'){ setStage('mode'); return 'pick'; } if(b.classList.contains('locked')){ ask(sel.game,b.dataset.diff); return 'pick'; } sel.diff=b.dataset.diff;
+  // v15 (2.1): the locked test comes FIRST. It used to sit behind the length-stage check, so tapping a locked mode from the
+  // length row walked the sheet back a stage instead of saying what the mode takes — and every §1 requirement, the five
+  // deliberate-failure ones especially, is only findable by tapping the thing that is locked
+  diff(b){ if(b.classList.contains('locked')){ ask(sel.game,b.dataset.diff); return 'pick'; } if(stage==='len'){ setStage('mode'); return 'pick'; } sel.diff=b.dataset.diff;
     // v14 (4.6): the picked mode turns green and the other darkens, then the length row and Go push up — no jump cut
     $$('.choice').forEach(c=>{ c.classList.toggle('sel',c===b); c.classList.toggle('picked',c===b); }); $('#diff-row').classList.add('picking');
     clearTimeout(pickT); pickT=setTimeout(()=>{ $('#diff-row').classList.remove('picking'); $$('.choice').forEach(c=>c.classList.remove('picked')); if(stage==='mode'){ setStage('len'); fillTimes(); } },170); return 'pick'; },

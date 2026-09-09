@@ -25,6 +25,10 @@ function onClick(e){
   for(const c of captures) if(c(e)) return;
   const b=e.target.closest('button'); if(b){ play(ACTIONS.none(b)); return; }
   // a tap that isn't on a control: every sub-screen goes back
+  // v15 (2.1): a chip row is never "not on a control" — a tap that lands between or on top of chips must do nothing, not
+  // navigate. This is the belt to .chip.locked's braces: the result screen's mode and length rows sit outside .sheet, so a
+  // dead chip there used to read as a tap on the screen and Back out of s-over into game select
+  if(e.target.closest('.chips')||e.target.closest('.mchips')) return;
   if(e.target.closest('.sheet')||e.target.closest('#game')||e.target.closest('input')||e.target.closest('#wheelwrap')) return;
   if($('.screen.on')){ Snd.click(); back(); }
 }

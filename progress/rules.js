@@ -15,27 +15,40 @@ const tourProg=all=>{ const cells=Object.entries(GAMES).flatMap(([g,x])=>x.modes
 const fullsetProg=(all,g)=>{ const G_=GAMES[g]; const cells=G_.modes.flatMap(d=>GC(g,d).lens.map(s=>all.some(x=>x.g===g&&x.d===d&&x.s===s))); return cells.filter(Boolean).length/cells.length; };
 
 /* ---------- the unlock chain (L6): one predicate per UNLOCKS key. v14 (9.1): Sequence opens at 3.5% of the Cut target, was 0.5%.
-   The Set round counts these read (Cut 10, Flash 5, Go / No-go 5) come from SET_COPY in config/games.js since build 19 ---------- */
+   The Set round counts these read (Cut 10, Flash 5, Go / No-go 5) come from SET_COPY in config/games.js since build 19.
+   Build 23 (v15 §1.1-§1.4): seventeen values changed and five of these now ask the player to fail on purpose. Do not
+   "correct" them back — deliberate failure is the point (v15 §0.5) and §2.1 is what makes them findable ---------- */
 const UNLOCK_TEST = {
-  'quick-tap:four':    r=>r.g==='quick-tap'&&r.s===15&&r.misses===0&&r.hits>=9,
-  'dots:blind':        r=>r.g==='quick-tap'&&r.hits>=30,
-  'dots:lead':         r=>r.g==='dots'&&r.s===5&&r.misses===0&&r.hits>=6,
-  'hold:grow':         r=>r.g==='dots'&&r.hits>=2*r.s,
+  'quick-tap:four':    r=>r.g==='quick-tap'&&r.s===15&&r.misses===0&&r.hits>=15,
+  'dots:blind':        r=>r.g==='quick-tap'&&r.hits>=35,
+  // v15 (1.2b): five misses in a Blind run, not six clean hits in a Sprint. Any length
+  'dots:lead':         r=>r.g==='dots'&&r.d==='blind'&&r.misses>=5,
+  // v15 (1.3a): a whole Dots run with nothing pressed at all — no hits AND no misses. Only true once the run has ended
+  'hold:grow':         r=>r.g==='dots'&&r.hits===0&&r.misses===0,
   'hold:cut':          r=>r.g==='hold'&&r.d==='grow'&&r.x<=15,
   'sequence:solo':     r=>r.g==='hold'&&r.d==='cut'&&r.x<=3.5,
   'sequence:practice': r=>r.g==='sequence'&&r.s===7&&r.hits>=8,
-  'timing:stopwatch':  r=>r.g==='sequence'&&r.s===7&&r.hits>=6,
+  // v15 (1.4a): the first note wrong — a Sequence run that ends at round 1 with nothing scored
+  'timing:stopwatch':  r=>r.g==='sequence'&&r.hits===0,
   'timing:hidden':     r=>r.g==='timing'&&r.d==='stopwatch'&&r.x<=.3,
   'reaction:flash':    r=>r.g==='timing'&&r.d==='stopwatch'&&r.s===STREAK&&r.hits>=6,
-  'reaction:nogo':     r=>r.g==='reaction'&&r.d==='flash'&&r.s===5&&r.hits<=300,
-  'spot:count':        r=>r.g==='reaction',
+  'reaction:nogo':     r=>r.g==='reaction'&&r.d==='flash'&&r.s===5&&r.hits<=350,
+  // v15 (1.4d): a Flash OR a Go / No-go Set averaging under 350ms — built as Aiden wrote it. Both modes run a 5-round Set
+  'spot:count':        r=>r.g==='reaction'&&r.s===5&&r.hits<=350,
   'spot:find':         r=>r.g==='spot'&&r.d==='count'&&(r.rounds||0)>=5,
 };
-// length locks: the test for LEN_RULES[game][i], run over the previous length's runs
+/* length locks: the test for LEN_RULES['game:mode'][i], run over the previous length's runs of THAT mode.
+   v15 (1.0a): keyed 'game:mode' since build 23, so Dots · Blind and Dots · Lead can ask for different numbers.
+   The state was already per mode — lenLock filters runs on r.d — so nothing is stored and nothing migrates (1.0b). */
 const LEN_TEST = {
-  'quick-tap':[null, r=>r.misses===0&&r.hits>=7, r=>r.hits>=20],
-  'dots':     [null, r=>r.misses===0&&r.hits>=7, r=>r.hits>=35],
-  'sequence': [null, r=>r.s===3&&r.hits>=6,      r=>r.s===5&&r.hits>=6],
+  'quick-tap:two':  [null, r=>r.misses===0&&r.hits>=7, r=>r.hits>=24],
+  'quick-tap:four': [null, r=>r.misses===0&&r.hits>=7, r=>r.hits>=24],
+  'dots:blind':     [null, r=>r.misses===0&&r.hits>=6, r=>r.hits>=24],
+  'dots:lead':      [null, r=>r.misses===0&&r.hits>=9, r=>r.hits>=28],
+  'sequence:solo':  [null, r=>r.s===3&&r.hits>=6,      r=>r.s===5&&r.hits>=6],
+  // v15 (1.3b / 1.4b): the two Streaks with a real requirement. `y` is a Set's worst single round, `hits` its average
+  'hold:cut':       [null, r=>r.y>80],
+  'reaction:flash': [null, r=>r.hits>500],
 };
 
 /* ---------- achievements: test(run, allRuns) per id; progress(allRuns, game) 0..1 for the bar where one exists ---------- */
@@ -66,6 +79,12 @@ const ACH_TEST = {
   hd_est:r=>r.g==='hold'&&r.d==='cut'&&r.s===10&&r.hits<=4,
   hd_run:r=>r.g==='hold'&&r.s===STREAK&&r.hits>=15,
   hd_s:r=>r.g==='hold'&&r.s===7&&r.y<=4,
+  /* v15 (1.5): let the shape run all the way to its limit. The engine caps a Grow hold at min(target × 2.8, 96vmin)
+     (games/estimate/index.js `down`), so the biggest area a maxed hold can reach is 7.84× the target on a small target
+     and about 2.74× on the largest one — 684% and 174% off. `y` is the run's WORST single round, so 600 sits above
+     anything a player reaches by merely overshooting and below the ceiling of every round with a target under ~34vmin.
+     No engine change: this reads a field the record already carries (build 24 owns the engines, not this build). */
+  hd_max:r=>r.g==='hold'&&r.d==='grow'&&r.y>=600,
   sq_7:r=>r.g==='sequence'&&r.hits>=7, sq_12:r=>r.g==='sequence'&&r.hits>=12, sq_7x8:r=>r.g==='sequence'&&r.s===7&&r.hits>=8, sq_5x10:r=>r.g==='sequence'&&r.s===5&&r.hits>=10,
   sq_s20:r=>r.g==='sequence'&&r.hits>=20, sq_s15:r=>r.g==='sequence'&&r.s===7&&r.hits>=15,
   tm_close:r=>r.g==='timing'&&r.d==='stopwatch'&&r.x<=.1, tm_wall:r=>r.g==='timing'&&r.d==='hidden'&&r.s===10&&r.hits<=300,

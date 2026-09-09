@@ -66,8 +66,11 @@ navigate with `show(id, opts)` and never import another screen. The engines impo
 the run or each other.
 
 **Screens — since build 18.** One file per screen under `ui/screens/`, each owning its DOM: `menu`,
-`pick`, `board`, `achievements`, `key`, `customise`, `about`, `testing`, `pass`, `result`, `lockbox`; `index.js`
-imports them all. **`key.js` is new at build 22 (v14 §9.2–9.7)** — the second progression system, its own menu item
+`pick`, `board`, `unlocks`, `achievements`, `key`, `customise`, `about`, `testing`, `pass`, `result`, `lockbox`; `index.js`
+imports them all. **`unlocks.js` is new at build 23 (v15 2.4)** — the menu splits Unlocks from Achievements, Unlocks above
+because unlocks outrank achievements everywhere the next thing is surfaced (2.2). Every line on it is read from `UNLOCKS`
+and `lenNeed` (L6); nothing about a requirement is written in that file or in its markup. It is a **shell** on purpose:
+what sits behind keys 2 and 3 is register #372 and is undecided, so its key section says only what is true today. **`key.js` is new at build 22 (v14 §9.2–9.7)** — the second progression system, its own menu item
 below Achievements. It is the one screen with two ways in: from the menu, and from a result screen that just cleared a
 bar, which passes `{advance, from:'s-over'}` so the root animates and Back returns to the run rather than the menu. **`testing.js` is new at build 21 (v14 8.10):** the dev switches are their own menu item
 directly below About, not a block at the bottom of it, and that file owns the one `[data-dev]` sweep. **`title.js` is gone since build 19 (L1 / v14 1.2):** the title sequence is the `story`
@@ -154,6 +157,16 @@ anywhere advances it (`capture()` in `ui/actions.js`).
 Bindings written across modules go through setters, because ESM imports are read-only:
 `setPendingAim` / `setPendingGoal` (progress.js).
 
+**An earn is written the moment it fires, never when a screen gets round to it (build 23, v15 2.5).** This was silent data
+loss: `checkUnlocks` and `checkAch` used to run inside the result screen's ad-break callback, so an achievement earned on a
+run the player left — quit mid-run, or walked away on the ad — was never in the store. Now `run/run.js` banks all three
+(`checkUnlocks`, `checkAch`, `checkKey`) before it emits `run:finish`, and hands the lists down on the event; the result
+screen only shows them. Mid-run, **`live:1` means the same thing on an achievement as it does on an unlock** — the row's
+test can only become more true as the run goes on, so `liveCheck` banks and toasts it at once. Rows without the flag are
+totals, averages and "no wrong taps" claims about a whole run, and still wait for the finish. `abort()` runs one last
+`liveCheck` over the engine's own `result()` so the round that just landed is banked before the quit. The gate asserts all
+of it, statically and by quitting a run mid-flight and reading storage back.
+
 ## Locked decisions
 
 **A change that touches a locked item is built only when the FEEDBACK line quotes its ID (e.g. `L2:`).
@@ -168,13 +181,13 @@ file that changes a rule, threshold, name, unlock or screen layout is not built 
 | L3 | Solo shows nothing about friends. With a friend → Pass & play / Versus, every game that has them. |
 | L4 | Player 1 red `#E0453B`, Player 2 light blue `#6EC6FF`, everywhere. |
 | L5 | Every mode offers Set and Streak. **Streak = a cumulative budget** (Estimate 100%, Stopwatch 2.0s, Hidden 100px, **Flash 500ms over 150 — v14 C.1, build 22**, **Go / No-go 1000ms over 150 with a wrong tap costing 200ms — v14 C.2, build 22**, Count 5 miscounts, Find 10s); score = rounds completed, and every sheet reads "Highest round wins!". Set = a fixed number of rounds, scored by the line on the sheet. **Go / No-go's Set is a different currency and keeps its own number: a wrong tap ADDS 150ms to the average (v14 A.2), and three wrong taps end a Set. B.3 / C.3 forbid harmonising the two even though the numbers now sit close.** **A Streak has no wrong-tap run-ender at all — C.4 retired the three-wrong-taps contract rather than restoring it, because the budget is spent by the overspend on legal taps as well as by mistakes. The budget is the only limit.** **The round count and both description lines come from one table — `SET_COPY` in `config/games.js` (v14 §5, 2026-09-08)** — which the pick sheets, lock boxes and result screens all read through `GC` / `lenName` / `lenSub`. No game carries its own Set or Streak copy. |
-| L6 | The unlock chain and thresholds are the §4 table in the latest FEEDBACK file that names L6. **Sequence unlocks at one Cut round within 3.5% of the target (v14 9.1; was 0.5%).** Lock boxes, goal lines and the Next-achievement card all read from one table (`UNLOCKS` + `LEN_RULES` — in `config/unlocks.js` since build 16, with the predicates beside it in `progress/rules.js`), and every requirement names its game (v14 3.2). |
+| L6 | The unlock chain and thresholds are the §1 table in the latest FEEDBACK file that names L6 (§4 before v15). **Sequence unlocks at one Cut round within 3.5% of the target (v14 9.1; was 0.5%).** Lock boxes, goal lines, the Next card and the Unlocks screen all read from one table (`UNLOCKS` + `LEN_RULES` — in `config/unlocks.js` since build 16, with the predicates beside it in `progress/rules.js`), and every requirement names its game (v14 3.2). **`LEN_RULES` and `LEN_TEST` are keyed `'game:mode'` since build 23 (v15 1.0a)** — the same key shape `SET_COPY` uses — because Dots · Blind Dash asks 6 and Dots · Lead Dash asks 9, which one array per game could not express. Length-unlock **state** is derived from run history and has always been per mode (`lenLock` filters on `r.d`), so the re-key stored nothing and migrated nothing (1.0b). **One place builds a length requirement's sentence: `lenNeed(g,d,s)` in `progress.js`** — `lenLock` calls it too. `lenLock` answers "is this locked for you" and returns null once you have it, so anything printing a requirement (the catalogue's Unlock requirements section) must call `lenNeed`, not `lenLock` (v15 1.1c / 7.2). **Five rows now ask the player to fail on purpose and that is deliberate (v15 0.5)** — Dots · Lead on five misses, Estimate · Grow on a Dots run with nothing pressed, Timing · Stopwatch on a Sequence run that scored nothing, Estimate · Cut's Streak on a round more than 80% off, Reaction · Flash's Streak on a Set over 500ms. Do not soften them; **tapping a locked row to read its requirement (v15 2.1) is the only way anyone finds them**, so that behaviour is part of L6 now, not a nicety. |
 | L7 | A game tile is white until that game has been played once. |
 | L8 | Anything newly unlocked gets the green first-seen highlight once, then is marked seen. |
 | L9 | The length row is labelled "Mode" in every game. One pick-sheet layout, no per-game special cases. |
 | L10 | Two-player runs never go on a board. |
 
-Locked as of build 13 (FEEDBACK-v13 §L, 2026-09-05). **L1, L5 and L6 amended at build 19 (FEEDBACK-v14 §L, 2026-09-08);
+**L6 amended again at build 23 (FEEDBACK-v15 §1, 2026-09-09): the key shape of `LEN_RULES`, seventeen values, and the deliberate-failure rows.** Locked as of build 13 (FEEDBACK-v13 §L, 2026-09-05). **L1, L5 and L6 amended at build 19 (FEEDBACK-v14 §L, 2026-09-08);
 L5 gained Go / No-go's Streak budget at build 20 (v14 6.2), its two thresholds at build 21 (v14 B.1 / B.2) and the numbers
 it carries now at build 22 (v14 C.1–C.4, all of which quote L5).** Build 20 skipped 6.8 because it asked for 150ms, named
 no lock and was filed under Quick Tap, which has no Streak at all (L2); **B.1 read it as Reaction · Flash and set 250.
@@ -211,7 +224,13 @@ with a wrong tap costing 200ms in a Streak and 150ms in a Set, held apart as sep
 `wrong >= 3` test behind a `!streak()` guard so the retired run-ender cannot come back (v14 C.1–C.4);
 plus the testable locks on a fresh profile — title sequence before the menu (L1), Quick Tap's
 length row is exactly Sprint / Dash / Marathon (L2), Solo shows no Pass & play / Versus (L3), the
-Quick Tap tile is white before any run (L7), the length row is labelled Mode (L9). **A failing
+Quick Tap tile is white before any run (L7), the length row is labelled Mode (L9). **The chain and its screens (v15 §1–§2,
+build 23)** — `LEN_RULES` is keyed `'game:mode'` and every key names a real game and mode (1.0a), each of the seventeen new
+values passes one step over the line and fails one step under it (1.1–1.4), one record builds every length requirement
+(1.0d) and nothing on the Unlocks screen is a second copy (2.4), the new Estimate secret row is described (1.5), no Next
+card on a fresh profile's first menu open (2.2), tapping a locked length on the result screen shows its requirement and
+stays put (2.1), and **an unlock that fires mid-run is in localStorage after the run is quit (2.5)** — plus the static
+assert that the run banks before `run:finish` and the result screen no longer earns anything. **A failing
 assertion blocks the push.** Run it before every push; ~4 minutes. `CHROME_PATH` overrides the
 Windows default Chrome. **`npm run review` is live again — build 21 (#368 closed).** It drives
 `../_review/scripts/` (54+ cards, data-driven), ported from Playwright to the same puppeteer-core the gate uses and

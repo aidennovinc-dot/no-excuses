@@ -25,8 +25,12 @@ function menuIn(){ if(prefs.menuSeen) return; prefs.menuSeen=1; save(); const m=
 function renderMenu(){ const first=firstRun(); const opening=menuWasFirst&&!first; menuWasFirst=first;
   $$('#s-menu .item').forEach(b=>{ const x=first&&b.dataset.go!=='s-pick'; b.classList.toggle('dim',x); b.classList.remove('unx'); if(opening&&b.dataset.go!=='s-pick'){ b.classList.add('unx'); b.style.pointerEvents='none'; setTimeout(()=>{ b.classList.remove('unx'); b.style.pointerEvents=''; },700); } });
   $('#menu-note').textContent=first?MENU.note:'';
-  // v13 (1.3): the card sits above the title, labelled Next achievement; the box holds the requirement and what it opens, nothing else
-  const ng=nextGoal(); const nx=$('#nextup'); $('#menu-tag').hidden=!ng; if(ng){ nx.innerHTML=T(MENU.next,{need:ng.need,name:ng.name}); nx.hidden=false; nextWhere=Object.assign({need:ng.need},ng.where); } else { nx.hidden=true; nextWhere=null; } }
+  /* v13 (1.3): the card sits above the title; the box holds the requirement and what it opens, nothing else.
+     v15 (2.2): it does NOT appear on a fresh profile's first menu open — a player who has not run anything yet is being
+     told to play, not handed a target — and it labels itself Next unlock or Next achievement depending on which of the
+     two nextGoal() found. Unlocks outrank achievements: the chain is offered until there is none of it left. */
+  const ng=first?null:nextGoal(); const nx=$('#nextup'); $('#menu-tag').hidden=!ng;
+  if(ng){ nx.innerHTML=T(ng.ach?MENU.nextAch:MENU.next,{need:ng.need,name:ng.name}); nx.hidden=false; nextWhere=Object.assign({need:ng.need},ng.where); } else { nx.hidden=true; nextWhere=null; } }
 
 /* ---------- the title sequence (L1). Three beats: the first line at the top, the title in the middle, the second line under it.
    A tap anywhere ends it — that is the one capture in ui/actions.js — and the menu builds around the title that is already there ---------- */

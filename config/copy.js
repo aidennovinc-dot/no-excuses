@@ -61,7 +61,17 @@ export const VERDICT = { nogoFail:'Three wrong taps. Run over — go again.', fa
 // the menu, the pick sheet, the lock box
 // v14 (build 20): 3.2 made every requirement name its own game, so the card's own {game} said it twice — "9 hits, no misses,
 // in a Quick Tap Dash · Quick Tap → Quick Tap · Four". The requirement carries the game now; the card just points at what it opens
-export const MENU = { note:'play one run · the rest opens', next:'<em>Next achievement</em><span>{need} → {name}</span>' };
+/* v15 (2.2): two labels, not one. The card has always shown the next thing in the UNLOCK chain while calling itself
+   "Next achievement" — unlocks outrank achievements everywhere the next thing is surfaced, so the card says which it is.
+   `nextAch` is only ever reached once the whole chain is finished (progress.js nextGoal). */
+export const MENU = { note:'play one run · the rest opens', next:'<em>Next unlock</em><span>{need} → {name}</span>', nextAch:'<em>Next achievement</em><span>{need} → {name}</span>' };
+/* v15 (2.4): the Unlocks screen — the chain on its own page, split off from Achievements. Everything that OPENS something
+   lives here; Achievements keeps the rest. What sits behind keys 2 and 3 is register #372 and is not decided, so the key
+   line below says only what is true today. */
+export const UNLOCKS_SCREEN = { title:'unlocks', hint:'tap a locked row to see what it takes',
+  lede:'Everything that opens something. The chain first — each game and mode earned in the one before it — then every length of every mode.',
+  games:'Games and modes', lens:'Lengths', keys:'The key', done:'open', locked:'locked',
+  keyLine:'The first key is earned here. Beat a clearance bar once in a solo run and it is cleared for good — the key screen has all thirty-one.' };
 export const SHEET = { mode:'Mode', toUnlock:'To unlock: {need}', tileUnlock:'to unlock: {need}', locked:'locked', noRun:'no run yet', best:'best', closest:'closest',
   practiceFrom:'practice from', off:'off', pracLocked:'locked · 8 notes in 7 keys',
   // v14 (7.1): the result screen's button is Try again until something is changed, and only then does it become Go

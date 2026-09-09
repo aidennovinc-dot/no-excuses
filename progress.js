@@ -33,16 +33,29 @@ function newMark(key,bag){ if(!isNew(key)) return ''; if(bag) bag.push(key); ret
 function openKeys(){ const k=[]; for(const g in GAMES){ if(gameOpen(g)) k.push('game:'+g); for(const d of GAMES[g].modes){ if(!isOpen(g,d)) continue; k.push('mode:'+g+':'+d); for(const sc of GC(g,d).lens) if(lenOpen(g,d,sc)) k.push('len:'+g+':'+d+':'+sc); } }
   if(practiceOpen()) k.push('len:sequence:solo:practice'); const a=got(); for(const id in a) k.push('ach:'+id); return k; }
 function seedSeen(){ const st={}; for(const k of openKeys()) st[k]=1; store.seen=st; save(); }
-// progressive lengths (v13): LEN_RULES holds the requirement per game, mode and index; everything else opens on one finished run of the length before it. The first length is always open
+/* progressive lengths (v13): LEN_RULES holds the requirement per game, MODE and index; everything else opens on one finished
+   run of the length before it. The first length is always open.
+   v15 (1.0a / L6): the table is keyed 'game:mode' since build 23 — Dots · Blind Dash asks 6 and Dots · Lead Dash asks 9, which
+   one array per game could not say. (1.0b): the STATE was already per mode — the filter below has always matched r.d — so
+   nothing about a length unlock is persisted, it is derived from run history, and there is nothing to migrate. */
 function lenLock(g,d,s,noChal){ if(prefs.allOpen) return null; if(!noChal&&chalAt(g,d)&&CHAL.s===s) return null; const c=GC(g,d), lens=c.lens, i=lens.indexOf(s); if(i<=0) return null; const prev=lens[i-1], runs=Scores.runs().filter(r=>r.g===g&&r.d===d&&r.s===prev&&!r.practice);
-  const rule=(LEN_RULES[g]||[])[i], test=(LEN_TEST[g]||[])[i], gname=GAMES[g].name;   // v14 (3.2): {game} names the game in every requirement
-  if(rule) return runs.some(test)?null:{g,d,s:prev,need:T(rule,{game:gname,prev:lenName(g,prev,d)}),name:lenName(g,s,d)};
-  if(s===STREAK) return runs.length?null:{g,d,s:prev,need:T(PROGRESS.finishOne,{game:gname,prev:lenName(g,prev,d)}),name:PROGRESS.streak};
-  return runs.length?null:{g,d,s:prev,need:T(PROGRESS.finishA,{game:gname,prev:lenName(g,prev,d)}),name:lenName(g,s,d)}; }
+  const test=(LEN_TEST[g+':'+d]||[])[i], rule=(LEN_RULES[g+':'+d]||[])[i];
+  if(rule) return runs.some(test)?null:{g,d,s:prev,need:lenNeed(g,d,s),name:lenName(g,s,d)};
+  if(s===STREAK) return runs.length?null:{g,d,s:prev,need:lenNeed(g,d,s),name:PROGRESS.streak};
+  return runs.length?null:{g,d,s:prev,need:lenNeed(g,d,s),name:lenName(g,s,d)}; }
+/* v15 (1.1c / 7.2 / L6): what a length ASKS FOR, whatever this profile has already earned. lenLock answers a different
+   question — "is this locked for you" — and returns null the moment you have it, which is why the catalogue printed
+   "no requirement" against Quick Tap's lengths and made it look as though Two had lost its rules. One table, one copy,
+   one place that builds the sentence: lenLock calls this rather than formatting its own. `{game}` names the game (v14
+   3.2), `{mode}` names the mode (v15 1.0a, now that the rule is per mode) and `{prev}` the length before it. */
+function lenNeed(g,d,s){ const c=GC(g,d), lens=c.lens, i=lens.indexOf(s); if(i<=0) return ''; const gname=GAMES[g].name;
+  const bag={game:gname,mode:MODE_NAME[d]||gname,prev:lenName(g,lens[i-1],d)};
+  const rule=(LEN_RULES[g+':'+d]||[])[i];
+  return T(rule||(s===STREAK?PROGRESS.finishOne:PROGRESS.finishA),bag); }
 const lenOpen=(g,d,s)=>!lenLock(g,d,s);
 // the next mode this run could open, if the game, mode and length line up — shown while you play (v8). v11: a length unlock counts too
 function goalFor(g,d,s){ if(prefs.allOpen) return null; const u=unlocked(); const x=UNLOCKS.find(x=>!u[x.key]&&x.where.g===g&&(!x.where.d||x.where.d===d)&&(!x.where.s||x.where.s===s)); if(x) return x;
-  const c=GC(g,d), i=c.lens.indexOf(s); if(i>=0&&i<c.lens.length-1){ const nxt=c.lens[i+1], L=lenLock(g,d,nxt); if(L){ const test=(LEN_TEST[g]||[])[i+1]; return { key:g+':'+d+':'+nxt, need:L.need, where:{g,d,s}, live:1, len:L, test:r=>r.g===g&&r.d===d&&r.s===s&&(test?test(r):true) }; } } return null; }
+  const c=GC(g,d), i=c.lens.indexOf(s); if(i>=0&&i<c.lens.length-1){ const nxt=c.lens[i+1], L=lenLock(g,d,nxt); if(L){ const test=(LEN_TEST[g+':'+d]||[])[i+1]; return { key:g+':'+d+':'+nxt, need:L.need, where:{g,d,s}, live:1, len:L, test:r=>r.g===g&&r.d===d&&r.s===s&&(test?test(r):true) }; } } return null; }
 const chalAt=(g,d)=>!!CHAL&&CHAL.g===g&&CHAL.d===d;
 const modeOpen=(g,d,noChal)=>!!prefs.allOpen||(!noChal&&chalAt(g,d))||g==='quick-tap'&&d==='two'||!!unlocked()[g+':'+d]||!UNLOCKS.some(u=>u.key===g+':'+d);
 const isOpen=(g,d)=>modeOpen(g,d,false);
@@ -55,10 +68,21 @@ const needFor=(g,d)=>{ const u=UNLOCKS.find(u=>u.key===g+':'+d); return u?u.need
 const unlockName=key=>{ if(key==='sequence:practice') return PROGRESS.practiceFrom; const [g,d,s]=key.split(':'); if(s!==undefined) return lenName(g,+s,d); return GAMES[g].name+(MODE_NAME[d]?' · '+MODE_NAME[d]:''); };
 // toast wording (v11): "Unlock game: Dots" for a game, "Unlock: Dash" for a mode or length
 function unlockToast(key){ if(key==='sequence:practice') return TOAST.unlockPractice; const [g,d,s]=key.split(':'); if(s!==undefined) return T(TOAST.unlock,{name:lenName(g,+s,d)}); const first=!GAMES[g].modes.some(m=>m!==d&&unlocked()[g+':'+m])&&!(g==='quick-tap'); return first?T(TOAST.unlockGame,{name:GAMES[g].name}):T(TOAST.unlock,{name:MODE_NAME[d]||GAMES[g].name}); }
-function checkUnlocks(run){ const u=unlocked(); const fresh=[]; for(const x of UNLOCKS){ if(!u[x.key]&&x.test(run)){ u[x.key]=Date.now(); fresh.push(x); } } save(); return fresh; }
-// everything is open (v11): no game, mode or length left to earn — the Next-up card hides
+// v15 (2.5): the guards that used to sit at the call site in ui/screens/result.js live here now, because the call moved
+// into run/run.js and has to bank the moment the run record exists — a practice or challenge run still earns nothing
+function checkUnlocks(run){ if(run.chal||run.practice) return []; const u=unlocked(); const fresh=[]; for(const x of UNLOCKS){ if(!u[x.key]&&x.test(run)){ u[x.key]=Date.now(); fresh.push(x); } } if(fresh.length) save(); return fresh; }
+/* the next thing to chase (v11). v15 (2.2): GAME UNLOCKS OUTRANK ACHIEVEMENTS wherever the "next thing" is surfaced —
+   the chain first (a mode, then a length), and only when there is nothing left to unlock does the card fall back to an
+   achievement. `ach` on the answer is what tells the caller which of the two it got, so the card can label itself.
+   Secret rows are never offered: what earns them is not written down (TIERS), so naming one would give it away. */
 function nextGoal(){ if(prefs.allOpen) return null; const u=unlocked(); const x=UNLOCKS.find(x=>!u[x.key]); if(x) return { need:x.need, name:unlockName(x.key), gname:GAMES[x.where.g].name, where:x.where };
-  for(const g in GAMES) for(const d of GAMES[g].modes){ if(!isOpen(g,d)) continue; for(const sc of GC(g,d).lens){ const L=lenLock(g,d,sc); if(L) return { need:L.need, name:`${GAMES[g].name}${MODE_NAME[d]?' · '+MODE_NAME[d]:''} · ${L.name}`, gname:GAMES[g].name, where:{g,d,s:L.s} }; } } return null; }
+  for(const g in GAMES) for(const d of GAMES[g].modes){ if(!isOpen(g,d)) continue; for(const sc of GC(g,d).lens){ const L=lenLock(g,d,sc); if(L) return { need:L.need, name:`${GAMES[g].name}${MODE_NAME[d]?' · '+MODE_NAME[d]:''} · ${L.name}`, gname:GAMES[g].name, where:{g,d,s:L.s} }; } }
+  return nextAch(); }
+// second in the order, and only ever reached once the chain is finished
+function nextAch(){ const done=got(); const a=ACH.find(a=>a.tier!=='secret'&&a.id!=='egg'&&!done[a.id]); if(!a) return null;
+  const g=a.g==='all'?prefs.lastGame:a.g; const d=a.at&&a.at.d, s=a.at&&a.at.s;
+  if(!isOpen(g,d||GAMES[g].modes[0])) return null;
+  return { need:a.how, name:a.name, gname:GAMES[g].name, where:{g,d,s}, ach:a.id }; }
 // what a 'Try to unlock' or achievement tap carries into the run it starts (set from menu.js/app.js through the setters below)
 let pendingAim='', pendingGoal=null;
 
@@ -92,7 +116,11 @@ function authorRatio(g,runs){ let best=null;
   return best; }
 const achById=id=>ACH.find(a=>a.id===id)||authorAch().find(a=>a.id===id);
 const got=()=>store.ach;
-function checkAch(run){ if(run.chal) return []; const g=got(); const all=Scores.runs(); const fresh=[]; for(const a of ACH){ if(!g[a.id]&&a.test(run,all)){ g[a.id]=Date.now(); fresh.push(a); } } save(); return fresh; }
+/* v15 (2.5): `live` restricts the pass to the rows flagged live:1 in config/achievements.js — the ones whose test can only
+   become more true as a run goes on — and is run from run/run.js on every live tick, so an achievement earned mid-run is in
+   the store before the player can quit. Without the flag it is the whole table, at the finish, as it always was.
+   Either way this WRITES: the toast is a consequence of the save, never a substitute for it. */
+function checkAch(run,live){ if(run.chal||run.practice) return []; const g=got(); const all=Scores.runs(); const fresh=[]; for(const a of ACH){ if(live&&!a.live) continue; if(!g[a.id]&&a.test(run,all)){ g[a.id]=Date.now(); fresh.push(a); } } if(fresh.length) save(); return fresh; }
 function unlockWord(a){ if(!a.unlocks) return ''; const [k,v]=a.unlocks; if(k==='wheel') return UNLOCK_WORD.wheel; if(k==='bg') return T(UNLOCK_WORD.bg,{bg:BG_NAME[v]}); if(k==='snd') return T(UNLOCK_WORD.snd,{v}); return T(UNLOCK_WORD.item,{word:ITEM_WORD[k]}); }
 // the same, with the actual colour as a swatch (v8) — "unlocks lead colour" on its own said nothing
 function unlockHtml(a){ if(!a.unlocks) return ''; const [k,v]=a.unlocks; return unlockWord(a)+((k==='sq'||k==='lead')&&v!=='wheel'?`<i class="sw" style="background:${v}"></i>`:''); }
@@ -108,4 +136,4 @@ function setPendingAim(v){ pendingAim=v; }
 function setPendingGoal(v){ pendingGoal=v; }
 
 
-export { ACH, Scores, UNLOCKS, achAll, achById, authorAch, authorRatio, chalRun, checkAch, checkUnlocks, gameOpen, goalFor, got, isNew, isOpen, lenLock, lenOpen, lensOf, markSeen, needFor, newMark, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict };
+export { ACH, Scores, UNLOCKS, achAll, achById, authorAch, authorRatio, chalRun, checkAch, checkUnlocks, gameOpen, goalFor, got, isNew, isOpen, lenLock, lenNeed, lenOpen, lensOf, markSeen, needFor, newMark, nextAch, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict };

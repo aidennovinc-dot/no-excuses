@@ -10,7 +10,7 @@
 
 import { Music, Snd } from "../audio.js";
 import { RUN_SCHEMA } from "../config/build.js";
-import { HUD, INTRO } from "../config/copy.js";
+import { HUD, INTRO, TOAST } from "../config/copy.js";
 import { MODE_NAME, PASS_LEN, RATE_MAX } from "../config/games.js";
 import { P1C, P2C } from "../config/theme.js";
 import { $, T, pWho } from "../core.js";
@@ -20,7 +20,8 @@ import { prefs, save, store } from "../core/store.js";
 import { makeTimers, tapTime } from "../core/timers.js";
 import * as hud from "../games/_shared/hud.js";
 import { ENGINES, GAMES, GC, SHARED2, VERSUS, lenName, versusOf } from "../games/registry.js";
-import { Scores, UNLOCKS, chalRun, goalFor, isOpen, lenOpen, lensOf, pendingAim, pendingGoal, setPendingAim, setPendingGoal, unlockName, unlockToast, unlocked } from "../progress.js";
+import { Scores, UNLOCKS, chalRun, checkAch, checkUnlocks, goalFor, isOpen, lenOpen, lensOf, pendingAim, pendingGoal, setPendingAim, setPendingGoal, unlockHtml, unlockName, unlockToast, unlocked } from "../progress.js";
+import { checkKey } from "../progress/key.js";
 import { scoreTxt } from "../ui/format.js";
 import { game as showGame } from "../ui/router.js";
 import { applyPrefs } from "../ui/theme.js";
@@ -72,7 +73,11 @@ function start(){
   const who=VS.on?pWho(VS.stage-1)+' · ':''; $('#hud-mode').innerHTML=who+(MODE_NAME[sel.diff]?MODE_NAME[sel.diff]+' · ':'')+(versus?(c.vsLens?lenName(sel.game,sel.secs,sel.diff,true):HUD.versus):shared?HUD.pass:lenName(sel.game,sel.secs,sel.diff)); $('#score').textContent=c.lower?'0.00':'0';
   // the next unlock this run could earn, if any, sits under the HUD (v8). Not for two players. v11: a "Try to unlock" or achievement run keeps its goal up as a reminder even when nothing new can unlock
   // v13 (3.8): a "Try to unlock" run keeps the goal for the thing that was tapped — not whatever the chain would offer next
-  R.goal=VS.on||sel.vs?null:((pendingGoal&&UNLOCKS.find(u=>u.key===pendingGoal))||goalFor(sel.game,sel.diff,sel.secs)); const gl=$('#goal'); gl.classList.remove('hit'); gl.classList.toggle('roll',!!R.goal); gl.classList.toggle('on',!!R.goal||(!!pendingAim&&!sel.vs)); if(R.goal){ gl.innerHTML=T(HUD.goal,{need:here(R.goal.need),name:unlockName(R.goal.key)}); } else if(pendingAim&&!sel.vs) gl.innerHTML=T(HUD.aim,{aim:here(pendingAim)}); else gl.innerHTML=''; $('#bar').style.display=g.timed?'':'none'; $('#bar').style.transform='scaleX(1)';
+  R.goal=VS.on||sel.vs?null:((pendingGoal&&UNLOCKS.find(u=>u.key===pendingGoal))||goalFor(sel.game,sel.diff,sel.secs)); const gl=$('#goal'); gl.classList.remove('hit'); gl.classList.toggle('roll',!!R.goal); gl.classList.toggle('on',!!R.goal||(!!pendingAim&&!sel.vs)); if(R.goal){ gl.innerHTML=T(HUD.goal,{need:here(R.goal.need),name:unlockName(R.goal.key)}); } else if(pendingAim&&!sel.vs) gl.innerHTML=T(HUD.aim,{aim:here(pendingAim)}); else gl.innerHTML='';
+  // v15 (2.2): the thing being chased sits at the TOP of the screen during a run, so it is visible while playing. The HUD
+  // steps down to make room only when there is a goal to show — a run with nothing to chase looks exactly as it did
+  $('#game').classList.toggle('goalon',gl.classList.contains('on'));
+  $('#bar').style.display=g.timed?'':'none'; $('#bar').style.transform='scaleX(1)';
   $('#hud-time').textContent=g.timed?sel.secs.toFixed(2):'';
   hud.reset(); applyPrefs(sel.game); $('#game').classList.toggle('timed',!!g.timed&&!versus);
   if(ctx) ctx.timers.clearT();
@@ -90,7 +95,12 @@ function start(){
   Intro.run(played=>{ if(played){ eng.stop(ctx); hud.reset(); eng.mount(ctx); } if(eng.precount) eng.precount(ctx); hud.countdown(ctx.timers,Snd,go); });
 }
 // v11: the stale "shake" class used to replay its animation every time #game was shown again — that was the spurious wrong-answer shake at the start of runs. It comes off on every start, abort and show
-function abort(){ if(!R.on) return; R.on=false; R.id++; VS.reset(); Intro.clear(); cancelAnimationFrame(R.raf); ctx.timers.clearT(); Music.stop(); eng.stop(ctx); $('#count').classList.remove('on'); $('#vwin').classList.remove('on'); $('#game').classList.remove('shake','live'); $('#seqdone')?.classList.remove('on'); $('#rxbar').innerHTML=''; emit('run:abort'); }
+/* v15 (2.5): quitting must never cost a player something they already earned. The engine's own result() is the run so far,
+   so one last live pass banks the round that has just landed — the one that may not have emitted 'live' yet — before the
+   run is torn down. liveCheck writes to the store itself; this is not a toast, it is the save. */
+function abort(){ if(!R.on) return;
+  if(R.live&&eng&&ctx&&!VS.on&&sel.vs!==2){ try{ liveCheck(eng.result(ctx)); }catch(e){} }
+  R.on=false; R.id++; VS.reset(); Intro.clear(); cancelAnimationFrame(R.raf); ctx.timers.clearT(); Music.stop(); eng.stop(ctx); $('#count').classList.remove('on'); $('#vwin').classList.remove('on'); $('#game').classList.remove('shake','live'); $('#seqdone')?.classList.remove('on'); $('#rxbar').innerHTML=''; emit('run:abort'); }
 function tick(now){
   if(!R.on) return;
   if(R.timed){ const left=Math.max(0,R.end-now); $('#hud-time').textContent=(left/1000).toFixed(2); $('#bar').style.transform=`scaleX(${left/(ctx.len*1000)})`; if(now>=R.end) return finish(eng.result(ctx)); }
@@ -107,16 +117,29 @@ function finish(res){
   if(VS.on&&VS.stage===2) VS.p2=run;
   const two=!!run.vs2||VS.on;
   const isBest = run.practice||(run.fail&&!run.hits)||two ? false : Scores.submit(run);
+  /* v15 (2.5): every earn is banked HERE, the moment the record exists. It used to happen inside the result screen's
+     ad-break callback — so a player who closed the app on the ad, or never got that far, lost the lot. The result screen
+     still SHOWS the toasts and still animates the key; it no longer decides whether any of it was written down.
+     Two-player earns nothing (L10); practice and challenge runs are turned away inside the three functions themselves. */
+  const fresh=two?[]:checkUnlocks(run), ach=two?[]:checkAch(run), adv=checkKey(run,two);
   // the result screen takes it from here: the header, the ad break, the unlock and achievement toasts (ui/screens/result.js)
-  emit('run:finish',{run,isBest,two});
+  emit('run:finish',{run,isBest,two,fresh,ach,adv});
 }
-// mid-run (v10): engines emit 'live' with the run so far. Any live unlock that now passes lands at once, with a green toast; the goal line ticks
+/* mid-run (v10): engines emit 'live' with the run so far. Any live unlock that now passes lands at once, with a green toast; the goal line ticks.
+   v15 (2.5): ACHIEVEMENTS ride the same path now. Every row flagged live:1 in config/achievements.js is one whose test can
+   only become more true as a run goes on, so checkAch(run, true) banks it to the store the instant it fires — the toast is
+   the consequence, not the record. What is left for the finish is the rows a partial run cannot honestly satisfy: totals,
+   averages, "no wrong taps". This is also the first pass that turns a practice or challenge-link run away mid-run rather
+   than only at the end, which it should always have done. */
 function liveCheck(part){ if(!R.on) return;
   // v14 (4.15): versus hands its closeness up as part of the live payload; audio.js reads it off the run state and swaps bed
   if(part&&part.vsTension!==undefined) R.tension=part.vsTension;
-  if(VS.on||sel.vs===2) return; const run=Object.assign({g:sel.game,d:sel.diff,s:sel.secs,hits:0,misses:0,x:999,y:0},part); const u=unlocked(); let ch=false;
-  for(const x of UNLOCKS){ if(x.live&&!u[x.key]&&x.test(run)){ u[x.key]=Date.now(); ch=true; R.fresh.push(x.key); toast(unlockToast(x.key),'','ok'); } }
+  if(VS.on||sel.vs===2) return; const run=Object.assign({g:sel.game,d:sel.diff,s:sel.secs,hits:0,misses:0,x:999,y:0,practice:sel.practice||0},part);
+  if(chalRun(run.g,run.d,run.s)) run.chal=1;
+  const u=unlocked(); let ch=false;
+  for(const x of UNLOCKS){ if(x.live&&!run.chal&&!run.practice&&!u[x.key]&&x.test(run)){ u[x.key]=Date.now(); ch=true; R.fresh.push(x.key); toast(unlockToast(x.key),'','ok'); } }
   if(ch) save();
+  for(const a of checkAch(run,true)) toast(T(TOAST.achievement,{name:a.name})+(a.unlocks?' · '+unlockHtml(a):''),a.id,'',true);
   if(R.goal&&!R.goalHit&&(u[R.goal.key]||R.goal.test(run))){ R.goalHit=true; if(R.goal.len) toast(unlockToast(R.goal.key),'','ok'); $('#goal').classList.add('hit'); } }
 // a locked game or mode (v10): the lock box's Try to unlock — straight into the game, with the goal line up
 function goWhere(w){ if(!w) return; const G_=GAMES[w.g]; sel.game=w.g; prefs.lastGame=w.g; save();

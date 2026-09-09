@@ -75,8 +75,11 @@
      Leaving it out ends the animation on the element's own background instead: the green fades off, the colour comes back. */
   @keyframes newthing{0%{scale:1;background-color:color-mix(in srgb,var(--ok) 34%,transparent)}30%{scale:1.06;background-color:color-mix(in srgb,var(--ok) 34%,transparent)}100%{scale:1}}
   .newthing{animation:newthing .6s ease-out both!important;border-color:var(--ok)!important}
-  /* 7.2: a locked chip on the pick sheet reads like every other locked thing */
-  .chip.locked{opacity:.5;pointer-events:none}
+  /* 7.2: a locked chip on the pick sheet reads like every other locked thing.
+     v15 (2.1): pointer-events:none is GONE. It is what made "tapping a locked mode jumps to game select" — a dead chip let
+     the tap fall through to the screen, and ui/actions.js reads a tap on no control as Back, which from the result screen
+     is s-pick. A locked chip is tappable and says what it takes, like every other locked thing on every other screen. */
+  .chip.locked{opacity:.5}
 
 /* ==================================================================
    atmosphere — ui/atmosphere.js
@@ -119,7 +122,18 @@
   #s-menu.intro .item:nth-of-type(3){animation-delay:1.18s}
   #s-menu.intro .item:nth-of-type(4){animation-delay:1.32s}
   #s-menu.intro .item:nth-of-type(5){animation-delay:1.46s}
-  @keyframes menufade{0%{opacity:0}100%{opacity:.85}}
+  /* v15 (2.3 / 2.4): the list runs past five now — Unlocks joined it — and an item with no delay of its own arrived FIRST,
+     out of order, which was the other half of what read as a glitch. The last rule catches anything added later */
+  #s-menu.intro .item:nth-of-type(6){animation-delay:1.6s}
+  #s-menu.intro .item:nth-of-type(7){animation-delay:1.74s}
+  #s-menu.intro .item:nth-of-type(8){animation-delay:1.88s}
+  #s-menu.intro .item:nth-of-type(n+9){animation-delay:2.02s}
+  /* v15 (2.3): the 100% frame is gone, and that is the whole fix for the double-grey. `both` holds the last keyframe
+     forever, so ending on a literal .85 overrode .item.dim's own .35 for as long as #s-menu.intro was up — every item
+     faded in at full strength and then snapped greyer when the class came off 2.4s later. It read as a rendering fault
+     because it was one. With no 100% frame the animation ends on the element's own opacity: a dimmed item arrives grey
+     and stays grey, a live one arrives at .85. Same trick as the v14 8.7 newthing fix above. */
+  @keyframes menufade{0%{opacity:0}}
   @keyframes menuin{0%{opacity:0;translate:0 -16px}100%{opacity:.85;translate:0 0}}
   /* first open: only Play is live until one run is on the record */
   .item.dim{opacity:.18;pointer-events:none;text-decoration:none}
@@ -317,6 +331,25 @@
   .who input:focus{border-color:var(--ink)}
   /* supporter (v10): a star by the name, a tier line on the About screen */
   .who .star{color:#FFB020;font-size:14px}
+
+/* ==================================================================
+   unlocks — ui/screens/unlocks.js (build 23, v15 2.4)
+   ================================================================== */
+  /* the same row shape as the achievements list, on purpose — they are two halves of one idea and used to be one screen.
+     Same no-sideways-axis rule as v14 8.2: an accidental left-swipe must not leave the rows off-centre */
+  .unl{display:flex;flex-direction:column;width:min(92vw,440px);font-family:var(--mono);font-size:12px;overflow-x:hidden}
+  .unl h4{font-weight:500;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink);padding:18px 4px 6px}
+  .unl button.urow{display:grid;grid-template-columns:1fr auto;gap:3px 12px;padding:10px 4px;border-bottom:1px solid var(--line);text-align:left;width:100%;font:inherit;color:inherit}
+  .unl .urow>span:first-child,.unl .urow small,.unl .urow em{min-width:0;overflow-wrap:anywhere}
+  .unl .urow small{grid-column:1/-1;color:var(--mute);letter-spacing:.04em;line-height:1.4}
+  .unl .urow small:empty{display:none}
+  .unl em{font-style:normal;color:var(--mute);font-size:10px;letter-spacing:.12em;text-transform:uppercase;align-self:start}
+  /* a locked row is the way in — the requirement reads in the same green everything unlockable wears (v14 3.1) */
+  .unl .lock>span:first-child{color:var(--mute)}
+  .unl .lock small{color:var(--ok)}
+  .unl .done>span:first-child,.unl .done em{color:var(--ok)}
+  .unl .urow:active{background:color-mix(in srgb,var(--ink) 6%,transparent)}
+  #unl-lede{width:min(92vw,440px);margin:0 auto 4px;text-align:left;line-height:1.5}
 
 /* ==================================================================
    achievements — ui/screens/achievements.js
@@ -684,8 +717,10 @@
   #game.shake{animation:shake .32s linear}
   @keyframes shake{0%,100%{transform:translate(0)}20%{transform:translate(-8px,3px)}40%{transform:translate(7px,-4px)}60%{transform:translate(-5px,2px)}80%{transform:translate(4px,-2px)}}
   @media (prefers-reduced-motion:reduce){#game.shake,.pop,.go,.wordmark,.glow,#lead.on b,#count span{animation:none}}
-  /* the next unlock, in view while you play (v8) */
-  #goal{position:absolute;left:50%;top:calc(9.5% + env(safe-area-inset-top));transform:translateX(-50%);font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);border:1px solid var(--line);padding:5px 10px;white-space:nowrap;pointer-events:none;display:none;z-index:4;max-width:92vw;overflow:hidden;text-overflow:ellipsis}
+  /* the next unlock, in view while you play (v8). v15 (2.2): it sits at the TOP of the screen now — above the HUD, not
+     under it — because the thing being chased has to be visible while playing, achievements included. The HUD steps down
+     to make room only when there is something to chase, so a run with no goal looks exactly as it did */
+  #goal{position:absolute;left:50%;top:max(11px,env(safe-area-inset-top));transform:translateX(-50%);font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);border:1px solid var(--line);padding:5px 10px;white-space:nowrap;pointer-events:none;display:none;z-index:4;max-width:min(92vw,calc(100vw - 116px));overflow:hidden;text-overflow:ellipsis}
   #goal.on{display:block}
   #goal b{color:var(--ink);font-weight:500}
   #goal.hit{border-color:var(--ok);color:var(--ok);animation:pop .3s ease-out}
@@ -698,6 +733,9 @@
   #goal.roll>i,#goal.roll>u{animation:goalroll 9s ease-in-out infinite}
   @keyframes goalroll{0%,40%{translate:0 0}50%,90%{translate:0 -22px}100%{translate:0 0}}
   #goal.hit>i::before{content:"\2713 "}
+  /* v15 (2.2): the run's own furniture moves down under the goal line rather than the goal line hiding behind it */
+  #game.goalon .hud{top:calc(max(14px,env(safe-area-inset-top)) + 30px)}
+  #game.goalon #rate{top:calc(28% + env(safe-area-inset-top))}
   #game.bigc #score{visibility:hidden}
   #intro p{background:color-mix(in srgb,var(--ground) 88%,#fff);border:1px solid var(--line);padding:12px 14px;left:24px;right:24px}
   #game.timed #rate{display:none}

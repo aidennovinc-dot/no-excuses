@@ -452,6 +452,134 @@ console.log('\nthe key (v14 section 9)');
   (rows.rows === 6 && !rows.nobar) ? ok(`9.3 tapping Quick Tap lists its 6 combinations — first reads "${rows.first}"`) : bad('9.3 the key panel', JSON.stringify(rows));
 }
 
+// ---- 6d. the chain (v15 section 1) and the screens that carry it (v15 section 2), build 23 ----
+console.log('\nthe chain and its screens (v15 sections 1 and 2)');
+{
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const { LEN_RULES, UNLOCKS: U } = await import(pathToFileURL(path.join(root, 'config', 'unlocks.js')).href);
+  const { GAMES: GT } = await import(pathToFileURL(path.join(root, 'config', 'games.js')).href);
+  const { ACH } = await import(pathToFileURL(path.join(root, 'config', 'achievements.js')).href);
+  // 1.0a: the table is keyed 'game:mode'. A bare game key would silently give both modes the same numbers again
+  { const keys = Object.keys(LEN_RULES);
+    const bad_ = keys.filter(k => { const [g, d] = k.split(':'); return !GT[g] || !d || !GT[g].modes.includes(d); });
+    bad_.length ? bad("1.0a LEN_RULES is keyed 'game:mode'", bad_.join(', ')) : ok(`1.0a LEN_RULES is keyed 'game:mode' — ${keys.length} rows, every one a real game and mode`); }
+  // 1.5: the new Estimate · Grow row. A secret row must carry a hint (v14 8.5) or it shows the fallback line instead
+  { const a = ACH.find(x => x.id === 'hd_max');
+    (a && a.tier === 'secret' && a.hint && a.g === 'hold') ? ok(`1.5 hd_max "${a.name}" is a secret Estimate row with a hint`) : bad('1.5 the new Estimate · Grow achievement', JSON.stringify(a)); }
+  // 2.5 static: the earning moved OUT of the result screen's ad-break callback and INTO the run. If it ever moves back,
+  // an achievement earned on a run the player leaves before the ad clears is lost again, silently
+  { const rs = fs.readFileSync(path.join(root, 'ui', 'screens', 'result.js'), 'utf8');
+    const rn = fs.readFileSync(path.join(root, 'run', 'run.js'), 'utf8');
+    const clean = /checkUnlocks|checkAch\(/.test(rs) === false;
+    const banks = /checkUnlocks\(run\)/.test(rn) && /checkAch\(run\)/.test(rn) && rn.indexOf('checkUnlocks(run)') < rn.indexOf("emit('run:finish'");
+    const onAbort = /function abort\(\)[\s\S]{0,400}liveCheck\(/.test(rn);
+    (clean && banks && onAbort) ? ok('2.5 the run banks every earn before run:finish, and once more on abort; the result screen only shows them')
+      : bad('2.5 earns are banked by the run, not the result screen', `result clean ${clean} · run banks ${banks} · abort banks ${onAbort}`); }
+
+  await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
+  await setStorage({}); await page.reload({ waitUntil: 'networkidle0' }); await sleep(600);
+  // 1.1-1.4: the seventeen values, checked through the predicates rather than by reading the table back at itself.
+  // Each pair is [a record that must pass, a record that must not] — the second is the number one step short
+  const V = await page.evaluate(async () => {
+    const P = await import('./progress.js'); const R = await import('./progress/rules.js');
+    const t = k => P.UNLOCKS.find(u => u.key === k).test;
+    const qt = (s, hits, misses) => ({ g: 'quick-tap', d: 'two', s, hits, misses });
+    const out = {};
+    out.qtFour = [t('quick-tap:four')(qt(15, 15, 0)), t('quick-tap:four')(qt(15, 14, 0)), t('quick-tap:four')(qt(15, 15, 1))];
+    out.dtBlind = [t('dots:blind')(qt(30, 35, 2)), t('dots:blind')(qt(30, 34, 0))];
+    out.dtLead = [t('dots:lead')({ g: 'dots', d: 'blind', s: 5, hits: 0, misses: 5 }), t('dots:lead')({ g: 'dots', d: 'blind', s: 5, hits: 9, misses: 4 })];
+    out.hdGrow = [t('hold:grow')({ g: 'dots', d: 'blind', s: 15, hits: 0, misses: 0 }), t('hold:grow')({ g: 'dots', d: 'blind', s: 15, hits: 0, misses: 1 })];
+    out.tmStop = [t('timing:stopwatch')({ g: 'sequence', d: 'solo', s: 7, hits: 0 }), t('timing:stopwatch')({ g: 'sequence', d: 'solo', s: 7, hits: 1 })];
+    out.rxNogo = [t('reaction:nogo')({ g: 'reaction', d: 'flash', s: 5, hits: 350 }), t('reaction:nogo')({ g: 'reaction', d: 'flash', s: 5, hits: 351 })];
+    out.spCount = [t('spot:count')({ g: 'reaction', d: 'nogo', s: 5, hits: 349 }), t('spot:count')({ g: 'reaction', d: 'flash', s: 5, hits: 349 }), t('spot:count')({ g: 'reaction', d: 'flash', s: 5, hits: 400 })];
+    // lengths, per mode — the numbers that differ between Blind and Lead are the whole reason for 1.0a
+    const L = (g, d, i) => R.LEN_TEST[g + ':' + d][i];
+    out.lens = { qtMar: [L('quick-tap', 'two', 2)({ hits: 24 }), L('quick-tap', 'two', 2)({ hits: 23 })],
+      blindDash: [L('dots', 'blind', 1)({ hits: 6, misses: 0 }), L('dots', 'blind', 1)({ hits: 5, misses: 0 })],
+      leadDash: [L('dots', 'lead', 1)({ hits: 9, misses: 0 }), L('dots', 'lead', 1)({ hits: 8, misses: 0 })],
+      blindMar: [L('dots', 'blind', 2)({ hits: 24 }), L('dots', 'blind', 2)({ hits: 23 })],
+      leadMar: [L('dots', 'lead', 2)({ hits: 28 }), L('dots', 'lead', 2)({ hits: 27 })],
+      cutStreak: [L('hold', 'cut', 1)({ y: 81 }), L('hold', 'cut', 1)({ y: 80 })],
+      flashStreak: [L('reaction', 'flash', 1)({ hits: 501 }), L('reaction', 'flash', 1)({ hits: 500 })] };
+    out.hdMax = [R.ACH_TEST.hd_max({ g: 'hold', d: 'grow', s: 7, y: 684 }), R.ACH_TEST.hd_max({ g: 'hold', d: 'grow', s: 7, y: 120 })];
+    // 1.0d: ONE record of the chain. Every requirement the app can show for a length is the string lenNeed builds
+    const G = await import('./games/registry.js');
+    out.oneRecord = [];
+    for (const g in G.GAMES) for (const d of G.GAMES[g].modes) G.GC(g, d).lens.forEach((s, i) => { if (!i) return;
+      const lk = P.lenLock(g, d, s, true); if (lk && lk.need !== P.lenNeed(g, d, s)) out.oneRecord.push(g + ':' + d + ':' + s); });
+    return out; });
+  const pair = (label, [yes, ...no]) => (yes && no.every(x => !x)) ? ok(label) : bad(label, JSON.stringify([yes, ...no]));
+  pair('1.1a Quick Tap · Four opens at 15 clean hits in a Dash, not 14 and not with a miss', V.qtFour);
+  pair('1.2a Dots · Blind opens at 35 hits in any Quick Tap run', V.dtBlind);
+  pair('1.2b Dots · Lead opens on 5 misses in a Blind run (deliberate failure, v15 0.5)', V.dtLead);
+  pair('1.3a Estimate · Grow opens on a Dots run with nothing pressed at all', V.hdGrow);
+  pair('1.4a Timing · Stopwatch opens on a Sequence run that scored nothing', V.tmStop);
+  pair('1.4c Go / No-go opens at a 350ms Flash Set, not 351', V.rxNogo);
+  // 1.4d is the one row with TWO ways in — a Flash Set or a Go / No-go Set, built as Aiden wrote it. Cowork's note is that
+  // this collapses 1.4c into it; the shape of the test says plainly that both doors are open, so a later change is visible
+  { const [nogo, flash, slow] = V.spCount;
+    (nogo && flash && !slow) ? ok('1.4d Spot · Count opens on a Flash OR a Go / No-go Set under 350ms — both doors, per Aiden') : bad('1.4d Spot · Count', JSON.stringify(V.spCount)); }
+  pair('1.1b Quick Tap Marathon asks 24 in a Dash', V.lens.qtMar);
+  pair('1.2c Dots · Blind Dash asks 6 clean', V.lens.blindDash);
+  pair('1.2e Dots · Lead Dash asks 9 clean — the per-mode split (1.0a) is doing real work', V.lens.leadDash);
+  pair('1.2d Dots · Blind Marathon asks 24', V.lens.blindMar);
+  pair('1.2f Dots · Lead Marathon asks 28', V.lens.leadMar);
+  pair('1.3b Estimate · Cut Streak asks for one round more than 80% off', V.lens.cutStreak);
+  pair('1.4b Reaction · Flash Streak asks for a Set averaging over 500ms', V.lens.flashStreak);
+  pair('1.5 the shape at its limit earns Greedy; merely overshooting does not', V.hdMax);
+  (!V.oneRecord.length) ? ok('1.0d one record of the chain — every lock box and goal line reads the string lenNeed builds') : bad('1.0d a second copy of a requirement', V.oneRecord.join(', '));
+
+  // 2.2: no Next card on a fresh profile's first menu open
+  { const nx = await page.evaluate(() => { const s = document.querySelector('#s-menu.story'); if (s) document.body.click(); return null; }); void nx; await sleep(900);
+    for (let i = 0; i < 8 && (await page.evaluate(() => !!document.querySelector('#s-menu.story'))); i++) { await page.evaluate(() => document.body.click()); await sleep(320); }
+    await sleep(400);
+    const card = await page.evaluate(() => ({ hidden: document.getElementById('nextup').hidden, tag: document.getElementById('menu-tag').hidden }));
+    (card.hidden && card.tag) ? ok('2.2 no Next card on a fresh profile\'s first menu open') : bad('2.2 the Next card on a fresh profile', JSON.stringify(card)); }
+
+  // 2.5 behavioural: an unlock that fires mid-run is in localStorage after the player quits
+  { const kept = await page.evaluate(async () => {
+      const RUN = await import('./run/run.js'); const S = await import('./core/store.js'); const ST = await import('./core/state.js');
+      S.store.unlock = {}; S.store.ach = {}; S.save();
+      Object.assign(ST.sel, { game: 'quick-tap', diff: 'two', secs: 15, vs: 0, practice: 0 });
+      RUN.start(); RUN.liveCheck({ hits: 15, misses: 0 }); RUN.abort();
+      let raw = null; try { raw = JSON.parse(localStorage.getItem('ne')); } catch (e) {}
+      return { unlock: raw && raw.unlock ? Object.keys(raw.unlock) : [] }; });
+    kept.unlock.includes('quick-tap:four') ? ok('2.5 an unlock earned mid-run is in storage after the run is quit — no silent loss')
+      : bad('2.5 a mid-run earn survives a quit', JSON.stringify(kept)); }
+
+  // 2.1: a locked length on the RESULT screen shows its requirement instead of walking out to game select
+  await setStorage({ 'ne.prefs': { story: 1, gridSeen: 1, played: 1, snd: 'off', musicG: {} } });
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(500);
+  // NB: not openSheet — that helper reseeds the profile with allOpen, and a profile with nothing locked cannot show this
+  { await click('[data-go="s-pick"]'); await sleep(300);
+    await page.evaluate(() => document.querySelector('.tile[data-game="quick-tap"]').click()); await sleep(300);
+    await page.evaluate(() => document.querySelectorAll('#diff-row .choice')[0].click()); await sleep(420);
+    await page.evaluate(() => document.querySelectorAll('#time-row .tbtn')[0].click()); await sleep(200);
+    await click('#go-btn');
+    const at = await driveToResult('quick-tap', '2.1 run for the locked chip', 60000);
+    if (at !== 's-over') bad('2.1 a run to the result screen', 'ended on ' + at);
+    else { const had = await page.evaluate(() => { const b = document.querySelector('#over-chips2 .chip.locked'); if (!b) return null; b.click(); return true; });
+      await sleep(350);
+      const st = await page.evaluate(() => ({ box: document.getElementById('lockwrap').classList.contains('on'), screen: document.querySelector('.screen.on')?.id, text: document.getElementById('lock-text').textContent.trim() }));
+      if (had === null) bad('2.1 a locked length chip on the result screen', 'no locked chip to tap');
+      else (st.box && st.screen === 's-over') ? ok(`2.1 tapping a locked length shows its requirement and stays put — "${st.text}"`) : bad('2.1 a locked chip must not navigate', JSON.stringify(st));
+      await click('#lock-no'); await sleep(250); } }
+
+  // 2.4: the Unlocks screen, and every line on it read from the one table
+  await click('#over-back'); await sleep(300); await click('#s-pick .back'); await sleep(400);
+  { await click('[data-go="s-unl"]'); await sleep(450);
+    const u = await page.evaluate(async () => { const P = await import('./progress.js');
+      const rows = [...document.querySelectorAll('#unl-list .urow')];
+      const needs = rows.filter(r => r.classList.contains('lock') && !r.dataset.key).map(r => r.querySelector('small').textContent.trim());
+      const known = new Set(P.UNLOCKS.map(x => x.need));
+      const G = await import('./games/registry.js');
+      for (const g in G.GAMES) for (const d of G.GAMES[g].modes) G.GC(g, d).lens.forEach((s, i) => { if (i) known.add(P.lenNeed(g, d, s)); });
+      return { screen: document.querySelector('.screen.on')?.id, rows: rows.length, heads: document.querySelectorAll('#unl-list h4').length,
+        stray: needs.filter(n => n && !known.has(n)) }; });
+    (u.screen === 's-unl' && u.rows > 0 && u.heads === 3) ? ok(`2.4 the Unlocks screen lists ${u.rows} rows under ${u.heads} headings`) : bad('2.4 the Unlocks screen', JSON.stringify(u));
+    (!u.stray.length) ? ok('2.4 / L6 every requirement on the Unlocks screen comes from UNLOCKS or lenNeed — no second copy') : bad('2.4 a requirement written twice', u.stray.join(' | ')); }
+}
+
 // ---- 7. every button action once (build 15: ui/actions.js dispatches on data-act) ----
 console.log('\nbutton actions (every data-act at least once)');
 {
@@ -483,6 +611,12 @@ console.log('\nbutton actions (every data-act at least once)');
   // scores: game, mode, length chips
   await tap('[data-go="s-board"]'); await tap('#bd-g [data-v="dots"]', 'board · game chip'); await tap('#bd-d [data-v="lead"]', 'board · mode chip'); await tap('#bd-s [data-v="15"]', 'board · length chip');
   await sleep(400); await tap('#s-board .back', 'board · back');
+  // unlocks (build 23, v15 2.4): its own menu item now, above Achievements. The key row is the one that leads somewhere
+  // with a single Back, which is why it is the row this taps
+  await tap('[data-go="s-unl"]'); await sleep(300);
+  await tap('#unl-list .urow.key', 'unlocks · the key row'); await sleep(400);
+  (await onScreen()) === 's-key' ? ok('the Unlocks screen\'s key row opens the key') : bad('unlocks · key row', 'on ' + (await onScreen()));
+  await tap('#s-key .back', 'key · back'); await sleep(300);
   // achievements: filter chip, a row that jumps to a sheet (Quick Tap · Clean · Sprint · Four)
   await tap('[data-go="s-ach"]'); await tap('#ach-g [data-v="quick-tap"]', 'achievements · filter chip');
   await tap('#ach-qt_clean5', 'achievements · jump row'); await sleep(300);
@@ -510,7 +644,7 @@ console.log('\nbutton actions (every data-act at least once)');
   boxOn ? ok('a locked tile opens the lock box') : bad('a locked tile opens the lock box');
   await tap('#lock-no', 'lock box · not now'); await tap('.tile[data-game="dots"]', 'locked tile again'); await tap('#lock-go', 'lock box · try to unlock'); await sleep(600);
   const goal = await page.evaluate(() => ({ game: document.getElementById('game').classList.contains('on'), goal: document.getElementById('goal').textContent.trim() }));
-  (goal.game && /30 hits/.test(goal.goal)) ? ok(`try to unlock starts the run with its goal: "${goal.goal}"`) : bad('try to unlock starts the run with its goal', JSON.stringify(goal));
+  (goal.game && /35 hits/.test(goal.goal)) ? ok(`try to unlock starts the run with its goal: "${goal.goal}"`) : bad('try to unlock starts the run with its goal', JSON.stringify(goal));
   await tap('#quit', 'quit'); await sleep(300);
   await tap('#s-pick .back'); await sleep(300); await tap('#nextup', 'next achievement card'); await sleep(600);
   (await inGame()) ? ok('the Next achievement card starts its run') : bad('the Next achievement card starts its run', 'on ' + (await onScreen()));
@@ -523,7 +657,7 @@ console.log('\nbutton actions (every data-act at least once)');
   (await onScreen()) === 's-pick' ? ok('result back opens the pick sheet') : bad('result back opens the pick sheet', 'on ' + (await onScreen()));
   await tap('#time-row .tbtn:nth-child(2)', 'sheet · length'); await tap('[data-vs="1"]', 'sheet · with a friend'); await tap('[data-vs2="1"]', 'sheet · pass & play'); await tap('[data-vs="0"]', 'sheet · solo');
   // build 18: the chips are one act per screen, and the overlays (lock box, Next card, the full stop) are acts too
-  const expected = ['go', 'back', 'game', 'diff', 'time', 'vs', 'vs2', 'lvl-back', 'go-btn', 'quit', 'over-back', 'share', 'chip-bd', 'chip-pv', 'chip-ach', 'chip-over', 'item', 'music-pv', 'pvlock', 'ach', 'prac', 'dev-open', 'dev-sup', 'dev-story', 'support', 'wheel-done', 'lock-no', 'lock-go', 'nextup', 'egg'];
+  const expected = ['go', 'back', 'game', 'diff', 'time', 'vs', 'vs2', 'lvl-back', 'go-btn', 'quit', 'over-back', 'share', 'chip-bd', 'chip-pv', 'chip-ach', 'chip-over', 'item', 'music-pv', 'pvlock', 'ach', 'unl', 'prac', 'dev-open', 'dev-sup', 'dev-story', 'support', 'wheel-done', 'lock-no', 'lock-go', 'nextup', 'egg'];
   const missing = expected.filter(a => !seen.has(a));
   missing.length ? bad('every data-act driven once', 'not driven: ' + missing.join(', ')) : ok(`every data-act driven once (${expected.length}) — not covered: again, pass-go, to-games, seqdone, praclock, dev-fresh, adskip, toast`);
 }

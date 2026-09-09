@@ -3,6 +3,7 @@
 import "./menu.js";
 import "./pick.js";
 import "./board.js";
+import "./unlocks.js";
 import "./achievements.js";
 import "./key.js";
 import "./customise.js";

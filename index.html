@@ -22,6 +22,9 @@
   <div style="height:6px"></div>
   <button data-act="go" class="item glow" data-go="s-pick">Play</button>
   <button data-act="go" class="item glow" data-go="s-board">Scores</button>
+  <!-- v15 (2.4): Unlocks and Achievements are two menu items now. Unlocks = everything that opens something; Achievements
+       = the marks on what you already have. Unlocks sits above, because unlocks outrank achievements (2.2) -->
+  <button data-act="go" class="item glow" data-go="s-unl">Unlocks</button>
   <button data-act="go" class="item glow" data-go="s-ach">Achievements</button>
   <button data-act="go" class="item glow" data-go="s-key">The key</button>
   <button data-act="go" class="item glow" data-go="s-custom">Customise</button>
@@ -70,6 +73,15 @@
   <div class="chips" id="bd-d"></div>
   <div class="chips" id="bd-s"></div>
   <div class="scroll"><table><thead id="runs-h"></thead><tbody id="runs"></tbody></table></div>
+</section>
+
+<!-- unlocks (build 23, v15 2.4). The chain on its own screen — every line is read from UNLOCKS + lenLock (L6), nothing
+     about a requirement is written here. Shell only: what sits behind keys 2 and 3 is register #372 and is undecided -->
+<section class="screen top" id="s-unl" data-back="s-menu">
+  <button data-act="back" class="back">&larr; BACK</button>
+  <div class="eyebrow">unlocks · tap a locked row to see what it takes</div>
+  <div class="hint" id="unl-lede">Everything that opens something. The chain first — each game and mode earned in the one before it — then every length of every mode.</div>
+  <div class="unl scroll" id="unl-list"></div>
 </section>
 
 <section class="screen top" id="s-ach" data-back="s-menu">
@@ -121,7 +133,7 @@
   <div class="explain">A passion project of simple games of pure skill and minimal frills.<br><br>If you'd like to remove ads, add customisation, and show your support, tap below.</div>
   <button data-act="support" class="support" id="support"><b id="support-title">Support · A$1.99 · once</b><small id="support-text">No ads, ever. Every colour, background and sound pack open from day one, plus the colour wheel. A pro 60-second length in Quick Tap and Dots, with its own boards. A star on your profile.</small></button>
   <div class="tierbox" id="tierbox"></div>
-  <div class="hint">build 22 · batch 10 · the key · 9 sept 2026</div>
+  <div class="hint">build 23 · batch 11 · the chain · 9 sept 2026</div>
 </section>
 
 <section class="screen" id="s-testing" data-back="s-menu" data-dev>
@@ -198,12 +210,12 @@
 
 <script type="module" src="./boot.js"></script>
 
-<div id="build">build 22</div>
+<div id="build">build 23</div>
 <button id="update">New build available — tap to reload</button>
 <script>
 // build check: version.json is fetched with no-store, so a stale cached page still learns a newer build exists
 (function(){
-  const BUILD="22";
+  const BUILD="23";
   async function check(){
     try{
       const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});
