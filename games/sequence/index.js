@@ -7,12 +7,13 @@ import { CFG, SEQ_VS } from "../../config/games.js";
 import { $, $$, T, pWho, seqStep } from "../../core.js";
 import * as hud from "../_shared/hud.js";
 /* ---------- Sequence: streak. Watch, copy, one more each round; a wrong key ends it ---------- */
-const SQ={ id:'sequence', ctx:null, st:'idle', keys:0, seq:[], idx:0, round:0, p:0, rounds:[0,0], lives:[0,0],
+const SQ={ id:'sequence', ctx:null, st:'idle', keys:0, seq:[], seqs:null, idx:0, round:0, p:0, rounds:[0,0], lives:[0,0],
   clearT(){ if(this.ctx) this.ctx.timers.clearT(); },
   later(f,ms){ this.ctx.timers.later(f,ms); },
   step(){ return seqStep(this.round); },
   // v15 (4.5): versus is lives-based. Compose — one player taps in a tune, the other copies it, longest copy wins — is
-  // retired with it: two players now face the SAME growing pattern, and the one still holding a life at the end wins
+  // retired with it: the two patterns grow together and the one still holding a life at the end wins. v15 (#375c,
+  // build 26): each player answers their OWN pattern of that length, never the one the other just replayed
   mode(){ return this.ctx.players===2?'vs':this.ctx.players===1?'pass':'solo'; },
   // keys are built before the countdown so they can run the scale under it (v5)
   mount(ctx){ this.ctx=ctx; this.build(); },
@@ -31,15 +32,24 @@ const SQ={ id:'sequence', ctx:null, st:'idle', keys:0, seq:[], idx:0, round:0, p
   result(){ return {hits:Math.max(0,this.round-1),misses:0}; },
   // the cue (v11): a short line on a contrasting backing. `stay` keeps it up; otherwise it pops and fades
   cue(html,stay,p){ const t=$('#turn'); t.classList.remove('on','stay','p1','p2'); void t.offsetWidth; t.innerHTML=html; if(p!==undefined) t.classList.add(p?'p2':'p1'); t.classList.add(stay?'stay':'on'); },
-  // every run starts with three notes (v11). v15 (4.5): a versus opens on the number the two players picked, and both
-  // face the same pattern — it grows by one only once player 2 has answered it
+  /* every run starts with three notes (v11). v15 (4.5): a versus opens on the number the two players picked.
+     v15 (#375c, build 26): each player gets their OWN pattern, of the same length. Build 25 dealt one pattern and had
+     both players answer it — so player 2 watched player 1 replay it, with the keys lighting on every correct tap,
+     before taking their turn. On a memory game that is a free second look, it is systematic, and it compounds every
+     round. Two patterns of equal length was the choice over alternating who answers first: alternating only halves the
+     advantage and leaves the round it is taken in deciding the match, while equal-length patterns remove the leak
+     outright and keep everything else — the lives, the growth, the order — exactly as Aiden agreed it (SEQ_VS is his,
+     on #376, and is untouched). */
+  deal(n){ return Array.from({length:n},()=>Math.random()*this.keys|0); },
   begin(){ this.p=0; this.rounds=[0,0]; this.lives=[SEQ_VS.lives,SEQ_VS.lives]; const vs=this.mode()==='vs';
     this.round=vs?Math.max(3,Math.min(8,this.ctx.opens||3)):Math.max(3,this.ctx.practice||3);
-    this.seq=Array.from({length:this.round},()=>Math.random()*this.keys|0); this.play(); },
+    this.seqs=vs?[this.deal(this.round),this.deal(this.round)]:null;
+    this.seq=vs?this.seqs[0]:this.deal(this.round); this.play(); },
   // the note rings for `ms`; the key only lights for `lit` (default a short flash) — sound is never cut by the key going dark (v5)
   light(k,ms,lit){ const el=$(`.key[data-k="${k}"]`); if(!el) return; el.classList.add('lit'); this.ctx.audio.note(k,ms); this.later(()=>el.classList.remove('lit'),lit||Math.min(ms*.7,220)); },
   // whose turn it is is unmissable (v7): keys sit dim and "watch" while it plays; then YOUR TURN pops centre, the keys light their top edge, two rising notes, and the HUD turns target-coloured
   play(){ this.clearT(); this.st='play'; const pass=this.mode()==='pass', vs=this.mode()==='vs', two=pass||vs; hud.score(this.round-1);
+    if(vs) this.seq=this.seqs[this.p];   // #375c: the pattern belongs to the player about to answer it, not to the round
     if(vs){ hud.timeHtml(T(CP.vsHud,{who:pWho(this.p),a:this.lives[0],b:this.lives[1]})); hud.pturn(this.p); }
     else hud.time(pass?T(CP.round,{n:this.round}):T(CP.watch,{n:this.round}));
     hud.you(false); $('#seq').classList.add('watch'); $('#seq').classList.remove('input'); const step=this.step();
@@ -58,18 +68,19 @@ const SQ={ id:'sequence', ctx:null, st:'idle', keys:0, seq:[], idx:0, round:0, p
       if(this.mode()==='vs') return this.vsTurn(false);
       if(this.mode()==='pass'){ const w=1-this.p; this.cue(T(CP.wins,{who:pWho(w)}),true,w); return this.later(()=>this.ctx.emit('finish',{hits:this.rounds[0],misses:0,vs2:{a:this.rounds[0],b:this.rounds[1],w,how:CP.missNote}}),1600); }
       this.later(()=>this.ctx.emit('finish',{hits:this.round-1,misses:0,x:this.step(),sc:SCALES[this.ctx.scale].name.toLowerCase().slice(0,5),practice:this.ctx.practice||0}),900); } },
-  /* v15 (4.5) — versus is lives-based. Both players face the SAME pattern each round: player 1 answers it, player 2
-     answers it, and only then does it grow by a note. A wrong note costs a life instead of ending the run, and the last
-     player still holding one wins — so a single slip does not decide a match. Three lives each is Cowork's number and a
-     guess (SEQ_VS.lives); the keys and the opening length are the two players' own choices on the sheet.
+  /* v15 (4.5) — versus is lives-based. Each player answers their own pattern of the round's length (#375c, build 26):
+     player 1 answers theirs, player 2 answers theirs, and only then do both grow by a note. A wrong note costs a life
+     instead of ending the run, and the last player still holding one wins — so a single slip does not decide a match.
+     Three lives each is Cowork's number and a guess (SEQ_VS.lives, Aiden's call on #376); the keys and the opening
+     length are the two players' own choices on the sheet.
      Nothing here reaches a board, a key, an unlock or an achievement (L10, widened by A.3). */
   vsTurn(ok){ if(!ok) this.lives[this.p]--;
     if(!ok) this.cue(this.lives[this.p]<=0?T(CP.vsOut,{who:pWho(this.p)}):T(CP.vsHud,{who:pWho(this.p),a:this.lives[0],b:this.lives[1]}),true,this.p);
     const last=this.p===1;
     this.later(()=>{ if(this.lives[0]<=0||this.lives[1]<=0) return this.vsEnd();
       $$('.key').forEach(el=>el.classList.remove('bad','lit'));
-      // the pattern grows once player 2 has had it, so the two are never asked for different lengths
-      if(last){ this.round++; this.seq.push(Math.random()*this.keys|0); }
+      // both patterns grow once player 2 has answered, so the two are never asked for different lengths (#375c)
+      if(last){ this.round++; this.seqs[0].push(Math.random()*this.keys|0); this.seqs[1].push(Math.random()*this.keys|0); }
       this.p=1-this.p; this.play(); },ok?800:1400); },
   // only one player can lose a life in a turn, so there is no draw to read for
   vsEnd(){ const a=this.lives[0], b=this.lives[1], w=a<=0?1:0; this.st='over'; hud.pturn(null); this.clearT();

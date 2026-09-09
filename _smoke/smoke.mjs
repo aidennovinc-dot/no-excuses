@@ -139,7 +139,20 @@ async function driveToResult(g, label, ms = 90000, noTap = false) {
   }
   const at = await onScreen();
   if (at !== 's-over' && at !== 's-pass') { bad(label, 'still on ' + (at || 'the game') + ' after ' + ms / 1000 + 's'); return null; }
+  if (at === 's-over') await keySettle();
   return at;
+}
+/* v15 (5.1, build 26): a run that clears a clearance bar for the FIRST time takes the screen — the result fades and
+   stops taking taps, the key plays the segment, and it hands itself back. Both happen inside the same callback that
+   shows the result, so the fade is already on by the time a poll can see 's-over'. Every test that starts poking the
+   result screen has to wait that out first, or it is poking a screen that is deliberately not listening. */
+async function keySettle() {
+  for (let i = 0; i < 50; i++) {
+    const busy = await page.evaluate(() => document.getElementById('s-over').classList.contains('fadeout') || (document.querySelector('.screen.on') || {}).id === 's-key');
+    if (!busy) return i > 0;
+    await sleep(200);
+  }
+  return true;
 }
 async function resultLine() {
   return page.evaluate(() => ({ score: document.querySelector('#over-score').textContent.trim(), verdict: document.querySelector('#verdict').textContent.trim(), stats: document.querySelector('#over-stats').textContent.trim().slice(0, 50), rank: document.querySelector('#over-rank').textContent.trim() }));
@@ -753,6 +766,182 @@ console.log('\nthe runs (v15 section 3)');
     else if (seen.dot === want) ok(want ? `3.10 Dots · Lead shows the next dot and its ring on "1", before the run starts (lead ring ${seen.lead})` : '3.10 Dots · Blind is unchanged — nothing on screen under the 3-2-1');
     else bad(`3.10 Dots · ${mode} under the 3-2-1`, JSON.stringify(seen));
   }
+}
+
+// ---- 6f. the keys, the surface, and the three two-player defects (v15 section 5 and section 6, #375), build 26 ----
+console.log('\nthe keys, the surface and #375 (v15 sections 5 and 6)');
+{
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const strip = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
+  const rx = strip(fs.readFileSync(path.join(root, 'games', 'reaction', 'index.js'), 'utf8'));
+  const sq = strip(fs.readFileSync(path.join(root, 'games', 'sequence', 'index.js'), 'utf8'));
+  const css = fs.readFileSync(path.join(root, 'styles', 'app.css'), 'utf8');
+  const mjs = strip(fs.readFileSync(path.join(root, 'ui', 'screens', 'menu.js'), 'utf8'));
+  const cfg = await import(pathToFileURL(path.join(root, 'config', 'games.js')).href);
+
+  /* #375a: PASS_TURNS['reaction:nogo'][0] was dead config — beat() ended a block on this.ctx.len, the Set's own round
+     count, which happened to be the same 5. The block length has to come off the turn table, and the rule change has to
+     stay out of a pass & play block, or "a turn is one rule period" is only true at one turn length */
+  { const bl = /blockLen\(\)\s*\{\s*return this\.two\.on\?this\.two\.per:this\.ctx\.len/.test(rx);
+    const beatLine = (rx.match(/^\s*beat\(\)\{[^\n]*/m) || [''])[0];
+    const usesBlock = /this\.seen>=this\.blockLen\(\)/.test(beatLine) && !/this\.seen>=this\.ctx\.len/.test(beatLine);
+    const flip = (rx.match(/^[^\n]*ruleAt!==this\.seen[^\n]*/m) || [''])[0];
+    const suppressed = /!this\.two\.on/.test(flip) && /this\.RULE_EVERY/.test(flip);
+    (bl && usesBlock && suppressed) ? ok("#375a a Go / No-go turn is PASS_TURNS[0] shapes on ONE rule — read off the turn table, not off ctx.len")
+      : bad('#375a the block length comes from PASS_TURNS and the rule does not flip inside it', `blockLen ${bl} · beat ${usesBlock} · flip ${suppressed}`);
+    (cfg.PASS_TURNS['reaction:nogo'][0] >= 1) ? ok(`#375a and the config it now reads says ${cfg.PASS_TURNS['reaction:nogo'][0]} shapes, ${cfg.PASS_TURNS['reaction:nogo'][1]} turns each`) : bad('#375a PASS_TURNS row', JSON.stringify(cfg.PASS_TURNS['reaction:nogo'])); }
+  /* #375b: the 600ms fallback in twoBlockEnd invented half a player's score whenever the block held no go-shape or the
+     turn ended early on three wrong taps. It is deleted, not retuned — nothing in the block's score may be a constant */
+  { const body = (rx.match(/twoBlockEnd\(\)\{[\s\S]*?\n  \w/) || [''])[0];
+    const score = (rx.match(/blockScore\(\)\{[\s\S]*?\},\n/) || [''])[0];
+    const clean = !/\b600\b/.test(body) && !/\b600\b/.test(score) && /blockScore\(\)/.test(body);
+    clean ? ok('#375b the 600ms fallback is gone from the block score — a turn is worth what it dealt, tapped or missed')
+      : bad('#375b twoBlockEnd invents no number', body.slice(0, 120)); }
+  /* #375c: Sequence versus dealt ONE pattern and had both players answer it, so player 2 watched player 1 replay it,
+     with the keys lighting on every correct tap, before their own turn. Two patterns of equal length, dealt per player */
+  { const two = /this\.seqs=vs\?\[this\.deal\(this\.round\),this\.deal\(this\.round\)\]/.test(sq);
+    const own = /if\(vs\) this\.seq=this\.seqs\[this\.p\]/.test(sq);
+    const grow = /this\.seqs\[0\]\.push\([\s\S]{0,40}?this\.seqs\[1\]\.push\(/.test(sq);
+    const lives = /lives:3/.test(fs.readFileSync(path.join(root, 'config', 'games.js'), 'utf8'));
+    (two && own && grow) ? ok('#375c Sequence versus deals each player their own pattern of equal length, and both grow together')
+      : bad('#375c each player gets their own pattern', `dealt ${two} · picked ${own} · grown ${grow}`);
+    lives ? ok('#375c SEQ_VS.lives is still 3 — untouched, it is Aiden\'s on #376') : bad('#375c SEQ_VS.lives must not change on this build', 'it is not 3'); }
+  // 6.2 / 6.3: the two menu and grid animations are driven from JS through classes and a variable, so both halves must exist
+  { const ud = /\.item\.unx\{[^}]*var\(--ud/.test(css) && /\.item\.unx::after\{[^}]*var\(--ud/.test(css) && /setProperty\('--ud'/.test(mjs);
+    ud ? ok('6.2 the menu unlocks stagger top to bottom — --ud reaches the item and its strike') : bad('6.2 the unlock stagger', 'the --ud delay is not on both halves');
+    /\.tile\.arrive\.newthing\{/.test(css) ? ok('6.3 the arrival and L8\'s green mark are held apart, one after the other') : bad('6.3 tile arrival is distinct from the first-seen mark'); }
+
+  // ---- the app itself ----
+  await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
+  await setStorage({ 'ne.prefs': OPEN_PREFS }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(420);
+
+  // #375b again, as behaviour: 400 dealt blocks, every one fair. A block with no go-shape is what the 600 was for
+  { const d = await page.evaluate(async () => { const M = await import('./games/reaction/index.js'); const RX = M.RX;
+      const before = RX.rule; RX.rule = 'circle'; const out = { n: 0, short: 0, thrice: 0, dup: 0, len: 0, min: 99 };
+      for (let i = 0; i < 400; i++) { const b = RX.dealBlock(5); out.n++;
+        if (b.length !== 5) out.len++;
+        const go = b.filter(s => s === 'circle').length; if (go < 2) out.short++; if (go < out.min) out.min = go;
+        for (let k = 2; k < b.length; k++) if (b[k] === b[k - 1] && b[k] === b[k - 2]) out.thrice++;
+        for (let k = 1; k < b.length; k++) if (b[k] === b[k - 1] && b[k] !== 'circle') out.dup++; }
+      RX.rule = before; return out; });
+    (!d.short && !d.thrice && !d.dup && !d.len) ? ok(`#375b 400 dealt blocks: every one is 5 shapes with at least two go-shapes (fewest seen ${d.min}), no shape three running, no decoy repeated`)
+      : bad('#375b dealBlock is fair', JSON.stringify(d)); }
+
+  // 5.3: the menu item is Keys, and the screen is three of them
+  { const label = await page.evaluate(() => document.querySelector('[data-go="s-key"]').textContent.trim());
+    (label === 'Keys') ? ok('5.3 the menu item is "Keys", plural') : bad('5.3 the menu item', label); }
+  await click('[data-go="s-key"]'); await sleep(700);
+  const k1 = await page.evaluate(() => ({ screen: document.querySelector('.screen.on')?.id,
+    n: document.querySelectorAll('#key-keys .kkey').length,
+    sel: [...document.querySelectorAll('#key-keys .kkey')].findIndex(b => b.classList.contains('sel')),
+    paths: [...document.querySelectorAll('#key-keys .kgl')].map(g => g.querySelectorAll('path').length),
+    pct: [...document.querySelectorAll('#key-keys u')].map(u => u.textContent.trim()),
+    shell: [...document.querySelectorAll('#key-keys .kkey')].map(b => b.classList.contains('shell')),
+    ring: !document.getElementById('key-main').hidden }));
+  (k1.screen === 's-key' && k1.n === 3 && k1.sel === 0 && k1.ring) ? ok(`5.3 three keys, the first one open — ${k1.pct.join(' · ')}`) : bad('5.3 the three keys', JSON.stringify(k1));
+  (k1.paths.length === 3 && k1.paths[0] < k1.paths[1] && k1.paths[1] < k1.paths[2]) ? ok(`5.3 each key is more elaborate than the one before it (${k1.paths.join(' → ')} strokes, the Author's most)`) : bad('5.3 the glyphs get more elaborate', JSON.stringify(k1.paths));
+  (/^\d+%$/.test(k1.pct[0])) ? ok(`5.3 a key under 100% wears its % — "${k1.pct[0]}"`) : bad('5.3 the % overlay', JSON.stringify(k1.pct));
+  (!k1.shell[0] && k1.shell[1] && k1.shell[2]) ? ok('5.3 keys 2 and 3 are marked as the shell they are (#372)') : bad('5.3 the shell flags', JSON.stringify(k1.shell));
+  // tapping key 3 opens the Author key's screen, and it says nothing about a target nobody has set (A.2)
+  await page.evaluate(() => document.querySelector('.kkey[data-kt="2"]').click()); await sleep(320);
+  const k3 = await page.evaluate(() => ({ main: document.getElementById('key-main').hidden, shell: !document.getElementById('key-shell').hidden,
+    txt: document.getElementById('key-shell').textContent.replace(/\s+/g, ' ').trim(), rings: document.querySelectorAll('#key-shell .kroot').length,
+    title: document.getElementById('key-title').textContent.trim() }));
+  (k3.main && k3.shell && !k3.rings && /not set yet/i.test(k3.txt)) ? ok(`5.3 the Author key opens its own screen — "${k3.title}" — a shell that says so, with no ring and no invented bar`) : bad('5.3 the shell screen', JSON.stringify(k3));
+  await page.evaluate(() => document.querySelector('.kkey[data-kt="0"]').click()); await sleep(320);
+
+  /* 5.2: a clearance-bar row is a way IN. It uses the same pendingAim the achievement-at-the-top uses (2.2), so the bar
+     is the goal line at the top of the run — not a second mechanism, and not the chain's automatic offer instead */
+  await page.evaluate(() => document.querySelector('.knode[data-kg="quick-tap"]').dispatchEvent(new MouseEvent('click', { bubbles: true }))); await sleep(360);
+  const want = await page.evaluate(() => { const r = document.querySelector('#key-list .krow'); return r ? r.querySelector('i').textContent.trim() : null; });
+  await page.evaluate(() => document.querySelector('#key-list .krow').click()); await sleep(900);
+  const pin = await page.evaluate(() => ({ game: document.getElementById('game').classList.contains('on'),
+    on: document.getElementById('goal').classList.contains('on'), goal: document.getElementById('goal').textContent.replace(/\s+/g, ' ').trim() }));
+  const num = (want || '').match(/[\d.]+/);
+  (pin.game && pin.on && num && pin.goal.includes(num[0])) ? ok(`5.2 tapping a clearance bar goes and plays it, with the bar pinned at the top: "${pin.goal}"`) : bad('5.2 the row starts the run with the bar pinned', JSON.stringify(pin) + ' want ' + want);
+  await page.evaluate(async () => { const RUN = await import('./run/run.js'); RUN.abort(); }); await sleep(300);
+
+  /* 5.1: a key unlock INTERRUPTS the result screen. Driven through the real event, so it is the shipped path: the result
+     fades and stops taking taps, the key plays the segment with the whole root lit behind it, and it hands itself back */
+  const seq = await page.evaluate(async () => {
+    const E = await import('./core/events.js'); const S = await import('./core/store.js'); const ST = await import('./core/state.js');
+    const K = await import('./progress/key.js'); const R = await import('./ui/router.js');
+    S.prefs.adRuns = 0; S.store.bars = {}; S.save();
+    Object.assign(ST.sel, { game: 'quick-tap', diff: 'two', secs: 5, vs: 0, practice: 0 }); ST.VS.reset();
+    const bar = K.COMBOS.find(c => c.g === 'quick-tap' && c.d === 'two' && c.s === 5).bar;
+    const run = { t: Date.now(), g: 'quick-tap', d: 'two', s: 5, hits: bar.bar + 3, misses: 0, n: '', v: 2 };
+    const adv = K.checkKey(run, false);
+    if (!adv) return { err: 'the fabricated run did not clear a bar' };
+    E.emit('run:record', { run }); E.emit('run:finish', { run, isBest: true, two: false, fresh: [], ach: [], adv });
+    const at = () => (document.querySelector('.screen.on') || {}).id;
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    await wait(900);
+    const faded = document.getElementById('s-over').classList.contains('fadeout');
+    const onKey = at();
+    // "before the player can input anything": Go is the one control that would restart the run, so tap it
+    const before = at(); document.getElementById('again').click(); await wait(180); const moved = at() !== before;
+    await wait(320);
+    const glow = !!document.querySelector('.kr.glow');
+    const grew = !!document.querySelector('.kroot.grow');
+    await wait(3200);
+    return { err: null, faded, onKey, moved, glow, grew, back: at(), clear: document.getElementById('s-over').classList.contains('fadeout'), bars: Object.keys(S.store.bars).length };
+  });
+  if (seq.err) bad('5.1 the key interlude', seq.err);
+  else {
+    (seq.faded && seq.onKey === 's-key') ? ok('5.1 a fresh clear fades the result out and takes over the screen — no toast to find and tap') : bad('5.1 the result stands aside for the key', JSON.stringify(seq));
+    (!seq.moved) ? ok('5.1 and nothing on the result takes a tap while it plays (Go did nothing)') : bad('5.1 input is locked during the interlude', 'a tap on Go moved the screen');
+    (seq.grew && seq.glow) ? ok('5.1 the segment fills with that game\'s whole root lit behind it') : bad('5.1 the advance and the root glow', JSON.stringify(seq));
+    (seq.back === 's-over' && !seq.clear) ? ok('5.1 then it hands itself back to the result, unfaded and live again') : bad('5.1 the interlude returns to the result', JSON.stringify(seq));
+  }
+
+  // 5.4: the whole screen arrives once per profile, and only once
+  { await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
+    await setStorage({ 'ne.prefs': OPEN_PREFS }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(420);
+    await click('[data-go="s-key"]'); await sleep(200);
+    const first = await page.evaluate(() => document.getElementById('s-key').classList.contains('first'));
+    await sleep(2600); await click('#s-key .back'); await sleep(600); await click('[data-go="s-key"]'); await sleep(240);
+    const again = await page.evaluate(() => ({ cls: document.getElementById('s-key').classList.contains('first'), seen: JSON.parse(localStorage.getItem('ne')).prefs.keySeen }));
+    (first && !again.cls && again.seen) ? ok('5.4 the keys animate into existence the first time and never again (prefs.keySeen)') : bad('5.4 the first-open animation', JSON.stringify({ first, ...again })); }
+
+  // 6.1: "tap to begin" is display type on the title screen, and centred on the screen it sits on
+  { await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
+    await setStorage({ 'ne.prefs': { snd: 'off', musicG: {} } }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(5200);
+    const h = await page.evaluate(() => { const e = document.getElementById('storyhint'); const r = e.getBoundingClientRect(); const c = getComputedStyle(e);
+      return { size: parseFloat(c.fontSize), shown: c.display !== 'none', mid: r.left + r.width / 2, half: innerWidth / 2, txt: e.textContent.trim() }; });
+    (h.shown && h.size >= 13 && Math.abs(h.mid - h.half) < 2) ? ok(`6.1 "${h.txt}" is ${h.size}px and centred on the screen`) : bad('6.1 tap to begin is larger and centred', JSON.stringify(h)); }
+
+  // 6.3: a game unlocked since the last visit arrives on the grid, and wears the green mark as well
+  { await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
+    await setStorage({ ne: { v: 1, prefs: { story: 1, gridSeen: 1, played: 1, snd: 'off', musicG: {} }, runs: [], unlock: { 'dots:blind': Date.now() }, ach: {}, intro: {}, seen: { 'game:quick-tap': 1 }, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(420);
+    await click('[data-go="s-pick"]'); await sleep(300);
+    const t = await page.evaluate(() => { const e = document.querySelector('.tile[data-game="dots"]'); const q = document.querySelector('.tile[data-game="quick-tap"]');
+      return { arrive: e.classList.contains('arrive'), green: e.classList.contains('newthing'), other: q.classList.contains('arrive') }; });
+    (t.arrive && t.green && !t.other) ? ok('6.3 a newly unlocked game arrives on the grid and is marked green (L8) — and no tile that was already seen moves') : bad('6.3 the newly unlocked tile animates', JSON.stringify(t)); }
+
+  // 6.4 / 6.5: the scores panel is a fixed box, and a pass & play Go says just Go
+  { await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
+    await setStorage({ 'ne.prefs': OPEN_PREFS }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(420);
+    await openSheet('quick-tap', 0, 0); await click('#go-btn'); await driveToResult('quick-tap', '6.4 a run for the result screen', 30000);
+    const box = await page.evaluate(() => {
+      const w = document.querySelector('#over-top .otwrap'), body = document.getElementById('over-runs'), go = document.getElementById('to-games');
+      const c = getComputedStyle(w); const one = body.innerHTML;
+      const top1 = go.getBoundingClientRect().top;
+      body.innerHTML = Array.from({ length: 10 }, (_, i) => `<tr><td>${i + 1}</td><td></td><td>0</td><td>—</td></tr>`).join('');
+      const top10 = go.getBoundingClientRect().top; body.innerHTML = one;
+      return { h: parseFloat(c.height), scroll: c.overflowY, top1: Math.round(top1), top10: Math.round(top10) }; });
+    (box.scroll === 'auto' && box.top1 === box.top10) ? ok(`6.4 the scores panel is a fixed ${Math.round(box.h)}px box that scrolls inside itself — Game select does not move when it fills`) : bad('6.4 the scores panel stops pushing Game select down', JSON.stringify(box));
+    await click('#over-back'); await sleep(400);
+    const gos = await page.evaluate(async () => { const out = {};
+      const ST = await import('./core/state.js'); const P = await import('./ui/router.js');
+      for (const [g, mi] of [['quick-tap', 0], ['reaction', 0], ['hold', 0]]) {
+        const R = await import('./games/registry.js');
+        Object.assign(ST.sel, { game: g, diff: R.GAMES[g].modes[mi], vs: 1 });
+        P.show('s-pick', { g, d: R.GAMES[g].modes[mi] });
+        await new Promise(r => setTimeout(r, 160));
+        out[g] = document.getElementById('go-btn').textContent.trim(); }
+      return out; });
+    (Object.values(gos).every(v => v === 'Go')) ? ok(`6.5 a pass & play Go says just "Go", every game — no "10s each", no "pass & play" (${Object.keys(gos).join(', ')})`) : bad('6.5 the pass & play Go button', JSON.stringify(gos)); }
 }
 
 // ---- 7. every button action once (build 15: ui/actions.js dispatches on data-act) ----

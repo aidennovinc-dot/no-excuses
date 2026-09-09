@@ -51,8 +51,12 @@ function renderTiles(){ const reveal=!prefs.gridSeen; if(reveal){ prefs.gridSeen
     // v13 (1.2 / L7): white until the game has been played once — colour arrives with the first recorded run
     const played=runs.some(r=>r.g===g), c=colOf(g); t.classList.toggle('unplayed',!played);
     t.style.setProperty('--sq-live',played?c.sq:'#FFFFFF'); t.style.setProperty('--cue',played?c.lead:'#8A8883');
-    t.classList.remove('reveal','newthing'); t.style.animationDelay=''; if(reveal){ t.classList.add('reveal'); t.style.animationDelay=(i*120)+'ms'; }
-    if(open&&!reveal){ const nw=newMark('game:'+g,fresh); if(nw) t.classList.add('newthing'); } });
+    t.classList.remove('reveal','newthing','arrive'); t.style.animationDelay=''; if(reveal){ t.classList.add('reveal'); t.style.animationDelay=(i*120)+'ms'; }
+    /* v15 (6.3, build 26): a game unlocked since you were last here ARRIVES the first time it is seen, on top of L8's
+       green first-seen marker. The two say different things and both are wanted: the animation is the game turning up,
+       the green border is the mark that says which one is new. The first visit of all keeps its own reveal (v11) and
+       does not get this as well — everything is new on that screen, so nothing would be. */
+    if(open&&!reveal){ const nw=newMark('game:'+g,fresh); if(nw){ t.classList.add('newthing'); t.classList.add('arrive'); } } });
   markSeen(fresh); }
 // a locked mode (v11) is crossed out, not just greyed; tapping it says what it takes
 function fillSheet(){ const g=GAMES[sel.game]; const fresh=[]; $('#diff-row').innerHTML=g.modes.map(d=>{ const open=isOpen(sel.game,d); const nw=open?newMark('mode:'+sel.game+':'+d,fresh):''; return `<button data-act="diff" class="choice ${open?'':'locked'}${nw}" data-diff="${d}"><span class="pic">${picOf(sel.game,d)}</span><span class="txt"><b class="${open?'':'x'}">${MODE_NAME[d]}</b><small class="${open?'':'need'}">${open?g[d]:T(SHEET.toUnlock,{need:needFor(sel.game,d)})}</small></span></button>`; }).join(''); markSeen(fresh); }
@@ -76,7 +80,7 @@ function fillTimes(){ const c=GC(sel.game,sel.diff); const seq=sel.game==='seque
     : `<span class="chip lbl">${SHEET.practiceFrom}</span>`+(pOpen?[0,5,10,15].map(n=>`<button data-act="prac" class="chip ${sel.practice===n?'sel':''}" data-prac="${n}">${n||SHEET.off}</button>`).join(''):`<button data-act="praclock" class="chip locked x" data-praclock="1">${SHEET.pracLocked}</button>`);
   $('#seq-opts').style.display=seq&&stage==='len'&&(!sel.vs||seqVs)?'flex':'none';
   markSeen(fresh);
-  $('#go-btn').textContent=goLabel(sel.game,sel.diff,versus,fixed); }
+  $('#go-btn').textContent=goLabel(sel.game,sel.diff,versus); }
 // open the sheet on a game (v11), at the mode row or straight at the length row. Used by achievements, the result screen's Back and a challenge link
 function openSheet(g,d,s){ const G_=GAMES[g];
   $$('.tile').forEach(t=>t.classList.toggle('keep',t.dataset.game===g)); fillSheet();

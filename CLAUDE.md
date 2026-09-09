@@ -51,6 +51,21 @@ lives beside `BUILD` and does **not** move with it — see the comment there for
   a `SET_COPY` row contributes Set and Streak per mode, a timed game contributes its lengths, Sequence its key counts.
   31 today; a new mode joins the key with one row in `config/key-bars.js` and no code change. The gate fails on a
   literal `31` in `progress/key.js`, and on any combination without a bar or any bar without a combination.
+- **There are THREE keys and they are difficulty TIERS over the same thirty-one combinations** (v15 5.3 / A.1, build 26):
+  key 1 the clearance bars, key 2 a pro tier, key 3 the author's times. No fourth dimension, no per-bar stacking.
+  **Keys 2 and 3 are a shell** — `shell:true` in `config/keys.js` — because register #372 has not decided what is behind
+  them and **A.2 forbids any build deriving a bar**. They say so on screen rather than showing an invented target; the
+  flag comes off the day #372 is answered. The three glyphs get more elaborate as the tier gets harder, and that is the
+  whole of "progressively more intense" — there is no second scale to keep in step with it.
+- **A key unlock interrupts the result screen (v15 5.1, build 26)** and is not a toast any more. `ui/screens/result.js`
+  fades, takes the input lock, and asks with `show('s-key', {advance, auto})`; `ui/screens/key.js` plays the segment with
+  the game's whole root lit behind it and answers with a `key:done` event. Neither screen imports the other (A4). The
+  lock is `lock()` in `ui/actions.js` and it has to be there: `pointer-events:none` would still leave the bare-ground
+  tap reaching `onClick` and going Back.
+- **One mechanism pins a goal at the top of a run, not two.** A clearance-bar row (5.2), the Next card's achievement
+  (2.2) and the lock box's Try to unlock all go through `goWhere` -> `pendingAim` -> the `#goal` line. **An aim the player
+  asked for outranks `goalFor`'s automatic offer** (build 26) — it used to lose whenever that combination also carried an
+  unearned unlock, which made "pin it as a running goal" quietly show something else.
 
 ## Structure
 
@@ -76,8 +91,11 @@ imports them all. **`unlocks.js` is new at build 23 (v15 2.4)** — the menu spl
 because unlocks outrank achievements everywhere the next thing is surfaced (2.2). Every line on it is read from `UNLOCKS`
 and `lenNeed` (L6); nothing about a requirement is written in that file or in its markup. It is a **shell** on purpose:
 what sits behind keys 2 and 3 is register #372 and is undecided, so its key section says only what is true today. **`key.js` is new at build 22 (v14 §9.2–9.7)** — the second progression system, its own menu item
-below Achievements. It is the one screen with two ways in: from the menu, and from a result screen that just cleared a
-bar, which passes `{advance, from:'s-over'}` so the root animates and Back returns to the run rather than the menu. **`testing.js` is new at build 21 (v14 8.10):** the dev switches are their own menu item
+below Achievements. **Rebuilt at build 26 (v15 §5) as KEYS, plural:** a row of three tiers on top, the ring and its panel
+under whichever is selected, and a shell screen for keys 2 and 3. Three ways in now: from the menu; from a result screen
+that just cleared a bar with `{advance, from:'s-over'}` (Back returns to the run); and from the same screen with
+`{advance, auto:'s-over'}`, which is 5.1's input-locked interlude and hands itself back. Its rows are controls —
+tapping one starts that combination with the bar pinned (5.2). **`testing.js` is new at build 21 (v14 8.10):** the dev switches are their own menu item
 directly below About, not a block at the bottom of it, and that file owns the one `[data-dev]` sweep. **`title.js` is gone since build 19 (L1 / v14 1.2):** the title sequence is the `story`
 class on the menu screen, not a screen of its own, so NO EXCUSES is one node that never moves or
 re-renders — `show('s-menu', {story: true})` plays it. A screen calls `register(id, { onShow(opts), onBack() })` on `ui/router.js` and
@@ -90,7 +108,8 @@ Every change emits `screen:change {id}` (`'game'` for the game layer) — the at
 its frame loop, the theme re-applies the game's colours, the wheel and the lock box close.
 
 **The store (A5, S3) — since build 18.** One localStorage key, `ne`, holding `{ v, prefs, runs, ach,
-unlock, intro, seen, bars }` (`core/store.js`). **`bars` is new at build 22** — the key's cleared combinations, a map of
+unlock, intro, seen, bars }` (`core/store.js`). **`prefs.keySeen` is new at build 26** — the once-per-profile arrival of
+the keys screen (5.4), reset by Fresh game beside `gridSeen` and `menuSeen`. **`bars` is new at build 22** — the key's cleared combinations, a map of
 `'<game>:<mode>:<length>'` → when it first cleared, written only by `progress/key.js`. It needed no ladder step: a v1
 record without one shape-checks to `{}`, which is the right answer for a profile that has never met the key. On load the migration ladder runs forward (v0 = the seven
 build-13 keys, folded in once with the v8–v11 reshapes and then removed), then every field is
@@ -139,7 +158,9 @@ is not a length**) · `unlocks.js` (UNLOCKS + LEN_RULES — L6) · `achievements
 shown in place of its name since build 21 / v14 8.5 — and AUTHOR_RECORDS) · **`key-bars.js` (KEY_BARS + KEY_NOTE — the
 key's 31 clearance bars, build 22, keyed `'<game>:<mode>:<length>'` exactly as `progress/key.js` builds them; each row
 carries its `bar`, its `dir`, and the `conf` / `basis` the catalogue prints. Aiden amends these during play-test and a
-corrected number is an edit to that file alone)** · `copy.js` (every banner, HUD, verdict, intro and screen string, grouped by where it
+corrected number is an edit to that file alone)** · **`keys.js` (KEYS + KEY_ART — the three key tiers and their glyph
+paths, build 26. Three rows, `shell:true` on the two #372 has not decided. A separate file from `key-bars.js` on purpose:
+a tier is not a bar, and the bars file is the one #371 edits)** · `copy.js` (every banner, HUD, verdict, intro and screen string, grouped by where it
 shows; `{name}` placeholders are filled by `T()` in `core.js`) · `theme.js` (P1/P2 colours, DESIGNS,
 ITEMS, VS_ART) · `audio.js` (SCALES, TRACKS). Nothing in `config/` imports anything; the gate asserts
 it. **The functions that used to sit in those tables live under the same id elsewhere:** predicates in
@@ -254,7 +275,18 @@ values passes one step over the line and fails one step under it (1.1–1.4), on
 (1.0d) and nothing on the Unlocks screen is a second copy (2.4), the new Estimate secret row is described (1.5), no Next
 card on a fresh profile's first menu open (2.2), tapping a locked length on the result screen shows its requirement and
 stays put (2.1), and **an unlock that fires mid-run is in localStorage after the run is quit (2.5)** — plus the static
-assert that the run banks before `run:finish` and the result screen no longer earns anything. **Two-player (v15 §4,
+assert that the run banks before `run:finish` and the result screen no longer earns anything. **The keys, the surface and the two-player defects (v15 §5-§6 and register #375,
+build 26)** — a Go / No-go turn is `PASS_TURNS[0]` shapes on one rule with the flip suppressed inside a block (#375a),
+`twoBlockEnd` contains no constant and 400 dealt blocks each carry at least two go-shapes with no shape three running and
+no decoy repeated (#375b), Sequence versus deals two patterns and grows both while `SEQ_VS.lives` stays 3 (#375c); the
+menu item reads "Keys", the three glyphs get strictly more elaborate, a key under 100% wears its %, keys 2 and 3 are
+flagged shell and open a screen with no ring and no invented bar (5.3), a clearance-bar row starts its run with the bar
+on the goal line (5.2), a fresh clear fades the result, refuses a tap on Go, grows the segment with the root lit and
+hands itself back (5.1), the arrival plays once per profile (5.4), "tap to begin" is display type and centred (6.1), a
+newly unlocked tile arrives and is marked green (6.3), Game select does not move as the top 10 fills (6.4) and a pass &
+play Go says just "Go" (6.5). **`driveToResult` waits the 5.1 interlude out** — the fade is already on by the time any
+poll can see `s-over`, so a test that starts tapping immediately is tapping a screen that is deliberately not listening.
+**Two-player (v15 §4,
 build 25)** — every turn-taking mode has a `PASS_TURNS` row and every row names a real mode; a pass & play Estimate,
 Timing, Flash and Go / No-go each play to a result **without ever reaching the hand-over screen**, show the pair, hide the
 board (L10) and leave the store empty (A.3 — no run, no unlock, no achievement, no bar, read back from localStorage after

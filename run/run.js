@@ -80,7 +80,12 @@ function start(){
   const who=VS.on?pWho(VS.stage-1)+' · ':''; $('#hud-mode').innerHTML=who+(MODE_NAME[sel.diff]?MODE_NAME[sel.diff]+' · ':'')+(versus?(c.vsLens?lenName(sel.game,sel.secs,sel.diff,true):HUD.versus):shared?HUD.pass:lenName(sel.game,sel.secs,sel.diff)); $('#score').textContent=c.lower?'0.00':'0';
   // the next unlock this run could earn, if any, sits under the HUD (v8). Not for two players. v11: a "Try to unlock" or achievement run keeps its goal up as a reminder even when nothing new can unlock
   // v13 (3.8): a "Try to unlock" run keeps the goal for the thing that was tapped — not whatever the chain would offer next
-  R.goal=VS.on||sel.vs?null:((pendingGoal&&UNLOCKS.find(u=>u.key===pendingGoal))||goalFor(sel.game,sel.diff,sel.secs)); const gl=$('#goal'); gl.classList.remove('hit'); gl.classList.toggle('roll',!!R.goal); gl.classList.toggle('on',!!R.goal||(!!pendingAim&&!sel.vs)); if(R.goal){ gl.innerHTML=T(HUD.goal,{need:here(R.goal.need),name:unlockName(R.goal.key)}); } else if(pendingAim&&!sel.vs) gl.innerHTML=T(HUD.aim,{aim:here(pendingAim)}); else gl.innerHTML='';
+  /* v15 (5.2, build 26): an aim the player ASKED for outranks the chain's automatic offer. goalFor() is what the game
+     would have suggested on its own; pendingAim is a row somebody tapped to come here — a clearance bar from the key
+     screen, or the achievement the Next card carried (2.2). It used to lose to goalFor whenever that combination also
+     had an unearned unlock sitting on it, so "pin it as a running goal" quietly showed something else. An explicit
+     pendingGoal still wins over both, because that is a tapped unlock with a live test behind it. */
+  R.goal=VS.on||sel.vs?null:((pendingGoal&&UNLOCKS.find(u=>u.key===pendingGoal))||(pendingAim?null:goalFor(sel.game,sel.diff,sel.secs))); const gl=$('#goal'); gl.classList.remove('hit'); gl.classList.toggle('roll',!!R.goal); gl.classList.toggle('on',!!R.goal||(!!pendingAim&&!sel.vs)); if(R.goal){ gl.innerHTML=T(HUD.goal,{need:here(R.goal.need),name:unlockName(R.goal.key)}); } else if(pendingAim&&!sel.vs) gl.innerHTML=T(HUD.aim,{aim:here(pendingAim)}); else gl.innerHTML='';
   // v15 (2.2): the thing being chased sits at the TOP of the screen during a run, so it is visible while playing. The HUD
   // steps down to make room only when there is a goal to show — a run with nothing to chase looks exactly as it did
   $('#game').classList.toggle('goalon',gl.classList.contains('on'));

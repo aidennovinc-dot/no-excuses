@@ -88,6 +88,6 @@ function save(){ return write(KEY,JSON.stringify(store)); }
 if(save()&&legacy) LEGACY.forEach(drop);
 const musicOn=g=>prefs.musicG[g]!==false;
 // Fresh game (the About screen's dev switch): progress goes, the look and the name stay
-function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0}); delete prefs.mig11; save(); emit('store:reset'); }
+function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0}); delete prefs.mig11; save(); emit('store:reset'); }
 
 export { musicOn, prefs, reset, save, store };

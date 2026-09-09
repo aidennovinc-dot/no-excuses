@@ -2,9 +2,8 @@
    the score's number format (FMT), the two board columns (COLS) and the mode picture (PIC), keyed by game id with the
    same overlays the data has — 'g', 'g:d', 'g:streak', 'g:d:streak' (GV in games/registry.js resolves them). No DOM. */
 import { SHEET } from "../config/copy.js";
-import { PASS_LEN } from "../config/games.js";
-import { GC, GV, SHARED2 } from "../games/registry.js";
-import { T, f2 } from "../core.js";
+import { GC, GV } from "../games/registry.js";
+import { f2 } from "../core.js";
 
 const same=v=>v, int=v=>String(Math.round(v)), str=v=>String(v);
 // the score's number: a Set's unit per game and mode; every Streak is a count of rounds
@@ -40,7 +39,10 @@ const fmtScore=(g,v,d,s)=>fmtOf(g,d,s)(v);
 const scoreTxt=(g,v,d,s)=>fmtScore(g,v,d,s)+(GC(g,d,s).suffix||'');
 const colsOf=(g,d,s)=>GV(COLS,g,d,s,COLS.streak);
 const picOf=(g,d)=>(PIC[g]||(()=>''))(d);
-// the Go button's face (v10): versus, a fixed pass & play length, or plain Go — the same on the pick sheet and the result screen (build 18: shared here)
-const goLabel=(g,d,versus,fixed)=>versus?SHEET.goVersus:fixed?(PASS_LEN[g]&&!SHARED2(g,d)?T(SHEET.goEach,{n:PASS_LEN[g]}):SHEET.goPass):SHEET.go;
+/* the Go button's face (v10): versus, or plain Go — the same on the pick sheet and the result screen (build 18: shared here).
+   v15 (6.5, build 26): pass & play says just "Go", for every game. It used to read "Go · 10s each" on Quick Tap and Dots
+   and "Go · pass & play" on the five that share a run — a length on a button whose own length row is hidden, and a label
+   naming the mode the player had just picked two chips ago. SHEET.goEach and SHEET.goPass are retired with it. */
+const goLabel=(g,d,versus)=>versus?SHEET.goVersus:SHEET.go;
 
 export { COLS, FMT, PIC, colsOf, fmtOf, fmtScore, goLabel, picOf, scoreTxt };

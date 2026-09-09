@@ -15,6 +15,7 @@
    A game's root length on the key screen is the fraction of ITS OWN combinations cleared, so it grows in segments
    (9.6). Nothing in here touches the DOM. */
 import { KEY_BARS } from "../config/key-bars.js";
+import { KEYS } from "../config/keys.js";
 import { save, store } from "../core/store.js";
 import { GAMES, GC } from "../games/registry.js";
 
@@ -54,4 +55,14 @@ function keyState() { const games = Object.keys(GAMES).map(gameKey);
   const done = games.reduce((n, x) => n + x.done, 0), total = games.reduce((n, x) => n + x.total, 0);
   return { games, done, total, frac: total ? done / total : 0, whole: total > 0 && done === total }; }
 
-export { COMBOS, barFor, barsMissing, barsOrphan, checkKey, cleared, combos, gameKey, isCleared, keyOf, keyState };
+/* the three keys (v15 §5.3 / A.1, build 26). They are difficulty TIERS over the same combinations, not three collections:
+   key 1 is the clearance bars this file already keeps, key 2 a pro tier and key 3 the author's times. Tiers 2 and 3 are a
+   SHELL — register #372 is undecided and A.2 forbids a build deriving a bar — so they answer with no combinations at all
+   rather than a fabricated total. `locked` means "not finished", which is what a key that has not turned yet is. */
+function keyTier(i) { const k = KEYS[i]; if (!k) return null;
+  if (k.shell) return { i, id: k.id, name: k.name, lede: k.lede, shell: true, done: 0, total: 0, frac: 0, whole: false, locked: true };
+  const st = keyState();
+  return { i, id: k.id, name: k.name, lede: k.lede, shell: false, done: st.done, total: st.total, frac: st.frac, whole: st.whole, locked: !st.whole }; }
+const keyTiers = () => KEYS.map((_, i) => keyTier(i));
+
+export { COMBOS, barFor, barsMissing, barsOrphan, checkKey, cleared, combos, gameKey, isCleared, keyOf, keyState, keyTier, keyTiers };

@@ -16,7 +16,7 @@ import { makeTwo } from "../_shared/two.js";
 // it: the budget is spent by the reaction-time overspend on legal taps as well as by wrong taps, so mistakes do not have to
 // exhaust it on their own. The Streak has no wrong-tap counter and must not gain one. B.3 still stands — the SET keeps its
 // own 150ms-added penalty and its own three-wrong-taps ending; the two currencies differ and must not be harmonised.
-const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[], faults:0, t0:0, rule:'circle', shown:'', armed:false, over:0, out:false, wrong:0, seen:0, vsN:[0,0], vsDone:false, last1:'', last2:'', two:{on:false},
+const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[], faults:0, t0:0, rule:'circle', shown:'', armed:false, over:0, out:false, wrong:0, seen:0, vsN:[0,0], vsDone:false, last1:'', last2:'', two:{on:false}, block:null, blockGo:0,
   // v14 section C.1 (L5, build 22): a Flash Streak spends everything over 150ms of its 500ms budget — the number 6.8 asked for.
   // B.1's 250 was Cowork's reasoning and Aiden overruled it. A good phone tap is ~250–280ms, so nearly every rep spends
   // 100–130ms and a run lasts four or five rounds instead of ten. That is the intended effect, not a regression. Budget unchanged.
@@ -26,7 +26,10 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
   // not 400 over the free allowance — and CONSUMES the attempt instead of being a retakeable fault. Flash only:
   // Go / No-go's three numbers below are untouched by it. The note arrived on the Go / No-go card and Aiden says in the
   // note itself that he meant Flash (v15 0.2), which is why it is here and not in nogoTap
-  FLASH_FREE:150, FLASH_BUD:500, FLASH_EARLY:400, NOGO_FREE:150, NOGO_BUD:1000, NOGO_WRONG_SET:150, NOGO_WRONG_STREAK:200,
+  // v15 (#375a, build 26): the rule period, which was the bare 5 inside beat()'s `seen % 5` test. It is named because a
+  // pass & play TURN is meant to be exactly one rule period, and the gate now asserts PASS_TURNS['reaction:nogo'][0]
+  // against it — change the turn length without changing this and the claim stops being true out loud rather than quietly
+  FLASH_FREE:150, FLASH_BUD:500, FLASH_EARLY:400, NOGO_FREE:150, NOGO_BUD:1000, NOGO_WRONG_SET:150, NOGO_WRONG_STREAK:200, RULE_EVERY:5,
   // v15 (3.6): every Flash result reads down the same four lines — the time, the baseline it is measured against, the
   // difference between them, then where the run stands. The running total is BELOW as well as in the HUD above
   rxCard(word,ms,add,bad,note){ const pane=$('#rxpane'); if(!pane) return; pane.classList.remove('lit'); pane.classList.add(bad?'bad':'hit');
@@ -115,12 +118,43 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
   // three wrong taps. v14 (6.2 / L5 / C.2): a Streak is a cumulative TIME budget like every other Streak — ms over 150 plus 200ms a
   // wrong tap, out at 1000ms — and the score is shapes survived, not a count of what went wrong. The three-wrong-taps ending
   // belongs to the SET only (C.4 retired it for the Streak); the mode line still says it because the Set is what it describes
-  nogoBegin(){ this.rule=['circle','square','tri'][rnd(3)]; this.round=1; this.ruleAt=0; this.last1=''; this.last2=''; this.hudNogo(); this.rulePause(); },
+  nogoBegin(){ this.rule=['circle','square','tri'][rnd(3)]; this.round=1; this.ruleAt=0; this.last1=''; this.last2='';
+    // v15 (#375a / #375b, build 26): a pass & play turn deals its whole block up front, against this one rule
+    this.block=this.two.on?this.dealBlock(this.blockLen()):null; this.blockGo=this.block?this.block.filter(s=>s===this.rule).length:0;
+    this.hudNogo(); this.rulePause(); },
+  /* v15 (#375a, build 26): how many shapes a turn is. In pass & play it is PASS_TURNS['reaction:nogo'][0] — the config
+     the build-25 review found was never read, because beat() ended a block on `this.seen >= this.ctx.len`, the Set's own
+     round count. The two happened to be the same number, so the block was the right length by coincidence and would have
+     silently followed SET_COPY the day either moved. Solo is unchanged: ctx.len is the length row the player picked. */
+  blockLen(){ return this.two.on?this.two.per:this.ctx.len; },
+  /* v15 (#375b, build 26): DEAL the block, do not roll each beat. Rolling shape by shape can hand a player a turn with
+     no go-shape in it at all, and then there is nothing to score them on — which is what the deleted 600ms fallback was
+     papering over. A dealt block guarantees at least two go-shapes and keeps both of nextShape()'s fairness rules
+     (v14 6.25): no shape three times running, and a decoy never repeats. Solo still rolls — a Streak has no block to
+     deal, and dealing a solo Set would change a scoring distribution nobody asked to change. */
+  dealBlock(n){ const others=['circle','square','tri'].filter(s=>s!==this.rule);
+    const go=Math.max(2,Math.min(n,2+rnd(Math.max(1,n-2))));   // at least two, never every shape in a block of 3+
+    let mark=null;
+    for(let a=0;a<40;a++){ const m=Array.from({length:n},(_,i)=>i<go?1:0);
+      for(let i=m.length-1;i>0;i--){ const j=rnd(i+1); [m[i],m[j]]=[m[j],m[i]]; }
+      if(!m.some((v,i)=>i>1&&v&&m[i-1]&&m[i-2])){ mark=m; break; } }
+    if(!mark) mark=Array.from({length:n},(_,i)=>i%2===0&&i/2<go?1:0);   // spread them out rather than give up
+    let prev='', d=rnd(2); return mark.map(v=>{ if(v){ prev=this.rule; return this.rule; }
+      if(others[d]===prev) d=1-d; prev=others[d]; d=1-d; return prev; }); },
   // v14 (6.26): a Streak was too fast to react to. It runs on a slower beat than the Set
   beatMs(){ return this.streak()?1150:800; },
   hudNogo(){ if(this.two.on) return hud.timeHtml(this.two.hudLine());
     hud.time(this.streak()?T(CP.hudNogoStreak,{n:this.seen+1,over:Math.round(this.over),bud:this.NOGO_BUD}):T(CP.hudNogo,{n:Math.min(this.ctx.len,this.seen+1),s:this.ctx.len,w:this.wrong})); },
   nogoScore(){ const [x,y]=minMax(this.times); if(this.streak()) return {hits:this.seen,misses:this.wrong,x,y,lim:this.NOGO_BUD+'ms'}; return {hits:Math.round((this.times.length?mean(this.times):600)+this.NOGO_WRONG_SET*this.wrong),misses:this.wrong,x,y}; },
+  /* v15 (#375b, build 26): what a pass & play BLOCK is worth, and the reason the 600ms fallback could be deleted rather
+     than retuned. Every go-shape the block dealt is worth either the tap it got or the whole beat window it was given —
+     both real numbers the run produced — plus 150ms a wrong tap, which is how the Set scores (v14 A.2). dealBlock
+     guarantees at least two go-shapes, so there is always something to average, and a turn that ended early on three
+     wrong taps is charged for the shapes it never answered instead of being scored better for giving up. */
+  blockScore(){ const pad=Math.max(0,this.blockGo-this.times.length);
+    return mean(this.times.concat(Array(pad).fill(this.beatMs())))+this.NOGO_WRONG_SET*this.wrong; },
+  // the number under the HUD while a block is being played — the same one it will bank, so it can only improve
+  liveNum(){ return this.streak()?this.seen:Math.round(this.two.on?this.blockScore():(this.times.length?mean(this.times):600)+this.NOGO_WRONG_SET*this.wrong); },
   rulePause(){ this.clearT(); this.st='rule'; $('#gen').innerHTML=`<div class="rxpane" id="rxpane"></div>`; rxBar([...CP.ruleTap,shapeI(this.rule),`<b>${SHAPE_WORD[this.rule]}</b>`]); this.later(()=>this.nogoWait(),2200); },
   // v14 (6.25): there is ALWAYS a wait period — before the first shape and after every rule change. Tapping through it is a wrong tap
   nogoWait(){ this.clearT(); this.st='wait'; const pane=$('#rxpane'); if(pane) pane.innerHTML=`<div class="rxmsg" id="rxmsg" style="top:40%;font-size:11px">${CP.wait}</div>`; this.later(()=>this.beat(),700+Math.random()*900); },
@@ -132,11 +166,15 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
       if(sh!==this.rule&&sh===this.last1) continue;
       break; }
     this.last2=this.last1; this.last1=sh; return sh; },
-  // v15 (4.4): in pass & play the end of a block is the end of a TURN, not the end of the run
-  beat(){ if(!this.streak()&&this.seen>=this.ctx.len) return this.two.on?this.twoBlockEnd():this.nogoEnd();
+  /* v15 (4.4): in pass & play the end of a block is the end of a TURN, not the end of the run.
+     v15 (#375a, build 26): the block's length comes from PASS_TURNS now, not from the Set's round count — and the rule
+     change is SUPPRESSED inside a pass & play block, so a turn is one rule period whatever the turn length is set to.
+     Build 25's comment claimed that and the code did not deliver it: the rule flips on RULE_EVERY shapes, so any turn
+     longer than five would have spanned a change and put the block's dealt shapes under a rule that no longer applied. */
+  beat(){ if(!this.streak()&&this.seen>=this.blockLen()) return this.two.on?this.twoBlockEnd():this.nogoEnd();
     if(this.streak()&&this.over>=this.NOGO_BUD) return this.nogoEnd();
-    if(this.seen>0&&this.seen%5===0&&this.ruleAt!==this.seen){ this.ruleAt=this.seen; this.st='rule2'; const others=['circle','square','tri'].filter(s=>s!==this.rule); this.rule=others[rnd(2)]; this.last1=''; this.last2=''; const p=$('#rxpane'); if(p) p.innerHTML=''; rxBar([...CP.ruleNow,shapeI(this.rule),`<b>${SHAPE_WORD[this.rule]}</b>`]); return this.later(()=>this.nogoWait(),2200); }
-    const pane=$('#rxpane'); if(!pane) return; this.shown=this.nextShape(); this.seen++; this.hudNogo();
+    if(!this.two.on&&this.seen>0&&this.seen%this.RULE_EVERY===0&&this.ruleAt!==this.seen){ this.ruleAt=this.seen; this.st='rule2'; const others=['circle','square','tri'].filter(s=>s!==this.rule); this.rule=others[rnd(2)]; this.last1=''; this.last2=''; const p=$('#rxpane'); if(p) p.innerHTML=''; rxBar([...CP.ruleNow,shapeI(this.rule),`<b>${SHAPE_WORD[this.rule]}</b>`]); return this.later(()=>this.nogoWait(),2200); }
+    const pane=$('#rxpane'); if(!pane) return; this.shown=this.block?this.block[this.seen]:this.nextShape(); this.seen++; this.hudNogo();
     const v=vmin(), dx=(Math.random()-.5)*24*v, dy=(Math.random()-.5)*22*v, sc=.75+Math.random()*.45, rot=this.shown==='tri'?[0,180,90,270][rnd(4)]:this.shown==='square'?[0,45][rnd(2)]:0;
     // v14 (6.24): the next shape replaces the last one where it stands — square to triangle goes straight through, never to black.
     // Every beat moves, turns and resizes it, so a repeat of the same shape still reads as a new one
@@ -146,17 +184,17 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
     if(this.st==='go'&&this.armed){ const ms=Math.max(1,Math.round(ev.t-this.t0)); this.times.push(ms); this.st='hit';
       const add=Math.max(0,ms-this.NOGO_FREE); if(this.streak()) this.over+=add;
       pane.innerHTML=`<div class="rxmsg" style="top:40%"><b style="font-size:clamp(28px,9vw,60px)">${ms}<small style="font-size:12px;letter-spacing:.2em">${CP.ms}</small></b>${this.streak()?`<span class="sub">+${add}${CP.ms}</span>`:''}</div>`;
-      this.ctx.audio.hit(); hud.score(this.streak()?this.seen:Math.round(mean(this.times)+this.NOGO_WRONG_SET*this.wrong)); this.hudNogo(); this.ctx.emit('live',this.nogoScore()); return; }
+      this.ctx.audio.hit(); hud.score(this.liveNum()); this.hudNogo(); this.ctx.emit('live',this.nogoScore()); return; }
     if(this.st==='hit'||this.st==='go'||this.st==='wrongshow') return; // the rule shape before it has painted, a second tap on a hit, or a tap during the wrong-tap card: nothing
     // a decoy, the wait period, or nothing at all: a wrong tap. It spends 200ms of a Streak's budget (C.2); three end a Set
     this.wrong++; if(this.streak()) this.over+=this.NOGO_WRONG_STREAK;
-    this.st='wrongshow'; pane.classList.add('bad'); pane.innerHTML=`<div class="rxmsg" style="top:40%"><b class="fb" style="font-size:clamp(18px,6vw,36px)">${this.streak()?CP.wrongS:T(CP.wrong,{n:this.wrong})}</b>${this.streak()?`<span class="sub">+${this.NOGO_WRONG_STREAK}${CP.ms}</span>`:''}</div>`; this.ctx.audio.miss(); if(navigator.vibrate) navigator.vibrate(40); hud.score(this.streak()?this.seen:Math.round((this.times.length?mean(this.times):600)+this.NOGO_WRONG_SET*this.wrong)); this.hudNogo();
+    this.st='wrongshow'; pane.classList.add('bad'); pane.innerHTML=`<div class="rxmsg" style="top:40%"><b class="fb" style="font-size:clamp(18px,6vw,36px)">${this.streak()?CP.wrongS:T(CP.wrong,{n:this.wrong})}</b>${this.streak()?`<span class="sub">+${this.NOGO_WRONG_STREAK}${CP.ms}</span>`:''}</div>`; this.ctx.audio.miss(); if(navigator.vibrate) navigator.vibrate(40); hud.score(this.liveNum()); this.hudNogo();
     if(this.streak()&&this.over>=this.NOGO_BUD){ this.clearT(); this.st='over'; hud.shake(); pane.innerHTML=`<div class="rxmsg" style="top:40%">${T(CP.reached,{bud:this.NOGO_BUD})}<b style="font-size:28px">${CP.over}</b></div>`; return this.later(()=>this.nogoEnd(),1300); }
     if(!this.streak()&&this.wrong>=3){ this.clearT(); this.st='over'; hud.shake(); pane.innerHTML=`<div class="rxmsg" style="top:40%">${CP.three}<b style="font-size:28px">${CP.over}</b></div>`; return this.later(()=>this.two.on?this.twoBlockEnd():this.nogoEnd(true),1300); } },
   /* v15 (4.4): a Go / No-go turn is a block of shapes — one rule period — because a single shape on an 800ms beat cannot be
      handed over. The block is scored the way the Set is (v14 A.2): the average of the right taps plus 150ms a wrong one,
      which is why the three-wrong-taps ending closes a turn here instead of the run */
-  twoBlockEnd(){ this.clearT(); this.st='over'; rxBar(null); const v=(this.times.length?mean(this.times):600)+this.NOGO_WRONG_SET*this.wrong;
+  twoBlockEnd(){ this.clearT(); this.st='over'; rxBar(null); const v=this.blockScore();
     const p=this.two.p, was=this.two.scoreOf(p); this.two.add(v); const to=this.two.scoreOf(p);
     hud.countUp({ audio:this.ctx.audio, from:was, to, ms:500, fmt:x=>String(Math.round(x)), set:t=>hud.score(t), alive:()=>this.st==='over',
       done:()=>{ hud.scorePop(); this.two.turnDone(); this.later(()=>this.next(),1200); } }); },

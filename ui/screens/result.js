@@ -2,7 +2,7 @@
    run/run.js). run:finish arrives with the record: the header, the pair or the stats, the option chips, the top 10 (never for
    two players, L10), then — after the ad break every fourth result — the unlock and achievement toasts. Go plays again with
    whatever the chips say; Back reopens the sheet; Challenge a friend shares a link that carries the score. */
-import { KEY, RESULT, SHARE, SHEET, TOAST, VERDICT } from "../../config/copy.js";
+import { RESULT, SHARE, SHEET, TOAST, VERDICT } from "../../config/copy.js";
 import { PUB_URL } from "../../config/build.js";
 import { MODE_NAME, PASS_LEN } from "../../config/games.js";
 import { $, T, esc, pWho } from "../../core.js";
@@ -12,7 +12,7 @@ import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, SHARED2, isStreak, lenName, versusOf } from "../../games/registry.js";
 import { Scores, achById, got, isOpen, lenLock, lenOpen, lensOf, markSeen, newMark, unlockHtml, unlockToast, verdict } from "../../progress.js";
 import { start } from "../../run/run.js";
-import { define } from "../actions.js";
+import { define, lock } from "../actions.js";
 import { Ads } from "../ads.js";
 import { colsOf, goLabel, picOf, scoreTxt } from "../format.js";
 import { register, show } from "../router.js";
@@ -31,7 +31,7 @@ function renderOverChips(){ const g=GAMES[sel.game]; const vsOk=versusOf(sel.gam
   $('#over-chips2').innerHTML=lens.length>1&&!fixed&&(!versus||c.vsLens)?lens.map(s=>{ const L=versus?null:lenLock(sel.game,sel.diff,s); const nw=L?'':newMark('len:'+sel.game+':'+sel.diff+':'+s,fresh); return `<button class="chip ${s===sel.secs?'sel':''} ${L?'locked x':''}${nw}" data-act="chip-over" data-chip="over-s" data-v="${s}">${lenName(sel.game,s,sel.diff,versus)}</button>`; }).join(''):'';
   $('#over-chips3').innerHTML='';
   markSeen(fresh);
-  $('#again').textContent=sameAsPlayed()?SHEET.tryAgain:goLabel(sel.game,sel.diff,versus,fixed); }
+  $('#again').textContent=sameAsPlayed()?SHEET.tryAgain:goLabel(sel.game,sel.diff,versus); }
 // the top 10 under the result (v11) follows the mode and length picked in the chips, not only the run just played
 // v13 (3.5): a two-player run is never on a board (L10), so the whole top-10 block goes — the side-by-side pair and the chips stay
 function renderOverTop(){ const run=lastRun; const g=GC(sel.game,sel.diff,sel.secs); const two=sel.vs>0; $('#over-top').hidden=two||!!(run&&run.practice); $('#over-top').style.display=two||(run&&run.practice)?'none':''; if(two) return;
@@ -88,10 +88,20 @@ on('run:finish',({run,isBest,two,fresh,ach,adv})=>{ const g=GC(run.g,run.d,run.s
      comes straight back here — the run is not finished with. Two-player and practice never get this far. */
   setTimeout(()=>Ads.after(()=>{ show('s-over'); if(run.practice||two) return;
     const msgs=(fresh||[]).map(u=>[unlockToast(u.key),'','ok'])
-      .concat((ach||[]).map(a=>[T(TOAST.achievement,{name:a.name})+(a.unlocks?' · '+unlockHtml(a):''),a.id,'']))
-      .concat(adv?[[T(KEY.toast,{game:GAMES[adv.g].name,name:lenName(adv.g,adv.s,adv.d)}),'','ok']]:[]);
-    msgs.forEach(([m,id,cls],i)=>setTimeout(()=>toast(m,id,cls,!!id),i*(id?3400:2600))); renderOverChips();
-    if(adv) setTimeout(()=>show('s-key',{advance:adv,from:'s-over'}),msgs.length*2600+900); }),250); });
+      .concat((ach||[]).map(a=>[T(TOAST.achievement,{name:a.name})+(a.unlocks?' · '+unlockHtml(a):''),a.id,'']));
+    const rest=()=>{ msgs.forEach(([m,id,cls],i)=>setTimeout(()=>toast(m,id,cls,!!id),i*(id?3400:2600))); renderOverChips(); };
+    if(adv) keyBreak(adv,rest); else rest(); }),250); });
+/* v15 (5.1, build 26): a key unlock INTERRUPTS this screen. It was a green toast the player tapped, sitting behind
+   however many unlock and achievement toasts came first, and only then did it offer the key — so the one thing the key
+   is for, watching a root move, was the easiest thing in the run to miss. Now the result fades before anything can be
+   tapped, input is locked at the dispatcher (nothing else blocks the bare-ground Back), the key screen plays the segment
+   filling with that game's whole root lit behind it, and it hands itself straight back. Same flow for every game.
+   The two screens still know nothing about each other (A4): this one asks with show(..., {auto}), the key answers with
+   key:done, and the toasts that were waiting run after it rather than in front of it. */
+function keyBreak(adv,then){ pendingRest=then; lock(true); $('#s-over').classList.add('fadeout');
+  setTimeout(()=>show('s-key',{advance:adv,auto:'s-over'}),420); }
+let pendingRest=null;
+on('key:done',()=>{ lock(false); $('#s-over').classList.remove('fadeout'); const f=pendingRest; pendingRest=null; if(f) setTimeout(f,320); });
 define({
   'over-back'(){ show('s-pick',{g:sel.game,d:GAMES[sel.game].modes.length>1?sel.diff:undefined}); return 'click'; },
   share(){ shareRun(); return 'click'; },

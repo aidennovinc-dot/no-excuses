@@ -23,7 +23,12 @@ let menuWasFirst=firstRun(), nextWhere=null, storyOn=false;
 // v14 (1.3): the first menu a profile ever sees reveals its items one at a time; every open after that is instant
 function menuIn(){ if(prefs.menuSeen) return; prefs.menuSeen=1; save(); const m=$('#s-menu'); m.classList.add('intro'); setTimeout(()=>m.classList.remove('intro'),2400); }
 function renderMenu(){ const first=firstRun(); const opening=menuWasFirst&&!first; menuWasFirst=first;
-  $$('#s-menu .item').forEach(b=>{ const x=first&&b.dataset.go!=='s-pick'; b.classList.toggle('dim',x); b.classList.remove('unx'); if(opening&&b.dataset.go!=='s-pick'){ b.classList.add('unx'); b.style.pointerEvents='none'; setTimeout(()=>{ b.classList.remove('unx'); b.style.pointerEvents=''; },700); } });
+  /* v15 (6.2, build 26): when the menu opens up, the strikes come off TOP TO BOTTOM rather than all at once. Every item
+     un-crossed itself on the same frame, so what was actually a list opening read as a single flicker and there was
+     nothing to follow. `--ud` carries each item's delay to both animations — the brighten on the element and the
+     unstrike on its ::after — because a bare animation-delay reaches the element only. */
+  $$('#s-menu .item').forEach((b,i)=>{ const x=first&&b.dataset.go!=='s-pick'; b.classList.toggle('dim',x); b.classList.remove('unx'); b.style.removeProperty('--ud');
+    if(opening&&b.dataset.go!=='s-pick'){ const d=i*90; b.style.setProperty('--ud',d+'ms'); b.classList.add('unx'); b.style.pointerEvents='none'; setTimeout(()=>{ b.classList.remove('unx'); b.style.removeProperty('--ud'); b.style.pointerEvents=''; },700+d); } });
   $('#menu-note').textContent=first?MENU.note:'';
   /* v13 (1.3): the card sits above the title; the box holds the requirement and what it opens, nothing else.
      v15 (2.2): it does NOT appear on a fresh profile's first menu open — a player who has not run anything yet is being

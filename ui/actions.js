@@ -19,7 +19,15 @@ const captures=[];
 function define(map){ for(const k in map){ if(ACTIONS[k]) throw new Error('data-act defined twice: '+k); ACTIONS[k]=map[k]; } }
 function capture(fn){ captures.push(fn); }
 function play(s){ if(s==='pick') Snd.select(); else if(s==='click') Snd.click(); }
+/* v15 (5.1, build 26): the whole screen layer stops taking taps. A key unlock now INTERRUPTS the result screen and plays
+   itself out, and "before the player can input anything" has to mean every route in: a data-act control, a capture, and
+   the bare tap on the ground that goes Back. Blocking it here is the only place all three pass through — CSS
+   pointer-events would still leave the last of those firing on the body. It is not a screen state: whoever takes the
+   lock releases it (ui/screens/result.js, on key:done), so nothing else has to know it exists. */
+let locked=false;
+const lock=v=>{ locked=!!v; };
 function onClick(e){
+  if(locked) return;
   const el=e.target.closest('[data-act]');
   if(el){ play((ACTIONS[el.dataset.act]||ACTIONS.none)(el,e)); return; }
   for(const c of captures) if(c(e)) return;
@@ -33,4 +41,4 @@ function onClick(e){
   if($('.screen.on')){ Snd.click(); back(); }
 }
 
-export { ACTIONS, capture, define, isPick, onClick };
+export { ACTIONS, capture, define, isPick, lock, onClick };

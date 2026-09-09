@@ -80,7 +80,8 @@ export const SHEET = { mode:'Mode', toUnlock:'To unlock: {need}', tileUnlock:'to
   // one sits in the row Practice from already uses, so the sheet gains no new furniture (L9)
   opens:'open with', notes:'notes',
   // v14 (7.1): the result screen's button is Try again until something is changed, and only then does it become Go
-  go:'Go', tryAgain:'Try again', goVersus:'Go · versus', goEach:'Go · {n}s each', goPass:'Go · pass & play', passTitle:' · pass & play', versusTitle:' · versus',
+  // v15 (6.5, build 26): goEach ('Go · {n}s each') and goPass ('Go · pass & play') are retired — a pass & play Go says just Go
+  go:'Go', tryAgain:'Try again', goVersus:'Go · versus', passTitle:' · pass & play', versusTitle:' · versus',
   chalScored:'A friend scored ', chalBeat:' — beat it', chalSent:'A friend sent you this one' };
 export const LOCK = { text:'{name}<b>To unlock: {need}</b>' };
 // v14 (4.2): the sub-copy under the two-player picture is gone — no "take turns on one phone", no "{n} seconds each", no grey
@@ -130,7 +131,15 @@ export const KEY = { title:'the key', hint:'tap a game · solo runs only',
   cleared:'cleared', open:'not yet', floor:'{bar} or more', ceil:'{bar} or less',
   advance:'{game} · {name} cleared', toast:'Key · {game} · {name} cleared',
   none:'no bar set', mismatch:'{n} combination(s) have no clearance bar: {keys}',
-  conf:{ high:'anchored', med:'reasoned', low:'judgement' } };
+  conf:{ high:'anchored', med:'reasoned', low:'judgement' },
+  /* v15 (§5, build 26). The menu item is Keys, plural (5.3): three tiers over the same thirty-one combinations (A.1),
+     each with its own symbol, its locked state and a % while it is under 100. Tiers 2 and 3 are a shell — #372 — and
+     `soon` is what they say instead of a target nobody has set (A.2 forbids a build deriving one). */
+  keys:'keys', pct:'{n}%', locked:'locked', unlocked:'unlocked', pick:'tap a key',
+  soon:'Not set yet. What sits behind this key is still being decided — nothing here is generated, every bar is set by hand.',
+  // 5.2: a clearance-bar row is a way IN. Tapping it starts that combination with the bar pinned at the top of the run,
+  // through the same goal line an unlock uses (2.2) — one mechanism, not two
+  aim:'{name} · {want}', rowGo:'tap a row to go and try it' };
 
 // the engines' own words
 export const SEQ = { copy:'copy the notes', yourTurn:'your turn', whoTurn:'{who} · your turn', watch:'round {n} · watch', round:'round {n}',

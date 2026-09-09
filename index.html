@@ -26,7 +26,8 @@
        = the marks on what you already have. Unlocks sits above, because unlocks outrank achievements (2.2) -->
   <button data-act="go" class="item glow" data-go="s-unl">Unlocks</button>
   <button data-act="go" class="item glow" data-go="s-ach">Achievements</button>
-  <button data-act="go" class="item glow" data-go="s-key">The key</button>
+  <!-- v15 (5.3): "Keys", plural — three tiers over the same combinations (A.1), the shell for #372 -->
+  <button data-act="go" class="item glow" data-go="s-key">Keys</button>
   <button data-act="go" class="item glow" data-go="s-custom">Customise</button>
   <button data-act="go" class="item glow" data-go="s-about">About</button>
   <button data-act="go" class="item glow" data-go="s-testing" data-dev>Testing</button>
@@ -92,15 +93,21 @@
 </section>
 
 <!-- the key (build 22, v14 9.2-9.7). Option A: the key dead centre, seven games on a ring, a root per game growing
-     inward. ui/screens/key.js draws the whole ring and the panel; nothing about which combinations exist is in this markup -->
+     inward. ui/screens/key.js draws the whole ring and the panel; nothing about which combinations exist is in this markup.
+     build 26 (v15 5.3): KEYS, plural — a row of three tiers on top, and the ring belongs to whichever is selected. What
+     sits behind keys 2 and 3 is register #372 and is undecided, so they render as a shell, never as a target -->
 <section class="screen top" id="s-key" data-back="s-menu">
   <button data-act="back" class="back">&larr; BACK</button>
-  <div class="eyebrow" id="key-title">the key</div>
-  <svg id="key-ring" viewBox="0 0 300 300" aria-hidden="true"></svg>
-  <div class="keycount" id="key-count"></div>
-  <div class="hint" id="key-hint">tap a game &middot; solo runs only</div>
-  <div class="hint warn" id="key-warn" hidden></div>
-  <div class="scroll" id="key-list" hidden></div>
+  <div class="eyebrow" id="key-title">keys</div>
+  <div class="keyrow" id="key-keys"></div>
+  <div id="key-main">
+    <svg id="key-ring" viewBox="0 0 300 300" aria-hidden="true"></svg>
+    <div class="keycount" id="key-count"></div>
+    <div class="hint" id="key-hint">tap a game &middot; solo runs only</div>
+    <div class="hint warn" id="key-warn" hidden></div>
+    <div class="scroll" id="key-list" hidden></div>
+  </div>
+  <div id="key-shell" hidden></div>
 </section>
 
 <section class="screen top" id="s-custom" data-back="s-menu">
@@ -133,7 +140,7 @@
   <div class="explain">A passion project of simple games of pure skill and minimal frills.<br><br>If you'd like to remove ads, add customisation, and show your support, tap below.</div>
   <button data-act="support" class="support" id="support"><b id="support-title">Support · A$1.99 · once</b><small id="support-text">No ads, ever. Every colour, background and sound pack open from day one, plus the colour wheel. A pro 60-second length in Quick Tap and Dots, with its own boards. A star on your profile.</small></button>
   <div class="tierbox" id="tierbox"></div>
-  <div class="hint">build 25 · batch 11 · two-player · 9 sept 2026</div>
+  <div class="hint">build 26 · batch 11 · the keys · 9 sept 2026</div>
 </section>
 
 <section class="screen" id="s-testing" data-back="s-menu" data-dev>
@@ -164,7 +171,8 @@
   <button data-act="again" class="item big" id="again">Go</button>
   <button data-act="over-back" class="item sub" id="over-back">&larr; Back</button>
   <div class="row"><button data-act="share" class="item sub" id="share"><svg class="shicon" viewBox="0 0 16 16"><circle cx="12" cy="3.2" r="2"/><circle cx="4" cy="8" r="2"/><circle cx="12" cy="12.8" r="2"/><path d="M5.8 7.1 10.2 4.3M5.8 8.9l4.4 2.8"/></svg>Challenge a friend</button></div>
-  <div id="over-top"><div class="eyebrow" id="over-top-title">top 10</div><table><tbody id="over-runs"></tbody></table></div>
+  <!-- v15 (6.4): the table scrolls inside a fixed box, so filling the top 10 never pushes Game select down the screen -->
+  <div id="over-top"><div class="eyebrow" id="over-top-title">top 10</div><div class="otwrap"><table><tbody id="over-runs"></tbody></table></div></div>
   <button id="egg" data-act="egg" aria-label="."></button>
   <div class="adslot" id="adslot">ad · result screen only · supporters never see this</div>
   <button data-act="to-games" class="item big" id="to-games">Game select</button>
@@ -210,12 +218,12 @@
 
 <script type="module" src="./boot.js"></script>
 
-<div id="build">build 25</div>
+<div id="build">build 26</div>
 <button id="update">New build available — tap to reload</button>
 <script>
 // build check: version.json is fetched with no-store, so a stale cached page still learns a newer build exists
 (function(){
-  const BUILD="25";
+  const BUILD="26";
   async function check(){
     try{
       const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});
