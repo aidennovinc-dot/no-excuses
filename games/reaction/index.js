@@ -6,6 +6,7 @@ import { SHAPE_WORD } from "../../config/games.js";
 import { $, $$, T, mean, minMax, pWho, shapeI, vmin, winner } from "../../core.js";
 import * as hud from "../_shared/hud.js";
 import { genRect, rnd, roundEngine, rxBar } from "../_shared/round.js";
+import { makeTwo } from "../_shared/two.js";
 /* Reaction — Flash: white after a random wait, tap. Go/No-go (v8): shapes cycle past in different spots; tap the rule shape the moment it shows. A wrong shape ends the run. Score is ms, averaged */
 // the clock (v8): t0 is taken two frames after the change is queued, i.e. when it has actually been painted; the tap is timed from the event's own timestamp (ev.t, set by the run), not from when the handler ran
 // v14 (6.2 / L5): a Go / No-go Streak is a cumulative
@@ -15,7 +16,7 @@ import { genRect, rnd, roundEngine, rxBar } from "../_shared/round.js";
 // it: the budget is spent by the reaction-time overspend on legal taps as well as by wrong taps, so mistakes do not have to
 // exhaust it on their own. The Streak has no wrong-tap counter and must not gain one. B.3 still stands — the SET keeps its
 // own 150ms-added penalty and its own three-wrong-taps ending; the two currencies differ and must not be harmonised.
-const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[], faults:0, t0:0, rule:'circle', shown:'', armed:false, over:0, out:false, wrong:0, seen:0, vsN:[0,0], vsDone:false, last1:'', last2:'',
+const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[], faults:0, t0:0, rule:'circle', shown:'', armed:false, over:0, out:false, wrong:0, seen:0, vsN:[0,0], vsDone:false, last1:'', last2:'', two:{on:false},
   // v14 section C.1 (L5, build 22): a Flash Streak spends everything over 150ms of its 500ms budget — the number 6.8 asked for.
   // B.1's 250 was Cowork's reasoning and Aiden overruled it. A good phone tap is ~250–280ms, so nearly every rep spends
   // 100–130ms and a run lasts four or five rounds instead of ten. That is the intended effect, not a regression. Budget unchanged.
@@ -36,11 +37,25 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
   totLine(v){ return this.streak()?T(CP.runTotal,{n:Math.round(v),bud:this.FLASH_BUD}):T(CP.runAvg,{n:Math.round(v)}); },
   setTot(v){ const el=$('#rxtot'); if(el) el.textContent=this.totLine(v); },
   nogo(){ return this.ctx.mode==='nogo'; }, versus(){ return this.ctx.players===2; },
-  begin(){ this.round=0; this.times=[]; this.faults=0; this.over=0; this.out=false; this.wrong=0; this.seen=0; this.vsN=[0,0]; this.vsDone=false; hud.score('0'); if(this.versus()) return this.vsRound(); if(this.nogo()) return this.nogoBegin(); this.next(); },
+  // v15 (4.4): pass & play is attempt by attempt, both modes. Flash hands the phone over after every flash; Go / No-go
+  // arrives on a beat, so its turn is a block of shapes — one rule period — and the block is scored the way its Set is
+  begin(){ this.round=0; this.times=[]; this.faults=0; this.over=0; this.out=false; this.wrong=0; this.seen=0; this.vsN=[0,0]; this.vsDone=false;
+    this.two=makeTwo(this.ctx,{lower:true,fmt:v=>Math.round(v)+CP.ms}); hud.score('0');
+    if(this.versus()) return this.vsRound(); if(this.two.on) return this.next(); if(this.nogo()) return this.nogoBegin(); this.next(); },
   // Flash (v11 / v14 section 5): Set = 5 attempts, average ms. Streak = every ms above 150 (C.1) adds to a total; the run ends at 500, score attempts
   result(){ const [x,y]=minMax(this.times); if(this.streak()) return {hits:this.times.length,misses:this.faults,x,y,lim:this.FLASH_BUD+'ms'}; return {hits:this.times.length?Math.round(mean(this.times)):0,misses:this.faults,x,y}; },
-  hud(){ hud.time(this.streak()?T(CP.hudStreak,{n:this.round,over:Math.round(this.over)}):T(CP.hudSet,{n:this.round,s:this.ctx.len})); },
-  next(){ this.clearT(); this.round++; if(this.out||(!this.streak()&&this.round>this.ctx.len)) return this.ctx.emit('finish',this.result()); this.hud(); this.again(); },
+  hud(){ if(this.two.on) return hud.timeHtml(this.two.hudLine());
+    hud.time(this.streak()?T(CP.hudStreak,{n:this.round,over:Math.round(this.over)}):T(CP.hudSet,{n:this.round,s:this.ctx.len})); },
+  next(){ this.clearT(); this.round++;
+    // v15 (4.4): the run is over when both players have had their turns; every turn opens with the hand-over card
+    if(this.two.on){ if(this.two.over()) return this.ctx.emit('finish',this.two.record()); return this.two.gate(this,()=>this.turnStart()); }
+    if(this.out||(!this.streak()&&this.round>this.ctx.len)) return this.ctx.emit('finish',this.result()); this.hud(); this.again(); },
+  // one player's turn: a single flash, or a fresh block of Go / No-go shapes on a fresh rule
+  turnStart(){ this.times=[]; this.wrong=0; this.seen=0; if(this.nogo()) return this.nogoBegin(); this.again(); },
+  // v15 (4.4): what the attempt was worth goes to the player holding the phone, and the turn ends with it
+  twoAdd(ms){ const p=this.two.p, was=this.two.scoreOf(p); this.two.add(ms); const to=this.two.scoreOf(p);
+    hud.countUp({ audio:this.ctx.audio, from:was, to, ms:500, fmt:v=>String(Math.round(v)), set:t=>{ hud.score(t); this.setTot(+t); }, alive:()=>this.st==='show',
+      done:()=>{ hud.scorePop(); this.two.turnDone(); this.later(()=>this.next(),1400); } }); },
   again(msg){ this.clearT(); this.st='wait'; this.armed=false;
     $('#gen').innerHTML=`<div class="rxpane" id="rxpane"><div class="rxmsg" id="rxmsg">${msg||CP.wait}</div></div>`;
     rxBar(null); this.later(()=>this.go(),1200+Math.random()*3300); },
@@ -48,15 +63,21 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
   // v14 (6.22): white is the WHOLE screen. The large square with burst lines was the preview screen's picture of the game, never the game
   go(){ const pane=$('#rxpane'); this.st='go'; pane.classList.add('lit'); const m=$('#rxmsg'); if(m) m.textContent=CP.tap; this.arm();
     // v13 (9.1): in a Streak, sitting on your hands is an attempt worth 600ms — 450 against the 500 budget (C.1) — not a fault you can retake
-    if(!this.versus()) this.later(()=>{ if(this.st==='go'){ if(this.streak()) return this.noTap(); this.faults++; this.fault(CP.slow); } },1500); },
+    // v15 (4.4): in pass & play, sitting on your hands spends the attempt exactly as it does in a Streak — a retake would
+    // hand the phone back to the same player and there is somebody waiting for it
+    if(!this.versus()) this.later(()=>{ if(this.st==='go'){ if(this.streak()||this.two.on) return this.noTap(); this.faults++; this.fault(CP.slow); } },1500); },
   noTap(){ const ms=600; this.st='show'; this.times.push(ms); const add=Math.max(0,ms-this.FLASH_FREE);
-    hud.score(String(this.times.length)); this.rxCard(CP.noTap,ms,add,false); this.ctx.audio.miss(); if(navigator.vibrate) navigator.vibrate(30); this.hud(); this.flashAdd(add); },
+    if(!this.two.on) hud.score(String(this.times.length));
+    this.rxCard(CP.noTap,ms,add,false); this.ctx.audio.miss(); if(navigator.vibrate) navigator.vibrate(30); this.hud();
+    if(this.two.on) return this.twoAdd(ms);
+    this.flashAdd(add); },
   // v15 (3.5): an early tap. It used to be a fault — the attempt was thrown away and retaken, which made jumping the gun
   // free. Now it costs FLASH_EARLY and the attempt is spent: a Streak loses 400 of its budget, a Set carries 400ms into
   // its average. Either way `round` moves on, so this is next(), never again()
   early(){ this.clearT(); this.faults++; const ms=this.FLASH_EARLY; this.st='show'; this.times.push(ms);
     this.rxCard(CP.earlyTap,ms,ms,true,CP.earlyCost);
     this.ctx.audio.miss(); if(navigator.vibrate) navigator.vibrate(40);
+    if(this.two.on){ this.hud(); return this.twoAdd(ms); }
     if(this.streak()){ hud.score(String(this.times.length)); this.hud(); return this.flashAdd(ms); }
     const past=this.times.slice(0,-1), was=past.length?mean(past):0;
     hud.countUp({ audio:this.ctx.audio, from:was, to:mean(this.times), ms:600, fmt:v=>String(Math.round(v)), set:t=>{ hud.score(t); this.setTot(+t); }, alive:()=>this.st==='show',
@@ -72,6 +93,7 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
     if(this.st!=='go'||!this.armed) return;
     const ms=Math.max(1,Math.round(ev.t-this.t0)); this.st='show'; this.times.push(ms); const add=Math.max(0,ms-this.FLASH_FREE);
     this.rxCard(ms<200?CP.quick:ms<300?CP.good:CP.slowWord,ms,add,false); this.ctx.audio.hit(); this.hud();
+    if(this.two.on) return this.twoAdd(ms);
     if(this.streak()){ hud.score(String(this.times.length)); return this.flashAdd(add); }
     // v14 (6.1 / 6.3): the Set average walks to its new value, then the attempt stays on screen until it is tapped
     const past=this.times.slice(0,-1), was=past.length?mean(past):0;
@@ -96,7 +118,8 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
   nogoBegin(){ this.rule=['circle','square','tri'][rnd(3)]; this.round=1; this.ruleAt=0; this.last1=''; this.last2=''; this.hudNogo(); this.rulePause(); },
   // v14 (6.26): a Streak was too fast to react to. It runs on a slower beat than the Set
   beatMs(){ return this.streak()?1150:800; },
-  hudNogo(){ hud.time(this.streak()?T(CP.hudNogoStreak,{n:this.seen+1,over:Math.round(this.over),bud:this.NOGO_BUD}):T(CP.hudNogo,{n:Math.min(this.ctx.len,this.seen+1),s:this.ctx.len,w:this.wrong})); },
+  hudNogo(){ if(this.two.on) return hud.timeHtml(this.two.hudLine());
+    hud.time(this.streak()?T(CP.hudNogoStreak,{n:this.seen+1,over:Math.round(this.over),bud:this.NOGO_BUD}):T(CP.hudNogo,{n:Math.min(this.ctx.len,this.seen+1),s:this.ctx.len,w:this.wrong})); },
   nogoScore(){ const [x,y]=minMax(this.times); if(this.streak()) return {hits:this.seen,misses:this.wrong,x,y,lim:this.NOGO_BUD+'ms'}; return {hits:Math.round((this.times.length?mean(this.times):600)+this.NOGO_WRONG_SET*this.wrong),misses:this.wrong,x,y}; },
   rulePause(){ this.clearT(); this.st='rule'; $('#gen').innerHTML=`<div class="rxpane" id="rxpane"></div>`; rxBar([...CP.ruleTap,shapeI(this.rule),`<b>${SHAPE_WORD[this.rule]}</b>`]); this.later(()=>this.nogoWait(),2200); },
   // v14 (6.25): there is ALWAYS a wait period — before the first shape and after every rule change. Tapping through it is a wrong tap
@@ -109,7 +132,8 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
       if(sh!==this.rule&&sh===this.last1) continue;
       break; }
     this.last2=this.last1; this.last1=sh; return sh; },
-  beat(){ if(!this.streak()&&this.seen>=this.ctx.len) return this.nogoEnd();
+  // v15 (4.4): in pass & play the end of a block is the end of a TURN, not the end of the run
+  beat(){ if(!this.streak()&&this.seen>=this.ctx.len) return this.two.on?this.twoBlockEnd():this.nogoEnd();
     if(this.streak()&&this.over>=this.NOGO_BUD) return this.nogoEnd();
     if(this.seen>0&&this.seen%5===0&&this.ruleAt!==this.seen){ this.ruleAt=this.seen; this.st='rule2'; const others=['circle','square','tri'].filter(s=>s!==this.rule); this.rule=others[rnd(2)]; this.last1=''; this.last2=''; const p=$('#rxpane'); if(p) p.innerHTML=''; rxBar([...CP.ruleNow,shapeI(this.rule),`<b>${SHAPE_WORD[this.rule]}</b>`]); return this.later(()=>this.nogoWait(),2200); }
     const pane=$('#rxpane'); if(!pane) return; this.shown=this.nextShape(); this.seen++; this.hudNogo();
@@ -128,7 +152,14 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
     this.wrong++; if(this.streak()) this.over+=this.NOGO_WRONG_STREAK;
     this.st='wrongshow'; pane.classList.add('bad'); pane.innerHTML=`<div class="rxmsg" style="top:40%"><b class="fb" style="font-size:clamp(18px,6vw,36px)">${this.streak()?CP.wrongS:T(CP.wrong,{n:this.wrong})}</b>${this.streak()?`<span class="sub">+${this.NOGO_WRONG_STREAK}${CP.ms}</span>`:''}</div>`; this.ctx.audio.miss(); if(navigator.vibrate) navigator.vibrate(40); hud.score(this.streak()?this.seen:Math.round((this.times.length?mean(this.times):600)+this.NOGO_WRONG_SET*this.wrong)); this.hudNogo();
     if(this.streak()&&this.over>=this.NOGO_BUD){ this.clearT(); this.st='over'; hud.shake(); pane.innerHTML=`<div class="rxmsg" style="top:40%">${T(CP.reached,{bud:this.NOGO_BUD})}<b style="font-size:28px">${CP.over}</b></div>`; return this.later(()=>this.nogoEnd(),1300); }
-    if(!this.streak()&&this.wrong>=3){ this.clearT(); this.st='over'; hud.shake(); pane.innerHTML=`<div class="rxmsg" style="top:40%">${CP.three}<b style="font-size:28px">${CP.over}</b></div>`; return this.later(()=>this.nogoEnd(true),1300); } },
+    if(!this.streak()&&this.wrong>=3){ this.clearT(); this.st='over'; hud.shake(); pane.innerHTML=`<div class="rxmsg" style="top:40%">${CP.three}<b style="font-size:28px">${CP.over}</b></div>`; return this.later(()=>this.two.on?this.twoBlockEnd():this.nogoEnd(true),1300); } },
+  /* v15 (4.4): a Go / No-go turn is a block of shapes — one rule period — because a single shape on an 800ms beat cannot be
+     handed over. The block is scored the way the Set is (v14 A.2): the average of the right taps plus 150ms a wrong one,
+     which is why the three-wrong-taps ending closes a turn here instead of the run */
+  twoBlockEnd(){ this.clearT(); this.st='over'; rxBar(null); const v=(this.times.length?mean(this.times):600)+this.NOGO_WRONG_SET*this.wrong;
+    const p=this.two.p, was=this.two.scoreOf(p); this.two.add(v); const to=this.two.scoreOf(p);
+    hud.countUp({ audio:this.ctx.audio, from:was, to, ms:500, fmt:x=>String(Math.round(x)), set:t=>hud.score(t), alive:()=>this.st==='over',
+      done:()=>{ hud.scorePop(); this.two.turnDone(); this.later(()=>this.next(),1200); } }); },
   nogoEnd(fail){ this.clearT(); this.st='over'; rxBar(null); const r=this.nogoScore(); if(fail&&!this.streak()) r.fail=1; this.ctx.emit('finish',r); } });
 
 export default RX;

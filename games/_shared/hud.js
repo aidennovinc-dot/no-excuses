@@ -2,6 +2,7 @@
    slots, the shake and flash on a miss, and the ghost finger the first-play demos move about. The engines write to the
    shell's HUD only through here; the goal line and the PB marker stay in run/run.js because they read progress. */
 import { CFG, RATE_MAX } from "../../config/games.js";
+import { P1C, P2C } from "../../config/theme.js";
 import { $ } from "../../core.js";
 
 const score=t=>{ $('#score').textContent=t; };
@@ -38,6 +39,12 @@ function countUp({audio,from,to,ms=650,fmt,set,alive,done,walk}){ const t0=perfo
 // v14 (6.3): a round's result stays up until it is tapped — no auto-advance. The engines turn the cue on when the card is
 // drawn and off when the tap arrives; #game.tapon is the one thing the gate has to look for to drive any game to its result
 function hold(on){ $('#game').classList.toggle('tapon',!!on); $('#tapon').classList.toggle('on',!!on); }
+// the cue (v11, Sequence's): a short line on a contrasting backing. `stay` keeps it up; otherwise it pops and fades.
+// v15 (§4, build 25): shared, because every turn-taking pass & play hands the phone over with the same card
+function cue(html,stay,p){ const t=$('#turn'); t.classList.remove('on','stay','p1','p2'); void t.offsetWidth; t.innerHTML=html||''; if(!html) return; if(p!==undefined) t.classList.add(p?'p2':'p1'); t.classList.add(stay?'stay':'on'); }
+// v14 (4.8) / v15 (§4): whose turn it is is never in doubt — the run is outlined in that player's colour. It was set once
+// by run/run.js for a Quick Tap or Dots hand-over; the games that alternate INSIDE one run move it every turn
+function pturn(p){ const g=$('#game'); g.classList.toggle('pturn',p!==null&&p!==undefined); if(p===null||p===undefined) return; g.style.setProperty('--pc',p?P2C:P1C); }
 // 3-2-1, then go. The steps ride the run's timers, so an abort mid-count stops it
 function countdown(timers,audio,cb){ const c=$('#count'); let n=3; c.classList.add('on');
   const step=()=>{ if(n>0){ c.innerHTML=`<span>${n}</span>`; audio.tick(); n--; timers.later(step,CFG.countStep); } else { c.classList.remove('on'); c.innerHTML=''; audio.go(); cb(); } };
@@ -54,4 +61,4 @@ function makeGhost(audio,timers){ const ghost=$('#ghost');
     tap(){ ghost.classList.remove('tap'); void ghost.offsetWidth; ghost.classList.add('tap'); audio.hit(); },
     hold(on){ ghost.classList.toggle('hold',!!on); } }; }
 
-export { addUp, bigcount, countUp, countdown, flash, hold, makeGhost, mode, rate, reset, scorePop, score, scoreVisible, shake, time, timeHtml, you };
+export { addUp, bigcount, countUp, countdown, cue, flash, hold, makeGhost, mode, pturn, rate, reset, scorePop, score, scoreVisible, shake, time, timeHtml, you };

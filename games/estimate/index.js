@@ -6,8 +6,9 @@ import { CFG, ESTIMATE as EST, STREAK } from "../../config/games.js";
 import { $, $$, T, f2, mean, minMax, vmin } from "../../core.js";
 import * as hud from "../_shared/hud.js";
 import { Shapes } from "../_shared/shapes.js";
+import { makeTwo } from "../_shared/two.js";
 /* ---------- Estimate (v9, was Hold). Grow: a shape grows with a wobble and vanishes; tap and hold to grow yours to the same area — the same shape on odd rounds, a different one on even. Cut: a shape appears; drag a line through it that splits off the share asked for. Score is % off, lower is better. Five rounds ---------- */
-const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, rot:0, shape:null, mine:null, t0:0, raf:0, p0:null, p1:null, share:50, pending:null, maxed:false,
+const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, rot:0, shape:null, mine:null, t0:0, raf:0, p0:null, p1:null, share:50, pending:null, maxed:false, two:{on:false},
   est(){ return this.ctx.mode==='grow'&&this.round%2===0; },
   // the hold's ceiling, in one place — down() and up() used to carry the same expression twice and could drift apart
   capOf(){ return Math.min(this.target*2.8,96*vmin()); },
@@ -52,16 +53,22 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
     const shown=()=>{ let n=0; const poll=()=>{ if(this.pending||n++>90) return g.later(done,600); g.later(poll,100); }; g.later(poll,300); };
     const poll=()=>{ if(this.st==='wait'){ const p=c(); g.at(p.x,p.y+40); g.show(); g.later(()=>{ g.hold(true); this.down({type:'down',x:0,y:0}); const dur=this.target/(CFG.holdRate*vmin())*1000; g.later(()=>{ this.up(); g.hold(false); shown(); },dur); },400); } else if(t++<60) g.later(poll,100); };
     g.later(poll,200); return 0; },
-  begin(){ this.round=0; this.total=0; this.errs=[]; this.maxed=false; hud.score(this.streak()?'0':'0.00%'); this.next(); },
+  // v15 (4.1 / 4.2): pass & play is turn by turn — a round each, the phone over, lowest average % off wins
+  begin(){ this.round=0; this.total=0; this.errs=[]; this.maxed=false; this.two=makeTwo(this.ctx,{lower:true,fmt:v=>f2(v)+'%'}); hud.score(this.streak()?'0':'0.00%'); this.next(); },
   pickMine(){ if(!this.est()) return this.shape; const c=this.shape.coef; const ok=Shapes.GROW.filter(n=>n!==this.shape.name).map(n=>Shapes.make(n)).filter(s=>s.coef/c>=.4&&s.coef/c<=2.5); return ok.length?ok[Math.random()*ok.length|0]:Shapes.random(Shapes.GROW); },
   // v11: Set = 7 rounds, score the average % off (lower wins). Streak = the % differences add up; the run ends when the total reaches 100, score rounds
   // v15 (answer 2, build 24): `mx` says a hold ran all the way to its ceiling. It is what the Greedy achievement asks for
   // in words, and unlike a % threshold it is true at EVERY target size — see the note on capOf and FEATURES.md
   result(){ const [best,worst]=minMax(this.errs); const r=this.streak()?{hits:this.errs.length,misses:0,x:best,y:worst,lim:'100%'}:{hits:Math.round(mean(this.errs)*100)/100,misses:0,x:best,y:worst}; if(this.maxed) r.mx=1; return r; },
   // v13 (6.2): "Round 2 of 7" in a Set; a Streak says "Round n" with the running total beside it
-  hud(){ hud.time(this.streak()?T(CP.hudStreak,{n:this.round,tot:f2(this.total)}):T(CP.hudSet,{n:this.round,s:this.ctx.len})+(this.ctx.mode==='grow'?(this.est()?CP.diff:CP.same):'')); },
-  next(){ this.clearT(); this.round++; if(!this.streak()&&this.round>this.ctx.len) return this.ctx.emit('finish',this.result()); if(this.streak()&&this.total>=100) return this.ctx.emit('finish',this.result()); this.reset();
-    if(this.cut()) return this.cutRound();
+  hud(){ if(this.two.on) return hud.timeHtml(this.two.hudLine());
+    hud.time(this.streak()?T(CP.hudStreak,{n:this.round,tot:f2(this.total)}):T(CP.hudSet,{n:this.round,s:this.ctx.len})+(this.ctx.mode==='grow'?(this.est()?CP.diff:CP.same):'')); },
+  next(){ this.clearT(); this.round++;
+    // v15 (4.1 / 4.2): a pass & play run ends when both players have had their turns, not on a length — and every hand-over
+    // waits for a tap, which is the one place §3.9 kept the cue for
+    if(this.two.on){ if(this.two.over()) return this.ctx.emit('finish',this.two.record()); this.reset(); return this.two.gate(this,()=>this.play()); }
+    if(!this.streak()&&this.round>this.ctx.len) return this.ctx.emit('finish',this.result()); if(this.streak()&&this.total>=100) return this.ctx.emit('finish',this.result()); this.reset(); this.play(); },
+  play(){ if(this.cut()) return this.cutRound();
     this.hud(); const v=vmin(); this.shape=this.pickTarget(); this.target=this.growTarget()*v; this.mine=this.pickMine();
     // v14 (6.13): rotating a circle does nothing and rotating a square barely more — a shape with an obvious axis of symmetry is never turned
     this.rot=(this.est()||EST.SYM.includes(this.shape.name))?0:[35,60,90,120,145,180,225,270][Math.random()*8|0];
@@ -103,11 +110,17 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
       .then(()=>{ if(this.st!=='reveal') return; const v=$('#hres'); if(v){ v.innerHTML=resultHtml; v.classList.add('on'); } err<=8?this.ctx.audio.hit():this.ctx.audio.miss(); if(err>8&&navigator.vibrate) navigator.vibrate(30);
         const was=this.errs.length?mean(this.errs):0; this.errs.push(err);
         const w=walk?{el:$('#hpct'),from:walk.from,to:walk.to,fmt:v=>f2(v)+'%'}:null;
+        if(this.two.on) return this.twoAdd(err,w);
         if(this.streak()){ hud.score(String(this.errs.length)); hud.scorePop(); return this.addUp(err,w); }
         // v14 (6.1 / 6.16): the Set figure is the running average % difference — the line the sheet promises — and it WALKS to its
         // new value instead of jumping, the same as a Streak's total. Then the reveal waits for a tap (6.3)
         hud.countUp({ audio:this.ctx.audio, from:was, to:mean(this.errs), ms:700, fmt:v=>f2(v)+'%', set:t=>hud.score(t), alive:()=>this.st==='reveal', walk:w,
           done:()=>{ hud.scorePop(); this.total+=err; this.hud(); this.ctx.emit('live',this.result()); this.wait(()=>this.next()); } }); }); },
+  // v15 (4.1 / 4.2): the round belongs to whoever is holding the phone, so THEIR average walks — there is no shared total
+  // in a pass & play run, and nothing about it is recorded (L10 / A.3)
+  twoAdd(err,walk){ const p=this.two.p, was=this.two.scoreOf(p); this.two.add(err); const to=this.two.scoreOf(p);
+    hud.countUp({ audio:this.ctx.audio, from:was, to, ms:700, fmt:v=>f2(v)+'%', set:t=>hud.score(t), alive:()=>this.st==='reveal', walk,
+      done:()=>{ hud.scorePop(); this.two.turnDone(); this.later(()=>this.next(),1400); } }); },
   // v13 (6.7): in a Streak the round's % difference visibly walks into the running total — the round figure counts down to 0 while the total counts up by the same amount, together, with the whoosh
   // v14 (6.15): what the round contributes is written as what it is — "+1%" walking out of the round figure and into the total
   addUp(err,walk){ hud.addUp({ audio:this.ctx.audio, from:this.total, err, ms:900, el:null, walk, fmt:v=>'+'+f2(v)+'%', alive:()=>this.st==='reveal',

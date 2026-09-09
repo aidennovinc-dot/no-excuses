@@ -39,7 +39,13 @@ const lenLabel=(g,s,d)=>lenName(g,s,d);
 const lenFull=(g,s,d)=>{ const n=lenName(g,s,d), sub=lenSub(g,s,d); return sub&&GC(g,d).timed?`${n} · ${sub}`:n; };
 // versus exists for a game, or for some of its modes (v11)
 const versusOf=(g,d)=>{ const v=GAMES[g].versus; return v===true||(Array.isArray(v)&&v.includes(d)); };
-// two-player runs the engine handles on one screen (v11): Sequence and Count. Everything else passes the phone through VS
-const SHARED2=(g,d)=>g==='sequence'||(g==='spot'&&d==='count');
+// v15 (4.6): does ANY mode of this game have versus. The player row sits on the mode stage of the sheet, before a mode has
+// been chosen, so a game where only the second mode has versus (Spot · Find) could never offer it if the row asked versusOf
+const versusAny=g=>{ const v=GAMES[g].versus; return v===true||(Array.isArray(v)&&v.length>0); };
+/* two-player runs the engine handles on one screen (v11): Sequence and Count.
+   v15 (§4, build 25): the turn-taking games joined them. Estimate goes turn by turn (4.1 / 4.2) and Timing and Reaction
+   attempt by attempt (4.3 / 4.4), which they cannot do as two separate runs — so Quick Tap and Dots are now the only two
+   that pass the phone BETWEEN runs, and they are the two whose pass & play is a whole timed run each. */
+const SHARED2=(g,d)=>g==='sequence'||g==='hold'||g==='timing'||g==='reaction'||(g==='spot'&&d==='count');
 
-export { ENGINES, GAMES, GC, GV, N_GAMES, SHARED2, VERSUS, isStreak, lenFull, lenLabel, lenName, lenSub, versusOf };
+export { ENGINES, GAMES, GC, GV, N_GAMES, SHARED2, VERSUS, isStreak, lenFull, lenLabel, lenName, lenSub, versusAny, versusOf };

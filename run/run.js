@@ -11,7 +11,7 @@
 import { Music, Snd } from "../audio.js";
 import { RUN_SCHEMA } from "../config/build.js";
 import { HUD, INTRO, TOAST } from "../config/copy.js";
-import { MODE_NAME, PASS_LEN, RATE_MAX } from "../config/games.js";
+import { MODE_NAME, PASS_LEN, PASS_TURNS, RATE_MAX } from "../config/games.js";
 import { P1C, P2C } from "../config/theme.js";
 import { $, T, pWho } from "../core.js";
 import { emit } from "../core/events.js";
@@ -57,15 +57,22 @@ function pbShow(){ const g=GAMES[sel.game], pb=Scores.best(sel.game,sel.diff,sel
   if(g.timed){ const k=Math.min(1,(pb/sel.secs)/(RATE_MAX[sel.game]||6)); mk.style.bottom=Math.round(k*100)+'%'; mk.classList.add('on'); }
   else { gh.textContent=T(HUD.best,{score:scoreTxt(sel.game,pb,sel.diff,sel.secs)}); gh.classList.add('on'); } }
 function makeCtx(){ const id=R.id; const timers=makeTimers(()=>R.on&&R.id===id);
-  return { root:$('#game'), game:sel.game, cfg:GC(sel.game,sel.diff,sel.secs), mode:sel.diff, len:sel.secs, players:sel.vs, practice:sel.practice||0, scale:sel.scale, rateMode:prefs.rate, timers, audio:Snd, rand:Math.random,
+  // v15 (4.5): `opens` joins practice and scale as a Sequence-only extra on the contract's set — how many notes a versus starts on
+  return { root:$('#game'), game:sel.game, cfg:GC(sel.game,sel.diff,sel.secs), mode:sel.diff, len:sel.secs, players:sel.vs, practice:sel.practice||0, opens:sel.opens||3, scale:sel.scale, rateMode:prefs.rate, timers, audio:Snd, rand:Math.random,
     emit(name,data){ if(R.id!==id) return; if(name==='finish') finish(data); else if(name==='live') liveCheck(data); } }; }
 function start(){
-  const g=GAMES[sel.game], c=GC(sel.game,sel.diff,sel.secs); $('#game').dataset.g=sel.game; $('#game').dataset.d=sel.diff;
+  const g=GAMES[sel.game]; let c=GC(sel.game,sel.diff,sel.secs); $('#game').dataset.g=sel.game; $('#game').dataset.d=sel.diff;
   // two players (v10): pass & play (sel.vs 1) takes turns at a fixed length; versus (sel.vs 2) is one run at both ends. v11: Sequence and Count run both players on one screen inside their own engine; Reaction and Sequence handle versus themselves
   if(sel.vs===2&&!versusOf(sel.game,sel.diff)) sel.vs=0; const versus=sel.vs===2; const vx=isVx(); const shared=sel.vs===1&&SHARED2(sel.game,sel.diff);
   if(sel.vs===1&&!shared&&!VS.on){ VS.on=true; VS.stage=0; VS.p1=VS.p2=null; } if(VS.on) VS.stage++;
   if(VS.on&&PASS_LEN[sel.game]) sel.secs=PASS_LEN[sel.game];
   if(versus&&c.vsLens&&!c.vsLens.includes(sel.secs)) sel.secs=c.vsLens[0];
+  /* v15 (§4, build 25): a turn-taking pass & play run is a fixed number of turns each (PASS_TURNS), so whatever Set or
+     Streak the sheet was left on is not what it plays — and a Streak's budget would end the run in the middle of one
+     player's turn. The Set length is what a turn is measured in, so that is what the run gets. Sequence has no row: its
+     pass & play grows a note a round and ends when somebody misses, and its length is the key count, not a round count */
+  if(shared&&PASS_TURNS[sel.game+':'+sel.diff]) sel.secs=GC(sel.game,sel.diff).lens[0];
+  c=GC(sel.game,sel.diff,sel.secs);
   showGame(); $('#game').classList.remove('live','shake');   // the atmosphere fades, the wheel and the lock box close — they listen for screen:change
   $('#game').classList.toggle('versus',vx); $('#game').classList.toggle('bigc',sel.game==='quick-tap'&&!versus);
   // v14 (4.8): whose turn it is is never in doubt — a pass & play run is outlined in that player's colour
@@ -89,6 +96,11 @@ function start(){
   const go=()=>{ R.live=true; $('#game').classList.add('live'); if(R.timed){ R.t0=performance.now(); R.end=R.t0+sel.secs*1000; } eng.start(ctx); if(R.timed||eng.tick){ cancelAnimationFrame(R.raf); R.raf=requestAnimationFrame(tick); } };
   // versus has no first-play demo: straight to the countdown
   if(eng.noIntro){ hud.countdown(ctx.timers,Snd,go); return; }
+  /* v15 (§4, build 25): NO two-player run gets the ghost demo either. It is a first-play teaching moment for one player,
+     and it actively breaks a shared pass & play: Estimate's demo drives its own round and waits for the engine to reach
+     `wait`, which never happens when the first thing the run does is put up a hand-over card and wait for a tap — the run
+     would sit there forever. The mode stays unseen, so the demo plays the first time somebody meets it on their own. */
+  if(sel.vs){ if(eng.precount) eng.precount(ctx); hud.countdown(ctx.timers,Snd,go); return; }
   // first time in a mode: the ghost demo, then the countdown (v6). Sequence's keys run the scale under the 3-2-1 (v5)
   // v14 (6.4): the demo is over before the countdown starts. It used to leave its own round running — Estimate · Grow's target
   // was still being calculated under the 3-2-1 — so the engine is stopped and re-mounted, fresh, the moment the demo ends
@@ -99,7 +111,7 @@ function start(){
    so one last live pass banks the round that has just landed — the one that may not have emitted 'live' yet — before the
    run is torn down. liveCheck writes to the store itself; this is not a toast, it is the save. */
 function abort(){ if(!R.on) return;
-  if(R.live&&eng&&ctx&&!VS.on&&sel.vs!==2){ try{ liveCheck(eng.result(ctx)); }catch(e){} }
+  if(R.live&&eng&&ctx&&!VS.on&&!sel.vs){ try{ liveCheck(eng.result(ctx)); }catch(e){} }
   R.on=false; R.id++; VS.reset(); Intro.clear(); cancelAnimationFrame(R.raf); ctx.timers.clearT(); Music.stop(); eng.stop(ctx); $('#count').classList.remove('on'); $('#vwin').classList.remove('on'); $('#game').classList.remove('shake','live'); $('#seqdone')?.classList.remove('on'); $('#rxbar').innerHTML=''; emit('run:abort'); }
 function tick(now){
   if(!R.on) return;
@@ -134,7 +146,11 @@ function finish(res){
 function liveCheck(part){ if(!R.on) return;
   // v14 (4.15): versus hands its closeness up as part of the live payload; audio.js reads it off the run state and swaps bed
   if(part&&part.vsTension!==undefined) R.tension=part.vsTension;
-  if(VS.on||sel.vs===2) return; const run=Object.assign({g:sel.game,d:sel.diff,s:sel.secs,hits:0,misses:0,x:999,y:0,practice:sel.practice||0},part);
+  /* v15 (A.3, build 25): ANY two-player run, not only versus. It used to test sel.vs===2, which was right while the only
+     shared pass & play runs were Sequence and Count and neither emitted 'live' — §4 gives five more games a shared run,
+     and A.3 is explicit that no two-player run of any kind advances an unlock or an achievement. The finish already
+     turned them away (`two`); this is the mid-run half of the same rule */
+  if(VS.on||sel.vs) return; const run=Object.assign({g:sel.game,d:sel.diff,s:sel.secs,hits:0,misses:0,x:999,y:0,practice:sel.practice||0},part);
   if(chalRun(run.g,run.d,run.s)) run.chal=1;
   const u=unlocked(); let ch=false;
   for(const x of UNLOCKS){ if(x.live&&!run.chal&&!run.practice&&!u[x.key]&&x.test(run)){ u[x.key]=Date.now(); ch=true; R.fresh.push(x.key); toast(unlockToast(x.key),'','ok'); } }

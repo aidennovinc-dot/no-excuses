@@ -9,7 +9,7 @@ import { $, T, esc, pWho } from "../../core.js";
 import { emit, on } from "../../core/events.js";
 import { VS, sel } from "../../core/state.js";
 import { prefs, save } from "../../core/store.js";
-import { GAMES, GC, SHARED2, lenName, versusOf } from "../../games/registry.js";
+import { GAMES, GC, SHARED2, isStreak, lenName, versusOf } from "../../games/registry.js";
 import { Scores, achById, got, isOpen, lenLock, lenOpen, lensOf, markSeen, newMark, unlockHtml, unlockToast, verdict } from "../../progress.js";
 import { start } from "../../run/run.js";
 import { define } from "../actions.js";
@@ -73,7 +73,10 @@ on('run:finish',({run,isBest,two,fresh,ach,adv})=>{ const g=GC(run.g,run.d,run.s
   // practice shows no score at all (v5). Versus shows the pair of counts. Lower-is-better scores wear a ▼ (v11)
   // v14 (4.16): a versus run drops the white score strip entirely — #vsbox below is the result, and it only needs saying once
   $('#over-score').hidden=!!run.vs2;
-  $('#over-score').innerHTML=run.vs2?'':run.practice||(run.fail&&!run.hits)?RESULT.dash:scoreTxt(run.g,run.hits,run.d,run.s)+(g.lower?RESULT.lowerMark:''); $('#over-score').classList.toggle('sm',!!g.suffix);
+  // v15 (3.8 answer, build 25): a Streak says what its number is. The score is the round the run reached — bare, it was just
+  // a figure, and 3.8's retune can only be judged from play by reading it
+  const unit=!run.vs2&&!run.practice&&isStreak(run.g,run.d,run.s)?T(RESULT.streakUnit,{word:g.scoreWord||'rounds'}):'';
+  $('#over-score').innerHTML=run.vs2?'':run.practice||(run.fail&&!run.hits)?RESULT.dash:scoreTxt(run.g,run.hits,run.d,run.s)+(g.lower?RESULT.lowerMark:'')+unit; $('#over-score').classList.toggle('sm',!!g.suffix);
   $('#verdict').textContent=run.vs2?(run.vs2.w<0?VERDICT.draw:T(VERDICT.took,{n:run.vs2.w+1,how:run.vs2.how?' '+run.vs2.how:''})):run.practice?VERDICT.practice:verdict(run);
   renderOver(run);
   // the ad break (v10) comes between the run and the result, every fourth result, never for supporters

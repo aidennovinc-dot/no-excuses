@@ -68,6 +68,8 @@
   /* everything that appears on a tap rises in (v11): ~12px and a fade over 180ms */
   @keyframes rise{0%{opacity:0;translate:0 12px}100%{opacity:1;translate:0 0}}
   .big .dn{font-size:.32em;vertical-align:.5em;color:var(--mute);margin-left:.1em}
+  /* v15 (3.8 answer, build 25): a Streak's number is the round it reached, and the result screen says so under it */
+  .big .unit{display:block;font-family:var(--mono);font-size:.14em;font-weight:400;letter-spacing:.24em;text-transform:uppercase;color:var(--mute);margin-top:.42em}
   /* ---------- v13 ---------- */
   /* 2.1 / L8: anything newly unlocked swells and tints green the first time it is on screen, then is marked seen. One animation, every screen */
   /* v14 (8.7): the 100% frame must NOT name background-color. `both` holds the last frame forever, so ending on `transparent`
@@ -673,6 +675,9 @@
   .glbl b{color:var(--ink);font-weight:700;font-size:26px;letter-spacing:0;display:block}
   .glbl b.g{color:var(--ok)}
   .glbl b.r{color:var(--miss)}
+  /* v15 (3.9 answer, build 25): Spot · Count flashes the right answer instead of holding the card. 0.6s, then the round goes */
+  .glbl b.cflash{animation:cflash .6s cubic-bezier(.2,.9,.3,1.2) both}
+  @keyframes cflash{0%{transform:scale(1.6);opacity:0}22%{transform:scale(1);opacity:1}100%{transform:scale(1);opacity:1}}
   .fs{position:absolute;width:var(--fsz);height:var(--fsz);background:var(--sq-live);pointer-events:none;transition:opacity .2s}
   .fs.circle{border-radius:50%}
   .fs.tri{clip-path:polygon(50% 0,100% 100%,0 100%)}

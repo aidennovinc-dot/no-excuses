@@ -15,9 +15,22 @@ export const SHAPE_WORD = { circle:'circle', tri:'triangle', square:'square' };
 // two-player lengths (v10): pass & play is a fixed 7s of Quick Tap or 10s of Dots; versus runs until one player leads by VS_LEAD, or VS_CAP seconds
 export const PASS_LEN = { 'quick-tap':7, 'dots':10 };
 export const VS_LEAD = 10, VS_CAP = 120;
+/* v15 (§4, build 25): pass & play for the five games that never had it. PASS_LEN above is SECONDS and stays Quick Tap and
+   Dots only — those two pass the phone between two WHOLE runs. The turn-taking games share ONE run instead, so what they
+   need is a count of turns, not a length: [attempts per turn, turns each], keyed 'game:mode' like SET_COPY.
+   Estimate is turn by turn (4.1 / 4.2) and Timing and Reaction attempt by attempt (4.3 / 4.4), which is one attempt a turn.
+   Go / No-go arrives on a beat and a single shape cannot be handed over, so its turn is a five-shape block — one rule period.
+   Count is the odd one out and always was: both players answer the SAME flash on their own keypad, so its ten rounds are
+   one shared turn. Sequence has no row on purpose — its pass & play grows a note a round and ends when somebody misses. */
+export const PASS_TURNS = { 'hold:grow':[1,3], 'hold:cut':[1,3], 'timing:stopwatch':[1,3], 'timing:hidden':[1,3], 'reaction:flash':[1,3], 'reaction:nogo':[5,2], 'spot:count':[10,1] };
+// v15 (4.5): Sequence versus is lives-based — the keys come off the length row (3/5/7), `opens` is how many notes it starts
+// with, and the pattern grows a note a round. Three lives each is Cowork's number, not Aiden's (guess)
+export const SEQ_VS = { lives:3, opens:[3,4,5,6] };
 // v14 (4.14): versus ends on first to VS_TARGET as well as first to lead by VS_LEAD. 100 is the number Aiden gave on Quick Tap;
 // Dots 60 was build 19's guess and Aiden confirmed it 2026-09-08 (v14 section A.4). VS_CAP is the backstop, not a win condition
-export const VS_TARGET = { 'quick-tap':100, 'dots':60 };
+// v15 (4.6): Spot · Find versus is scored in rounds — two odd shapes, one each, first to find theirs takes the round —
+// so five is a match, not a number of taps. Reaction versus keeps its own best-of and Sequence versus is lives (SEQ_VS)
+export const VS_TARGET = { 'quick-tap':100, 'dots':60, 'spot':5 };
 // the rate bar's top, hits per second, for the timed games. v14 (6.6): Quick Tap tops out at 4/s — 6 put every real run in the
 // bottom half of the bar, so the bar never moved where the player actually plays
 export const RATE_MAX = { 'quick-tap':4, 'dots':4.5 };
@@ -35,7 +48,9 @@ export const GAMES = {
   'hold': { name:'Estimate', modes:['grow','cut'], unit:' rounds', timed:false, lower:true, lead:true,
     grow:'Grow your shape to the same area.', cut:'Draw a line that cuts off the share asked.',
     suffix:'%', scoreWord:'% off', streak:{ ...STREAK_CFG } },
-  'sequence': { name:'Sequence', modes:['solo'], lens:[3,5,7], unit:' keys', timed:false, versus:true,
+  // v15 (4.5): versus keeps the key row — 3, 5 or 7 — instead of hiding it, because the keys are half of what the two
+  // players are agreeing to. `vsLens` is what makes the length row show in versus at all
+  'sequence': { name:'Sequence', modes:['solo'], lens:[3,5,7], unit:' keys', timed:false, versus:true, vsLens:[3,5,7],
     solo:'Watch the notes, then play them back.' },
   // v7 — four new games. v11: Set / Streak per mode; every timing figure is an absolute difference
   'timing': { name:'Timing', modes:['stopwatch','hidden'], unit:' attempts', timed:false, lower:true, lead:true,
@@ -49,7 +64,9 @@ export const GAMES = {
     // Go/No-go (v11): Set = 5 rounds (v14 section 5), average ms on right taps + 150ms per wrong tap (v14 A.2); v14 (6.2 / L5): Streak = shapes survived on a 1000ms budget
     per:{ nogo:{ streak:{ ...STREAK_CFG, scoreWord:'shapes' } } } },
   // v8: Count and Find merged into Spot. v13: Normal/Hard are gone — the ramp is the difficulty (10.1). Count scores total miscount, Find cumulative seconds; both lower is better, both Set (10 rounds) or Streak (a budget)
-  'spot': { name:'Spot', modes:['count','find'], unit:' rounds', timed:false, lower:true,
+  // v15 (4.6): Find gains versus — the first game to get a two-player mode it never had. Count is pass & play only, because
+  // both players answering the same flash IS its two-player mode
+  'spot': { name:'Spot', modes:['count','find'], unit:' rounds', timed:false, lower:true, versus:['find'],
     count:'Count the shapes flashed. Ignore the decoys.', find:'Find the shape you were shown.',
     suffix:'', scoreWord:'miscount', streak:{ ...STREAK_CFG },
     per:{ find:{ lower:true, suffix:'s', scoreWord:'s total', streak:{ ...STREAK_CFG } } } },

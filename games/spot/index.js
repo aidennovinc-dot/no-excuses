@@ -3,16 +3,21 @@
    Build 17 (refactor stage 3): the engine contract, on the round base. */
 
 import { SPOT as CP } from "../../config/copy.js";
-import { SHAPE_WORD, SPOT_FIND, SPOT_RAMP } from "../../config/games.js";
+import { SHAPE_WORD, SPOT_FIND, SPOT_RAMP, VS_TARGET } from "../../config/games.js";
 import { $, $$, T, f2, minMax, pWho, shapeI, winner } from "../../core.js";
 import * as hud from "../_shared/hud.js";
 import { genRect, rnd, roundEngine, rxBar, scatter, shapeHtml } from "../_shared/round.js";
+import { turnsOf } from "../_shared/two.js";
 /* Spot (v8) — Count: shapes flash up, count the ones you were shown; decoys, count and flash length all ramp through the run. Find: one shape is different, tap it.
    v13 (10.1–10.3): Normal / Hard are gone — round number IS the difficulty. Count scores total miscount, Find cumulative seconds; both lower is better.
    Set = 10 rounds. Streak = a budget: 5 miscounts for Count, 10 seconds for Find, and the score is rounds. */
-const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pts:[], size:40, times:[], pen:0, t0:0, odd:'', target:'circle', flash:0, bestFlash:0, two:false, picks:[null,null], pickT:[0,0], vsN:[0,0], off:0, tot:0,
+const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pts:[], size:40, times:[], pen:0, t0:0, odd:'', target:'circle', flash:0, bestFlash:0, two:false, vs:false, o1:'', o2:'', picks:[null,null], pickT:[0,0], vsN:[0,0], off:0, tot:0,
   find(){ return this.ctx.mode==='find'; },
-  begin(){ this.round=0; this.right=0; this.wrong=0; this.times=[]; this.bestFlash=0; this.off=0; this.tot=0; this.two=this.ctx.players===1&&this.ctx.mode==='count'; this.vsN=[0,0]; hud.score(this.find()?'0.00':'0'); hud.scoreVisible(!this.two); this.next(); },
+  // Count's two-player is ten shared rounds — both players answer the same flash — and the ten now comes off PASS_TURNS
+  // rather than being written into the engine twice (v15 §4)
+  twoLen(){ return turnsOf(this.ctx.game,this.ctx.mode)[0]; },
+  // v15 (4.6): Find gains versus — two odd shapes in one crowd, one each, first to find theirs takes the round
+  begin(){ this.round=0; this.right=0; this.wrong=0; this.times=[]; this.bestFlash=0; this.off=0; this.tot=0; this.two=this.ctx.players===1&&this.ctx.mode==='count'; this.vs=this.ctx.players===2&&this.find(); this.vsN=[0,0]; hud.score(this.find()?'0.00':'0'); hud.scoreVisible(!(this.two||this.vs)); if(this.vs) return this.vsFindRound(); this.next(); },
   // Find's crowd still grows across ten rounds; a Streak holds at the round-10 crowd
   p(){ return Math.min(1,(this.round-1)/9); },
   // v13 (10.1): round r deals 2 + floor(r/2) targets (cap 12) and floor(r/1.5) decoys (cap 10); the flash falls from 1340ms to 350ms;
@@ -26,7 +31,7 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
     if(this.find()){ if(this.streak()){ if(this.tot>=10) return this.ctx.emit('finish',this.result()); hud.time(T(CP.hudFindStreak,{n:this.round,tot:f2(this.tot)})); }
       else { if(this.round>this.ctx.len) return this.ctx.emit('finish',this.result()); hud.time(T(CP.hudFind,{n:this.round,s:this.ctx.len,tot:f2(this.tot)})); }
       return this.findRound(); }
-    if(this.two){ if(this.round>10) return this.twoEnd(); hud.time(T(CP.hudTwo,{n:this.round})); return this.countRound(); }
+    if(this.two){ if(this.round>this.twoLen()) return this.twoEnd(); hud.time(T(CP.hudTwo,{n:this.round,s:this.twoLen()})); return this.countRound(); }
     if(this.streak()){ if(this.off>=5) return this.ctx.emit('finish',this.result()); hud.time(T(CP.hudCountStreak,{n:this.round,off:this.off})); }
     else { if(this.round>this.ctx.len) return this.ctx.emit('finish',this.result()); hud.time(T(CP.hudCount,{n:this.round,s:this.ctx.len,off:this.off})); }
     this.countRound(); },
@@ -59,7 +64,36 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
     if(ok[0]&&ok[1]){ const d=this.pickT[0]-this.pickT[1]; if(Math.abs(d)<=350){ pts=[1,1]; line=CP.tie; } else { const w=d<0?0:1; pts[w]=1; line=T(CP.faster,{n:w+1}); } }
     else if(ok[0]||ok[1]){ const w=ok[0]?0:1; pts[w]=1; line=T(CP.had,{n:w+1}); } else line=CP.nobody;
     this.vsN[0]+=pts[0]; this.vsN[1]+=pts[1]; $('#gen').innerHTML=this.pts.map(q=>shapeHtml(q,this.size,q.shape!==this.target?'dim':'')).join('')+`<div class="glbl bot"><b>${this.answer}</b>${line}<br><span class="p1">${this.picks[0]===null?'—':this.picks[0]}</span> · <span class="p2">${this.picks[1]===null?'—':this.picks[1]}</span></div>`; (pts[0]||pts[1])?this.ctx.audio.hit():this.ctx.audio.miss(); this.later(()=>this.next(),1600); },
-  twoEnd(){ const [a,b]=this.vsN; const w=winner(a,b); $('#gen').innerHTML=`<div class="glbl top" style="top:40%"><b class="${w<0?'':w?'p2':'p1'}">${w<0?CP.draw:T(CP.wins,{n:w+1})}</b>${a} – ${b}</div>`; this.ctx.audio.end(); this.later(()=>this.ctx.emit('finish',{hits:a,misses:0,vs2:{a,b,w,how:T(CP.over10,{a,b})}}),1600); },
+  twoEnd(){ const [a,b]=this.vsN; const w=winner(a,b); $('#gen').innerHTML=`<div class="glbl top" style="top:40%"><b class="${w<0?'':w?'p2':'p1'}">${w<0?CP.draw:T(CP.wins,{n:w+1})}</b>${a} – ${b}</div>`; this.ctx.audio.end(); this.later(()=>this.ctx.emit('finish',{hits:a,misses:0,vs2:{a,b,w,how:T(CP.over10,{a,b,s:this.twoLen()})}}),1600); },
+  /* v15 (4.6) — Find versus. Two odd shapes sit in one crowd, one for each player. They are the SAME colour as everything
+     else, because colouring them would hand both players the answer and end the game — so the rule bar is the only place
+     the two are told which shape is theirs, in their own colours (L4). Whoever taps a shape first scores it for its owner,
+     the convention Dots versus already uses for a tap on the other player's dot. First to VS_TARGET rounds takes the match. */
+  vsTarget(){ return VS_TARGET[this.ctx.game]||5; },
+  vsFindRound(){ this.clearT(); this.round++;
+    if(this.vsN[0]>=this.vsTarget()||this.vsN[1]>=this.vsTarget()) return this.vsEnd();
+    const p=this.p(), r=genRect(); this.size=Math.max(18,Math.min(r.width,r.height)*(.085-p*.025));
+    const all=['circle','square','tri'], i=rnd(3); this.o1=all[i]; this.o2=all[(i+1)%3]; const base=all[(i+2)%3];
+    const n=SPOT_FIND.nBase+Math.round(p*SPOT_FIND.nSpan), drift=p*SPOT_FIND.drift;
+    this.pts=scatter(n,[base],this.size); this.pts.forEach(q=>{ q.shape=base; q.vx=(Math.random()-.5)*drift; q.vy=(Math.random()-.5)*drift; q.va=0; });
+    const a=rnd(this.pts.length); let b=rnd(this.pts.length); for(let k=0;k<12&&b===a;k++) b=rnd(this.pts.length); if(b===a) b=(a+1)%this.pts.length;
+    this.pts[a].shape=this.o1; this.pts[b].shape=this.o2;
+    hud.timeHtml(T(CP.vsRound,{n:this.round,t:this.vsTarget()}));
+    this.st='wait'; $('#gen').innerHTML=''; rxBar([pWho(0),shapeI(this.o1),`<b>${SHAPE_WORD[this.o1]}</b>`,'·',pWho(1),shapeI(this.o2),`<b>${SHAPE_WORD[this.o2]}</b>`]);
+    this.later(()=>{ this.st='vsfind'; this.t0=performance.now();
+      $('#gen').innerHTML=`<div class="vz top p2">${pWho(1)}<b>${this.vsN[1]}</b></div><div class="vz bot p1">${pWho(0)}<b>${this.vsN[0]}</b></div>`+this.pts.map(q=>shapeHtml(q,this.size)).join('');
+      this.move('vsfind'); },1400); },
+  vsTap(ev){ const r=genRect(); const x=ev.x-r.left, y=ev.y-r.top; let best=null, bd=1e9;
+    this.pts.forEach((q,i)=>{ const d=Math.hypot(x-(q.x+this.size/2),y-(q.y+this.size/2)); if(d<bd){ bd=d; best=i; } });
+    if(best===null||bd>this.size*.95) return; const els=$$('#gen .fs'); const sh=this.pts[best].shape;
+    if(sh!==this.o1&&sh!==this.o2){ els[best].classList.add('bad'); this.ctx.audio.miss(); if(navigator.vibrate) navigator.vibrate(30); return; }
+    const w=sh===this.o1?0:1; this.st='show'; cancelAnimationFrame(this.raf); this.vsN[w]++;
+    els[best].classList.add('odd'); els.forEach((el,i)=>{ if(i!==best) el.classList.add('dim'); });
+    $('#gen').insertAdjacentHTML('beforeend',`<div class="glbl bot"><b class="${w?'p2':'p1'}">${T(CP.vsTook,{n:w+1})}</b>${f2((performance.now()-this.t0)/1000)}s</div>`);
+    this.ctx.audio.hit(); this.later(()=>this.vsFindRound(),1500); },
+  vsEnd(){ const [a,b]=this.vsN; const w=winner(a,b); this.st='over'; rxBar(null); cancelAnimationFrame(this.raf);
+    $('#gen').innerHTML=`<div class="glbl top" style="top:40%"><b class="${w<0?'':w?'p2':'p1'}">${w<0?CP.draw:T(CP.wins,{n:w+1})}</b>${a} – ${b}</div>`;
+    this.ctx.audio.end(); this.later(()=>this.ctx.emit('finish',{hits:a,misses:0,vs2:{a,b,w,how:T(CP.vsHow,{t:this.vsTarget()})}}),1600); },
   onDown(ev){
     if(this.st==='ask'){ if(this.two) return this.twoPick(ev); const b=ev.el.closest('[data-num]'); if(!b) return; const k=+b.dataset.num, ok=k===this.answer;
       // v13 (10.2): the score is total miscount — 2 for 4 costs 2, 6 for 4 costs 2. Lower is better
@@ -67,13 +101,17 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
       if(ok) this.bestFlash=this.bestFlash?Math.min(this.bestFlash,this.flash):this.flash;
       hud.score(this.streak()?String(Math.max(0,this.round-1)):String(this.off));
       const done=this.streak()?this.off>=5:this.round>=this.ctx.len;
-      $('#gen').innerHTML=this.pts.map(q=>shapeHtml(q,this.size,q.shape!==this.target?'dim':'')).join('')+`<div class="glbl bot"><b class="${ok?'g':'r'}">${this.answer}</b>${ok?CP.right:T(CP.said,{k,off})}${this.streak()?T(CP.of5,{off:this.off}):''}${done&&this.streak()?CP.over:''}</div>`;
+      // v15 (3.9 answer, build 25): Count does not hold its result — one number is not a complicated result. The correct
+      // count is FLASHED so it registers and the round moves on by itself 600ms after the walk, instead of the 900ms
+      // every other dropped cue got. `cflash` is the flash; the number is the only thing on the card that has to land
+      $('#gen').innerHTML=this.pts.map(q=>shapeHtml(q,this.size,q.shape!==this.target?'dim':'')).join('')+`<div class="glbl bot"><b class="cflash ${ok?'g':'r'}">${this.answer}</b>${ok?CP.right:T(CP.said,{k,off})}${this.streak()?T(CP.of5,{off:this.off}):''}${done&&this.streak()?CP.over:''}</div>`;
       ok?this.ctx.audio.hit():this.ctx.audio.miss(); if(!ok&&navigator.vibrate) navigator.vibrate(30);
       // v14 (6.1 / 6.3): the round's miscount walks into the running total — the Set's score, the Streak's budget — and the
       // reveal then stays up until it is tapped
       hud.countUp({ audio:off?this.ctx.audio:null, from:this.off-off, to:this.off, ms:480, fmt:v=>String(Math.round(v)), alive:()=>this.st==='show',
         set:t=>{ if(this.streak()) hud.time(T(CP.hudCountStreak,{n:this.round,off:t})); else hud.score(t); },
-        done:()=>{ hud.scorePop(); this.ctx.emit('live',this.result()); this.after(()=>this.next()); } }); return; }
+        done:()=>{ hud.scorePop(); this.ctx.emit('live',this.result()); this.after(()=>this.next(),600); } }); return; }
+    if(this.st==='vsfind') return this.vsTap(ev);
     if(this.st!=='find') return; const r=genRect(); const x=ev.x-r.left, y=ev.y-r.top; let best=null, bd=1e9; this.pts.forEach((q,i)=>{ const d=Math.hypot(x-(q.x+this.size/2),y-(q.y+this.size/2)); if(d<bd){ bd=d; best=i; } }); if(best===null||bd>this.size*.95) return;
     const els=$$('#gen .fs'); if(this.pts[best].shape===this.odd){ this.st='show'; cancelAnimationFrame(this.raf); const t=Math.round(((performance.now()-this.t0)/1000+this.pen)*100)/100; this.times.push(t);
       // v13 (10.3): Set totals the seconds over ten rounds; a Streak spends a 10-second budget and scores the rounds it bought

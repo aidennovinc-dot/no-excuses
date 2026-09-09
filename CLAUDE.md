@@ -25,7 +25,12 @@ lives beside `BUILD` and does **not** move with it — see the comment there for
 - **Player 1 is red (`#E0453B`), Player 2 is light blue (`#6EC6FF`)**, everywhere two people share
   the phone. Never swap them per game.
 - **Every mode offers Set and Streak.** Set = a fixed number of rounds. Streak = until you fail.
-- **Two-player is picked in two steps**: *Solo* / *With a friend*, then *Pass & play* / *Versus*.
+- **Two-player is picked in two steps**: *Solo* / *With a friend*, then *Pass & play* / *Versus*. **Two kinds of pass & play
+  since build 25 (v15 §4)** — Quick Tap and Dots play two whole runs with the hand-over screen between them, because their
+  pass & play *is* a whole timed run each; everything else alternates **inside one run** and the engine owns the hand-over
+  (`SHARED2` in `games/registry.js` is the list, `PASS_TURNS` in `config/games.js` the turns each). The player row is drawn
+  on the *mode* stage, before a mode is chosen, so it offers Versus if **any** mode of the game has it (`versusAny`) and
+  narrows when the mode is picked — without that, Spot · Find's versus would be unreachable behind Count.
 - **One pick-sheet layout for every game** — mode row, then length row. No per-game special cases.
 - **Seconds live on the pick sheet, not the result screen.** Lengths are named (Sprint, Dash,
   Marathon, Set, Streak); the raw seconds are a subtitle on the sheet only.
@@ -115,14 +120,22 @@ the tap is consumed by `input` and never reaches the round underneath. **Only Es
 Reaction · Flash ask for it** — an engine opts in with `holdResult`, and `roundEngine.after(fn, ms)` is what everything else
 calls: it holds if the engine opted in and otherwise moves on by itself. Timing and Spot lost the cue at build 24 and the
 gate asserts both directions, so "removed it" and "broke it" cannot look the same. Go / No-go never had it — its shapes run
-on a beat and 6.24 forbids a gap), `timed.js` (the Quick Tap / Dots base: hits, misses, lockout, rate), `round.js` (the
-Timing / Reaction / Spot base), `versus.js`, `shapes.js`. The game markup stays static in `index.html`;
+on a beat and 6.24 forbids a gap. **The hand-over card between two players' turns is the other thing that asks for a tap
+(v15 §4, build 25) and it is the case §3.9 named**), `timed.js` (the Quick Tap / Dots base: hits, misses, lockout, rate),
+`round.js` (the Timing / Reaction / Spot base), `versus.js`, `shapes.js`, **`two.js` — pass & play inside one run (v15 §4,
+build 25): whose turn it is, what each player has done, the hand-over gate, and the `vs2` payload the result screen reads.
+Estimate, Timing and Reaction hold one; `makeTwo(ctx, {lower, agg, fmt})` is the whole surface, and `turnsOf(g, d)` reads
+`PASS_TURNS`. Sequence and Spot answer §4 in their own engines, because their two-player modes are not turn-taking at all —
+Sequence versus is lives over a shared growing pattern, Spot · Find versus is two odd shapes in one crowd**. The game markup stays static in `index.html`;
 `mount` resets an engine's own nodes rather than building them.
 
 **`config/` is data only (A2) — since build 16.** Every number, name and string a feedback batch might
 change: `build.js` (BUILD, LABEL, RUN_SCHEMA, PUB_URL) · `games.js` (GAMES, the lengths, mode names,
 CFG, **`SET_COPY` — the one Set round count and both description lines per mode, L5**, the Estimate and Spot tuning —
-`ESTIMATE`, `SPOT_RAMP` and `SPOT_FIND`) · `unlocks.js` (UNLOCKS + LEN_RULES — L6) · `achievements.js` (ACH — every secret row carries a `hint`, the description
+`ESTIMATE`, `SPOT_RAMP` and `SPOT_FIND`, and **since build 25 `PASS_TURNS` — `[attempts per turn, turns each]` keyed
+`'game:mode'` for the games that alternate inside one run — plus `SEQ_VS`, the Sequence versus lives and opening lengths.
+`PASS_LEN` is seconds and stays Quick Tap and Dots only: those two pass the phone between two whole runs, and a turn count
+is not a length**) · `unlocks.js` (UNLOCKS + LEN_RULES — L6) · `achievements.js` (ACH — every secret row carries a `hint`, the description
 shown in place of its name since build 21 / v14 8.5 — and AUTHOR_RECORDS) · **`key-bars.js` (KEY_BARS + KEY_NOTE — the
 key's 31 clearance bars, build 22, keyed `'<game>:<mode>:<length>'` exactly as `progress/key.js` builds them; each row
 carries its `bar`, its `dir`, and the `conf` / `basis` the catalogue prints. Aiden amends these during play-test and a
@@ -188,7 +201,7 @@ file that changes a rule, threshold, name, unlock or screen layout is not built 
 | L7 | A game tile is white until that game has been played once. |
 | L8 | Anything newly unlocked gets the green first-seen highlight once, then is marked seen. |
 | L9 | The length row is labelled "Mode" in every game. One pick-sheet layout, no per-game special cases. |
-| L10 | Two-player runs never go on a board. |
+| L10 | Two-player runs never go on a board — and **that is the narrow half of a wider rule since v15 A.3 (2026-09-09): no two-player run of any kind advances a key, a clearance bar, an unlock or an achievement.** Aiden's reason, in his words: *"I don't want anyone to have to rely on someone else in order to beat this game."* Enforced at the finish (`two` in `run/run.js`, since build 22's 9.4) **and mid-run since build 25** — `liveCheck` turns away every `sel.vs`, not only versus, which it had to once §4 gave five more games a run both players share. The five two-player modes §4 added are pure play, by intent, and the gate reads storage back after each of them. |
 
 **L5 amended at build 24 (FEEDBACK-v15 §3.5 and §3.8, 2026-09-09), both quoting it.** Stopwatch's Streak budget was **2.0s**
 against 7s targets — two ordinary attempts spent it, which is why Aiden called it far too punishing and why he read the number
@@ -241,7 +254,12 @@ values passes one step over the line and fails one step under it (1.1–1.4), on
 (1.0d) and nothing on the Unlocks screen is a second copy (2.4), the new Estimate secret row is described (1.5), no Next
 card on a fresh profile's first menu open (2.2), tapping a locked length on the result screen shows its requirement and
 stays put (2.1), and **an unlock that fires mid-run is in localStorage after the run is quit (2.5)** — plus the static
-assert that the run banks before `run:finish` and the result screen no longer earns anything. **A failing
+assert that the run banks before `run:finish` and the result screen no longer earns anything. **Two-player (v15 §4,
+build 25)** — every turn-taking mode has a `PASS_TURNS` row and every row names a real mode; a pass & play Estimate,
+Timing, Flash and Go / No-go each play to a result **without ever reaching the hand-over screen**, show the pair, hide the
+board (L10) and leave the store empty (A.3 — no run, no unlock, no achievement, no bar, read back from localStorage after
+each); Sequence versus keeps its key row, gains its opening-length row and no longer mentions Compose; and Spot offers
+Versus on the player row despite its first mode having none, keeps it when Find is picked, and plays out to a pair. **A failing
 assertion blocks the push.** Run it before every push; ~4 minutes. `CHROME_PATH` overrides the
 Windows default Chrome. **`npm run review` is live again — build 21 (#368 closed).** It drives
 `../_review/scripts/` (54+ cards, data-driven), ported from Playwright to the same puppeteer-core the gate uses and

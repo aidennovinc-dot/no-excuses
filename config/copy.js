@@ -76,13 +76,17 @@ export const UNLOCKS_SCREEN = { title:'unlocks', hint:'tap a locked row to see w
   keyLine:'The first key is earned here. Beat a clearance bar once in a solo run and it is cleared for good — the key screen has all thirty-one.' };
 export const SHEET = { mode:'Mode', toUnlock:'To unlock: {need}', tileUnlock:'to unlock: {need}', locked:'locked', noRun:'no run yet', best:'best', closest:'closest',
   practiceFrom:'practice from', off:'off', pracLocked:'locked · 8 notes in 7 keys',
+  // v15 (4.5): Sequence versus asks for two things — the keys (the length row) and how many notes it opens with. The second
+  // one sits in the row Practice from already uses, so the sheet gains no new furniture (L9)
+  opens:'open with', notes:'notes',
   // v14 (7.1): the result screen's button is Try again until something is changed, and only then does it become Go
   go:'Go', tryAgain:'Try again', goVersus:'Go · versus', goEach:'Go · {n}s each', goPass:'Go · pass & play', passTitle:' · pass & play', versusTitle:' · versus',
   chalScored:'A friend scored ', chalBeat:' — beat it', chalSent:'A friend sent you this one' };
 export const LOCK = { text:'{name}<b>To unlock: {need}</b>' };
 // v14 (4.2): the sub-copy under the two-player picture is gone — no "take turns on one phone", no "{n} seconds each", no grey
 // line under Pass and Play. The phones carry the player labels instead (4.3 / 4.5). Versus keeps one line, because 4.14 changed what wins
-export const VS_LINE = { sequence:'Compose · tap in up to 8 notes, the other copies · then swap', reaction:'first to tap after the flash wins the round · early tap loses it', lead:'first to {t} · or lead by {n}' };
+// v15 (4.5 / 4.6): Sequence versus is lives, not Compose, and Spot · Find has a versus line for the first time
+export const VS_LINE = { sequence:'{n} lives each · the pattern grows a note a round · last one playing wins', reaction:'first to tap after the flash wins the round · early tap loses it', spot:'two shapes, one each · first to find theirs takes the round', lead:'first to {t} · or lead by {n}' };
 
 // the run's HUD and the versus / pass & play screens
 export const HUD = { goal:'<i>goal · <b>{need}</b></i><u>unlocks {name}</u>', aim:'<i>goal · <b>{aim}</b></i>', goalHit:'✓ ', best:'best {score}', versus:'versus', pass:'pass & play',
@@ -91,7 +95,16 @@ export const HUD = { goal:'<i>goal · <b>{need}</b></i><u>unlocks {name}</u>', a
 // v14 (4.7 / 4.9): the game name sits in its usual place at the top, whose turn it is is the biggest thing on the screen, and
 // player 2 is told what there is to beat — the score, and the pace behind it where the game has one
 export const PASS = { eyebrow:'{game} · pass & play', up:'your turn', hand:'hand the phone over', beat:'to beat', rate:'{n}/s' };
-export const RESULT = { practice:'practice', fail:'run over', best:'new best', pass:'pass & play', versus:'versus', dash:'—', lowerMark:'<span class="dn">▼</span>',
+/* v15 (§4, build 25): the words the SHARED pass & play uses — the games that alternate inside one run rather than playing
+   two whole runs with the hand-over screen between. One set for all of them, so Estimate, Timing and Reaction cannot drift
+   apart the way three copies of the same card would */
+export const TWO = { ready:'hand the phone over<br>tap when ready', hud:'{who} · turn {n} of {s}',
+  lowest:'on the lower score', highest:'on the higher score' };
+// v15 (3.8 answer, build 25): a Streak's score IS the round it reached, and it used to sit there as a bare number. It says
+// so now — the retune in 3.8 is unmeasured play, and the only way to report whether it runs long is to read the round off
+// the result screen. `word` is the mode's own scoreWord (rounds, or shapes on Go / No-go)
+export const RESULT = { streakUnit:'<span class="unit">{word} reached</span>',
+  practice:'practice', fail:'run over', best:'new best', pass:'pass & play', versus:'versus', dash:'—', lowerMark:'<span class="dn">▼</span>',
   rank:'rank <b>{n}</b> of 10 · {name}', outside:'outside the top 10 · {name}', you:'you', practiceNote:'practice · nothing recorded', twoNote:'two players · nothing recorded',
   top:'top 10 · {where}', closestFirst:' · closest first', noRuns:'No runs here yet.', peak:'peak', notes:'{n} notes' };
 export const BOARD = { rank:'rank', score:'score', date:'date', lowerMark:' ▼' };
@@ -122,7 +135,9 @@ export const KEY = { title:'the key', hint:'tap a game · solo runs only',
 // the engines' own words
 export const SEQ = { copy:'copy the notes', yourTurn:'your turn', whoTurn:'{who} · your turn', watch:'round {n} · watch', round:'round {n}',
   compose:'tap in a tune · up to 8 notes', composeHud:'{who} · compose · up to 8', composeN:'{who} · {n} of 8', listen:'listen · then copy it', listenHud:'{who} · listen',
-  wins:'{who} wins', draw:'draw', practice:' · practice', pass:' · pass & play', comp:' · compose', hud:'{n} keys{tail}', missNote:'on a missed note', longer:'on the longer copy', notes:'{n} notes' };
+  wins:'{who} wins', draw:'draw', practice:' · practice', pass:' · pass & play', comp:' · versus', hud:'{n} keys{tail}', missNote:'on a missed note', longer:'on the longer copy', notes:'{n} notes',
+  // v15 (4.5): versus is lives-based. Compose — tap in a tune, the other copies, longest copy wins — is retired with it
+  vsHud:'{who} · {a} – {b} lives', vsLives:'{n} lives each', vsOut:'{who} is out', vsRound:'round {n} · {k} notes', vsLost:'on lives', vsLives2:'{n} lives' };
 // v14 (6.11 / 6.12): the shape you grow is drawn centre-top on every round, the same one you are told about, so nothing has to
 // say where it is. "same area · your shape is top right" is gone
 export const ESTIMATE = { watchDiff:'watch · then hold your shape to the same area', watch:'watch', sameArea:'same area', sameShape:'same shape · it has been turned', hold:'tap and hold',
@@ -146,4 +161,7 @@ export const REACTION = { wait:'wait for it', tap:'TAP', slow:'too slow', early:
   baseline:'baseline {n} ms', runTotal:'total {n} of {bud} ms', runAvg:'average {n} ms', earlyTap:'tapped early', earlyCost:'the attempt is spent' };
 export const SPOT = { count:['count','the'], find:['find','the'], howMany:'how many?', right:'right · 0 off', said:'you said {k} · {off} off', of5:' · {off} of 5', over:' · run over',
   of10:'{t}s of 10s', total:'total {t}s', pen:' · incl. +{pen}s for wrong taps', fast:' · under the 0.5s leeway · −{n}s', tie:'both right · a tie', faster:'both right · Player {n} was faster', had:'Player {n} had it', nobody:'nobody had it',
-  draw:'draw', wins:'Player {n} wins', hudFindStreak:'Round {n} · {tot}s of 10s', hudFind:'Round {n} of {s} · {tot}s', hudTwo:'round {n} / 10', hudCountStreak:'Round {n} · {off} of 5 off', hudCount:'Round {n} of {s} · {off} off', over10:'{a}–{b} over 10 rounds' };
+  // v15 (4.6): Find versus. Each player hunts their OWN shape in the same crowd — the shapes on the field are all one colour,
+  // as they have to be, so the rule bar is where the colours say whose is whose
+  vsBar:'find yours', vsRound:'round {n} · first to {t}', vsTook:'Player {n} found theirs', vsMiss:'not either one', vsHow:'first to {t} rounds',
+  draw:'draw', wins:'Player {n} wins', hudFindStreak:'Round {n} · {tot}s of 10s', hudFind:'Round {n} of {s} · {tot}s', hudTwo:'round {n} / {s}', hudCountStreak:'Round {n} · {off} of 5 off', hudCount:'Round {n} of {s} · {off} off', over10:'{a}–{b} over {s} rounds' };

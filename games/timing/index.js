@@ -5,8 +5,9 @@ import { TIMING as CP } from "../../config/copy.js";
 import { $, T, f2, mean, minMax, sum } from "../../core.js";
 import * as hud from "../_shared/hud.js";
 import { genRect, rnd, roundEngine } from "../_shared/round.js";
+import { makeTwo } from "../_shared/two.js";
 /* Timing — Stopwatch: a clock counts up and fades at 1.5s, tap on the target. Hidden: a ball rolls behind a wall, tap when it is at the marker. Score is seconds off, averaged */
-const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, ball:null, targets:[], out:false, tot:0, asked:0, stopAt:0,
+const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, ball:null, targets:[], out:false, tot:0, asked:0, stopAt:0, two:{on:false},
   hid(){ return this.ctx.mode==='hidden'; },
   // v13 (8.2 / 8.3 / L5): a Streak is a cumulative budget, not one bad attempt — Stopwatch adds up the seconds off to 2.0s, Hidden the pixels off to 100px. Score is attempts completed
   // v15 (3.8, L5): the Stopwatch Streak's budget is 25 seconds, and passing round 10 grants five more. It WAS 2.0s —
@@ -32,18 +33,26 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
     return t; },
   // what the run has asked for so far, and what it will have asked for by the end (Stopwatch · Set only — a Streak has no end)
   askTot(){ return Math.round(this.targets.slice(0,this.ctx.len).reduce((a,b)=>a+b,0)*100)/100; },
-  begin(){ this.round=0; this.errs=[]; this.out=false; this.tot=0; this.asked=0; this.targets=this.deal(this.streak()?40:this.ctx.len); hud.score(this.streak()?'0':(this.hid()?'0px':'0.00s')); this.next(); },
+  // v15 (4.3): pass & play is attempt by attempt, both modes — one go each, the phone over, and the same scoring the Set
+  // uses (Stopwatch the average seconds off, Hidden the total pixels). Lower wins at both ends
+  begin(){ this.round=0; this.errs=[]; this.out=false; this.tot=0; this.asked=0; this.two=makeTwo(this.ctx,{lower:true,agg:this.hid()?'sum':'mean',fmt:v=>this.hid()?Math.round(v)+'px':f2(v)+'s'});
+    this.targets=this.deal(this.streak()?40:this.ctx.len); hud.score(this.streak()?'0':(this.hid()?'0px':'0.00s')); this.next(); },
   // v11: Stopwatch Set = 5 attempts, average absolute s off. Hidden Set = 10 runs, total px off. Streak = attempts until one is more than 2.0s (150px) off, score attempts completed. Every figure is an absolute difference — early never cancels late
   result(){ const [x,y]=minMax(this.errs);
     if(this.streak()) return {hits:this.errs.length,misses:0,x,y,lim:this.budTxt()}; return {hits:this.hid()?Math.round(sum(this.errs)):Math.round(mean(this.errs)*100)/100,misses:0,x,y}; },
-  hud(){ hud.time(this.streak()?T(CP.hudStreak,{n:this.round,tot:this.totTxt(),bud:this.budTxt()}):T(CP.hudSet,{n:this.round,s:this.ctx.len})); },
-  next(){ this.clearT(); this.round++; if(this.out||(!this.streak()&&this.round>this.ctx.len)) return this.ctx.emit('finish',this.result()); if(this.round>this.targets.length) this.targets=this.targets.concat(this.deal(20)); this.hud(); this.st='arm'; this.hid()?this.hidden():this.watch(); },
+  hud(){ if(this.two.on) return hud.timeHtml(this.two.hudLine());
+    hud.time(this.streak()?T(CP.hudStreak,{n:this.round,tot:this.totTxt(),bud:this.budTxt()}):T(CP.hudSet,{n:this.round,s:this.ctx.len})); },
+  next(){ this.clearT(); this.round++; if(this.round>this.targets.length) this.targets=this.targets.concat(this.deal(20));
+    // v15 (4.3): the run is over when both players have taken their attempts, and every hand-over waits for a tap
+    if(this.two.on){ if(this.two.over()) return this.ctx.emit('finish',this.two.record()); return this.two.gate(this,()=>{ this.st='arm'; this.hid()?this.hidden():this.watch(); }); }
+    if(this.out||(!this.streak()&&this.round>this.ctx.len)) return this.ctx.emit('finish',this.result()); this.hud(); this.st='arm'; this.hid()?this.hidden():this.watch(); },
   watch(){ this.target=this.streak()?this.rampAt(this.round):Math.round((this.targets[this.round-1]||7)*100)/100;
     // v14 (6.18): every target adds to a visible running total of the time the game has asked for, and it lands exactly on the
     // stated average — the player can see the run was never given a harder deal than anybody else's
     const was=this.asked; this.asked=Math.round((this.asked+this.target)*100)/100;
     $('#gen').innerHTML=`<div class="tmtarget">${CP.target}<b>${f2(this.target)}</b><u id="tmasked"></u></div><div class="tmclock" id="tmclock">0.00</div><div class="glbl bot" id="tmhint">${CP.stop}</div>`;
-    hud.countUp({ from:was, to:this.asked, ms:600, fmt:v=>this.streak()?T(CP.asked,{tot:f2(v)}):T(CP.askedSet,{tot:f2(v),all:f2(this.askTot())}), set:t=>{ const el=$('#tmasked'); if(el) el.textContent=t; }, alive:()=>this.st==='arm'||this.st==='run' });
+    // a pass & play run has no stated total to measure against — the two players do not share one — so it reads the plain line
+    hud.countUp({ from:was, to:this.asked, ms:600, fmt:v=>this.streak()||this.two.on?T(CP.asked,{tot:f2(v)}):T(CP.askedSet,{tot:f2(v),all:f2(this.askTot())}), set:t=>{ const el=$('#tmasked'); if(el) el.textContent=t; }, alive:()=>this.st==='arm'||this.st==='run' });
     this.later(()=>{ this.st='run'; this.t0=performance.now(); const el=$('#tmclock'); const loop=now=>{ if(this.st!=='run') return; const e=(now-this.t0)/1000; el.textContent=f2(e); el.style.opacity=e<1.5?1:Math.max(0,1-(e-1.5)/.5); if(e>this.target+5) return this.onDown(); this.raf=requestAnimationFrame(loop); }; this.raf=requestAnimationFrame(loop); },700); },
   // hidden (v8): the ball comes in from any of the four sides, the wall covers 55–85% of the way and is squared to the direction of travel, the marker sits somewhere inside it
   // hidden (v9): the time the ball spends behind the wall before the marker is dealt around 1.3s, in pairs, the same for everyone — and never under 0.6s, so the wall's edge is no help
@@ -80,12 +89,17 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
     const good=hid?err<=10:err<=.1, ok=hid?err<=35:err<=.3;
     $('#gen').insertAdjacentHTML('beforeend',`<div class="glbl bot" id="tmres"><b class="${good?'g':ok?'':'r'}" id="tmerr">${hid?err+'px':f2(err)+'s'}</b>${good?CP.dead:ok?CP.close:note}</div>`); const h=$('#tmhint'); if(h) h.remove();
     ok?this.ctx.audio.hit():this.ctx.audio.miss(); if(!ok&&navigator.vibrate) navigator.vibrate(30);
+    if(this.two.on) return this.twoAdd(err,hid);
     if(this.streak()) return this.addUp(err,hid);
     // v14 (6.1 / 6.3): the Set figure walks to its new value — total px on Hidden, average seconds off on Stopwatch — and then
     // the result stays up until it is tapped
     const past=this.errs.slice(0,-1); const was=past.length?(hid?sum(past):mean(past)):0, to=hid?sum(this.errs):mean(this.errs);
     hud.countUp({ audio:this.ctx.audio, from:was, to, ms:600, fmt:v=>hid?Math.round(v)+'px':f2(v)+'s', set:t=>hud.score(t), alive:()=>this.st==='show',
       done:()=>{ hud.scorePop(); this.ctx.emit('live',this.result()); this.after(()=>this.next()); } }); },
+  // v15 (4.3): the attempt belongs to whoever is holding the phone — their own figure walks, and the turn ends with it
+  twoAdd(err,hid){ const p=this.two.p, was=this.two.scoreOf(p); this.two.add(err); const to=this.two.scoreOf(p);
+    hud.countUp({ audio:this.ctx.audio, from:was, to, ms:600, fmt:v=>hid?Math.round(v)+'px':f2(v)+'s', set:t=>hud.score(t), alive:()=>this.st==='show',
+      done:()=>{ hud.scorePop(); this.two.turnDone(); this.after(()=>this.next()); } }); },
   // v13 (8.2 / 8.3): the attempt's figure counts down to 0 while the running total counts up by the same amount, together, with the whoosh (6.7)
   addUp(err,hid){ hud.addUp({ audio:this.ctx.audio, from:this.tot, err, ms:800, el:$('#tmerr'), fmt:v=>hid?Math.round(v)+'px':f2(v)+'s', alive:()=>this.st==='show',
       onFrame:tot=>{ this.tot=tot; hud.time(T(CP.hudStreak,{n:this.round,tot:this.totTxt(),bud:this.budTxt()})); },

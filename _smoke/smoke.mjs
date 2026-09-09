@@ -12,6 +12,9 @@
  *   2. every pick sheet opens (everything unlocked), and every Set / Streak line on every sheet comes from SET_COPY (L5, v14 section 5)
  *   3. one Set run and one Streak run per game, driven to the result screen the way that engine is played
  *   4. a pass & play Quick Tap (both players, the hand-over screen between)
+ *   4b. two-player, v15 section 4 (build 25): Estimate, Timing and Reaction pass & play alternate INSIDE one run and never
+ *       reach the hand-over screen; Sequence versus keeps its key row and gains an opening length; Spot · Find has a versus
+ *       at all; every one of them ends on a pair with no board, and writes nothing to the store (L10, widened by A.3)
  *   5. boot on five storage fixtures: empty · build-13 layout (migrates to the one key `ne` v1 with runs, unlocks, achievements and name intact,
  *      the seven old keys removed) · corrupt build-13 keys · a corrupt `ne` v1 (every bad field falls back on its own) · 650 runs (capped at 600)
  *   6. challenge links: a hostile ?score= lands as text (S1); a bad ?s= is no challenge (S2); a run only the link opened is never on a board (S2)
@@ -272,6 +275,91 @@ console.log('\npass & play Quick Tap');
     at = await driveToResult('quick-tap', 'pass & play · player 2', 30000);
     if (at === 's-over') { const r = await resultLine(); const vs = await page.evaluate(() => document.querySelector('#vsbox').classList.contains('on') && document.querySelector('#over-top').hidden); vs ? ok(`player 2 run ends on the result: pair shown, board hidden (L10) · "${r.score}"`) : bad('L10 pass & play result shows the pair and no board'); }
   }
+}
+
+// ---- 4b. two-player: the five games that never had it (v15 section 4, build 25) ----
+console.log('\ntwo-player (v15 section 4)');
+{
+  // the config the section is built on, read straight out of the module rather than matched in its source
+  const cfg = await import(pathToFileURL(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'config', 'games.js')).href);
+  const WANT = ['hold:grow', 'hold:cut', 'timing:stopwatch', 'timing:hidden', 'reaction:flash', 'reaction:nogo', 'spot:count'];
+  const keys = Object.keys(cfg.PASS_TURNS);
+  const missing = WANT.filter(k => !keys.includes(k));
+  const stray = keys.filter(k => { const [g, d] = k.split(':'); return !cfg.GAMES[g] || !cfg.GAMES[g].modes.includes(d); });
+  const shaped = keys.every(k => Array.isArray(cfg.PASS_TURNS[k]) && cfg.PASS_TURNS[k].length === 2 && cfg.PASS_TURNS[k].every(n => n >= 1));
+  (!missing.length && !stray.length && shaped) ? ok(`4.x every turn-taking mode has a PASS_TURNS row and every row names a real mode (${keys.length})`)
+    : bad('4.x PASS_TURNS covers the turn-taking modes', `missing ${missing.join(', ') || 'none'} · stray ${stray.join(', ') || 'none'} · shaped ${shaped}`);
+  // 4.5 / 4.6: the two new versus modes exist in the config at all
+  (cfg.SEQ_VS.lives >= 1 && cfg.SEQ_VS.opens.length > 1) ? ok(`4.5 Sequence versus is lives (${cfg.SEQ_VS.lives}) with an opening length to pick (${cfg.SEQ_VS.opens.join('/')})`) : bad('4.5 SEQ_VS', JSON.stringify(cfg.SEQ_VS));
+  const spotVs = Array.isArray(cfg.GAMES.spot.versus) && cfg.GAMES.spot.versus.includes('find');
+  (spotVs && cfg.VS_TARGET.spot >= 1) ? ok(`4.6 Spot · Find has a versus, first to ${cfg.VS_TARGET.spot} rounds`) : bad('4.6 Spot versus', `versus ${JSON.stringify(cfg.GAMES.spot.versus)} · target ${cfg.VS_TARGET.spot}`);
+}
+/* 4.1-4.4: Estimate, Timing and Reaction pass & play alternate INSIDE one run now. The hand-over screen must never appear,
+   the result must be the pair, and nothing about the run may reach the store (L10, widened by A.3) */
+for (const [g, mi, label] of [['hold', 0, 'Estimate · Grow'], ['timing', 0, 'Timing · Stopwatch'], ['reaction', 0, 'Reaction · Flash'], ['reaction', 1, 'Reaction · Go / No-go']]) {
+  await openSheet(g, mi, 0, 1);
+  const btn = await page.evaluate(() => document.querySelector('#go-btn').textContent.trim());
+  await click('#go-btn');
+  const at = await driveToResult(g, `pass & play · ${label}`, 150000);
+  if (at === 's-pass') { bad(`4.x ${label} pass & play is one run, not two`, 'it ended on the hand-over screen'); continue; }
+  if (at !== 's-over') continue;
+  const r = await page.evaluate(() => ({ pair: document.querySelector('#vsbox').classList.contains('on'), board: document.querySelector('#over-top').hidden, txt: document.querySelector('#vsbox').textContent.replace(/\s+/g, ' ').trim().slice(0, 60) }));
+  (r.pair && r.board) ? ok(`4.x ${label} pass & play → one run, a pair and no board (Go read "${btn}") · ${r.txt}`) : bad(`4.x ${label} pass & play shows the pair and no board (L10)`, JSON.stringify(r));
+  const st = await getJSON('ne');
+  const wrote = ['unlock', 'ach', 'bars', 'runs'].filter(k => st && st[k] && Object.keys(st[k]).length);
+  (!wrote.length) ? ok(`A.3 / L10 ${label} pass & play wrote nothing — no run, no unlock, no achievement, no bar`) : bad('A.3 a two-player run wrote to the store', wrote.join(', '));
+}
+// 4.5: Sequence versus keeps the key row and gains an opening-length row, then plays to a pair
+{
+  await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
+  await setStorage({ 'ne.prefs': OPEN_PREFS }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(320);
+  await click('[data-go="s-pick"]'); await sleep(260);
+  await page.evaluate(() => document.querySelector('.tile[data-game="sequence"]').click()); await sleep(300);
+  await click('[data-vs="1"]'); await sleep(180); await click('[data-vs2="2"]'); await sleep(240);
+  const sheet = await page.evaluate(() => ({
+    lens: [...document.querySelectorAll('#time-row .tbtn b')].map(b => b.textContent.trim()),
+    lenShown: getComputedStyle(document.querySelector('#time-row')).display !== 'none',
+    opens: [...document.querySelectorAll('#prac-row [data-opens]')].map(b => b.textContent.trim()),
+    optsShown: getComputedStyle(document.querySelector('#seq-opts')).display !== 'none',
+    line: (document.querySelector('#vsart small') || {}).textContent || '' }));
+  (sheet.lenShown && sheet.lens.length === 3) ? ok(`4.5 Sequence versus keeps the key row (${sheet.lens.join(' · ')})`) : bad('4.5 Sequence versus shows the key row', JSON.stringify(sheet));
+  (sheet.optsShown && sheet.opens.length > 1) ? ok(`4.5 and gains the opening length (${sheet.opens.join('/')} notes) · "${sheet.line}"`) : bad('4.5 Sequence versus opening length', JSON.stringify(sheet));
+  (!/compose/i.test(sheet.line)) ? ok('4.5 Compose is gone from the versus line') : bad('4.5 the versus line still describes Compose', sheet.line);
+  await page.evaluate(() => { const t = [...document.querySelectorAll('#time-row .tbtn')]; if (t[0]) t[0].click(); }); await sleep(160);
+  await click('#go-btn');
+  const at = await driveToResult('sequence', 'versus · Sequence', 120000);
+  if (at === 's-over') { const r = await page.evaluate(() => ({ pair: document.querySelector('#vsbox').classList.contains('on'), board: document.querySelector('#over-top').hidden, txt: document.querySelector('#vsbox').textContent.replace(/\s+/g, ' ').trim().slice(0, 60) }));
+    (r.pair && r.board) ? ok(`4.5 Sequence versus ends on lives, a pair and no board · ${r.txt}`) : bad('4.5 Sequence versus result', JSON.stringify(r)); }
+  else bad('4.5 Sequence versus reaches a result', 'on ' + at);
+}
+// 4.6: Spot · Find versus — two odd shapes in one crowd, first to find theirs takes the round
+{
+  await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
+  await setStorage({ 'ne.prefs': OPEN_PREFS }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(320);
+  await click('[data-go="s-pick"]'); await sleep(260);
+  await page.evaluate(() => document.querySelector('.tile[data-game="spot"]').click()); await sleep(300);
+  await click('[data-vs="1"]'); await sleep(180);
+  const offered = await page.evaluate(() => !document.querySelector('#vs-sub [data-vs2="2"]').hidden);
+  offered ? ok('4.6 Spot offers Versus on the player row even though its FIRST mode has none') : bad('4.6 Spot offers Versus', 'the chip is hidden on the mode stage');
+  await click('[data-vs2="2"]'); await sleep(200);
+  await page.evaluate(() => { const c = document.querySelectorAll('#diff-row .choice'); c[1].click(); }); await sleep(460);
+  const stillVs = await page.evaluate(() => document.querySelector('#vs-sub [data-vs2="2"]').classList.contains('sel'));
+  stillVs ? ok('4.6 and keeps it once Find is the mode') : bad('4.6 Versus survives picking Find');
+  await click('#go-btn');
+  // the two odd shapes are the only two classes with a single member; tap one and its owner takes the round
+  const pokeFind = () => page.evaluate(() => {
+    const els = [...document.querySelectorAll('#gen .fs')]; if (!els.length) return false;
+    const cls = e => ['circle', 'square', 'tri'].find(c => e.classList.contains(c)) || '';
+    const n = {}; els.forEach(e => { const c = cls(e); n[c] = (n[c] || 0) + 1; });
+    const t = els.find(e => n[cls(e)] === 1); if (!t) return false;
+    const r = t.getBoundingClientRect();
+    document.getElementById('gen').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1 }));
+    return true; });
+  const deadline = Date.now() + 120000; let at = null;
+  while (Date.now() < deadline) { at = await onScreen(); if (at === 's-over') break; if (await skipAd()) continue; if (at === null || (await inGame())) await pokeFind(); await sleep(120); }
+  if (at === 's-over') { const r = await page.evaluate(() => ({ pair: document.querySelector('#vsbox').classList.contains('on'), board: document.querySelector('#over-top').hidden, txt: document.querySelector('#vsbox').textContent.replace(/\s+/g, ' ').trim().slice(0, 60) }));
+    (r.pair && r.board) ? ok(`4.6 Spot · Find versus plays out to a pair and no board · ${r.txt}`) : bad('4.6 Spot versus result', JSON.stringify(r)); }
+  else bad('4.6 Spot · Find versus reaches a result', 'on ' + (at || 'the game'));
 }
 
 // ---- 5. storage fixtures ----
