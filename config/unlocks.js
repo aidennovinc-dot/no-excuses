@@ -19,8 +19,11 @@ export const UNLOCKS = [
   { key:'hold:cut',          need:'one Estimate · Grow round within 15%',      where:{g:'hold',d:'grow',s:7},           live:1 },
   { key:'sequence:solo',     need:'Finish one Estimate · Cut round within 3.5% of the target', where:{g:'hold',d:'cut'}, live:1 },
   { key:'sequence:practice', need:'8 notes in Sequence · 7 keys',              where:{g:'sequence',s:7},                live:1 },
-  // v15 (1.4a): a deliberate-failure unlock — a Sequence run that ends at round 1 with nothing scored. End of run only
-  { key:'timing:stopwatch',  need:'Get the first note wrong in a Sequence run',   where:{g:'sequence'} },
+  /* v15 (1.4a): a deliberate-failure unlock — get the first note of a Sequence run wrong. v16 (2): LIVE now. The old
+     predicate tested a score that could not reach the value it looked for, and the row waited for a finish nobody sits
+     through after failing on note one. The engine flags the first answered note itself; the test can only become more
+     true, so it belongs on the live path (v15 2.5). */
+  { key:'timing:stopwatch',  need:'Get the first note wrong in a Sequence run',   where:{g:'sequence'},                   live:1 },
   { key:'timing:hidden',     need:'one Timing · Stopwatch attempt within 0.30s', where:{g:'timing',d:'stopwatch',s:5},  live:1 },
   { key:'reaction:flash',    need:'Reach round 6 in Timing · Stopwatch · Streak', where:{g:'timing',d:'stopwatch',s:-1},   live:1 },
   { key:'reaction:nogo',     need:'Finish a Reaction · Flash Set averaging under 350ms', where:{g:'reaction',d:'flash',s:5} },

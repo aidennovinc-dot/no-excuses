@@ -31,7 +31,10 @@ const VX={ id:'versus', noIntro:true, ctx:null, n:[0,0], tgt:[0,0], lock:[0,0], 
   // 4.15: the screen leans towards whoever is ahead, harder the bigger the margin, and the music is told how close it is
   lean(d){ const k=Math.max(-1,Math.min(1,d/VS_LEAD)); const el=$('#vslean'); el.style.setProperty('--lk',Math.abs(k).toFixed(2)); el.classList.toggle('p1',k>0); el.classList.toggle('p2',k<0);
     const near=Math.max(Math.abs(d)/VS_LEAD,Math.max(this.n[0],this.n[1])/this.target); $('#vs').classList.toggle('close',near>=.7);
-    if(this.ctx) this.ctx.emit('live',{vsTension:Math.min(1,near)}); },
+    /* v16 (1.4): the two stems. A player is close to winning by their own count OR by their lead, so the proximity is
+       whichever of the two is further along — the same pair of conditions `score` ends the run on. Presentation (L10). */
+    const px=p=>Math.max(this.n[p]/this.target, Math.max(0,p?-d:d)/VS_LEAD);
+    if(this.ctx) this.ctx.emit('live',{vsTension:Math.min(1,near),vsP:[Math.min(1,px(0)),Math.min(1,px(1))]}); },
   score(p){ this.n[p]++; const el=$('#vn'+p); el.textContent=this.n[p]; this.ctx.audio.hit(); const d=this.n[0]-this.n[1]; const k=Math.min(1,Math.abs(d)/VS_LEAD)*50; const bar=$('#vslead'); bar.style.width=k+'%'; bar.style.left=d>=0?'50%':(50-k)+'%'; $('#vsdiff').innerHTML=d===0?HUD.level:T(HUD.lead,{who:pWho(d>0?0:1),n:Math.abs(d)});
     this.lean(d);
     // 4.14: first to the target, or first to lead by VS_LEAD

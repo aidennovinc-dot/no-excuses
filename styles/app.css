@@ -743,7 +743,20 @@
   .fs.bad{background:var(--miss)}
   .fs.dim{opacity:.18}
   .fs.odd{box-shadow:0 0 0 4px var(--ok)}
+  /* v16 (§4): the round's shape lights in the OWNER's colour, never green, so the two players can read a shared field (L4) */
+  .fs.odd.p1{box-shadow:0 0 0 4px var(--p1)}
+  .fs.odd.p2{box-shadow:0 0 0 4px var(--p2)}
+  /* v16 (§4): the crowd starts static and gains a pulse as the match goes on. `scale` is its own transform property, so
+     this never fights the rotation the drift loop writes to `rotate` */
+  .fs.puls{animation:fspuls 1.35s ease-in-out infinite}
+  @keyframes fspuls{0%,100%{scale:1}50%{scale:1.16}}
+  @media (prefers-reduced-motion:reduce){.fs.puls{animation:none}}
   #hud-time.you{color:var(--sq-live);font-weight:700}
+  /* v16 (§4): Find versus keeps its score in the HUD. It used to be two 42%-tall bands with a border between them —
+     that border WAS the mid line Aiden asked us to remove, and their big centred numbers sat on top of the crowd.
+     Its own class, not a rule over every #hud-time child: Reaction versus and the pass & play hand-over share that slot */
+  #hud-time .spvs b{font-weight:700;font-size:19px;letter-spacing:.04em}
+  #hud-time .spvs small{display:block;font-size:9px;color:var(--mute);letter-spacing:.18em;margin-top:1px}
   .hud{position:absolute;left:0;right:0;top:max(14px,env(safe-area-inset-top));padding:0 16px 0 60px;display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--mute);font-size:13px;letter-spacing:.14em;pointer-events:none}
   #score{font-weight:700;font-size:clamp(32px,8vw,60px);color:var(--ink);letter-spacing:0}
   #quit{position:absolute;left:8px;top:max(8px,env(safe-area-inset-top));width:44px;height:44px;display:grid;place-items:center;font-family:var(--mono);font-size:22px;color:var(--mute);z-index:6}
@@ -768,10 +781,16 @@
   #intro{position:absolute;inset:0;display:none;pointer-events:none;z-index:7}
   #intro.on{display:block}
   #intro p{position:absolute;left:16px;right:16px;top:calc(27% + env(safe-area-inset-top));text-align:center;font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink);line-height:1.6}
-  /* the one-liner arrives a word at a time (v8), and cannot be skipped — a stray touch used to wipe it */
+  /* v16 (§5 / A.3): the one-liner arrives AS A LINE. It came in a word at a time from v8 to build 26, and that reveal is
+     most of what made a first-play screen feel heavy. The sub-line under it is gone from the copy table entirely.
+     `.w` stays defined because #rxbar (the Go / No-go rule bar) still uses it. */
+  #intro p{opacity:0;animation:wordin .45s ease-out .1s both}
   #intro p .w{display:inline-block;opacity:0;animation:wordin .4s ease-out both;margin-right:.4em}
   @keyframes wordin{0%{opacity:0;translate:0 6px}100%{opacity:1;translate:0 0}}
-  #intro p small{display:block;font-size:10px;color:var(--mute);margin-top:6px;letter-spacing:.18em}
+  /* the "Ready?" — hidden until the demo has finished, and only on a player's first run of that game (A.3) */
+  #intro p .rdy{display:none}
+  #intro.ready p .rdy{display:block;margin-top:14px;font-size:17px;font-weight:600;letter-spacing:.12em;color:var(--ok);animation:wordin .35s ease-out both}
+  #intro.ready p .rdy small{display:block;font-size:10px;font-weight:400;color:var(--mute);margin-top:5px;letter-spacing:.18em;animation:tapcue 1.6s ease-in-out .4s infinite both}
   /* ghost finger (v8): a dark ring inside and outside the white one, so it reads on a white pad and on the black ground alike */
   #ghost{position:absolute;left:0;top:0;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;border:2px solid var(--ink);outline:2px solid #0a0a0b;background:color-mix(in srgb,var(--ink) 18%,transparent);opacity:0;transition:transform .45s cubic-bezier(.3,.7,.3,1),opacity .2s;box-shadow:inset 0 0 0 3px #0a0a0b,0 0 18px rgba(232,230,225,.25)}
   #ghost.on{opacity:.9}

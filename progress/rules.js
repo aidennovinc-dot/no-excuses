@@ -28,8 +28,12 @@ const UNLOCK_TEST = {
   'hold:cut':          r=>r.g==='hold'&&r.d==='grow'&&r.x<=15,
   'sequence:solo':     r=>r.g==='hold'&&r.d==='cut'&&r.x<=3.5,
   'sequence:practice': r=>r.g==='sequence'&&r.s===7&&r.hits>=8,
-  // v15 (1.4a): the first note wrong — a Sequence run that ends at round 1 with nothing scored
-  'timing:stopwatch':  r=>r.g==='sequence'&&r.hits===0,
+  /* v16 (2): WAS `r.hits===0`, and it could never be true. Sequence scores `hits` as the longest pattern COMPLETED and
+     derives it from `round-1`, and every solo run opens on round 3 — so a run that ends on the very first note scores 2,
+     not 0, at 3, 5 and 7 keys alike. Aiden's diagnosis was exactly right: the test was reading the opening note count.
+     The engine now says so itself (`firstWrong`), and the row is live:1, so failing the first note banks the unlock the
+     moment it happens rather than waiting for a finish the player has no reason to sit through. */
+  'timing:stopwatch':  r=>r.g==='sequence'&&r.firstWrong===1,
   'timing:hidden':     r=>r.g==='timing'&&r.d==='stopwatch'&&r.x<=.3,
   'reaction:flash':    r=>r.g==='timing'&&r.d==='stopwatch'&&r.s===STREAK&&r.hits>=6,
   'reaction:nogo':     r=>r.g==='reaction'&&r.d==='flash'&&r.s===5&&r.hits<=350,

@@ -26,24 +26,27 @@ export const TIERS = { unlock:['Unlocks','Earned along the way — every one ope
 export const PROGRESS = { finishOne:'finish one {game} {prev}', finishA:'finish a {game} {prev}', streak:'Streak', practiceFrom:'Practice from', beat:'Beat Aiden — {rec}', none:'—' };
 
 // the one-liner under the ghost demo, the first time a mode is played
+/* v16 (§5 / A.3): ONE LINE, and nothing under it. The subtitle is gone from every row — it is the second line Aiden
+   called too much information, and anything that needs one does not belong on an intro screen. The word-by-word reveal
+   went with it (run/run.js). The line itself STAYS: he asked for it on 2026-09-04 and again on 2026-09-05, and it is
+   what teaches the rule. Cowork's earlier idea of moving the rule into the 3-2-1 top strip is superseded and not built. */
 export const INTRO = {
-  // v14 (6.5, carried from v13 5.1): Two says one thing and nothing under it
-  'quick-tap:two':  ['Tap the box when it lights up.',''],
-  'quick-tap:four': ['Tap the white pad.','four of them now'],
-  'dots:blind':     ['Tap the dot where it lands.','anywhere on the screen'],
-  'dots:lead':      ['Tap the dot where it lands.','the red ring shows the next spot'],
-  'hold:grow':      ['Watch it grow. Tap and hold until yours matches.','the outline stays — match its area'],
-  'hold:cut':       ['Draw a line through the shape.','cut off the share it asks for'],
-  'sequence:solo':  ['Copy the notes.','then it is your turn · one more each round'],
-  'timing:stopwatch':['Tap to stop the timer.','on the target · the clock fades at 1.5s'],
-  'timing:hidden':  ['Tap when the ball reaches the marker.','it goes behind the wall first'],
-  // v15 (3.5): an early tap no longer gives you the attempt back — it costs 400ms and spends it. The old sub-line
-  // ("you start that one again") described the behaviour this build removed and would have taught the wrong thing
-  'reaction:flash': ['Tap the moment it goes white.','tap early and it costs you 400ms'],
-  'reaction:nogo':  ['Tap only the shape you were told.','three wrong taps end the run · the rule changes'],
-  'spot:count':     ['Count the shape you were shown.','the rest are decoys · three mistakes end it'],
-  'spot:find':      ['Find the shape you were shown.','the crowd grows every round'],
+  'quick-tap:two':  ['Tap the box when it lights up.'],
+  'quick-tap:four': ['Tap the white pad.'],
+  'dots:blind':     ['Tap the dot where it lands.'],
+  'dots:lead':      ['Tap the dot where it lands.'],
+  'hold:grow':      ['Watch it grow. Tap and hold until yours matches.'],
+  'hold:cut':       ['Draw a line through the shape.'],
+  'sequence:solo':  ['Copy the notes.'],
+  'timing:stopwatch':['Tap to stop the timer.'],
+  'timing:hidden':  ['Tap when the ball reaches the marker.'],
+  'reaction:flash': ['Tap the moment it goes white.'],
+  'reaction:nogo':  ['Tap only the shape you were told.'],
+  'spot:count':     ['Count the shape you were shown.'],
+  'spot:find':      ['Find the shape you were shown.'],
 };
+// v16 (A.3): the first run of each GAME ends its intro here instead of dropping straight into the 3-2-1 — one tap, once
+export const INTRO_READY = { ready:'Ready?', tap:'tap to begin' };
 // verdicts: tiered by a per-game quality 0..1 (progress/rules.js QUALITY) — five steps, worst first
 export const VERDICTS = {
   'quick-tap':['Warming up. Go again.','Solid. Now stop looking, start moving.','Quick. The next tier is close.','Sharp. Very sharp.','That is not normal. Keep it.'],

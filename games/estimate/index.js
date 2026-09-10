@@ -63,6 +63,10 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
   // v13 (6.2): "Round 2 of 7" in a Set; a Streak says "Round n" with the running total beside it
   hud(){ if(this.two.on) return hud.timeHtml(this.two.hudLine());
     hud.time(this.streak()?T(CP.hudStreak,{n:this.round,tot:f2(this.total)}):T(CP.hudSet,{n:this.round,s:this.ctx.len})+(this.ctx.mode==='grow'?(this.est()?CP.diff:CP.same):'')); },
+  /* v16 (1.5): the Streak budget is 100% (L5), so the ramp starts at 80 spent; a Set ramps over its last round. Music
+     only (A.1). Estimate is the one engine that is NOT built on roundEngine — it owns its own wait() and its own round
+     loop — so it cannot borrow finBud / finSet from there and spells both out. */
+  fin(){ if(this.two.on) return 0; return this.streak()?Math.max(0,Math.min(1,(this.total/100-.8)/.2)):(this.round>=this.ctx.len?1:0); },
   next(){ this.clearT(); this.round++;
     // v15 (4.1 / 4.2): a pass & play run ends when both players have had their turns, not on a length — and every hand-over
     // waits for a tap, which is the one place §3.9 kept the cue for

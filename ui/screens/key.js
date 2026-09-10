@@ -23,6 +23,7 @@
    The rules and the numbers are progress/key.js, config/key-bars.js and config/keys.js. Nothing about which combinations
    exist is written here — the panel under the ring renders whatever combos() returned, so a mode added to config/games.js
    shows up on this screen the same day. A combination with no bar renders as "no bar set" rather than vanishing (C.6). */
+import { Music } from "../../audio.js";
 import { KEY } from "../../config/copy.js";
 import { KEY_NOTE } from "../../config/key-bars.js";
 import { KEY_ART } from "../../config/keys.js";
@@ -121,12 +122,15 @@ function firstIn() { if (prefs.keySeen) return; prefs.keySeen = 1; save();
 register('s-key', { onShow({ advance: a, from, auto: to } = {}) { cameFrom = from || null; pending = a || null; auto = to || null;
     if (a) { openKey = 0; openGame = a.g; }
     render();
+    // v16 (1.3): each key tier has its own loop, rising in intensity the way the glyphs do. The screen change starts key 1;
+    // this and the tier button keep it in step with whichever tier is open
+    Music.menu('key:' + (openKey + 1));
     if (!auto) firstIn();
     if (pending) { const p = pending; pending = null; if (auto) setTimeout(() => interlude(p, auto), 320); else setTimeout(() => advance(p), 260); } },
   // a fresh clear arrived from a result screen: Back belongs to the run, not to the menu
   onBack() { if (auto) return true; if (!cameFrom) return false; const to = cameFrom; cameFrom = null; show(to); return true; } });
 define({
-  'key-tier'(el) { openKey = +el.dataset.kt; openGame = null; render(); return 'pick'; },
+  'key-tier'(el) { openKey = +el.dataset.kt; openGame = null; render(); Music.menu('key:' + (openKey + 1)); return 'pick'; },
   'key-game'(el) { const g = el.dataset.kg; openGame = openGame === g ? null : g; render(); return 'pick'; },
   /* 5.2: go and try this one. A locked mode or length hands over to the lock box — the same event the pick sheet and the
      Unlocks screen raise — and everything else starts the run with the bar as the goal line. `aim` names the game so the

@@ -24,12 +24,20 @@ const roundEngine=()=>({ ctx:null, raf:0, round:0, st:'idle', pending:null,
   // and Reaction · Go / No-go. Everywhere else the round moves on by itself; an engine opts in with holdResult
   holdResult:false,
   after(f,ms){ return this.holdResult?this.wait(f):this.later(f,ms||900); },
+  /* v16 (1.5, A.1): how far into its finish this run is, 0..1 — the final round of a Set, a Streak budget past 80%.
+     ONLY audio.js reads it; nothing about the gameplay changes with it. A round-based engine overrides this; the default
+     is 0, which is the right answer for a game with neither a clock nor a budget (Sequence). */
+  fin(){ return 0; },
+  finBud(spent,bud){ return Math.max(0,Math.min(1,(spent/bud-.8)/.2)); },
+  finSet(){ return !this.streak()&&this.round>=this.ctx.len?1:0; },
   clearT(){ if(this.ctx) this.ctx.timers.clearT(); cancelAnimationFrame(this.raf); },
   later(f,ms){ this.ctx.timers.later(f,ms); },
   hud(){ $('#hud-time').textContent=`${this.round} / ${this.ctx.len}`; } });
 // place n shapes on a jittered grid so none overlap. Returns [{x,y,shape}] in px inside #gen, size in px
-function scatter(n,shapes,size,odd){ const r=genRect(); const cell=size*1.45, cols=Math.max(1,Math.floor(r.width/cell)), rows=Math.max(1,Math.floor((r.height*.86)/cell)); const cells=[]; for(let y=0;y<rows;y++) for(let x=0;x<cols;x++) cells.push({x,y}); for(let i=cells.length-1;i>0;i--){ const j=rnd(i+1); [cells[i],cells[j]]=[cells[j],cells[i]]; }
-  const ox=(r.width-cols*cell)/2, oy=r.height*.08+(r.height*.86-rows*cell)/2, jit=cell-size; return cells.slice(0,Math.min(n,cells.length)).map((c,i)=>({ x:ox+c.x*cell+Math.random()*jit, y:oy+c.y*cell+Math.random()*jit, shape:i===0&&odd?odd:shapes[rnd(shapes.length)] })); }
+// v16 (§4): `top` is the fraction of #gen the crowd keeps clear of, 0.08 as it always was. Spot's Find versus asks for
+// more so its rule bar and its score line are never underneath a shape — "everything gets in the way of itself"
+function scatter(n,shapes,size,odd,top){ const r=genRect(); const t=top||.08, h=1-t-.06; const cell=size*1.45, cols=Math.max(1,Math.floor(r.width/cell)), rows=Math.max(1,Math.floor((r.height*h)/cell)); const cells=[]; for(let y=0;y<rows;y++) for(let x=0;x<cols;x++) cells.push({x,y}); for(let i=cells.length-1;i>0;i--){ const j=rnd(i+1); [cells[i],cells[j]]=[cells[j],cells[i]]; }
+  const ox=(r.width-cols*cell)/2, oy=r.height*t+(r.height*h-rows*cell)/2, jit=cell-size; return cells.slice(0,Math.min(n,cells.length)).map((c,i)=>({ x:ox+c.x*cell+Math.random()*jit, y:oy+c.y*cell+Math.random()*jit, shape:i===0&&odd?odd:shapes[rnd(shapes.length)] })); }
 const shapeHtml=(p,size,extra='')=>`<i class="fs ${p.shape} ${extra}" style="left:${p.x}px;top:${p.y}px;--fsz:${size}px"></i>`;
 
 

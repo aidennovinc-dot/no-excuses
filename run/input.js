@@ -4,14 +4,16 @@
 import { $, $$ } from "../core.js";
 import { sel } from "../core/state.js";
 import { define } from "../ui/actions.js";
-import { abort, active, input, introActive } from "./run.js";
+import { abort, active, input, introActive, introTap } from "./run.js";
 
 define({ quit(){ abort(); return 'click'; }, seqdone(){ input({type:'act',target:'seqdone'}); return 'click'; } });
 
 const ptr=(e,type,more)=>Object.assign({ type, x:e.clientX, y:e.clientY, el:e.target, raw:e },more);
 function bindInput(){
   // a tap during the intro does nothing at all (v8) — it used to skip, and a stray touch left people confused
-  document.addEventListener('pointerdown',e=>{ if(introActive()&&e.target.closest('#game')&&!e.target.closest('#quit')){ e.stopPropagation(); e.preventDefault(); } },true);
+  // v16 (A.3): a tap during the intro still does nothing — EXCEPT the one that answers "Ready?" on a player's first run
+  // of a game. introTap() returns false unless the intro is actually waiting, so every other stray touch is still eaten
+  document.addEventListener('pointerdown',e=>{ if(introActive()&&e.target.closest('#game')&&!e.target.closest('#quit')){ e.stopPropagation(); e.preventDefault(); introTap(); } },true);
   $$('[data-vs-side]').forEach(p=>p.addEventListener('pointerdown',e=>{ e.preventDefault(); const [pl,i]=p.dataset.vsSide.split(':').map(Number); input(ptr(e,'down',{player:pl,target:i})); }));
   $('#vfield').addEventListener('pointerdown',e=>{ e.preventDefault(); input(ptr(e,'down')); });
   $$('.pad[data-side]').forEach(p=>p.addEventListener('pointerdown',e=>{ e.preventDefault(); input(ptr(e,'down',{target:+p.dataset.side})); }));

@@ -62,6 +62,34 @@ lives beside `BUILD` and does **not** move with it — see the comment there for
   the game's whole root lit behind it and answers with a `key:done` event. Neither screen imports the other (A4). The
   lock is `lock()` in `ui/actions.js` and it has to be there: `pointer-events:none` would still leave the bare-ground
   tap reaching `onClick` and going Back.
+- **Music is an ARRANGEMENT, not seven numbers (v16 §1, build 27).** A track in `config/audio.js` carries `voices` —
+  each with its own wave, its own step pattern across one bar, and a role (`pad` `stab` `arp` `lead` `bass` `sub`
+  `drone`) — plus `beats`, the bar length. `audio.js` schedules exactly what the data says and knows nothing else about
+  any track. **Three options per game, keyed `'<game>:a|b|c'`**; `TRACK_PICK` is the one the app plays and is one line
+  per game to change. **Quick Tap · A is the build-26 loop note for note** — it is the quality bar Aiden named, so it is
+  in the running rather than replaced, and the gate asserts it. Two options of one game may not share a wave set and a
+  pattern set: "three options" that differ only in speed or pitch is the complaint this batch answered.
+  **Still no percussion.** A drum is indistinguishable from a tap on a game where the tap is the whole interaction —
+  rhythm comes from plucks, stabs, rests and odd bar lengths. There is no `noise` role and the gate says so.
+- **The front of the app has music too, and the finish ramp is MUSIC ONLY.** One `menu` loop, played on every screen
+  that is not the game layer; one loop per key tier (`key:1..3`), rising in intensity, asked for by `ui/screens/key.js`
+  as the tier changes. The ramp into a finish is `R.fin`, 0..1, and **`audio.js` is its only reader — A.1 is explicit
+  that no gameplay speeds up**: a timed run ramps over its last seconds (the clock already says so), a Set over its
+  final round, a Streak once its own budget is 80% spent. **Sequence gets no ramp: it has neither a clock nor a budget**,
+  and that is stated rather than invented. A round-based engine answers `fin()`; `roundEngine` gives the default and the
+  two helpers, and **Estimate spells both out because it is the one engine not built on `roundEngine`**.
+- **The versus stems are presentation (v16 §1.4).** `STEMS` is one pair for every game — they take the round's own
+  root, tempo, bar and chords so they line up, and only the voicing is theirs. Each rides its own gain node and the gain
+  follows `R.vsP[p]`, that player's proximity to the win condition. **L10 is untouched by it:** nothing in a two-player
+  run advances a key, a bar, an unlock or an achievement, and `vsP` is read in `liveCheck` *above* the two-player return
+  precisely because it is the one thing about a versus run that has to cross that line.
+- **An unlock has its own sound; the achievement sound is not to be changed.** `Snd.unlockFx()` on an `'ok'` toast,
+  `Snd.click()` on an achievement — Aiden's line was that achievements already sound right. The gate asserts both, so
+  "made the unlock bigger" and "moved the achievement" cannot look the same.
+- **A first-play intro is ONE LINE (v16 §5 / A.3, build 27).** The title line, arriving as a line rather than word by
+  word; the dimmer sub-line is gone from `INTRO` in `config/copy.js` entirely. **On a player's first run of each GAME**
+  — not each mode — the intro ends on a "Ready?" they tap. Cowork's idea of moving the rule into the 3-2-1 top strip is
+  superseded and must not be built.
 - **One mechanism pins a goal at the top of a run, not two.** A clearance-bar row (5.2), the Next card's achievement
   (2.2) and the lock box's Try to unlock all go through `goWhere` -> `pendingAim` -> the `#goal` line. **An aim the player
   asked for outranks `goalFor`'s automatic offer** (build 26) — it used to lose whenever that combination also carried an
@@ -114,7 +142,9 @@ the keys screen (5.4), reset by Fresh game beside `gridSeen` and `menuSeen`. **`
 record without one shape-checks to `{}`, which is the right answer for a profile that has never met the key. On load the migration ladder runs forward (v0 = the seven
 build-13 keys, folded in once with the v8–v11 reshapes and then removed), then every field is
 shape-checked against its default and falls back on its own — a bad colour costs the colour, never the
-boot. `runs` is capped at 600. `save()` writes the whole record; `reset()` is Fresh game. `unlocked()`,
+boot. **`store.intro` carries a bare game id beside its `'game:mode'` keys since build 27** — the once-per-game "Ready?" gate
+(A.3). It needed no ladder step: a record without one reads as a profile that has not met that game, which is true.
+`runs` is capped at 600. `save()` writes the whole record; `reset()` is Fresh game. `unlocked()`,
 `got()`, `Scores.runs()` in `progress.js` return the live record's own maps and array. The store reads
 `allOpen` / `supporter` only while `BUILD_FLAGS.dev` is true (S5), and **`ui/screens/testing.js` removes
 every `[data-dev]` node in the document** — the Testing screen and its menu item — when it is false (build 21;
@@ -162,7 +192,8 @@ corrected number is an edit to that file alone)** · **`keys.js` (KEYS + KEY_ART
 paths, build 26. Three rows, `shell:true` on the two #372 has not decided. A separate file from `key-bars.js` on purpose:
 a tier is not a bar, and the bars file is the one #371 edits)** · `copy.js` (every banner, HUD, verdict, intro and screen string, grouped by where it
 shows; `{name}` placeholders are filled by `T()` in `core.js`) · `theme.js` (P1/P2 colours, DESIGNS,
-ITEMS, VS_ART) · `audio.js` (SCALES, TRACKS). Nothing in `config/` imports anything; the gate asserts
+ITEMS, VS_ART) · **`audio.js` (SCALES · TRACKS — 25 of them: three per game, the menu and the three keys, each an
+arrangement · TRACK_OPTS · TRACK_PICK · STEMS, the versus pair).** Nothing in `config/` imports anything; the gate asserts
 it. **The functions that used to sit in those tables live under the same id elsewhere:** predicates in
 `progress/rules.js` (`UNLOCK_TEST[key]`, `LEN_TEST[game][i]`, `ACH_TEST[id]`, `ACH_PROGRESS[id]`,
 `QUALITY`) and formatters in `ui/format.js` (`FMT`, `COLS`, `PIC` → `scoreTxt`, `colsOf`, `picOf`),
@@ -176,8 +207,10 @@ one per game · versus) · `core.js` helpers (`$`, `esc`, `T`, `pWho`, `seqStep`
 on/emit · `core/store.js` the one-key store · `core/state.js` `sel`, `VS` · `core/platform.js` the
 challenge link · `core/timers.js` run-scoped timers · `games/registry.js` `GC`/`GV` and the length names
 over the config table · `progress.js` unlocks, achievements, scores — pure functions over the store, no
-DOM · `progress/key.js` the key: the contributor list, the clearance test and each game's root fraction · `audio.js` sound and music (the run hands `Music.start` its state object; audio never imports the
-run) · `ui/router.js` show/back · `ui/actions.js` the click dispatcher and the `define()` registry ·
+DOM · `progress/key.js` the key: the contributor list, the clearance test and each game's root fraction · `audio.js` sound and music — the arrangement player (`bars()` turns one bar of a track into tone
+events as fractions of that bar; `Music.plan(id)` hands one whole loop to the review catalogue so the page never carries
+a second copy of the synth). The run hands `Music.start` its state object and audio never imports the run; it listens
+for `screen:change` for the menu loop · `ui/router.js` show/back · `ui/actions.js` the click dispatcher and the `define()` registry ·
 `ui/theme.js` the game's colours as CSS variables · `ui/chips.js`, `ui/format.js` shared by the screens ·
 `ui/toast.js` · `ui/ads.js` · `ui/atmosphere.js` the menu canvas · `ui/screens/*` · `run/run.js` the run
 itself, plus `liveCheck` and `goWhere` · `run/input.js` the shell's pointer and key events into the run ·
@@ -305,6 +338,18 @@ The rows come out of the running app like every other reference section, so the 
 is actually playing; a mismatch between `config/key-bars.js` and the config prints a red strip on the page and a warning
 in the console rather than dropping a row. **The older 29-card copy under `_smoke/review/` is deleted** — there is one generator now, and
 a build that changes a screen changes it in one place. Cowork still publishes the page; nothing here publishes.
+
+**Build 27 (v16, batch 12)** — statically: three playable options for every game with no two sharing a wave set and a
+pattern set, Quick Tap · A identical to the build-26 loop, the menu and the three key loops present, no `noise` role,
+`ui/toast.js` picking `unlockFx` for an unlock and leaving `click` on an achievement, and every `INTRO` row a single
+line. In the browser: all 25 tracks schedule cleanly with no bad event; **a Sequence run whose first answered note is
+wrong opens Timing · Stopwatch at 3, 5 and 7 keys, mid-run and after the run is quit, and a correct first note does
+not**; the Stopwatch Set deals five targets totalling exactly 35.00s (6.18, read off the engine now that §3 removed the
+display) while the Set shows no baseline and the Streak keeps its; Find versus deals both shapes once and keeps them for
+the match, has no `.vz` band on the field, lights the round in the owner's colour, starts static and gains motion; the
+intro renders no word spans and no sub-line, ends the first run of a game on "Ready?" and the second mode of that game
+without one. **`driveToResult` answers the Ready gate** — nothing else in a run is listening while it is up, and the
+seven answers it gives are themselves the assertion that it appears.
 
 No bundler, no build step — GitHub Pages serves the modules directly, so every import path stays
 relative (`./games/dots/index.js`).

@@ -10,7 +10,7 @@
 
 import { Music, Snd } from "../audio.js";
 import { RUN_SCHEMA } from "../config/build.js";
-import { HUD, INTRO, TOAST } from "../config/copy.js";
+import { HUD, INTRO, INTRO_READY, TOAST } from "../config/copy.js";
 import { MODE_NAME, PASS_LEN, PASS_TURNS, RATE_MAX } from "../config/games.js";
 import { P1C, P2C } from "../config/theme.js";
 import { $, T, pWho } from "../core.js";
@@ -28,7 +28,9 @@ import { applyPrefs } from "../ui/theme.js";
 import { toast } from "../ui/toast.js";
 
 /* ---------- run state. `id` steps on every start and abort, so anything a dead run left behind can tell it is dead ---------- */
-const R={ on:false, live:false, id:0, timed:false, t0:0, end:0, raf:0, goal:null, goalHit:false, fresh:[], tension:0 };
+/* v16 (1.4 / 1.5): `fin` is 0..1, how far into the finish the run is, and `vsP` is each player's proximity to winning.
+   Both are read by audio.js and by nothing else — A.1 is explicit that the ramp is music only and no gameplay speeds up. */
+const R={ on:false, live:false, id:0, timed:false, t0:0, end:0, raf:0, goal:null, goalHit:false, fresh:[], tension:0, fin:0, vsP:[0,0] };
 let eng=null, ctx=null;
 const isVx=()=>sel.vs===2&&(sel.game==='quick-tap'||sel.game==='dots');
 const active=()=>R.on;
@@ -39,17 +41,28 @@ const active=()=>R.on;
 const here=need=>{ const n=GAMES[sel.game].name; return String(need).split(n+' · ').join('').split(n+' ').join(''); };
 
 /* ---------- first play of a mode (v6): a ghost finger plays two or three beats under a one-liner, then the countdown. Tap to skip ---------- */
+/* v16 (§5 / A.3) — REBUILT. It was the line, a dimmer sub-line under it, both revealed a word at a time. Aiden's note
+   was that a first-play intro carries too much; A.3 settles which half goes. Now: the TITLE LINE ALONE, arriving as one
+   line rather than word by word, and on a player's FIRST RUN OF EACH GAME it ends with a "Ready?" the player taps instead
+   of being dropped into the 3-2-1. Later modes of that same game keep their one-liner and no Ready.
+   `store.intro` keys the per-mode intro on 'game:mode' as it always has; the bare game id beside it is the Ready gate,
+   so a v1 record carrying neither reads as a brand-new profile, which is what it is. */
 const Intro=(()=>{
-  let done=null, timers=null; const ghost=$('#ghost');
-  function clear(){ if(timers) timers.clearT(); ghost.classList.remove('on','hold','tap'); ghost.style.transition='none'; $('#intro').classList.remove('on'); }
+  let done=null, timers=null, ready=false; const ghost=$('#ghost');
+  function clear(){ ready=false; if(timers) timers.clearT(); ghost.classList.remove('on','hold','tap'); ghost.style.transition='none'; $('#intro').classList.remove('on','ready'); }
   return {
-    run(cb){ const key=sel.game+':'+sel.diff, s=store.intro; if(s[key]) return cb(false); s[key]=Date.now(); save();
-      const [line,sub]=INTRO[key]||['','']; const words=line.split(' '); $('#intro-text').innerHTML=words.map((w,i)=>`<span class="w" style="animation-delay:${i*110}ms">${w}</span>`).join('')+`<small class="w" style="animation-delay:${words.length*110+150}ms">${sub}</small>`; $('#intro').classList.add('on');
+    run(cb){ const key=sel.game+':'+sel.diff, s=store.intro; if(s[key]) return cb(false);
+      const firstGame=!s[sel.game]; s[key]=Date.now(); s[sel.game]=s[sel.game]||Date.now(); save();
+      const [line]=INTRO[key]||['']; $('#intro-text').innerHTML=line+'<b class="rdy">'+INTRO_READY.ready+'<small>'+INTRO_READY.tap+'</small></b>'; $('#intro').classList.add('on');
       timers=makeTimers(ctx.timers.alive); const g=hud.makeGhost(Snd,timers);
       ghost.style.transition='none'; const c=g.centre($('#game')); g.at(c.x,c.y); void ghost.offsetWidth; ghost.style.transition='';
       done=()=>{ done=null; clear(); ctx.timers.clearT(); cb(true); };
+      // the first game of all: the demo plays and then the screen WAITS. Everywhere else it runs straight on, as before
+      const end=()=>{ if(!done) return; if(!firstGame) return done(); ready=true; $('#intro').classList.add('ready'); };
       // an engine without a demo (the v7 games): the one-liner sits for 1.8s, then the countdown. A demo returns its length, or 0 when it calls done itself
-      const ms=eng.demo?eng.demo(ctx,g,()=>done&&done()):1800; if(ms) timers.later(()=>done&&done(),ms); },
+      const ms=eng.demo?eng.demo(ctx,g,end):1800; if(ms) timers.later(end,ms); },
+    // the tap that answers "Ready?". run/input.js swallows every tap on the game layer while an intro is up and hands it here
+    tap(){ if(!ready||!done) return false; ready=false; Snd.click(); done(); return true; },
     active:()=>!!done, clear:()=>{ done=null; clear(); } };
 })();
 // the PB marker (v11): a line on the rate bar at your best pace for this mode and length; on the other games a small "best" ghost under the running figure. Nothing when there is no PB
@@ -59,7 +72,9 @@ function pbShow(){ const g=GAMES[sel.game], pb=Scores.best(sel.game,sel.diff,sel
 function makeCtx(){ const id=R.id; const timers=makeTimers(()=>R.on&&R.id===id);
   // v15 (4.5): `opens` joins practice and scale as a Sequence-only extra on the contract's set — how many notes a versus starts on
   return { root:$('#game'), game:sel.game, cfg:GC(sel.game,sel.diff,sel.secs), mode:sel.diff, len:sel.secs, players:sel.vs, practice:sel.practice||0, opens:sel.opens||3, scale:sel.scale, rateMode:prefs.rate, timers, audio:Snd, rand:Math.random,
-    emit(name,data){ if(R.id!==id) return; if(name==='finish') finish(data); else if(name==='live') liveCheck(data); } }; }
+    /* v16 (1.5): a round-based engine says how far into its finish it is — the final round of a Set, a Streak budget past
+       80% — and the music reads it. A timed run needs nothing here: the clock already tells audio.js. MUSIC ONLY (A.1). */
+    emit(name,data){ if(R.id!==id) return; if(name==='finish') finish(data); else if(name==='live'){ if(eng&&eng.fin) R.fin=Math.max(0,Math.min(1,eng.fin()||0)); liveCheck(data); } } }; }
 function start(){
   const g=GAMES[sel.game]; let c=GC(sel.game,sel.diff,sel.secs); $('#game').dataset.g=sel.game; $('#game').dataset.d=sel.diff;
   // two players (v10): pass & play (sel.vs 1) takes turns at a fixed length; versus (sel.vs 2) is one run at both ends. v11: Sequence and Count run both players on one screen inside their own engine; Reaction and Sequence handle versus themselves
@@ -93,7 +108,7 @@ function start(){
   $('#hud-time').textContent=g.timed?sel.secs.toFixed(2):'';
   hud.reset(); applyPrefs(sel.game); $('#game').classList.toggle('timed',!!g.timed&&!versus);
   if(ctx) ctx.timers.clearT();
-  R.id++; Object.assign(R,{on:true,live:false,timed:!!g.timed&&!vx,t0:0,end:0,goalHit:false,fresh:[],tension:0});
+  R.id++; Object.assign(R,{on:true,live:false,timed:!!g.timed&&!vx,t0:0,end:0,goalHit:false,fresh:[],tension:0,fin:0,vsP:[0,0]});
   eng=vx?VERSUS:ENGINES[sel.game]; ctx=makeCtx();
   pbShow(); setPendingAim(''); setPendingGoal(null);
   Music.start(sel.game,R,sel.secs);
@@ -151,6 +166,9 @@ function finish(res){
 function liveCheck(part){ if(!R.on) return;
   // v14 (4.15): versus hands its closeness up as part of the live payload; audio.js reads it off the run state and swaps bed
   if(part&&part.vsTension!==undefined) R.tension=part.vsTension;
+  // v16 (1.4): each player's own proximity to the win condition, for their music stem. It is read ABOVE the two-player
+  // return below on purpose — it is the one thing about a versus run that has to cross that line, and it is presentation
+  if(part&&part.vsP) R.vsP=part.vsP;
   /* v15 (A.3, build 25): ANY two-player run, not only versus. It used to test sel.vs===2, which was right while the only
      shared pass & play runs were Sequence and Count and neither emitted 'live' — §4 gives five more games a shared run,
      and A.3 is explicit that no two-player run of any kind advances an unlock or an achievement. The finish already
@@ -168,4 +186,5 @@ function goWhere(w){ if(!w) return; const G_=GAMES[w.g]; sel.game=w.g; prefs.las
   const lens=lensOf(w.g,sel.diff); sel.secs=w.s||(lens.includes(sel.secs)&&lenOpen(w.g,sel.diff,sel.secs)?sel.secs:lens.find(s=>lenOpen(w.g,sel.diff,s))); if(!lenOpen(sel.game,sel.diff,sel.secs)) sel.secs=lens[0]; sel.vs=0; sel.practice=0; VS.reset(); setPendingAim(w.need||''); setPendingGoal(w.aim||null); start(); }
 
 const introActive=()=>Intro.active();
-export { R, abort, active, goWhere, input, introActive, liveCheck, start };
+const introTap=()=>Intro.tap();
+export { R, abort, active, goWhere, input, introActive, introTap, liveCheck, start };

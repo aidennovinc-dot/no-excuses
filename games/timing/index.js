@@ -40,6 +40,8 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
   // v11: Stopwatch Set = 5 attempts, average absolute s off. Hidden Set = 10 runs, total px off. Streak = attempts until one is more than 2.0s (150px) off, score attempts completed. Every figure is an absolute difference — early never cancels late
   result(){ const [x,y]=minMax(this.errs);
     if(this.streak()) return {hits:this.errs.length,misses:0,x,y,lim:this.budTxt()}; return {hits:this.hid()?Math.round(sum(this.errs)):Math.round(mean(this.errs)*100)/100,misses:0,x,y}; },
+  // v16 (1.5): a Set ramps over its last round, a Streak once the budget is 80% spent. Music only (A.1)
+  fin(){ if(this.two.on) return 0; return this.streak()?this.finBud(this.tot,this.budget()):this.finSet(); },
   hud(){ if(this.two.on) return hud.timeHtml(this.two.hudLine());
     hud.time(this.streak()?T(CP.hudStreak,{n:this.round,tot:this.totTxt(),bud:this.budTxt()}):T(CP.hudSet,{n:this.round,s:this.ctx.len})); },
   next(){ this.clearT(); this.round++; if(this.round>this.targets.length) this.targets=this.targets.concat(this.deal(20));
@@ -49,10 +51,15 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
   watch(){ this.target=this.streak()?this.rampAt(this.round):Math.round((this.targets[this.round-1]||7)*100)/100;
     // v14 (6.18): every target adds to a visible running total of the time the game has asked for, and it lands exactly on the
     // stated average — the player can see the run was never given a harder deal than anybody else's
-    const was=this.asked; this.asked=Math.round((this.asked+this.target)*100)/100;
-    $('#gen').innerHTML=`<div class="tmtarget">${CP.target}<b>${f2(this.target)}</b><u id="tmasked"></u></div><div class="tmclock" id="tmclock">0.00</div><div class="glbl bot" id="tmhint">${CP.stop}</div>`;
-    // a pass & play run has no stated total to measure against — the two players do not share one — so it reads the plain line
-    hud.countUp({ from:was, to:this.asked, ms:600, fmt:v=>this.streak()||this.two.on?T(CP.asked,{tot:f2(v)}):T(CP.askedSet,{tot:f2(v),all:f2(this.askTot())}), set:t=>{ const el=$('#tmasked'); if(el) el.textContent=t; }, alive:()=>this.st==='arm'||this.st==='run' });
+    /* v16 (§3): the running total of what the game has ASKED FOR is a Streak line now. Aiden: "Timing doesn't need a
+       baseline target for Set, only for Streak. Streak adds the difference; Set is just the average." He is right about
+       what it is for — a Streak spends a budget of accumulated error, so the total it has asked for is the thing the
+       budget is measured against; a Set is scored on the mean of the absolute differences and the total is decoration.
+       v14 6.18's exact-mean DEAL is untouched — five rounds averaging 7s still ask for exactly 35.00s, nobody is dealt a
+       harder set of targets than anybody else, and the gate still checks it. It is the display that goes, not the deal. */
+    const was=this.asked; this.asked=Math.round((this.asked+this.target)*100)/100; const showAsked=this.streak()||this.two.on;
+    $('#gen').innerHTML=`<div class="tmtarget">${CP.target}<b>${f2(this.target)}</b>${showAsked?'<u id="tmasked"></u>':''}</div><div class="tmclock" id="tmclock">0.00</div><div class="glbl bot" id="tmhint">${CP.stop}</div>`;
+    if(showAsked) hud.countUp({ from:was, to:this.asked, ms:600, fmt:v=>T(CP.asked,{tot:f2(v)}), set:t=>{ const el=$('#tmasked'); if(el) el.textContent=t; }, alive:()=>this.st==='arm'||this.st==='run' });
     this.later(()=>{ this.st='run'; this.t0=performance.now(); const el=$('#tmclock'); const loop=now=>{ if(this.st!=='run') return; const e=(now-this.t0)/1000; el.textContent=f2(e); el.style.opacity=e<1.5?1:Math.max(0,1-(e-1.5)/.5); if(e>this.target+5) return this.onDown(); this.raf=requestAnimationFrame(loop); }; this.raf=requestAnimationFrame(loop); },700); },
   // hidden (v8): the ball comes in from any of the four sides, the wall covers 55–85% of the way and is squared to the direction of travel, the marker sits somewhere inside it
   // hidden (v9): the time the ball spends behind the wall before the marker is dealt around 1.3s, in pairs, the same for everyone — and never under 0.6s, so the wall's edge is no help

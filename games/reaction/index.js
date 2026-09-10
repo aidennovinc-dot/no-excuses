@@ -47,6 +47,8 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
     if(this.versus()) return this.vsRound(); if(this.two.on) return this.next(); if(this.nogo()) return this.nogoBegin(); this.next(); },
   // Flash (v11 / v14 section 5): Set = 5 attempts, average ms. Streak = every ms above 150 (C.1) adds to a total; the run ends at 500, score attempts
   result(){ const [x,y]=minMax(this.times); if(this.streak()) return {hits:this.times.length,misses:this.faults,x,y,lim:this.FLASH_BUD+'ms'}; return {hits:this.times.length?Math.round(mean(this.times)):0,misses:this.faults,x,y}; },
+  // v16 (1.5): Set ramps over the last round; a Streak once its own budget is 80% spent. Music only (A.1)
+  fin(){ if(this.two.on||this.versus()) return 0; return this.streak()?this.finBud(this.over,this.nogo()?this.NOGO_BUD:this.FLASH_BUD):this.finSet(); },
   hud(){ if(this.two.on) return hud.timeHtml(this.two.hudLine());
     hud.time(this.streak()?T(CP.hudStreak,{n:this.round,over:Math.round(this.over)}):T(CP.hudSet,{n:this.round,s:this.ctx.len})); },
   next(){ this.clearT(); this.round++;
@@ -106,6 +108,8 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
   fault(msg){ this.st='fault'; this.clearT(); const pane=$('#rxpane'); pane.classList.remove('lit'); pane.classList.add('bad'); pane.innerHTML=`<div class="rxmsg" style="top:30%"><b class="fb">${msg}</b><span class="sub">${T(CP.again,{n:this.round,of:this.streak()?'':T(CP.of,{s:this.ctx.len})})}</span></div>`; this.ctx.audio.miss(); if(navigator.vibrate) navigator.vibrate(40); this.wait(()=>this.again()); },
   // Versus (v11): two players, opposite ends. The first to tap after the flash takes the round; an early tap gives it away. Best of 5 / 9 / 15
   vsRound(){ this.clearT(); this.round++; const need=Math.ceil(this.ctx.len/2); if(this.vsN[0]>=need||this.vsN[1]>=need||this.round>this.ctx.len) return this.vsEnd();
+    // v16 (1.4): each player's own music stem swells with their share of the best-of. Presentation only (L10)
+    this.ctx.emit('live',{vsP:[this.vsN[0]/need,this.vsN[1]/need]});
     hud.time(T(CP.hudVs,{n:this.round,s:this.ctx.len})); this.st='wait'; this.armed=false;
     $('#gen').innerHTML=`<div class="rxpane" id="rxpane"><div class="rxmsg" id="rxmsg" style="top:44%;font-size:11px">${CP.wait}</div></div><div class="vz top p2">${pWho(1)}<b>${this.vsN[1]}</b></div><div class="vz bot p1">${pWho(0)}<b>${this.vsN[0]}</b></div>`;
     this.later(()=>this.go(),1200+Math.random()*3300); },

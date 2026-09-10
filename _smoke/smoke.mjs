@@ -57,6 +57,59 @@ console.log('\nstatic checks');
   const cfg = fs.readdirSync(path.join(root, 'config')).filter(f => f.endsWith('.js'));
   const dirty = cfg.filter(f => /\bimport\b|=>|\bfunction\b/.test(strip(fs.readFileSync(path.join(root, 'config', f), 'utf8'))));
   dirty.length ? bad('A2 config/ is data only', dirty.join(', ')) : ok(`A2 config/ is data only (${cfg.length} files: no imports, no functions)`);
+  /* v16 (§1) — THE MUSIC DATA. Three options for every game, each with its own voicing AND its own rhythm: Aiden's
+     complaint was that seven tracks of the same arrangement at different speeds all sounded the same, so "three options"
+     that shared a wave set and a step pattern would be the same mistake three times over. The check is deliberately
+     about SHAPE, not taste — two options of one game must differ in the set of waves they use or in the set of patterns
+     they play, and every game must have all three. */
+  {
+    const AU = await import(pathToFileURL(path.join(root, 'config', 'audio.js')).href);
+    const G7 = ['quick-tap', 'dots', 'hold', 'sequence', 'timing', 'reaction', 'spot'];
+    const ROLES = ['pad', 'stab', 'arp', 'lead', 'bass', 'sub', 'drone'];
+    const miss = [], same = [], badv = [];
+    for (const g of G7) for (const o of AU.TRACK_OPTS) if (!AU.TRACKS[g + ':' + o]) miss.push(g + ':' + o);
+    for (const [k, t] of Object.entries(AU.TRACKS)) {
+      if (!t.ch || !t.ch.length || !t.bass || !t.bass.length || !t.voices || !t.voices.length) badv.push(k + ' (empty)');
+      for (const v of t.voices || []) {
+        if (!ROLES.includes(v.v)) badv.push(k + ' role ' + v.v);
+        if (v.v === 'lead' && !(v.seq || []).length) badv.push(k + ' lead with no melody');
+      }
+    }
+    const sig = t => [[...new Set(t.voices.map(v => v.w))].sort().join('+'), [...new Set(t.voices.map(v => v.pat || 'x'))].sort().join('|') + '@' + (t.beats || 4)];
+    for (const g of G7) {
+      const ss = AU.TRACK_OPTS.map(o => AU.TRACKS[g + ':' + o]).filter(Boolean).map(sig);
+      for (let i = 0; i < ss.length; i++) for (let j = i + 1; j < ss.length; j++)
+        if (ss[i][0] === ss[j][0] && ss[i][1] === ss[j][1]) same.push(g + ' ' + AU.TRACK_OPTS[i] + '/' + AU.TRACK_OPTS[j]);
+    }
+    const extra = ['menu', 'key:1', 'key:2', 'key:3'].filter(k => !AU.TRACKS[k]);
+    if (miss.length || badv.length) bad('§1.1 three playable options per game', [...miss, ...badv].join(', '));
+    else if (same.length) bad('§1.1 the three options are different music', 'same voicing and rhythm: ' + same.join(', '));
+    else if (extra.length) bad('§1.2 / §1.3 the menu loop and one per key', 'missing: ' + extra.join(', '));
+    else ok(`§1 ${Object.keys(AU.TRACKS).length} tracks — 3 per game with different waves or rhythms, plus the menu and three keys`);
+    // Quick Tap · a is the build-26 loop note for note. It is the quality bar Aiden named, so it must be IN the set, not replaced
+    const qa = AU.TRACKS['quick-tap:a'], want = JSON.stringify({ root: 110, bpm: 126, ch: [[0, 7, 12, 16], [5, 12, 17, 21], [3, 10, 15, 19], [7, 14, 19, 22]], bass: [0, 5, 3, 7] });
+    const got = JSON.stringify({ root: qa.root, bpm: qa.bpm, ch: qa.ch, bass: qa.bass });
+    const shape = qa.voices.length === 2 && qa.voices[0].v === 'pad' && qa.voices[0].w === 'triangle' && qa.voices[1].v === 'bass' && qa.voices[1].w === 'sine' && (qa.beats || 4) === 4;
+    (got === want && shape) ? ok('§1.1 Quick Tap · A is the build-26 loop unchanged — the quality bar is one of its three')
+      : bad('§1.1 Quick Tap keeps its current loop as an option', got);
+    // no percussion: the one rule the old module had that was right, and the reason the roles list has no noise in it
+    ROLES.includes('noise') ? bad('§1 no percussion in the music') : ok('§1 no percussion role exists — rhythm is plucks, stabs, rests and bar lengths');
+  }
+  /* v16 (1.6): an unlock has its own sound and it is not the achievement's. The achievement path must still be Snd.click:
+     Aiden's line was "achievements currently sound great as is", so this asserts what did NOT change as well. */
+  {
+    const t = fs.readFileSync(path.join(root, 'ui', 'toast.js'), 'utf8');
+    const good = /cls==='ok'\?Snd\.unlockFx\(\):Snd\.click\(\)/.test(t.replace(/\s+/g, ''));
+    good ? ok('1.6 an unlock toast plays Snd.unlockFx, an achievement toast still plays Snd.click')
+         : bad('1.6 the unlock sound is its own', 'ui/toast.js does not pick unlockFx for an ok toast');
+  }
+  // v16 (§5 / A.3): the intro carries ONE line. Every row is a single-element array — the sub-line is gone from the data
+  {
+    const CP = await import(pathToFileURL(path.join(root, 'config', 'copy.js')).href);
+    const subs = Object.entries(CP.INTRO).filter(([, v]) => v.length > 1 && v[1]);
+    subs.length ? bad('§5 the intro sub-line is gone', subs.map(([k]) => k).join(', '))
+      : ok(`§5 all ${Object.keys(CP.INTRO).length} intro rows are one line, and INTRO_READY carries the "Ready?" gate`);
+  }
   // build 17 (A3): an engine's imports name only _shared, core, config or core.js. sel, prefs, audio, the run and the other engines reach it through ctx, or not at all
   const engines = fs.readdirSync(path.join(root, 'games'), { withFileTypes: true }).filter(d => d.isDirectory() && !d.name.startsWith('_')).map(d => `games/${d.name}/index.js`).concat(fs.readdirSync(path.join(root, 'games', '_shared')).map(f => `games/_shared/${f}`));
   const stray = [];
@@ -125,16 +178,28 @@ async function poke(g) {
 // the ad break (every fourth result) has a 2s skip; press it when it is live
 const skipAd = () => page.evaluate(() => { const a = document.getElementById('adbreak'), b = document.getElementById('adskip'); if (a.classList.contains('on') && !b.disabled) { b.click(); return true; } return false; });
 
-let askedLine = '';
+/* v16 (A.3): a player's FIRST run of each game ends its intro with a "Ready?" that has to be tapped. Nothing else in the
+   run is listening while it is up, so the driver answers it — and records that it saw one, which is the assertion below. */
+const readySeen = new Set();
+async function clearReady(g) {
+  const on = await page.evaluate(() => document.getElementById('intro')?.classList.contains('ready'));
+  if (!on) return false;
+  readySeen.add(g); await down('#game'); return true;
+}
+let askedLine = '', askedTot = null;
 async function driveToResult(g, label, ms = 90000, noTap = false) {
-  askedLine = '';
+  askedLine = ''; askedTot = null;
   const deadline = Date.now() + ms;
   while (Date.now() < deadline) {
     const at = await onScreen(); if (at === 's-over' || at === 's-pass') break;
     if (await skipAd()) continue;
-    if (at === null || (await inGame())) { if (!(await clearHeld(g)) && !noTap) await poke(g); }
-    // v14 (6.18): the last thing Stopwatch said it had asked for, kept so the total can be checked against the stated average
-    if (g === 'timing') { const t = await page.evaluate(() => document.getElementById('tmasked')?.textContent.trim() || ''); if (t) askedLine = t; }
+    if (at === null || (await inGame())) { if (!(await clearReady(g)) && !(await clearHeld(g)) && !noTap) await poke(g); }
+    /* v14 (6.18) / v16 (§3): the Stopwatch Set no longer PRINTS what it has asked for — Aiden's note is that a Set is
+       scored on the average and the running total is a Streak's business. The exact-mean deal is untouched, so the check
+       reads it off the engine instead of off the screen, and `askedLine` still watches the DOM so the Streak can be
+       asserted to keep its line and the Set to have lost it. */
+    if (g === 'timing') { const t = await page.evaluate(() => document.getElementById('tmasked')?.textContent.trim() || ''); if (t) askedLine = t;
+      const q = await page.evaluate(async () => { const M = await import('./games/timing/index.js'); const T = M.default; return T && T.ctx && T.targets && T.targets.length ? { asked: T.asked, all: T.askTot() } : null; }); if (q) askedTot = q; }
     await sleep(45);
   }
   const at = await onScreen();
@@ -240,7 +305,7 @@ console.log('\nsheet copy comes from SET_COPY (L5)');
 
 // ---- 3. one Set run and one Streak run per game ----
 console.log('\none Set run and one Streak run per game (first mode)');
-let askedSet = '';
+let askedSet = '', askedSetTot = null, askedStreakLine = '';
 const RUNS = [['quick-tap', 0, 0], ['dots', 0, 0], ['hold', 0, 0], ['hold', 0, 'streak'], ['sequence', 0, 0], ['timing', 0, 0], ['timing', 0, 'streak'], ['reaction', 0, 0], ['reaction', 0, 'streak'], ['spot', 0, 0], ['spot', 0, 'streak']];
 for (const [g, mi, li] of RUNS) {
   const face = await openSheet(g, mi, li);
@@ -248,7 +313,8 @@ for (const [g, mi, li] of RUNS) {
   if (!face) { bad(label, 'no length button'); continue; }
   await click('#go-btn');
   const at = await driveToResult(g, label, 90000, g === 'reaction' && li === 'streak');
-  if (g === 'timing' && li === 0) askedSet = askedLine;   // the Stopwatch Set's last "asked" line, for the 6.18 check below
+  if (g === 'timing' && li === 0) { askedSet = askedLine; askedSetTot = askedTot; }   // the Set: 6.18 and §3 below
+  if (g === 'timing' && li === 'streak') askedStreakLine = askedLine;                   // the Streak keeps its baseline (§3)
   if (at === 's-over') { const r = await resultLine(); r.score ? ok(`${label} → "${r.score}" · ${r.verdict} · ${r.stats}`) : bad(label, 'result screen has no score'); }
 }
 // v14 (6.3): every round-based game held at least one result until it was tapped. A game that never raised #game.tapon
@@ -265,11 +331,22 @@ for (const [g, mi, li] of RUNS) {
 // v14 (6.18): five Stopwatch rounds averaging 7s ask for exactly 35.00s — the targets are generated so the total lands on the
 // stated average, so no run is ever dealt a harder set of targets than another
 {
-  const m = askedSet.match(/^([\d.]+)s of ([\d.]+)s asked$/);
-  if (!m) bad('6.18 Stopwatch shows what it has asked for', 'last line was "' + askedSet + '"');
-  else if (m[2] !== '35.00') bad('6.18 five rounds averaging 7s ask for 35.00s', 'the run asked for ' + m[2] + 's');
-  else if (m[1] !== m[2]) bad('6.18 the last round lands on the stated total', m[1] + ' of ' + m[2]);
-  else ok(`6.18 Stopwatch · Set asks for exactly 35.00s over five rounds (last line "${askedSet}")`);
+  if (!askedSetTot) bad('6.18 the Stopwatch Set deals to an exact total', 'the engine never reported one');
+  else if (askedSetTot.all.toFixed(2) !== '35.00') bad('6.18 five rounds averaging 7s ask for 35.00s', 'the run asked for ' + askedSetTot.all + 's');
+  else if (Math.abs(askedSetTot.asked - askedSetTot.all) > 0.005) bad('6.18 the last round lands on the stated total', askedSetTot.asked + ' of ' + askedSetTot.all);
+  else ok(`6.18 Stopwatch · Set deals five targets totalling exactly ${askedSetTot.all.toFixed(2)}s — the exact-mean deal survives §3`);
+  // v16 (§3): the Set stops SHOWING the baseline; the Streak keeps it, because a Streak spends a budget of the difference
+  askedSet ? bad('§3 the Stopwatch Set has no baseline total on screen', 'it showed "' + askedSet + '"')
+           : ok('§3 Timing · Set shows no baseline total — the average is the whole score');
+  /^[\d.]+s asked$/.test(askedStreakLine) ? ok(`§3 Timing · Streak keeps its baseline ("${askedStreakLine}")`)
+           : bad('§3 Timing · Streak keeps its baseline', 'the line read "' + askedStreakLine + '"');
+}
+// v16 (A.3): the Ready gate appeared on the first run of a game — every game the driver played had to answer one
+{
+  const want = ['quick-tap', 'dots', 'hold', 'sequence', 'timing', 'reaction', 'spot'];
+  const miss = want.filter(g => !readySeen.has(g));
+  miss.length ? bad('A.3 "Ready?" ends the first intro of each game', 'never seen on: ' + miss.join(', '))
+              : ok('A.3 a player\'s first run of each game ends its intro on "Ready?" (all seven)');
 }
 // the timed games have no Streak (Sprint / Dash / Marathon are seconds) — noted, not a failure
 ok('quick-tap and dots: timed, no Streak length to run (L2)');
@@ -594,7 +671,16 @@ console.log('\nthe chain and its screens (v15 sections 1 and 2)');
     out.dtBlind = [t('dots:blind')(qt(30, 35, 2)), t('dots:blind')(qt(30, 34, 0))];
     out.dtLead = [t('dots:lead')({ g: 'dots', d: 'blind', s: 5, hits: 0, misses: 5 }), t('dots:lead')({ g: 'dots', d: 'blind', s: 5, hits: 9, misses: 4 })];
     out.hdGrow = [t('hold:grow')({ g: 'dots', d: 'blind', s: 15, hits: 0, misses: 0 }), t('hold:grow')({ g: 'dots', d: 'blind', s: 15, hits: 0, misses: 1 })];
-    out.tmStop = [t('timing:stopwatch')({ g: 'sequence', d: 'solo', s: 7, hits: 0 }), t('timing:stopwatch')({ g: 'sequence', d: 'solo', s: 7, hits: 1 })];
+    /* v16 (§2): the row asks for the FIRST NOTE WRONG, and the fixture had to change with the predicate. It used to be
+       `hits: 0` — a score a Sequence run cannot reach, because `hits` is the longest pattern completed and derives from
+       `round - 1` on a run that opens at round 3. The engine flags the run itself now, so the test reads the flag: set
+       at any key count, absent on a run that answered its first note, and a high score with the flag still counts —
+       getting the first note wrong on the FIRST try is the requirement, not scoring badly. */
+    out.tmStop = [t('timing:stopwatch')({ g: 'sequence', d: 'solo', s: 7, hits: 2, firstWrong: 1 }),
+      t('timing:stopwatch')({ g: 'sequence', d: 'solo', s: 3, hits: 2 }),
+      t('timing:stopwatch')({ g: 'sequence', d: 'solo', s: 7, hits: 0 }),
+      t('timing:stopwatch')({ g: 'timing', d: 'stopwatch', s: 5, hits: 2, firstWrong: 1 })];
+    out.tmStop2 = [t('timing:stopwatch')({ g: 'sequence', d: 'solo', s: 3, hits: 2, firstWrong: 1 }), t('timing:stopwatch')({ g: 'sequence', d: 'solo', s: 5, hits: 12, firstWrong: 1 })];
     out.rxNogo = [t('reaction:nogo')({ g: 'reaction', d: 'flash', s: 5, hits: 350 }), t('reaction:nogo')({ g: 'reaction', d: 'flash', s: 5, hits: 351 })];
     out.spCount = [t('spot:count')({ g: 'reaction', d: 'nogo', s: 5, hits: 349 }), t('spot:count')({ g: 'reaction', d: 'flash', s: 5, hits: 349 }), t('spot:count')({ g: 'reaction', d: 'flash', s: 5, hits: 400 })];
     // lengths, per mode — the numbers that differ between Blind and Lead are the whole reason for 1.0a
@@ -620,7 +706,9 @@ console.log('\nthe chain and its screens (v15 sections 1 and 2)');
   pair('1.2a Dots · Blind opens at 35 hits in any Quick Tap run', V.dtBlind);
   pair('1.2b Dots · Lead opens on 5 misses in a Blind run (deliberate failure, v15 0.5)', V.dtLead);
   pair('1.3a Estimate · Grow opens on a Dots run with nothing pressed at all', V.hdGrow);
-  pair('1.4a Timing · Stopwatch opens on a Sequence run that scored nothing', V.tmStop);
+  pair('1.4a / §2 Timing · Stopwatch opens on the first note wrong — not on a low score, and not from another game', V.tmStop);
+  V.tmStop2.every(Boolean) ? ok('§2 the first note wrong opens it at 3 keys and at 5, and a long run that opened badly still counts')
+    : bad('§2 the first-note flag is what the row reads', JSON.stringify(V.tmStop2));
   pair('1.4c Go / No-go opens at a 350ms Flash Set, not 351', V.rxNogo);
   // 1.4d is the one row with TWO ways in — a Flash Set or a Go / No-go Set, built as Aiden wrote it. Cowork's note is that
   // this collapses 1.4c into it; the shape of the test says plainly that both doors are open, so a later change is visible
@@ -1024,6 +1112,134 @@ console.log('\nbutton actions (every data-act at least once)');
   const expected = ['go', 'back', 'game', 'diff', 'time', 'vs', 'vs2', 'lvl-back', 'go-btn', 'quit', 'over-back', 'share', 'chip-bd', 'chip-pv', 'chip-ach', 'chip-over', 'item', 'music-pv', 'pvlock', 'ach', 'unl', 'prac', 'dev-open', 'dev-sup', 'dev-story', 'support', 'wheel-done', 'lock-no', 'lock-go', 'nextup', 'egg'];
   const missing = expected.filter(a => !seen.has(a));
   missing.length ? bad('every data-act driven once', 'not driven: ' + missing.join(', ')) : ok(`every data-act driven once (${expected.length}) — not covered: again, pass-go, to-games, seqdone, praclock, dev-fresh, adskip, toast`);
+}
+
+/* ---- 8. build 27 (v16): the Timing unlock, the music engine, Find versus, the intro ---- */
+console.log('\nbuild 27 — v16');
+{
+  await setStorage({ 'ne.prefs': OPEN_PREFS }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+
+  /* §1: every track plans. `plan` is the one arrangement engine — the review catalogue plays its output rather than
+     carrying a second copy of the synth — so a track that plans to nothing is a track nobody can hear or review. */
+  const P = await page.evaluate(async () => {
+    const M = await import('./audio.js'); const A = await import('./config/audio.js');
+    const out = { bad: [], n: 0, events: 0 };
+    for (const id of Object.keys(A.TRACKS)) { const q = M.Music.plan(id);
+      if (!q || !q.plan.length) { out.bad.push(id + ' (no events)'); continue; }
+      for (const [t, f, f1, ms, w, g, am] of q.plan)
+        if (![t, f, f1, ms, g, am].every(Number.isFinite) || f <= 0 || f1 <= 0 || ms <= 0 || g <= 0 || !w) { out.bad.push(id + ' (bad event)'); break; }
+      out.n++; out.events += q.plan.length; }
+    return out; });
+  P.bad.length ? bad('§1 every track plays', P.bad.join(', '))
+    : ok(`§1 all ${P.n} tracks schedule cleanly — ${P.events} tone events across one loop each`);
+
+  /* §2: THE TIMING UNLOCK. Get the first note of a Sequence run wrong and Timing · Stopwatch opens, at 3, 5 and 7 keys,
+     and it is in the store BEFORE the run ends — the old row waited for a finish nobody sits through after failing on
+     note one, and its predicate tested a score (`hits === 0`) a Sequence run cannot reach because it opens on round 3. */
+  for (const keys of [3, 5, 7]) {
+    await setStorage({ ne: { v: 1, prefs: { story: 1, gridSeen: 1, played: 1, snd: 'off', musicG: {} }, runs: [], unlock: { 'quick-tap:four': 1, 'dots:blind': 1, 'dots:lead': 1, 'hold:grow': 1, 'hold:cut': 1, 'sequence:solo': 1 }, ach: {}, intro: { 'sequence:solo': 1, sequence: 1 }, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(350);
+    const got = await page.evaluate(async k => {
+      const RUN = await import('./run/run.js'); const ST = await import('./core/state.js'); const SQ = (await import('./games/sequence/index.js')).default;
+      Object.assign(ST.sel, { game: 'sequence', diff: 'solo', secs: k, vs: 0, practice: 0 });
+      RUN.start();
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      for (let i = 0; i < 90; i++) { if (SQ.st === 'input') break; await wait(100); }
+      if (SQ.st !== 'input') return { err: 'never reached input' };
+      const wrong = (SQ.seq[0] + 1) % k;               // deliberately not the note it just played
+      SQ.press(wrong);
+      await wait(120);
+      const mid = JSON.parse(localStorage.getItem('ne') || '{}');
+      RUN.abort();                                      // quit before the run's own finish ever lands
+      await wait(150);
+      const after = JSON.parse(localStorage.getItem('ne') || '{}');
+      return { mid: !!(mid.unlock || {})['timing:stopwatch'], after: !!(after.unlock || {})['timing:stopwatch'], first: SQ.badFirst }; }, keys);
+    if (got.err) bad(`§2 Sequence · ${keys} keys, first note wrong`, got.err);
+    else if (got.mid && got.after) ok(`§2 first note wrong on ${keys} keys unlocks Timing · Stopwatch mid-run, and it survives the quit`);
+    else bad(`§2 first note wrong on ${keys} keys unlocks Timing`, JSON.stringify(got));
+  }
+  // and the other half of the same rule: a run that answers the first note CORRECTLY must not open it
+  {
+    await setStorage({ ne: { v: 1, prefs: { story: 1, gridSeen: 1, played: 1, snd: 'off', musicG: {} }, runs: [], unlock: { 'sequence:solo': 1 }, ach: {}, intro: { 'sequence:solo': 1, sequence: 1 }, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(350);
+    const got = await page.evaluate(async () => {
+      const RUN = await import('./run/run.js'); const ST = await import('./core/state.js'); const SQ = (await import('./games/sequence/index.js')).default;
+      Object.assign(ST.sel, { game: 'sequence', diff: 'solo', secs: 3, vs: 0, practice: 0 });
+      RUN.start(); const wait = ms => new Promise(r => setTimeout(r, ms));
+      for (let i = 0; i < 90; i++) { if (SQ.st === 'input') break; await wait(100); }
+      SQ.press(SQ.seq[0]); await wait(120);
+      const u = !!(JSON.parse(localStorage.getItem('ne') || '{}').unlock || {})['timing:stopwatch'];
+      RUN.abort(); return u; });
+    got ? bad('§2 a correct first note must not open Timing', 'it did') : ok('§2 answering the first note correctly does not open Timing');
+  }
+
+  /* §4: Spot · Find versus. The shapes are dealt ONCE and kept for the whole match, the two `.vz` bands (and the border
+     between them that was the "mid line") are gone from the field, and the round lights in the owner's colour (L4). */
+  {
+    await setStorage({ 'ne.prefs': OPEN_PREFS }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    const f = await page.evaluate(async () => {
+      const RUN = await import('./run/run.js'); const ST = await import('./core/state.js'); const SP = (await import('./games/spot/index.js')).default;
+      Object.assign(ST.sel, { game: 'spot', diff: 'find', secs: 10, vs: 2, practice: 0 });
+      RUN.start(); const wait = ms => new Promise(r => setTimeout(r, ms));
+      for (let i = 0; i < 120; i++) { if (SP.st === 'vsfind') break; await wait(100); }
+      if (SP.st !== 'vsfind') { RUN.abort(); return { err: 'never reached the field' }; }
+      const r1 = { o1: SP.o1, o2: SP.o2, base: SP.vsBase, moving: SP.pts.some(q => q.vx || q.vy || q.va), vz: document.querySelectorAll('#gen .vz').length };
+      // take the round for player 2 by tapping their shape, then wait for the next round
+      const i2 = SP.pts.findIndex(q => q.shape === SP.o2);
+      const lit = (() => { const els = document.querySelectorAll('#gen .fs'); return els[i2]; })();
+      const rect = document.getElementById('gen').getBoundingClientRect();
+      SP.vsTap({ x: rect.left + SP.pts[i2].x + SP.size / 2, y: rect.top + SP.pts[i2].y + SP.size / 2 });
+      const colour = lit.classList.contains('p2') && lit.classList.contains('odd');
+      for (let i = 0; i < 60; i++) { if (SP.st === 'wait' || SP.st === 'vsfind') break; await wait(100); }
+      await wait(3200);
+      const r2 = { o1: SP.o1, o2: SP.o2, base: SP.vsBase, moving: SP.pts.some(q => q.vx || q.vy || q.va), round: SP.round, score: SP.vsN.slice() };
+      RUN.abort();
+      return { r1, r2, colour }; });
+    if (f.err) bad('§4 Spot · Find versus reaches its field', f.err);
+    else {
+      (f.r1.o1 === f.r2.o1 && f.r1.o2 === f.r2.o2 && f.r1.base === f.r2.base)
+        ? ok(`§4 both players keep the shape they were dealt for the whole match (P1 ${f.r1.o1}, P2 ${f.r1.o2}, crowd ${f.r1.base})`)
+        : bad('§4 the shapes are dealt once', JSON.stringify([f.r1, f.r2]));
+      f.r1.vz === 0 ? ok('§4 the mid line is gone — no .vz bands on the field, the score is one line in the HUD')
+        : bad('§4 no mid line on the Find versus field', f.r1.vz + ' .vz bands still there');
+      f.colour ? ok('§4 the round lights in the owner\'s colour (L4), not green') : bad('§4 the winning shape lights in its owner\'s colour');
+      (!f.r1.moving && f.r2.moving) ? ok('§4 the crowd starts static and gains motion from round 2')
+        : bad('§4 static first, moving after', JSON.stringify({ r1: f.r1.moving, r2: f.r2.moving, round: f.r2.round }));
+      f.r2.score[1] === 1 ? ok('§4 a tap on your own shape takes the round (A.2)') : bad('§4 a tap on your own shape takes the round', JSON.stringify(f.r2.score));
+    }
+  }
+
+  /* §5: the intro carries the line and nothing else — no sub-line, no word-by-word reveal — and the "Ready?" is on a
+     fresh profile's first run of a game and gone on the second mode of that same game (A.3). */
+  {
+    await setStorage({ ne: { v: 1, prefs: { story: 1, gridSeen: 1, played: 1, snd: 'off', musicG: {}, allOpen: true }, runs: [], unlock: {}, ach: {}, intro: {}, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    const look = async (d) => page.evaluate(async m => {
+      const RUN = await import('./run/run.js'); const ST = await import('./core/state.js');
+      Object.assign(ST.sel, { game: 'quick-tap', diff: m, secs: 5, vs: 0, practice: 0 });
+      RUN.start(); const wait = ms => new Promise(r => setTimeout(r, ms));
+      /* WATCH it rather than sampling once. The ghost demo runs first and its length is the engine's own, and the two
+         cases end differently: a first run of a game STOPS on Ready, a later mode closes the intro by itself and is
+         already gone by the time a poll notices. So record what was seen while it was up, not what is there after. */
+      const el = document.getElementById('intro');
+      let sawOn = false, sawReady = false;
+      for (let i = 0; i < 70; i++) { const on = el.classList.contains('on');
+        if (on) sawOn = true;
+        if (el.classList.contains('ready')) { sawReady = true; break; }
+        if (sawOn && !on) break; await wait(150); }
+      const t = document.getElementById('intro-text');   // clear() drops the classes, never the markup
+      const out = { sawOn, sawReady,
+        words: t.querySelectorAll('.w').length, subs: t.querySelectorAll('small:not(.rdy small)').length,
+        text: (t.textContent || '').trim() };
+      RUN.abort(); return out; }, d);
+    const a = await look('two'); await sleep(300);
+    const b = await look('four'); await sleep(300);
+    (a.words === 0 && a.subs === 0) ? ok(`§5 the intro is one line, arriving as a line — "${a.text.split('Ready?')[0].trim()}"`)
+      : bad('§5 the intro is one line with no word-by-word reveal', JSON.stringify(a));
+    a.sawReady ? ok('A.3 the first run of Quick Tap ends its intro on "Ready?"') : bad('A.3 "Ready?" on the first run of a game', JSON.stringify(a));
+    (b.sawOn && !b.sawReady) ? ok(`A.3 the second mode of the same game shows its one-liner and skips the Ready gate — "${b.text.split('Ready?')[0].trim()}"`)
+      : bad('A.3 Ready is once per game, not once per mode', JSON.stringify(b));
+  }
 }
 
 // ---- verdict ----
