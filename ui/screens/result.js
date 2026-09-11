@@ -12,13 +12,14 @@ import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, SHARED2, isStreak, lenName, versusOf } from "../../games/registry.js";
 import { Scores, achById, got, isOpen, lenLock, lenOpen, lensOf, markSeen, newMark, unlockHtml, unlockToast, verdict } from "../../progress.js";
 import { start } from "../../run/run.js";
+import { Snd } from "../../audio.js";
 import { define, lock } from "../actions.js";
 import { Ads } from "../ads.js";
 import { colsOf, goLabel, picOf, scoreTxt } from "../format.js";
 import { register, show } from "../router.js";
 import { toast } from "../toast.js";
 
-let lastRun=null, eggTaps=0;
+let lastRun=null, eggTaps=0, lastTier=null;
 // v14 (7.1): what the run that just finished was — the button reads Try again while the chips still say the same thing
 let played=null;
 const sameAsPlayed=()=>!!played&&played.g===sel.game&&played.d===sel.diff&&played.s===sel.secs&&played.vs===sel.vs;
@@ -66,7 +67,7 @@ function shareRun(){ const r=lastRun; if(!r) return; const c=GC(r.g,r.d,r.s); co
 
 register('s-over',{});
 on('run:record',({run})=>{ lastRun=run; played={g:run.g,d:run.d,s:run.s,vs:sel.vs}; });
-on('store:reset',()=>{ lastRun=null; played=null; });
+on('store:reset',()=>{ lastRun=null; played=null; lastTier=null; });
 on('run:finish',({run,isBest,two,fresh,ach,adv})=>{ const g=GC(run.g,run.d,run.s);
   // the header (v11) carries only a status — the board title under the top 10 names the game, mode and length
   $('#over-eyebrow').textContent=run.practice?RESULT.practice:run.fail?RESULT.fail:isBest?RESULT.best:run.vs2?(sel.vs===1?RESULT.pass:RESULT.versus):VS.on?RESULT.pass:'';
@@ -77,7 +78,17 @@ on('run:finish',({run,isBest,two,fresh,ach,adv})=>{ const g=GC(run.g,run.d,run.s
   // a figure, and 3.8's retune can only be judged from play by reading it
   const unit=!run.vs2&&!run.practice&&isStreak(run.g,run.d,run.s)?T(RESULT.streakUnit,{word:g.scoreWord||'rounds'}):'';
   $('#over-score').innerHTML=run.vs2?'':run.practice||(run.fail&&!run.hits)?RESULT.dash:scoreTxt(run.g,run.hits,run.d,run.s)+(g.lower?RESULT.lowerMark:'')+unit; $('#over-score').classList.toggle('sm',!!g.suffix);
-  $('#verdict').textContent=run.vs2?(run.vs2.w<0?VERDICT.draw:T(VERDICT.took,{n:run.vs2.w+1,how:run.vs2.how?' '+run.vs2.how:''})):run.practice?VERDICT.practice:verdict(run);
+  /* v17 (B.25, build 29): the verdict carries a TIER now — four of them, five lines each, the line drawn so it is never
+     the one that showed last time (progress.js). The tier's colour goes on the line and its sound plays when the result
+     is actually read, in rest() below. BOTH ARE SOLO ONLY (L4): light blue is Player 2 and red is Player 1, so a
+     two-player result would be saying something about who won by wearing one of them. `two` is the event's own flag —
+     it covers pass & play, where the record carries no `vs2` — and practice has never had a tier. */
+  const vd=$('#verdict'); let tier=null;
+  if(run.vs2) vd.textContent=run.vs2.w<0?VERDICT.draw:T(VERDICT.took,{n:run.vs2.w+1,how:run.vs2.how?' '+run.vs2.how:''});
+  else if(run.practice) vd.textContent=VERDICT.practice;
+  else { const v=verdict(run); vd.textContent=v.line; if(!two) tier=v; }
+  vd.className='verdict'+(tier?' v-'+tier.tier:''); vd.style.color=tier?tier.col:'';
+  lastTier=tier?tier.tier:null;
   renderOver(run);
   // the ad break (v10) comes between the run and the result, every fourth result, never for supporters
   /* v15 (2.5): what was earned is already in the store — run/run.js banked it the moment the record existed, and hands the
@@ -89,7 +100,11 @@ on('run:finish',({run,isBest,two,fresh,ach,adv})=>{ const g=GC(run.g,run.d,run.s
   setTimeout(()=>Ads.after(()=>{ show('s-over'); if(run.practice||two) return;
     const msgs=(fresh||[]).map(u=>[unlockToast(u.key),'','ok'])
       .concat((ach||[]).map(a=>[T(TOAST.achievement,{name:a.name})+(a.unlocks?' · '+unlockHtml(a):''),a.id,'']));
-    const rest=()=>{ msgs.forEach(([m,id,cls],i)=>setTimeout(()=>toast(m,id,cls,!!id),i*(id?3400:2600))); renderOverChips(); };
+    /* the tier's sound plays HERE, not at the finish: Snd.end() already owns the moment the run stops, and the ad break
+       can stand between the two. A run that earned something pushes its toasts back by the length of the sound, so the
+       verdict and an unlock never land on top of each other — the unlock is the bigger sound and it gets clear air. */
+    const rest=()=>{ const d=lastTier?600:0; if(lastTier) Snd.verdict(lastTier);
+      msgs.forEach(([m,id,cls],i)=>setTimeout(()=>toast(m,id,cls,!!id),d+i*(id?3400:2600))); renderOverChips(); };
     if(adv) keyBreak(adv,rest); else rest(); }),250); });
 /* v15 (5.1, build 26): a key unlock INTERRUPTS this screen. It was a green toast the player tapped, sitting behind
    however many unlock and achievement toasts came first, and only then did it offer the key — so the one thing the key

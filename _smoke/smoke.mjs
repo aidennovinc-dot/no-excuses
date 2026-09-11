@@ -294,7 +294,7 @@ for (const g of GAMES) {
   await click('#grid'); await sleep(200);
 }
 // the other screens open and render
-for (const s of ['s-board', 's-ach', 's-key', 's-custom', 's-about', 's-testing']) { await click('.back'); await sleep(250); await click(`[data-go="${s}"]`); await sleep(600); (await onScreen()) === s ? ok(`${s} opens`) : bad(`${s} opens`, 'on ' + (await onScreen())); }
+for (const s of ['s-board', 's-prog', 's-key', 's-custom', 's-about', 's-testing']) { await click('.back'); await sleep(250); await click(`[data-go="${s}"]`); await sleep(600); (await onScreen()) === s ? ok(`${s} opens`) : bad(`${s} opens`, 'on ' + (await onScreen())); }
 
 // ---- 2b. the Set and Streak lines on every sheet come from the one table (L5 / v14 section 5) ----
 console.log('\nsheet copy comes from SET_COPY (L5)');
@@ -569,7 +569,8 @@ console.log('\nside screens (v14 section 8)');
   (sw && sw.alpha > .9) ? ok(`8.7 a first-seen target colour still shows its colour (${sw.bg})`) : bad('8.7 target colours blank on first load', JSON.stringify(sw));
   (await page.evaluate(() => !document.querySelector('#s-custom .eyebrow'))) ? ok('8.9 the Customise eyebrow line is gone') : bad('8.9 the Customise eyebrow line is gone');
   await click('#s-custom .back'); await sleep(400);
-  await click('[data-go="s-ach"]'); await sleep(500);
+  // v17 (B.21, build 29): Achievements is the second TAB of Progress, so the walk is one more tap and one less screen
+  await click('[data-go="s-prog"]'); await sleep(400); await click('#prog-tabs [data-tab="ach"]'); await sleep(400);
   const ach = await page.evaluate(() => {
     const row = document.getElementById('ach-qt_clean5'), sec = document.getElementById('ach-qt_s5'), ev = document.getElementById('ach-every');
     return { ox: getComputedStyle(document.getElementById('achlist')).overflowX,
@@ -582,7 +583,7 @@ console.log('\nside screens (v14 section 8)');
   (ach.leadFirst === 'I' && ach.lead === 'Quick Tap') ? ok('8.3 the game name leads the achievement title') : bad('8.3 the game name leads the title', JSON.stringify(ach));
   (ach.secret && !/^A stretch past/.test(ach.secret)) ? ok(`8.5 a secret row is described: "${ach.secret.slice(0, 46)}…"`) : bad('8.5 secret achievements get descriptions', ach.secret);
   (ach.left && /still to play/.test(ach.left)) ? ok('8.1 "Finish a run in every game" names the games left') : bad('8.1 which games are left', ach.left);
-  await click('#s-ach .back'); await sleep(400);
+  await click('#s-prog .back'); await sleep(400);
   // 8.10: Testing is its own item below About, and About no longer carries it
   const moved = await page.evaluate(() => ({ item: !!document.querySelector('#s-menu [data-go="s-testing"]'),
     below: document.querySelector('#s-menu [data-go="s-about"]')?.nextElementSibling?.dataset.go,
@@ -792,7 +793,7 @@ console.log('\nthe chain and its screens (v15 sections 1 and 2)');
 
   // 2.4: the Unlocks screen, and every line on it read from the one table
   await click('#over-back'); await sleep(300); await click('#s-pick .back'); await sleep(400);
-  { await click('[data-go="s-unl"]'); await sleep(450);
+  { await click('[data-go="s-prog"]'); await sleep(450);
     const u = await page.evaluate(async () => { const P = await import('./progress.js');
       const rows = [...document.querySelectorAll('#unl-list .urow')];
       const needs = rows.filter(r => r.classList.contains('lock') && !r.dataset.key).map(r => r.querySelector('small').textContent.trim());
@@ -801,7 +802,7 @@ console.log('\nthe chain and its screens (v15 sections 1 and 2)');
       for (const g in G.GAMES) for (const d of G.GAMES[g].modes) G.GC(g, d).lens.forEach((s, i) => { if (i) known.add(P.lenNeed(g, d, s)); });
       return { screen: document.querySelector('.screen.on')?.id, rows: rows.length, heads: document.querySelectorAll('#unl-list h4').length,
         stray: needs.filter(n => n && !known.has(n)) }; });
-    (u.screen === 's-unl' && u.rows > 0 && u.heads === 3) ? ok(`2.4 the Unlocks screen lists ${u.rows} rows under ${u.heads} headings`) : bad('2.4 the Unlocks screen', JSON.stringify(u));
+    (u.screen === 's-prog' && u.rows > 0 && u.heads === 3) ? ok(`2.4 the Unlocks tab lists ${u.rows} rows under ${u.heads} headings`) : bad('2.4 the Unlocks tab', JSON.stringify(u));
     (!u.stray.length) ? ok('2.4 / L6 every requirement on the Unlocks screen comes from UNLOCKS or lenNeed — no second copy') : bad('2.4 a requirement written twice', u.stray.join(' | ')); }
 }
 
@@ -1095,16 +1096,18 @@ console.log('\nbutton actions (every data-act at least once)');
   await sleep(400); await tap('#s-board .back', 'board · back');
   // unlocks (build 23, v15 2.4): its own menu item now, above Achievements. The key row is the one that leads somewhere
   // with a single Back, which is why it is the row this taps
-  await tap('[data-go="s-unl"]'); await sleep(300);
+  await tap('[data-go="s-prog"]'); await sleep(300);
   await tap('#unl-list .urow.key', 'unlocks · the key row'); await sleep(400);
   (await onScreen()) === 's-key' ? ok('the Unlocks screen\'s key row opens the key') : bad('unlocks · key row', 'on ' + (await onScreen()));
   await tap('#s-key .back', 'key · back'); await sleep(300);
   // achievements: filter chip, a row that jumps to a sheet (Quick Tap · Clean · Sprint · Four)
-  await tap('[data-go="s-ach"]'); await tap('#ach-g [data-v="quick-tap"]', 'achievements · filter chip');
+  await tap('[data-go="s-prog"]'); await tap('#prog-tabs [data-tab="ach"]', 'progress · achievements tab'); await tap('#ach-g [data-v="quick-tap"]', 'achievements · filter chip');
   await tap('#ach-qt_clean5', 'achievements · jump row'); await sleep(300);
   (await onScreen()) === 's-pick' ? ok('achievement row jumps to its pick sheet') : bad('achievement row jumps to its pick sheet', 'on ' + (await onScreen()));
   await tap('#lvl-back', 'sheet · mode back'); await tap('#diff-row .choice:nth-child(2)', 'sheet · mode');
   await tap('#prac-row [data-prac]', 'sheet · practice from'); await tap('#grid', 'sheet · grid');
+  // v17 (B.24, build 29): the chest is a control on the grid like any other. Locked here, so it says what it takes
+  await tap('.chest', 'game select · chest'); await sleep(200);
   await sleep(500); await tap('#s-pick .back', 'grid · back');
   // about: support. v14 (8.10): the dev switches live on their own screen now, one menu item below About
   await tap('[data-go="s-about"]'); await tap('#support', 'about · support');
@@ -1139,7 +1142,7 @@ console.log('\nbutton actions (every data-act at least once)');
   (await onScreen()) === 's-pick' ? ok('result back opens the pick sheet') : bad('result back opens the pick sheet', 'on ' + (await onScreen()));
   await tap('#time-row .tbtn:nth-child(2)', 'sheet · length'); await tap('[data-vs="1"]', 'sheet · with a friend'); await tap('[data-vs2="1"]', 'sheet · pass & play'); await tap('[data-vs="0"]', 'sheet · solo');
   // build 18: the chips are one act per screen, and the overlays (lock box, Next card, the full stop) are acts too
-  const expected = ['go', 'back', 'game', 'diff', 'time', 'vs', 'vs2', 'lvl-back', 'go-btn', 'quit', 'over-back', 'share', 'chip-bd', 'chip-pv', 'chip-ach', 'chip-over', 'item', 'music-pv', 'pvlock', 'ach', 'unl', 'prac', 'dev-open', 'dev-sup', 'dev-story', 'support', 'wheel-done', 'lock-no', 'lock-go', 'nextup', 'egg'];
+  const expected = ['go', 'back', 'game', 'diff', 'time', 'vs', 'vs2', 'lvl-back', 'go-btn', 'quit', 'over-back', 'share', 'chip-bd', 'chip-pv', 'chip-ach', 'chip-over', 'item', 'music-pv', 'pvlock', 'ach', 'unl', 'prac', 'dev-open', 'dev-sup', 'dev-story', 'support', 'wheel-done', 'lock-no', 'lock-go', 'nextup', 'egg', 'ptab', 'chest'];
   const missing = expected.filter(a => !seen.has(a));
   missing.length ? bad('every data-act driven once', 'not driven: ' + missing.join(', ')) : ok(`every data-act driven once (${expected.length}) — not covered: again, pass-go, to-games, seqdone, praclock, dev-fresh, adskip, toast`);
 }
@@ -1300,7 +1303,8 @@ console.log('\nbuild 28 - v17 sections B.1 to B.18');
   // B.9: no literal 31 survives anywhere the count is stated
   {
     const strip28 = x => x.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
-    const files = ['progress/key.js', 'ui/screens/key.js', 'ui/screens/unlocks.js', 'ui/screens/menu.js'];
+    // build 29: unlocks.js is the Unlocks TAB of ui/screens/progress.js now (B.21), and it is still one of the four
+    const files = ['progress/key.js', 'ui/screens/key.js', 'ui/screens/progress.js', 'ui/screens/menu.js'];
     const hits = files.filter(f => /\b31\b|thirty-one/i.test(strip28(fs.readFileSync(path.join(root28, f), 'utf8'))));
     hits.length ? bad('B.9 no literal 31 in the code that prints the count', hits.join(', '))
       : ok(`B.9 the count is read from the config in all ${files.length} files that print it - none of them knows a number`);
@@ -1632,6 +1636,197 @@ console.log('\nbuild 28 - v17 sections B.1 to B.18');
       : bad('B.3 the Estimate footer line is deleted', 'the engine still writes ' + stray.join(' | '));
     (!C28.ESTIMATE.sameShape && !C28.ESTIMATE.sameArea && !C28.ESTIMATE.watch) ? ok('B.3 the four retired strings are out of config/copy.js, not merely unused')
       : bad('B.3 the retired Estimate strings', JSON.stringify(Object.keys(C28.ESTIMATE)));
+  }
+}
+
+/* ---- 10. build 29 (v17 §B.19–§B.26): the front of the app ---- */
+console.log('\nbuild 29 - v17 sections B.19 to B.26');
+{
+  const root29 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const V29 = await import(pathToFileURL(path.join(root29, 'config', 'verdicts.js')).href);
+  const AU29 = await import(pathToFileURL(path.join(root29, 'config', 'audio.js')).href);
+  const TH29 = await import(pathToFileURL(path.join(root29, 'config', 'theme.js')).href);
+  const C29 = await import(pathToFileURL(path.join(root29, 'config', 'copy.js')).href);
+  const html29 = fs.readFileSync(path.join(root29, 'index.html'), 'utf8');
+  const css29 = fs.readFileSync(path.join(root29, 'styles', 'app.css'), 'utf8');
+
+  // ---- B.20: the first-run menu line is gone from the markup AND from the copy, not merely unrendered ----
+  {
+    const inHtml = /menu-note/.test(html29), inCopy = C29.MENU.note !== undefined, inCss = /\.menu-note\s*\{/.test(css29);
+    (!inHtml && !inCopy && !inCss) ? ok('B.20 "play one run · the rest opens" is gone - the element, the copy row and the rule')
+      : bad('B.20 the first-run menu line', JSON.stringify({ inHtml, inCopy, inCss }));
+  }
+  // ---- B.21: one menu item, two tabs, and the two old screens are gone from the document ----
+  {
+    const m = await page.evaluate(() => ({
+      items: [...document.querySelectorAll('#s-menu .item')].map(b => b.textContent.trim()),
+      prog: !!document.getElementById('s-prog'), old: !!document.getElementById('s-unl') || !!document.getElementById('s-ach'),
+      tabs: [...document.querySelectorAll('#prog-tabs .chip')].map(c => c.dataset.tab) }));
+    (m.prog && !m.old && m.items.includes('Progress') && !m.items.includes('Unlocks') && !m.items.includes('Achievements') && m.tabs.join() === 'unl,ach')
+      ? ok(`B.21 one menu item - ${m.items.join(' · ')} - with tabs ${m.tabs.join(' / ')}, Unlocks first (2.2)`)
+      : bad('B.21 Unlocks and Achievements are one item with two tabs', JSON.stringify(m));
+    const files = fs.readdirSync(path.join(root29, 'ui', 'screens'));
+    (!files.includes('unlocks.js') && !files.includes('achievements.js') && files.includes('progress.js'))
+      ? ok('B.21 one screen file, not a host importing two (A4)') : bad('B.21 the two screen files are merged', files.join(', '));
+  }
+  // B.21: the tab is remembered, and the tab that is up is the one that is rendered
+  {
+    await setStorage({ ne: { v: 1, prefs: { ...OPEN_PREFS, progTab: 'unl' }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await click('[data-go="s-prog"]'); await sleep(400);
+    const a = await page.evaluate(() => ({ unl: !document.getElementById('p-unl').hidden, rows: document.querySelectorAll('#unl-list .urow').length }));
+    await click('#prog-tabs [data-tab="ach"]'); await sleep(400);
+    const b = await page.evaluate(() => ({ ach: !document.getElementById('p-ach').hidden, rows: document.querySelectorAll('#achlist .a').length, stored: JSON.parse(localStorage.getItem('ne')).prefs.progTab }));
+    await click('#s-prog .back'); await sleep(300); await click('[data-go="s-prog"]'); await sleep(400);
+    const c = await page.evaluate(() => ({ ach: !document.getElementById('p-ach').hidden }));
+    (a.unl && a.rows > 0 && b.ach && b.rows > 0 && b.stored === 'ach' && c.ach)
+      ? ok(`B.21 both tabs render (${a.rows} unlock rows, ${b.rows} achievements) and the last tab is remembered`)
+      : bad('B.21 the tabs', JSON.stringify({ a, b, c }));
+  }
+  // ---- B.19: "tap to begin" sits higher and fades at 1.5x the old pace. L1 - placement and pace only ----
+  {
+    await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
+    await page.evaluate(() => localStorage.clear());
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(5200);
+    const h = await page.evaluate(() => { const el = document.getElementById('storyhint'); const cs = getComputedStyle(el); const r = el.getBoundingClientRect();
+      return { dur: cs.animationDuration, delay: cs.animationDelay, top: Math.round(r.top), vh: window.innerHeight, text: el.textContent.trim(),
+        lines: [...document.querySelectorAll('#s-menu .stline')].map(x => x.textContent.trim()), title: (document.getElementById('wordmark') || {}).textContent };
+    });
+    (h.dur === '1.2s' && h.delay === '4.6s') ? ok(`B.19 "tap to begin" fades over ${h.dur}, 1.5x the old .8s, still last of the four beats`)
+      : bad('B.19 the fade is 1.5x', JSON.stringify({ dur: h.dur, delay: h.delay }));
+    (h.top < h.vh * 0.75 && h.top > h.vh * 0.5) ? ok(`B.19 it sits toward the middle - ${Math.round(100 * h.top / h.vh)}% down, was pinned to the bottom edge`)
+      : bad('B.19 it sits higher', `top ${h.top} of ${h.vh}`);
+    (h.text === 'tap to begin' && h.lines.length === 2 && /NO EXCUSES/i.test(h.title || '')) ? ok('B.19 / L1 nothing removed or shortened - both story lines, the title and the hint')
+      : bad('B.19 / L1 the sequence is intact', JSON.stringify(h.lines));
+  }
+  // ---- B.22 / B.23 / B.24: the grid - the pressed outline, the path, the chest ----
+  {
+    await setStorage({ ne: { v: 1, prefs: { ...OPEN_PREFS, progTab: 'unl' }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await click('[data-go="s-pick"]'); await sleep(800);
+    // B.22 - the outline is the named colour, and it is neither L8's green nor L7's white
+    await click('.tile[data-game="dots"]'); await sleep(400);
+    const pr = await page.evaluate(() => { const t = document.querySelector('.tile[data-game="dots"]');
+      const cs = getComputedStyle(t.querySelector('.pic'));
+      return { keep: t.classList.contains('keep'), col: cs.outlineColor, width: cs.outlineWidth,
+        press: getComputedStyle(document.documentElement).getPropertyValue('--press').trim(),
+        ok: getComputedStyle(document.documentElement).getPropertyValue('--ok').trim() }; });
+    const hex2rgb = h => { const n = parseInt(h.slice(1), 16); return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`; };
+    (pr.keep && pr.col === hex2rgb(TH29.PRESS.v) && pr.press === TH29.PRESS.v && pr.col !== hex2rgb(pr.ok) && !/255, 255, 255/.test(pr.col))
+      ? ok(`B.22 the pressed game wears an ${TH29.PRESS.name} outline (${pr.col}, ${pr.width}) - named in config/theme.js, not green (L8) and not white (L7)`)
+      : bad('B.22 the pressed outline', JSON.stringify(pr));
+    await click('#grid'); await sleep(400);
+    // B.23 - the snake, Sequence directly under Estimate, and a line per step coloured by whether the next game is open
+    const gr = await page.evaluate(async () => {
+      const P = await import('./progress.js'); const R = await import('./games/registry.js');
+      const order = Object.keys(R.GAMES);
+      const cell = g => { const t = document.querySelector(`.tile[data-game="${g}"]`); return { r: +t.style.gridRow, c: +t.style.gridColumn }; };
+      const at = Object.fromEntries(order.map(g => [g, cell(g)]));
+      const chest = document.querySelector('.chest');
+      const segs = [...document.querySelectorAll('#gridlines .gl')].map(p => { const d = p.getAttribute('d').match(/-?[\d.]+/g).map(Number);
+        return { len: Math.round(Math.hypot(d[2] - d[0], d[3] - d[1])), open: p.classList.contains('open') }; });
+      return { at, chest: { r: +chest.style.gridRow, c: +chest.style.gridColumn }, segs, order,
+        opens: order.map(g => P.gameOpen(g)), cols: getComputedStyle(document.getElementById('grid')).gridTemplateColumns.trim().split(/\s+/).length };
+    });
+    const seq = gr.at.sequence, est = gr.at.hold;
+    (seq.c === est.c && seq.r === est.r + 1) ? ok(`B.23 Sequence sits directly under Estimate (row ${est.r} col ${est.c} -> row ${seq.r}) so the path folds instead of jumping the row`)
+      : bad('B.23 Sequence moves under Estimate', JSON.stringify({ est, seq }));
+    // every step is one cell: the snake is what makes a straight line between neighbours possible at all
+    const steps = gr.order.map(g => gr.at[g]).concat([gr.chest]);
+    const jumps = steps.slice(1).map((p, i) => Math.abs(p.r - steps[i].r) + Math.abs(p.c - steps[i].c)).filter(d => d !== 1);
+    (!jumps.length) ? ok(`B.23 every step of the order is one cell - a ${gr.cols}-column snake, ${steps.length} stops ending at the chest`)
+      : bad('B.23 the order runs through neighbouring cells', jumps.join(', '));
+    (gr.segs.length === gr.order.length && gr.segs.every(s => s.len > 4))
+      ? ok(`B.23 ${gr.segs.length} lines drawn, shortest ${Math.min(...gr.segs.map(s => s.len))}px - one per step including the chest`)
+      : bad('B.23 a line per step', JSON.stringify(gr.segs));
+    const wrong = gr.segs.slice(0, gr.order.length - 1).map((s, i) => s.open === gr.opens[i + 1] ? null : gr.order[i + 1]).filter(Boolean);
+    (!wrong.length) ? ok('B.23 a segment is green where the game it leads to is open and grey where it is locked')
+      : bad('B.23 the line colour follows the next game', wrong.join(', '));
+    // B.24 - locked: the requirement is key 1's own count, and NOTHING about pro or author is anywhere on the grid (A.1)
+    const ch = await page.evaluate(async () => { const K = await import('./progress/key.js'); const st = K.keyState();
+      const el = document.querySelector('.chest');
+      return { cls: el.className, need: el.querySelector('.pic').dataset.need, total: st.total, done: st.done,
+        text: (document.getElementById('s-pick').innerText || '') + ' ' + (el.querySelector('.pic').dataset.need || '') }; });
+    (/locked/.test(ch.cls) && ch.need === `clear all ${ch.total} · ${ch.done} so far`)
+      ? ok(`B.24 the chest is locked and says what key 1 asks for: "${ch.need}"`) : bad('B.24 the locked chest', JSON.stringify(ch));
+    (!/\bpro\b|author/i.test(ch.text)) ? ok('B.24 / A.1 nothing about the pro or author tiers is on the grid before the chest is opened')
+      : bad('A.1 the grid mentions pro or author', ch.text.slice(0, 120));
+  }
+  // B.24: every bar cleared -> the chest is openable, opens once, stores it, and says Gauntlet is not built yet
+  {
+    const bars = await page.evaluate(async () => { const K = await import('./progress/key.js'); const o = {}; for (const c of K.COMBOS) o[c.key] = Date.now(); return o; });
+    await setStorage({ ne: { v: 1, prefs: { ...OPEN_PREFS, progTab: 'unl' }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await click('[data-go="s-pick"]'); await sleep(700);
+    const before = await page.evaluate(() => ({ cls: document.querySelector('.chest').className, need: document.querySelector('.chest .pic').dataset.need }));
+    await click('.chest'); await sleep(700);
+    const after = await page.evaluate(() => ({ cls: document.querySelector('.chest').className, need: document.querySelector('.chest .pic').dataset.need,
+      lid: getComputedStyle(document.querySelector('.chest .lid')).rotate, toast: document.getElementById('toast').textContent.trim(),
+      stored: JSON.parse(localStorage.getItem('ne')).prefs.chest1 }));
+    (/ready/.test(before.cls) && before.need === 'tap to open') ? ok('B.24 every bar cleared and the chest is openable') : bad('B.24 the openable chest', JSON.stringify(before));
+    (/open/.test(after.cls) && after.stored === 1 && after.need === 'Gauntlet — coming soon' && /Gauntlet/.test(after.toast))
+      ? ok(`B.24 it opens once and for good - "${after.toast}", lid ${after.lid}`) : bad('B.24 opening the chest', JSON.stringify(after));
+    (!/\bpro\b|author/i.test(after.need + ' ' + after.toast)) ? ok('B.24 / A.1 an opened chest says only what it gave') : bad('A.1 the opened chest', after.need);
+    // and it stays open across a reload, because it is progress and not a screen state
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400); await click('[data-go="s-pick"]'); await sleep(600);
+    (await page.evaluate(() => document.querySelector('.chest').classList.contains('open'))) ? ok('B.24 the chest is still open after a reload') : bad('B.24 the chest is stored');
+  }
+  // ---- B.25: one table of thresholds and lines, four tiers, five lines each, a colour and a sound per tier ----
+  {
+    const ids = V29.VERDICT_TIERS.map(t => t.id);
+    const bad25 = [];
+    for (const [k, row] of Object.entries(V29.VERDICTS)) {
+      if (!Array.isArray(row.at) || row.at.length !== 3) bad25.push(k + ' at');
+      if (row.at && !(row.at[0] > row.at[1] && row.at[1] > row.at[2])) bad25.push(k + ' thresholds out of order');
+      for (const id of ids) { const l = (row.lines || {})[id];
+        if (!Array.isArray(l) || l.length !== 5) bad25.push(`${k}:${id} has ${l ? l.length : 'no'} lines`);
+        else if (new Set(l).size !== 5) bad25.push(`${k}:${id} repeats a line`); }
+    }
+    const noFx = ids.filter(id => !Array.isArray(AU29.VERDICT_FX[id]) || !AU29.VERDICT_FX[id].length);
+    const noCol = V29.VERDICT_TIERS.filter(t => !/^#[0-9A-Fa-f]{6}$/.test(t.col)).map(t => t.id);
+    (!bad25.length && !noFx.length && !noCol.length && ids.length === 4)
+      ? ok(`B.25 ${ids.join(' / ')} - ${Object.keys(V29.VERDICTS).length} games, five lines a tier, ${Object.keys(V29.VERDICTS).length * 20} lines, every tier a colour and a sound`)
+      : bad('B.25 the verdict table', [...bad25, ...noFx.map(x => x + ' has no sound'), ...noCol.map(x => x + ' has no colour')].join(' | '));
+    // the old five-line table is gone from copy.js, not left behind to be read by accident
+    (C29.VERDICTS === undefined) ? ok('B.25 the old five-line VERDICTS is out of config/copy.js') : bad('B.25 two verdict tables', 'copy.js still exports VERDICTS');
+    // L4: light blue and red are the player colours, and the tiers use them - which is exactly why the colours are solo only
+    const P = await import(pathToFileURL(path.join(root29, 'config', 'theme.js')).href);
+    const clash = V29.VERDICT_TIERS.filter(t => t.col === P.P1C || t.col === P.P2C).map(t => t.id);
+    (clash.length === 2) ? ok(`B.25 / L4 ${clash.join(' and ')} ARE the player colours - which is why the tier colour is solo only`)
+      : ok('B.25 the tier colours do not collide with the player colours');
+  }
+  // B.25 in the browser: a solo result wears its tier, a two-player one does not, and a line never repeats back to back
+  {
+    await setStorage({ ne: { v: 1, prefs: OPEN_PREFS, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    const draw = await page.evaluate(async () => { const P = await import('./progress.js');
+      const r = { g: 'quick-tap', d: 'two', s: 5, hits: 18, misses: 1, t: Date.now(), v: 2 };
+      const out = []; for (let i = 0; i < 40; i++) out.push(P.verdict(r));
+      const same = out.slice(1).filter((v, i) => v.line === out[i].line).length;
+      const tiers = [...new Set(out.map(v => v.tier))];
+      return { same, tiers, lines: [...new Set(out.map(v => v.line))].length, col: out[0].col }; });
+    (draw.same === 0 && draw.tiers.length === 1 && draw.lines === 5)
+      ? ok(`B.25 forty draws of one record: all ${draw.tiers[0]}, all five lines seen, never the same line twice running`)
+      : bad('B.25 the line never repeats back to back', JSON.stringify(draw));
+    await openSheet('quick-tap', 0, 0); await click('#go-btn'); await driveToResult('quick-tap', 'a run for the verdict', 30000);
+    const solo = await page.evaluate(() => { const v = document.getElementById('verdict'); return { cls: v.className, col: getComputedStyle(v).color, text: v.textContent.trim() }; });
+    const tier = V29.VERDICT_TIERS.find(t => solo.cls.includes('v-' + t.id));
+    (tier && solo.text) ? ok(`B.25 the solo result wears its tier - ${tier.id} (${tier.name}), "${solo.text}"`) : bad('B.25 the solo verdict tier', JSON.stringify(solo));
+    // a pass & play run: the line is there, the tier is not (L4)
+    await openSheet('quick-tap', 0, 0, 1); await click('#go-btn');
+    for (let i = 0; i < 3; i++) { const at = await driveToResult('quick-tap', 'pass & play for the verdict', 40000); if (at === 's-pass') { await click('#pass-go'); await sleep(400); continue; } break; }
+    const two29 = await page.evaluate(() => { const v = document.getElementById('verdict'); return { cls: v.className, inline: v.style.color, text: v.textContent.trim() }; });
+    (two29.cls === 'verdict' && !two29.inline) ? ok('B.25 / L4 a two-player result carries no tier colour - light blue and red stay the players')
+      : bad('B.25 the tier is solo only', JSON.stringify(two29));
+  }
+  // ---- B.26: the review catalogue reads the same table, and prints the lines, the colours and the sounds ----
+  {
+    const gen = fs.readFileSync(path.resolve(root29, '..', '_review', 'scripts', 'catalogue.mjs'), 'utf8');
+    const tpl = fs.readFileSync(path.resolve(root29, '..', '_review', 'scripts', 'catalogue.template.html'), 'utf8');
+    const reads = /config\/verdicts\.js/.test(gen) && /verdicts/.test(gen);
+    const prints = /id="verdicts"/.test(tpl) && /verd-host/.test(tpl) && /REF\.verdicts/.test(tpl);
+    (reads && prints) ? ok('B.26 the catalogue reads config/verdicts.js out of the running app and prints a section per game')
+      : bad('B.26 the review board shows the verdict tables', JSON.stringify({ reads, prints }));
   }
 }
 

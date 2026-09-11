@@ -105,7 +105,7 @@ on('screen:change',({id})=>{ if(id==='game') $('#wheelwrap').classList.remove('o
 define({
   'chip-pv'(b){ F.g=b.dataset.v; renderCustom(); return 'pick'; },
   'music-pv'(){ Music.preview(F.g); return 'pick'; },
-  pvlock(b){ if(b.dataset.ach) show('s-ach',{ach:b.dataset.ach}); return 'click'; },
+  pvlock(b){ if(b.dataset.ach) show('s-prog',{ach:b.dataset.ach}); return 'click'; },
   'wheel-done'(){ Wheel.close(); return 'click'; },
   // a Customise item: colour, background, sound pack, scale, music switch — the group is the closest [data-set]
   item(b){ const set=b.closest('[data-set]'); if(!set) return 'pick'; const k=set.dataset.set;

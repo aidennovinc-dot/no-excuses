@@ -5,7 +5,7 @@
    can share a root and a tempo and still be different pieces of music. Three per game, plus a menu loop, a loop per key
    tier, and a per-player stem for versus. Still no percussion: a drum is indistinguishable from a tap. */
 
-import { STEMS, SCALES, TRACKS, TRACK_PICK } from "./config/audio.js";
+import { STEMS, SCALES, TRACKS, TRACK_PICK, VERDICT_FX } from "./config/audio.js";
 import { on } from "./core/events.js";
 import { sel } from "./core/state.js";
 import { musicOn, prefs } from "./core/store.js";
@@ -47,6 +47,12 @@ const Snd = (()=>{
     unlockFx(){ const a=AC(); if(!a) return; const t=a.currentTime;
       [[523.3,0],[784,.10],[1046.5,.20]].forEach(([f,d])=>{ tone(f,f,520,'triangle',.085,t+d,26); tone(f*2,f*2,300,'sine',.03,t+d,20); });
       tone(130.8,261.6,760,'sine',.055,t,90); },
+    /* v17 (B.25, build 29): THE VERDICT TIER'S OWN SOUND. One event list per tier in config/audio.js — the same
+       [at, f0, f1, ms, wave, gain, attackMs] shape the review catalogue plays, so the page and the app cannot drift.
+       Solo only, because the tier itself is solo only (L4): a two-player result is player colours and no tier.
+       It plays when the result is READ, not when the run ends — Snd.end() already owns the finish. */
+    verdict(id){ const a=AC(); if(!a) return; const ev=VERDICT_FX[id]; if(!ev) return; const t=a.currentTime;
+      for(const [at,f0,f1,ms,w,g,am] of ev) tone(f0,f1,ms,w,g,t+at,am); },
     // v13 (6.6): the counting whoosh — one voice sweeping low to high for the length of the count, so the pitch follows the fill
     whoosh(ms,f0,f1){ const a=AC(); if(!a||prefs.snd==='off') return null; const t=a.currentTime, dur=Math.max(120,ms)/1000;
       const o=a.createOscillator(), n=a.createOscillator(), g=a.createGain(), f=a.createBiquadFilter();

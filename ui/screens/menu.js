@@ -30,7 +30,7 @@ function renderMenu(){ const first=firstRun(); const opening=menuWasFirst&&!firs
      unstrike on its ::after — because a bare animation-delay reaches the element only. */
   $$('#s-menu .item').forEach((b,i)=>{ const x=first&&b.dataset.go!=='s-pick'; b.classList.toggle('dim',x); b.classList.remove('unx'); b.style.removeProperty('--ud');
     if(opening&&b.dataset.go!=='s-pick'){ const d=i*90; b.style.setProperty('--ud',d+'ms'); b.classList.add('unx'); b.style.pointerEvents='none'; setTimeout(()=>{ b.classList.remove('unx'); b.style.removeProperty('--ud'); b.style.pointerEvents=''; },700+d); } });
-  $('#menu-note').textContent=first?MENU.note:'';
+  // v17 (B.20, build 29): the "play one run · the rest opens" line is gone — the struck-through items say it
   /* v17 (§A.6.7): the key-1 percentage on the front of the app, reading the same keyPct() the keys screen reads. It is
      hidden on a profile that has not run anything — A.6.2 makes a new profile 0 of 30 · 0%, and handing a first-timer a
      number that says nothing has happened is the opposite of what §A.6.6 is for. Tapping it opens the keys screen. */

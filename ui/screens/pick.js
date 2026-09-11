@@ -2,7 +2,7 @@
    sheet for every game (L9): the player row, the mode row, the length row, Go. Three stages — grid, mode, len — and Back
    walks them before it leaves the screen. show('s-pick', {g, d, s}) opens a game's sheet straight at its mode or length row
    (the result screen's Back, an achievement row, a challenge link). Locked things ask the lock box through lock:ask. */
-import { SHEET } from "../../config/copy.js";
+import { GRID, SHEET } from "../../config/copy.js";
 import { MODE_NAME, PASS_LEN, SEQ_VS, VS_LEAD, VS_TARGET } from "../../config/games.js";
 import { VS_ART } from "../../config/theme.js";
 import { VS_LINE } from "../../config/copy.js";
@@ -12,6 +12,7 @@ import { VS, sel } from "../../core/state.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, SHARED2, lenName, lenSub, versusAny, versusOf } from "../../games/registry.js";
 import { Scores, gameOpen, isOpen, lenLock, lenOpen, lensOf, markSeen, needFor, newMark, practiceOpen } from "../../progress.js";
+import { keyState } from "../../progress/key.js";
 import { start } from "../../run/run.js";
 import { define } from "../actions.js";
 import { goLabel, picOf, scoreTxt } from "../format.js";
@@ -45,6 +46,63 @@ function setStage(st){ stage=st; const g=GAMES[sel.game]; $('#diff-row').classLi
   $('#seq-opts').style.display='none'; $('#vs-wrap').style.display=st==='mode'||(st==='len'&&g.modes.length===1)?'':'none'; renderVsRow();
   if(st==='grid'){ $$('.tile').forEach(t=>t.classList.remove('keep')); } $('#sheet-title').textContent=g.name+(sel.vs===1?SHEET.passTitle:sel.vs===2?SHEET.versusTitle:''); $('#len-title').textContent=SHEET.mode;
   renderVsArt(); $('#lvl-mode').textContent=MODE_NAME[sel.diff]||''; $('#lvl-back').style.display=g.modes.length>1?'':'none'; }
+/* ---------- v17 (B.23 / B.24, build 29): the unlock order, drawn — and the chest the order ends at ----------
+
+   B.23 asked for thin lines joining the games in the order they open, with Sequence moved directly under Estimate so
+   the lines flow. THE ORDER IS NOT WRITTEN HERE: `Object.keys(GAMES)` already IS that order (config/games.js is in
+   chain order and the markup follows it), and a second list would be a second copy of L6's table waiting to disagree
+   with it. What is written here is the SHAPE — a snake, left to right then right to left — and it is computed from the
+   column count the stylesheet is actually using, so the 4-column breakpoint at 700px folds it correctly with no second
+   rule. The tiles are placed by `grid-row` / `grid-column` rather than by DOM order, which leaves the markup in chain
+   order for tab focus and for the reveal's stagger.
+
+   The line is measured off each tile's own `.pic` box, through offsetLeft / offsetTop rather than a bounding rect —
+   the first-visit reveal animates `scale`, and a rect taken mid-animation would draw the path through where the tiles
+   momentarily are instead of where they live. A segment is GREEN when the game it leads to is open and light grey when
+   it is not, which is the whole of what the line says. It draws itself as part of the opening animation Aiden passed
+   (v11's tile-by-tile reveal): each segment starts after the tile it points at has arrived. */
+const GRID_ORDER=Object.keys(GAMES);
+/* the tiles in CHAIN order, whatever order the markup is in, with the chest last. Sorting here rather than trusting the
+   DOM means the order can only ever be wrong in config/games.js, which is the one place L6 allows it to be stated. */
+const orderedTiles=()=>$$('#grid .tile').sort((a,b)=>{ const i=t=>t.dataset.game?GRID_ORDER.indexOf(t.dataset.game):GRID_ORDER.length; return i(a)-i(b); });
+// where tile i sits: row by row, alternating direction, so the path from one to the next is always one step
+function cellOf(i,cols){ const r=Math.floor(i/cols), c=i%cols; return { r:r+1, c:(r%2?cols-c:c+1) }; }
+function colCount(){ const g=$('#grid'); const t=getComputedStyle(g).gridTemplateColumns; const n=t?t.trim().split(/\s+/).length:3; return n>0?n:3; }
+/* an element's centre within #grid. Both walk the same offsetParent chain and the difference cancels everything above
+   the grid, so it does not matter which ancestor happens to be positioned — and offsets, not a bounding rect, because
+   the first-visit reveal animates `scale` and a rect taken mid-animation is the wrong box. */
+function pageOff(el){ let x=0, y=0, n=el; while(n){ x+=n.offsetLeft; y+=n.offsetTop; n=n.offsetParent; } return { x, y }; }
+function centreIn(el,root){ const a=pageOff(el), b=pageOff(root); return { x:a.x-b.x+el.offsetWidth/2, y:a.y-b.y+el.offsetHeight/2 }; }
+function layoutGrid(){ const cols=colCount();
+  orderedTiles().forEach((t,i)=>{ const {r,c}=cellOf(i,cols); t.style.gridRow=r; t.style.gridColumn=c; });
+  return cols; }
+function drawLines(reveal){ const grid=$('#grid'), svg=$('#gridlines'); if(!svg) return;
+  const tiles=orderedTiles(); if(tiles.length<2) return;
+  const w=grid.offsetWidth, h=grid.offsetHeight; if(!w||!h) return;
+  svg.setAttribute('viewBox',`0 0 ${w} ${h}`); svg.style.width=w+'px'; svg.style.height=h+'px';
+  const pts=tiles.map(t=>centreIn(t.querySelector('.pic'),grid));
+  const open=tiles.map(t=>t.dataset.game?gameOpen(t.dataset.game):!t.classList.contains('locked'));
+  let out='';
+  for(let i=0;i<pts.length-1;i++){ const a=pts[i], b=pts[i+1];
+    const len=Math.hypot(b.x-a.x,b.y-a.y); if(!len) continue;
+    /* stop at the edge of each tile's PICTURE, not its tile box: the box carries the name label above the art, so
+       half of it is most of the distance to the next tile and the segment came out two pixels long. The picture is
+       square, so half its width is the inset on every side, and what is left is the gap the grid puts between them. */
+    const half=tiles[i].querySelector('.pic').offsetWidth/2;
+    const pad=Math.min(len/2-1,half+1);
+    const ux=(b.x-a.x)/len, uy=(b.y-a.y)/len;
+    const x1=a.x+ux*pad, y1=a.y+uy*pad, x2=b.x-ux*pad, y2=b.y-uy*pad;
+    const l=Math.hypot(x2-x1,y2-y1); const d=reveal?(i+1)*120+260:i*40;
+    out+=`<path class="gl${open[i+1]?' open':''}" d="M${x1.toFixed(1)} ${y1.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}" style="--len:${l.toFixed(1)};--gd:${d}ms"></path>`; }
+  svg.innerHTML=out; }
+/* the chest (B.24). Three states and one of them is stored: locked until every clearance bar is cleared, openable once
+   they are, opened for good once it has been. §A.2 puts Gauntlet behind it and §A.1 forbids anything about the pro or
+   author tiers appearing before it is open — so a locked chest says only what key 1 asks for, and an opened one says
+   only what it gave. Gauntlet is not built: the opened chest says so rather than offering a mode that is not there. */
+function renderChest(){ const el=$('#grid .chest'); if(!el) return; const k=keyState();
+  const done=!!prefs.chest1, ready=k.total>0&&k.done>=k.total;
+  el.classList.toggle('locked',!ready&&!done); el.classList.toggle('ready',ready&&!done); el.classList.toggle('open',done);
+  el.querySelector('.pic').dataset.need=done?GRID.chestDone:ready?GRID.chestOpen:T(GRID.chestLocked,{n:k.total,done:k.done}); }
 // locked games are greyed with the condition on the tile (v6). Each tile wears its own game's colours (v10). v11: a padlock badge; the first visit reveals the grid tile by tile; a padlock wipes off when its game opens
 function renderTiles(){ const reveal=!prefs.gridSeen; if(reveal){ prefs.gridSeen=1; save(); } const runs=Scores.runs(); const fresh=[];
   $$('.tile[data-game]').forEach((t,i)=>{ const g=t.dataset.game, open=gameOpen(g); t.classList.toggle('locked',!open); t.querySelector('.pic').dataset.need=open?'':T(SHEET.tileUnlock,{need:needFor(g,GAMES[g].modes[0])});
@@ -57,7 +115,9 @@ function renderTiles(){ const reveal=!prefs.gridSeen; if(reveal){ prefs.gridSeen
        the green border is the mark that says which one is new. The first visit of all keeps its own reveal (v11) and
        does not get this as well — everything is new on that screen, so nothing would be. */
     if(open&&!reveal){ const nw=newMark('game:'+g,fresh); if(nw){ t.classList.add('newthing'); t.classList.add('arrive'); } } });
-  markSeen(fresh); }
+  markSeen(fresh);
+  // v17 (B.23 / B.24): the snake placement, the chest's state, then the lines over the top of both
+  layoutGrid(); renderChest(); drawLines(reveal); }
 // a locked mode (v11) is crossed out, not just greyed; tapping it says what it takes
 function fillSheet(){ const g=GAMES[sel.game]; const fresh=[]; $('#diff-row').innerHTML=g.modes.map(d=>{ const open=isOpen(sel.game,d); const nw=open?newMark('mode:'+sel.game+':'+d,fresh):''; return `<button data-act="diff" class="choice ${open?'':'locked'}${nw}" data-diff="${d}"><span class="pic">${picOf(sel.game,d)}</span><span class="txt"><b class="${open?'':'x'}">${MODE_NAME[d]}</b><small class="${open?'':'need'}">${open?g[d]:T(SHEET.toUnlock,{need:needFor(sel.game,d)})}</small></span></button>`; }).join(''); markSeen(fresh); }
 // the length face (v11): the name with its seconds beside it on the pick sheet, the best underneath; a locked length is crossed out
@@ -96,6 +156,8 @@ register('s-pick',{
 });
 on('challenge',c=>{ show('s-pick',{g:c.g,d:c.d,s:c.s}); showChallenge(c); });
 on('run:abort',()=>show('s-pick'));
+// the snake and its lines are measured, so a rotation has to re-measure them. Only while the grid is the screen on show
+addEventListener('resize',()=>{ if($('#s-pick').classList.contains('on')){ layoutGrid(); drawLines(false); } });
 define({
   game(b){ if(b.classList.contains('locked')){ ask(b.dataset.game,GAMES[b.dataset.game].modes[0]); return 'pick'; }
     sel.game=b.dataset.game; prefs.lastGame=sel.game; save(); applyPrefs(sel.game); $$('.tile').forEach(t=>t.classList.toggle('keep',t===b)); fillSheet();
@@ -112,6 +174,14 @@ define({
   'go-btn'(){ if(sel.game!=='sequence') sel.practice=0; VS.reset(); start(); return 'click'; },
   vs(b){ sel.vs=b.dataset.vs==='0'?0:(sel.vs||1); renderVsRow(); $('#sheet-title').textContent=GAMES[sel.game].name+(sel.vs===1?' · pass & play':sel.vs===2?' · versus':''); renderVsArt(); if(stage==='len') fillTimes(); return 'pick'; },
   vs2(b){ sel.vs=+b.dataset.vs2; renderVsRow(); $('#sheet-title').textContent=GAMES[sel.game].name+(sel.vs===1?' · pass & play':' · versus'); renderVsArt(); if(stage==='len') fillTimes(); return 'pick'; },
+  /* v17 (B.24): a locked chest says what it takes, the same way every other locked thing does (v15 2.1); an openable
+     one opens once and for good, with the unlock toast and the unlock sound, because that is what it is */
+  chest(b){ const k=keyState();
+    if(prefs.chest1){ toast(GRID.chestDone); return 'pick'; }
+    if(!(k.total>0&&k.done>=k.total)){ toast(T(GRID.chestLocked,{n:k.total,done:k.done})); return 'pick'; }
+    prefs.chest1=1; save(); b.classList.remove('ready'); b.classList.add('open','opening');
+    setTimeout(()=>b.classList.remove('opening'),900); renderChest(); drawLines(false);
+    toast(GRID.chestToast,'','ok'); return 'pick'; },
   praclock(){ toast(TOAST.pracLocked); return 'pick'; },
   prac(b){ sel.practice=+b.dataset.prac; $$('[data-prac]').forEach(c=>c.classList.toggle('sel',c===b)); return 'pick'; },
   // v15 (4.5): how many notes a Sequence versus opens with

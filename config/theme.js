@@ -1,6 +1,11 @@
 /* No Excuses — colours, backgrounds, cosmetic items, the two-player pictures (build 16, refactor stage 2). DATA ONLY (A2). */
 // player colours (v11 / L4): Player 1 is red, Player 2 is light blue, everywhere two people share the phone
 export const P1C = '#E0453B', P2C = '#6EC6FF';
+/* v17 (B.22, build 29): the PRESSED game on the grid wears an outline, and its colour is named here rather than picked
+   in the stylesheet. Green is L8's first-seen mark and white is L7's unplayed tile, so neither could be borrowed — this
+   is AMBER, the same #FFB020 already in the lead palette above, so the grid gains no new colour. ui/theme.js publishes
+   it as --press; nothing else in the app uses it. */
+export const PRESS = { name:'amber', v:'#FFB020' };
 // the four backgrounds and the ground tint each one sits on
 export const DESIGNS = { stars:{tint:'#050506'}, grid:{tint:'#070A14'}, rain:{tint:'#0B1008'}, orbs:{tint:'#0E0608'} };
 // Customise: every item, and the achievement id that earns it (`by`). No `by` = open from the start

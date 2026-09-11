@@ -54,17 +54,9 @@ export const INTRO = {
 // v16 (A.3): the first run of each GAME ends its intro here instead of dropping straight into the 3-2-1 — one tap, once
 export const INTRO_READY = { ready:'Ready?', tap:'tap to begin' };
 // verdicts: tiered by a per-game quality 0..1 (progress/rules.js QUALITY) — five steps, worst first
-export const VERDICTS = {
-  'quick-tap':['Warming up. Go again.','Solid. Now stop looking, start moving.','Quick. The next tier is close.','Sharp. Very sharp.','That is not normal. Keep it.'],
-  'dots':['Finding the screen. Go again.','Landing them. Faster now.','Quick hands.','Sharp. Very sharp.','Radar. That is not normal.'],
-  'hold':['Nowhere near. Feel the rate, not the shape.','Close-ish. Trust the count.','Good eye.','Machine-adjacent.','That is not normal. Keep it.'],
-  'hold:cut':['Way off. Look at the whole shape first.','Getting there. Think in halves.','Good eye.','Surgical.','That is not normal. Keep it.'],
-  'sequence':['Short memory. Go again.','Building. Say it out loud.','Long memory.','Very long memory.','That is not normal. Keep it.'],
-  'timing':['Way off. Count it out loud.','Getting the rhythm.','Good clock.','Very good clock.','That is not normal. Keep it.'],
-  'reaction':['Asleep. Go again.','Awake.','Quick.','Very quick.','That is not normal. Keep it.'],
-  'spot:count':['Guessing. Slow down.','Half of them. Look at the whole screen.','Good eye.','Nearly all of them.','That is not normal. Keep it.'],
-  'spot:find':['Slow. Scan, do not stare.','Finding them.','Quick eye.','Very quick eye.','That is not normal. Keep it.'],
-};
+/* v17 (B.25, build 29): the five-line VERDICTS table moved to config/verdicts.js, with the thresholds that pick one
+   beside it — four tiers now, five lines each, a colour and a sound per tier. What is left here is the handful of
+   verdicts that are NOT a tier: a run that ended badly enough to have its own sentence, and the two-player lines. */
 // the verdicts that are not a tier
 export const VERDICT = { nogoFail:'Three wrong taps. Run over — go again.', fail:'Run over — go again.', nothing:'Nothing landed. That was a choice.', moreMisses:'More misses than hits. You know what you did.',
   draw:'A draw. Nobody gets to blame anybody.', took:'Player {n} took it{how}. No excuses.', practice:'Practice. Nothing counted — go for real when it feels right.' };
@@ -75,7 +67,9 @@ export const VERDICT = { nogoFail:'Three wrong taps. Run over — go again.', fa
 /* v15 (2.2): two labels, not one. The card has always shown the next thing in the UNLOCK chain while calling itself
    "Next achievement" — unlocks outrank achievements everywhere the next thing is surfaced, so the card says which it is.
    `nextAch` is only ever reached once the whole chain is finished (progress.js nextGoal). */
-export const MENU = { note:'play one run · the rest opens', next:'<em>Next unlock</em><span>{need} → {name}</span>', nextAch:'<em>Next achievement</em><span>{need} → {name}</span>' };
+/* v17 (B.20, build 29): `note` is gone. "play one run · the rest opens" sat under a menu whose every other item was
+   already struck through — the strikes say it, and the first run un-strikes them one at a time (v15 6.2). */
+export const MENU = { next:'<em>Next unlock</em><span>{need} → {name}</span>', nextAch:'<em>Next achievement</em><span>{need} → {name}</span>' };
 /* v15 (2.4): the Unlocks screen — the chain on its own page, split off from Achievements. Everything that OPENS something
    lives here; Achievements keeps the rest. What sits behind keys 2 and 3 is register #372 and is not decided, so the key
    line below says only what is true today. */
@@ -85,6 +79,18 @@ export const UNLOCKS_SCREEN = { title:'unlocks', hint:'tap a locked row to see w
   // v17 (B.9): the number is a placeholder now. The count moved when Sequence lost 5 keys and it will move again the next
   // time a mode is added, and a written-out "thirty-one" is exactly the second copy of a fact L6 forbids everywhere else
   keyLine:'The first key is earned here. Beat a clearance bar once in a solo run and it is cleared for good — the key screen has all {n}.' };
+/* v17 (B.21, build 29): Unlocks and Achievements are ONE menu item with two tabs. They were split at build 23 (v15
+   2.4) because they are different things — an unlock opens something, an achievement marks something you already have —
+   and that distinction is worth keeping; what was not worth keeping is two rows on a menu that already has seven. The
+   split survives as the two tabs, in the same order and for the same reason (unlocks outrank achievements, 2.2). The
+   screen remembers which tab was last open, per profile. L6 is quoted: "the Unlocks screen" is a tab now. */
+export const PROGRESS_SCREEN = { title:'progress', unl:'Unlocks', ach:'Achievements',
+  unlHint:'tap a locked row to see what it takes', achHint:'tap one to go play it' };
+/* v17 (B.23 / B.24, build 29): the game-select grid says what order the games open in, and where that order ENDS.
+   The chest needs key 1 — every clearance bar cleared — and A.1 forbids anything about pro or author appearing before
+   it is opened, so a locked chest says what it takes in key-1 terms and an opened one says only what it gave. */
+export const GRID = { chest:'Chest', chestLocked:'clear all {n} · {done} so far', chestOpen:'tap to open',
+  chestDone:'Gauntlet — coming soon', chestToast:'Chest 1 opened · Gauntlet is not built yet' };
 export const SHEET = { mode:'Mode', toUnlock:'To unlock: {need}', tileUnlock:'to unlock: {need}', locked:'locked', noRun:'no run yet', best:'best', closest:'closest',
   practiceFrom:'practice from', off:'off', pracLocked:'locked · 8 notes in 7 keys',
   // v15 (4.5): Sequence versus asks for two things — the keys (the length row) and how many notes it opens with. The second

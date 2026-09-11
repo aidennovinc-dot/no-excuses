@@ -106,6 +106,23 @@ lives beside `BUILD` and does **not** move with it — see the comment there for
 - **An unlock has its own sound; the achievement sound is not to be changed.** `Snd.unlockFx()` on an `'ok'` toast,
   `Snd.click()` on an achievement — Aiden's line was that achievements already sound right. The gate asserts both, so
   "made the unlock bigger" and "moved the achievement" cannot look the same.
+- **A VERDICT IS A TIER, AND THE TIER IS SOLO ONLY (v17 B.25, build 29).** Four tiers — almost perfect, good, alright,
+  bad — five lines each per game, drawn so the same line never shows twice running. **Thresholds and lines are one table,
+  `config/verdicts.js`**: a game's row carries its own three cut-offs against its own quality (0..1, `QUALITY` in
+  `progress/rules.js`) and its own twenty lines, and `verdict()` in `progress.js` only reads it. It returns
+  `{tier, col, line}`, never a bare string — the result screen needs the tier to colour the line and to play
+  `Snd.verdict(id)`. **Almost perfect is light blue and bad is red, which ARE P2 and P1 (L4)** — that is the whole reason
+  the colour and the sound are solo only, and `ui/screens/result.js` leaves both off a two-player or practice result.
+  The sound plays when the result is READ, not at the finish: `Snd.end()` owns the finish, the ad break can stand
+  between them, and a run that earned something pushes its toasts back so the unlock sound gets clear air.
+- **THE GAME-SELECT GRID IS A SNAKE, AND THE ORDER IS NOT WRITTEN IN IT (v17 B.23, build 29).** The tiles are placed by
+  `grid-row` / `grid-column` from `Object.keys(GAMES)` — chain order, straight out of `config/games.js` — running left to
+  right, then right to left, so every step of the order is one cell and the line between two of them is always straight.
+  The markup stays in chain order for focus and for the reveal's stagger. The lines in `#gridlines` are measured off each
+  tile's own picture through `offsetLeft` / `offsetTop`, **never a bounding rect**: the first-visit reveal animates
+  `scale`, and a rect taken mid-animation draws the path through where the tiles momentarily are. Green where the game a
+  segment leads to is open, grey where it is locked. **The chest is the last stop** — key 1, `prefs.chest1`, and §A.1
+  forbids anything about the pro or author tiers appearing on that screen until it is opened.
 - **A first-play intro is ONE LINE (v16 §5 / A.3, build 27).** The title line, arriving as a line rather than word by
   word; the dimmer sub-line is gone from `INTRO` in `config/copy.js` entirely. **On a player's first run of each GAME**
   — not each mode — the intro ends on a "Ready?" they tap. Cowork's idea of moving the rule into the 3-2-1 top strip is
@@ -134,12 +151,16 @@ navigate with `show(id, opts)` and never import another screen. The engines impo
 the run or each other.
 
 **Screens — since build 18.** One file per screen under `ui/screens/`, each owning its DOM: `menu`,
-`pick`, `board`, `unlocks`, `achievements`, `key`, `customise`, `about`, `testing`, `pass`, `result`, `lockbox`; `index.js`
-imports them all. **`unlocks.js` is new at build 23 (v15 2.4)** — the menu splits Unlocks from Achievements, Unlocks above
-because unlocks outrank achievements everywhere the next thing is surfaced (2.2). Every line on it is read from `UNLOCKS`
-and `lenNeed` (L6); nothing about a requirement is written in that file or in its markup. It is a **shell** on purpose:
-what sits behind keys 2 and 3 is register #372 and is undecided, so its key section says only what is true today. **`key.js` is new at build 22 (v14 §9.2–9.7)** — the second progression system, its own menu item
-below Achievements. **Rebuilt at build 26 (v15 §5) as KEYS, plural:** a row of three tiers on top, the ring and its panel
+`pick`, `board`, `progress`, `key`, `customise`, `about`, `testing`, `pass`, `result`, `lockbox`; `index.js`
+imports them all. **`progress.js` is new at build 29 (v17 B.21)** — the merge of `unlocks.js` (build 23, v15 2.4) and
+`achievements.js` into ONE screen with two tabs, Unlocks first because unlocks outrank achievements everywhere the next
+thing is surfaced (2.2). It is one file and not a host importing the other two **because A4 forbids a screen importing a
+screen**, and the gate fails on it. Only the tab that is up is rendered; `prefs.progTab` remembers which. Every line on
+the Unlocks tab is read from `UNLOCKS` and `lenNeed` (L6); nothing about a requirement is written in that file or in its
+markup. Its key row is a **shell** on purpose: what sits behind keys 2 and 3 is register #372 and is undecided, so it
+says only what is true today. `show('s-prog', {ach:id})` opens the achievements tab at a row — the toast and Customise
+both do it. **`key.js` is new at build 22 (v14 §9.2–9.7)** — the second progression system, its own menu item
+below Progress (below Achievements until build 29 merged the two). **Rebuilt at build 26 (v15 §5) as KEYS, plural:** a row of three tiers on top, the ring and its panel
 under whichever is selected, and a shell screen for keys 2 and 3. Three ways in now: from the menu; from a result screen
 that just cleared a bar with `{advance, from:'s-over'}` (Back returns to the run); and from the same screen with
 `{advance, auto:'s-over'}`, which is 5.1's input-locked interlude and hands itself back. Its rows are controls —
@@ -162,7 +183,10 @@ it had no default and no shape check for two builds, so `reset()` was clearing a
 **Fresh game clears `supporter` as well as `allOpen` since build 28 (v17 B.10)** — it did not, and `lockedBy()` in
 Customise treats a supporter exactly like unlock-all, so switching Supporter on and then taking a fresh profile showed
 all twenty-seven locked cosmetics open. **`seedSeen()` covers the cosmetics now too**, or every item that was open from
-the start wore L8's green on a brand-new profile. **`bars` is new at build 22** — the key's cleared combinations, a map of
+the start wore L8's green on a brand-new profile. **`prefs.chest1` and `prefs.progTab` are new at build 29** — chest 1 opened (v17 B.24) and which Progress tab was last
+open (B.21). **Both went into `cleanPrefs` in the commit that added them**, which is build 28's `keySeen` lesson applied
+rather than repeated; Fresh game clears `chest1` because it is progress and keeps `progTab` because it is a preference,
+like `lastGame`. **`bars` is new at build 22** — the key's cleared combinations, a map of
 `'<game>:<mode>:<length>'` → when it first cleared, written only by `progress/key.js`. It needed no ladder step: a v1
 record without one shape-checks to `{}`, which is the right answer for a profile that has never met the key. On load the migration ladder runs forward (v0 = the seven
 build-13 keys, folded in once with the v8–v11 reshapes and then removed), then every field is
@@ -223,8 +247,13 @@ corrected number is an edit to that file alone)** · **`keys.js` (KEYS + KEY_ART
 paths, build 26. Three rows, `shell:true` on the two #372 has not decided. A separate file from `key-bars.js` on purpose:
 a tier is not a bar, and the bars file is the one #371 edits)** · `copy.js` (every banner, HUD, verdict, intro and screen string, grouped by where it
 shows; `{name}` placeholders are filled by `T()` in `core.js`) · `theme.js` (P1/P2 colours, DESIGNS,
-ITEMS, VS_ART) · **`audio.js` (SCALES · TRACKS — 25 of them: three per game, the menu and the three keys, each an
-arrangement · TRACK_OPTS · TRACK_PICK · STEMS, the versus pair).** Nothing in `config/` imports anything; the gate asserts
+ITEMS, VS_ART, **and `PRESS` since build 29 — the amber the pressed game tile's outline wears, named here so the
+stylesheet never picks a colour; `ui/theme.js` publishes it as `--press`**) · **`verdicts.js` (VERDICT_TIERS +
+VERDICTS + VERDICT_FAIL_TIER — build 29, v17 B.25: four tiers with a colour and a sound id each, and a row per game
+carrying its own three thresholds and its own twenty lines. The old five-line table is OUT of `copy.js`)** · **`audio.js` (SCALES · TRACKS — 25 of them: three per game, the menu and the three keys, each an
+arrangement · TRACK_OPTS · TRACK_PICK · STEMS, the versus pair · **VERDICT_FX since build 29 — one event list per verdict tier,
+`[at, f0, f1, ms, wave, gain, attackMs]`, the same plan shape `Music.plan` hands the review page, so the page and the
+app cannot drift**).** Nothing in `config/` imports anything; the gate asserts
 it. **The functions that used to sit in those tables live under the same id elsewhere:** predicates in
 `progress/rules.js` (`UNLOCK_TEST[key]`, `LEN_TEST[game][i]`, `ACH_TEST[id]`, `ACH_PROGRESS[id]`,
 `QUALITY`) and formatters in `ui/format.js` (`FMT`, `COLS`, `PIC` → `scoreTxt`, `colsOf`, `picOf`),
@@ -277,12 +306,12 @@ file that changes a rule, threshold, name, unlock or screen layout is not built 
 
 | ID | Decision |
 |---|---|
-| L1 | The title sequence plays for every new profile and after Fresh game. Never removed or shortened. **Re-staged (v14 1.1):** "games of pure skill" arrives first at the top, **NO EXCUSES second, between the two lines in time and in position**, "the only thing to blame is yourself" third, below the title. **NO EXCUSES never moves or re-renders between the title sequence and the menu (v14 1.2)** — same element, same position, no reload, no re-animation; the menu builds around it. |
+| L1 | The title sequence plays for every new profile and after Fresh game. Never removed or shortened. **Re-staged (v14 1.1):** "games of pure skill" arrives first at the top, **NO EXCUSES second, between the two lines in time and in position**, "the only thing to blame is yourself" third, below the title. **NO EXCUSES never moves or re-renders between the title sequence and the menu (v14 1.2)** — same element, same position, no reload, no re-animation; the menu builds around it. **"Tap to begin" re-placed at build 29 (v17 B.19, quoting L1): 1.2s instead of .8s and 30vh from the bottom instead of the home-indicator margin. Placement and pace only** — it is still the fourth beat at 4.6s, both story lines and the title are untouched, and nothing is removed or shortened. |
 | L2 | Quick Tap lengths are Sprint / Dash / Marathon. Nothing added. |
 | L3 | Solo shows nothing about friends. With a friend → Pass & play / Versus, every game that has them. |
 | L4 | Player 1 red `#E0453B`, Player 2 light blue `#6EC6FF`, everywhere. |
 | L5 | Every mode offers Set and Streak. **Streak = a cumulative budget** (Estimate 100%, **Stopwatch 25s, and 30s once round 10 is passed — v15 3.8, build 24**, Hidden 100px, **Flash 500ms over 150, and an early tap spends 400ms flat and consumes the attempt — v14 C.1 / v15 3.5, build 24**, **Go / No-go 1000ms over 150 with a wrong tap costing 200ms — v14 C.2, build 22**, Count 5 miscounts, Find 10s); score = rounds completed, and every sheet reads "Highest round wins!". Set = a fixed number of rounds, scored by the line on the sheet. **Go / No-go's Set is a different currency and keeps its own number: a wrong tap ADDS 150ms to the average (v14 A.2), and three wrong taps end a Set. B.3 / C.3 forbid harmonising the two even though the numbers now sit close.** **A Streak has no wrong-tap run-ender at all — C.4 retired the three-wrong-taps contract rather than restoring it, because the budget is spent by the overspend on legal taps as well as by mistakes. The budget is the only limit.** **The round count and both description lines come from one table — `SET_COPY` in `config/games.js` (v14 §5, 2026-09-08)** — which the pick sheets, lock boxes and result screens all read through `GC` / `lenName` / `lenSub`. No game carries its own Set or Streak copy. |
-| L6 | The unlock chain and thresholds are the §1 table in the latest FEEDBACK file that names L6 (§4 before v15). **Sequence unlocks at one Cut round within 3.5% of the target (v14 9.1; was 0.5%).** Lock boxes, goal lines, the Next card and the Unlocks screen all read from one table (`UNLOCKS` + `LEN_RULES` — in `config/unlocks.js` since build 16, with the predicates beside it in `progress/rules.js`), and every requirement names its game (v14 3.2). **`LEN_RULES` and `LEN_TEST` are keyed `'game:mode'` since build 23 (v15 1.0a)** — the same key shape `SET_COPY` uses — because Dots · Blind Dash asks 6 and Dots · Lead Dash asks 9, which one array per game could not express. Length-unlock **state** is derived from run history and has always been per mode (`lenLock` filters on `r.d`), so the re-key stored nothing and migrated nothing (1.0b). **One place builds a length requirement's sentence: `lenNeed(g,d,s)` in `progress.js`** — `lenLock` calls it too. `lenLock` answers "is this locked for you" and returns null once you have it, so anything printing a requirement (the catalogue's Unlock requirements section) must call `lenNeed`, not `lenLock` (v15 1.1c / 7.2). **Five rows now ask the player to fail on purpose and that is deliberate (v15 0.5)** — Dots · Lead on five misses, Estimate · Grow on a Dots run with nothing pressed, Timing · Stopwatch on a Sequence run whose first answered note is wrong, Estimate · Cut's Streak on a round more than 10% off, Reaction · Flash's Streak on a Set over 500ms. Do not soften them; **tapping a locked row to read its requirement (v15 2.1) is the only way anyone finds them**, so that behaviour is part of L6 now, not a nicety. **L6 amended again at build 28 (FEEDBACK-v17 §B.5–§B.9, all quoting it).** Five changes. **(B.6) Every "N hits, no misses" rung is N IN A ROW** — `row` on the timed record, a miss resets it, and a record from before build 28 carrying no `row` is judged the old way. `misses === 0` over a whole run is exact at the finish and a lie mid-run, which is how a green "Unlock: Dash" appeared at the seventh clean hit and was taken back by the eighth miss. **(B.7) Quick Tap · Four opens from ANY Quick Tap · Two run** — `s` came off `where`, so a Sprint counts and Four can open before Dash. **(B.8) Estimate · Cut's Streak asks for more than 10% off, not 80%** — 80 was unreachable: a Cut round scores `|share − target|` where `share` is the smaller piece, so it lives in (0.5, 50] and the most any target can be missed by is `max(t − 0.5, 50 − t)`, a measured ceiling of 44.5% and a floor across the pool of 25%. **(B.9) Sequence is 3 and 7 keys** — five is gone from solo, pass & play and versus, `sequence:solo:5` was REMOVED from `config/key-bars.js` (a removal, never a generated bar), and 7 keys opens at 8 notes in 3. **(B.5) A LENGTH UNLOCK ANNOUNCES.** It never did: a length is not in `UNLOCKS`, so `liveCheck`'s table walk could not see one and the only announcement was the accident of it being that run's goal line. `lenNextOf` / `lenNextLive` in `progress.js` are the two halves — the finish compares locked-before against open-after either side of `Scores.submit`, which covers the default "finish one run of the length before" rule as well as every `LEN_RULES` row; mid-run only a rung with a `LEN_TEST` can answer, and a rule-less rung correctly answers nothing rather than guessing. **The goal line no longer raises its own toast** — it used to fire an immediate "Unlock: Marathon" on the first live tick of a rule-less rung, because `goalFor`'s test for one is a bare `true`. |
+| L6 | The unlock chain and thresholds are the §1 table in the latest FEEDBACK file that names L6 (§4 before v15). **Sequence unlocks at one Cut round within 3.5% of the target (v14 9.1; was 0.5%).** Lock boxes, goal lines, the Next card and the Unlocks screen all read from one table (`UNLOCKS` + `LEN_RULES` — in `config/unlocks.js` since build 16, with the predicates beside it in `progress/rules.js`), and every requirement names its game (v14 3.2). **`LEN_RULES` and `LEN_TEST` are keyed `'game:mode'` since build 23 (v15 1.0a)** — the same key shape `SET_COPY` uses — because Dots · Blind Dash asks 6 and Dots · Lead Dash asks 9, which one array per game could not express. Length-unlock **state** is derived from run history and has always been per mode (`lenLock` filters on `r.d`), so the re-key stored nothing and migrated nothing (1.0b). **One place builds a length requirement's sentence: `lenNeed(g,d,s)` in `progress.js`** — `lenLock` calls it too. `lenLock` answers "is this locked for you" and returns null once you have it, so anything printing a requirement (the catalogue's Unlock requirements section) must call `lenNeed`, not `lenLock` (v15 1.1c / 7.2). **Five rows now ask the player to fail on purpose and that is deliberate (v15 0.5)** — Dots · Lead on five misses, Estimate · Grow on a Dots run with nothing pressed, Timing · Stopwatch on a Sequence run whose first answered note is wrong, Estimate · Cut's Streak on a round more than 10% off, Reaction · Flash's Streak on a Set over 500ms. Do not soften them; **tapping a locked row to read its requirement (v15 2.1) is the only way anyone finds them**, so that behaviour is part of L6 now, not a nicety. **L6 amended again at build 28 (FEEDBACK-v17 §B.5–§B.9, all quoting it).** Five changes. **(B.6) Every "N hits, no misses" rung is N IN A ROW** — `row` on the timed record, a miss resets it, and a record from before build 28 carrying no `row` is judged the old way. `misses === 0` over a whole run is exact at the finish and a lie mid-run, which is how a green "Unlock: Dash" appeared at the seventh clean hit and was taken back by the eighth miss. **(B.7) Quick Tap · Four opens from ANY Quick Tap · Two run** — `s` came off `where`, so a Sprint counts and Four can open before Dash. **(B.8) Estimate · Cut's Streak asks for more than 10% off, not 80%** — 80 was unreachable: a Cut round scores `|share − target|` where `share` is the smaller piece, so it lives in (0.5, 50] and the most any target can be missed by is `max(t − 0.5, 50 − t)`, a measured ceiling of 44.5% and a floor across the pool of 25%. **(B.9) Sequence is 3 and 7 keys** — five is gone from solo, pass & play and versus, `sequence:solo:5` was REMOVED from `config/key-bars.js` (a removal, never a generated bar), and 7 keys opens at 8 notes in 3. **(B.5) A LENGTH UNLOCK ANNOUNCES.** It never did: a length is not in `UNLOCKS`, so `liveCheck`'s table walk could not see one and the only announcement was the accident of it being that run's goal line. `lenNextOf` / `lenNextLive` in `progress.js` are the two halves — the finish compares locked-before against open-after either side of `Scores.submit`, which covers the default "finish one run of the length before" rule as well as every `LEN_RULES` row; mid-run only a rung with a `LEN_TEST` can answer, and a rule-less rung correctly answers nothing rather than guessing. **The goal line no longer raises its own toast** — it used to fire an immediate "Unlock: Marathon" on the first live tick of a rule-less rung, because `goalFor`'s test for one is a bare `true`. **L6 amended again at build 29 (v17 B.21, quoting it): "the Unlocks screen" is the Unlocks TAB of the Progress screen.** Nothing else about the rule moved — the same one table, the same `lenNeed`, the same lock box from a locked row. |
 | L7 | A game tile is white until that game has been played once. |
 | L8 | Anything newly unlocked gets the green first-seen highlight once, then is marked seen. |
 | L9 | The length row is labelled "Mode" in every game. One pick-sheet layout, no per-game special cases. |
@@ -398,6 +427,21 @@ rotation's swept box included (B.16); Spot shows "Ready?" on a genuinely first r
 the same game (B.17); and §A.6's percentage is 0 unplayed, 0.9-capped uncleared, 1 cleared, 100% whole, on the keys
 screen and on the menu. **The chain fixtures moved with the rules** — the "N in a row" rungs pass a run with nine misses
 and fail one with fifteen non-consecutive hits, and a pre-build-28 record with no `row` is still judged the old way.
+
+**Build 29 (v17, batch 13 · §B.19–§B.26)** — statically: `menu-note` is gone from the markup, the copy and the
+stylesheet (B.20); `ui/screens/` holds `progress.js` and neither of the two files it replaces (B.21); every game's
+verdict row has three descending thresholds and four tiers of five distinct lines, every tier a `#rrggbb` and a
+`VERDICT_FX` entry, and `config/copy.js` no longer exports `VERDICTS` at all (B.25); the review generator reads
+`config/verdicts.js` and the template has the section that prints it (B.26). In the browser: one menu item called
+Progress with two tabs, Unlocks first, both rendering and the last one remembered across a Back (B.21); "tap to begin"
+fades over 1.2s at 4.6s and sits between half and three quarters of the way down with both story lines and the title
+still there (B.19 / L1); the pressed tile's outline is `PRESS` from `config/theme.js` and is neither `--ok` nor white
+(B.22 / L7 / L8); Sequence sits directly under Estimate, every step of the chain order is one cell of the snake, there
+is a line per step and each one is green exactly when the game it leads to is open (B.23); the chest is locked with
+key 1's own count on it and **nothing on that screen says "pro" or "author"** (B.24 / A.1), and with every bar cleared
+it opens once, stores it and survives a reload; forty draws of one record give all five lines of one tier and never the
+same line twice running, a solo result wears its tier class and colour, and **a pass & play result wears neither**
+(B.25 / L4).
 
 No bundler, no build step — GitHub Pages serves the modules directly, so every import path stays
 relative (`./games/dots/index.js`).

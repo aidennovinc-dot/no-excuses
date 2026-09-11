@@ -178,3 +178,20 @@ export const STEMS = [
   { voices:[ { v:'arp', w:'triangle', dir:'up', o:1, pat:'..x...x.', sus:.5, g:.03, at:.02, add:7 } ] },
   { voices:[ { v:'bass', w:'square', o:1, pat:'x...x...', sus:.4, g:.022, at:.02 } ] },
 ];
+
+/* v17 (§B.25, build 29): A SOUND PER VERDICT TIER. Data, not code, for the same reason the tracks are: the review
+   catalogue plays these back with its own six-line player (§B.26), so a second copy in the page would drift the day one
+   of them changed. One event is [at, f0, f1, ms, wave, gain, attackMs] — the plan shape `Music.plan` already hands the
+   page — and `Snd.verdict(id)` in audio.js is the only thing in the app that reads them.
+
+   Almost perfect is the "cool sound" B.25 asked for: a rising major triad with an octave shimmer over a swelling fifth.
+   Good is a clean rising third; alright is a step that does not quite land (440 → 466, a semitone, deliberately
+   unresolved); bad falls. None of them is the unlock sound and none is the achievement click — those two are asserted
+   held apart by the gate and are not to be touched. */
+export const VERDICT_FX = {
+  ace:  [[0, 523.3, 523.3, 300, 'triangle', .075, 18], [.10, 784, 784, 300, 'triangle', .075, 18], [.20, 1046.5, 1046.5, 460, 'triangle', .08, 18],
+         [.20, 2093, 2093, 320, 'sine', .022, 26], [0, 261.6, 392, 760, 'sine', .05, 90]],
+  good: [[0, 523.3, 523.3, 220, 'triangle', .07, 16], [.11, 659.3, 659.3, 380, 'triangle', .07, 16], [0, 196, 196, 540, 'sine', .038, 60]],
+  ok:   [[0, 440, 440, 200, 'triangle', .06, 16], [.12, 466.2, 466.2, 340, 'triangle', .05, 16]],
+  bad:  [[0, 392, 330, 260, 'triangle', .07, 14], [.14, 294.7, 196, 440, 'triangle', .06, 14], [0, 98, 98, 560, 'sine', .04, 70]],
+};

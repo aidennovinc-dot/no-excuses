@@ -40,6 +40,11 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
     // v17 (build 28): `keySeen` was missing from this list since build 26 — reset() cleared a field load() never created,
     // so the keys screen's once-per-profile arrival was shape-checked by nothing. It is a flag like the three beside it
     col:{}, story:p.story?1:0, played:p.played?1:0, gridSeen:p.gridSeen?1:0, menuSeen:p.menuSeen?1:0, keySeen:p.keySeen?1:0,
+    /* v17 (build 29): two new fields, both shape-checked here the day they are added — build 28 spent two builds with a
+       `keySeen` that reset() cleared and load() never created, and that is the mistake this line exists to not repeat.
+       `chest1` is PROGRESS (B.24: chest 1 opened, for good) so Fresh game clears it below; `progTab` is which tab of the
+       Progress screen was last open (B.21), a preference like `lastGame`, so Fresh game leaves it alone. */
+    chest1:p.chest1?1:0, progTab:p.progTab==='ach'?'ach':'unl',
     rate:RATES.includes(p.rate)?p.rate:'live' };   // v14 (6.7): which taps-per-second reading the rate bar shows
   if(isObj(p.musicG)) for(const g in GAMES) if(typeof p.musicG[g]==='boolean') o.musicG[g]=p.musicG[g];
   // colours are per game (v6): { sq, lead, cut }, each #RRGGBB; cut defaults to the square colour (v13 6.5)
@@ -97,6 +102,6 @@ const musicOn=g=>prefs.musicG[g]!==false;
    profile showed all 27 of them open. Supporter is a dev switch today (S5 gates it out of a release build entirely) and
    Fresh game is the switch for seeing the app as a new player does, so it belongs in this list. When it becomes a real
    purchase at the native build it will be restored from the store rather than from prefs, and this line stays correct. */
-function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0}); delete prefs.mig11; save(); emit('store:reset'); }
+function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,chest1:0}); delete prefs.mig11; save(); emit('store:reset'); }
 
 export { musicOn, prefs, reset, save, store };

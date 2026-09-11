@@ -8,7 +8,8 @@
 import { AUTHOR_RECORDS, ACH as ACH_ROWS } from "./config/achievements.js";
 import { SCALES } from "./config/audio.js";
 import { ITEMS } from "./config/theme.js";
-import { BG_NAME, ITEM_WORD, PROGRESS, TOAST, UNLOCK_WORD, VERDICT, VERDICTS } from "./config/copy.js";
+import { BG_NAME, ITEM_WORD, PROGRESS, TOAST, UNLOCK_WORD, VERDICT } from "./config/copy.js";
+import { VERDICTS, VERDICT_FAIL_TIER, VERDICT_TIERS } from "./config/verdicts.js";
 import { MODE_NAME, STREAK } from "./config/games.js";
 import { LEN_RULES, UNLOCKS as UNLOCK_ROWS } from "./config/unlocks.js";
 import { T } from "./core.js";
@@ -154,15 +155,39 @@ function unlockWord(a){ if(!a.unlocks) return ''; const [k,v]=a.unlocks; if(k===
 // the same, with the actual colour as a swatch (v8) — "unlocks lead colour" on its own said nothing
 function unlockHtml(a){ if(!a.unlocks) return ''; const [k,v]=a.unlocks; return unlockWord(a)+((k==='sq'||k==='lead')&&v!=='wheel'?`<i class="sw" style="background:${v}"></i>`:''); }
 
-/* ---------- verdicts: tiered by a per-game quality 0..1 (progress/rules.js) ---------- */
+/* ---------- verdicts: four tiers over a per-game quality 0..1 (progress/rules.js QUALITY) ----------
+   v17 (B.25, build 29). Three things changed and only one of them is the count. The THRESHOLDS were a ternary here
+   (`q>=1?4:q>=.75?3:…`) against a five-line array in copy.js — a game could not be retuned without editing code, and
+   the top tier needed a quality of exactly 1. Both halves are one table in config/verdicts.js now: a game's row carries
+   its own three cut-offs and its own twenty lines. The verdict RETURNS AN OBJECT — the tier id, its colour and the
+   line — because the result screen has to colour the line and play that tier's sound, and a bare string cannot say
+   which tier it came from. Colour and sound are solo only (L4); the result screen enforces that, not this.
+   A LINE IS NEVER THE ONE THAT SHOWED LAST TIME for the same game and tier: `lastLine` holds the index that showed and
+   the next draw is uniform over the other four. It is per session, not stored — the point is not repeating inside a
+   sitting, and a profile that comes back tomorrow has no memory to honour. */
+const lastLine={};
+function pickLine(key,tier,lines){ const n=lines.length; if(!n) return '';
+  const k=key+':'+tier, prev=lastLine[k];
+  let i=Math.floor(Math.random()*(n>1&&prev!==undefined?n-1:n)); if(n>1&&prev!==undefined&&i>=prev) i++;
+  lastLine[k]=i; return lines[i]; }
+const verdictKey=(g,d)=>VERDICTS[g+':'+d]?g+':'+d:g;
+const tierCol=id=>(VERDICT_TIERS.find(t=>t.id===id)||{}).col||'';
+// the threshold a tier starts at, for this game. The number lives in the game's row; the tier only says which of them
+function tierMin(key,id){ const row=VERDICTS[key], t=VERDICT_TIERS.find(x=>x.id===id); return !row||!t||t.of===null?0:row.at[t.of]; }
 function verdict(r){
-  if(r.fail) return r.g==='reaction'&&r.d==='nogo'?VERDICT.nogoFail:VERDICT.fail;
-  if(GAMES[r.g].timed){ if(r.hits===0) return VERDICT.nothing; if(r.misses>r.hits) return VERDICT.moreMisses; }
-  const q=quality(r.g,r.d,r.s,r); const i=q>=1?4:q>=.75?3:q>=.5?2:q>=.25?1:0; return (VERDICTS[r.g+':'+r.d]||VERDICTS[r.g])[i];
+  const key=verdictKey(r.g,r.d), row=VERDICTS[key];
+  // the verdicts that are not a tier still carry one, so every solo result has a colour and a sound (VERDICT_FAIL_TIER)
+  const flat=line=>({ tier:VERDICT_FAIL_TIER, col:tierCol(VERDICT_FAIL_TIER), line });
+  if(r.fail) return flat(r.g==='reaction'&&r.d==='nogo'?VERDICT.nogoFail:VERDICT.fail);
+  if(GAMES[r.g].timed){ if(r.hits===0) return flat(VERDICT.nothing); if(r.misses>r.hits) return flat(VERDICT.moreMisses); }
+  if(!row) return flat('');
+  const q=quality(r.g,r.d,r.s,r);
+  const t=VERDICT_TIERS.find(x=>x.of===null||q>=row.at[x.of]);
+  return { tier:t.id, col:t.col, line:pickLine(key,t.id,row.lines[t.id]||[]) };
 }
 
 function setPendingAim(v){ pendingAim=v; }
 function setPendingGoal(v){ pendingGoal=v; }
 
 
-export { ACH, Scores, UNLOCKS, achAll, achById, authorAch, authorRatio, chalRun, checkAch, checkUnlocks, gameOpen, goalFor, got, isNew, isOpen, lenLock, lenNeed, lenNextLive, lenNextOf, lenOpen, lensOf, markSeen, needFor, newMark, nextAch, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict };
+export { ACH, Scores, UNLOCKS, achAll, achById, authorAch, authorRatio, chalRun, checkAch, checkUnlocks, gameOpen, goalFor, got, isNew, isOpen, lenLock, lenNeed, lenNextLive, lenNextOf, lenOpen, lensOf, markSeen, needFor, newMark, nextAch, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, tierMin, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict, verdictKey };

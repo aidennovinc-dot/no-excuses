@@ -22,10 +22,10 @@
   <div style="height:6px"></div>
   <button data-act="go" class="item glow" data-go="s-pick">Play</button>
   <button data-act="go" class="item glow" data-go="s-board">Scores</button>
-  <!-- v15 (2.4): Unlocks and Achievements are two menu items now. Unlocks = everything that opens something; Achievements
-       = the marks on what you already have. Unlocks sits above, because unlocks outrank achievements (2.2) -->
-  <button data-act="go" class="item glow" data-go="s-unl">Unlocks</button>
-  <button data-act="go" class="item glow" data-go="s-ach">Achievements</button>
+  <!-- v17 (B.21, build 29): ONE item, two tabs. v15 (2.4) split Unlocks from Achievements because they are different
+       things — an unlock opens something, an achievement marks something you already have — and the split survives as
+       the tabs, Unlocks first because unlocks outrank achievements (2.2). What went is the second row on the menu -->
+  <button data-act="go" class="item glow" data-go="s-prog">Progress</button>
   <!-- v15 (5.3): "Keys", plural — three tiers over the same combinations (A.1), the shell for #372 -->
   <button data-act="go" class="item glow" data-go="s-key">Keys</button>
   <button data-act="go" class="item glow" data-go="s-custom">Customise</button>
@@ -34,7 +34,6 @@
   <!-- v17 (§A.6.7): percentage complete, key 1 only. The same line the keys screen carries, on the front of the app, so
        the number that moves on nearly every run is visible without opening anything. Hidden on a profile with no runs -->
   <div class="menu-key" id="menu-key" data-act="go" data-go="s-key" hidden></div>
-  <div class="menu-note" id="menu-note"></div>
   <div class="hint" id="storyhint">tap to begin</div>
 </section>
 
@@ -48,6 +47,13 @@
     <button data-act="game" class="tile" data-game="timing"><span class="name glow">Timing</span><span class="pic"><span class="mini tm"><i class="h"></i><i class="w"></i><i class="h"></i></span></span></button>
     <button data-act="game" class="tile" data-game="reaction"><span class="name glow">Reaction</span><span class="pic"><span class="mini rx"></span></span></button>
     <button data-act="game" class="tile" data-game="spot"><span class="name glow">Spot</span><span class="pic"><span class="mini fd"><i></i><i class="t"></i><i></i><i class="w c"></i><i class="t"></i><i></i></span></span></button>
+    <!-- v17 (B.24, build 29): the path ends at a CHEST. It needs key 1 — every clearance bar cleared — and opening it
+         unlocks Gauntlet (§A.2). Gauntlet itself is not built, so an opened chest says so and nothing about pro or
+         author appears on it at any point (§A.1). ui/screens/pick.js owns its three states -->
+    <button data-act="chest" class="tile chest" data-chest="1"><span class="name glow">Chest</span><span class="pic"><svg class="chestart" viewBox="0 0 40 32"><rect class="box" x="5" y="14" width="30" height="14" rx="2"/><path class="lid" d="M5 14a15 9 0 0 1 30 0z"/><rect class="lock" x="17.5" y="15.5" width="5" height="7" rx="1"/></svg></span></button>
+    <!-- v17 (B.23): the unlock order, drawn as thin lines between the tiles. The path is measured off the tiles' own
+         boxes in ui/screens/pick.js, so it survives the 4-column breakpoint and any change to the gap -->
+    <svg class="gridlines" id="gridlines" aria-hidden="true"></svg>
   </div>
   <div class="hint">tap empty space to go back</div>
   <div class="sheet" id="sheet">
@@ -79,20 +85,26 @@
   <div class="scroll"><table><thead id="runs-h"></thead><tbody id="runs"></tbody></table></div>
 </section>
 
-<!-- unlocks (build 23, v15 2.4). The chain on its own screen — every line is read from UNLOCKS + lenLock (L6), nothing
-     about a requirement is written here. Shell only: what sits behind keys 2 and 3 is register #372 and is undecided -->
-<section class="screen top" id="s-unl" data-back="s-menu">
+<!-- v17 (B.21, build 29): PROGRESS — the chain and the achievements, two tabs, one screen (ui/screens/progress.js,
+     the merge of the old unlocks.js and achievements.js; A4 forbids a host screen importing either). Every line on the
+     Unlocks tab is read from UNLOCKS + lenLock (L6) — nothing about a requirement is written here. Shell, still, on the
+     key row: what sits behind keys 2 and 3 is register #372 and is undecided -->
+<section class="screen top" id="s-prog" data-back="s-menu">
   <button data-act="back" class="back">&larr; BACK</button>
-  <div class="eyebrow">unlocks · tap a locked row to see what it takes</div>
-  <div class="hint" id="unl-lede">Everything that opens something. The chain first — each game and mode earned in the one before it — then every length of every mode.</div>
-  <div class="unl scroll" id="unl-list"></div>
-</section>
-
-<section class="screen top" id="s-ach" data-back="s-menu">
-  <button data-act="back" class="back">&larr; BACK</button>
-  <div class="eyebrow">achievements · tap one to go play it</div>
-  <div class="chips" id="ach-g"></div>
-  <div class="ach scroll" id="achlist"></div>
+  <div class="chips ptabs" id="prog-tabs">
+    <button data-act="ptab" class="chip" data-tab="unl">Unlocks</button>
+    <button data-act="ptab" class="chip" data-tab="ach">Achievements</button>
+  </div>
+  <div class="ptab" id="p-unl">
+    <div class="eyebrow" id="unl-hint"></div>
+    <div class="hint" id="unl-lede"></div>
+    <div class="unl scroll" id="unl-list"></div>
+  </div>
+  <div class="ptab" id="p-ach" hidden>
+    <div class="eyebrow" id="ach-hint"></div>
+    <div class="chips" id="ach-g"></div>
+    <div class="ach scroll" id="achlist"></div>
+  </div>
 </section>
 
 <!-- the key (build 22, v14 9.2-9.7). Option A: the key dead centre, seven games on a ring, a root per game growing
@@ -143,7 +155,7 @@
   <div class="explain">A passion project of simple games of pure skill and minimal frills.<br><br>If you'd like to remove ads, add customisation, and show your support, tap below.</div>
   <button data-act="support" class="support" id="support"><b id="support-title">Support · A$1.99 · once</b><small id="support-text">No ads, ever. Every colour, background and sound pack open from day one, plus the colour wheel. A pro 60-second length in Quick Tap and Dots, with its own boards. A star on your profile.</small></button>
   <div class="tierbox" id="tierbox"></div>
-  <div class="hint">build 28 · batch 13 · the chain · 11 sept 2026</div>
+  <div class="hint">build 29 · batch 13 · the front · 11 sept 2026</div>
 </section>
 
 <section class="screen" id="s-testing" data-back="s-menu" data-dev>
@@ -221,12 +233,12 @@
 
 <script type="module" src="./boot.js"></script>
 
-<div id="build">build 28</div>
+<div id="build">build 29</div>
 <button id="update">New build available — tap to reload</button>
 <script>
 // build check: version.json is fetched with no-store, so a stale cached page still learns a newer build exists
 (function(){
-  const BUILD="28";
+  const BUILD="29";
   async function check(){
     try{
       const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});
