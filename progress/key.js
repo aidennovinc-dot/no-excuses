@@ -85,10 +85,12 @@ function keyState() { const games = Object.keys(GAMES).map(gameKey);
    key 1 is the clearance bars this file already keeps, key 2 a pro tier and key 3 the author's times. Tiers 2 and 3 are a
    SHELL — register #372 is undecided and A.2 forbids a build deriving a bar — so they answer with no combinations at all
    rather than a fabricated total. `locked` means "not finished", which is what a key that has not turned yet is. */
+// v17 (B.31): the tier's theme rides along — its name, its tint and its own loop. The screen never names a theme itself
+const skin = k => ({ theme: k.theme, track: k.track, tint: k.tint, ground: k.ground });
 function keyTier(i) { const k = KEYS[i]; if (!k) return null;
-  if (k.shell) return { i, id: k.id, name: k.name, lede: k.lede, shell: true, done: 0, total: 0, frac: 0, whole: false, locked: true };
+  if (k.shell) return Object.assign({ i, id: k.id, name: k.name, lede: k.lede, shell: true, done: 0, total: 0, frac: 0, whole: false, locked: true }, skin(k));
   const st = keyState();
-  return { i, id: k.id, name: k.name, lede: k.lede, shell: false, done: st.done, total: st.total, frac: st.frac, whole: st.whole, locked: !st.whole }; }
+  return Object.assign({ i, id: k.id, name: k.name, lede: k.lede, shell: false, done: st.done, total: st.total, frac: st.frac, whole: st.whole, locked: !st.whole }, skin(k)); }
 const keyTiers = () => KEYS.map((_, i) => keyTier(i));
 
 export { COMBOS, barFor, barsMissing, barsOrphan, checkKey, cleared, combos, credit, gameKey, isCleared, keyOf, keyPct, keyState, keyTier, keyTiers };

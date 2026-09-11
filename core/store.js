@@ -13,7 +13,7 @@
    that has never met the key. progress/key.js is the only writer.
 
    The storage adapter is the three one-liners read / write / drop. Stage 5's platform.js swaps them for Capacitor Preferences. */
-import { SCALES } from "../config/audio.js";
+import { SCALES, TRACK_OPTS } from "../config/audio.js";
 import { BUILD_FLAGS, RUN_SCHEMA } from "../config/build.js";
 import { DESIGNS, ITEMS } from "../config/theme.js";
 import { GAMES } from "../games/registry.js";
@@ -45,8 +45,15 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
        `chest1` is PROGRESS (B.24: chest 1 opened, for good) so Fresh game clears it below; `progTab` is which tab of the
        Progress screen was last open (B.21), a preference like `lastGame`, so Fresh game leaves it alone. */
     chest1:p.chest1?1:0, progTab:p.progTab==='ach'?'ach':'unl',
+    /* v17 (build 30): two more, shape-checked the day they are added. `chest2` is PROGRESS (A.3: every pro bar, the
+       cosmetic set — of which free music choice is one) so Fresh game clears it; `track` is which music option each
+       game plays (B.32), a preference like `lastGame`, so Fresh game leaves it. A value that is not one of that game's
+       own options is dropped, which means renaming an option costs a player their choice and never their boot. */
+    chest2:p.chest2?1:0, track:{},
     rate:RATES.includes(p.rate)?p.rate:'live' };   // v14 (6.7): which taps-per-second reading the rate bar shows
-  if(isObj(p.musicG)) for(const g in GAMES) if(typeof p.musicG[g]==='boolean') o.musicG[g]=p.musicG[g];
+  // 'menu' is a music switch like a game's (B.32 gives the menu loop its own off switch) and is the one non-game key here
+  if(isObj(p.musicG)) for(const g of Object.keys(GAMES).concat('menu')) if(typeof p.musicG[g]==='boolean') o.musicG[g]=p.musicG[g];
+  if(isObj(p.track)) for(const g in GAMES) if((TRACK_OPTS[g]||[]).includes(p.track[g])) o.track[g]=p.track[g];
   // colours are per game (v6): { sq, lead, cut }, each #RRGGBB; cut defaults to the square colour (v13 6.5)
   const col=isObj(p.col)?p.col:{};
   for(const g in GAMES){ const c=isObj(col[g])?col[g]:{}; const sq=hex(c.sq,SQ); o.col[g]={ sq, lead:hex(c.lead,LEAD), cut:hex(c.cut,sq) }; }
@@ -102,6 +109,6 @@ const musicOn=g=>prefs.musicG[g]!==false;
    profile showed all 27 of them open. Supporter is a dev switch today (S5 gates it out of a release build entirely) and
    Fresh game is the switch for seeing the app as a new player does, so it belongs in this list. When it becomes a real
    purchase at the native build it will be restored from the store rather than from prefs, and this line stays correct. */
-function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,chest1:0}); delete prefs.mig11; save(); emit('store:reset'); }
+function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,chest1:0,chest2:0}); delete prefs.mig11; save(); emit('store:reset'); }
 
 export { musicOn, prefs, reset, save, store };

@@ -135,7 +135,10 @@ export const ABOUT = { tier:['No ads, ever.','Every colour, background and sound
   devRuns:' · {r} runs on record · ', devSup:'supporter ON', devFree:'free tier · ads on' };
 // v14 (8.9): the `customise · {game} · colours are per game` line at the top is gone — the game chips and the group labels
 // under the preview say both, and the eyebrow was the first thing on a screen that did not need an introduction
-export const CUSTOM = { music:'Music · {game}', preview:'Preview', lockLine:'Locked · {name} — {how} · <u>show me</u>', wheel:'{word} · {game} · drag to pick' };
+/* v17 (B.32): the two music rows. `track` is the per-game choice, `menu` the front-of-app loop's own switch. A locked
+   track row says NOTHING about what opens it — A.1 forbids the pro and author tiers appearing anywhere before chest 1,
+   and "a plain padlock, no tier text" is the whole of the requirement. */
+export const CUSTOM = { music:'Music · {game}', track:'Track · {game}', menu:'Menu music', preview:'Preview', lockLine:'Locked · {name} — {how} · <u>show me</u>', wheel:'{word} · {game} · drag to pick' };
 // v14 (8.1): a row whose requirement is a SET of things says which are left, not just how far along the bar is.
 // v14 (8.5): a secret row shows its own `hint` where an ordinary row shows `how`; `stretch` is the fallback for one without
 export const ACH_SCREEN = { all:'All', done:'done', secret:'secret', hidden:'???', progress:' · {p}% of the way there', stretch:'A stretch past the stretch. You will know.', inGame:' · in {game}', left:' · still to play: {names}' };

@@ -5,6 +5,9 @@
 import { CFG } from "../../config/games.js";
 import * as hud from "./hud.js";
 
+// the window the flow reading averages over (B.27). 1.5s is long enough that one fast pair does not trip it and short
+// enough that stopping is felt inside a second
+const FLOW_WIN=1500;
 // best hits in any rolling second — a test readout for setting the Blind thresholds (v5)
 const peakRate=t=>{ let best=0; for(let i=0,j=0;i<t.length;i++){ while(t[i]-t[j]>1000) j++; best=Math.max(best,i-j+1); } return best; };
 
@@ -26,6 +29,11 @@ const timedEngine=()=>({ ctx:null, hits:0, misses:0, hitT:[], row:0, rowNow:0, a
   miss(now){ this.misses++; this.rowNow=0; this.lockUntil=now+this.lockMs; this.ctx.audio.miss(); if(this.hideOnMiss) this.render(false); hud.shake(); hud.flash(CFG.lockout); if(navigator.vibrate) navigator.vibrate(40); this.ctx.emit('live',{hits:this.hits,misses:this.misses,row:this.row}); },
   tick(ctx,now){ if(now-this.meterAt>100){ this.meterAt=now; hud.rate(ctx.game,this.hitT,now,ctx.rateMode==='run'?this.runFrom:0); } if(this.lockUntil&&now>=this.lockUntil){ this.lockUntil=0; this.unlock(); } },
   stop(){ this.armed=false; },
+  /* v17 (B.27): taps a second over the last FLOW_WIN, which is what the flow state is measured on. It is the engine's
+     own reading and nothing more — run/run.js smooths it and audio.js and the stylesheet read the result. Deliberately
+     NOT the rate bar's number: that one has two modes (live / whole run, v14 6.7) and a player choosing "whole run"
+     would otherwise change when the hum arrives. */
+  tps(now){ const t=now||performance.now(), from=t-FLOW_WIN; let n=0; for(let i=this.hitT.length-1;i>=0;i--){ if(this.hitT[i]<from) break; n++; } return n/(FLOW_WIN/1000); },
   result(){ return {hits:this.hits,misses:this.misses,peak:peakRate(this.hitT),row:this.row}; } });
 
 export { peakRate, timedEngine };

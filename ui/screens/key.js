@@ -50,11 +50,18 @@ const at = (i, r) => [CX + Math.cos(angleOf(i)) * r, CY + Math.sin(angleOf(i)) *
 // one glyph, drawn from the tier's own path list. The list gets longer as the tier gets harder, which IS the "more
 // elaborate" — there is no second scale of intensity to keep in step with it
 const glyph = (id, cls) => `<svg class="kgl ${cls}" viewBox="0 0 48 48" aria-hidden="true">${KEY_ART[id].map(d => `<path d="${d}"></path>`).join('')}</svg>`;
+/* v17 (§A.1 / B.31): NOTHING ABOUT PRO OR AUTHOR EXISTS ON THIS SCREEN UNTIL CHEST 1 IS OPENED. Not a greyed row, not a
+   locked glyph, not the word. A first-timer seeing three targets per game is the load Aiden ruled out, and chest 1 is
+   the gate that hands the map over (A.2). One line, here, because `keyTiers()` is the only list of them. */
+const shown = () => keyTiers().filter(k => k.i === 0 || prefs.chest1);
 function keys() {
-  $('#key-keys').innerHTML = keyTiers().map(k => {
+  const list = shown();
+  // one tier is not a row of choices — before chest 1 the strip is the theme's name and nothing to press
+  $('#key-keys').classList.toggle('one', list.length < 2);
+  $('#key-keys').innerHTML = list.map(k => {
     const pct = k.whole ? '' : T(KEY.pct, { n: Math.round(k.frac * 100) });
-    return `<button class="kkey${k.i === openKey ? ' sel' : ''}${k.whole ? ' whole' : ''}${k.shell ? ' shell' : ''}" data-act="key-tier" data-kt="${k.i}">`
-      + glyph(k.id, 't' + (k.i + 1)) + `<b>${esc(k.name)}</b>`
+    return `<button class="kkey${k.i === openKey ? ' sel' : ''}${k.whole ? ' whole' : ''}${k.shell ? ' shell' : ''}" data-act="key-tier" data-kt="${k.i}" style="--ktint:${k.tint};--kground:${k.ground}">`
+      + glyph(k.id, 't' + (k.i + 1)) + `<b>${esc(k.name)}</b><i>${esc(k.theme)}</i>`
       + `<u>${k.whole ? KEY.unlocked : pct}</u></button>`; }).join('');
 }
 
@@ -95,7 +102,9 @@ function panel() { const box = $('#key-list'); if (!openGame) { box.innerHTML = 
     + `<p>${esc(KEY_NOTE[openGame] || '')}</p>${rows}</div>`; }
 
 /* ---------- which key is on screen ---------- */
-function render() { const t = keyTiers()[openKey]; keys();
+function render() { if (!prefs.chest1) openKey = 0; const t = keyTiers()[openKey]; keys();
+  // B.31: the tier's own tint and ground dress the whole screen, out of config/keys.js. No colour is named here
+  const el = $('#s-key'); el.style.setProperty('--ktint', t.tint); el.style.setProperty('--kground', t.ground); el.dataset.theme = t.id;
   $('#key-title').textContent = t.name.toLowerCase();
   $('#key-main').hidden = !!t.shell; $('#key-shell').hidden = !t.shell;
   if (t.shell) { $('#key-shell').innerHTML = `${glyph(t.id, 't' + (openKey + 1) + ' big')}<p>${esc(t.lede)}</p><p class="soon">${esc(KEY.soon)}</p>`; return; }
@@ -116,7 +125,9 @@ function advance(a) { if (!a) return; const el = $(`[data-seg="${a.g}:${a.was}"]
    what happens after it, which is why neither had to learn about the other (A4). */
 function interlude(a, back) { const el = $('#s-key'); el.classList.add('auto');
   advance(a);
-  setTimeout(() => { el.classList.remove('auto'); auto = null; show(back); emit('key:done'); }, 2600); }
+  // v17 (B.33): the animations run at 1.5x their old length, so the interlude has to wait 1.5x as long or it would hand
+  // itself back over the top of the halo it just lit. One number, and it is the only place either length is written
+  setTimeout(() => { el.classList.remove('auto'); auto = null; show(back); emit('key:done'); }, 3900); }
 
 // 5.4: once per profile, the whole screen arrives rather than simply being there
 function firstIn() { if (prefs.keySeen) return; prefs.keySeen = 1; save();
@@ -127,13 +138,13 @@ register('s-key', { onShow({ advance: a, from, auto: to } = {}) { cameFrom = fro
     render();
     // v16 (1.3): each key tier has its own loop, rising in intensity the way the glyphs do. The screen change starts key 1;
     // this and the tier button keep it in step with whichever tier is open
-    Music.menu('key:' + (openKey + 1));
+    Music.menu(keyTiers()[openKey].track);
     if (!auto) firstIn();
     if (pending) { const p = pending; pending = null; if (auto) setTimeout(() => interlude(p, auto), 320); else setTimeout(() => advance(p), 260); } },
   // a fresh clear arrived from a result screen: Back belongs to the run, not to the menu
   onBack() { if (auto) return true; if (!cameFrom) return false; const to = cameFrom; cameFrom = null; show(to); return true; } });
 define({
-  'key-tier'(el) { openKey = +el.dataset.kt; openGame = null; render(); Music.menu('key:' + (openKey + 1)); return 'pick'; },
+  'key-tier'(el) { openKey = +el.dataset.kt; openGame = null; render(); Music.menu(keyTiers()[openKey].track); return 'pick'; },
   'key-game'(el) { const g = el.dataset.kg; openGame = openGame === g ? null : g; render(); return 'pick'; },
   /* 5.2: go and try this one. A locked mode or length hands over to the lock box — the same event the pick sheet and the
      Unlocks screen raise — and everything else starts the run with the bar as the goal line. `aim` names the game so the

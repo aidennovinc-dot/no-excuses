@@ -469,9 +469,19 @@
   .kkey u{text-decoration:none;font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);opacity:.8}
   .kkey.whole u{color:var(--ok);opacity:1}
   /* locked is the default state of a key: it is not turned yet. Whole is the only other one */
+  /* v17 (B.31): the tier's theme. `--ktint` and `--kground` come off config/keys.js through ui/screens/key.js, so the
+     three themes are data and this only spends them: the glyph, the hub and the halo wear the tint, and the screen sits
+     on the theme's own ground. Roots green, Frost white-blue, Thorn black with white accents. A CLEARED SEGMENT STAYS
+     GREEN — cleared is `--ok` everywhere in the app (L8) and a theme is dressing, not a new state. */
+  #s-key{--ktint:var(--ink);--kground:transparent}
+  #key-main{background:radial-gradient(circle at 50% 34%,var(--kground),transparent 68%)}
+  #key-keys.one .kkey{pointer-events:none}
+  .kkey i{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ktint);opacity:.75;margin-top:1px}
+  #s-key .kglyph{stroke:var(--ktint);opacity:.85}
+  #s-key .khub{stroke:var(--ktint);opacity:.5}
   .kgl{width:34px;height:34px;overflow:visible}
   .kgl path{fill:none;stroke:var(--mute);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:stroke .35s ease}
-  .kkey.sel .kgl path{stroke:var(--ink)}
+  .kkey.sel .kgl path{stroke:var(--ktint,var(--ink))}
   .kkey.whole .kgl path{stroke:var(--ok);filter:drop-shadow(0 0 6px color-mix(in srgb,var(--ok) 55%,transparent))}
   .kkey.shell .kgl{opacity:.45}
   .kgl.big{width:76px;height:76px}
@@ -487,11 +497,14 @@
   /* 9.5: the short advance. The segment that just cleared walks in from the ring end and settles — nothing else moves.
      v15 (5.1): and the whole root of the game that earned it lights behind, so the screen says which game moved before
      it says which combination did. The halo is a single line under the segments, invisible until it is asked for */
+  /* v17 (B.33): BOTH RUN AT 1.5x. Aiden's note off the build-27 board was "too fast" and the board's own slider setting
+     was 1.5, so that is the number: .62s -> .93s and 1.9s -> 2.85s. The interlude in ui/screens/key.js waits 1.5x as
+     long for the same reason — it used to hand itself back over the top of the halo. The unlock TOAST is unchanged. */
   @keyframes krootgrow{0%{opacity:0;stroke-width:6;filter:drop-shadow(0 0 7px var(--ok))}45%{opacity:1;stroke-width:6}100%{opacity:1;stroke-width:3;filter:none}}
-  .kroot.grow{animation:krootgrow .62s ease-out both}
+  .kroot.grow{animation:krootgrow .93s ease-out both}
   .khalo{stroke:var(--ok);stroke-width:11;stroke-linecap:round;opacity:0}
   @keyframes khaloglow{0%{opacity:0}22%{opacity:.3}70%{opacity:.22}100%{opacity:0}}
-  .kr.glow .khalo{animation:khaloglow 1.9s ease-out both;filter:blur(5px)}
+  .kr.glow .khalo{animation:khaloglow 2.85s ease-out both;filter:blur(5px)}
   .knode{cursor:pointer}
   .khit{fill:transparent}
   .kdot{fill:var(--ground);stroke:var(--line);stroke-width:1.5;transition:stroke .35s ease,fill .35s ease}
@@ -608,6 +621,12 @@
   .opt{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;padding:9px 13px;border:1px solid var(--line);color:var(--mute)}
   .opt.sel{color:var(--ink);border-color:var(--ink)}
   .opt.locked{opacity:.35;text-decoration:line-through}
+  /* v17 (B.32): a locked TRACK row is not a struck-out option — it is the track this game plays, readable, with a
+     padlock drawn beside it and no text about what opens it (A.1). The padlock is two boxes, so nothing is asked of a
+     font that may not have the glyph */
+  .opt.locked.plain{opacity:.72;text-decoration:none;position:relative;padding-right:30px}
+  .opt.locked.plain::after{content:"";position:absolute;right:10px;top:50%;width:10px;height:7px;margin-top:-2px;border:1px solid var(--mute);border-radius:1px}
+  .opt.locked.plain::before{content:"";position:absolute;right:12.5px;top:50%;width:5px;height:4px;margin-top:-7px;border:1px solid var(--mute);border-bottom:0;border-radius:3px 3px 0 0}
   .earn{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--mute);text-transform:uppercase;text-align:center;max-width:40ch;line-height:1.7}
   .earn b{color:var(--ink);font-weight:500}
   #wheelwrap{position:absolute;inset:0;display:none;place-items:center;background:color-mix(in srgb,var(--ground) 82%,transparent);z-index:8}
@@ -777,6 +796,12 @@
   /* v15 (3.12): a glow, not a solid line. The 3px rule read as a border on the screen rather than as whose turn it is.
      Colours are untouched — --pc is still P1 red / P2 light blue (L4) */
   #game.pturn::after{content:"";position:absolute;inset:0;border:0;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--pc,var(--p1)) 50%,transparent),inset 0 0 30px 7px color-mix(in srgb,var(--pc,var(--p1)) 38%,transparent);pointer-events:none;z-index:6}
+  /* v17 (B.27): FLOW STATE. Above FLOW_AT taps a second the edges glow and the hum comes in over the music. `--flow` is
+     0..1, written every frame by run/run.js — the same smoothed number audio.js swells the hum with, so the light and
+     the sound arrive together by construction rather than by two timers agreeing. Light blue is P2 (L4), which is
+     exactly why `flowOn` is solo only and this can never be up at the same time as `.pturn`. */
+  #game.flowon::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:5;opacity:var(--flow,0);
+    box-shadow:inset 0 0 0 1px rgba(110,198,255,.45),inset 0 0 42px 10px rgba(110,198,255,.34)}
   /* v10: Spot was still listed here as count/find — the v8 rename never reached this line, so #gen stayed hidden and neither mode could start */
   #game[data-g="timing"] #gen,#game[data-g="reaction"] #gen,#game[data-g="spot"] #gen{display:block}
   .pop{animation:pop .22s ease-out}

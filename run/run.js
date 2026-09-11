@@ -9,6 +9,7 @@
    practice and scale, which Sequence needs and which used to be read off sel. */
 
 import { Music, Snd } from "../audio.js";
+import { FLOW_AT, FLOW_FALL, FLOW_RISE, FLOW_SPAN } from "../config/audio.js";
 import { RUN_SCHEMA } from "../config/build.js";
 import { HUD, INTRO, INTRO_READY, TOAST } from "../config/copy.js";
 import { MODE_NAME, PASS_LEN, PASS_TURNS, RATE_MAX } from "../config/games.js";
@@ -34,7 +35,10 @@ import { toast } from "../ui/toast.js";
    as L10's two-player rule — turned away MID-RUN in liveCheck and again at the finish. It had to exist: Estimate · Grow's
    demo plays a real round on the real engine and emits 'live' out of its reveal, so the ghost's own guess banked Aiden an
    achievement ("On the money" is live:1 and tests one round within 2%). A ghost is not the player. */
-const R={ on:false, live:false, id:0, timed:false, t0:0, end:0, raf:0, goal:null, goalHit:false, fresh:[], lenNext:null, lenDone:false, demo:false, tension:0, fin:0, vsP:[0,0] };
+/* v17 (B.27): `flow` is 0..1, the flow state — how far past FLOW_AT taps a second this run is, smoothed here so the hum
+   and the edge glow are reading one number rather than two that drift apart. `flowOn` is solo Quick Tap and Dots only:
+   the glow is light blue, which is Player 2 (L4), so it can never appear in a two-player run. Presentation only (L10). */
+const R={ on:false, live:false, id:0, timed:false, t0:0, end:0, raf:0, goal:null, goalHit:false, fresh:[], lenNext:null, lenDone:false, demo:false, tension:0, fin:0, vsP:[0,0], flow:0, flowOn:false, flowT:0 };
 let eng=null, ctx=null;
 const isVx=()=>sel.vs===2&&(sel.game==='quick-tap'||sel.game==='dots');
 const active=()=>R.on;
@@ -114,7 +118,9 @@ function start(){
   $('#hud-time').textContent=g.timed?sel.secs.toFixed(2):'';
   hud.reset(); applyPrefs(sel.game); $('#game').classList.toggle('timed',!!g.timed&&!versus);
   if(ctx) ctx.timers.clearT();
-  R.id++; Object.assign(R,{on:true,live:false,timed:!!g.timed&&!vx,t0:0,end:0,goalHit:false,fresh:[],lenNext:null,lenDone:false,demo:false,tension:0,fin:0,vsP:[0,0]});
+  R.id++; Object.assign(R,{on:true,live:false,timed:!!g.timed&&!vx,t0:0,end:0,goalHit:false,fresh:[],lenNext:null,lenDone:false,demo:false,tension:0,fin:0,vsP:[0,0],flow:0,flowT:0,
+    flowOn:!VS.on&&!sel.vs&&(sel.game==='quick-tap'||sel.game==='dots')});
+  $('#game').classList.remove('flowon'); $('#game').style.setProperty('--flow','0');
   /* v17 (B.5, L6): the next length this run could open, and the test that says so. It is computed ONCE per run because a
      length unlock has no store entry to read back — the state is derived from run history (L6 / 1.0b) — so mid-run there
      is nothing to ask except "does this run pass the rung". Null for two-player, a practice or challenge run, and for the
@@ -122,7 +128,7 @@ function start(){
   R.lenNext=(VS.on||sel.vs)?null:lenNextLive(sel.game,sel.diff,sel.secs);
   eng=vx?VERSUS:ENGINES[sel.game]; ctx=makeCtx();
   pbShow(); setPendingAim(''); setPendingGoal(null);
-  Music.start(sel.game,R,sel.secs);
+  Music.start(sel.game,R,sel.secs,sel.diff);
   eng.mount(ctx);
   const go=()=>{ R.live=true; $('#game').classList.add('live'); if(R.timed){ R.t0=performance.now(); R.end=R.t0+sel.secs*1000; } eng.start(ctx); if(R.timed||eng.tick){ cancelAnimationFrame(R.raf); R.raf=requestAnimationFrame(tick); } };
   // versus has no first-play demo: straight to the countdown
@@ -143,17 +149,29 @@ function start(){
    run is torn down. liveCheck writes to the store itself; this is not a toast, it is the save. */
 function abort(){ if(!R.on) return;
   if(R.live&&eng&&ctx&&!VS.on&&!sel.vs){ try{ liveCheck(eng.result(ctx)); }catch(e){} }
-  R.on=false; R.id++; VS.reset(); Intro.clear(); cancelAnimationFrame(R.raf); ctx.timers.clearT(); Music.stop(); eng.stop(ctx); $('#count').classList.remove('on'); $('#vwin').classList.remove('on'); $('#game').classList.remove('shake','live'); $('#seqdone')?.classList.remove('on'); $('#rxbar').innerHTML=''; emit('run:abort'); }
+  R.on=false; R.id++; VS.reset(); Intro.clear(); cancelAnimationFrame(R.raf); ctx.timers.clearT(); Music.stop(); eng.stop(ctx); $('#count').classList.remove('on'); $('#vwin').classList.remove('on'); $('#game').classList.remove('shake','live','flowon'); $('#seqdone')?.classList.remove('on'); $('#rxbar').innerHTML=''; emit('run:abort'); }
 function tick(now){
   if(!R.on) return;
+  if(R.flowOn) flowTick(now);
   if(R.timed){ const left=Math.max(0,R.end-now); $('#hud-time').textContent=(left/1000).toFixed(2); $('#bar').style.transform=`scaleX(${left/(ctx.len*1000)})`; if(now>=R.end) return finish(eng.result(ctx)); }
   if(eng.tick) eng.tick(ctx,now);
   R.raf=requestAnimationFrame(tick);
 }
+/* v17 (B.27): FLOW STATE. The engine answers `tps()` — its own taps a second over the last moment — the same way a
+   round-based engine answers `fin()`, and this is the only place that number is smoothed: it rises over FLOW_RISE and
+   falls over FLOW_FALL, so it arrives and leaves at the pace Aiden asked for rather than flickering on every tap. Two
+   things read the result and nothing else does — audio.js swells the hum with it, and the stylesheet draws the edge
+   glow from `--flow`. Nothing about the run changes: L10 is untouched, and a demo never reaches here because `flowOn`
+   is off in the two-player cases and the ghost cannot tap fast enough to matter in the one it is not. */
+function flowTick(now){ const tps=eng&&eng.tps?eng.tps(now):0;
+  const want=Math.max(0,Math.min(1,(tps-FLOW_AT)/FLOW_SPAN));
+  const dt=R.flowT?Math.min(.25,(now-R.flowT)/1000):0; R.flowT=now;
+  R.flow+=(want-R.flow)*(1-Math.exp(-dt/(want>R.flow?FLOW_RISE:FLOW_FALL)));
+  const g=$('#game'); g.style.setProperty('--flow',R.flow.toFixed(3)); g.classList.toggle('flowon',R.flow>.02); }
 // every tap reaches the engine through here. ev = { type: 'down' | 'move' | 'up' | 'act', x, y, el, target, player, raw }; t is the tap's own time
 function input(ev){ if(!R.on) return; ev.t=tapTime(ev.raw); eng.input(ctx,ev); }
 function finish(res){
-  R.on=false; R.live=false; cancelAnimationFrame(R.raf); ctx.timers.clearT(); Music.stop(); eng.stop(ctx); Snd.end(); $('#seqdone')?.classList.remove('on');
+  R.on=false; R.live=false; R.flow=0; cancelAnimationFrame(R.raf); ctx.timers.clearT(); Music.stop(); eng.stop(ctx); Snd.end(); $('#seqdone')?.classList.remove('on'); $('#game').classList.remove('flowon');
   const run=Object.assign({ t:Date.now(), g:sel.game, d:sel.diff, s:sel.secs, n:prefs.name||'', v:RUN_SCHEMA },res||eng.result(ctx)); if(chalRun(run.g,run.d,run.s)) run.chal=1; emit('run:record',{run}); if(!prefs.played){ prefs.played=1; save(); }
   // pass & play (v10): neither run is recorded — the board is solo. Player 1 plays, the phone is passed, the two are compared. v11: Player 1 red, Player 2 blue
   if(VS.on&&VS.stage===1){ VS.p1=run; emit('run:pass',{run}); return; }

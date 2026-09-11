@@ -84,20 +84,48 @@ lives beside `BUILD` and does **not** move with it — see the comment there for
   tap reaching `onClick` and going Back.
 - **Music is an ARRANGEMENT, not seven numbers (v16 §1, build 27).** A track in `config/audio.js` carries `voices` —
   each with its own wave, its own step pattern across one bar, and a role (`pad` `stab` `arp` `lead` `bass` `sub`
-  `drone`) — plus `beats`, the bar length. `audio.js` schedules exactly what the data says and knows nothing else about
-  any track. **Three options per game, keyed `'<game>:a|b|c'`**; `TRACK_PICK` is the one the app plays and is one line
-  per game to change. **Quick Tap · A is the build-26 loop note for note** — it is the quality bar Aiden named, so it is
-  in the running rather than replaced, and the gate asserts it. Two options of one game may not share a wave set and a
-  pattern set: "three options" that differ only in speed or pitch is the complaint this batch answered.
+  `drone`) — plus `beats`, the bar length, and since build 30 `per` `form` `vol` on the track and `lv` `lpv` `lp` `q`
+  `hold` `ct` on a voice. `audio.js` schedules exactly what the data says and knows nothing else about any track.
+  **Three options per game, keyed `'<game>:<name>'` — the ids are NAMES since build 30 (v17 B.30)**, because B.32 puts
+  them on a row in Customise and "Tide / Glass / Breath" is the only version of that row worth reading. `TRACK_OPTS` is
+  one list per game, `TRACK_PICK` is what a fresh profile plays, and `prefs.track[game]` is what this player chose.
+  **Quick Tap · Held is the build-26 loop note for note** — it is the quality bar Aiden named, so it is in the running
+  rather than replaced, and the gate asserts it. Two options of one game may not share a wave set and a pattern set:
+  "three options" that differ only in speed or pitch is the complaint batch 12 answered.
   **Still no percussion.** A drum is indistinguishable from a tap on a game where the tap is the whole interaction —
   rhythm comes from plucks, stabs, rests and odd bar lengths. There is no `noise` role and the gate says so.
+  **A TRACK'S LEVEL IS MEASURED, NEVER JUDGED BY EAR (build 30).** No Claude Code session has an audio device, so
+  `vol` on Waltz, on Quick Tap's two alternates and on the flow layer all came out of `_smoke/loudness.mjs` — an offline
+  render, 220 Hz high-passed, loudest 4-second window, reported in dBFS. Re-run it when a gain changes; every track now
+  sits inside about 3 dB of every other.
+- **MUSIC IS ARRANGED TO THE LENGTH OF THE RUN (v17 B.29, build 30).** `form` is one written pass. A run whose length
+  is known — a timed length, or a Set through `SET_SECS` — plays that pass **once across the run**, its level strings
+  mapped onto it and a run-shaped envelope under it (55% at the start, full by two thirds through). An open-ended run —
+  a Streak, Sequence — plays the long form instead: the same pass with the level strings walking **out of phase** with
+  it, which is how three minutes of music comes out of sixteen bars of data. **The chord progression is never stretched
+  or skipped** to fit — compressing a four-chord loop into five seconds plays chords 0, 1 and 3, which is a mangled
+  progression, not a short arrangement. The gate holds every open-ended form to 180 seconds before an exact repeat.
 - **The front of the app has music too, and the finish ramp is MUSIC ONLY.** One `menu` loop, played on every screen
-  that is not the game layer; one loop per key tier (`key:1..3`), rising in intensity, asked for by `ui/screens/key.js`
-  as the tier changes. The ramp into a finish is `R.fin`, 0..1, and **`audio.js` is its only reader — A.1 is explicit
-  that no gameplay speeds up**: a timed run ramps over its last seconds (the clock already says so), a Set over its
-  final round, a Streak once its own budget is 80% spent. **Sequence gets no ramp: it has neither a clock nor a budget**,
-  and that is stated rather than invented. A round-based engine answers `fin()`; `roundEngine` gives the default and the
-  two helpers, and **Estimate spells both out because it is the one engine not built on `roundEngine`**.
+  that is not the game layer; one loop per key tier — **`key:roots` / `key:frost` / `key:thorn` since build 30 (B.31),
+  named for the theme, never by number** — asked for by `ui/screens/key.js` as the tier changes.
+  **A run with a CLOCK lands its cadence on the finish (v17 B.28, build 30):** from the first bar line inside the last
+  five seconds the bars shrink geometrically, scaled so the final bar ENDS exactly on the clock. A round-based run keeps
+  build 27's `R.fin`, 0..1 — a Set over its final round, a Streak once its own budget is 80% spent — and **`audio.js` is
+  its only reader; A.1 is explicit that no gameplay speeds up**. **Sequence gets no ramp: it has neither a clock nor a
+  budget**, and it answers no `fin()` at all rather than a special case being written for it. A round-based engine
+  overrides `fin()`; `roundEngine` gives the default and the two helpers, and **Estimate spells both out because it is
+  the one engine not built on `roundEngine`**.
+  **The end cadence is in the track's key (B.30)** — it was always in A whatever was playing. The track leaves its root
+  and its quality in `endTune` and `Snd.end()` transposes to it, minor third where the first chord is minor, tonic
+  chord under the last note; with no track it is the sound it always was.
+- **FLOW STATE IS ONE NUMBER WITH TWO CONSUMERS (v17 B.27, build 30).** The engine answers `tps()` — its own taps a
+  second over the last 1.5s, deliberately not the rate bar's reading, which has two modes (v14 6.7) — `run/run.js`
+  smooths it (rise 0.8s, fall 1.6s) into `R.flow` and `--flow`, and audio.js swells the hum with the same number. The
+  light and the sound therefore arrive together by construction rather than by two timers agreeing. **Solo Quick Tap
+  and Dots only: the glow is light blue, which is Player 2 (L4)**, and it is presentation only (L10).
+  **Sequence ducks its bed to 40% while a key rings (B.30)** — both halves, the pattern and the copy, because both go
+  through `Snd.note`. The pitch half of that complaint is fixed in the data: the three Sequence tracks use only C and G
+  and stay under the keys' own C4.
 - **The versus stems are presentation (v16 §1.4).** `STEMS` is one pair for every game — they take the round's own
   root, tempo, bar and chords so they line up, and only the voicing is theirs. Each rides its own gain node and the gain
   follows `R.vsP[p]`, that player's proximity to the win condition. **L10 is untouched by it:** nothing in a two-player
@@ -184,7 +212,11 @@ it had no default and no shape check for two builds, so `reset()` was clearing a
 Customise treats a supporter exactly like unlock-all, so switching Supporter on and then taking a fresh profile showed
 all twenty-seven locked cosmetics open. **`seedSeen()` covers the cosmetics now too**, or every item that was open from
 the start wore L8's green on a brand-new profile. **`prefs.chest1` and `prefs.progTab` are new at build 29** — chest 1 opened (v17 B.24) and which Progress tab was last
-open (B.21). **Both went into `cleanPrefs` in the commit that added them**, which is build 28's `keySeen` lesson applied
+open (B.21). **`prefs.chest2` and `prefs.track` are new at build 30 (B.32)** — chest 2 opened, which is PROGRESS and
+Fresh game clears it, and which music option each game plays, which is a PREFERENCE and Fresh game keeps it. A `track`
+value that is not one of that game's own `TRACK_OPTS` is dropped, so renaming an option costs a player their choice and
+never their boot. **`musicG` takes the key `menu` as well as a game id since build 30** — the menu loop has its own off
+switch and it is shape-checked with the rest. **Both went into `cleanPrefs` in the commit that added them**, which is build 28's `keySeen` lesson applied
 rather than repeated; Fresh game clears `chest1` because it is progress and keeps `progTab` because it is a preference,
 like `lastGame`. **`bars` is new at build 22** — the key's cleared combinations, a map of
 `'<game>:<mode>:<length>'` → when it first cleared, written only by `progress/key.js`. It needed no ladder step: a v1
@@ -243,15 +275,18 @@ is not a length**) · `unlocks.js` (UNLOCKS + LEN_RULES — L6) · `achievements
 shown in place of its name since build 21 / v14 8.5 — and AUTHOR_RECORDS) · **`key-bars.js` (KEY_BARS + KEY_NOTE — the
 key's 31 clearance bars, build 22, keyed `'<game>:<mode>:<length>'` exactly as `progress/key.js` builds them; each row
 carries its `bar`, its `dir`, and the `conf` / `basis` the catalogue prints. Aiden amends these during play-test and a
-corrected number is an edit to that file alone)** · **`keys.js` (KEYS + KEY_ART — the three key tiers and their glyph
-paths, build 26. Three rows, `shell:true` on the two #372 has not decided. A separate file from `key-bars.js` on purpose:
-a tier is not a bar, and the bars file is the one #371 edits)** · `copy.js` (every banner, HUD, verdict, intro and screen string, grouped by where it
+corrected number is an edit to that file alone)** · **`keys.js` (KEYS + KEY_ART — the three key tiers, their glyph
+paths and, since build 30 (B.31), their THEMES: `theme` `track` `tint` `ground`, Roots → Frost → Thorn. Three rows,
+`shell:true` on the two #372 has not decided. A separate file from `key-bars.js` on purpose: a tier is not a bar, and
+the bars file is the one #371 edits)** · `copy.js` (every banner, HUD, verdict, intro and screen string, grouped by where it
 shows; `{name}` placeholders are filled by `T()` in `core.js`) · `theme.js` (P1/P2 colours, DESIGNS,
 ITEMS, VS_ART, **and `PRESS` since build 29 — the amber the pressed game tile's outline wears, named here so the
 stylesheet never picks a colour; `ui/theme.js` publishes it as `--press`**) · **`verdicts.js` (VERDICT_TIERS +
 VERDICTS + VERDICT_FAIL_TIER — build 29, v17 B.25: four tiers with a colour and a sound id each, and a row per game
-carrying its own three thresholds and its own twenty lines. The old five-line table is OUT of `copy.js`)** · **`audio.js` (SCALES · TRACKS — 25 of them: three per game, the menu and the three keys, each an
-arrangement · TRACK_OPTS · TRACK_PICK · STEMS, the versus pair · **VERDICT_FX since build 29 — one event list per verdict tier,
+carrying its own three thresholds and its own twenty lines. The old five-line table is OUT of `copy.js`)** · **`audio.js` (SCALES · TRACKS — 25 of them: three per game, the menu and the three key themes, each an
+arrangement · TRACK_OPTS, one list per game · TRACK_PICK · STEMS, the versus pair · **since build 30: SET_SECS, how
+long a Set is expected to take so B.29 can size its arc; DUCK / DUCK_TAIL, Sequence's; FLOW_STEM and FLOW_AT / FLOW_SPAN
+/ FLOW_RISE / FLOW_FALL, B.27's** · **VERDICT_FX since build 29 — one event list per verdict tier,
 `[at, f0, f1, ms, wave, gain, attackMs]`, the same plan shape `Music.plan` hands the review page, so the page and the
 app cannot drift**).** Nothing in `config/` imports anything; the gate asserts
 it. **The functions that used to sit in those tables live under the same id elsewhere:** predicates in
@@ -442,6 +477,22 @@ key 1's own count on it and **nothing on that screen says "pro" or "author"** (B
 it opens once, stores it and survives a reload; forty draws of one record give all five lines of one tier and never the
 same line twice running, a solo result wears its tier class and colour, and **a pass & play result wears neither**
 (B.25 / L4).
+
+**Build 30 (v17, batch 13 · §B.27–§B.33)** — statically: every game has three named options and plays one of its own
+(`quick-tap:held` is still the build-26 loop note for note), the menu and `key:roots` / `key:frost` / `key:thorn` all
+exist, no two options of a game share a wave set and a pattern set, and `SET_SECS` and `FLOW_STEM` are present (B.30);
+Roots → Frost → Thorn each carry a tint and a track that exists, and `ui/screens/key.js` asks for the tier's loop by
+name with no `key:1` left in it (B.31); `krootgrow` is .93s, `khaloglow` 2.85s and the 5.1 interlude waits past the
+halo (B.33); the review generator reads the arc, the long form and the flow layer, and the template plays the filter
+and the hold (B.29 / B.27). In the browser: every track plans to ten-field events; **every open-ended run's form runs at
+least three minutes before an exact repeat and every known length plays one arc that ends with the run** (B.29); a
+timed run plays through its own finish ramp to a result and Sequence answers no `fin()` (B.28); both tap games answer
+`tps()`, the flow layer plans over both, the glow rises with the taps and falls when they stop, and **a two-player run
+never raises it** (B.27 / L4); every Sequence track is C and G only and tops out under the keys' own C4, the duck is
+Sequence-only and the cadence transposes (B.30); **the keys screen shows ONE tier before chest 1 and says neither "pro"
+nor "author" anywhere**, three after (B.31 / A.1); and Customise's track row is a padlock with no requirement text on a
+normal profile, three options under unlock-all, stored in `prefs.track`, kept across Fresh game while `chest2` is
+cleared (B.32 / A.3).
 
 No bundler, no build step — GitHub Pages serves the modules directly, so every import path stays
 relative (`./games/dots/index.js`).

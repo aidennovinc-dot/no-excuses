@@ -2,10 +2,10 @@
    per-game colour groups, background, tap sound, scale and music rows, the colour wheel. Every item is a data-act="item"
    button inside a [data-set] group. show('s-custom', {unlocks}) scrolls to and flashes the item an achievement just opened. */
 import { Music, Snd } from "../../audio.js";
-import { SCALES } from "../../config/audio.js";
+import { SCALES, TRACKS, TRACK_OPTS, TRACK_PICK } from "../../config/audio.js";
 import { CUSTOM, ITEM_WORD, TOAST } from "../../config/copy.js";
 import { DESIGNS, ITEMS } from "../../config/theme.js";
-import { $, $$, T } from "../../core.js";
+import { $, $$, T, esc } from "../../core.js";
 import { on } from "../../core/events.js";
 import { sel } from "../../core/state.js";
 import { musicOn, prefs } from "../../core/store.js";
@@ -35,6 +35,17 @@ function renderCustom(){
   for(const set of ['snd','scale','rate']) $('#c-'+set).innerHTML = itemsOf(set).map(it=>{ const L=lockedBy(it); const nw=L?'':newMark('cos:'+set+':'+it.v,fresh); return `<button data-act="item" data-v="${it.v}" class="opt ${String(prefs[set])===String(it.v)?'sel':''} ${L?'locked':''}${nw}" data-lock="${L?L.id:''}">${it.label}</button>`; }).join('');
   // music is per game now (12.1): the row switches this game's track and previews it
   $('#c-music').innerHTML = itemsOf('music').map(it=>`<button data-act="item" data-v="${it.v}" class="opt ${musicOn(F.g)===it.v?'sel':''}">${it.label}</button>`).join('')+`<button data-act="music-pv" class="opt" id="c-music-pv">${CUSTOM.preview}</button>`;
+  /* v17 (B.32): WHICH track this game plays. Free choice is a chest 2 reward (A.3), so until then the row is the track
+     it is set to, a preview and a padlock — and NOT a word about what opens it, because A.1 forbids the pro and author
+     tiers existing on any screen before chest 1. Dev unlock-all opens the row, which is how Aiden compares the three on
+     his phone before either chest is reachable. TRACK_PICK is still the default; `prefs.track` is only what he chose. */
+  const free=!!(prefs.chest2||prefs.allOpen||prefs.supporter), opts=TRACK_OPTS[F.g]||[], cur=prefs.track[F.g]||TRACK_PICK[F.g];
+  $('#c-track').innerHTML = (free?opts:[cur]).map(o=>{ const t=TRACKS[F.g+':'+o]||{};
+    return `<button data-act="item" data-v="${o}" class="opt ${o===cur?'sel':''} ${free?'':'locked plain'}">${esc(t.name||o)}</button>`; }).join('')
+    + `<button data-act="track-pv" class="opt">${CUSTOM.preview}</button>`;
+  $('#c-track-label').textContent=T(CUSTOM.track,{game:GAMES[F.g].name});
+  // the menu loop is not a game's, so it gets its own switch rather than hiding inside one game's row
+  $('#c-menumusic').innerHTML = itemsOf('music').map(it=>`<button data-act="item" data-v="${it.v}" class="opt ${musicOn('menu')===it.v?'sel':''}">${it.label}</button>`).join('');
   $('#pv-g').innerHTML=Object.entries(GAMES).map(([id,x])=>`<button class="chip" data-act="chip-pv" data-chip="pv-g" data-v="${id}">${x.name}</button>`).join(''); chips('pv','g',F.g);
   $('#pv').dataset.g=F.g; $('#g-lead').style.display=GAMES[F.g].lead?'':'none';
   $('#g-cut').style.display=F.g==='hold'?'':'none'; $('#g-scale').style.display=F.g==='sequence'?'':'none';
@@ -105,6 +116,8 @@ on('screen:change',({id})=>{ if(id==='game') $('#wheelwrap').classList.remove('o
 define({
   'chip-pv'(b){ F.g=b.dataset.v; renderCustom(); return 'pick'; },
   'music-pv'(){ Music.preview(F.g); return 'pick'; },
+  // B.32: hear the track this game is set to, whichever it is — locked or chosen
+  'track-pv'(){ Music.preview(F.g,4200,prefs.track[F.g]||TRACK_PICK[F.g]); return 'pick'; },
   pvlock(b){ if(b.dataset.ach) show('s-prog',{ach:b.dataset.ach}); return 'click'; },
   'wheel-done'(){ Wheel.close(); return 'click'; },
   // a Customise item: colour, background, sound pack, scale, music switch — the group is the closest [data-set]
@@ -115,6 +128,10 @@ define({
     else if(k==='sq'||k==='lead'||k==='cut') prefs.col[F.g][k]=b.dataset.v;
     // v13 (12.1): music is per game now — the row switches this game's track on or off
     else if(k==='music'){ prefs.musicG[F.g]=b.dataset.v==='true'; if(b.dataset.v==='true') Music.preview(F.g,2600); else Music.stop(); }
+    /* v17 (B.32): the track, and the menu loop's switch. A locked track row is a padlock and nothing happens on it —
+       there is no requirement to show (A.1), so there is nothing to say. */
+    else if(k==='track'){ if(b.classList.contains('locked')) return 'pick'; prefs.track[F.g]=b.dataset.v; if(musicOn(F.g)) Music.preview(F.g,4200,b.dataset.v); }
+    else if(k==='menumusic'){ prefs.musicG.menu=b.dataset.v==='true'; if(b.dataset.v==='true') Music.menu('menu'); else Music.stop(); }
     // v13 (7.1): the scale left the pick sheet — one choice, applied to every Sequence run
     else if(k==='scale'){ prefs.scale=b.dataset.v; sel.scale=b.dataset.v; }
     else prefs[k]=b.dataset.v;

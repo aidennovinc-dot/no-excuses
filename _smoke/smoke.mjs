@@ -68,7 +68,11 @@ console.log('\nstatic checks');
     const G7 = ['quick-tap', 'dots', 'hold', 'sequence', 'timing', 'reaction', 'spot'];
     const ROLES = ['pad', 'stab', 'arp', 'lead', 'bass', 'sub', 'drone'];
     const miss = [], same = [], badv = [];
-    for (const g of G7) for (const o of AU.TRACK_OPTS) if (!AU.TRACKS[g + ':' + o]) miss.push(g + ':' + o);
+    // build 30: TRACK_OPTS is one list per GAME and the ids are names, so the shape of this check moved with the data
+    for (const g of G7) { const os = AU.TRACK_OPTS[g] || [];
+      if (os.length !== 3) miss.push(g + ' has ' + os.length + ' options');
+      for (const o of os) if (!AU.TRACKS[g + ':' + o]) miss.push(g + ':' + o);
+      if (!os.includes(AU.TRACK_PICK[g])) miss.push(g + ' picks ' + AU.TRACK_PICK[g] + ', which is not one of its options'); }
     for (const [k, t] of Object.entries(AU.TRACKS)) {
       if (!t.ch || !t.ch.length || !t.bass || !t.bass.length || !t.voices || !t.voices.length) badv.push(k + ' (empty)');
       for (const v of t.voices || []) {
@@ -77,22 +81,31 @@ console.log('\nstatic checks');
       }
     }
     const sig = t => [[...new Set(t.voices.map(v => v.w))].sort().join('+'), [...new Set(t.voices.map(v => v.pat || 'x'))].sort().join('|') + '@' + (t.beats || 4)];
-    for (const g of G7) {
-      const ss = AU.TRACK_OPTS.map(o => AU.TRACKS[g + ':' + o]).filter(Boolean).map(sig);
+    for (const g of G7) { const os = AU.TRACK_OPTS[g] || [];
+      const ss = os.map(o => AU.TRACKS[g + ':' + o]).filter(Boolean).map(sig);
       for (let i = 0; i < ss.length; i++) for (let j = i + 1; j < ss.length; j++)
-        if (ss[i][0] === ss[j][0] && ss[i][1] === ss[j][1]) same.push(g + ' ' + AU.TRACK_OPTS[i] + '/' + AU.TRACK_OPTS[j]);
+        if (ss[i][0] === ss[j][0] && ss[i][1] === ss[j][1]) same.push(g + ' ' + os[i] + '/' + os[j]);
     }
-    const extra = ['menu', 'key:1', 'key:2', 'key:3'].filter(k => !AU.TRACKS[k]);
+    // build 30 (B.31): the key loops are the three THEMES now, not key:1..3
+    const extra = ['menu', 'key:roots', 'key:frost', 'key:thorn'].filter(k => !AU.TRACKS[k]);
     if (miss.length || badv.length) bad('§1.1 three playable options per game', [...miss, ...badv].join(', '));
     else if (same.length) bad('§1.1 the three options are different music', 'same voicing and rhythm: ' + same.join(', '));
     else if (extra.length) bad('§1.2 / §1.3 the menu loop and one per key', 'missing: ' + extra.join(', '));
     else ok(`§1 ${Object.keys(AU.TRACKS).length} tracks — 3 per game with different waves or rhythms, plus the menu and three keys`);
     // Quick Tap · a is the build-26 loop note for note. It is the quality bar Aiden named, so it must be IN the set, not replaced
-    const qa = AU.TRACKS['quick-tap:a'], want = JSON.stringify({ root: 110, bpm: 126, ch: [[0, 7, 12, 16], [5, 12, 17, 21], [3, 10, 15, 19], [7, 14, 19, 22]], bass: [0, 5, 3, 7] });
+    const qa = AU.TRACKS['quick-tap:held'], want = JSON.stringify({ root: 110, bpm: 126, ch: [[0, 7, 12, 16], [5, 12, 17, 21], [3, 10, 15, 19], [7, 14, 19, 22]], bass: [0, 5, 3, 7] });
     const got = JSON.stringify({ root: qa.root, bpm: qa.bpm, ch: qa.ch, bass: qa.bass });
     const shape = qa.voices.length === 2 && qa.voices[0].v === 'pad' && qa.voices[0].w === 'triangle' && qa.voices[1].v === 'bass' && qa.voices[1].w === 'sine' && (qa.beats || 4) === 4;
-    (got === want && shape) ? ok('§1.1 Quick Tap · A is the build-26 loop unchanged — the quality bar is one of its three')
+    (got === want && shape) ? ok('§1.1 Quick Tap · Held is the build-26 loop unchanged — the quality bar is one of its three')
       : bad('§1.1 Quick Tap keeps its current loop as an option', got);
+    // build 30 (B.30): the track a game is set to must exist, and so must the flow layer B.27 rides over it
+    { const missPick = G7.filter(g => !AU.TRACKS[g + ':' + AU.TRACK_PICK[g]]);
+      const setsBad = Object.keys(AU.SET_SECS || {}).filter(k => !(AU.SET_SECS[k] > 0));
+      const flowOk = AU.FLOW_STEM && AU.FLOW_STEM.vol > 0 && (AU.FLOW_STEM.voices || []).length;
+      (!missPick.length && !setsBad.length && flowOk)
+        ? ok(`B.30 every game's picked track exists (${G7.map(g => AU.TRACK_PICK[g]).join(', ')}), ${Object.keys(AU.SET_SECS).length} Set lengths, and the flow layer is at vol ${AU.FLOW_STEM.vol}`)
+        : bad('B.30 the picked tracks, the Set lengths and the flow layer', JSON.stringify({ missPick, setsBad, flowOk }));
+    }
     // no percussion: the one rule the old module had that was right, and the reason the roles list has no noise in it
     ROLES.includes('noise') ? bad('§1 no percussion in the music') : ok('§1 no percussion role exists — rhythm is plucks, stabs, rests and bar lengths');
   }
@@ -932,7 +945,10 @@ console.log('\nthe keys, the surface and #375 (v15 sections 5 and 6)');
 
   // ---- the app itself ----
   await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
-  await setStorage({ 'ne.prefs': OPEN_PREFS }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(420);
+  /* build 30 (B.31 / A.1): the keys screen shows ONE tier until chest 1 is opened, so every 5.3 assertion below — three
+     glyphs, the shell flags, the Author key's own screen — is now an assertion about a profile that has opened it. The
+     before-chest-1 half of the same rule is checked in the build-30 section. */
+  await setStorage({ 'ne.prefs': { ...OPEN_PREFS, chest1: 1 } }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(420);
 
   // #375b again, as behaviour: 400 dealt blocks, every one fair. A block with no go-shape is what the 600 was for
   { const d = await page.evaluate(async () => { const M = await import('./games/reaction/index.js'); const RX = M.RX;
@@ -1002,7 +1018,8 @@ console.log('\nthe keys, the surface and #375 (v15 sections 5 and 6)');
     await wait(320);
     const glow = !!document.querySelector('.kr.glow');
     const grew = !!document.querySelector('.kroot.grow');
-    await wait(3200);
+    // build 30 (B.33): the interlude is 3900ms now, not 2600 — the animations run at 1.5x and it waits past the halo
+    await wait(4600);
     return { err: null, faded, onKey, moved, glow, grew, back: at(), clear: document.getElementById('s-over').classList.contains('fadeout'), bars: Object.keys(S.store.bars).length };
   });
   if (seq.err) bad('5.1 the key interlude', seq.err);
@@ -1089,6 +1106,9 @@ console.log('\nbutton actions (every data-act at least once)');
   await tap('#pv-g [data-v="sequence"]', 'customise · game chip');
   await tap('#c-scale button:nth-child(2)', 'customise · scale');
   await tap('#c-music button:nth-child(2)', 'customise · music off'); await tap('#c-music button:nth-child(1)', 'customise · music on'); await tap('#c-music-pv', 'customise · music preview');
+  // build 30 (B.32): the track this game plays, the menu loop's own switch, and the preview that is on the track row
+  await tap('#c-track button:nth-child(2)', 'customise · track'); await tap('#c-track button:last-child', 'customise · track preview');
+  await tap('#c-menumusic button:nth-child(2)', 'customise · menu music off'); await tap('#c-menumusic button:nth-child(1)', 'customise · menu music on');
   await tap('#pvlock', 'customise · lock line');
   await sleep(400); await tap('#s-custom .back', 'customise · back');
   // scores: game, mode, length chips
@@ -1142,7 +1162,7 @@ console.log('\nbutton actions (every data-act at least once)');
   (await onScreen()) === 's-pick' ? ok('result back opens the pick sheet') : bad('result back opens the pick sheet', 'on ' + (await onScreen()));
   await tap('#time-row .tbtn:nth-child(2)', 'sheet · length'); await tap('[data-vs="1"]', 'sheet · with a friend'); await tap('[data-vs2="1"]', 'sheet · pass & play'); await tap('[data-vs="0"]', 'sheet · solo');
   // build 18: the chips are one act per screen, and the overlays (lock box, Next card, the full stop) are acts too
-  const expected = ['go', 'back', 'game', 'diff', 'time', 'vs', 'vs2', 'lvl-back', 'go-btn', 'quit', 'over-back', 'share', 'chip-bd', 'chip-pv', 'chip-ach', 'chip-over', 'item', 'music-pv', 'pvlock', 'ach', 'unl', 'prac', 'dev-open', 'dev-sup', 'dev-story', 'support', 'wheel-done', 'lock-no', 'lock-go', 'nextup', 'egg', 'ptab', 'chest'];
+  const expected = ['go', 'back', 'game', 'diff', 'time', 'vs', 'vs2', 'lvl-back', 'go-btn', 'quit', 'over-back', 'share', 'chip-bd', 'chip-pv', 'chip-ach', 'chip-over', 'item', 'music-pv', 'pvlock', 'ach', 'unl', 'prac', 'dev-open', 'dev-sup', 'dev-story', 'support', 'wheel-done', 'lock-no', 'lock-go', 'nextup', 'egg', 'ptab', 'chest', 'track-pv'];
   const missing = expected.filter(a => !seen.has(a));
   missing.length ? bad('every data-act driven once', 'not driven: ' + missing.join(', ')) : ok(`every data-act driven once (${expected.length}) — not covered: again, pass-go, to-games, seqdone, praclock, dev-fresh, adskip, toast`);
 }
@@ -1159,8 +1179,9 @@ console.log('\nbuild 27 — v16');
     const out = { bad: [], n: 0, events: 0 };
     for (const id of Object.keys(A.TRACKS)) { const q = M.Music.plan(id);
       if (!q || !q.plan.length) { out.bad.push(id + ' (no events)'); continue; }
-      for (const [t, f, f1, ms, w, g, am] of q.plan)
-        if (![t, f, f1, ms, g, am].every(Number.isFinite) || f <= 0 || f1 <= 0 || ms <= 0 || g <= 0 || !w) { out.bad.push(id + ' (bad event)'); break; }
+      // build 30: ten fields — the last three are the per-note lowpass, its Q and the hold (B.30)
+      for (const [t, f, f1, ms, w, g, am, lp, q2, hold] of q.plan)
+        if (![t, f, f1, ms, g, am, lp, q2, hold].every(Number.isFinite) || f <= 0 || f1 <= 0 || ms <= 0 || g <= 0 || !w || lp < 0 || hold < 0 || hold > 1) { out.bad.push(id + ' (bad event)'); break; }
       out.n++; out.events += q.plan.length; }
     return out; });
   P.bad.length ? bad('§1 every track plays', P.bad.join(', '))
@@ -1827,6 +1848,186 @@ console.log('\nbuild 29 - v17 sections B.19 to B.26');
     const prints = /id="verdicts"/.test(tpl) && /verd-host/.test(tpl) && /REF\.verdicts/.test(tpl);
     (reads && prints) ? ok('B.26 the catalogue reads config/verdicts.js out of the running app and prints a section per game')
       : bad('B.26 the review board shows the verdict tables', JSON.stringify({ reads, prints }));
+  }
+}
+
+/* ---- 11. build 30 (v17 §B.27–§B.33): music and sound ---- */
+console.log('\nbuild 30 - v17 sections B.27 to B.33');
+{
+  const root30 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const AU30 = await import(pathToFileURL(path.join(root30, 'config', 'audio.js')).href);
+  const KY30 = await import(pathToFileURL(path.join(root30, 'config', 'keys.js')).href);
+  const G30 = await import(pathToFileURL(path.join(root30, 'config', 'games.js')).href);
+  const css30 = fs.readFileSync(path.join(root30, 'styles', 'app.css'), 'utf8');
+  const keyjs30 = fs.readFileSync(path.join(root30, 'ui', 'screens', 'key.js'), 'utf8');
+  const G7 = ['quick-tap', 'dots', 'hold', 'sequence', 'timing', 'reaction', 'spot'];
+
+  /* ---- B.29: a run's music is arranged to the run. Two properties, and they are the whole of the item: a known
+     length plays ONE pass of the written arrangement and ends with the run, and an open-ended run does not repeat
+     itself for at least three minutes. Both are read off Music.plan / Music.lengths, which is what the app plays. */
+  {
+    const L = await page.evaluate(async () => { const M = await import('./audio.js'); const A = await import('./config/audio.js');
+      const G = await import('./config/games.js'); const REG = await import('./games/registry.js');
+      const out = { long: [], arcs: [], badArc: [] };
+      for (const g of Object.keys(REG.GAMES)) {
+        const id = g + ':' + A.TRACK_PICK[g], q = M.Music.plan(id, { long: 1 });
+        out.long.push({ g, id, name: q.name, longSec: q.longSec, streak: !REG.GAMES[g].timed });
+        const runs = REG.GAMES[g].timed ? REG.GC(g, REG.GAMES[g].modes[0]).lens : Object.keys(A.SET_SECS).filter(k => k.startsWith(g + ':')).map(k => A.SET_SECS[k]);
+        for (const r of runs) { const p = M.Music.plan(id, { run: r });
+          const last = p.plan.length ? p.plan[p.plan.length - 1][0] : 0;
+          // one arc: the plan is as long as the run, and its last event starts inside it
+          if (Math.abs(p.loopSec - r) > p.loopSec / p.bars + .01 || last > p.loopSec + .01) out.badArc.push(g + ' ' + r + 's -> ' + p.loopSec + 's, last at ' + last);
+          out.arcs.push({ g, run: r, sec: p.loopSec, bars: p.bars }); }
+      }
+      return out; });
+    const short = L.long.filter(x => x.streak && x.longSec < 180);
+    (!short.length) ? ok('B.29 every open-ended run gets a long form - ' + L.long.filter(x => x.streak).map(x => `${x.g} ${Math.round(x.longSec / 60)}min`).join(' · ') + ' before anything repeats')
+      : bad('B.29 a Streak runs 3 minutes before it repeats', JSON.stringify(short));
+    (!L.badArc.length) ? ok(`B.29 every known length plays one arc that ends with the run (${L.arcs.length} of them: ${L.arcs.slice(0, 4).map(a => a.g + ' ' + a.run + 's→' + a.bars + ' bars').join(', ')}…)`)
+      : bad('B.29 the arc is sized to the run', L.badArc.join(' | '));
+  }
+  /* ---- B.28: the finish ramp. A timed run's bars shrink over the last five seconds so the final bar ENDS on the
+     clock. The plan cannot show it — it is scheduled live against the run's own end — so this drives a real Quick Tap
+     Sprint and asserts what the ramp is for: the music is still playing at the finish, no bar was scheduled past the
+     clock, and the run reaches its result with no error. The round-based half (Set: final round, Streak: 80% of the
+     budget) is build 27's `fin` and is untouched; Sequence gets no ramp at all and the static check below says so. */
+  {
+    const src = fs.readFileSync(path.join(root30, 'audio.js'), 'utf8');
+    const hasMap = /function finPlan/.test(src) && /endAudio/.test(src) && /!st\.live\|\|!st\.end/.test(src.replace(/\s/g, ''));
+    // Sequence answers no `fin` at all, so the round-based ramp cannot reach it either - it has nothing to count down to
+    const seqFin = await page.evaluate(async () => { const S = (await import('./games/sequence/index.js')).default; return typeof S.fin === 'function' ? S.fin() : 'none'; });
+    (hasMap && (seqFin === 0 || seqFin === 'none')) ? ok(`B.28 the last bars are planned against the clock, not a window guess - and Sequence answers ${seqFin === 'none' ? 'no fin() at all' : '0'}, so it gets no ramp`)
+      : bad('B.28 the finish ramp lands on the clock', JSON.stringify({ hasMap, seqFin }));
+    await openSheet('quick-tap', 0, 0); await click('#go-btn');
+    const at = await driveToResult('quick-tap', 'a timed run through the finish ramp', 30000);
+    (at === 's-over') ? ok('B.28 a timed run plays through its own finish ramp to the result with no error')
+      : bad('B.28 a run survives the finish ramp', 'ended on ' + at);
+  }
+  /* ---- B.27: flow state. Solo Quick Tap and Dots only, because the glow is light blue and light blue is Player 2
+     (L4). The reading is the engine's own `tps()`; run/run.js smooths it into `--flow` and audio.js swells the hum with
+     the same number. Presentation only (L10) - the store is read back after the run to prove it. */
+  {
+    const eng = await page.evaluate(async () => { const QT = (await import('./games/quick-tap/index.js')).default, DT = (await import('./games/dots/index.js')).default;
+      return { qt: typeof QT.tps === 'function', dt: typeof DT.tps === 'function' }; });
+    (eng.qt && eng.dt) ? ok('B.27 both tap games answer tps() - the flow reading is the engine\'s own, not the rate bar\'s (v14 6.7)')
+      : bad('B.27 the engines report taps a second', JSON.stringify(eng));
+    // the plan exists and is quieter than the track it rides over: B.27 asked for about 40%, which is -8 dB
+    const f = await page.evaluate(async () => { const M = await import('./audio.js');
+      const out = {}; for (const g of ['quick-tap', 'dots']) { const q = M.Music.plan(g, { flow: 1 }); out[g] = q ? q.plan.length : 0; } return out; });
+    (f['quick-tap'] > 0 && f.dots > 0) ? ok(`B.27 the flow layer plans over both games (${f['quick-tap']} and ${f.dots} events a pass) - measured at -8.1 dB and -7.1 dB against Held and Waltz, _smoke/loudness.mjs`)
+      : bad('B.27 the flow layer plays', JSON.stringify(f));
+    // solo: tapping fast raises the glow, and stopping drops it. `poke` is the same tap the whole gate plays with
+    await openSheet('quick-tap', 0, 2); await click('#go-btn');
+    // the fixture has no `intro` map, so the first run of a game plays the ghost demo and ends on "Ready?" — the taps
+    // below mean nothing until the run is actually live
+    const live = async () => page.evaluate(async () => (await import('./run/run.js')).R.live);
+    for (let i = 0; i < 60 && !(await live()); i++) { await clearReady('quick-tap'); await sleep(200); }
+    const read = () => page.evaluate(() => ({ flow: +getComputedStyle(document.getElementById('game')).getPropertyValue('--flow'), on: document.getElementById('game').classList.contains('flowon') }));
+    for (let i = 0; i < 22; i++) { await poke('quick-tap'); await sleep(95); }
+    const hot = await read(); await sleep(2800); const cold = await read();
+    (hot.on && hot.flow > .15 && cold.flow < hot.flow) ? ok(`B.27 flow rises with the taps and falls when they stop (${hot.flow.toFixed(2)} → ${cold.flow.toFixed(2)})`)
+      : bad('B.27 the flow state arrives and leaves', JSON.stringify({ hot, cold }));
+    await page.evaluate(async () => { const RUN = await import('./run/run.js'); RUN.abort(); }); await sleep(300);
+    // two-player: never. Light blue is P2 and the run has a colour of its own already (L4 / L10)
+    await openSheet('quick-tap', 0, 0, 1); await click('#go-btn'); await sleep(2600);
+    const two = await page.evaluate(async () => { const R = (await import('./run/run.js')).R; return { on: R.flowOn, cls: document.getElementById('game').classList.contains('flowon') }; });
+    (!two.on && !two.cls) ? ok('B.27 / L4 no flow state in a two-player run - the glow is P2\'s colour and the run already wears one')
+      : bad('B.27 flow is solo only', JSON.stringify(two));
+    await page.evaluate(async () => { const RUN = await import('./run/run.js'); RUN.abort(); }); await sleep(300);
+  }
+  /* ---- B.30: the ported set. The option ids are names, every game plays one of its own three, and Sequence is in C
+     and G below the keys - which was the actual complaint, not the arrangement. */
+  {
+    const seq = ['root', 'fifths', 'hum'].map(o => AU30.TRACKS['sequence:' + o]);
+    const notes = []; for (const t of seq) { for (const ch of t.ch) for (const n of ch) notes.push(((n % 12) + 12) % 12);
+      for (const v of t.voices) if (v.seq) for (const n of v.seq) if (n !== null) notes.push(((n % 12) + 12) % 12); }
+    const offC = [...new Set(notes)].filter(n => n !== 0 && n !== 7);
+    // and nothing in them reaches the keys' own C4 (261.6Hz), which is where Snd.note plays from
+    const top = await page.evaluate(async () => { const M = await import('./audio.js');
+      return ['root', 'fifths', 'hum'].map(o => Math.max(...M.Music.plan('sequence:' + o).plan.map(e => e[1]))); });
+    (!offC.length && Math.max(...top) < 261.6) ? ok(`B.30 every Sequence track is C and G only and tops out at ${Math.round(Math.max(...top))}Hz - under the keys' own C4, which is what "they confuse the user" was`)
+      : bad('B.30 Sequence sits under the keys', JSON.stringify({ offC, top }));
+    // the duck is one rule in one place, and it only ever fires under a Sequence track
+    const src = fs.readFileSync(path.join(root30, 'audio.js'), 'utf8');
+    (/duckHook/.test(src) && /mode!=='sequence'/.test(src) && AU30.DUCK > 0 && AU30.DUCK < 1)
+      ? ok(`B.30 the bed ducks to ${Math.round(AU30.DUCK * 100)}% while a key rings, Sequence only`) : bad('B.30 Sequence ducks its own music');
+    // the end cadence is in the track's key, and with no track it is the sound it always was
+    (/endTune/.test(src) && /minor/.test(src)) ? ok('B.30 the end cadence transposes to the track\'s root and takes a minor third where the track is minor')
+      : bad('B.30 the cadence is in the track\'s key');
+  }
+  /* ---- B.31: the three key themes. Roots, Frost and Thorn, each with its own loop - and A.1 means neither of the
+     last two exists on screen until chest 1 is opened. */
+  {
+    const missing = KY30.KEYS.filter(k => !k.theme || !k.track || !AU30.TRACKS[k.track] || !/^#[0-9A-Fa-f]{6}$/.test(k.tint));
+    (!missing.length && KY30.KEYS.map(k => k.theme).join(' → ') === 'Roots → Frost → Thorn')
+      ? ok('B.31 Roots → Frost → Thorn, each with its own tint and its own loop in config/audio.js')
+      : bad('B.31 a theme and a track per tier', JSON.stringify(missing.map(k => k.id)));
+    // nothing about the second and third tier before chest 1 - not a row, not a word (A.1)
+    await setStorage({ ne: { v: 1, prefs: { ...OPEN_PREFS, chest1: 0 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await click('[data-go="s-key"]'); await sleep(700);
+    const before = await page.evaluate(() => ({ n: document.querySelectorAll('#key-keys .kkey').length,
+      txt: document.getElementById('s-key').textContent.toLowerCase(), theme: document.querySelector('#key-keys .kkey i')?.textContent }));
+    (before.n === 1 && before.theme === 'Roots' && !/\bpro\b/.test(before.txt) && !/author/.test(before.txt))
+      ? ok('B.31 / A.1 one tier before chest 1 - "Roots", and the screen says neither "pro" nor "author" anywhere')
+      : bad('B.31 Frost and Thorn are hidden until chest 1', JSON.stringify(before).slice(0, 200));
+    await setStorage({ ne: { v: 1, prefs: { ...OPEN_PREFS, chest1: 1 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await click('[data-go="s-key"]'); await sleep(700);
+    const after = await page.evaluate(() => ({ n: document.querySelectorAll('#key-keys .kkey').length,
+      themes: [...document.querySelectorAll('#key-keys .kkey i')].map(i => i.textContent) }));
+    (after.n === 3 && after.themes.join(',') === 'Roots,Frost,Thorn') ? ok('B.31 all three arrive with chest 1 - ' + after.themes.join(' · '))
+      : bad('B.31 chest 1 reveals the other two', JSON.stringify(after));
+    // the screen asks for the tier's own track, and there is no key:1 left anywhere
+    (/keyTiers\(\)\[openKey\]\.track/.test(keyjs30) && !/key:1/.test(keyjs30)) ? ok('B.31 the key screen asks for the tier\'s own loop by name, never by number')
+      : bad('B.31 the tier loop is asked for by name');
+  }
+  /* ---- B.32: music in Customise. A row per game and a row for the menu loop, locked behind chest 2 (A.3) with a
+     padlock and NOTHING about what opens it (A.1), open under dev unlock-all. */
+  {
+    await setStorage({ ne: { v: 1, prefs: { story: 1, gridSeen: 1, played: 1, menuSeen: 1, snd: 'off', musicG: {} }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await click('[data-go="s-custom"]'); await sleep(500);
+    const locked = await page.evaluate(() => { const b = [...document.querySelectorAll('#c-track button')];
+      return { n: b.length, first: b[0]?.textContent, lock: b[0]?.classList.contains('locked'), plain: b[0]?.classList.contains('plain'),
+        txt: document.getElementById('c-track').parentElement.textContent.toLowerCase(), menu: document.querySelectorAll('#c-menumusic button').length }; });
+    (locked.n === 2 && locked.lock && locked.plain && locked.menu === 2 && !/pro|author|chest|tier/.test(locked.txt))
+      ? ok(`B.32 / A.1 the track row is the track it plays ("${locked.first}"), a padlock and a preview - and says nothing about what opens it`)
+      : bad('B.32 the locked track row', JSON.stringify(locked));
+    // dev unlock-all opens it, and picking one is stored and played
+    await setStorage({ ne: { v: 1, prefs: { ...OPEN_PREFS, menuSeen: 1 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await click('[data-go="s-custom"]'); await sleep(500);
+    await page.evaluate(() => document.querySelectorAll('#c-track button')[1].click()); await sleep(500);
+    const open30 = await page.evaluate(() => ({ n: document.querySelectorAll('#c-track button').length,
+      stored: JSON.parse(localStorage.getItem('ne')).prefs.track, sel: document.querySelector('#c-track button.sel')?.textContent }));
+    const g0 = open30.stored && Object.keys(open30.stored)[0];
+    (open30.n === 4 && g0 && AU30.TRACK_OPTS[g0].includes(open30.stored[g0]))
+      ? ok(`B.32 unlock-all opens the row: three options and a preview, and "${open30.sel}" is stored as ${g0} → ${open30.stored[g0]}`)
+      : bad('B.32 choosing a track', JSON.stringify(open30));
+    // the choice is a preference, not the default: TRACK_PICK is untouched and Fresh game keeps it
+    const kept = await page.evaluate(async () => { const S = await import('./core/store.js'); S.reset();
+      return { track: JSON.parse(localStorage.getItem('ne')).prefs.track, chest2: JSON.parse(localStorage.getItem('ne')).prefs.chest2 }; });
+    (kept.track && Object.keys(kept.track).length && kept.chest2 === 0) ? ok('B.32 the chosen track survives Fresh game (a preference) and chest 2 does not (progress)')
+      : bad('B.32 what Fresh game clears', JSON.stringify(kept));
+  }
+  /* ---- B.33: the key-unlock animations at 1.5x, and the interlude waiting for them ---- */
+  {
+    const grow = /animation:krootgrow ([\d.]+)s/.exec(css30), halo = /animation:khaloglow ([\d.]+)s/.exec(css30);
+    const wait = /show\(back\); emit\('key:done'\); \}, (\d+)\)/.exec(keyjs30);
+    const g = grow && +grow[1], h = halo && +halo[1], w = wait && +wait[1];
+    (Math.abs(g - .93) < .01 && Math.abs(h - 2.85) < .01 && w >= h * 1000)
+      ? ok(`B.33 the unlock animations run at 1.5x - ${g}s and ${h}s - and the interlude waits ${w}ms, past the halo it lights`)
+      : bad('B.33 the key animations are slower', JSON.stringify({ g, h, w }));
+  }
+  /* ---- the review catalogue plays what a run plays (B.29 / B.27 / B.31) ---- */
+  {
+    const gen = fs.readFileSync(path.resolve(root30, '..', '_review', 'scripts', 'catalogue.mjs'), 'utf8');
+    const tpl = fs.readFileSync(path.resolve(root30, '..', '_review', 'scripts', 'catalogue.template.html'), 'utf8');
+    const reads = /\{ *long: *1 *\}/.test(gen) && /\{ *run:/.test(gen) && /\{ *flow: *1 *\}/.test(gen) && /key:roots/.test(gen);
+    const plays = /hold > 0/.test(tpl) && /createBiquadFilter/.test(tpl) && /what a run plays/.test(tpl);
+    (reads && plays) ? ok('the catalogue reads the arc, the long form and the flow layer out of the running app, and plays the filter and the hold the new tracks use')
+      : bad('the review board carries build 30\'s music', JSON.stringify({ reads, plays }));
   }
 }
 
