@@ -33,7 +33,7 @@ import { emit } from "../../core/events.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, lenFull, lenName } from "../../games/registry.js";
 import { isOpen, lenOpen } from "../../progress.js";
-import { barsMissing, gameKey, isCleared, keyState, keyTiers } from "../../progress/key.js";
+import { barsMissing, gameKey, isCleared, keyPct, keyState, keyTiers } from "../../progress/key.js";
 import { goWhere } from "../../run/run.js";
 import { scoreTxt } from "../format.js";
 import { define } from "../actions.js";
@@ -74,7 +74,10 @@ function ring() { const st = keyState();
   $('#key-ring').innerHTML = `<circle class="khub" cx="${CX}" cy="${CY}" r="${R_HUB}"></circle>`
     + `<path class="kglyph${st.whole ? ' whole' : ''}" d="M150 128a13 13 0 1 0 0 26 13 13 0 1 0 0-26M150 154v24M150 166h8M150 172h6"></path>` + parts;
   $('#key-ring').classList.toggle('whole', st.whole);
-  $('#key-count').textContent = st.whole ? KEY.whole : T(KEY.count, { done: st.done, total: st.total });
+  // v17 (§A.6.7): "19 of 30 · 74%" — the cleared count is what a player acts on, the percentage is what moves on nearly
+  // every run. Both come out of progress/key.js; nothing about the total is written here (C.5)
+  const p = keyPct();
+  $('#key-count').textContent = st.whole ? KEY.whole : T(KEY.count, { done: p.done, total: p.total, pct: p.pct });
   return st; }
 
 /* ---------- the panel: one game's combinations ---------- */

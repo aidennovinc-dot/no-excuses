@@ -23,9 +23,30 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
   fin(){ if(this.two||this.vs) return 0; return this.streak()?this.finBud(this.find()?this.tot:this.off,this.find()?10:5):this.finSet(); },
   // Find's crowd still grows across ten rounds; a Streak holds at the round-10 crowd
   p(){ return Math.min(1,(this.round-1)/9); },
-  // v13 (10.1): round r deals 2 + floor(r/2) targets (cap 12) and floor(r/1.5) decoys (cap 10); the flash falls from 1340ms to 350ms;
-  // from round 6 the shapes drift, from round 9 they turn as well, and everything shrinks as the count grows
-  ramp(r){ const R=SPOT_RAMP; return { n:Math.min(R.nCap,R.nBase+Math.floor(r/R.nPer)), decoys:Math.min(R.decoyCap,Math.floor(r/R.decoyDiv)), flash:Math.max(R.flashMin,R.flashMax-R.flashPer*r), drift:r>=R.driftFrom?R.driftBase+(r-R.driftFrom)*R.driftPer:0, spin:r>=R.spinFrom?R.spinBase+(r-R.spinFrom)*R.spinPer:0 }; },
+  /* v17 (B.15) — the difficulty is the CROWD, not the clock. The target count is dealt from a band whose two edges rise
+     at different rates, so it can fall as well as climb and there is no 8-9-10-11 to count; every dipEvery-th round from
+     dipFrom deals the band's floor among half again as many decoys, which is the round that has FEWER targets in a much
+     bigger crowd. Decoys, motion, rotation and size variation carry the rest. The old shape is in FEATURES.md as a table. */
+  ramp(r){ const R=SPOT_RAMP;
+    const lo=Math.min(R.nCap,Math.round(R.loBase+R.loPer*(r-1)));
+    const hi=Math.min(R.nCap,Math.max(lo,Math.round(R.hiBase+R.hiPer*(r-1))));
+    const dip=r>=R.dipFrom&&(r-R.dipFrom)%R.dipEvery===0;
+    return { lo, hi, dip, n:dip?lo:lo+rnd(hi-lo+1),
+      decoys:Math.min(R.decoyCap,Math.round((R.decoyBase+R.decoyPer*(r-1))*(dip?R.dipDecoy:1))),
+      flash:Math.max(R.flashMin,R.flashMax-R.flashPer*(r-1)),
+      drift:r>=R.driftFrom?R.driftBase+(r-R.driftFrom)*R.driftPer:0,
+      spin:r>=R.spinFrom?R.spinBase+(r-R.spinFrom)*R.spinPer:0,
+      sizeVar:r>=R.sizeFrom?Math.min(R.sizeCap,R.sizeBase+(r-R.sizeFrom)*R.sizePer):0 }; },
+  /* v17 (B.15 / B.16): one place deals a shape's own size and one place keeps a shape inside the field. `vary` spreads the
+     crowd around the base size with a floor, so nothing is ever too small to count; `clamp` is what B.16 needs — reflecting
+     the velocity was never enough, because a shape that has already crossed the edge stays across it, and a shape that is
+     TURNING sweeps a box √2 wider than itself. The margin covers the rotation and the pulse, and the position is clamped
+     rather than merely bounced, so every shape's full bounds are inside the safe area at every moment. */
+  vary(size,v,min){ return v?Math.max(min||16,Math.round(size*(1+(Math.random()*2-1)*v))):size; },
+  clamp(q,r){ const sz=q.sz||this.size; const m=Math.ceil((q.va?sz*(Math.SQRT2-1)/2:0)+(q.puls?sz*.09:0));
+    const x0=m, x1=Math.max(x0,r.width-sz-m), y0=r.height*(this.topF||.08)+m, y1=Math.max(y0,r.height-sz-m);
+    if(q.x<x0){ q.x=x0; q.vx=Math.abs(q.vx||0); } else if(q.x>x1){ q.x=x1; q.vx=-Math.abs(q.vx||0); }
+    if(q.y<y0){ q.y=y0; q.vy=Math.abs(q.vy||0); } else if(q.y>y1){ q.y=y1; q.vy=-Math.abs(q.vy||0); } },
   result(){ const x=this.bestFlash, [best,worst]=minMax(this.times);
     if(this.find()) return this.streak()?{hits:this.times.length,misses:this.wrong,x:best,y:worst,lim:'10s'}:{hits:Math.round(this.tot*100)/100,misses:this.wrong,x:best,y:worst};
     const rounds=Math.max(0,this.round-1);
@@ -41,23 +62,33 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
   countRound(){ const r=genRect(), R=this.ramp(this.round); const all=['circle','square','tri']; this.target=all[rnd(3)]; const rest=all.filter(s=>s!==this.target);
     const n=R.n, decoys=R.decoys; this.flash=R.flash;
     this.size=Math.max(20,Math.min(r.width,r.height)*.1*Math.min(1,Math.sqrt(6/(n+decoys))));
-    const list=Array.from({length:n},()=>this.target).concat(Array.from({length:decoys},()=>rest[rnd(2)])); this.pts=scatter(list.length,[this.target],this.size); this.pts.forEach((q,i)=>q.shape=list[i]||this.target); this.answer=this.pts.filter(q=>q.shape===this.target).length;
+    // the cells are laid out for the BIGGEST a shape can be dealt, or a large one would overlap its neighbour
+    const list=Array.from({length:n},()=>this.target).concat(Array.from({length:decoys},()=>rest[rnd(2)])); this.pts=scatter(list.length,[this.target],Math.round(this.size*(1+R.sizeVar)));
+    this.pts.forEach((q,i)=>{ q.shape=list[i]||this.target; q.sz=this.vary(this.size,R.sizeVar,SPOT_RAMP.sizeMin); }); this.answer=this.pts.filter(q=>q.shape===this.target).length;
     for(let i=this.pts.length-1;i>0;i--){ const j=rnd(i+1); const t=this.pts[i].shape; this.pts[i].shape=this.pts[j].shape; this.pts[j].shape=t; }
-    this.pts.forEach(q=>{ q.vx=(Math.random()-.5)*R.drift; q.vy=(Math.random()-.5)*R.drift; q.a=0; q.va=(Math.random()-.5)*R.spin; });
-    this.st='wait'; $('#gen').innerHTML=''; rxBar([...CP.count,shapeI(this.target),`<b>${SHAPE_WORD[this.target]}s</b>`]);
+    this.pts.forEach(q=>{ q.vx=(Math.random()-.5)*R.drift; q.vy=(Math.random()-.5)*R.drift; q.a=0; q.va=(Math.random()-.5)*R.spin; this.clamp(q,r); });
+    // v17 (B.14): the whole rule arrives at once, so the 1500ms it sits there is 1500ms of looking at the shape
+    this.st='wait'; $('#gen').innerHTML=''; rxBar([...CP.count,shapeI(this.target),`<b>${SHAPE_WORD[this.target]}s</b>`],true);
     this.later(()=>{ this.st='flash'; $('#gen').innerHTML=this.pts.map(q=>shapeHtml(q,this.size)).join(''); if(R.drift||R.spin) this.move('flash'); this.later(()=>this.ask(),this.flash); },1500); },
   // drift and spin share one loop; it dies the moment the state moves on
   move(state){ const els=$$('#gen .fs'), r=genRect(); let last=performance.now(); const loop=now=>{ if(this.st!==state) return; const dt=(now-last)/1000; last=now;
       if(state==='find'){ const c=$('#spclock'); if(c) c.textContent=f2((now-this.t0)/1000); }
-      this.pts.forEach((q,i)=>{ q.x+=(q.vx||0)*dt; q.y+=(q.vy||0)*dt; q.a=(q.a||0)+(q.va||0)*dt; if(q.x<0||q.x>r.width-this.size) q.vx*=-1; if(q.y<r.height*(this.topF||.08)||q.y>r.height-this.size) q.vy*=-1;
+      // v17 (B.16): CLAMP, not just reflect. Flipping the velocity leaves a shape that has already crossed the edge across
+      // it — and a turning shape sweeps wider than its own box, which is how one drifted off screen and could not be tapped
+      this.pts.forEach((q,i)=>{ q.x+=(q.vx||0)*dt; q.y+=(q.vy||0)*dt; q.a=(q.a||0)+(q.va||0)*dt; this.clamp(q,r);
         const el=els[i]; if(!el) return; el.style.left=q.x+'px'; el.style.top=q.y+'px'; if(q.va) el.style.rotate=q.a+'deg'; });
       this.raf=requestAnimationFrame(loop); }; this.raf=requestAnimationFrame(loop); },
-  keypad(){ return `<div class="pad-num">${Array.from({length:15},(_,i)=>`<button data-num="${i}">${i}</button>`).join('')}</div>`; },
+  // v17 (B.15): the highest button IS SPOT_RAMP.nCap. The band may never deal more targets than the player can answer,
+  // and writing 15 here is how that guarantee gets lost the next time the ramp is retuned
+  keypad(){ return `<div class="pad-num">${Array.from({length:SPOT_RAMP.nCap+1},(_,i)=>`<button data-num="${i}">${i}</button>`).join('')}</div>`; },
   ask(){ this.st='ask'; this.t0=performance.now(); cancelAnimationFrame(this.raf); if(this.two){ this.picks=[null,null]; $('#gen').innerHTML=`<div class="vz top p2" id="vz1">${this.keypad()}</div><div class="vmid">${CP.howMany}<br><b>${pWho(0)} ${this.vsN[0]} · ${this.vsN[1]} ${pWho(1)}</b></div><div class="vz bot p1" id="vz0">${this.keypad()}</div>`; this.later(()=>this.twoJudge(),7000); return; }
     $('#gen').innerHTML=`<div class="glbl top" style="top:14%">${CP.howMany}</div>${this.keypad()}`; },
   findRound(){ const p=this.p(), r=genRect(); this.size=Math.max(18,Math.min(r.width,r.height)*(.085-p*.025)); this.pen=0;
     const all=['circle','square','tri']; this.odd=all[rnd(3)]; const rest=all.filter(s=>s!==this.odd); const n=SPOT_FIND.nBase+Math.round(p*SPOT_FIND.nSpan), drift=p*SPOT_FIND.drift;
-    this.pts=scatter(n,rest,this.size,this.odd); this.pts.forEach(q=>{ q.vx=(Math.random()-.5)*drift; q.vy=(Math.random()-.5)*drift; q.va=0; });
+    // v17 (B.15): Find's crowd varies in size too, arriving with the motion. v17 (B.16): and every shape is clamped inside
+    // the field from the moment it is dealt, not only once it has drifted out of it
+    const sv=p*SPOT_FIND.sizeVar;
+    this.pts=scatter(n,rest,Math.round(this.size*(1+sv)),this.odd); this.pts.forEach(q=>{ q.sz=this.vary(this.size,sv,SPOT_FIND.sizeMin); q.vx=(Math.random()-.5)*drift; q.vy=(Math.random()-.5)*drift; q.va=0; this.clamp(q,r); });
     this.st='wait'; $('#gen').innerHTML=''; rxBar([...CP.find,shapeI(this.odd),`<b>${SHAPE_WORD[this.odd]}</b>`]);
     // v14 (6.31): the round's own clock runs in large grey type behind the crowd, so the cost of staring is visible while you stare
     this.later(()=>{ this.st='find'; this.t0=performance.now(); $('#gen').innerHTML=`<div class="spclock" id="spclock">0.00</div>`+this.pts.map(q=>shapeHtml(q,this.size)).join(''); this.move('find'); },1400); },
@@ -99,8 +130,10 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
     const n=SPOT_FIND.nBase+Math.round(v*SPOT_FIND.nSpan);
     // v16 (§4): static in round 1, then drift, then spin, then a pulse. Each arrives on its own round and grows with v
     const drift=this.round>=2?SPOT_FIND.drift*(.35+v*.65):0, spin=this.round>=3?18+v*46:0, puls=this.round>=4;
-    this.pts=scatter(n,[this.vsBase],this.size,undefined,this.topF);
-    this.pts.forEach(q=>{ q.shape=this.vsBase; q.vx=(Math.random()-.5)*drift; q.vy=(Math.random()-.5)*drift; q.a=0; q.va=(Math.random()-.5)*spin; });
+    const sv=v*SPOT_FIND.sizeVar;
+    this.pts=scatter(n,[this.vsBase],Math.round(this.size*(1+sv)),undefined,this.topF);
+    // v17 (B.16): `puls` is carried on the point as well as on the class, because the clamp has to know the shape breathes
+    this.pts.forEach(q=>{ q.shape=this.vsBase; q.sz=this.vary(this.size,sv,SPOT_FIND.sizeMin); q.vx=(Math.random()-.5)*drift; q.vy=(Math.random()-.5)*drift; q.a=0; q.va=(Math.random()-.5)*spin; q.puls=puls; this.clamp(q,r); });
     const a=rnd(this.pts.length); let b=rnd(this.pts.length); for(let k=0;k<12&&b===a;k++) b=rnd(this.pts.length); if(b===a) b=(a+1)%this.pts.length;
     this.pts[a].shape=this.o1; this.pts[b].shape=this.o2;
     hud.timeHtml(this.vsLine()); this.vsBar();
@@ -111,9 +144,10 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
     this.later(()=>{ this.st='vsfind'; this.t0=performance.now();
       $('#gen').innerHTML=this.pts.map(q=>shapeHtml(q,this.size,puls?'puls':'')).join('');
       if(drift||spin) this.move('vsfind'); },3000); },
+  // v17 (B.15): the hit test measures against the shape's OWN size now that a crowd is not all one size
   vsTap(ev){ const r=genRect(); const x=ev.x-r.left, y=ev.y-r.top; let best=null, bd=1e9;
-    this.pts.forEach((q,i)=>{ const d=Math.hypot(x-(q.x+this.size/2),y-(q.y+this.size/2)); if(d<bd){ bd=d; best=i; } });
-    if(best===null||bd>this.size*.95) return; const els=$$('#gen .fs'); const sh=this.pts[best].shape;
+    this.pts.forEach((q,i)=>{ const sz=q.sz||this.size; const d=Math.hypot(x-(q.x+sz/2),y-(q.y+sz/2))/sz; if(d<bd){ bd=d; best=i; } });
+    if(best===null||bd>.95) return; const els=$$('#gen .fs'); const sh=this.pts[best].shape;
     // neither player's shape: a wrong tap, and the round carries on
     if(sh!==this.o1&&sh!==this.o2){ els[best].classList.add('bad'); this.ctx.audio.miss(); if(navigator.vibrate) navigator.vibrate(30); return; }
     const w=sh===this.o1?0:1; this.st='show'; cancelAnimationFrame(this.raf); this.vsN[w]++;
@@ -143,18 +177,26 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
         set:t=>{ if(this.streak()) hud.time(T(CP.hudCountStreak,{n:this.round,off:t})); else hud.score(t); },
         done:()=>{ hud.scorePop(); this.ctx.emit('live',this.result()); this.after(()=>this.next(),600); } }); return; }
     if(this.st==='vsfind') return this.vsTap(ev);
-    if(this.st!=='find') return; const r=genRect(); const x=ev.x-r.left, y=ev.y-r.top; let best=null, bd=1e9; this.pts.forEach((q,i)=>{ const d=Math.hypot(x-(q.x+this.size/2),y-(q.y+this.size/2)); if(d<bd){ bd=d; best=i; } }); if(best===null||bd>this.size*.95) return;
+    if(this.st!=='find') return; const r=genRect(); const x=ev.x-r.left, y=ev.y-r.top; let best=null, bd=1e9; this.pts.forEach((q,i)=>{ const sz=q.sz||this.size; const d=Math.hypot(x-(q.x+sz/2),y-(q.y+sz/2))/sz; if(d<bd){ bd=d; best=i; } }); if(best===null||bd>.95) return;
     const els=$$('#gen .fs'); if(this.pts[best].shape===this.odd){ this.st='show'; cancelAnimationFrame(this.raf); const t=Math.round(((performance.now()-this.t0)/1000+this.pen)*100)/100; this.times.push(t);
       // v13 (10.3): Set totals the seconds over ten rounds; a Streak spends a 10-second budget and scores the rounds it bought
       // v14 (6.30): the first half-second is free, and anything under it comes OFF the total — a fast find pays you back
-      const add=Math.round((t-SPOT_FIND.leeway)*100)/100, was=this.tot; this.tot=Math.round((this.tot+add)*100)/100;
+      /* v17 (B.1): THE TOTAL IS FLOORED AT ZERO. v14 6.30 made the first half-second of a find free and let anything faster
+         SUBTRACT — a rebate, so a fast find pays you back against your slower rounds. It had no floor, so it was not a
+         rebate, it was a negative price: measured 2026-09-11, ten finds at 0.03s each ran the Set to −4.71s and the result
+         screen printed "−4.71s" as a total time. Worse, the Streak ends on `tot >= 10` and `tot` was marching DOWNWARD, so
+         a fast player's Find Streak could not end at all — the probe reached round 21 and was still going.
+         The rebate survives where 6.30 wanted it (a fast round still cancels a slow one); the total simply cannot go under
+         zero, which is what makes "total time" a true total again and what gives the Streak somewhere to spend from. */
+      const add=Math.round((t-SPOT_FIND.leeway)*100)/100, was=this.tot; this.tot=Math.max(0,Math.round((this.tot+add)*100)/100);
       if(this.streak()) hud.score(String(this.times.length));
       els[best].classList.add('odd'); els.forEach((el,i)=>{ if(i!==best) el.classList.add('dim'); });
       const cl=$('#spclock'); if(cl) cl.remove();
       $('#gen').insertAdjacentHTML('beforeend',`<div class="glbl bot"><b class="${t<2?'g':''}" id="spt">0.00s</b><span id="sptot">${this.streak()?T(CP.of10,{t:f2(was)}):T(CP.total,{t:f2(was)})}</span>${this.pen?T(CP.pen,{pen:this.pen}):''}${add<0?T(CP.fast,{n:f2(-add)}):''}</div>`); this.ctx.audio.hit();
       // v14 (6.32 / 6.1): the time taken runs up incrementally and walks into the total; (6.3) the result then waits for a tap
       hud.countUp({ audio:this.ctx.audio, from:0, to:1, ms:900, fmt:v=>v, alive:()=>this.st==='show',
-        set:k=>{ const b=$('#spt'); if(b) b.textContent=f2(t*k)+'s'; const u=$('#sptot'); if(u) u.textContent=this.streak()?T(CP.of10,{t:f2(was+add*k)}):T(CP.total,{t:f2(was+add*k)}); },
+        // the walk is floored the same way the total is, or the number would dip under zero on the way to a zero it lands on
+        set:k=>{ const b=$('#spt'); if(b) b.textContent=f2(t*k)+'s'; const u=$('#sptot'); if(u){ const v=Math.max(0,was+add*k); u.textContent=this.streak()?T(CP.of10,{t:f2(v)}):T(CP.total,{t:f2(v)}); } },
         done:()=>{ hud.score(this.streak()?String(this.times.length):f2(this.tot)); hud.scorePop(); this.ctx.emit('live',this.result()); this.after(()=>this.next()); } }); }
     else { this.wrong++; this.pen+=1; els[best].classList.add('bad'); this.ctx.audio.miss(); if(navigator.vibrate) navigator.vibrate(30); } } });
 

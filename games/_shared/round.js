@@ -7,8 +7,11 @@ import { STREAK } from "../../config/games.js";
 import { $ } from "../../core.js";
 import * as hud from "./hud.js";
 /* ---------- v7 engines. All four share #gen, a round counter, and `later` timers that die with the run ---------- */
-// the rule bar (v10): what to look for, top-middle, a word at a time, staying up for the whole attempt. null clears it
-function rxBar(words){ const b=$('#rxbar'); if(!words){ b.innerHTML=''; return; } b.innerHTML=words.map((w,i)=>`<span class="w" style="animation-delay:${i*220}ms">${w}</span>`).join(''); }
+/* the rule bar (v10): what to look for, top-middle, a word at a time, staying up for the whole attempt. null clears it.
+   v17 (B.14): `atOnce` drops the stagger. Spot · Count puts the bar up for 1500ms and the last of its five words used to
+   land at ~880ms of that, so the player had 600ms to take in the shape they were about to count. Reaction keeps the
+   staggered reveal — its bar IS the beat it arrives on. */
+function rxBar(words,atOnce){ const b=$('#rxbar'); if(!words){ b.innerHTML=''; return; } b.innerHTML=words.map((w,i)=>`<span class="w" style="animation-delay:${atOnce?0:i*220}ms">${w}</span>`).join(''); }
 const genRect=()=>$('#gen').getBoundingClientRect();
 const rnd=n=>Math.random()*n|0;
 const roundEngine=()=>({ ctx:null, raf:0, round:0, st:'idle', pending:null,
@@ -38,7 +41,9 @@ const roundEngine=()=>({ ctx:null, raf:0, round:0, st:'idle', pending:null,
 // more so its rule bar and its score line are never underneath a shape — "everything gets in the way of itself"
 function scatter(n,shapes,size,odd,top){ const r=genRect(); const t=top||.08, h=1-t-.06; const cell=size*1.45, cols=Math.max(1,Math.floor(r.width/cell)), rows=Math.max(1,Math.floor((r.height*h)/cell)); const cells=[]; for(let y=0;y<rows;y++) for(let x=0;x<cols;x++) cells.push({x,y}); for(let i=cells.length-1;i>0;i--){ const j=rnd(i+1); [cells[i],cells[j]]=[cells[j],cells[i]]; }
   const ox=(r.width-cols*cell)/2, oy=r.height*t+(r.height*h-rows*cell)/2, jit=cell-size; return cells.slice(0,Math.min(n,cells.length)).map((c,i)=>({ x:ox+c.x*cell+Math.random()*jit, y:oy+c.y*cell+Math.random()*jit, shape:i===0&&odd?odd:shapes[rnd(shapes.length)] })); }
-const shapeHtml=(p,size,extra='')=>`<i class="fs ${p.shape} ${extra}" style="left:${p.x}px;top:${p.y}px;--fsz:${size}px"></i>`;
+// v17 (B.15): a point may carry its OWN size (`sz`). A crowd of identical marks is the thing the eye scans fastest, and
+// Spot's difficulty now comes from the crowd rather than from how long you get to look at it
+const shapeHtml=(p,size,extra='')=>`<i class="fs ${p.shape} ${extra}" style="left:${p.x}px;top:${p.y}px;--fsz:${p.sz||size}px"></i>`;
 
 
 export { genRect, rnd, roundEngine, rxBar, scatter, shapeHtml };

@@ -18,8 +18,18 @@ const fullsetProg=(all,g)=>{ const G_=GAMES[g]; const cells=G_.modes.flatMap(d=>
    The Set round counts these read (Cut 10, Flash 5, Go / No-go 5) come from SET_COPY in config/games.js since build 19.
    Build 23 (v15 §1.1-§1.4): seventeen values changed and five of these now ask the player to fail on purpose. Do not
    "correct" them back — deliberate failure is the point (v15 §0.5) and §2.1 is what makes them findable ---------- */
+/* v17 (B.6 / B.7, L6): "N hits, no misses" means N IN A ROW, and a miss resets the count — Aiden's words, and the only
+   reading that is honest MID-RUN. `misses===0 && hits>=N` is a claim about a WHOLE run, so on the live path it went true
+   the moment the seventh clean hit landed and the toast said "Unlock: Dash" — then the player missed, the run ended with
+   misses, and lenLock re-derived the length as still locked. Told it opened; it had not. `row` is the run's longest clean
+   streak and is reported by games/_shared/timed.js; it can only ever grow, which is what a live test has to be.
+   A record from BEFORE build 28 carries no `row` at all, so it is judged the old way rather than being quietly un-earned. */
+const inRow=n=>r=>r.row===undefined?(r.misses===0&&r.hits>=n):r.row>=n;
+
 const UNLOCK_TEST = {
-  'quick-tap:four':    r=>r.g==='quick-tap'&&r.s===15&&r.misses===0&&r.hits>=15,
+  // v17 (B.7, L6): any Quick Tap · Two run, Sprint included — `s` came off `where`, so the chain no longer says Dash.
+  // Four can now open before Dash does, and Aiden accepted that: Four is the harder mode, not the later one
+  'quick-tap:four':    r=>r.g==='quick-tap'&&r.d==='two'&&inRow(15)(r),
   'dots:blind':        r=>r.g==='quick-tap'&&r.hits>=35,
   // v15 (1.2b): five misses in a Blind run, not six clean hits in a Sprint. Any length
   'dots:lead':         r=>r.g==='dots'&&r.d==='blind'&&r.misses>=5,
@@ -45,13 +55,18 @@ const UNLOCK_TEST = {
    v15 (1.0a): keyed 'game:mode' since build 23, so Dots · Blind and Dots · Lead can ask for different numbers.
    The state was already per mode — lenLock filters runs on r.d — so nothing is stored and nothing migrates (1.0b). */
 const LEN_TEST = {
-  'quick-tap:two':  [null, r=>r.misses===0&&r.hits>=7, r=>r.hits>=24],
-  'quick-tap:four': [null, r=>r.misses===0&&r.hits>=7, r=>r.hits>=24],
-  'dots:blind':     [null, r=>r.misses===0&&r.hits>=6, r=>r.hits>=24],
-  'dots:lead':      [null, r=>r.misses===0&&r.hits>=9, r=>r.hits>=28],
-  'sequence:solo':  [null, r=>r.s===3&&r.hits>=6,      r=>r.s===5&&r.hits>=6],
+  // v17 (B.6, L6): the four "no misses" rungs are N IN A ROW now — see inRow above. The 24 / 28 rungs are untouched:
+  // they never said "no misses" and a total is a fair thing to ask of a whole run
+  'quick-tap:two':  [null, inRow(7), r=>r.hits>=24],
+  'quick-tap:four': [null, inRow(7), r=>r.hits>=24],
+  'dots:blind':     [null, inRow(6), r=>r.hits>=24],
+  'dots:lead':      [null, inRow(9), r=>r.hits>=28],
+  // v17 (B.9, L6): one rung, not two — 5 keys is gone and 7 opens on eight notes in 3 keys
+  'sequence:solo':  [null, r=>r.s===3&&r.hits>=8],
   // v15 (1.3b / 1.4b): the two Streaks with a real requirement. `y` is a Set's worst single round, `hits` its average
-  'hold:cut':       [null, r=>r.y>80],
+  // v17 (B.8, L6): 80 → 10. The measured ceiling on a Cut round is 44.5% off and the floor across the share pool is 25%,
+  // so 80 could never fire on any shape at any target. Numbers and the derivation are in config/unlocks.js and FEATURES.md
+  'hold:cut':       [null, r=>r.y>10],
   'reaction:flash': [null, r=>r.hits>500],
 };
 
@@ -95,10 +110,13 @@ const ACH_TEST = {
      600 was unreachable on roughly half of all rounds and on several shapes never. `mx` is true at every target size,
      on every screen, and is what the row's own words already promised. Numbers in FEATURES.md. */
   hd_max:r=>r.g==='hold'&&r.d==='grow'&&r.mx===1,
-  sq_7:r=>r.g==='sequence'&&r.hits>=7, sq_12:r=>r.g==='sequence'&&r.hits>=12, sq_7x8:r=>r.g==='sequence'&&r.s===7&&r.hits>=8, sq_5x10:r=>r.g==='sequence'&&r.s===5&&r.hits>=10,
+  // v17 (B.9): sq_5x10 is "Ten on three" now — five keys is gone and the row was otherwise unearnable
+  sq_7:r=>r.g==='sequence'&&r.hits>=7, sq_12:r=>r.g==='sequence'&&r.hits>=12, sq_7x8:r=>r.g==='sequence'&&r.s===7&&r.hits>=8, sq_5x10:r=>r.g==='sequence'&&r.s===3&&r.hits>=10,
   sq_s20:r=>r.g==='sequence'&&r.hits>=20, sq_s15:r=>r.g==='sequence'&&r.s===7&&r.hits>=15,
   tm_close:r=>r.g==='timing'&&r.d==='stopwatch'&&r.x<=.1, tm_wall:r=>r.g==='timing'&&r.d==='hidden'&&r.s===10&&r.hits<=300,
   tm_run:r=>r.g==='timing'&&r.d==='stopwatch'&&r.s===STREAK&&r.hits>=10, tm_s:r=>r.g==='timing'&&r.d==='stopwatch'&&r.s===5&&r.hits<=.12,
+  // v17 (B.12): `ov` is the engine saying an attempt ran the whole CFG.swOver seconds out. Any length, Set or Streak
+  tm_s10:r=>r.g==='timing'&&r.d==='stopwatch'&&r.ov===1,
   rx_200:r=>r.g==='reaction'&&r.d==='flash'&&r.x<200, rx_clean:r=>r.g==='reaction'&&r.d==='nogo'&&r.s===5&&r.misses===0,
   rx_run:r=>r.g==='reaction'&&r.d==='flash'&&r.s===STREAK&&r.hits>=8, rx_s:r=>r.g==='reaction'&&r.d==='flash'&&r.s===5&&r.hits<180,
   sp_5:r=>r.g==='spot'&&r.d==='count'&&r.s===STREAK&&r.hits>=8, sp_15:r=>r.g==='spot'&&r.d==='count'&&r.s===10&&r.hits<=2,
@@ -115,7 +133,7 @@ const ACH_PROGRESS = {
   qt_s5:all=>bestRate(all,'quick-tap',5,'four')/5, qt_s15:all=>bestRate(all,'quick-tap',15,'four')/5, qt_s30:all=>bestRate(all,'quick-tap',30,'four')/5, qt_bs5:all=>bestRate(all,'quick-tap',5,'two')/5,
   dt_sweep:all=>bestRate(all,'dots',15,'lead')/3, dt_blind:all=>bestRate(all,'dots',15,'blind')/3, dt_s:all=>bestRate(all,'dots',30,'lead')/4.5, dt_bs:all=>bestRate(all,'dots',30,'blind')/3.5,
   hd_steady:all=>lowProg(lowTotal(all,'grow',7),3), hd_est:all=>lowProg(lowTotal(all,'cut',10),4), hd_run:all=>Math.max(0,...all.filter(r=>r.g==='hold'&&r.s===STREAK).map(r=>r.hits))/15,
-  sq_7:all=>bestRound(all)/7, sq_12:all=>bestRound(all)/12, sq_7x8:all=>bestRound(all,7)/8, sq_5x10:all=>bestRound(all,5)/10, sq_s20:all=>bestRound(all)/20, sq_s15:all=>bestRound(all,7)/15,
+  sq_7:all=>bestRound(all)/7, sq_12:all=>bestRound(all)/12, sq_7x8:all=>bestRound(all,7)/8, sq_5x10:all=>bestRound(all,3)/10, sq_s20:all=>bestRound(all)/20, sq_s15:all=>bestRound(all,7)/15,
   sp_5:all=>Math.max(0,...all.filter(r=>r.g==='spot'&&r.d==='count'&&r.s===STREAK).map(r=>r.hits))/8,
 };
 

@@ -5,7 +5,9 @@
 // the Streak length (v11): endless until the budget runs out; score = rounds
 export const STREAK = -1;
 // the feel. Nothing here is user-facing
-export const CFG = { lockout: 750, countStep: 300, holdRate: 38 /* vmin per second */, dotLeeway: 1.18 /* hidden: hit radius × this */ };
+// v17 (B.12): `swOver` is how far past the target a Stopwatch attempt is allowed to run before it stops itself — 10
+// seconds, was 5. Letting one run the whole way is a secret achievement, and the attempt still scores the real difference
+export const CFG = { lockout: 750, countStep: 300, holdRate: 38 /* vmin per second */, dotLeeway: 1.18 /* hidden: hit radius × this */, swOver: 10 };
 // sequence speed is not a choice any more (v9): it starts at 0.5s a key and tightens 15ms a round, floor 0.28s
 export const SEQ_STEP = { start: 500, step: 15, floor: 280 };
 // length faces (v11): the name everywhere, the seconds only on the pick sheet. 7 and 10 are the pass & play lengths (PASS_LEN)
@@ -23,8 +25,10 @@ export const VS_LEAD = 10, VS_CAP = 120;
    Count is the odd one out and always was: both players answer the SAME flash on their own keypad, so its ten rounds are
    one shared turn. Sequence has no row on purpose — its pass & play grows a note a round and ends when somebody misses. */
 export const PASS_TURNS = { 'hold:grow':[1,3], 'hold:cut':[1,3], 'timing:stopwatch':[1,3], 'timing:hidden':[1,3], 'reaction:flash':[1,3], 'reaction:nogo':[5,2], 'spot:count':[10,1] };
-// v15 (4.5): Sequence versus is lives-based — the keys come off the length row (3/5/7), `opens` is how many notes it starts
-// with, and the pattern grows a note a round. Three lives each is Cowork's number, not Aiden's (guess)
+// v15 (4.5): Sequence versus is lives-based — the keys come off the length row (3 or 7 since B.9), `opens` is how many
+// notes it starts with, and the pattern grows a note a round. Three lives each is Cowork's number, not Aiden's (guess)
+// v17 (B.9): `opens` is a NOTE count and has never been indexed by the key row — a 3-key versus opening on 6 notes is six
+// notes drawn from three symbols, which is legal and always was. Dropping 5 keys therefore leaves this line alone
 export const SEQ_VS = { lives:3, opens:[3,4,5,6] };
 // v14 (4.14): versus ends on first to VS_TARGET as well as first to lead by VS_LEAD. 100 is the number Aiden gave on Quick Tap;
 // Dots 60 was build 19's guess and Aiden confirmed it 2026-09-08 (v14 section A.4). VS_CAP is the backstop, not a win condition
@@ -48,9 +52,12 @@ export const GAMES = {
   'hold': { name:'Estimate', modes:['grow','cut'], unit:' rounds', timed:false, lower:true, lead:true,
     grow:'Grow your shape to the same area.', cut:'Draw a line that cuts off the share asked.',
     suffix:'%', scoreWord:'% off', streak:{ ...STREAK_CFG } },
-  // v15 (4.5): versus keeps the key row — 3, 5 or 7 — instead of hiding it, because the keys are half of what the two
-  // players are agreeing to. `vsLens` is what makes the length row show in versus at all
-  'sequence': { name:'Sequence', modes:['solo'], lens:[3,5,7], unit:' keys', timed:false, versus:true, vsLens:[3,5,7],
+  // v15 (4.5): versus keeps the key row instead of hiding it, because the keys are half of what the two players are
+  // agreeing to. `vsLens` is what makes the length row show in versus at all
+  // v17 (B.9, L6): FIVE KEYS IS GONE — solo, pass & play and versus. Aiden's call: three and seven are the two shapes
+  // the game has (a handful you can hold, and a board you cannot), and five was the step nobody had a reason to play.
+  // This row is what the key's contributor list walks, so dropping it is what takes the key from 31 combinations to 30
+  'sequence': { name:'Sequence', modes:['solo'], lens:[3,7], unit:' keys', timed:false, versus:true, vsLens:[3,7],
     solo:'Watch the notes, then play them back.' },
   // v7 — four new games. v11: Set / Streak per mode; every timing figure is an absolute difference
   'timing': { name:'Timing', modes:['stopwatch','hidden'], unit:' attempts', timed:false, lower:true, lead:true,
@@ -78,15 +85,21 @@ export const GAMES = {
 // lines under the length name on the pick sheet. This is the ONE place either lives: GC lays [rounds, STREAK] over a game's
 // config and lenName / lenSub read the two lines, so no game carries its own Set or Streak copy any more.
 // A game with no row here is timed (Quick Tap, Dots) or has its own length family (Sequence) and is unchanged.
+/* v17 (B.1, build 28): TWO LINES CORRECTED, no scoring change — the same kind of fix v14 section A made at build 20 and
+   for the same reason. Estimate · Cut said "lowest % difference wins" and the engine has always scored, shown and banked
+   the AVERAGE % off across its ten rounds (every other reader agrees: the clearance bar's unit is "% off", Good eye asks
+   for "a Set averaging under 4% off", QUALITY divides by 12). Measured 2026-09-11: ten rounds summing to 170.4% displayed
+   and recorded as 17.04%. Cut's own line was the only thing in the build calling it a difference.
+   Spot · Find said "lowest total time wins" and it is not a raw total: 0.5s of every find is free (v14 6.30). */
 export const SET_COPY = {
   'hold:grow':        { rounds:7,  set:'7 rounds, lowest average % off wins',            streak:'Highest round wins!' },
-  'hold:cut':         { rounds:10, set:'10 rounds, lowest % difference wins',            streak:'Highest round wins!' },
+  'hold:cut':         { rounds:10, set:'10 rounds, lowest average % off wins',           streak:'Highest round wins!' },
   'timing:stopwatch': { rounds:5,  set:'5 rounds, lowest average time difference wins',  streak:'Highest round wins!' },
   'timing:hidden':    { rounds:10, set:'10 rounds, lowest total pixels off wins',        streak:'Highest round wins!' },
   'reaction:flash':   { rounds:5,  set:'5 rounds, lowest time wins',                     streak:'Highest round wins!' },
   'reaction:nogo':    { rounds:5,  set:'5 rounds, lowest average reaction time wins — wrong taps add 150ms', streak:'Highest round wins!' },
   'spot:count':       { rounds:10, set:'10 rounds, lowest total miscount wins',          streak:'Highest round wins!' },
-  'spot:find':        { rounds:10, set:'10 rounds, lowest total time wins',              streak:'Highest round wins!' },
+  'spot:find':        { rounds:10, set:'10 rounds, lowest total time wins — 0.5s free each find', streak:'Highest round wins!' },
 };
 
 // Estimate · Cut (v11 / v13 6.4): the shapes with an axis of symmetry never ask for 50%; the pools and the shares asked, by
@@ -103,12 +116,31 @@ export const ESTIMATE = {
   CUT_POOLS: [[2,['square','circle','bar']],[4,['square','circle','triangle','bar','ring']],[6,['triangle','ring','star','plus','crescent']],[8,['ring','star','plus','stairs','tetris','crescent','blob']]],
   CUT_SHARES: [[2,[40,45,35]],[4,[30,35,40,45]],[6,[25,30,35,45]],[8,[20,25,30,35,40]],[10,[10,15,20,25,30,35]]],
 };
-// Spot · Count (v13 10.1): round r deals nBase + floor(r/nPer) targets (cap nCap) and floor(r/decoyDiv) decoys (cap decoyCap);
-// the flash falls flashPer ms a round from flashMax to flashMin; from driftFrom the shapes drift, from spinFrom they turn as well
-// v14 (6.27): round 1 used to be two shapes for 1.34s, which nobody gets wrong. It opens on five targets and a decoy, adds one
-// target and one decoy every round, and the flash is shorter throughout — the score is total miscount, so it should feel like a
-// judgement call, not something you always get right. The full difficulty review Aiden asked for is section 12.1 / #366
-export const SPOT_RAMP = { nBase:4, nPer:1, nCap:16, decoyDiv:1, decoyCap:12, flashMax:1200, flashPer:70, flashMin:320, driftFrom:4, driftBase:10, driftPer:5, spinFrom:7, spinBase:18, spinPer:7 };
+/* Spot · Count — REWORKED for v17 (B.15), and this is the difficulty review #366 asked for.
+   Aiden's three complaints: it starts too easy (lots of time, few shapes), it ends too hard because the TIME is cut, and
+   the target count climbs so predictably you can count the rounds instead of the shapes — 8, 9, 10, 11.
+   All three have one cause: viewing time was carrying the difficulty and the target count was a straight line off the
+   round number. Now the difficulty comes from MORE DECOYS, MOTION and SIZE VARIATION, and the target count is DEALT from
+   a band rather than derived — so it can go down as well as up and there is nothing to count but shapes.
+
+   · the band: lo and hi both rise, hi faster, so the band widens as the run goes on. `nCap` is the keypad's highest
+     button and the band may never pass it — games/spot/index.js builds the keypad from this number for that reason.
+   · the dip: from `dipFrom`, every `dipEvery`-th round deals the FLOOR of the band among `dipDecoy` times the decoys.
+     That is B.15's "later rounds sometimes have FEWER targets among many more decoys", and it is the round that breaks
+     the pattern — round 8 deals eight targets in twenty-eight decoys where round 7 dealt up to thirteen in sixteen.
+   · the flash falls a THIRD as fast as it did and stops far higher: 1100ms to 902ms over ten rounds, where it used to run
+     1130ms to 500ms. Time is no longer the lever.
+   · size variation is new (`sizeFrom` on): every shape is drawn at ± that fraction of the base size, so a crowd is not a
+     grid of identical marks any more. Find gets its own below. */
+export const SPOT_RAMP = { loBase:5, loPer:0.45, hiBase:7, hiPer:1.0, nCap:14,
+  decoyBase:3, decoyPer:2.2, decoyCap:34,
+  flashMax:1100, flashPer:22, flashMin:820,
+  dipFrom:5, dipEvery:3, dipDecoy:1.5,
+  driftFrom:2, driftBase:8, driftPer:6, spinFrom:4, spinBase:14, spinPer:6,
+  sizeFrom:3, sizeBase:0.12, sizePer:0.045, sizeCap:0.5, sizeMin:16 };
 // Spot · Find. v14 (6.30): the first half-second of a find is free — anything faster SUBTRACTS from the total, so a fast find
-// is rewarded rather than merely cheap. v14 (6.29): the crowd and the movement both ramp harder than they did; the opening is unchanged
-export const SPOT_FIND = { leeway:0.5, nBase:16, nSpan:54, drift:34 };
+// is rewarded rather than merely cheap. v17 (B.1) floors the running total at zero: the rebate was unbounded and the Streak
+// could not end. v14 (6.29): the crowd and the movement both ramp harder than they did; the opening is unchanged
+// v17 (B.15): `sizeVar` — Find gets the same size variation Count gained, because a crowd of identical marks is the thing
+// the eye scans fastest and that is exactly what Find is testing
+export const SPOT_FIND = { leeway:0.5, nBase:16, nSpan:54, drift:34, sizeVar:0.3, sizeMin:14 };

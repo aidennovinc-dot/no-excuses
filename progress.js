@@ -6,6 +6,8 @@
    live record (core/store.js) — unlocked(), got(), Scores.runs() hand back the record's own maps and array. Nothing here touches the DOM. */
 
 import { AUTHOR_RECORDS, ACH as ACH_ROWS } from "./config/achievements.js";
+import { SCALES } from "./config/audio.js";
+import { ITEMS } from "./config/theme.js";
 import { BG_NAME, ITEM_WORD, PROGRESS, TOAST, UNLOCK_WORD, VERDICT, VERDICTS } from "./config/copy.js";
 import { MODE_NAME, STREAK } from "./config/games.js";
 import { LEN_RULES, UNLOCKS as UNLOCK_ROWS } from "./config/unlocks.js";
@@ -31,7 +33,14 @@ const isNew=k=>{ const st=seenAll(); return !!st&&!st[k]; };
 // the class to put on a freshly-unlocked element, and the key to mark once it has been rendered
 function newMark(key,bag){ if(!isNew(key)) return ''; if(bag) bag.push(key); return ' newthing'; }
 function openKeys(){ const k=[]; for(const g in GAMES){ if(gameOpen(g)) k.push('game:'+g); for(const d of GAMES[g].modes){ if(!isOpen(g,d)) continue; k.push('mode:'+g+':'+d); for(const sc of GC(g,d).lens) if(lenOpen(g,d,sc)) k.push('len:'+g+':'+d+':'+sc); } }
-  if(practiceOpen()) k.push('len:sequence:solo:practice'); const a=got(); for(const id in a) k.push('ach:'+id); return k; }
+  if(practiceOpen()) k.push('len:sequence:solo:practice'); const a=got(); for(const id in a) k.push('ach:'+id);
+  /* v17 (B.10): THE COSMETICS. This walk never included them, so on a brand-new profile the first open of Customise lit
+     every item that was open from the start in L8's "just unlocked" green — six of them, for something nothing had earned.
+     An item WITH a `by` is deliberately not seeded: that one really is new the day its achievement lands. Measured on a
+     fresh profile 2026-09-11: sq 1, lead 1, bg 1, snd 2, cut 1 green, all of them items with no requirement at all. */
+  for(const set in ITEMS) for(const it of ITEMS[set]) if(!it.by) k.push('cos:'+set+':'+it.v);
+  for(const v in SCALES) k.push('cos:scale:'+v);
+  return k; }
 function seedSeen(){ const st={}; for(const k of openKeys()) st[k]=1; store.seen=st; save(); }
 /* progressive lengths (v13): LEN_RULES holds the requirement per game, MODE and index; everything else opens on one finished
    run of the length before it. The first length is always open.
@@ -53,6 +62,24 @@ function lenNeed(g,d,s){ const c=GC(g,d), lens=c.lens, i=lens.indexOf(s); if(i<=
   const rule=(LEN_RULES[g+':'+d]||[])[i];
   return T(rule||(s===STREAK?PROGRESS.finishOne:PROGRESS.finishA),bag); }
 const lenOpen=(g,d,s)=>!lenLock(g,d,s);
+/* ---------- v17 (B.5, L6): a length unlock ANNOUNCES ----------
+   It never did. A length is not in UNLOCKS, so liveCheck's table walk could not see one, and the only way a Dash or a
+   Marathon ever raised a toast was by happening to be that run's goal line — which goalFor only offers when no ordinary
+   unlock is sitting on the same combination and nothing was pinned instead. So the commonest unlock in the game opened
+   in silence, which is what Aiden reported against Quick Tap and Dots.
+
+   `lenNextOf` is the rung above this combination, if it is locked right now. Length state is DERIVED from run history and
+   never stored (1.0b), so "it opened" can only honestly mean "locked before this run was recorded, open after" — which is
+   what run/run.js asks, either side of Scores.submit. That covers the default "finish one run of the length before" rule
+   as well as every LEN_RULES row, which is what B.5 asks for.
+   `lenNextLive` is the mid-run half: the same rung, but only where a LEN_TEST exists to judge a partial run by. A default
+   rule has no mid-run answer and returns null rather than guessing one. */
+function lenNextOf(g,d,s){ if(prefs.allOpen) return null; const c=GC(g,d), lens=c.lens, i=lens.indexOf(s);
+  if(i<0||i>=lens.length-1) return null; const nxt=lens[i+1];
+  return lenLock(g,d,nxt)?{ key:`${g}:${d}:${nxt}`, g, d, s:nxt }:null; }
+function lenNextLive(g,d,s){ const n=lenNextOf(g,d,s); if(!n) return null;
+  const i=GC(g,d).lens.indexOf(s); const test=(LEN_TEST[g+':'+d]||[])[i+1];
+  return test?Object.assign({},n,{test}):null; }
 // the next mode this run could open, if the game, mode and length line up — shown while you play (v8). v11: a length unlock counts too
 function goalFor(g,d,s){ if(prefs.allOpen) return null; const u=unlocked(); const x=UNLOCKS.find(x=>!u[x.key]&&x.where.g===g&&(!x.where.d||x.where.d===d)&&(!x.where.s||x.where.s===s)); if(x) return x;
   const c=GC(g,d), i=c.lens.indexOf(s); if(i>=0&&i<c.lens.length-1){ const nxt=c.lens[i+1], L=lenLock(g,d,nxt); if(L){ const test=(LEN_TEST[g+':'+d]||[])[i+1]; return { key:g+':'+d+':'+nxt, need:L.need, where:{g,d,s}, live:1, len:L, test:r=>r.g===g&&r.d===d&&r.s===s&&(test?test(r):true) }; } } return null; }
@@ -70,7 +97,9 @@ const unlockName=key=>{ if(key==='sequence:practice') return PROGRESS.practiceFr
 function unlockToast(key){ if(key==='sequence:practice') return TOAST.unlockPractice; const [g,d,s]=key.split(':'); if(s!==undefined) return T(TOAST.unlock,{name:lenName(g,+s,d)}); const first=!GAMES[g].modes.some(m=>m!==d&&unlocked()[g+':'+m])&&!(g==='quick-tap'); return first?T(TOAST.unlockGame,{name:GAMES[g].name}):T(TOAST.unlock,{name:MODE_NAME[d]||GAMES[g].name}); }
 // v15 (2.5): the guards that used to sit at the call site in ui/screens/result.js live here now, because the call moved
 // into run/run.js and has to bank the moment the run record exists — a practice or challenge run still earns nothing
-function checkUnlocks(run){ if(run.chal||run.practice) return []; const u=unlocked(); const fresh=[]; for(const x of UNLOCKS){ if(!u[x.key]&&x.test(run)){ u[x.key]=Date.now(); fresh.push(x); } } if(fresh.length) save(); return fresh; }
+// v17 (B.4): and neither does a DEMO. The first-play ghost drives the real engine on the real ctx, so it reaches both of
+// these exactly as a player would; `demo` is the flag that says the hands were not the player's
+function checkUnlocks(run){ if(run.chal||run.practice||run.demo) return []; const u=unlocked(); const fresh=[]; for(const x of UNLOCKS){ if(!u[x.key]&&x.test(run)){ u[x.key]=Date.now(); fresh.push(x); } } if(fresh.length) save(); return fresh; }
 /* the next thing to chase (v11). v15 (2.2): GAME UNLOCKS OUTRANK ACHIEVEMENTS wherever the "next thing" is surfaced —
    the chain first (a mode, then a length), and only when there is nothing left to unlock does the card fall back to an
    achievement. `ach` on the answer is what tells the caller which of the two it got, so the card can label itself.
@@ -120,7 +149,7 @@ const got=()=>store.ach;
    become more true as a run goes on — and is run from run/run.js on every live tick, so an achievement earned mid-run is in
    the store before the player can quit. Without the flag it is the whole table, at the finish, as it always was.
    Either way this WRITES: the toast is a consequence of the save, never a substitute for it. */
-function checkAch(run,live){ if(run.chal||run.practice) return []; const g=got(); const all=Scores.runs(); const fresh=[]; for(const a of ACH){ if(live&&!a.live) continue; if(!g[a.id]&&a.test(run,all)){ g[a.id]=Date.now(); fresh.push(a); } } if(fresh.length) save(); return fresh; }
+function checkAch(run,live){ if(run.chal||run.practice||run.demo) return []; const g=got(); const all=Scores.runs(); const fresh=[]; for(const a of ACH){ if(live&&!a.live) continue; if(!g[a.id]&&a.test(run,all)){ g[a.id]=Date.now(); fresh.push(a); } } if(fresh.length) save(); return fresh; }
 function unlockWord(a){ if(!a.unlocks) return ''; const [k,v]=a.unlocks; if(k==='wheel') return UNLOCK_WORD.wheel; if(k==='bg') return T(UNLOCK_WORD.bg,{bg:BG_NAME[v]}); if(k==='snd') return T(UNLOCK_WORD.snd,{v}); return T(UNLOCK_WORD.item,{word:ITEM_WORD[k]}); }
 // the same, with the actual colour as a swatch (v8) — "unlocks lead colour" on its own said nothing
 function unlockHtml(a){ if(!a.unlocks) return ''; const [k,v]=a.unlocks; return unlockWord(a)+((k==='sq'||k==='lead')&&v!=='wheel'?`<i class="sw" style="background:${v}"></i>`:''); }
@@ -136,4 +165,4 @@ function setPendingAim(v){ pendingAim=v; }
 function setPendingGoal(v){ pendingGoal=v; }
 
 
-export { ACH, Scores, UNLOCKS, achAll, achById, authorAch, authorRatio, chalRun, checkAch, checkUnlocks, gameOpen, goalFor, got, isNew, isOpen, lenLock, lenNeed, lenOpen, lensOf, markSeen, needFor, newMark, nextAch, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict };
+export { ACH, Scores, UNLOCKS, achAll, achById, authorAch, authorRatio, chalRun, checkAch, checkUnlocks, gameOpen, goalFor, got, isNew, isOpen, lenLock, lenNeed, lenNextLive, lenNextOf, lenOpen, lensOf, markSeen, needFor, newMark, nextAch, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict };

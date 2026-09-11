@@ -45,18 +45,38 @@ lives beside `BUILD` and does **not** move with it — see the comment there for
   one in terms of the other — that mistake is what sank mock-up option C.
 - **A clearance bar is a one-off threshold, not a score to hold.** Beat it once in a solo run and that combination is
   cleared for good; re-clearing does nothing and plays nothing. Pass & play, versus, practice and challenge-link runs
-  never contribute (9.4, consistent with L10). **Call them clearance bars, never "minimum bars"** (C.7) — eight of the
-  thirty-one are ceilings, so "minimum" is wrong for a quarter of them.
-- **The key's contributor list is built from the config, never listed.** `GAMES` × modes × `GC(g,d).lens` — a game with
-  a `SET_COPY` row contributes Set and Streak per mode, a timed game contributes its lengths, Sequence its key counts.
-  31 today; a new mode joins the key with one row in `config/key-bars.js` and no code change. The gate fails on a
-  literal `31` in `progress/key.js`, and on any combination without a bar or any bar without a combination.
-- **There are THREE keys and they are difficulty TIERS over the same thirty-one combinations** (v15 5.3 / A.1, build 26):
+  never contribute (9.4, consistent with L10). **Call them clearance bars, never "minimum bars"** (C.7) — eight of them
+  are ceilings, so "minimum" is wrong for a quarter of them.
+- **The key's contributor list is built from the config, never listed — AND SO IS ITS COUNT (v17 B.9, build 28).**
+  `GAMES` × modes × `GC(g,d).lens` — a game with a `SET_COPY` row contributes Set and Streak per mode, a timed game
+  contributes its lengths, Sequence its key counts. **Thirty since build 28**, and the number is never written down:
+  B.9 dropped Sequence · 5 keys and found the old 31 spelled out in the gate, in the Unlocks screen's prose and in the
+  review catalogue's mock-up. A new mode joins the key with one row in `config/key-bars.js` and no code change. The gate
+  fails on a literal count in `progress/key.js`, `ui/screens/key.js`, `ui/screens/unlocks.js` or `ui/screens/menu.js`,
+  and on any combination without a bar or any bar without a combination.
+- **A RUNNING TOTAL SAYS WHAT IT IS MEASURING (v17 B.1, build 28).** Three modes carried three different definitions of
+  "the total" and none of them said so on screen: Estimate · Cut's Set figure is an average while its own sheet line
+  called it a difference; Timing · Stopwatch's Streak shows the seconds SPENT beside the seconds of targets ASKED, both
+  climbing, both in seconds; Spot · Find's was the total minus a free half-second a find, with no floor, so it went
+  negative and its Streak could not end. The arithmetic was right in two of the three and `hud.countUp` / `hud.addUp`
+  were right in all of them — what was missing was the label. **A number that accumulates carries its own unit and its
+  own meaning, and where a mode has a budget, the line says what is spent and what the budget is.**
+- **A `live:1` TEST MUST ONLY EVER BECOME MORE TRUE (build 23 v15 2.5, enforced v17 B.6 at build 28).** The rule was
+  already written down; nine achievements were not obeying it. `misses === 0` and `hits === 0` are claims about a WHOLE
+  run and both go false on the next tap, so the flag banked them from a partial run that had not earned them. The same
+  error in the chain is what made "7 hits, no misses" announce and then quietly un-announce. **Every "N hits, no misses"
+  rung is N IN A ROW** — `row` on the timed record, a miss resets it — because that is the only reading a live test can
+  make honestly halfway through a run.
+- **There are THREE keys and they are difficulty TIERS over the same combinations** (v15 5.3 / A.1, build 26):
   key 1 the clearance bars, key 2 a pro tier, key 3 the author's times. No fourth dimension, no per-bar stacking.
   **Keys 2 and 3 are a shell** — `shell:true` in `config/keys.js` — because register #372 has not decided what is behind
-  them and **A.2 forbids any build deriving a bar**. They say so on screen rather than showing an invented target; the
-  flag comes off the day #372 is answered. The three glyphs get more elaborate as the tier gets harder, and that is the
-  whole of "progressively more intense" — there is no second scale to keep in step with it.
+  them and **A.2 forbids any build deriving a bar**. **Key 1 carries a PERCENTAGE since build 28 (§A.6)** — `keyPct()` in
+  `progress/key.js`, `floor(100 × Σ credit / N)` over the same walk, cleared = 1, never played = 0, anything else capped
+  at 0.9 of its share. It reads best scores, so it only ever goes up, and it is on the keys screen and the menu as
+  `19 of 30 · 74%`. Keys 2 and 3 get their own from the same function the day #372 is answered, and show nothing before
+  chest 1 (A.1) — they say so on screen rather than showing an invented target. The three glyphs get more elaborate as
+  the tier gets harder, and that is the whole of "progressively more intense" — there is no second scale to keep in step
+  with it.
 - **A key unlock interrupts the result screen (v15 5.1, build 26)** and is not a toast any more. `ui/screens/result.js`
   fades, takes the input lock, and asks with `show('s-key', {advance, auto})`; `ui/screens/key.js` plays the segment with
   the game's whole root lit behind it and answers with a `key:done` event. Neither screen imports the other (A4). The
@@ -137,7 +157,12 @@ its frame loop, the theme re-applies the game's colours, the wheel and the lock 
 
 **The store (A5, S3) — since build 18.** One localStorage key, `ne`, holding `{ v, prefs, runs, ach,
 unlock, intro, seen, bars }` (`core/store.js`). **`prefs.keySeen` is new at build 26** — the once-per-profile arrival of
-the keys screen (5.4), reset by Fresh game beside `gridSeen` and `menuSeen`. **`bars` is new at build 22** — the key's cleared combinations, a map of
+the keys screen (5.4), reset by Fresh game beside `gridSeen` and `menuSeen`, **and added to `cleanPrefs` at build 28**:
+it had no default and no shape check for two builds, so `reset()` was clearing a field `load()` never created.
+**Fresh game clears `supporter` as well as `allOpen` since build 28 (v17 B.10)** — it did not, and `lockedBy()` in
+Customise treats a supporter exactly like unlock-all, so switching Supporter on and then taking a fresh profile showed
+all twenty-seven locked cosmetics open. **`seedSeen()` covers the cosmetics now too**, or every item that was open from
+the start wore L8's green on a brand-new profile. **`bars` is new at build 22** — the key's cleared combinations, a map of
 `'<game>:<mode>:<length>'` → when it first cleared, written only by `progress/key.js`. It needed no ladder step: a v1
 record without one shape-checks to `{}`, which is the right answer for a profile that has never met the key. On load the migration ladder runs forward (v0 = the seven
 build-13 keys, folded in once with the v8–v11 reshapes and then removed), then every field is
@@ -170,7 +195,9 @@ Reaction · Flash ask for it** — an engine opts in with `holdResult`, and `rou
 calls: it holds if the engine opted in and otherwise moves on by itself. Timing and Spot lost the cue at build 24 and the
 gate asserts both directions, so "removed it" and "broke it" cannot look the same. Go / No-go never had it — its shapes run
 on a beat and 6.24 forbids a gap. **The hand-over card between two players' turns is the other thing that asks for a tap
-(v15 §4, build 25) and it is the case §3.9 named**), `timed.js` (the Quick Tap / Dots base: hits, misses, lockout, rate),
+(v15 §4, build 25) and it is the case §3.9 named**), `timed.js` (the Quick Tap / Dots base: hits, misses, lockout, rate, **and `row` since build 28 — the longest run of
+hits with no miss between them, which is what every "N hits, no misses" rung reads (L6 / B.6); it also emits `live` on a
+MISS now, so a row that asks for misses fires the moment the miss lands**),
 `round.js` (the Timing / Reaction / Spot base), `versus.js`, `shapes.js`, **`two.js` — pass & play inside one run (v15 §4,
 build 25): whose turn it is, what each player has done, the hand-over gate, and the `vs2` payload the result screen reads.
 Estimate, Timing and Reaction hold one; `makeTwo(ctx, {lower, agg, fmt})` is the whole surface, and `turnsOf(g, d)` reads
@@ -181,7 +208,11 @@ Sequence versus is lives over a shared growing pattern, Spot · Find versus is t
 **`config/` is data only (A2) — since build 16.** Every number, name and string a feedback batch might
 change: `build.js` (BUILD, LABEL, RUN_SCHEMA, PUB_URL) · `games.js` (GAMES, the lengths, mode names,
 CFG, **`SET_COPY` — the one Set round count and both description lines per mode, L5**, the Estimate and Spot tuning —
-`ESTIMATE`, `SPOT_RAMP` and `SPOT_FIND`, and **since build 25 `PASS_TURNS` — `[attempts per turn, turns each]` keyed
+`ESTIMATE`, `SPOT_RAMP` and `SPOT_FIND` — **`SPOT_RAMP` was rebuilt at build 28 (v17 B.15): the target count is DEALT
+from a rising band rather than derived from the round, `dipFrom` / `dipEvery` are the rounds that hand out fewer targets
+among many more decoys, decoys and size variation carry the difficulty, and the flash falls 22ms a round instead of 70.
+`nCap` is the keypad's highest button and `games/spot/index.js` builds the keypad from it, so the band can never deal a
+count the player cannot answer** — and **since build 25 `PASS_TURNS` — `[attempts per turn, turns each]` keyed
 `'game:mode'` for the games that alternate inside one run — plus `SEQ_VS`, the Sequence versus lives and opening lengths.
 `PASS_LEN` is seconds and stays Quick Tap and Dots only: those two pass the phone between two whole runs, and a turn count
 is not a length**) · `unlocks.js` (UNLOCKS + LEN_RULES — L6) · `achievements.js` (ACH — every secret row carries a `hint`, the description
@@ -251,11 +282,11 @@ file that changes a rule, threshold, name, unlock or screen layout is not built 
 | L3 | Solo shows nothing about friends. With a friend → Pass & play / Versus, every game that has them. |
 | L4 | Player 1 red `#E0453B`, Player 2 light blue `#6EC6FF`, everywhere. |
 | L5 | Every mode offers Set and Streak. **Streak = a cumulative budget** (Estimate 100%, **Stopwatch 25s, and 30s once round 10 is passed — v15 3.8, build 24**, Hidden 100px, **Flash 500ms over 150, and an early tap spends 400ms flat and consumes the attempt — v14 C.1 / v15 3.5, build 24**, **Go / No-go 1000ms over 150 with a wrong tap costing 200ms — v14 C.2, build 22**, Count 5 miscounts, Find 10s); score = rounds completed, and every sheet reads "Highest round wins!". Set = a fixed number of rounds, scored by the line on the sheet. **Go / No-go's Set is a different currency and keeps its own number: a wrong tap ADDS 150ms to the average (v14 A.2), and three wrong taps end a Set. B.3 / C.3 forbid harmonising the two even though the numbers now sit close.** **A Streak has no wrong-tap run-ender at all — C.4 retired the three-wrong-taps contract rather than restoring it, because the budget is spent by the overspend on legal taps as well as by mistakes. The budget is the only limit.** **The round count and both description lines come from one table — `SET_COPY` in `config/games.js` (v14 §5, 2026-09-08)** — which the pick sheets, lock boxes and result screens all read through `GC` / `lenName` / `lenSub`. No game carries its own Set or Streak copy. |
-| L6 | The unlock chain and thresholds are the §1 table in the latest FEEDBACK file that names L6 (§4 before v15). **Sequence unlocks at one Cut round within 3.5% of the target (v14 9.1; was 0.5%).** Lock boxes, goal lines, the Next card and the Unlocks screen all read from one table (`UNLOCKS` + `LEN_RULES` — in `config/unlocks.js` since build 16, with the predicates beside it in `progress/rules.js`), and every requirement names its game (v14 3.2). **`LEN_RULES` and `LEN_TEST` are keyed `'game:mode'` since build 23 (v15 1.0a)** — the same key shape `SET_COPY` uses — because Dots · Blind Dash asks 6 and Dots · Lead Dash asks 9, which one array per game could not express. Length-unlock **state** is derived from run history and has always been per mode (`lenLock` filters on `r.d`), so the re-key stored nothing and migrated nothing (1.0b). **One place builds a length requirement's sentence: `lenNeed(g,d,s)` in `progress.js`** — `lenLock` calls it too. `lenLock` answers "is this locked for you" and returns null once you have it, so anything printing a requirement (the catalogue's Unlock requirements section) must call `lenNeed`, not `lenLock` (v15 1.1c / 7.2). **Five rows now ask the player to fail on purpose and that is deliberate (v15 0.5)** — Dots · Lead on five misses, Estimate · Grow on a Dots run with nothing pressed, Timing · Stopwatch on a Sequence run that scored nothing, Estimate · Cut's Streak on a round more than 80% off, Reaction · Flash's Streak on a Set over 500ms. Do not soften them; **tapping a locked row to read its requirement (v15 2.1) is the only way anyone finds them**, so that behaviour is part of L6 now, not a nicety. |
+| L6 | The unlock chain and thresholds are the §1 table in the latest FEEDBACK file that names L6 (§4 before v15). **Sequence unlocks at one Cut round within 3.5% of the target (v14 9.1; was 0.5%).** Lock boxes, goal lines, the Next card and the Unlocks screen all read from one table (`UNLOCKS` + `LEN_RULES` — in `config/unlocks.js` since build 16, with the predicates beside it in `progress/rules.js`), and every requirement names its game (v14 3.2). **`LEN_RULES` and `LEN_TEST` are keyed `'game:mode'` since build 23 (v15 1.0a)** — the same key shape `SET_COPY` uses — because Dots · Blind Dash asks 6 and Dots · Lead Dash asks 9, which one array per game could not express. Length-unlock **state** is derived from run history and has always been per mode (`lenLock` filters on `r.d`), so the re-key stored nothing and migrated nothing (1.0b). **One place builds a length requirement's sentence: `lenNeed(g,d,s)` in `progress.js`** — `lenLock` calls it too. `lenLock` answers "is this locked for you" and returns null once you have it, so anything printing a requirement (the catalogue's Unlock requirements section) must call `lenNeed`, not `lenLock` (v15 1.1c / 7.2). **Five rows now ask the player to fail on purpose and that is deliberate (v15 0.5)** — Dots · Lead on five misses, Estimate · Grow on a Dots run with nothing pressed, Timing · Stopwatch on a Sequence run whose first answered note is wrong, Estimate · Cut's Streak on a round more than 10% off, Reaction · Flash's Streak on a Set over 500ms. Do not soften them; **tapping a locked row to read its requirement (v15 2.1) is the only way anyone finds them**, so that behaviour is part of L6 now, not a nicety. **L6 amended again at build 28 (FEEDBACK-v17 §B.5–§B.9, all quoting it).** Five changes. **(B.6) Every "N hits, no misses" rung is N IN A ROW** — `row` on the timed record, a miss resets it, and a record from before build 28 carrying no `row` is judged the old way. `misses === 0` over a whole run is exact at the finish and a lie mid-run, which is how a green "Unlock: Dash" appeared at the seventh clean hit and was taken back by the eighth miss. **(B.7) Quick Tap · Four opens from ANY Quick Tap · Two run** — `s` came off `where`, so a Sprint counts and Four can open before Dash. **(B.8) Estimate · Cut's Streak asks for more than 10% off, not 80%** — 80 was unreachable: a Cut round scores `|share − target|` where `share` is the smaller piece, so it lives in (0.5, 50] and the most any target can be missed by is `max(t − 0.5, 50 − t)`, a measured ceiling of 44.5% and a floor across the pool of 25%. **(B.9) Sequence is 3 and 7 keys** — five is gone from solo, pass & play and versus, `sequence:solo:5` was REMOVED from `config/key-bars.js` (a removal, never a generated bar), and 7 keys opens at 8 notes in 3. **(B.5) A LENGTH UNLOCK ANNOUNCES.** It never did: a length is not in `UNLOCKS`, so `liveCheck`'s table walk could not see one and the only announcement was the accident of it being that run's goal line. `lenNextOf` / `lenNextLive` in `progress.js` are the two halves — the finish compares locked-before against open-after either side of `Scores.submit`, which covers the default "finish one run of the length before" rule as well as every `LEN_RULES` row; mid-run only a rung with a `LEN_TEST` can answer, and a rule-less rung correctly answers nothing rather than guessing. **The goal line no longer raises its own toast** — it used to fire an immediate "Unlock: Marathon" on the first live tick of a rule-less rung, because `goalFor`'s test for one is a bare `true`. |
 | L7 | A game tile is white until that game has been played once. |
 | L8 | Anything newly unlocked gets the green first-seen highlight once, then is marked seen. |
 | L9 | The length row is labelled "Mode" in every game. One pick-sheet layout, no per-game special cases. |
-| L10 | Two-player runs never go on a board — and **that is the narrow half of a wider rule since v15 A.3 (2026-09-09): no two-player run of any kind advances a key, a clearance bar, an unlock or an achievement.** Aiden's reason, in his words: *"I don't want anyone to have to rely on someone else in order to beat this game."* Enforced at the finish (`two` in `run/run.js`, since build 22's 9.4) **and mid-run since build 25** — `liveCheck` turns away every `sel.vs`, not only versus, which it had to once §4 gave five more games a run both players share. The five two-player modes §4 added are pure play, by intent, and the gate reads storage back after each of them. |
+| L10 | Two-player runs never go on a board — and **that is the narrow half of a wider rule since v15 A.3 (2026-09-09): no two-player run of any kind advances a key, a clearance bar, an unlock or an achievement.** **A DEMO IS THE SAME SHAPE (v17 B.4, build 28)** — no first-play ghost, demo or scripted run advances any of them either, enforced at the same two points. It had to be: Estimate · Grow's demo plays a whole round on the real engine and its reveal emits `live`, so the ghost's own guess earned an achievement. `R.demo` in `run/run.js` is the flag, `run.demo` on the record is the belt, and the gate drives a whole first-play demo and reads storage back. Aiden's reason, in his words: *"I don't want anyone to have to rely on someone else in order to beat this game."* Enforced at the finish (`two` in `run/run.js`, since build 22's 9.4) **and mid-run since build 25** — `liveCheck` turns away every `sel.vs`, not only versus, which it had to once §4 gave five more games a run both players share. The five two-player modes §4 added are pure play, by intent, and the gate reads storage back after each of them. |
 
 **L5 amended at build 24 (FEEDBACK-v15 §3.5 and §3.8, 2026-09-09), both quoting it.** Stopwatch's Streak budget was **2.0s**
 against 7s targets — two ordinary attempts spent it, which is why Aiden called it far too punishing and why he read the number
@@ -350,6 +381,23 @@ the match, has no `.vz` band on the field, lights the round in the owner's colou
 intro renders no word spans and no sub-line, ends the first run of a game on "Ready?" and the second mode of that game
 without one. **`driveToResult` answers the Ready gate** — nothing else in a run is listening while it is up, and the
 seven answers it gives are themselves the assertion that it appears.
+
+**Build 28 (v17, batch 13 · §B.1–§B.18)** — statically: five keys is gone from `GAMES.sequence.lens`, `vsLens`,
+`KEY_BARS`, `LEN_RULES` and every achievement (B.9); no literal count survives in the four files that print one; the
+keypad is built from `SPOT_RAMP.nCap`; the flash falls no faster than half the old rate (B.15); `CFG.swOver` is 10 and
+`tm_s10` is a described, live secret row (B.12); no achievement tier calls itself an unlock and every `UNLOCKS` row
+opens a game, a mode or a length (B.11); Find's total is floored and both corrected Set lines say what is scored (B.1);
+the Estimate reveal shows `#hres` before `#hdiff` and the four retired strings are gone from `config/copy.js` (B.2 /
+B.3). **The count is derived here as well as in the app** — it was a literal 31 in this file, so the gate would have
+gone red on the build that legitimately changed it. In the browser: a profile carrying 5-key runs boots clean and they
+open nothing; a whole first-play demo writes nothing to the store while the same record earns the instant the player has
+the engine (B.4); every length rung raises a green toast the moment it is met (B.5); Fresh game clears both dev switches
+and `seedSeen` covers the cosmetics (B.10); the Sequence HUD's score does not move between "watch" and "your turn" and
+"best" clears it (B.13); 120 shape-frames of Count, Find and Find versus with every shape fully inside the field,
+rotation's swept box included (B.16); Spot shows "Ready?" on a genuinely first run and skips it on the second mode of
+the same game (B.17); and §A.6's percentage is 0 unplayed, 0.9-capped uncleared, 1 cleared, 100% whole, on the keys
+screen and on the menu. **The chain fixtures moved with the rules** — the "N in a row" rungs pass a run with nine misses
+and fail one with fifteen non-consecutive hits, and a pre-build-28 record with no `row` is still judged the old way.
 
 No bundler, no build step — GitHub Pages serves the modules directly, so every import path stays
 relative (`./games/dots/index.js`).

@@ -21,7 +21,13 @@ export const UNLOCK_WORD = { wheel:'unlocks the colour wheel', bg:'unlocks {bg} 
 export const ITEM_WORD = { sq:'target colour', lead:'lead colour', cut:'cut piece colour', bg:'background', snd:'sound pack', scale:'scale', wheel:'colour wheel' };
 export const BG_NAME = { stars:'stars', grid:'grid', rain:'rain', orbs:'orbs' };
 // v13: Stretch is Pro (11.1); the Unlocks line says what the tier is for (11.2); Author (11.3) is Aiden's own records, placeholders until the final build
-export const TIERS = { unlock:['Unlocks','Earned along the way — every one opens something new.'], pro:['Pro','harder. bragging rights, a few unlock things'], author:['Author','beat the numbers Aiden set. placeholders until the final build'], secret:['Secret','they exist. what earns them is not written down'] };
+/* v17 (B.11): the first tier was called UNLOCKS and its line promised "every one opens something new". Six of its
+   seventeen rows opened nothing at all — Clean · Sprint · Two, Pinpoint · Blind, Dead on, Under 200, Eight, Spotter — and
+   the six that did opened a COLOUR, which is not a game, a mode, a length or a chest. So the word said one thing on the
+   Achievements screen and another on the Unlocks screen two menu items above it. B.11 settles which is which: an unlock
+   opens something you could not play before and lives in config/unlocks.js; everything here is a mark on something you
+   already have, and a few of them happen to come with a colour. The tier id moved with the name (`earned`). */
+export const TIERS = { earned:['Earned','Picked up as you play. Some come with a colour, a background or a sound pack.'], pro:['Pro','harder. bragging rights, a few unlock things'], author:['Author','beat the numbers Aiden set. placeholders until the final build'], secret:['Secret','they exist. what earns them is not written down'] };
 // the progress rules' own wording: length locks without a rule, the practice row, the Author rows
 export const PROGRESS = { finishOne:'finish one {game} {prev}', finishA:'finish a {game} {prev}', streak:'Streak', practiceFrom:'Practice from', beat:'Beat Aiden — {rec}', none:'—' };
 
@@ -76,7 +82,9 @@ export const MENU = { note:'play one run · the rest opens', next:'<em>Next unlo
 export const UNLOCKS_SCREEN = { title:'unlocks', hint:'tap a locked row to see what it takes',
   lede:'Everything that opens something. The chain first — each game and mode earned in the one before it — then every length of every mode.',
   games:'Games and modes', lens:'Lengths', keys:'The key', done:'open', locked:'locked',
-  keyLine:'The first key is earned here. Beat a clearance bar once in a solo run and it is cleared for good — the key screen has all thirty-one.' };
+  // v17 (B.9): the number is a placeholder now. The count moved when Sequence lost 5 keys and it will move again the next
+  // time a mode is added, and a written-out "thirty-one" is exactly the second copy of a fact L6 forbids everywhere else
+  keyLine:'The first key is earned here. Beat a clearance bar once in a solo run and it is cleared for good — the key screen has all {n}.' };
 export const SHEET = { mode:'Mode', toUnlock:'To unlock: {need}', tileUnlock:'to unlock: {need}', locked:'locked', noRun:'no run yet', best:'best', closest:'closest',
   practiceFrom:'practice from', off:'off', pracLocked:'locked · 8 notes in 7 keys',
   // v15 (4.5): Sequence versus asks for two things — the keys (the length row) and how many notes it opens with. The second
@@ -130,7 +138,9 @@ export const ACH_SCREEN = { all:'All', done:'done', secret:'secret', hidden:'???
    as clearance bars are cleared. "clearance bar", never "minimum bar" — nineteen of the thirty-one are ceilings (C.7) */
 export const KEY = { title:'the key', hint:'tap a game · solo runs only',
   lede:'Beat a clearance bar once in a solo run and it is cleared for good. A root grows by the share of that game’s own combinations cleared.',
-  count:'{done} of {total} cleared', whole:'the key is whole', root:'{done}/{total}',
+  // v17 (§A.6.5 / A.6.7): the cleared count and the percentage together — the count is what a player acts on, the
+  // percentage is what makes it move. It replaces the bare "0 of 31" line here and the same line goes on the menu
+  count:'{done} of {total} · {pct}%', whole:'the key is whole', root:'{done}/{total}',
   cleared:'cleared', open:'not yet', floor:'{bar} or more', ceil:'{bar} or less',
   advance:'{game} · {name} cleared', toast:'Key · {game} · {name} cleared',
   none:'no bar set', mismatch:'{n} combination(s) have no clearance bar: {keys}',
@@ -152,16 +162,23 @@ export const SEQ = { copy:'copy the notes', yourTurn:'your turn', whoTurn:'{who}
   vsHud:'{who} · {a} – {b} lives', vsLives:'{n} lives each', vsOut:'{who} is out', vsRound:'round {n} · {k} notes', vsLost:'on lives', vsLives2:'{n} lives' };
 // v14 (6.11 / 6.12): the shape you grow is drawn centre-top on every round, the same one you are told about, so nothing has to
 // say where it is. "same area · your shape is top right" is gone
-export const ESTIMATE = { watchDiff:'watch · then hold your shape to the same area', watch:'watch', sameArea:'same area', sameShape:'same shape · it has been turned', hold:'tap and hold',
+// v17 (B.3): `watchDiff`, `watch`, `sameArea` and `sameShape` are retired. They were the footer line #hlbl carried on
+// every round — and "same shape · it has been turned" is the one Aiden named. The dashed target outline stays over the
+// reveal (v15 3.3) and says the same thing without words; `hold` and `drag` keep the one instruction that is actionable
+export const ESTIMATE = { hold:'tap and hold',
   money:'on the money', close:'close', closeCut:'close!', much:'too much', little:'too little', target:'target', yours:'yours', piece:'piece', px:'px²', targetPx:'target {n} px²', targetShare:'target {n}%', off:' off',
   missed:'the line missed the shape · <b>{share}%</b> again', drag:'tap and drag a line to cut the shape', draw:'tap and draw a line', shareTarget:'<small>target</small>',
   hudStreak:'Round {n} · {tot}% of 100%', hudSet:'Round {n} of {s}', diff:' · different shape', same:' · same shape' };
 export const TIMING = { target:'target', stop:'tap to stop the timer', marker:'tap when the ball has reached the marker', late:'late', early:'early', dead:'dead on', close:'close',
   // v15 (3.8): `budS` is gone. The Stopwatch Streak budget changes with the round (25s, 30s past round 10), so the engine
   // derives the text from the number it is actually playing — a literal here could only ever be a second, drifting copy
-  over:'{bud} reached · run over', hudStreak:'attempt {n} · {tot} of {bud}', hudSet:'{n} / {s}', budPx:'100px',
+  /* v17 (B.1): a Stopwatch Streak carries TWO running totals, both in seconds, both climbing — the budget line (seconds
+     OFF, against the budget) and the baseline on the target card (seconds the game has ASKED FOR). Measured 2026-09-11 at
+     attempt 7: "21.71s of 25.00s" beside "26.90s asked". Neither number was wrong; nothing on screen said which was which,
+     and the bigger of the two is the one that does not end the run. Both say what they are measuring now. */
+  over:'{bud} reached · run over', hudStreak:'attempt {n} · {tot} spent of {bud}', hudSet:'{n} / {s}', budPx:'100px',
   // v14 (6.18): what the game has asked for so far, against what it will have asked for by the end of the Set
-  askedSet:'{tot}s of {all}s asked', asked:'{tot}s asked' };
+  askedSet:'{tot}s of {all}s asked', asked:'targets {tot}s' };
 // v14: the budgets are the engine's constants now, not numbers baked into a string — a Flash Streak spends what is over 250ms
 // against 500ms (L5 / B.1), a Go / No-go Streak what is over 300ms against 1000ms (6.2 / L5). A wrong tap ADDS 150ms to a Go /
 // No-go Set average (A.2) and SPENDS 300ms of a Streak budget (B.2): two currencies, two numbers, not to be harmonised (B.3)

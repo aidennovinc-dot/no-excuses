@@ -21,7 +21,8 @@
  *   6b. the side screens (v14 section 8): a first-seen Customise swatch still shows its colour (8.7), the achievements list has no
  *       sideways axis (8.2), the title leads with the game name (8.3), a secret row is described (8.5), and Testing is its own
  *       screen with About left clean (8.10). Plus the two Reaction Streak thresholds L5 names (v14 C.1 / C.2 / C.3 / C.4)
- *   6c. the key (v14 section 9, build 22): the contributor list comes from GAMES + SET_COPY and not from a literal, every
+ *   6c. the key (v14 section 9, build 22): the contributor list comes from GAMES + SET_COPY and not from a literal - and the
+ *       COUNT is derived here too since build 28 (B.9 took Sequence to two key counts, so 31 became 30), every
  *       combination has a clearance bar and every bar has a combination, each bar's direction agrees with the game's own
  *       scoring, a bar clears ONCE (9.3) and only from a solo run (9.4)
  *   7. every button action (data-act) driven at least once — customise, chips, dev switches, lock box, Next card, full stop, share
@@ -149,6 +150,13 @@ const click = sel => page.evaluate(s => { const el = document.querySelector(s); 
 const setStorage = obj => page.evaluate(o => { localStorage.clear(); for (const k in o) localStorage.setItem(k, typeof o[k] === 'string' ? o[k] : JSON.stringify(o[k])); }, obj);
 const getJSON = k => page.evaluate(k => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return 'unparseable'; } }, k);
 const OPEN_PREFS = { allOpen: true, story: 1, gridSeen: 1, played: 1, snd: 'off', musicG: {} };
+/* v17 (B.4, build 28): the first-play ghost now turns away everything it emits, and it ENDS ON "Ready?" on the first run
+   of a game - so a test that drives liveCheck by hand, or expects an engine to reach its field, has to start from a
+   profile that has already met that mode. This is every intro key the app can ask for. */
+const SEEN_INTRO = (() => { const o = {}; for (const g of GAMES) { o[g] = 1; }
+  for (const k of ['quick-tap:two', 'quick-tap:four', 'dots:blind', 'dots:lead', 'hold:grow', 'hold:cut', 'sequence:solo',
+    'timing:stopwatch', 'timing:hidden', 'reaction:flash', 'reaction:nogo', 'spot:count', 'spot:find']) o[k] = 1;
+  return o; })();
 
 // pointer events the way the engines listen for them: pointerdown/up/move on an element, at a fraction of its box
 const ptr = (type, sel, dx = .5, dy = .5) => page.evaluate((type, s, dx, dy) => {
@@ -338,8 +346,10 @@ for (const [g, mi, li] of RUNS) {
   // v16 (§3): the Set stops SHOWING the baseline; the Streak keeps it, because a Streak spends a budget of the difference
   askedSet ? bad('§3 the Stopwatch Set has no baseline total on screen', 'it showed "' + askedSet + '"')
            : ok('§3 Timing · Set shows no baseline total — the average is the whole score');
-  /^[\d.]+s asked$/.test(askedStreakLine) ? ok(`§3 Timing · Streak keeps its baseline ("${askedStreakLine}")`)
-           : bad('§3 Timing · Streak keeps its baseline', 'the line read "' + askedStreakLine + '"');
+  // v17 (B.1): the Streak still keeps its baseline, and it now says the number is TARGETS — the budget line beside it is
+  // seconds off, in the same unit, and nothing on screen said which was which
+  /^targets [\d.]+s$/.test(askedStreakLine) ? ok(`§3 / B.1 Timing · Streak keeps its baseline and names it ("${askedStreakLine}")`)
+           : bad('B.1 the Streak baseline says it is the targets', 'the line read "' + askedStreakLine + '"');
 }
 // v16 (A.3): the Ready gate appeared on the first run of a game — every game the driver played had to answer one
 {
@@ -412,7 +422,8 @@ for (const [g, mi, label] of [['hold', 0, 'Estimate · Grow'], ['timing', 0, 'Ti
     opens: [...document.querySelectorAll('#prac-row [data-opens]')].map(b => b.textContent.trim()),
     optsShown: getComputedStyle(document.querySelector('#seq-opts')).display !== 'none',
     line: (document.querySelector('#vsart small') || {}).textContent || '' }));
-  (sheet.lenShown && sheet.lens.length === 3) ? ok(`4.5 Sequence versus keeps the key row (${sheet.lens.join(' · ')})`) : bad('4.5 Sequence versus shows the key row', JSON.stringify(sheet));
+  // v17 (B.9): two key counts, not three - the row itself is what 4.5 is about, and the count comes off the config
+  (sheet.lenShown && sheet.lens.length === 2 && sheet.lens.join() === '3 keys,7 keys') ? ok(`4.5 Sequence versus keeps the key row (${sheet.lens.join(' · ')})`) : bad('4.5 Sequence versus shows the key row', JSON.stringify(sheet));
   (sheet.optsShown && sheet.opens.length > 1) ? ok(`4.5 and gains the opening length (${sheet.opens.join('/')} notes) · "${sheet.line}"`) : bad('4.5 Sequence versus opening length', JSON.stringify(sheet));
   (!/compose/i.test(sheet.line)) ? ok('4.5 Compose is gone from the versus line') : bad('4.5 the versus line still describes Compose', sheet.line);
   await page.evaluate(() => { const t = [...document.querySelectorAll('#time-row .tbtn')]; if (t[0]) t[0].click(); }); await sleep(160);
@@ -598,7 +609,12 @@ console.log('\nthe key (v14 section 9)');
       dirs: K.COMBOS.map(c => ({ key: c.key, dir: c.bar && c.bar.dir, lower: !!R.GC(c.g, c.d, c.s).lower })),
       setRows: Object.keys(G.SET_COPY).length, state: K.keyState().total }; });
   (k.combos.join('|') === k.want.join('|')) ? ok(`C.5 the key's ${k.combos.length} combinations are exactly GAMES x modes x GC(g,d).lens`) : bad('C.5 the contributor list', `${k.combos.length} vs ${k.want.length}`);
-  (k.combos.length === 31) ? ok('C.5 6 + 6 + 4 + 3 + 4 + 4 + 4 = 31 combinations today') : bad('C.5 31 combinations today', String(k.combos.length));
+  /* v17 (B.9): THE COUNT IS DERIVED, here as well as in the app. It was a literal 31 in this file - so the gate would
+     have gone red on the build that legitimately took Sequence from three key counts to two, and the honest way to hold
+     the number is against the config that makes it. key-bars.js has to agree with it, which is C.6 below. */
+  const N_COMBOS = k.want.length, N_BARS = Object.keys(KEY_BARS).length;
+  (N_COMBOS === N_BARS) ? ok(`C.5 ${N_COMBOS} combinations today, and config/key-bars.js carries exactly that many rows`)
+    : bad('C.5 the config and the bars disagree about how many combinations exist', `${N_COMBOS} vs ${N_BARS}`);
   // C.6: the config decides which combinations exist. Either way round is a mismatch someone has to fix, never a silent drop
   (!k.missing.length) ? ok('C.6 every combination the config makes has a clearance bar') : bad('C.6 combinations with no bar (config wins — add a row to config/key-bars.js)', k.missing.join(', '));
   (!k.orphan.length) ? ok('C.6 every clearance bar belongs to a combination the config makes') : bad('C.6 orphan rows in config/key-bars.js', k.orphan.join(', '));
@@ -627,7 +643,11 @@ console.log('\nthe key (v14 section 9)');
   const ui = await page.evaluate(() => ({ screen: document.querySelector('.screen.on')?.id,
     segs: document.querySelectorAll('#key-ring .kroot').length, nodes: document.querySelectorAll('#key-ring .knode').length,
     count: (document.getElementById('key-count') || {}).textContent, warn: !document.getElementById('key-warn').hidden }));
-  (ui.screen === 's-key' && ui.nodes === GAMES.length && ui.segs === 31) ? ok(`9.6 the ring draws ${ui.nodes} games and ${ui.segs} root segments — "${ui.count}"`) : bad('9.6 the key ring', JSON.stringify(ui));
+  (ui.screen === 's-key' && ui.nodes === GAMES.length && ui.segs === N_COMBOS) ? ok(`9.6 the ring draws ${ui.nodes} games and ${ui.segs} root segments — "${ui.count}"`) : bad('9.6 the key ring', JSON.stringify(ui));
+  /* v17 (A.6): the count line is "{done} of {total} · {pct}%" now, and both halves come off progress/key.js. On this
+     profile nothing is cleared, so A.6.2 says it reads 0% — never played contributes nothing, not a free ratio. */
+  /^0 of \d+ · 0%$/.test((ui.count || '').trim()) ? ok(`A.6 the keys screen reads "${ui.count.trim()}" on a profile with no runs (A.6.2: never played is 0)`)
+    : bad('A.6 the cleared count and the percentage together', JSON.stringify(ui.count));
   (!ui.warn) ? ok('C.6 no mismatch warning on the key screen') : bad('C.6 the key screen is warning about missing bars');
   await page.evaluate(() => document.querySelector('.knode[data-kg="quick-tap"]').dispatchEvent(new MouseEvent('click', { bubbles: true }))); await sleep(350);
   const rows = await page.evaluate(() => ({ rows: document.querySelectorAll('#key-list .krow').length, nobar: document.querySelectorAll('#key-list .krow.nobar').length, first: (document.querySelector('#key-list .krow i') || {}).textContent }));
@@ -667,7 +687,13 @@ console.log('\nthe chain and its screens (v15 sections 1 and 2)');
     const t = k => P.UNLOCKS.find(u => u.key === k).test;
     const qt = (s, hits, misses) => ({ g: 'quick-tap', d: 'two', s, hits, misses });
     const out = {};
-    out.qtFour = [t('quick-tap:four')(qt(15, 15, 0)), t('quick-tap:four')(qt(15, 14, 0)), t('quick-tap:four')(qt(15, 15, 1))];
+    /* v17 (B.6 / B.7): FIFTEEN IN A ROW, in any Quick Tap · Two run. The pass is a Sprint - `s` came off `where` - with a
+       row of 15 and misses on the record, which is the whole point: a miss resets the count, it does not disqualify the run.
+       The fails are 14 in a row, 15 hits that were never consecutive, and Four itself. */
+    out.qtFour = [t('quick-tap:four')({ ...qt(5, 20, 3), row: 15 }), t('quick-tap:four')({ ...qt(15, 30, 0), row: 14 }),
+      t('quick-tap:four')({ ...qt(15, 15, 4), row: 6 }), t('quick-tap:four')({ ...qt(15, 20, 0), d: 'four', row: 15 })];
+    // a record from BEFORE build 28 carries no `row` at all and is judged the old way, rather than being quietly un-earned
+    out.qtFourLegacy = [t('quick-tap:four')(qt(15, 15, 0)), t('quick-tap:four')(qt(15, 14, 0)), t('quick-tap:four')(qt(15, 15, 1))];
     out.dtBlind = [t('dots:blind')(qt(30, 35, 2)), t('dots:blind')(qt(30, 34, 0))];
     out.dtLead = [t('dots:lead')({ g: 'dots', d: 'blind', s: 5, hits: 0, misses: 5 }), t('dots:lead')({ g: 'dots', d: 'blind', s: 5, hits: 9, misses: 4 })];
     out.hdGrow = [t('hold:grow')({ g: 'dots', d: 'blind', s: 15, hits: 0, misses: 0 }), t('hold:grow')({ g: 'dots', d: 'blind', s: 15, hits: 0, misses: 1 })];
@@ -680,17 +706,19 @@ console.log('\nthe chain and its screens (v15 sections 1 and 2)');
       t('timing:stopwatch')({ g: 'sequence', d: 'solo', s: 3, hits: 2 }),
       t('timing:stopwatch')({ g: 'sequence', d: 'solo', s: 7, hits: 0 }),
       t('timing:stopwatch')({ g: 'timing', d: 'stopwatch', s: 5, hits: 2, firstWrong: 1 })];
-    out.tmStop2 = [t('timing:stopwatch')({ g: 'sequence', d: 'solo', s: 3, hits: 2, firstWrong: 1 }), t('timing:stopwatch')({ g: 'sequence', d: 'solo', s: 5, hits: 12, firstWrong: 1 })];
+    out.tmStop2 = [t('timing:stopwatch')({ g: 'sequence', d: 'solo', s: 3, hits: 2, firstWrong: 1 }), t('timing:stopwatch')({ g: 'sequence', d: 'solo', s: 7, hits: 12, firstWrong: 1 })];
     out.rxNogo = [t('reaction:nogo')({ g: 'reaction', d: 'flash', s: 5, hits: 350 }), t('reaction:nogo')({ g: 'reaction', d: 'flash', s: 5, hits: 351 })];
     out.spCount = [t('spot:count')({ g: 'reaction', d: 'nogo', s: 5, hits: 349 }), t('spot:count')({ g: 'reaction', d: 'flash', s: 5, hits: 349 }), t('spot:count')({ g: 'reaction', d: 'flash', s: 5, hits: 400 })];
     // lengths, per mode — the numbers that differ between Blind and Lead are the whole reason for 1.0a
     const L = (g, d, i) => R.LEN_TEST[g + ':' + d][i];
     out.lens = { qtMar: [L('quick-tap', 'two', 2)({ hits: 24 }), L('quick-tap', 'two', 2)({ hits: 23 })],
-      blindDash: [L('dots', 'blind', 1)({ hits: 6, misses: 0 }), L('dots', 'blind', 1)({ hits: 5, misses: 0 })],
-      leadDash: [L('dots', 'lead', 1)({ hits: 9, misses: 0 }), L('dots', 'lead', 1)({ hits: 8, misses: 0 })],
+      blindDash: [L('dots', 'blind', 1)({ hits: 40, misses: 9, row: 6 }), L('dots', 'blind', 1)({ hits: 40, misses: 0, row: 5 })],
+      leadDash: [L('dots', 'lead', 1)({ hits: 40, misses: 9, row: 9 }), L('dots', 'lead', 1)({ hits: 40, misses: 0, row: 8 })],
+      qtDash: [L('quick-tap', 'two', 1)({ hits: 40, misses: 9, row: 7 }), L('quick-tap', 'two', 1)({ hits: 40, misses: 0, row: 6 })],
       blindMar: [L('dots', 'blind', 2)({ hits: 24 }), L('dots', 'blind', 2)({ hits: 23 })],
       leadMar: [L('dots', 'lead', 2)({ hits: 28 }), L('dots', 'lead', 2)({ hits: 27 })],
-      cutStreak: [L('hold', 'cut', 1)({ y: 81 }), L('hold', 'cut', 1)({ y: 80 })],
+      // v17 (B.8): 80% off was unreachable — the measured ceiling on a Cut round is 44.5%. Ten, one step either side
+      cutStreak: [L('hold', 'cut', 1)({ y: 11 }), L('hold', 'cut', 1)({ y: 10 })],
       flashStreak: [L('reaction', 'flash', 1)({ hits: 501 }), L('reaction', 'flash', 1)({ hits: 500 })] };
     // build 24: Greedy is the engine's `mx` flag — the hold ran to its ceiling — not a % threshold. A big overshoot
     // with no `mx` must NOT earn it, or the row is just "miss by a lot" under another name
@@ -702,12 +730,13 @@ console.log('\nthe chain and its screens (v15 sections 1 and 2)');
       const lk = P.lenLock(g, d, s, true); if (lk && lk.need !== P.lenNeed(g, d, s)) out.oneRecord.push(g + ':' + d + ':' + s); });
     return out; });
   const pair = (label, [yes, ...no]) => (yes && no.every(x => !x)) ? ok(label) : bad(label, JSON.stringify([yes, ...no]));
-  pair('1.1a Quick Tap · Four opens at 15 clean hits in a Dash, not 14 and not with a miss', V.qtFour);
+  pair('B.6 / B.7 Quick Tap · Four opens at 15 IN A ROW in any Two run - a Sprint with misses counts, 14 in a row does not, and Four itself does not', V.qtFour);
+  pair('B.6 a record from before build 28 carries no row and is judged the old way', V.qtFourLegacy);
   pair('1.2a Dots · Blind opens at 35 hits in any Quick Tap run', V.dtBlind);
   pair('1.2b Dots · Lead opens on 5 misses in a Blind run (deliberate failure, v15 0.5)', V.dtLead);
   pair('1.3a Estimate · Grow opens on a Dots run with nothing pressed at all', V.hdGrow);
   pair('1.4a / §2 Timing · Stopwatch opens on the first note wrong — not on a low score, and not from another game', V.tmStop);
-  V.tmStop2.every(Boolean) ? ok('§2 the first note wrong opens it at 3 keys and at 5, and a long run that opened badly still counts')
+  V.tmStop2.every(Boolean) ? ok('§2 the first note wrong opens it at 3 keys and at 7, and a long run that opened badly still counts')
     : bad('§2 the first-note flag is what the row reads', JSON.stringify(V.tmStop2));
   pair('1.4c Go / No-go opens at a 350ms Flash Set, not 351', V.rxNogo);
   // 1.4d is the one row with TWO ways in — a Flash Set or a Go / No-go Set, built as Aiden wrote it. Cowork's note is that
@@ -715,11 +744,12 @@ console.log('\nthe chain and its screens (v15 sections 1 and 2)');
   { const [nogo, flash, slow] = V.spCount;
     (nogo && flash && !slow) ? ok('1.4d Spot · Count opens on a Flash OR a Go / No-go Set under 350ms — both doors, per Aiden') : bad('1.4d Spot · Count', JSON.stringify(V.spCount)); }
   pair('1.1b Quick Tap Marathon asks 24 in a Dash', V.lens.qtMar);
-  pair('1.2c Dots · Blind Dash asks 6 clean', V.lens.blindDash);
-  pair('1.2e Dots · Lead Dash asks 9 clean — the per-mode split (1.0a) is doing real work', V.lens.leadDash);
+  pair('B.6 Dots · Blind Dash asks 6 IN A ROW - a run with nine misses still qualifies, five in a row does not', V.lens.blindDash);
+  pair('B.6 Dots · Lead Dash asks 9 in a row - the per-mode split (1.0a) is doing real work', V.lens.leadDash);
+  pair('B.6 Quick Tap Dash asks 7 in a row', V.lens.qtDash);
   pair('1.2d Dots · Blind Marathon asks 24', V.lens.blindMar);
   pair('1.2f Dots · Lead Marathon asks 28', V.lens.leadMar);
-  pair('1.3b Estimate · Cut Streak asks for one round more than 80% off', V.lens.cutStreak);
+  pair('B.8 Estimate · Cut Streak asks for one round more than 10% off — 80 could never fire', V.lens.cutStreak);
   pair('1.4b Reaction · Flash Streak asks for a Set averaging over 500ms', V.lens.flashStreak);
   pair('1.5 the shape at its limit earns Greedy; merely overshooting does not', V.hdMax);
   (!V.oneRecord.length) ? ok('1.0d one record of the chain — every lock box and goal line reads the string lenNeed builds') : bad('1.0d a second copy of a requirement', V.oneRecord.join(', '));
@@ -732,13 +762,13 @@ console.log('\nthe chain and its screens (v15 sections 1 and 2)');
     (card.hidden && card.tag) ? ok('2.2 no Next card on a fresh profile\'s first menu open') : bad('2.2 the Next card on a fresh profile', JSON.stringify(card)); }
 
   // 2.5 behavioural: an unlock that fires mid-run is in localStorage after the player quits
-  { const kept = await page.evaluate(async () => {
+  { const kept = await page.evaluate(async (intro) => {
       const RUN = await import('./run/run.js'); const S = await import('./core/store.js'); const ST = await import('./core/state.js');
-      S.store.unlock = {}; S.store.ach = {}; S.save();
+      S.store.unlock = {}; S.store.ach = {}; S.store.intro = intro; S.save();   // v17 (B.4): past the intro, or the ghost has the engine
       Object.assign(ST.sel, { game: 'quick-tap', diff: 'two', secs: 15, vs: 0, practice: 0 });
-      RUN.start(); RUN.liveCheck({ hits: 15, misses: 0 }); RUN.abort();
+      RUN.start(); RUN.liveCheck({ hits: 15, misses: 0, row: 15 }); RUN.abort();
       let raw = null; try { raw = JSON.parse(localStorage.getItem('ne')); } catch (e) {}
-      return { unlock: raw && raw.unlock ? Object.keys(raw.unlock) : [] }; });
+      return { unlock: raw && raw.unlock ? Object.keys(raw.unlock) : [] }; }, SEEN_INTRO);
     kept.unlock.includes('quick-tap:four') ? ok('2.5 an unlock earned mid-run is in storage after the run is quit — no silent loss')
       : bad('2.5 a mid-run earn survives a quit', JSON.stringify(kept)); }
 
@@ -1133,10 +1163,10 @@ console.log('\nbuild 27 — v16');
   P.bad.length ? bad('§1 every track plays', P.bad.join(', '))
     : ok(`§1 all ${P.n} tracks schedule cleanly — ${P.events} tone events across one loop each`);
 
-  /* §2: THE TIMING UNLOCK. Get the first note of a Sequence run wrong and Timing · Stopwatch opens, at 3, 5 and 7 keys,
-     and it is in the store BEFORE the run ends — the old row waited for a finish nobody sits through after failing on
-     note one, and its predicate tested a score (`hits === 0`) a Sequence run cannot reach because it opens on round 3. */
-  for (const keys of [3, 5, 7]) {
+  /* §2: THE TIMING UNLOCK. Get the first note of a Sequence run wrong and Timing · Stopwatch opens, at 3 and 7 keys (five
+     is gone at build 28, B.9), and it is in the store BEFORE the run ends — the old row waited for a finish nobody sits
+     through after failing on note one, and its predicate tested a score (`hits === 0`) a Sequence run cannot reach. */
+  for (const keys of [3, 7]) {
     await setStorage({ ne: { v: 1, prefs: { story: 1, gridSeen: 1, played: 1, snd: 'off', musicG: {} }, runs: [], unlock: { 'quick-tap:four': 1, 'dots:blind': 1, 'dots:lead': 1, 'hold:grow': 1, 'hold:cut': 1, 'sequence:solo': 1 }, ach: {}, intro: { 'sequence:solo': 1, sequence: 1 }, seen: {}, bars: {} } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(350);
     const got = await page.evaluate(async k => {
@@ -1188,7 +1218,8 @@ console.log('\nbuild 27 — v16');
       const i2 = SP.pts.findIndex(q => q.shape === SP.o2);
       const lit = (() => { const els = document.querySelectorAll('#gen .fs'); return els[i2]; })();
       const rect = document.getElementById('gen').getBoundingClientRect();
-      SP.vsTap({ x: rect.left + SP.pts[i2].x + SP.size / 2, y: rect.top + SP.pts[i2].y + SP.size / 2 });
+      const sz2 = SP.pts[i2].sz || SP.size;   // v17 (B.15): a crowd is not all one size any more
+      SP.vsTap({ x: rect.left + SP.pts[i2].x + sz2 / 2, y: rect.top + SP.pts[i2].y + sz2 / 2 });
       const colour = lit.classList.contains('p2') && lit.classList.contains('odd');
       for (let i = 0; i < 60; i++) { if (SP.st === 'wait' || SP.st === 'vsfind') break; await wait(100); }
       await wait(3200);
@@ -1239,6 +1270,368 @@ console.log('\nbuild 27 — v16');
     a.sawReady ? ok('A.3 the first run of Quick Tap ends its intro on "Ready?"') : bad('A.3 "Ready?" on the first run of a game', JSON.stringify(a));
     (b.sawOn && !b.sawReady) ? ok(`A.3 the second mode of the same game shows its one-liner and skips the Ready gate — "${b.text.split('Ready?')[0].trim()}"`)
       : bad('A.3 Ready is once per game, not once per mode', JSON.stringify(b));
+  }
+}
+
+
+/* ---- 9. build 28 (v17 §B.1-§B.18): the chain and the scoring ---- */
+console.log('\nbuild 28 - v17 sections B.1 to B.18');
+{
+  const root28 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const G28 = await import(pathToFileURL(path.join(root28, 'config', 'games.js')).href);
+  const U28 = await import(pathToFileURL(path.join(root28, 'config', 'unlocks.js')).href);
+  const A28 = await import(pathToFileURL(path.join(root28, 'config', 'achievements.js')).href);
+  const C28 = await import(pathToFileURL(path.join(root28, 'config', 'copy.js')).href);
+  const KB28 = await import(pathToFileURL(path.join(root28, 'config', 'key-bars.js')).href);
+
+  // ---- B.9: five keys is gone from every table that could still offer it ----
+  {
+    const sq = G28.GAMES.sequence;
+    const bad5 = [];
+    if (sq.lens.includes(5)) bad5.push('GAMES.sequence.lens');
+    if ((sq.vsLens || []).includes(5)) bad5.push('GAMES.sequence.vsLens');
+    if (KB28.KEY_BARS['sequence:solo:5']) bad5.push('KEY_BARS');
+    if ((U28.LEN_RULES['sequence:solo'] || []).length !== sq.lens.length) bad5.push('LEN_RULES rung count');
+    const ach5 = A28.ACH.filter(a => a.g === 'sequence' && a.at && a.at.s === 5).map(a => a.id);
+    if (ach5.length) bad5.push('ACH ' + ach5.join('/'));
+    bad5.length ? bad('B.9 Sequence drops 5 keys everywhere', bad5.join(', '))
+      : ok(`B.9 Sequence is ${sq.lens.join(' and ')} keys - solo, pass & play and versus, with no bar, no rung and no achievement left on five`);
+  }
+  // B.9: no literal 31 survives anywhere the count is stated
+  {
+    const strip28 = x => x.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
+    const files = ['progress/key.js', 'ui/screens/key.js', 'ui/screens/unlocks.js', 'ui/screens/menu.js'];
+    const hits = files.filter(f => /\b31\b|thirty-one/i.test(strip28(fs.readFileSync(path.join(root28, f), 'utf8'))));
+    hits.length ? bad('B.9 no literal 31 in the code that prints the count', hits.join(', '))
+      : ok(`B.9 the count is read from the config in all ${files.length} files that print it - none of them knows a number`);
+  }
+  // B.9: a profile carrying 5-key runs boots, counts them toward nothing, and crashes nothing
+  {
+    // NB: no allOpen - lenLock returns null the moment it is set, and this check is about what a length asks for
+    const old5 = { v: 1, prefs: { story: 1, gridSeen: 1, played: 1, snd: 'off', musicG: {} }, runs: [
+      { t: Date.now(), g: 'sequence', d: 'solo', s: 5, hits: 14, misses: 0, v: 2 },
+      { t: Date.now() - 1, g: 'sequence', d: 'solo', s: 3, hits: 4, misses: 0, v: 2 }],
+      ach: {}, unlock: { 'quick-tap:four': 1, 'dots:blind': 1, 'dots:lead': 1, 'hold:grow': 1, 'hold:cut': 1, 'sequence:solo': 1 },
+      intro: SEEN_INTRO, seen: {}, bars: { 'sequence:solo:5': Date.now() } };
+    await setStorage({ ne: old5 });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(500);
+    const r = await page.evaluate(async () => {
+      const K = await import('./progress/key.js'); const P = await import('./progress.js'); const S = await import('./core/store.js');
+      return { screen: document.querySelector('.screen.on')?.id, runs: S.store.runs.length,
+        combos: K.COMBOS.filter(c => c.g === 'sequence').map(c => c.s),
+        orphan: K.barsOrphan(), missing: K.barsMissing(), pct: K.keyPct(),
+        sevenOpen: !P.lenLock('sequence', 'solo', 7, true) };
+    });
+    (r.screen && r.runs === 2 && r.combos.join(',') === '3,7' && !r.orphan.length && !r.missing.length)
+      ? ok(`B.9 a profile with 5-key runs boots clean - both runs kept, Sequence contributes ${r.combos.join(' and ')}, nothing orphaned`)
+      : bad('B.9 stored 5-key runs count toward nothing and crash nothing', JSON.stringify(r));
+    // the ladder is: 5 keys is gone, so a 14-round run at five does NOT open 7 keys - only 8 notes in 3 does
+    (!r.sevenOpen) ? ok('B.9 a 5-key run no longer opens 7 keys - the rung is 8 notes in 3 keys now')
+      : bad('B.9 a retired 5-key run must open nothing', 'it opened 7 keys');
+  }
+
+  // ---- B.4: no demo, ghost or scripted run earns anything ----
+  {
+    await setStorage({ ne: { v: 1, prefs: { story: 1, gridSeen: 1, played: 1, snd: 'off', musicG: {}, allOpen: true }, runs: [], ach: {}, unlock: {}, intro: {}, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(450);
+    const d = await page.evaluate(async () => {
+      const RUN = await import('./run/run.js'); const ST = await import('./core/state.js'); const S = await import('./core/store.js');
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      Object.assign(ST.sel, { game: 'hold', diff: 'grow', secs: 7, vs: 0, practice: 0 });
+      RUN.start();                                   // a fresh profile, so the first-play ghost plays a real round
+      let sawDemo = false;
+      const answerReady = () => { const el = document.getElementById('intro'); if (el && el.classList.contains('ready')) { RUN.introTap(); return true; } return false; };
+      for (let i = 0; i < 60; i++) { if (RUN.R.demo) sawDemo = true; if (sawDemo && !RUN.R.demo) break; if (sawDemo) answerReady(); await wait(100); }
+      // while the ghost has the engine, a record that WOULD earn "On the money" (live:1, one round within 2%) earns nothing
+      const during = (() => { if (!RUN.R.demo) return null; RUN.liveCheck({ hits: 1, x: 0.5, y: 0.5 }); return Object.keys(S.store.ach); })();
+      for (let i = 0; i < 90 && RUN.R.demo; i++) { answerReady(); await wait(100); }
+      const afterDemo = { ach: Object.keys(S.store.ach), unlock: Object.keys(S.store.unlock), bars: Object.keys(S.store.bars), runs: S.store.runs.length };
+      // and the same record, once the demo has handed over, DOES earn it - or this test proves nothing
+      RUN.liveCheck({ hits: 1, x: 0.5, y: 0.5 });
+      const afterReal = Object.keys(S.store.ach);
+      RUN.abort();
+      return { sawDemo, during, afterDemo, afterReal };
+    });
+    if (!d.sawDemo) bad('B.4 the first-play demo runs at all', 'R.demo never went true');
+    else if (d.during && d.during.length) bad('B.4 a demo earns nothing mid-run', 'it banked ' + d.during.join(', '));
+    else if (d.afterDemo.ach.length || d.afterDemo.unlock.length || d.afterDemo.bars.length || d.afterDemo.runs)
+      bad('B.4 a whole first-play demo writes nothing to the store', JSON.stringify(d.afterDemo));
+    else if (!d.afterReal.includes('hd_money')) bad('B.4 the same record earns normally once the demo hands over', JSON.stringify(d.afterReal));
+    else ok('B.4 the first-play ghost advances no key, bar, unlock, achievement or board - and the same record earns the moment it is the player');
+  }
+
+  // ---- B.5: a length unlock announces, in every game with a rung and every game without one ----
+  {
+    const announced = [], silent = [];
+    for (const [g, d, s] of [['quick-tap', 'two', 5], ['dots', 'blind', 5], ['hold', 'cut', 10], ['reaction', 'flash', 5]]) {
+      await setStorage({ ne: { v: 1, prefs: { story: 1, gridSeen: 1, played: 1, snd: 'off', musicG: {} }, runs: [],
+        ach: {}, unlock: { 'quick-tap:four': 1, 'dots:blind': 1, 'dots:lead': 1, 'hold:grow': 1, 'hold:cut': 1, 'sequence:solo': 1, 'timing:stopwatch': 1, 'timing:hidden': 1, 'reaction:flash': 1 }, intro: SEEN_INTRO, seen: {}, bars: {} } });
+      await page.reload({ waitUntil: 'networkidle0' }); await sleep(350);
+      const r = await page.evaluate(async (g, d, s) => {
+        const RUN = await import('./run/run.js'); const ST = await import('./core/state.js');
+        Object.assign(ST.sel, { game: g, diff: d, secs: s, vs: 0, practice: 0 });
+        RUN.start();
+        const next = RUN.R.lenNext;
+        if (!next) { RUN.abort(); return { none: true }; }
+        // a record that passes the rung, whatever the rung is
+        // deliberately modest: a record that ALSO earns an achievement raises a second toast over the first, which is
+        // real behaviour mid-run and would make this assertion read the wrong line
+        const rec = { 'quick-tap:two': { hits: 18, misses: 2, row: 7 }, 'dots:blind': { hits: 18, misses: 2, row: 6 },
+          'hold:cut': { hits: 5, y: 44 }, 'reaction:flash': { hits: 600 } }[g + ':' + d];
+        RUN.liveCheck(rec);
+        const t = document.getElementById('toast');
+        const out = { key: next.key, on: t.classList.contains('on'), ok: t.classList.contains('ok'), text: t.textContent.trim(), fresh: RUN.R.fresh.slice() };
+        RUN.abort(); return out;
+      }, g, d, s);
+      if (r.none) silent.push(`${g}:${d} (no live rung)`);
+      else if (r.on && r.ok && /^Unlock/.test(r.text) && r.fresh.includes(r.key)) announced.push(`${g} "${r.text}"`);
+      else silent.push(`${g}:${d} ${JSON.stringify(r)}`);
+    }
+    silent.length ? bad('B.5 a length unlock fires the green toast the moment it is met', silent.join(' | '))
+      : ok(`B.5 every length rung announces mid-run with a green unlock toast - ${announced.join(', ')}`);
+  }
+  // B.5: and the default "finish one run of the length before" rule lands at the FINISH, on the result screen
+  {
+    await setStorage({ ne: { v: 1, prefs: { story: 1, gridSeen: 1, played: 1, snd: 'off', musicG: {} }, runs: [], ach: {}, unlock: {}, intro: { 'quick-tap:two': 1, 'quick-tap': 1 }, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(350);
+    const r = await page.evaluate(async () => {
+      const P = await import('./progress.js');
+      const before = P.lenOpen('quick-tap', 'two', 15);
+      const n = P.lenNextOf('quick-tap', 'two', 5);
+      // a finished Sprint with 7 in a row opens Dash: the rung has a LEN_TEST, so it is the live kind
+      const live = P.lenNextLive('quick-tap', 'two', 5);
+      // Sequence's 7-keys rung is the live kind too; Estimate · Grow's Streak is the DEFAULT kind and has no live form
+      const dflt = { next: !!P.lenNextOf('hold', 'grow', 7), live: !!P.lenNextLive('hold', 'grow', 7) };
+      return { before, key: n && n.key, live: !!live, dflt };
+    });
+    (!r.before && r.key === 'quick-tap:two:15' && r.live && r.dflt.next && !r.dflt.live)
+      ? ok('B.5 lenNextOf names the rung above any combination; lenNextLive answers only where a LEN_TEST can judge a partial run (Estimate Grow Streak correctly has no mid-run answer)')
+      : bad('B.5 the two halves of a length unlock', JSON.stringify(r));
+  }
+
+  // ---- B.10: the Customise lock check, and what was actually leaking ----
+  {
+    await setStorage({ ne: { v: 1, prefs: { story: 1, gridSeen: 1, played: 1, snd: 'off', musicG: {}, supporter: true }, runs: [], ach: {}, unlock: {}, intro: {}, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    const r = await page.evaluate(async () => {
+      const S = await import('./core/store.js'); const P = await import('./progress.js'); const { ITEMS } = await import('./config/theme.js');
+      const was = S.prefs.supporter;
+      S.reset(); P.seedSeen();
+      const nowSup = S.prefs.supporter, nowOpen = S.prefs.allOpen;
+      const shouldLock = Object.values(ITEMS).flat().filter(i => i.by).length;
+      const seen = S.store.seen || {};
+      const unseeded = Object.entries(ITEMS).flatMap(([set, items]) => items.filter(i => !i.by).map(i => 'cos:' + set + ':' + i.v)).filter(k => !seen[k]);
+      return { was, nowSup, nowOpen, shouldLock, unseeded };
+    });
+    (r.was && !r.nowSup && !r.nowOpen)
+      ? ok(`B.10 Fresh game clears BOTH dev switches - supporter survived it before, and lockedBy() treats a supporter exactly like unlock-all, so a "fresh" profile showed all ${r.shouldLock} locked cosmetics open`)
+      : bad('B.10 Fresh game clears supporter as well as allOpen', JSON.stringify(r));
+    (!r.unseeded.length)
+      ? ok('B.10 seedSeen() covers the cosmetics - an item that was open from the start no longer wears L8 green as if something had just earned it')
+      : bad('B.10 an open-from-the-start cosmetic is seeded as seen', r.unseeded.join(', '));
+  }
+
+  // ---- B.11: nothing on the Achievements screen calls itself an unlock ----
+  {
+    const tiers = Object.keys(C28.TIERS);
+    const rows = A28.ACH.map(a => a.tier);
+    const strayTier = [...new Set(rows)].filter(t => !tiers.includes(t));
+    const claims = tiers.filter(t => /unlock/i.test(C28.TIERS[t][0]));
+    // the chain is the one place an unlock lives, and every row in it opens a game, a mode or a length
+    const opens = U28.UNLOCKS.every(u => { const [g, d] = u.key.split(':'); return !!G28.GAMES[g] && (u.key === 'sequence:practice' || G28.GAMES[g].modes.includes(d)); });
+    (!strayTier.length && !claims.length && opens)
+      ? ok(`B.11 no achievement tier calls itself an unlock (${tiers.join(' / ')}), and every row in UNLOCKS opens a game, a mode or a length`)
+      : bad('B.11 a row listed as an unlock that opens nothing', JSON.stringify({ strayTier, claims, opens }));
+  }
+
+  // ---- B.12: Stopwatch runs to ten seconds over, and going the distance is a secret row ----
+  {
+    (G28.CFG.swOver === 10) ? ok('B.12 a Stopwatch attempt runs to 10 seconds past its target, was 5') : bad('B.12 CFG.swOver', String(G28.CFG.swOver));
+    const a = A28.ACH.find(x => x.id === 'tm_s10');
+    (a && a.tier === 'secret' && a.hint && a.live === 1 && a.g === 'timing')
+      ? ok(`B.12 the new secret row "${a.name}" is described, is live (ov can only become more true) and is Timing's`)
+      : bad('B.12 the secret row for letting the clock run out', JSON.stringify(a));
+    const r = await page.evaluate(async () => {
+      const R = await import('./progress/rules.js');
+      return [R.ACH_TEST.tm_s10({ g: 'timing', d: 'stopwatch', s: 5, ov: 1 }),
+        R.ACH_TEST.tm_s10({ g: 'timing', d: 'stopwatch', s: 5 }),
+        R.ACH_TEST.tm_s10({ g: 'timing', d: 'hidden', s: 10, ov: 1 })]; });
+    (r[0] && !r[1] && !r[2]) ? ok('B.12 the row reads the engine’s own ov flag, Stopwatch only') : bad('B.12 the ov predicate', JSON.stringify(r));
+  }
+
+  // ---- B.13: the Sequence HUD. Fixed-width slots, and "best" clear of the score ----
+  {
+    await setStorage({ ne: { v: 1, prefs: { ...OPEN_PREFS }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    const r = await page.evaluate(async () => {
+      const RUN = await import('./run/run.js'); const ST = await import('./core/state.js'); const S = await import('./core/store.js');
+      S.store.runs = [{ t: Date.now(), g: 'sequence', d: 'solo', s: 3, hits: 9, misses: 0, v: 2 }]; S.save();
+      Object.assign(ST.sel, { game: 'sequence', diff: 'solo', secs: 3, vs: 0, practice: 0 });
+      RUN.start(); const wait = ms => new Promise(r => setTimeout(r, ms)); await wait(400);
+      const t = document.getElementById('hud-time'), sc = document.getElementById('score'), gh = document.getElementById('pbghost');
+      const at = () => { const r = sc.getBoundingClientRect(); return Math.round(r.left) + ':' + Math.round(r.width); };
+      t.textContent = 'round 12 · watch'; const a = at();
+      t.textContent = 'your turn'; const b = at();
+      t.textContent = 'round 4 · watch'; const c = at();
+      const sr = sc.getBoundingClientRect(), gr = gh.getBoundingClientRect();
+      const overlap = gh.classList.contains('on') && !(gr.top >= sr.bottom || gr.bottom <= sr.top);
+      const ghostOn = gh.classList.contains('on');
+      RUN.abort(); return { a, b, c, overlap, ghostOn, ghostTop: Math.round(gr.top), scoreBottom: Math.round(sr.bottom) };
+    });
+    (r.a === r.b && r.b === r.c) ? ok(`B.13 the Sequence round marker does not move the score - "watch" and "your turn" both leave it at ${r.a}`)
+      : bad('B.13 fixed-width HUD slots', JSON.stringify(r));
+    (r.ghostOn && !r.overlap) ? ok(`B.13 "best" sits clear of the score (${r.scoreBottom} → ${r.ghostTop}), not behind it`)
+      : bad('B.13 the best-ghost is separated from the score', JSON.stringify(r));
+  }
+
+  // ---- B.15: the Spot ramp. The crowd is the difficulty, not the clock ----
+  {
+    const R = G28.SPOT_RAMP;
+    const kp = fs.readFileSync(path.join(root28, 'games', 'spot', 'index.js'), 'utf8');
+    const padFromCap = /length:\s*SPOT_RAMP\.nCap\s*\+\s*1/.test(kp);
+    padFromCap ? ok(`B.15 the keypad is built from SPOT_RAMP.nCap (${R.nCap}), so the band can never deal a count the player cannot answer`)
+      : bad('B.15 the keypad must read the cap', 'it carries its own length');
+    // the flash falls far slower and stops far higher than the curve Aiden called "ends too hard"
+    const oldFall = 1200 - 70 * 10, newFall = Math.max(R.flashMin, R.flashMax - R.flashPer * 9);
+    (R.flashPer <= 70 / 2 && newFall >= 850) ? ok(`B.15 viewing time is no longer the lever - round 10 flashes for ${newFall}ms where it used to flash for ${oldFall}ms`)
+      : bad('B.15 the flash must stop carrying the difficulty', `${R.flashPer}ms a round, round 10 = ${newFall}ms`);
+    const r = await page.evaluate(async () => {
+      const SP = (await import('./games/spot/index.js')).default;
+      const out = []; for (let i = 1; i <= 12; i++) { const x = SP.ramp(i); out.push({ r: i, lo: x.lo, hi: x.hi, dip: x.dip, n: x.n, decoys: x.decoys, flash: x.flash, sizeVar: +x.sizeVar.toFixed(3) }); }
+      return out; });
+    const dips = r.filter(x => x.dip);
+    const rising = r.every((x, i) => !i || x.decoys >= r[i - 1].decoys || r[i - 1].dip);
+    const banded = r.every(x => x.n >= x.lo && x.n <= x.hi && x.hi <= G28.SPOT_RAMP.nCap);
+    const fewer = dips.every(x => { const prev = r[x.r - 2]; return prev && x.n <= prev.hi && x.decoys > prev.decoys; });
+    (dips.length >= 2 && rising && banded && fewer)
+      ? ok(`B.15 the target count is dealt from a rising band (round 10: ${r[9].lo}-${r[9].hi}) and rounds ${dips.map(d => d.r).join(', ')} deal the floor among more decoys - fewer targets, bigger crowd`)
+      : bad('B.15 the reworked curve', JSON.stringify({ dips: dips.length, rising, banded, fewer }));
+    (r[2].sizeVar > 0 && r[9].sizeVar > r[2].sizeVar) ? ok(`B.15 size variation arrives at round ${G28.SPOT_RAMP.sizeFrom} and grows (±${Math.round(r[9].sizeVar * 100)}% by round 10)`)
+      : bad('B.15 size variation', JSON.stringify(r.map(x => x.sizeVar)));
+  }
+
+  // ---- B.16: every shape's full bounds stay inside the field, rotation and pulse included ----
+  {
+    for (const [mode, secs, vs] of [['find', 10, 0], ['count', 10, 0], ['find', 10, 2]]) {
+      await setStorage({ ne: { v: 1, prefs: { ...OPEN_PREFS }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+      await page.reload({ waitUntil: 'networkidle0' }); await sleep(350);
+      const r = await page.evaluate(async (mode, secs, vs) => {
+        const RUN = await import('./run/run.js'); const ST = await import('./core/state.js'); const SP = (await import('./games/spot/index.js')).default;
+        const wait = ms => new Promise(r => setTimeout(r, ms));
+        Object.assign(ST.sel, { game: 'spot', diff: mode, secs, vs, practice: 0 });
+        RUN.start();
+        for (let i = 0; i < 120; i++) { if (SP.st === 'find' || SP.st === 'vsfind' || SP.st === 'flash') break; await wait(100); }
+        if (!['find', 'vsfind', 'flash'].includes(SP.st)) { RUN.abort(); return { err: 'never reached a field, st=' + SP.st }; }
+        SP.round = 9;                                   // late-round motion, rotation and size spread
+        const gen = document.getElementById('gen'); const out = { frames: 0, shapes: 0, worst: 0, bad: 0 };
+        for (let f = 0; f < 40; f++) {
+          const rect = gen.getBoundingClientRect();
+          for (const q of SP.pts) { const sz = q.sz || SP.size;
+            const m = q.va ? sz * (Math.SQRT2 - 1) / 2 : 0;
+            const over = Math.max(-(q.x - m), (q.x + sz + m) - rect.width, -(q.y - m), (q.y + sz + m) - rect.height);
+            out.shapes++; if (over > 1) { out.bad++; out.worst = Math.max(out.worst, Math.round(over)); } }
+          out.frames++; await wait(40); }
+        RUN.abort(); return out;
+      }, mode, secs, vs);
+      if (r.err) bad(`B.16 Spot · ${mode}${vs ? ' versus' : ''} reaches a field`, r.err);
+      else (!r.bad) ? ok(`B.16 Spot · ${mode}${vs ? ' versus' : ''} - ${r.shapes} shape-frames, every one fully inside the field (rotation swept box included)`)
+        : bad(`B.16 a shape left the field in Spot · ${mode}${vs ? ' versus' : ''}`, `${r.bad} of ${r.shapes} shape-frames, worst ${r.worst}px out`);
+    }
+  }
+
+  // ---- B.17: the Ready gate on a genuinely first Spot run. Investigation, both directions ----
+  {
+    const look = async (intro, mode) => {
+      await setStorage({ ne: { v: 1, prefs: { ...OPEN_PREFS }, runs: [], ach: {}, unlock: {}, intro, seen: {}, bars: {} } });   // B.17 drives the gate itself
+      await page.reload({ waitUntil: 'networkidle0' }); await sleep(350);
+      return page.evaluate(async mode => {
+        const RUN = await import('./run/run.js'); const ST = await import('./core/state.js');
+        Object.assign(ST.sel, { game: 'spot', diff: mode, secs: 10, vs: 0, practice: 0 });
+        RUN.start(); const wait = ms => new Promise(r => setTimeout(r, ms));
+        const el = document.getElementById('intro'); let sawOn = false, sawReady = false;
+        for (let i = 0; i < 60; i++) { if (el.classList.contains('on')) sawOn = true; if (el.classList.contains('ready')) { sawReady = true; break; } if (sawOn && !el.classList.contains('on')) break; await wait(120); }
+        RUN.abort(); return { sawOn, sawReady };
+      }, mode); };
+    const first = await look({}, 'count');
+    const second = await look({ spot: 1, 'spot:count': 1 }, 'find');
+    (first.sawOn && first.sawReady) ? ok('B.17 Spot DOES show "Ready?" on a genuinely first run - no bug; build 27 made the gate once per GAME (A.3), so Find skipping it after Count is by design')
+      : bad('B.17 Spot shows Ready on a genuinely first run', JSON.stringify(first));
+    (second.sawOn && !second.sawReady) ? ok('B.17 and the second mode of Spot shows its one-liner without the gate, which is the rule working')
+      : bad('B.17 Ready is once per game, not once per mode', JSON.stringify(second));
+  }
+
+  // ---- B.18 / A.6: percentage complete ----
+  {
+    await setStorage({ 'ne.prefs': OPEN_PREFS }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    const r = await page.evaluate(async () => {
+      const K = await import('./progress/key.js'); const S = await import('./core/store.js');
+      const floorC = K.COMBOS.find(c => c.bar && c.bar.dir === 'higher');
+      const ceilC = K.COMBOS.find(c => c.bar && c.bar.dir === 'lower');
+      const put = (c, hits) => { S.store.runs.unshift({ t: Date.now(), g: c.g, d: c.d, s: c.s, hits, misses: 0, v: 2 }); };
+      const reset = () => { S.store.runs = []; S.store.bars = {}; S.save(); };
+      reset(); const zero = K.keyPct();                                   // A.6.2: never played is 0
+      reset(); put(floorC, floorC.bar.bar * 0.5); const half = K.credit(floorC);
+      reset(); put(floorC, floorC.bar.bar * 10); const capped = K.credit(floorC);   // A.6.1: 0.9 is the cap while uncleared
+      reset(); S.store.bars[floorC.key] = Date.now(); const done = K.credit(floorC);
+      reset(); put(ceilC, 0); const zeroBest = K.credit(ceilC);           // A.6.3: guard the divide
+      reset(); put(ceilC, ceilC.bar.bar * 2); const ceilHalf = K.credit(ceilC);
+      reset(); for (const c of K.COMBOS) S.store.bars[c.key] = Date.now(); const whole = K.keyPct();
+      reset();
+      return { zero, half: +half.toFixed(3), capped, done, zeroBest, ceilHalf: +ceilHalf.toFixed(3), whole,
+        floor: floorC.key, ceil: ceilC.key, total: K.COMBOS.length }; });
+    const okPct = r.zero.pct === 0 && r.done === 1 && r.capped === 0.9 && r.zeroBest === 0
+      && Math.abs(r.half - 0.5) < 0.02 && Math.abs(r.ceilHalf - 0.5) < 0.02 && r.whole.pct === 100 && r.whole.done === r.total;
+    okPct ? ok(`A.6 percentage complete over ${r.total} combinations - never played 0 (A.6.2), half a floor bar 0.5, ten times the bar still capped at 0.9 (A.6.1), a zero best guarded to 0 (A.6.3), cleared 1, all cleared 100%`)
+      : bad('A.6 the percentage', JSON.stringify(r));
+    // A.6.5 / A.6.7: the same line on the menu as on the keys screen, and nothing on a profile with no runs
+    const m = await page.evaluate(async () => {
+      const S = await import('./core/store.js'); const P = await import('./progress.js');
+      S.store.runs = []; S.prefs.played = 0; S.prefs.allOpen = false; S.save();
+      const R = await import('./ui/router.js'); R.show('s-menu'); await new Promise(r => setTimeout(r, 250));
+      const first = document.getElementById('menu-key').hidden;
+      S.store.runs = [{ t: Date.now(), g: 'quick-tap', d: 'two', s: 5, hits: 6, misses: 0, v: 2 }]; S.prefs.played = 1; S.save();
+      R.show('s-menu'); await new Promise(r => setTimeout(r, 250));
+      const el = document.getElementById('menu-key');
+      return { first, hidden: el.hidden, text: el.textContent.trim() }; });
+    (m.first && !m.hidden && /^\d+ of \d+ · \d+%$/.test(m.text))
+      ? ok(`A.6.7 the menu carries the same line once a profile has played - "${m.text}" - and nothing before that`)
+      : bad('A.6.7 percentage complete on the menu', JSON.stringify(m));
+  }
+
+  // ---- B.1: the three running totals ----
+  {
+    // Spot · Find: the total is floored at zero. Ten instant finds used to run a Set to -4.71s and a Streak could not end
+    await setStorage({ 'ne.prefs': OPEN_PREFS }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    const f = await page.evaluate(async () => {
+      const SP = (await import('./games/spot/index.js')).default;
+      const src = SP.onDown.toString();
+      return { floored: /this\.tot\s*=\s*Math\.max\(\s*0\s*,/.test(src.replace(/\s+/g, ' ')) };
+    });
+    f.floored ? ok('B.1 Spot · Find’s running total is floored at zero - the 0.5s rebate (6.30) survives, the unbounded negative does not')
+      : bad('B.1 Find’s total must not go negative', 'the floor is missing');
+    // and the sheet lines say what the engines actually score
+    const cut = G28.SET_COPY['hold:cut'].set, find = G28.SET_COPY['spot:find'].set;
+    (/average/.test(cut) && /free/.test(find))
+      ? ok(`B.1 the sheet says what is scored - Cut "${cut}", Find "${find}"`)
+      : bad('B.1 the Set lines match the engines', JSON.stringify({ cut, find }));
+  }
+
+  // ---- B.2 / B.3: the Estimate round result ----
+  {
+    const src = fs.readFileSync(path.join(root28, 'games', 'estimate', 'index.js'), 'utf8');
+    const flat = src.replace(/\/\*[\s\S]*?\*\//g, '');
+    const iRes = flat.indexOf("$('#hres')"), iDiff = flat.indexOf("$('#hdiff')", flat.indexOf('chain.then'));
+    (iRes > 0 && iDiff > 0 && iRes < iDiff) ? ok('B.2 the round result shows HIS % first, then the difference, then the 800ms hold, then the drain')
+      : bad('B.2 the % lands before the difference', `hres at ${iRes}, hdiff at ${iDiff}`);
+    /pause\(diffHtml\?800:100\)/.test(flat) ? ok('B.2 the 800ms hold is between the difference and the drain') : bad('B.2 the 800ms hold');
+    /* every write to the footer, listed. The only value allowed on a ROUND is empty; the one message left is the
+       correction when a drag misses the shape entirely, which is not a label and would leave a failed cut silent. */
+    const writes = [...flat.matchAll(/\$\('#hlbl'\)\.innerHTML\s*=\s*([^;]+);/g)].map(m => m[1].trim());
+    const stray = writes.filter(v => v !== "''" && !/^T\(CP\.missed/.test(v));
+    (!stray.length && writes.length) ? ok(`B.3 no footer line on an Estimate round - ${writes.length} writes to #hlbl, every one of them empty bar the missed-drag correction`)
+      : bad('B.3 the Estimate footer line is deleted', 'the engine still writes ' + stray.join(' | '));
+    (!C28.ESTIMATE.sameShape && !C28.ESTIMATE.sameArea && !C28.ESTIMATE.watch) ? ok('B.3 the four retired strings are out of config/copy.js, not merely unused')
+      : bad('B.3 the retired Estimate strings', JSON.stringify(Object.keys(C28.ESTIMATE)));
   }
 }
 

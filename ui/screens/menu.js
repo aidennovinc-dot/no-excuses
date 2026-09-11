@@ -6,8 +6,9 @@
    the `story` class on #s-menu, which hides the menu's own rows without taking their space, and the two lines are absolutely
    positioned above and below the title (1.1 — line one at the top, NO EXCUSES in the middle, line two under it). The menu is
    rendered before the sequence starts, so nothing about the layout can change while it plays. */
-import { MENU } from "../../config/copy.js";
+import { KEY, MENU } from "../../config/copy.js";
 import { $, $$, T } from "../../core.js";
+import { keyPct } from "../../progress/key.js";
 import { emit, on } from "../../core/events.js";
 import { CHAL } from "../../core/platform.js";
 import { prefs, save } from "../../core/store.js";
@@ -30,6 +31,11 @@ function renderMenu(){ const first=firstRun(); const opening=menuWasFirst&&!firs
   $$('#s-menu .item').forEach((b,i)=>{ const x=first&&b.dataset.go!=='s-pick'; b.classList.toggle('dim',x); b.classList.remove('unx'); b.style.removeProperty('--ud');
     if(opening&&b.dataset.go!=='s-pick'){ const d=i*90; b.style.setProperty('--ud',d+'ms'); b.classList.add('unx'); b.style.pointerEvents='none'; setTimeout(()=>{ b.classList.remove('unx'); b.style.removeProperty('--ud'); b.style.pointerEvents=''; },700+d); } });
   $('#menu-note').textContent=first?MENU.note:'';
+  /* v17 (§A.6.7): the key-1 percentage on the front of the app, reading the same keyPct() the keys screen reads. It is
+     hidden on a profile that has not run anything — A.6.2 makes a new profile 0 of 30 · 0%, and handing a first-timer a
+     number that says nothing has happened is the opposite of what §A.6.6 is for. Tapping it opens the keys screen. */
+  const mk=$('#menu-key'); const kp=keyPct();
+  mk.hidden=first; if(!first) mk.textContent=kp.done>=kp.total?KEY.whole:T(KEY.count,kp);
   /* v13 (1.3): the card sits above the title; the box holds the requirement and what it opens, nothing else.
      v15 (2.2): it does NOT appear on a fresh profile's first menu open — a player who has not run anything yet is being
      told to play, not handed a target — and it labels itself Next unlock or Next achievement depending on which of the

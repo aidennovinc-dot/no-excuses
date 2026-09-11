@@ -31,6 +31,9 @@
   <button data-act="go" class="item glow" data-go="s-custom">Customise</button>
   <button data-act="go" class="item glow" data-go="s-about">About</button>
   <button data-act="go" class="item glow" data-go="s-testing" data-dev>Testing</button>
+  <!-- v17 (§A.6.7): percentage complete, key 1 only. The same line the keys screen carries, on the front of the app, so
+       the number that moves on nearly every run is visible without opening anything. Hidden on a profile with no runs -->
+  <div class="menu-key" id="menu-key" data-act="go" data-go="s-key" hidden></div>
   <div class="menu-note" id="menu-note"></div>
   <div class="hint" id="storyhint">tap to begin</div>
 </section>
@@ -140,7 +143,7 @@
   <div class="explain">A passion project of simple games of pure skill and minimal frills.<br><br>If you'd like to remove ads, add customisation, and show your support, tap below.</div>
   <button data-act="support" class="support" id="support"><b id="support-title">Support · A$1.99 · once</b><small id="support-text">No ads, ever. Every colour, background and sound pack open from day one, plus the colour wheel. A pro 60-second length in Quick Tap and Dots, with its own boards. A star on your profile.</small></button>
   <div class="tierbox" id="tierbox"></div>
-  <div class="hint">build 27 · batch 12 · the music · 10 sept 2026</div>
+  <div class="hint">build 28 · batch 13 · the chain · 11 sept 2026</div>
 </section>
 
 <section class="screen" id="s-testing" data-back="s-menu" data-dev>
@@ -218,12 +221,12 @@
 
 <script type="module" src="./boot.js"></script>
 
-<div id="build">build 27</div>
+<div id="build">build 28</div>
 <button id="update">New build available — tap to reload</button>
 <script>
 // build check: version.json is fetched with no-store, so a stale cached page still learns a newer build exists
 (function(){
-  const BUILD="27";
+  const BUILD="28";
   async function check(){
     try{
       const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});

@@ -37,7 +37,9 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
   const o={ bg:DESIGNS[p.bg]?p.bg:'stars', tint:hex(p.tint,''), snd:SND.includes(p.snd)?p.snd:'space', musicG:{}, lastGame:GAMES[p.lastGame]?p.lastGame:'quick-tap',
     name:typeof p.name==='string'?p.name.trim().toUpperCase().slice(0,10):'', scale:SCALES[p.scale]?p.scale:'penta',
     allOpen:dev&&!!p.allOpen, supporter:dev&&!!p.supporter, adRuns:Number.isInteger(p.adRuns)&&p.adRuns>=0?p.adRuns:0,
-    col:{}, story:p.story?1:0, played:p.played?1:0, gridSeen:p.gridSeen?1:0, menuSeen:p.menuSeen?1:0,
+    // v17 (build 28): `keySeen` was missing from this list since build 26 — reset() cleared a field load() never created,
+    // so the keys screen's once-per-profile arrival was shape-checked by nothing. It is a flag like the three beside it
+    col:{}, story:p.story?1:0, played:p.played?1:0, gridSeen:p.gridSeen?1:0, menuSeen:p.menuSeen?1:0, keySeen:p.keySeen?1:0,
     rate:RATES.includes(p.rate)?p.rate:'live' };   // v14 (6.7): which taps-per-second reading the rate bar shows
   if(isObj(p.musicG)) for(const g in GAMES) if(typeof p.musicG[g]==='boolean') o.musicG[g]=p.musicG[g];
   // colours are per game (v6): { sq, lead, cut }, each #RRGGBB; cut defaults to the square colour (v13 6.5)
@@ -87,7 +89,14 @@ function save(){ return write(KEY,JSON.stringify(store)); }
 // the record is written back once at boot — repaired fields stick — and the old keys go only once the new record is safely down
 if(save()&&legacy) LEGACY.forEach(drop);
 const musicOn=g=>prefs.musicG[g]!==false;
-// Fresh game (the About screen's dev switch): progress goes, the look and the name stay
-function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0}); delete prefs.mig11; save(); emit('store:reset'); }
+/* Fresh game (the Testing screen's dev switch): progress goes, the look and the name stay.
+   v17 (B.10): `supporter` goes too. It did not, and that is the answer to "is dev unlock-all leaking into a normal
+   profile, or is the lock check wrong" — neither. The lock check is exact on a genuinely fresh profile (measured: 7 of 8
+   target colours locked, 27 locked in total). But `lockedBy` also returns null for a SUPPORTER, and Fresh game cleared
+   `allOpen` while leaving `supporter` standing — so switching Supporter on to compare cosmetics and then taking a fresh
+   profile showed all 27 of them open. Supporter is a dev switch today (S5 gates it out of a release build entirely) and
+   Fresh game is the switch for seeing the app as a new player does, so it belongs in this list. When it becomes a real
+   purchase at the native build it will be restored from the store rather than from prefs, and this line stays correct. */
+function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0}); delete prefs.mig11; save(); emit('store:reset'); }
 
 export { musicOn, prefs, reset, save, store };

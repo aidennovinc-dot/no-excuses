@@ -10,7 +10,10 @@
    anywhere. Five of the rows below ask the player to fail on purpose (v15 §0.5) — that is deliberate, not a mistake, and
    tapping a locked row to read its requirement (v15 §2.1) is how anyone would ever find them. */
 export const UNLOCKS = [
-  { key:'quick-tap:four',    need:'15 hits, no misses, in a Quick Tap Dash',      where:{g:'quick-tap',d:'two',s:15},      live:1 },
+  /* v17 (B.7, L6): `s:15` came off. Fifteen in a row with no misses, in ANY Quick Tap · Two run — a Sprint counts, because
+     Four is a harder mode and not a later one. Four can therefore open before Dash does; Aiden accepted that explicitly.
+     v17 (B.6): "no misses" means fifteen IN A ROW (progress/rules.js inRow), not a clean whole run */
+  { key:'quick-tap:four',    need:'15 hits in a row, no misses, in any Quick Tap · Two run', where:{g:'quick-tap',d:'two'}, live:1 },
   { key:'dots:blind',        need:'35 hits in any Quick Tap run',                 where:{g:'quick-tap'},                   live:1 },
   // v15 (1.2b): a deliberate-failure unlock. Still live — five misses is knowable the moment the fifth one lands
   { key:'dots:lead',         need:'5 misses in any Dots · Blind run',             where:{g:'dots',d:'blind'},              live:1 },
@@ -41,11 +44,18 @@ export const UNLOCKS = [
    over it), so those two rows give Estimate · Cut and Reaction · Flash a real Streak requirement instead of "finish one Set".
    Every other Set/Streak mode keeps the default and is deliberately absent. */
 export const LEN_RULES = {
-  'quick-tap:two':  [null,'7 hits, no misses, in a {game} {prev}','24 hits in a {game} {prev}'],
-  'quick-tap:four': [null,'7 hits, no misses, in a {game} {prev}','24 hits in a {game} {prev}'],
-  'dots:blind':     [null,'6 hits, no misses, in a {game} · {mode} {prev}','24 hits in a {game} · {mode} {prev}'],
-  'dots:lead':      [null,'9 hits, no misses, in a {game} · {mode} {prev}','28 hits in a {game} · {mode} {prev}'],
-  'sequence:solo':  [null,'6 notes in Sequence · 3 keys','6 notes in Sequence · 5 keys'],
-  'hold:cut':       [null,'more than 80% off in a single {game} · {mode} round'],
+  // v17 (B.6, L6): "N hits in a row" — a miss resets the count, which is what Aiden meant and what the predicate now does
+  'quick-tap:two':  [null,'7 hits in a row, no misses, in a {game} {prev}','24 hits in a {game} {prev}'],
+  'quick-tap:four': [null,'7 hits in a row, no misses, in a {game} {prev}','24 hits in a {game} {prev}'],
+  'dots:blind':     [null,'6 hits in a row, no misses, in a {game} · {mode} {prev}','24 hits in a {game} · {mode} {prev}'],
+  'dots:lead':      [null,'9 hits in a row, no misses, in a {game} · {mode} {prev}','28 hits in a {game} · {mode} {prev}'],
+  // v17 (B.9, L6): 5 keys is gone, so the ladder is 3 → 7 with nothing between. Seven asks for EIGHT notes in 3 keys,
+  // not the old six: skipping a rung has to cost something, and two more notes is the step the missing rung used to be (guess)
+  'sequence:solo':  [null,'8 notes in Sequence · 3 keys'],
+  /* v17 (B.8, L6): 80% off was UNREACHABLE. A Cut round scores |share − target| where `share` is the SMALLER piece, so
+     share never exceeds 50 and the engine re-asks below 0.5 — the most any target can be missed by is max(t−0.5, 50−t),
+     which peaks at 44.5 (target 45) and BOTTOMS at 25 (target 25). Half the smallest reachable maximum, down to a 5, is 10.
+     It stays a deliberate-failure row (v15 0.5) — Aiden's intention is "a purposely bad cut" — and it now says so out loud */
+  'hold:cut':       [null,'Make a terrible cut — more than 10% off in one {game} · {mode} round'],
   'reaction:flash': [null,'a {game} · {mode} Set averaging over 500ms'],
 };

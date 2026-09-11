@@ -6,7 +6,7 @@
    A bar is a ONE-OFF threshold, not a score to hold: beat it once in a solo run and that combination is cleared for good
    (9.4 — pass & play and versus never count, L10). `dir` is the direction of that combination's own scoring and is read
    from here, never assumed: 'higher' is a floor (that number or more), 'lower' is a ceiling (that number or less).
-   C.7's naming stands — CLEARANCE bar, never "minimum bar" — but its count does not: EIGHT of the thirty-one are
+   C.7's naming stands — CLEARANCE bar, never "minimum bar" — but its count does not: EIGHT of the thirty are
    ceilings, not nineteen. Estimate, Timing, Reaction and Spot score downward in their SET rows only; their Streak rows
    score rounds survived, which is upward like everything else (L5). The gate checks every row against GC(g,d,s).lower.
 
@@ -37,7 +37,9 @@ export const KEY_BARS = {
   'hold:cut:10':          { id:'es-cut-set', bar:6.5, dir:'lower', unit:'% off', conf:'med', basis:'Sequence opens on one Cut round within 3.5%. 6.5% is that standard sustained over ten, against a widening shape pool.' },
   'hold:cut:-1':          { id:'es-cut-streak', bar:14, dir:'higher', unit:'rounds', conf:'med', basis:'100% budget at a 6.5% average round is about fifteen; the bar sits one under.' },
   'sequence:solo:3':      { id:'sq-3', bar:11, dir:'higher', unit:'rounds', conf:'med', basis:'5 keys opens at 6 notes in 3 keys. Eleven rounds is an eleven-note sequence, but only three symbols to hold.' },
-  'sequence:solo:5':      { id:'sq-5', bar:10, dir:'higher', unit:'rounds', conf:'med', basis:'7 keys opens at 6 notes in 5 keys. Ten is a clear step past it.' },
+  // v17 (B.9): 'sequence:solo:5' was REMOVED here, not retuned — five keys stopped being a combination the config makes,
+  // so its row became an orphan the gate would have failed on. A removal, never a generated bar: A2 stands and #371 is
+  // still the only thing that may set one
   'sequence:solo:7':      { id:'sq-7', bar:9, dir:'higher', unit:'rounds', conf:'high', basis:'Two unlocks read this exact run — Practice at 8 notes, Timing at round 6. The bar sits one above the higher.' },
   'timing:stopwatch:5':   { id:'tm-sw-set', bar:0.28, dir:'lower', unit:'s off', conf:'high', basis:'Timing · Hidden opens on one attempt within 0.30s. This is that standard held as a five-round average.' },
   'timing:stopwatch:-1':  { id:'tm-sw-streak', bar:9, dir:'higher', unit:'rounds', conf:'high', basis:'Reaction · Flash opens at round 6 of this exact run, so round 9 is a real step past a threshold the build already trusts.' },
@@ -58,7 +60,7 @@ export const KEY_NOTE = {
   'quick-tap': 'Timed — score is hits. No Set or Streak; the three lengths are the combinations.',
   'dots': 'Timed — score is hits. No lockout between dots, so the ceiling sits above Quick Tap.',
   'hold': 'Set is an average across its rounds. Streak is endless on a 100% cumulative budget, scored in rounds.',
-  'sequence': 'One mode, three key counts. Score is rounds. Speed tightens 15ms a round to a 280ms floor.',
+  'sequence': 'One mode, two key counts. Score is rounds. Speed tightens 15ms a round to a 280ms floor.',
   'timing': 'Stopwatch scores seconds off, Hidden scores pixels off the marker. Both have Set and Streak.',
   'reaction': 'Flash is a simple reaction; Go / No-go adds the decision. The Streak budgets are your §C numbers.',
   'spot': 'Count scores total miscount, Find scores total seconds. Both lower is better.',

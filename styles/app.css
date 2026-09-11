@@ -104,7 +104,7 @@
   #storyhint{position:absolute;left:0;right:0;bottom:max(52px,calc(env(safe-area-inset-bottom) + 44px));opacity:0;display:none;margin:0;
     font-family:var(--title);font-size:clamp(13px,4.4vw,19px);letter-spacing:.3em;color:var(--ink);line-height:1.6;text-align:center}
   #s-menu.story .stline,#s-menu.story #storyhint{display:block}
-  #s-menu.story .nextup,#s-menu.story .menu-tag,#s-menu.story .item,#s-menu.story .menu-note{visibility:hidden}
+  #s-menu.story .nextup,#s-menu.story .menu-tag,#s-menu.story .item,#s-menu.story .menu-note,#s-menu.story .menu-key{visibility:hidden}
   /* 1.1 — three beats: the first line at the top, NO EXCUSES in the middle, the second line under it. The title's own
      arrival is on .wmin, never on .wordmark, so breathe and float are never restarted underneath it */
   #s-menu.story .wmin{opacity:0}
@@ -144,6 +144,10 @@
   /* first open: only Play is live until one run is on the record */
   .item.dim{opacity:.18;pointer-events:none;text-decoration:none}
   .menu-note{font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--mute);text-transform:uppercase;text-align:center;margin-top:-6px}
+  /* v17 (A.6.7): percentage complete on the front of the app. Same mono line as .menu-note, one step brighter, because it
+     is a figure that moves rather than a standing instruction — and it is a control: tapping it opens the keys screen */
+  .menu-key{cursor:pointer;font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:var(--ink);text-align:center;margin-top:2px}
+  #s-menu.intro .menu-key{animation:menufade .7s ease-out 1.5s both}
   .menu-tag{font-family:var(--title);font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--mute);margin-top:-6px}
   #s-menu.intro .menu-tag{animation:menufade .7s ease-out .8s both}
   /* crossed out (v11): a line drawn across a locked item, wiping off when it opens */
@@ -757,7 +761,15 @@
      Its own class, not a rule over every #hud-time child: Reaction versus and the pass & play hand-over share that slot */
   #hud-time .spvs b{font-weight:700;font-size:19px;letter-spacing:.04em}
   #hud-time .spvs small{display:block;font-size:9px;color:var(--mute);letter-spacing:.18em;margin-top:1px}
+  /* v17 (B.13): FIXED-WIDTH SLOTS. The row was space-between over three items, so the centre one moved every time the
+     right one changed width — and Sequence changes it every few seconds ("round 4 · watch" → "your turn"), which is the
+     round marker sliding left and right that Aiden reported. The two outer slots take equal share and hold their own
+     alignment, so the score sits still whatever either of them says. */
   .hud{position:absolute;left:0;right:0;top:max(14px,env(safe-area-inset-top));padding:0 16px 0 60px;display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--mute);font-size:13px;letter-spacing:.14em;pointer-events:none}
+  .hud>#hud-mode,.hud>#hud-time{flex:1 1 0;min-width:0}
+  .hud>#hud-mode{text-align:left}
+  .hud>#hud-time{text-align:right}
+  .hud>#score{flex:0 0 auto;padding:0 6px}
   #score{font-weight:700;font-size:clamp(32px,8vw,60px);color:var(--ink);letter-spacing:0}
   #quit{position:absolute;left:8px;top:max(8px,env(safe-area-inset-top));width:44px;height:44px;display:grid;place-items:center;font-family:var(--mono);font-size:22px;color:var(--mute);z-index:6}
   #quit:hover{color:var(--ink)}
@@ -828,7 +840,9 @@
   /* PB (v11): a thin marker on the rate bar at your best pace; a "best" ghost beside the running figure on the others */
   #rate u{position:absolute;left:-4px;right:-4px;height:2px;background:var(--cue);bottom:0;display:none;text-decoration:none}
   #rate u.on{display:block}
-  #pbghost{position:absolute;left:50%;top:calc(max(14px,env(safe-area-inset-top)) + 52px);translate:-50% 0;font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);display:none;pointer-events:none}
+  /* v17 (B.13): "best" sat at +52px, which is inside the score's own box — #score runs to 60px of type — so on Sequence,
+     where the score is the round number, the best-ghost was drawn behind it. It clears the score now. */
+  #pbghost{position:absolute;left:50%;top:calc(max(14px,env(safe-area-inset-top)) + 78px);translate:-50% 0;font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);display:none;pointer-events:none}
   #pbghost.on{display:block}
   #game.versus #pbghost,#game.bigc #pbghost{display:none}
   #hud-mode .p1,#hud-mode .p2{font-weight:700}

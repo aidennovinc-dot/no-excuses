@@ -2,12 +2,13 @@
    Split out of index.html at build 12. Build 17 (refactor stage 3): the engine contract, on the round base. Behaviour is identical to build 11. */
 
 import { TIMING as CP } from "../../config/copy.js";
+import { CFG } from "../../config/games.js";
 import { $, T, f2, mean, minMax, sum } from "../../core.js";
 import * as hud from "../_shared/hud.js";
 import { genRect, rnd, roundEngine } from "../_shared/round.js";
 import { makeTwo } from "../_shared/two.js";
 /* Timing — Stopwatch: a clock counts up and fades at 1.5s, tap on the target. Hidden: a ball rolls behind a wall, tap when it is at the marker. Score is seconds off, averaged */
-const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, ball:null, targets:[], out:false, tot:0, asked:0, stopAt:0, two:{on:false},
+const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, ball:null, targets:[], out:false, tot:0, asked:0, stopAt:0, ranOut:0, two:{on:false},
   hid(){ return this.ctx.mode==='hidden'; },
   // v13 (8.2 / 8.3 / L5): a Streak is a cumulative budget, not one bad attempt — Stopwatch adds up the seconds off to 2.0s, Hidden the pixels off to 100px. Score is attempts completed
   // v15 (3.8, L5): the Stopwatch Streak's budget is 25 seconds, and passing round 10 grants five more. It WAS 2.0s —
@@ -35,11 +36,13 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
   askTot(){ return Math.round(this.targets.slice(0,this.ctx.len).reduce((a,b)=>a+b,0)*100)/100; },
   // v15 (4.3): pass & play is attempt by attempt, both modes — one go each, the phone over, and the same scoring the Set
   // uses (Stopwatch the average seconds off, Hidden the total pixels). Lower wins at both ends
-  begin(){ this.round=0; this.errs=[]; this.out=false; this.tot=0; this.asked=0; this.two=makeTwo(this.ctx,{lower:true,agg:this.hid()?'sum':'mean',fmt:v=>this.hid()?Math.round(v)+'px':f2(v)+'s'});
+  begin(){ this.round=0; this.errs=[]; this.out=false; this.tot=0; this.asked=0; this.ranOut=0; this.two=makeTwo(this.ctx,{lower:true,agg:this.hid()?'sum':'mean',fmt:v=>this.hid()?Math.round(v)+'px':f2(v)+'s'});
     this.targets=this.deal(this.streak()?40:this.ctx.len); hud.score(this.streak()?'0':(this.hid()?'0px':'0.00s')); this.next(); },
   // v11: Stopwatch Set = 5 attempts, average absolute s off. Hidden Set = 10 runs, total px off. Streak = attempts until one is more than 2.0s (150px) off, score attempts completed. Every figure is an absolute difference — early never cancels late
-  result(){ const [x,y]=minMax(this.errs);
-    if(this.streak()) return {hits:this.errs.length,misses:0,x,y,lim:this.budTxt()}; return {hits:this.hid()?Math.round(sum(this.errs)):Math.round(mean(this.errs)*100)/100,misses:0,x,y}; },
+  // v17 (B.12): `ov` says an attempt ran the full CFG.swOver seconds past its target. It is the only thing on the record
+  // that a partial run can claim honestly the moment it happens, which is why the row that reads it is live:1
+  result(){ const [x,y]=minMax(this.errs); const r=this.streak()?{hits:this.errs.length,misses:0,x,y,lim:this.budTxt()}:{hits:this.hid()?Math.round(sum(this.errs)):Math.round(mean(this.errs)*100)/100,misses:0,x,y};
+    if(this.ranOut) r.ov=1; return r; },
   // v16 (1.5): a Set ramps over its last round, a Streak once the budget is 80% spent. Music only (A.1)
   fin(){ if(this.two.on) return 0; return this.streak()?this.finBud(this.tot,this.budget()):this.finSet(); },
   hud(){ if(this.two.on) return hud.timeHtml(this.two.hudLine());
@@ -60,7 +63,12 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
     const was=this.asked; this.asked=Math.round((this.asked+this.target)*100)/100; const showAsked=this.streak()||this.two.on;
     $('#gen').innerHTML=`<div class="tmtarget">${CP.target}<b>${f2(this.target)}</b>${showAsked?'<u id="tmasked"></u>':''}</div><div class="tmclock" id="tmclock">0.00</div><div class="glbl bot" id="tmhint">${CP.stop}</div>`;
     if(showAsked) hud.countUp({ from:was, to:this.asked, ms:600, fmt:v=>T(CP.asked,{tot:f2(v)}), set:t=>{ const el=$('#tmasked'); if(el) el.textContent=t; }, alive:()=>this.st==='arm'||this.st==='run' });
-    this.later(()=>{ this.st='run'; this.t0=performance.now(); const el=$('#tmclock'); const loop=now=>{ if(this.st!=='run') return; const e=(now-this.t0)/1000; el.textContent=f2(e); el.style.opacity=e<1.5?1:Math.max(0,1-(e-1.5)/.5); if(e>this.target+5) return this.onDown(); this.raf=requestAnimationFrame(loop); }; this.raf=requestAnimationFrame(loop); },700); },
+    this.later(()=>{ this.st='run'; this.t0=performance.now(); const el=$('#tmclock'); const loop=now=>{ if(this.st!=='run') return; const e=(now-this.t0)/1000; el.textContent=f2(e); el.style.opacity=e<1.5?1:Math.max(0,1-(e-1.5)/.5);
+      /* v17 (B.12): an attempt keeps running to TEN seconds past its target before it stops itself, not five, and it scores
+         the real difference either way. Going the whole distance is a thing you can only do on purpose, so it is a secret
+         row (`ov` on the record). Solo only, because no two-player run earns anything (L10); the Streak spends the ten
+         seconds out of its budget exactly as it spends any other overshoot (L5 untouched). */
+      if(e>this.target+CFG.swOver){ this.ranOut=1; return this.onDown(true); } this.raf=requestAnimationFrame(loop); }; this.raf=requestAnimationFrame(loop); },700); },
   // hidden (v8): the ball comes in from any of the four sides, the wall covers 55–85% of the way and is squared to the direction of travel, the marker sits somewhere inside it
   // hidden (v9): the time the ball spends behind the wall before the marker is dealt around 1.3s, in pairs, the same for everyone — and never under 0.6s, so the wall's edge is no help
   hidden(){ const r=genRect(); const size=Math.max(28,Math.min(r.width,r.height)*.11); const dir=rnd(4), horiz=dir<2; const L=horiz?r.width:r.height;

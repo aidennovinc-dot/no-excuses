@@ -77,12 +77,15 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
     // v14 (6.13): rotating a circle does nothing and rotating a square barely more — a shape with an obvious axis of symmetry is never turned
     this.rot=(this.est()||EST.SYM.includes(this.shape.name))?0:[35,60,90,120,145,180,225,270][Math.random()*8|0];
     // v14 (6.11): the shape you are about to grow is always drawn, centre-top, whether or not it is the target's shape
-    this.icon(this.mine); $('#hlbl').innerHTML=this.est()?CP.watchDiff:CP.watch; $('#hfield').classList.add('show');
+    // v17 (B.3): no footer line. #hbg carries the one instruction that matters and the HUD carries the round
+    this.icon(this.mine); $('#hfield').classList.add('show');
     this.st='show'; const t0=performance.now(), rate=CFG.holdRate*v, dur=this.target/rate*1000;
     const grow=now=>{ if(!this.live()) return; const p=Math.min(1,(now-t0)/dur); this.set('ht',this.shape,this.target*p,this.wobble(now-t0)); if(p<1) this.raf=requestAnimationFrame(grow); else this.later(()=>this.ready(),420); };
     this.raf=requestAnimationFrame(grow); },
   // v11: the target stays up as a dashed outline while you grow — turned for same-shape rounds — so you can see what you are comparing to
-  ready(){ this.set('ht',null,0); $('#hfield').classList.remove('show'); this.set('hg',this.shape,this.target,{a:this.rot,x:0,y:0}); this.st='wait'; $('#hlbl').innerHTML=this.est()||!this.rot?CP.sameArea:CP.sameShape; this.bg(CP.hold); this.ctx.audio.click(); },
+  /* v17 (B.3): "same shape · it has been turned" and "same area" are GONE, and so is the watch-phase line above. They were
+     the footer on every single round of a game that is ten rounds long, saying something the dashed outline already says. */
+  ready(){ this.set('ht',null,0); $('#hfield').classList.remove('show'); this.set('hg',this.shape,this.target,{a:this.rot,x:0,y:0}); this.st='wait'; $('#hlbl').innerHTML=''; this.bg(CP.hold); this.ctx.audio.click(); },
   down(ev){ if(this.cut()) return this.cutDown(ev); if(this.st!=='wait') return; this.st='hold'; this.t0=performance.now(); $('#hlbl').innerHTML=''; this.bg(''); const rate=CFG.holdRate*vmin(), cap=this.capOf();
     const grow=now=>{ if(this.st!=='hold') return; const el=now-this.t0; this.set('hm',this.mine,Math.min(cap,el/1000*rate)); this.raf=requestAnimationFrame(grow); }; this.raf=requestAnimationFrame(grow); },
   // the reveal (v11): the target fills bottom-up while its px² counts, then yours does the same, then the difference and the %. The two fills and the two numbers are the sum, drawn
@@ -109,9 +112,15 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
     const unit=rowsIn[0][4]||'';
     let chain=fill(0,rowsIn[0][1],unit,rowsIn[0][5]);
     if(rowsIn[1]) chain=chain.then(()=>pause(300)).then(()=>fill(1,rowsIn[1][1],unit,rowsIn[1][5]));
+    /* v17 (B.2): the order is HIS NUMBER FIRST. It used to be difference, pause, then the % — and the % arrived already
+       walking, so the shape he actually made was on screen for one frame before it slid to 100%. Aiden: "it jumps to 100%".
+       Now: the shape fills and the % lands on what he made and HOLDS there; the difference appears under it; 800ms; and only
+       then does the difference drain into the running total (the total counts up, the difference counts down). Grow and Cut
+       take the same path, because calc() is the one path both reveals go through. */
     chain.then(()=>pause(300))
+      .then(()=>{ if(this.st!=='reveal') return; const v=$('#hres'); if(v){ v.innerHTML=resultHtml; v.classList.add('on'); } err<=8?this.ctx.audio.hit():this.ctx.audio.miss(); if(err>8&&navigator.vibrate) navigator.vibrate(30); return pause(450); })
       .then(()=>{ if(this.st!=='reveal') return; const d=$('#hdiff'); if(d&&diffHtml){ d.innerHTML=diffHtml(); d.style.opacity=1; d.classList.add('pop'); } return pause(diffHtml?800:100); })
-      .then(()=>{ if(this.st!=='reveal') return; const v=$('#hres'); if(v){ v.innerHTML=resultHtml; v.classList.add('on'); } err<=8?this.ctx.audio.hit():this.ctx.audio.miss(); if(err>8&&navigator.vibrate) navigator.vibrate(30);
+      .then(()=>{ if(this.st!=='reveal') return;
         const was=this.errs.length?mean(this.errs):0; this.errs.push(err);
         const w=walk?{el:$('#hpct'),from:walk.from,to:walk.to,fmt:v=>f2(v)+'%'}:null;
         if(this.two.on) return this.twoAdd(err,w);

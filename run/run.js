@@ -20,7 +20,7 @@ import { prefs, save, store } from "../core/store.js";
 import { makeTimers, tapTime } from "../core/timers.js";
 import * as hud from "../games/_shared/hud.js";
 import { ENGINES, GAMES, GC, SHARED2, VERSUS, lenName, versusOf } from "../games/registry.js";
-import { Scores, UNLOCKS, chalRun, checkAch, checkUnlocks, goalFor, isOpen, lenOpen, lensOf, pendingAim, pendingGoal, setPendingAim, setPendingGoal, unlockHtml, unlockName, unlockToast, unlocked } from "../progress.js";
+import { Scores, UNLOCKS, chalRun, checkAch, checkUnlocks, goalFor, isOpen, lenNextLive, lenNextOf, lenOpen, lensOf, pendingAim, pendingGoal, setPendingAim, setPendingGoal, unlockHtml, unlockName, unlockToast, unlocked } from "../progress.js";
 import { checkKey } from "../progress/key.js";
 import { scoreTxt } from "../ui/format.js";
 import { game as showGame } from "../ui/router.js";
@@ -30,7 +30,11 @@ import { toast } from "../ui/toast.js";
 /* ---------- run state. `id` steps on every start and abort, so anything a dead run left behind can tell it is dead ---------- */
 /* v16 (1.4 / 1.5): `fin` is 0..1, how far into the finish the run is, and `vsP` is each player's proximity to winning.
    Both are read by audio.js and by nothing else — A.1 is explicit that the ramp is music only and no gameplay speeds up. */
-const R={ on:false, live:false, id:0, timed:false, t0:0, end:0, raf:0, goal:null, goalHit:false, fresh:[], tension:0, fin:0, vsP:[0,0] };
+/* v17 (B.4): `demo` is true for exactly as long as the first-play ghost is driving the engine, and it is the same shape
+   as L10's two-player rule — turned away MID-RUN in liveCheck and again at the finish. It had to exist: Estimate · Grow's
+   demo plays a real round on the real engine and emits 'live' out of its reveal, so the ghost's own guess banked Aiden an
+   achievement ("On the money" is live:1 and tests one round within 2%). A ghost is not the player. */
+const R={ on:false, live:false, id:0, timed:false, t0:0, end:0, raf:0, goal:null, goalHit:false, fresh:[], lenNext:null, lenDone:false, demo:false, tension:0, fin:0, vsP:[0,0] };
 let eng=null, ctx=null;
 const isVx=()=>sel.vs===2&&(sel.game==='quick-tap'||sel.game==='dots');
 const active=()=>R.on;
@@ -56,14 +60,16 @@ const Intro=(()=>{
       const [line]=INTRO[key]||['']; $('#intro-text').innerHTML=line+'<b class="rdy">'+INTRO_READY.ready+'<small>'+INTRO_READY.tap+'</small></b>'; $('#intro').classList.add('on');
       timers=makeTimers(ctx.timers.alive); const g=hud.makeGhost(Snd,timers);
       ghost.style.transition='none'; const c=g.centre($('#game')); g.at(c.x,c.y); void ghost.offsetWidth; ghost.style.transition='';
-      done=()=>{ done=null; clear(); ctx.timers.clearT(); cb(true); };
+      // v17 (B.4): from here until the intro hands over, nothing the engine does belongs to the player
+      R.demo=true;
+      done=()=>{ done=null; R.demo=false; clear(); ctx.timers.clearT(); cb(true); };
       // the first game of all: the demo plays and then the screen WAITS. Everywhere else it runs straight on, as before
       const end=()=>{ if(!done) return; if(!firstGame) return done(); ready=true; $('#intro').classList.add('ready'); };
       // an engine without a demo (the v7 games): the one-liner sits for 1.8s, then the countdown. A demo returns its length, or 0 when it calls done itself
       const ms=eng.demo?eng.demo(ctx,g,end):1800; if(ms) timers.later(end,ms); },
     // the tap that answers "Ready?". run/input.js swallows every tap on the game layer while an intro is up and hands it here
     tap(){ if(!ready||!done) return false; ready=false; Snd.click(); done(); return true; },
-    active:()=>!!done, clear:()=>{ done=null; clear(); } };
+    active:()=>!!done, clear:()=>{ done=null; R.demo=false; clear(); } };
 })();
 // the PB marker (v11): a line on the rate bar at your best pace for this mode and length; on the other games a small "best" ghost under the running figure. Nothing when there is no PB
 function pbShow(){ const g=GAMES[sel.game], pb=Scores.best(sel.game,sel.diff,sel.secs); const mk=$('#pbmark'), gh=$('#pbghost'); mk.classList.remove('on'); gh.classList.remove('on'); if(pb===null||VS.on||sel.vs) return;
@@ -108,7 +114,12 @@ function start(){
   $('#hud-time').textContent=g.timed?sel.secs.toFixed(2):'';
   hud.reset(); applyPrefs(sel.game); $('#game').classList.toggle('timed',!!g.timed&&!versus);
   if(ctx) ctx.timers.clearT();
-  R.id++; Object.assign(R,{on:true,live:false,timed:!!g.timed&&!vx,t0:0,end:0,goalHit:false,fresh:[],tension:0,fin:0,vsP:[0,0]});
+  R.id++; Object.assign(R,{on:true,live:false,timed:!!g.timed&&!vx,t0:0,end:0,goalHit:false,fresh:[],lenNext:null,lenDone:false,demo:false,tension:0,fin:0,vsP:[0,0]});
+  /* v17 (B.5, L6): the next length this run could open, and the test that says so. It is computed ONCE per run because a
+     length unlock has no store entry to read back — the state is derived from run history (L6 / 1.0b) — so mid-run there
+     is nothing to ask except "does this run pass the rung". Null for two-player, a practice or challenge run, and for the
+     rows whose rule is the default "finish one run of the length before", which cannot be true until the run has ended. */
+  R.lenNext=(VS.on||sel.vs)?null:lenNextLive(sel.game,sel.diff,sel.secs);
   eng=vx?VERSUS:ENGINES[sel.game]; ctx=makeCtx();
   pbShow(); setPendingAim(''); setPendingGoal(null);
   Music.start(sel.game,R,sel.secs);
@@ -148,12 +159,18 @@ function finish(res){
   if(VS.on&&VS.stage===1){ VS.p1=run; emit('run:pass',{run}); return; }
   if(VS.on&&VS.stage===2) VS.p2=run;
   const two=!!run.vs2||VS.on;
-  const isBest = run.practice||(run.fail&&!run.hits)||two ? false : Scores.submit(run);
+  // v17 (B.4): a demo run is not a run. It never reaches a board, a key, an unlock, an achievement or the record itself
+  if(R.demo) run.demo=1;
+  /* v17 (B.5, L6): which length this combination could open, asked BEFORE the record goes in. Length state is derived from
+     run history, so the only honest test of "it opened" is locked here and open again four lines down */
+  const lenWas = two||run.demo ? null : lenNextOf(run.g,run.d,run.s);
+  const isBest = run.practice||run.demo||(run.fail&&!run.hits)||two ? false : Scores.submit(run);
+  const freshLen = lenWas && lenOpen(run.g,run.d,lenWas.s) ? [{ key:lenWas.key, len:1 }] : [];
   /* v15 (2.5): every earn is banked HERE, the moment the record exists. It used to happen inside the result screen's
      ad-break callback — so a player who closed the app on the ad, or never got that far, lost the lot. The result screen
      still SHOWS the toasts and still animates the key; it no longer decides whether any of it was written down.
      Two-player earns nothing (L10); practice and challenge runs are turned away inside the three functions themselves. */
-  const fresh=two?[]:checkUnlocks(run), ach=two?[]:checkAch(run), adv=checkKey(run,two);
+  const fresh=(two?[]:checkUnlocks(run)).concat(freshLen), ach=two?[]:checkAch(run), adv=checkKey(run,two);
   // the result screen takes it from here: the header, the ad break, the unlock and achievement toasts (ui/screens/result.js)
   emit('run:finish',{run,isBest,two,fresh,ach,adv});
 }
@@ -173,13 +190,25 @@ function liveCheck(part){ if(!R.on) return;
      shared pass & play runs were Sequence and Count and neither emitted 'live' — §4 gives five more games a shared run,
      and A.3 is explicit that no two-player run of any kind advances an unlock or an achievement. The finish already
      turned them away (`two`); this is the mid-run half of the same rule */
-  if(VS.on||sel.vs) return; const run=Object.assign({g:sel.game,d:sel.diff,s:sel.secs,hits:0,misses:0,x:999,y:0,practice:sel.practice||0},part);
+  /* v17 (B.4): the first-play ghost drives the real engine through the real ctx, so every emit it makes lands here.
+     Estimate · Grow's demo plays a whole round and its reveal emits 'live' — which is how a ghost's guess earned Aiden
+     "On the money". Same shape as the two-player return above: nothing the player did not do reaches the store. */
+  if(VS.on||sel.vs||R.demo) return; const run=Object.assign({g:sel.game,d:sel.diff,s:sel.secs,hits:0,misses:0,x:999,y:0,practice:sel.practice||0},part);
   if(chalRun(run.g,run.d,run.s)) run.chal=1;
   const u=unlocked(); let ch=false;
   for(const x of UNLOCKS){ if(x.live&&!run.chal&&!run.practice&&!u[x.key]&&x.test(run)){ u[x.key]=Date.now(); ch=true; R.fresh.push(x.key); toast(unlockToast(x.key),'','ok'); } }
   if(ch) save();
+  /* v17 (B.5, L6): a LENGTH unlock announces the moment it is met, in every game, whether or not it is this run's goal
+     line — that accident was the only announcement it ever had. There is nothing to bank: length state is derived from run
+     history and lands when the record does (1.0b). R.lenDone is what keeps it to one toast a run. */
+  if(R.lenNext&&!R.lenDone&&!run.chal&&!run.practice&&R.lenNext.test(run)){ R.lenDone=true; R.fresh.push(R.lenNext.key); toast(unlockToast(R.lenNext.key),'','ok'); }
   for(const a of checkAch(run,true)) toast(T(TOAST.achievement,{name:a.name})+(a.unlocks?' · '+unlockHtml(a):''),a.id,'',true);
-  if(R.goal&&!R.goalHit&&(u[R.goal.key]||R.goal.test(run))){ R.goalHit=true; if(R.goal.len) toast(unlockToast(R.goal.key),'','ok'); $('#goal').classList.add('hit'); } }
+  /* v17 (B.5): the goal line no longer raises its own toast. It used to be the ONLY place a length unlock announced, and
+     it announced two different wrong things: a duplicate whenever the pass above had already said it, and — on a length
+     whose rule is the default "finish one run of the length before" — an immediate "Unlock: Marathon" on the first live
+     tick of the run, because goalFor's test for a rule-less rung is a bare `true`. A default rung has no mid-run answer,
+     so the line ticks green only when R.lenDone says a real test passed. The announcement is one pass, above. */
+  if(R.goal&&!R.goalHit&&(R.goal.len?R.lenDone:(u[R.goal.key]||R.goal.test(run)))){ R.goalHit=true; $('#goal').classList.add('hit'); } }
 // a locked game or mode (v10): the lock box's Try to unlock — straight into the game, with the goal line up
 function goWhere(w){ if(!w) return; const G_=GAMES[w.g]; sel.game=w.g; prefs.lastGame=w.g; save();
   sel.diff=w.d&&isOpen(w.g,w.d)?w.d:(G_.modes.find(d=>isOpen(w.g,d))||G_.modes[0]); if(!isOpen(sel.game,sel.diff)) return emit('lock:ask',{g:sel.game,d:sel.diff});

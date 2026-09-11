@@ -36,7 +36,9 @@ function renderUnlocks(){
     `<h4>${UNLOCKS_SCREEN.games}</h4>${chain}`+
     `<h4>${UNLOCKS_SCREEN.lens}</h4>${lens.join('')||''}`+
     `<h4>${UNLOCKS_SCREEN.keys}</h4>`+
-    row('u key'+(k.done>=k.total?' done':' lock'),UNLOCKS_SCREEN.keys,UNLOCKS_SCREEN.keyLine,`${k.done}/${k.total}`,' data-key="1"');
+    // v17 (B.9): the count in the key line is read from the same keyState() the row's own figure comes from — a literal
+    // would have gone stale the day Sequence lost 5 keys, which is the day it did
+    row('u key'+(k.done>=k.total?' done':' lock'),UNLOCKS_SCREEN.keys,T(UNLOCKS_SCREEN.keyLine,{n:k.total}),`${k.done}/${k.total}`,' data-key="1"');
   markSeen(fresh);
 }
 register('s-unl',{ onShow(){ renderUnlocks(); } });
