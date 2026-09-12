@@ -16,10 +16,10 @@
 import { SCALES, TRACK_OPTS } from "../config/audio.js";
 import { BUILD_FLAGS, RUN_SCHEMA } from "../config/build.js";
 import { DESIGNS, ITEMS } from "../config/theme.js";
-import { GAMES } from "../games/registry.js";
+import { GAMES, GC } from "../games/registry.js";
 import { emit } from "./events.js";
 
-const KEY='ne', VERSION=1, RUNS_CAP=600;
+const KEY='ne', VERSION=2, RUNS_CAP=600;
 const LEGACY=['ne.prefs','ne.runs','ne.unlock','ne.ach','ne.seen','ne.intro','ne.tileSeen'];
 const read=k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } };
 const write=(k,v)=>{ try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } };
@@ -58,9 +58,33 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
   const col=isObj(p.col)?p.col:{};
   for(const g in GAMES){ const c=isObj(col[g])?col[g]:{}; const sq=hex(c.sq,SQ); o.col[g]={ sq, lead:hex(c.lead,LEAD), cut:hex(c.cut,sq) }; }
   if(Number.isInteger(p.mig11)&&p.mig11>0) o.mig11=p.mig11;
+  // v18 (B.2 / B.4): how many Timing runs the unit change retired, so the app can say so once rather than silently
+  if(Number.isInteger(p.mig31)&&p.mig31>0) o.mig31=p.mig31;
   return o; }
 const validRun=r=>isObj(r)&&!!GAMES[r.g]&&GAMES[r.g].modes.includes(r.d)&&typeof r.s==='number'&&typeof r.hits==='number'&&typeof r.t==='number';
-const cleanRuns=raw=>Array.isArray(raw)?raw.filter(validRun).slice(0,RUNS_CAP):[];
+/* v18 (B.14): THE CAP NEVER DROPS A ROW THAT IS IN A TOP TEN. It did — the cap was `slice(0, 600)` here and
+   `runs.length=600` in Scores.submit, both of which cut the OLDEST rows, and the oldest rows are the only records a mode
+   played once a year has. Measured before the fix on a 601-run store: 600 Quick Tap runs plus one Estimate run, submit
+   one more Quick Tap run, and the Estimate run was gone with its best, its top ten and the evidence behind its
+   clearance bar. Aiden: "we only track the top ten records of any mode, no stress" — so that is what is kept.
+
+   One trim, one place, because it runs at load as well as on every submit. Every combination's own top ten survives
+   (which contains its best), and the room left over goes to the newest of everything else. Nothing protected is ever
+   cut, so a profile carrying more than RUNS_CAP top-10 rows is allowed to sit above the cap rather than lose one; the
+   hard ceiling below is the S3 guard against a tampered array, not the cap.
+   `store.runs` is REPLACED by this, never spliced — Scores.runs() hands out the live array and nothing sorts it. */
+const RUNS_HARD=RUNS_CAP*8;
+function trimRuns(runs){ if(runs.length<=RUNS_CAP) return runs;
+  const by={}; for(const r of runs){ const k=r.g+':'+r.d+':'+r.s; (by[k]=by[k]||[]).push(r); }
+  const keep=new Set();
+  for(const k in by){ const [g,d,sc]=k.split(':'); let lo=false; try{ lo=!!GC(g,d,+sc).lower; }catch(e){}
+    by[k].slice().sort((a,b)=>lo?(a.hits-b.hits||a.t-b.t):(b.hits-a.hits||(a.misses||0)-(b.misses||0)||a.t-b.t)).slice(0,10).forEach(r=>keep.add(r)); }
+  const rest=runs.filter(r=>!keep.has(r));   // newest first already: every submit unshifts
+  const room=Math.max(0,RUNS_CAP-keep.size);
+  const cut=new Set(rest.slice(room));
+  const out=runs.filter(r=>!cut.has(r));
+  return out.length>RUNS_HARD?out.slice(0,RUNS_HARD):out; }
+const cleanRuns=raw=>trimRuns(Array.isArray(raw)?raw.filter(validRun):[]);
 // ach / unlock / intro / seen are maps of key → timestamp (or 1). A value that is not a number is not a record
 const cleanMap=raw=>{ const o={}; if(isObj(raw)) for(const k in raw){ const v=raw[k]; if((typeof v==='number'&&Number.isFinite(v))||v===true) o[k]=v; } return o; };
 
@@ -90,9 +114,24 @@ function fromLegacy(){
   return { v:0, prefs, runs, unlock, ach, intro, seen:L.seen };
 }
 
+/* v1 → v2 (build 31, v18 §B.2 / §B.4): the two Timing families whose SCORING UNIT changed are retired, and nothing
+   else is touched. Stopwatch · Set was the mean of its rounds' differences and is their sum; Hidden was pixels off the
+   marker and is milliseconds. Both old numbers are smaller than the honest new one on a board where lower wins, so
+   leaving them would have parked five stale records permanently in a top ten nobody could beat. A survivor is
+   re-stamped with the current RUN_SCHEMA, exactly as the v11 retirement did — a step never runs twice. */
+function up2(raw){ const runs=Array.isArray(raw.runs)?raw.runs:[];
+  const stale=r=>isObj(r)&&r.g==='timing'&&((r.d==='stopwatch'&&r.s!==-1)||r.d==='hidden')&&(r.v||0)<3;
+  const n=runs.filter(stale).length;
+  raw.runs=runs.filter(r=>!stale(r)); raw.runs.forEach(r=>{ if(isObj(r)) r.v=RUN_SCHEMA; });
+  /* CLEARED BARS AND EARNED ACHIEVEMENTS STAY. The bars and the two rows that read these units were CONVERTED at the
+     ball's measured pace, not retuned — 180px is 1200ms and a 0.28s average over five rounds is a 1.40s total — so a
+     player who cleared the old number would clear the new one. A record is different: its stored `hits` is a NUMBER in
+     the old unit and there is nothing to compare it against, which is why the runs go and nothing else does. */
+  raw.v=2; if(n&&isObj(raw.prefs)) raw.prefs.mig31=n; return raw; }
+
 function load(){ let raw=parse(read(KEY)), legacy=false;
   if(!isObj(raw)){ raw=fromLegacy(); legacy=!!raw; if(!raw) raw={}; }
-  // if(raw.v<2) raw=up2(raw);   ← the next step of the ladder goes here
+  if((raw.v||0)<2) raw=up2(raw);
   return { st:{ v:VERSION, prefs:cleanPrefs(raw.prefs), runs:cleanRuns(raw.runs), ach:cleanMap(raw.ach), unlock:cleanMap(raw.unlock), intro:cleanMap(raw.intro), seen:isObj(raw.seen)?cleanMap(raw.seen):null, bars:cleanMap(raw.bars) }, legacy }; }
 
 const { st: store, legacy } = load();
@@ -109,6 +148,6 @@ const musicOn=g=>prefs.musicG[g]!==false;
    profile showed all 27 of them open. Supporter is a dev switch today (S5 gates it out of a release build entirely) and
    Fresh game is the switch for seeing the app as a new player does, so it belongs in this list. When it becomes a real
    purchase at the native build it will be restored from the store rather than from prefs, and this line stays correct. */
-function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,chest1:0,chest2:0}); delete prefs.mig11; save(); emit('store:reset'); }
+function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,chest1:0,chest2:0}); delete prefs.mig11; delete prefs.mig31; save(); emit('store:reset'); }
 
-export { musicOn, prefs, reset, save, store };
+export { RUNS_CAP, musicOn, prefs, reset, save, store, trimRuns };

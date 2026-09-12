@@ -5,6 +5,7 @@ import { ESTIMATE as CP } from "../../config/copy.js";
 import { CFG, ESTIMATE as EST, STREAK } from "../../config/games.js";
 import { $, $$, T, f2, mean, minMax, vmin } from "../../core.js";
 import * as hud from "../_shared/hud.js";
+import { roundTier } from "../_shared/tier.js";
 import { Shapes } from "../_shared/shapes.js";
 import { makeTwo } from "../_shared/two.js";
 /* ---------- Estimate (v9, was Hold). Grow: a shape grows with a wobble and vanishes; tap and hold to grow yours to the same area — the same shape on odd rounds, a different one on even. Cut: a shape appears; drag a line through it that splits off the share asked for. Score is % off, lower is better. Five rounds ---------- */
@@ -99,7 +100,11 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
     // Readable without motion and it needs no dismiss, which is why it beat flashing between the two
     this.set('hg',this.shape,this.target,{a:this.rot,x:0,y:0}); this.set('ht',this.shape,this.target,{a:this.rot,x:0,y:0}); $('#hfield').classList.add('show','rev'); this.clipTo('tclipr',0,this.target); this.clipTo('hclipr',0,size);
     this.calc([[CP.target,tgt,'',0,'',k=>this.clipTo('tclipr',k,this.target)],[CP.yours,mine,'m',0,'',k=>this.clipTo('hclipr',k,size)]],Math.max(tgt,mine)*1.15,()=>{ const diff=Math.round(mine-tgt); return `<b class="${err<=2?'g':err>8?'r':''}" style="font-size:22px">${diff>0?'+':'−'}${Math.abs(diff).toLocaleString()} ${CP.px}</b>`; },
-      `<b class="${err<=2?'g':err>8?'r':''}" id="hpct">${f2(pct)}%</b>${word}`, err, {from:pct,to:100}); },
+      `<b class="${err<=2?'g':err>8?'r':''}" id="hpct"${this.rcol('hold:grow',err)}>${f2(pct)}%</b>${word}`, err, {from:pct,to:100}); },
+  /* v18 (B.10): the tier's colour on the round's own figure, as a ready-made style attribute. The class beside it stays:
+     `g` / `r` are the engine's own dead-on / way-off marks and the tier is the four-step reading of the same number.
+     Solo only (L4) — light blue is Player 2 and red is Player 1, so a shared run keeps the player colours. */
+  rcol(key,v){ if(this.two&&this.two.on) return ''; const c=roundTier(key,v); return c?` style="color:${c}"`:''; },
   // the panel (v9): rows of bars. v11: both bars share one scale — max × 1.15 — so the bigger sits at ~87% and the smaller shows the real ratio; never both at 100%. Row[5] is a hook that fills the shape as the bar fills
   // v15 (3.7): `walk` is the round's ONE number and where it has to end up — 120% walking down to 100% on Grow, the share
   // you cut walking to the share you were asked for on Cut. It moves while the running figure gains the same overspend,
@@ -165,7 +170,7 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
     // v13 (6.5): ONE bar. It is the whole shape; the cut piece's share fills it from the left while the px² count, and the red target line stays put.
     // The two pieces wear the customisable pair — the piece in --cutp, the rest at 40% of it — and the bar wears the same two colours
     this.clipFull('bclipr');
-    this.calc([[CP.piece,aS,'cutbar',Math.round(want/total*100),'',k=>this.clipTo('aclipr',k,this.target)]],total,()=>{ const diff=Math.round(aS-want); return `<b class="${err<=1.5?'g':err>8?'r':''}" style="font-size:22px">${diff>0?'+':'−'}${Math.abs(diff).toLocaleString()} ${CP.px}</b><br><span style="font-size:10px">${T(CP.targetPx,{n:Math.round(want).toLocaleString()})}</span>`; },`<b class="${err<=1.5?'g':err>8?'r':''}" id="hpct">${f2(share)}%</b>${word} · ${T(CP.targetShare,{n:this.share})}`,err,{from:share,to:this.share}); } };
+    this.calc([[CP.piece,aS,'cutbar',Math.round(want/total*100),'',k=>this.clipTo('aclipr',k,this.target)]],total,()=>{ const diff=Math.round(aS-want); return `<b class="${err<=1.5?'g':err>8?'r':''}" style="font-size:22px">${diff>0?'+':'−'}${Math.abs(diff).toLocaleString()} ${CP.px}</b><br><span style="font-size:10px">${T(CP.targetPx,{n:Math.round(want).toLocaleString()})}</span>`; },`<b class="${err<=1.5?'g':err>8?'r':''}" id="hpct"${this.rcol('hold:cut',err)}>${f2(share)}%</b>${word} · ${T(CP.targetShare,{n:this.share})}`,err,{from:share,to:this.share}); } };
 
 export default HD;
 export { HD };

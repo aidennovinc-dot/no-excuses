@@ -15,7 +15,8 @@ const COLS = {
   'hold':[['best round',r=>f2(r.x)+'%'],['worst round',r=>f2(r.y)+'%']], 'hold:streak':[['best round',r=>f2(r.x)+'%'],['worst round',r=>f2(r.y)+'%']],
   'sequence':[['scale',r=>r.sc||'penta'],['practice',r=>r.practice?'from '+r.practice:'—']],
   'timing':[['best try',r=>f2(r.x)+'s'],['worst try',r=>f2(r.y)+'s']], 'timing:streak':[['best try',r=>f2(r.x)+'s'],['worst try',r=>f2(r.y)+'s']],
-  'timing:hidden':[['best try',r=>Math.round(r.x)+'px'],['worst try',r=>Math.round(r.y)+'px']], 'timing:hidden:streak':[['best try',r=>Math.round(r.x)+'px'],['worst try',r=>Math.round(r.y)+'px']],
+  // v18 (B.4): Hidden's columns are milliseconds, like its score
+  'timing:hidden':[['best try',r=>Math.round(r.x)+'ms'],['worst try',r=>Math.round(r.y)+'ms']], 'timing:hidden:streak':[['best try',r=>Math.round(r.x)+'ms'],['worst try',r=>Math.round(r.y)+'ms']],
   'reaction':[['false starts',r=>r.misses],['best try',r=>Math.round(r.x)+'ms']], 'reaction:streak':[['false starts',r=>r.misses],['best try',r=>Math.round(r.x)+'ms']],
   'reaction:nogo':[['wrong taps',r=>r.misses],['best try',r=>Math.round(r.x)+'ms']], 'reaction:nogo:streak':[['wrong taps',r=>r.misses],['best try',r=>Math.round(r.x)+'ms']],
   'spot':[['worst round',r=>r.y!==undefined?r.y:'—'],['best flash',r=>r.x?Math.round(r.x)+'ms':'—']], 'spot:streak':[['limit',r=>r.lim||'5 miscounts'],['best flash',r=>r.x?Math.round(r.x)+'ms':'—']],

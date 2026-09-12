@@ -262,8 +262,11 @@ export const FLOW_STEM = { vol:0.38, voices:[
   { v:'pad', w:'sine', o:1, pat:'x', sus:1.02, hold:.85, at:.35, g:.006, ct:-7 },
   { v:'pad', w:'sine', o:1, pat:'x', sus:1.02, hold:.85, at:.35, g:.006, ct:7 },
   { v:'pad', w:'triangle', add:12, pat:'x', sus:1.02, hold:.85, at:.4, g:.004, lp:1800 } ] };
-// taps a second the hum starts at, and how many more to reach full. clamp((tps − FLOW_AT) / FLOW_SPAN, 0, 1)
-export const FLOW_AT = 3, FLOW_SPAN = 1.2, FLOW_RISE = .8, FLOW_FALL = 1.6;
+/* v18 (B.9): the line is 2.7 taps a second, and THE HUM DOES NOT SWELL. It is one sound — on above the line, off below —
+   and FLOW_RISE / FLOW_FALL are all that is left of the ramp: they smooth the SWITCH so it fades in and out instead of
+   cutting, which is what they were always doing. FLOW_SPAN is retired with the swell it scaled. Aiden's answer to build
+   30's open question, in his own words: "2.7 taps per second and one sound that doesn't change." */
+export const FLOW_AT = 2.7, FLOW_RISE = .8, FLOW_FALL = 1.6;
 
 /* v17 (§B.25, build 29): A SOUND PER VERDICT TIER. Data, not code, for the same reason the tracks are: the review
    catalogue plays these back with its own six-line player (§B.26), so a second copy in the page would drift the day one

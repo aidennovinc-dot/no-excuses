@@ -11,10 +11,10 @@ import { ITEMS } from "./config/theme.js";
 import { BG_NAME, ITEM_WORD, PROGRESS, TOAST, UNLOCK_WORD, VERDICT } from "./config/copy.js";
 import { VERDICTS, VERDICT_FAIL_TIER, VERDICT_TIERS } from "./config/verdicts.js";
 import { MODE_NAME, STREAK } from "./config/games.js";
-import { LEN_RULES, UNLOCKS as UNLOCK_ROWS } from "./config/unlocks.js";
+import { LEN_LIVE, LEN_RULES, UNLOCKS as UNLOCK_ROWS } from "./config/unlocks.js";
 import { T } from "./core.js";
 import { CHAL } from "./core/platform.js";
-import { prefs, save, store } from "./core/store.js";
+import { prefs, save, store, trimRuns } from "./core/store.js";
 import { GAMES, GC, N_GAMES, lenName } from "./games/registry.js";
 import { ACH_LEFT, ACH_PROGRESS, ACH_TEST, LEN_TEST, UNLOCK_TEST, quality } from "./progress/rules.js";
 import { scoreTxt } from "./ui/format.js";
@@ -48,7 +48,12 @@ function seedSeen(){ const st={}; for(const k of openKeys()) st[k]=1; store.seen
    v15 (1.0a / L6): the table is keyed 'game:mode' since build 23 — Dots · Blind Dash asks 6 and Dots · Lead Dash asks 9, which
    one array per game could not say. (1.0b): the STATE was already per mode — the filter below has always matched r.d — so
    nothing about a length unlock is persisted, it is derived from run history, and there is nothing to migrate. */
-function lenLock(g,d,s,noChal){ if(prefs.allOpen) return null; if(!noChal&&chalAt(g,d)&&CHAL.s===s) return null; const c=GC(g,d), lens=c.lens, i=lens.indexOf(s); if(i<=0) return null; const prev=lens[i-1], runs=Scores.runs().filter(r=>r.g===g&&r.d===d&&r.s===prev&&!r.practice);
+/* v18 (B.8): a length that has been ANNOUNCED is banked in the store under its own three-part key, and this is where the
+   store is read back. Length state is otherwise derived from run history, which is why the second half of B.8 happened:
+   the toast said "Unlock: Streak", the player quit, `abort()` never submits a record, and the derivation had nothing to
+   read — so the announcement and the store disagreed for every length in the game, not only Flash's. An earn is written
+   the moment it fires (site/CLAUDE.md), and from build 31 a length earn is written like every other one. */
+function lenLock(g,d,s,noChal){ if(prefs.allOpen) return null; if(!noChal&&chalAt(g,d)&&CHAL.s===s) return null; if(unlocked()[g+':'+d+':'+s]) return null; const c=GC(g,d), lens=c.lens, i=lens.indexOf(s); if(i<=0) return null; const prev=lens[i-1], runs=Scores.runs().filter(r=>r.g===g&&r.d===d&&r.s===prev&&!r.practice);
   const test=(LEN_TEST[g+':'+d]||[])[i], rule=(LEN_RULES[g+':'+d]||[])[i];
   if(rule) return runs.some(test)?null:{g,d,s:prev,need:lenNeed(g,d,s),name:lenName(g,s,d)};
   if(s===STREAK) return runs.length?null:{g,d,s:prev,need:lenNeed(g,d,s),name:PROGRESS.streak};
@@ -78,9 +83,13 @@ const lenOpen=(g,d,s)=>!lenLock(g,d,s);
 function lenNextOf(g,d,s){ if(prefs.allOpen) return null; const c=GC(g,d), lens=c.lens, i=lens.indexOf(s);
   if(i<0||i>=lens.length-1) return null; const nxt=lens[i+1];
   return lenLock(g,d,nxt)?{ key:`${g}:${d}:${nxt}`, g, d, s:nxt }:null; }
+/* v18 (B.8, L6): and only where LEN_LIVE says that rung may be judged mid-run. A LEN_TEST alone is not enough — the
+   test also has to be one that can only become MORE true as the run goes on, which is the same rule `live:1` states for
+   an achievement. Without it a Reaction · Flash Set announced its Streak off one slow attempt. */
 function lenNextLive(g,d,s){ const n=lenNextOf(g,d,s); if(!n) return null;
   const i=GC(g,d).lens.indexOf(s); const test=(LEN_TEST[g+':'+d]||[])[i+1];
-  return test?Object.assign({},n,{test}):null; }
+  if(!test||!((LEN_LIVE[g+':'+d]||[])[i+1])) return null;
+  return Object.assign({},n,{test}); }
 // the next mode this run could open, if the game, mode and length line up — shown while you play (v8). v11: a length unlock counts too
 function goalFor(g,d,s){ if(prefs.allOpen) return null; const u=unlocked(); const x=UNLOCKS.find(x=>!u[x.key]&&x.where.g===g&&(!x.where.d||x.where.d===d)&&(!x.where.s||x.where.s===s)); if(x) return x;
   const c=GC(g,d), i=c.lens.indexOf(s); if(i>=0&&i<c.lens.length-1){ const nxt=c.lens[i+1], L=lenLock(g,d,nxt); if(L){ const test=(LEN_TEST[g+':'+d]||[])[i+1]; return { key:g+':'+d+':'+nxt, need:L.need, where:{g,d,s}, live:1, len:L, test:r=>r.g===g&&r.d===d&&r.s===s&&(test?test(r):true) }; } } return null; }
@@ -101,6 +110,10 @@ function unlockToast(key){ if(key==='sequence:practice') return TOAST.unlockPrac
 // v17 (B.4): and neither does a DEMO. The first-play ghost drives the real engine on the real ctx, so it reaches both of
 // these exactly as a player would; `demo` is the flag that says the hands were not the player's
 function checkUnlocks(run){ if(run.chal||run.practice||run.demo) return []; const u=unlocked(); const fresh=[]; for(const x of UNLOCKS){ if(!u[x.key]&&x.test(run)){ u[x.key]=Date.now(); fresh.push(x); } } if(fresh.length) save(); return fresh; }
+/* v18 (B.8): the one writer of a length earn. The key is the three-part 'game:mode:length' the toast already names, so
+   it can never collide with a mode key ('game:mode') or a seen-marker ('len:game:mode:length'). Called from the mid-run
+   announcement and again at the finish, so what was announced is what is stored whether the run ended or was quit. */
+function bankLen(key){ const u=unlocked(); if(u[key]) return false; u[key]=Date.now(); save(); return true; }
 /* the next thing to chase (v11). v15 (2.2): GAME UNLOCKS OUTRANK ACHIEVEMENTS wherever the "next thing" is surfaced —
    the chain first (a mode, then a length), and only when there is nothing left to unlock does the card fall back to an
    achievement. `ach` on the answer is what tells the caller which of the two it got, so the card can label itself.
@@ -121,7 +134,8 @@ const Scores = {
   runs(){ return store.runs; },   // the live array — read it, never sort it in place
   of(g,d,s){ const lo=GC(g,d,s).lower; return this.runs().filter(r=>r.g===g&&r.d===d&&r.s===s).sort((a,b)=>lo?(a.hits-b.hits||a.t-b.t):(b.hits-a.hits||a.misses-b.misses||a.t-b.t)); },
   best(g,d,s){ const r=this.of(g,d,s)[0]; return r?r.hits:null; },
-  submit(run){ if(run.chal) return false; const prev=this.best(run.g,run.d,run.s); store.runs.unshift(run); if(store.runs.length>600) store.runs.length=600; save(); const lo=GC(run.g,run.d,run.s).lower; return prev===null ? run.hits>0||lo : (lo ? run.hits<prev : run.hits>prev); },
+  // v18 (B.14): the cap is trimRuns in core/store.js — one trim, used here and at load, and it never cuts a top-10 row
+  submit(run){ if(run.chal) return false; const prev=this.best(run.g,run.d,run.s); store.runs.unshift(run); store.runs=trimRuns(store.runs); save(); const lo=GC(run.g,run.d,run.s).lower; return prev===null ? run.hits>0||lo : (lo ? run.hits<prev : run.hits>prev); },
   rank(run){ return this.of(run.g,run.d,run.s).findIndex(r=>r.t===run.t)+1; }
 };
 
@@ -174,20 +188,32 @@ const verdictKey=(g,d)=>VERDICTS[g+':'+d]?g+':'+d:g;
 const tierCol=id=>(VERDICT_TIERS.find(t=>t.id===id)||{}).col||'';
 // the threshold a tier starts at, for this game. The number lives in the game's row; the tier only says which of them
 function tierMin(key,id){ const row=VERDICTS[key], t=VERDICT_TIERS.find(x=>x.id===id); return !row||!t||t.of===null?0:row.at[t.of]; }
+/* v18 (B.10): THE TIER WITHOUT THE LINE. B.10 puts the tier's colour on the score itself and on that run's row on the
+   board, and a board row must not draw a verdict line — pickLine() remembers what it showed, so asking it once per row
+   would burn through the no-repeat memory for a sentence nobody sees. `tierOf` is the half both callers share; verdict()
+   is that plus the line. Null where a run has no tier at all: a two-player run and a practice run never wear one (L4). */
+function tierOf(r){ if(!r||r.practice||r.vs2) return null;
+  const flat={ tier:VERDICT_FAIL_TIER, col:tierCol(VERDICT_FAIL_TIER) };
+  if(r.fail) return flat;
+  if(GAMES[r.g].timed&&(r.hits===0||r.misses>r.hits)) return flat;
+  const row=VERDICTS[verdictKey(r.g,r.d)]; if(!row) return null;
+  const q=quality(r.g,r.d,r.s,r);
+  const t=VERDICT_TIERS.find(x=>x.of===null||q>=row.at[x.of]);
+  return { tier:t.id, col:t.col }; }
 function verdict(r){
   const key=verdictKey(r.g,r.d), row=VERDICTS[key];
   // the verdicts that are not a tier still carry one, so every solo result has a colour and a sound (VERDICT_FAIL_TIER)
   const flat=line=>({ tier:VERDICT_FAIL_TIER, col:tierCol(VERDICT_FAIL_TIER), line });
-  if(r.fail) return flat(r.g==='reaction'&&r.d==='nogo'?VERDICT.nogoFail:VERDICT.fail);
+  // v18 (B.1c): Go / No-go's own fail line went with the three-wrong-taps ender; nothing ends that mode early now
+  if(r.fail) return flat(VERDICT.fail);
   if(GAMES[r.g].timed){ if(r.hits===0) return flat(VERDICT.nothing); if(r.misses>r.hits) return flat(VERDICT.moreMisses); }
   if(!row) return flat('');
-  const q=quality(r.g,r.d,r.s,r);
-  const t=VERDICT_TIERS.find(x=>x.of===null||q>=row.at[x.of]);
-  return { tier:t.id, col:t.col, line:pickLine(key,t.id,row.lines[t.id]||[]) };
+  const t=tierOf(r)||{ tier:VERDICT_FAIL_TIER, col:tierCol(VERDICT_FAIL_TIER) };
+  return { tier:t.tier, col:t.col, line:pickLine(key,t.tier,row.lines[t.tier]||[]) };
 }
 
 function setPendingAim(v){ pendingAim=v; }
 function setPendingGoal(v){ pendingGoal=v; }
 
 
-export { ACH, Scores, UNLOCKS, achAll, achById, authorAch, authorRatio, chalRun, checkAch, checkUnlocks, gameOpen, goalFor, got, isNew, isOpen, lenLock, lenNeed, lenNextLive, lenNextOf, lenOpen, lensOf, markSeen, needFor, newMark, nextAch, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, tierMin, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict, verdictKey };
+export { ACH, Scores, UNLOCKS, achAll, achById, authorAch, authorRatio, bankLen, chalRun, checkAch, checkUnlocks, gameOpen, goalFor, got, isNew, isOpen, lenLock, lenNeed, lenNextLive, lenNextOf, lenOpen, lensOf, markSeen, needFor, newMark, nextAch, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, tierMin, tierOf, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict, verdictKey };

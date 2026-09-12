@@ -59,3 +59,22 @@ export const LEN_RULES = {
   'hold:cut':       [null,'Make a terrible cut — more than 10% off in one {game} · {mode} round'],
   'reaction:flash': [null,'a {game} · {mode} Set averaging over 500ms'],
 };
+/* v18 (B.8, L6): WHICH LENGTH RUNGS MAY BE JUDGED MID-RUN. Same shape as LEN_RULES — one entry per length index, 1 = the
+   rung above may be tested while the run is still going, 0 = only a finished run can answer it.
+
+   This is the length half of the `live:1` flag UNLOCKS rows have carried since build 23, and its absence is the whole of
+   B.8. A length is not in UNLOCKS, so it has never had a flag; build 28 gave lengths a mid-run announcement (B.5) and
+   `lenNextLive` passed EVERY LEN_TEST to it, monotone or not. `reaction:flash`'s rung is "a Set averaging over 500ms"
+   and Reaction emits its running AVERAGE as `hits` after every attempt, so one 600ms no-tap on attempt 1 made
+   `r.hits>500` true and the toast fired on a single attempt — exactly what Aiden reported.
+
+   The rule is the one site/CLAUDE.md already states for achievements: a mid-run test must only ever become MORE true.
+   `row` and `hits` on a timed run only grow; Estimate's `y` is the worst round so far and can only get worse; Sequence's
+   `hits` is the longest pattern completed. An average is a claim about a whole run and can go either way, so it is 0. */
+export const LEN_LIVE = {
+  'quick-tap:two':  [0,1,1], 'quick-tap:four': [0,1,1],
+  'dots:blind':     [0,1,1], 'dots:lead':      [0,1,1],
+  'sequence:solo':  [0,1],
+  'hold:cut':       [0,1],
+  'reaction:flash': [0,0],
+};

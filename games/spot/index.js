@@ -6,6 +6,7 @@ import { SPOT as CP } from "../../config/copy.js";
 import { SHAPE_WORD, SPOT_FIND, SPOT_RAMP, VS_TARGET } from "../../config/games.js";
 import { $, $$, T, f2, minMax, pWho, shapeI, winner } from "../../core.js";
 import * as hud from "../_shared/hud.js";
+import { roundTier } from "../_shared/tier.js";
 import { genRect, rnd, roundEngine, rxBar, scatter, shapeHtml } from "../_shared/round.js";
 import { turnsOf } from "../_shared/two.js";
 /* Spot (v8) — Count: shapes flash up, count the ones you were shown; decoys, count and flash length all ramp through the run. Find: one shape is different, tap it.
@@ -17,6 +18,9 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
   // rather than being written into the engine twice (v15 §4)
   twoLen(){ return turnsOf(this.ctx.game,this.ctx.mode)[0]; },
   // v15 (4.6): Find gains versus — two odd shapes in one crowd, one each, first to find theirs takes the round
+  /* v18 (B.10): the tier's colour for one round's own figure, as a ready-made style attribute. Solo only (L4) — a
+     pass & play Count and a Find versus keep the player colours, so neither gets one. */
+  rcol(key,v){ if(this.two||this.vs) return ''; const c=roundTier(key,v); return c?` style="color:${c}"`:''; },
   begin(){ this.round=0; this.right=0; this.wrong=0; this.times=[]; this.bestFlash=0; this.off=0; this.tot=0; this.two=this.ctx.players===1&&this.ctx.mode==='count'; this.vs=this.ctx.players===2&&this.find(); this.vsN=[0,0]; this.topF=.08; hud.score(this.find()?'0.00':'0'); hud.scoreVisible(!(this.two||this.vs)); if(this.vs) return this.vsDeal(); this.next(); },
   // v16 (1.5): a Set ramps over its last round, a Streak once its budget is 80% spent — 5 miscounts on Count, 10s on
   // Find (L5). Music only (A.1); a two-player run ramps on nothing, it has no budget of its own
@@ -169,7 +173,8 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
       // v15 (3.9 answer, build 25): Count does not hold its result — one number is not a complicated result. The correct
       // count is FLASHED so it registers and the round moves on by itself 600ms after the walk, instead of the 900ms
       // every other dropped cue got. `cflash` is the flash; the number is the only thing on the card that has to land
-      $('#gen').innerHTML=this.pts.map(q=>shapeHtml(q,this.size,q.shape!==this.target?'dim':'')).join('')+`<div class="glbl bot"><b class="cflash ${ok?'g':'r'}">${this.answer}</b>${ok?CP.right:T(CP.said,{k,off})}${this.streak()?T(CP.of5,{off:this.off}):''}${done&&this.streak()?CP.over:''}</div>`;
+      // v18 (B.10): the round's own answer wears its tier colour — how far out this count was, not how the run is going
+      $('#gen').innerHTML=this.pts.map(q=>shapeHtml(q,this.size,q.shape!==this.target?'dim':'')).join('')+`<div class="glbl bot"><b class="cflash ${ok?'g':'r'}"${this.rcol('spot:count',off)}>${this.answer}</b>${ok?CP.right:T(CP.said,{k,off})}${this.streak()?T(CP.of5,{off:this.off}):''}${done&&this.streak()?CP.over:''}</div>`;
       ok?this.ctx.audio.hit():this.ctx.audio.miss(); if(!ok&&navigator.vibrate) navigator.vibrate(30);
       // v14 (6.1 / 6.3): the round's miscount walks into the running total — the Set's score, the Streak's budget — and the
       // reveal then stays up until it is tapped
@@ -192,7 +197,7 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
       if(this.streak()) hud.score(String(this.times.length));
       els[best].classList.add('odd'); els.forEach((el,i)=>{ if(i!==best) el.classList.add('dim'); });
       const cl=$('#spclock'); if(cl) cl.remove();
-      $('#gen').insertAdjacentHTML('beforeend',`<div class="glbl bot"><b class="${t<2?'g':''}" id="spt">0.00s</b><span id="sptot">${this.streak()?T(CP.of10,{t:f2(was)}):T(CP.total,{t:f2(was)})}</span>${this.pen?T(CP.pen,{pen:this.pen}):''}${add<0?T(CP.fast,{n:f2(-add)}):''}</div>`); this.ctx.audio.hit();
+      $('#gen').insertAdjacentHTML('beforeend',`<div class="glbl bot"><b class="${t<2?'g':''}" id="spt"${this.rcol('spot:find',t)}>0.00s</b><span id="sptot">${this.streak()?T(CP.of10,{t:f2(was)}):T(CP.total,{t:f2(was)})}</span>${this.pen?T(CP.pen,{pen:this.pen}):''}${add<0?T(CP.fast,{n:f2(-add)}):''}</div>`); this.ctx.audio.hit();
       // v14 (6.32 / 6.1): the time taken runs up incrementally and walks into the total; (6.3) the result then waits for a tap
       hud.countUp({ audio:this.ctx.audio, from:0, to:1, ms:900, fmt:v=>v, alive:()=>this.st==='show',
         // the walk is floored the same way the total is, or the number would dip under zero on the way to a zero it lands on

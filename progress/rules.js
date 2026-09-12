@@ -113,8 +113,9 @@ const ACH_TEST = {
   // v17 (B.9): sq_5x10 is "Ten on three" now — five keys is gone and the row was otherwise unearnable
   sq_7:r=>r.g==='sequence'&&r.hits>=7, sq_12:r=>r.g==='sequence'&&r.hits>=12, sq_7x8:r=>r.g==='sequence'&&r.s===7&&r.hits>=8, sq_5x10:r=>r.g==='sequence'&&r.s===3&&r.hits>=10,
   sq_s20:r=>r.g==='sequence'&&r.hits>=20, sq_s15:r=>r.g==='sequence'&&r.s===7&&r.hits>=15,
-  tm_close:r=>r.g==='timing'&&r.d==='stopwatch'&&r.x<=.1, tm_wall:r=>r.g==='timing'&&r.d==='hidden'&&r.s===10&&r.hits<=300,
-  tm_run:r=>r.g==='timing'&&r.d==='stopwatch'&&r.s===STREAK&&r.hits>=10, tm_s:r=>r.g==='timing'&&r.d==='stopwatch'&&r.s===5&&r.hits<=.12,
+  // v18 (B.4 / B.2): the two rows whose unit moved. 300px is 2000ms at the measured pace; 0.12s averaged over five is 0.60s summed
+  tm_close:r=>r.g==='timing'&&r.d==='stopwatch'&&r.x<=.1, tm_wall:r=>r.g==='timing'&&r.d==='hidden'&&r.s===10&&r.hits<=2000,
+  tm_run:r=>r.g==='timing'&&r.d==='stopwatch'&&r.s===STREAK&&r.hits>=10, tm_s:r=>r.g==='timing'&&r.d==='stopwatch'&&r.s===5&&r.hits<=.6,
   // v17 (B.12): `ov` is the engine saying an attempt ran the whole CFG.swOver seconds out. Any length, Set or Streak
   tm_s10:r=>r.g==='timing'&&r.d==='stopwatch'&&r.ov===1,
   rx_200:r=>r.g==='reaction'&&r.d==='flash'&&r.x<200, rx_clean:r=>r.g==='reaction'&&r.d==='nogo'&&r.s===5&&r.misses===0,
@@ -140,7 +141,10 @@ const ACH_PROGRESS = {
 /* ---------- quality 0..1 per game, mode and length: picks the verdict tier and draws the radar. Every lower-is-better one runs 1 − score/limit ---------- */
 const QUALITY = {
   'quick-tap':r=>r.hits/r.s/(r.d==='four'?5:6), 'dots':r=>r.hits/r.s/4.5, 'hold':r=>1-Math.min(1,r.hits/12), 'sequence':r=>r.hits/16,
-  'timing':r=>1-Math.min(1,r.hits/1), 'timing:hidden':r=>1-Math.min(1,r.hits/800),
+  /* v18 (B.2 / B.4): both Timing Sets changed unit, so both curves are re-based rather than retuned. Stopwatch was an
+     average against 1.00s; five rounds of that is 5.00s. Hidden was 800px, which is 5369ms at the ball's measured pace
+     (6.71ms a pixel on a 390x844 phone) — 5400ms. Same standard, new unit, in both cases. */
+  'timing':r=>1-Math.min(1,r.hits/5), 'timing:hidden':r=>1-Math.min(1,r.hits/5400),
   'reaction':r=>1-Math.min(1,Math.max(0,r.hits-150)/350), 'reaction:nogo':r=>1-Math.min(1,Math.max(0,r.hits-250)/500),
   'spot':r=>1-Math.min(1,r.hits/12), 'spot:find':r=>1-Math.min(1,Math.max(0,r.hits-8)/22),
   'streak':r=>Math.min(1,r.hits/12), 'reaction:nogo:streak':r=>Math.min(1,r.hits/40),

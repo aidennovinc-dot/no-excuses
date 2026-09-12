@@ -9,7 +9,7 @@
    practice and scale, which Sequence needs and which used to be read off sel. */
 
 import { Music, Snd } from "../audio.js";
-import { FLOW_AT, FLOW_FALL, FLOW_RISE, FLOW_SPAN } from "../config/audio.js";
+import { FLOW_AT, FLOW_FALL, FLOW_RISE } from "../config/audio.js";
 import { RUN_SCHEMA } from "../config/build.js";
 import { HUD, INTRO, INTRO_READY, TOAST } from "../config/copy.js";
 import { MODE_NAME, PASS_LEN, PASS_TURNS, RATE_MAX } from "../config/games.js";
@@ -21,7 +21,7 @@ import { prefs, save, store } from "../core/store.js";
 import { makeTimers, tapTime } from "../core/timers.js";
 import * as hud from "../games/_shared/hud.js";
 import { ENGINES, GAMES, GC, SHARED2, VERSUS, lenName, versusOf } from "../games/registry.js";
-import { Scores, UNLOCKS, chalRun, checkAch, checkUnlocks, goalFor, isOpen, lenNextLive, lenNextOf, lenOpen, lensOf, pendingAim, pendingGoal, setPendingAim, setPendingGoal, unlockHtml, unlockName, unlockToast, unlocked } from "../progress.js";
+import { Scores, UNLOCKS, bankLen, chalRun, checkAch, checkUnlocks, goalFor, isOpen, lenNextLive, lenNextOf, lenOpen, lensOf, pendingAim, pendingGoal, setPendingAim, setPendingGoal, unlockHtml, unlockName, unlockToast, unlocked } from "../progress.js";
 import { checkKey } from "../progress/key.js";
 import { scoreTxt } from "../ui/format.js";
 import { game as showGame } from "../ui/router.js";
@@ -35,8 +35,9 @@ import { toast } from "../ui/toast.js";
    as L10's two-player rule — turned away MID-RUN in liveCheck and again at the finish. It had to exist: Estimate · Grow's
    demo plays a real round on the real engine and emits 'live' out of its reveal, so the ghost's own guess banked Aiden an
    achievement ("On the money" is live:1 and tests one round within 2%). A ghost is not the player. */
-/* v17 (B.27): `flow` is 0..1, the flow state — how far past FLOW_AT taps a second this run is, smoothed here so the hum
-   and the edge glow are reading one number rather than two that drift apart. `flowOn` is solo Quick Tap and Dots only:
+/* v17 (B.27) / v18 (B.9): `flow` is 0..1, the flow state — whether this run is at or past FLOW_AT taps a second,
+   smoothed here so the hum and the edge glow are reading one number rather than two that drift apart. It is a SWITCH
+   with a fade on it since build 31, not a measure of how far past the line you are. `flowOn` is solo Quick Tap and Dots only:
    the glow is light blue, which is Player 2 (L4), so it can never appear in a two-player run. Presentation only (L10). */
 const R={ on:false, live:false, id:0, timed:false, t0:0, end:0, raf:0, goal:null, goalHit:false, fresh:[], lenNext:null, lenDone:false, demo:false, tension:0, fin:0, vsP:[0,0], flow:0, flowOn:false, flowT:0 };
 let eng=null, ctx=null;
@@ -164,7 +165,9 @@ function tick(now){
    glow from `--flow`. Nothing about the run changes: L10 is untouched, and a demo never reaches here because `flowOn`
    is off in the two-player cases and the ghost cannot tap fast enough to matter in the one it is not. */
 function flowTick(now){ const tps=eng&&eng.tps?eng.tps(now):0;
-  const want=Math.max(0,Math.min(1,(tps-FLOW_AT)/FLOW_SPAN));
+  // v18 (B.9): ONE sound, on or off. `want` is a switch now, not a slope — FLOW_RISE and FLOW_FALL below turn it into
+  // a fade rather than a cut, and nothing about the hum changes with how far past the line the player is
+  const want=tps>=FLOW_AT?1:0;
   const dt=R.flowT?Math.min(.25,(now-R.flowT)/1000):0; R.flowT=now;
   R.flow+=(want-R.flow)*(1-Math.exp(-dt/(want>R.flow?FLOW_RISE:FLOW_FALL)));
   const g=$('#game'); g.style.setProperty('--flow',R.flow.toFixed(3)); g.classList.toggle('flowon',R.flow>.02); }
@@ -183,7 +186,9 @@ function finish(res){
      run history, so the only honest test of "it opened" is locked here and open again four lines down */
   const lenWas = two||run.demo ? null : lenNextOf(run.g,run.d,run.s);
   const isBest = run.practice||run.demo||(run.fail&&!run.hits)||two ? false : Scores.submit(run);
+  // v18 (B.8): banked the same way, so the finish agrees with the store as well as with the derivation
   const freshLen = lenWas && lenOpen(run.g,run.d,lenWas.s) ? [{ key:lenWas.key, len:1 }] : [];
+  for(const f of freshLen) bankLen(f.key);
   /* v15 (2.5): every earn is banked HERE, the moment the record exists. It used to happen inside the result screen's
      ad-break callback — so a player who closed the app on the ad, or never got that far, lost the lot. The result screen
      still SHOWS the toasts and still animates the key; it no longer decides whether any of it was written down.
@@ -219,7 +224,10 @@ function liveCheck(part){ if(!R.on) return;
   /* v17 (B.5, L6): a LENGTH unlock announces the moment it is met, in every game, whether or not it is this run's goal
      line — that accident was the only announcement it ever had. There is nothing to bank: length state is derived from run
      history and lands when the record does (1.0b). R.lenDone is what keeps it to one toast a run. */
-  if(R.lenNext&&!R.lenDone&&!run.chal&&!run.practice&&R.lenNext.test(run)){ R.lenDone=true; R.fresh.push(R.lenNext.key); toast(unlockToast(R.lenNext.key),'','ok'); }
+  /* v18 (B.8): and it is BANKED, not merely announced. It used to be an announcement with nothing behind it — length
+     state is derived from run history, and a quit run is never submitted, so a player who was told "Unlock: Streak" and
+     then quit found it locked. bankLen writes the three-part key the toast names; lenLock reads it back. */
+  if(R.lenNext&&!R.lenDone&&!run.chal&&!run.practice&&R.lenNext.test(run)){ R.lenDone=true; R.fresh.push(R.lenNext.key); bankLen(R.lenNext.key); toast(unlockToast(R.lenNext.key),'','ok'); }
   for(const a of checkAch(run,true)) toast(T(TOAST.achievement,{name:a.name})+(a.unlocks?' · '+unlockHtml(a):''),a.id,'',true);
   /* v17 (B.5): the goal line no longer raises its own toast. It used to be the ONLY place a length unlock announced, and
      it announced two different wrong things: a duplicate whenever the pass above had already said it, and — on a length

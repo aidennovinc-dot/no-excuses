@@ -19,6 +19,8 @@ if(!seenAll()) seedSeen();
 // sequence is a state of the menu screen, so the title it lands on is the one the menu keeps — it never re-renders
 if(!prefs.story) show('s-menu',{story:true}); else enterMenu();
 if(prefs.mig11){ const n=prefs.mig11; setTimeout(()=>toast(T(TOAST.mig11,{n,s:n>1?'s':''})),1200); delete prefs.mig11; save(); }
+// v18 (B.2 / B.4): the same courtesy for the build-31 unit change — say it once, then never again
+if(prefs.mig31){ const n=prefs.mig31; setTimeout(()=>toast(T(TOAST.mig31,{n,s:n>1?'s':''})),1600); delete prefs.mig31; save(); }
 document.addEventListener('click',onClick);
 bindInput();
 startAtmosphere();

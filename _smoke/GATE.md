@@ -127,3 +127,33 @@ normal profile, three options under unlock-all, stored in `prefs.track`, kept ac
 cleared (B.32 / A.3).
 
 **Batch 14 S.2 (v18, 2026-09-12, no build number change)** — statically: the hint line on About and `<div id="build">` wear the `v0.N` form and no `build N` form survives in either; the update bar names the build it found (`v0.N is ready — tap to reload`, read from `version.json`); the update-check constant and `version.json` stay the bare integer and all five still agree (A6). `npm run bump` writes the new form and still accepts the old one, so the first run after S.2 converts it.
+
+
+**Build 31 (v18, batch 14 · §B.1–§B.14)** — statically: every `LEN_RULES` row declares which of its rungs may be judged
+mid-run and **Reaction · Flash's Streak is not one of them**, `lenNextLive` reads that flag, and `run/run.js` banks a
+length on the announcement as well as at the finish (B.8 / L6); a Go / No-go round is `GO_PER` correct taps with
+`RULE_EVERY` retired, **no `wrong >= 3` test survives anywhere and no `nogoEnd(true)`**, and the mode line no longer
+promises an ender (B.1b / B.1c / L5); the rule bar is drawn `atOnce` (B.1a); `CFG.hold` is one number and both Timing
+and Reaction hold on it before draining (B.3c / B.7); `FLOW_AT` is 2.7, `FLOW_SPAN` is gone and the run's `want` is a
+switch (B.9); Hidden scores `(t − markT) / v × 1000` and `HIDDEN`'s band, tilt and distance are all non-zero and read
+only on a solo Streak (B.4 / B.5); **no pixel unit is left on Hidden anywhere**, and the two converted clearance bars are
+1200ms and 1.40s (B.2 / B.4); `VERDICT_FX` holds exactly the four tier ids and `audio.js` keys it by tier alone with
+nothing per game (B.11); `ROUND_AT` carries all eight round-based combinations, each three ascending ceilings (B.10);
+the result screen passes an unlock's key to the toast and **the mid-run toast does not** (B.12). In the browser:
+`lenNextLive` offers nothing for a Flash Set and still offers Quick Tap's and Estimate · Cut's rungs, and `bankLen`
+makes `lenLock` answer open with no run on record (B.8); **400 dealt Go / No-go rounds — the target is never the first
+shape, always exactly three of them, no shape three times running, no decoy repeated** (B.1d / #375b); a driven Go /
+No-go Set reaches round 5 with fifteen targets dealt and its HUD reads `round N of 5 · H of 3` (B.1b); five Stopwatch
+rounds of 0.10–0.50 score **1.50, not 0.30** (B.2); the budget is 5s and 7.5s past round 10 and the targets climb past
+14s by round 14 (B.3a / B.3b); Hidden's budget reads 700ms (B.4); a Flash Set driven without a single tap scores
+**1000ms** (B.6); **the result's score, that run's row on the board and each round's own figure all wear the same tier
+colour** (B.10 / L4); tapping an unlock toast lands on the pick sheet (B.12); a store of 601 runs takes 25 more submits
+and **the one Estimate run — the oldest row in the store and its mode's whole top ten — survives** (B.14); and a v1
+record carrying pre-build-31 Timing runs retires exactly the Stopwatch Set and the Hidden run, with their bar and their
+achievement, and keeps the Stopwatch Streak, the Quick Tap run and everything else (B.2 / B.4).
+
+Two earlier assertions were **amended rather than added to**, and both are worth knowing about. **§3's baseline check now
+runs the other way**: v16 §3 asserted that the Stopwatch Set showed no baseline total and that the Streak kept one;
+B.3d reverses both, because B.2 makes the Set a total and a total needs the thing it is measured against. **C.4's
+three-wrong-taps check is now "there is no such test anywhere"** — it used to allow one behind `!this.streak()`, which
+after B.1c would pass vacuously and prove nothing.

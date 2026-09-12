@@ -13,6 +13,8 @@ export const TOAST = {
   supAlready:'Already a supporter · thank you', supLater:'Purchases arrive in the app build · About → testing → supporter to try it',
   achievement:'Achievement · {name}', copied:'Copied · paste it anywhere',
   mig11:'Build 11 · {n} old Estimate / Timing / Reaction / Count run{s} retired — the scoring changed',
+  // v18 (B.2 / B.4): Stopwatch · Set became a total and Hidden became milliseconds, so records in the old units go
+  mig31:'Build 31 · {n} old Timing run{s} retired — Stopwatch · Set is a total now and Hidden is in milliseconds',
   // unlock wording (v11): "Unlock game: Dots" for a game, "Unlock: Dash" for a mode or length
   unlock:'Unlock: {name}', unlockGame:'Unlock game: {name}', unlockPractice:'Unlock: Practice from',
 };
@@ -58,7 +60,8 @@ export const INTRO_READY = { ready:'Ready?', tap:'tap to begin' };
    beside it — four tiers now, five lines each, a colour and a sound per tier. What is left here is the handful of
    verdicts that are NOT a tier: a run that ended badly enough to have its own sentence, and the two-player lines. */
 // the verdicts that are not a tier
-export const VERDICT = { nogoFail:'Three wrong taps. Run over — go again.', fail:'Run over — go again.', nothing:'Nothing landed. That was a choice.', moreMisses:'More misses than hits. You know what you did.',
+// v18 (B.1c): `nogoFail` is retired with the three-wrong-taps ender — a Go / No-go run cannot end early any more
+export const VERDICT = { fail:'Run over — go again.', nothing:'Nothing landed. That was a choice.', moreMisses:'More misses than hits. You know what you did.',
   draw:'A draw. Nobody gets to blame anybody.', took:'Player {n} took it{how}. No excuses.', practice:'Practice. Nothing counted — go for real when it feels right.' };
 
 // the menu, the pick sheet, the lock box
@@ -185,16 +188,29 @@ export const TIMING = { target:'target', stop:'tap to stop the timer', marker:'t
      OFF, against the budget) and the baseline on the target card (seconds the game has ASKED FOR). Measured 2026-09-11 at
      attempt 7: "21.71s of 25.00s" beside "26.90s asked". Neither number was wrong; nothing on screen said which was which,
      and the bigger of the two is the one that does not end the run. Both say what they are measuring now. */
-  over:'{bud} reached · run over', hudStreak:'attempt {n} · {tot} spent of {bud}', hudSet:'{n} / {s}', budPx:'100px',
+  /* v18 (B.3d): `hudAttempt` is what a Stopwatch Streak's line says now — the attempt, and nothing else. `spentOf` is
+     what the big number above it says instead of the round it had already been told: the seconds spent out of the
+     budget, which is the running-total rule (B.13) stated once rather than twice. Hidden keeps `hudStreak`.
+     v18 (B.4): `budPx` is retired — Hidden's budget is milliseconds now and the engine derives the text from the number,
+     the same correction v15 3.8 made to the Stopwatch budget. `msU` is the unit, shared with the Hidden score.
+     v18 (B.3d / B.2): `asked` is retired with the Streak line it belonged to; `askedSet` is back on the Set. */
+  over:'{bud} reached · run over', hudStreak:'attempt {n} · {tot} spent of {bud}', hudAttempt:'attempt {n}', hudSet:'{n} / {s}',
+  spentOf:'{tot} / {bud}s', msU:'ms',
   // v14 (6.18): what the game has asked for so far, against what it will have asked for by the end of the Set
-  askedSet:'{tot}s of {all}s asked', asked:'targets {tot}s' };
+  askedSet:'{tot}s of {all}s asked' };
 // v14: the budgets are the engine's constants now, not numbers baked into a string — a Flash Streak spends what is over 250ms
 // against 500ms (L5 / B.1), a Go / No-go Streak what is over 300ms against 1000ms (6.2 / L5). A wrong tap ADDS 150ms to a Go /
 // No-go Set average (A.2) and SPENDS 300ms of a Streak budget (B.2): two currencies, two numbers, not to be harmonised (B.3)
-export const REACTION = { wait:'wait for it', tap:'TAP', slow:'too slow', early:'too early', noTap:'no tap', reached:'{bud}ms reached', ms:' ms', quick:'quick', good:'good', slowWord:'slow',
-  again:'try again · attempt {n}{of}', of:' of {s}', takes:'Player {n} takes it', tappedEarly:'Player {n} tapped early', draw:'draw', wins:'Player {n} wins',
-  ruleTap:['tap','only','the'], ruleNow:['now','only','the'], wrong:'wrong tap · {n} of 3', wrongS:'wrong tap', three:'three wrong taps', over:'run over',
-  hudVs:'round {n} · best of {s}', hudNogoStreak:'shape {n} · {over} of {bud}ms', hudNogo:'{n} / {s} · {w} of 3 wrong', hudStreak:'attempt {n} · {over} of {bud}ms', hudSet:'{n} / {s}',
+/* v18 (B.6): `slow`, `again` and `of` are retired with the Flash Set's retake — "too slow · try again · attempt 2 of 5"
+   threw the attempt away, so a Set measured only the attempts you happened to be quick on. A slow one scores FLASH_MAX
+   and counts.
+   v18 (B.1c): `wrong` ("wrong tap · {n} of 3") and `three` are retired with the three-wrong-taps run-ender. Every wrong
+   tap is `wrongS` now, in both lengths, with what it cost under it — the cost is the whole of the penalty (L5).
+   v18 (B.1b): `hudNogo` counts the ROUND and the correct taps inside it, not shapes and a tally of a dead ender. */
+export const REACTION = { wait:'wait for it', tap:'TAP', early:'too early', noTap:'no tap', reached:'{bud}ms reached', ms:' ms', quick:'quick', good:'good', slowWord:'slow',
+  takes:'Player {n} takes it', tappedEarly:'Player {n} tapped early', draw:'draw', wins:'Player {n} wins',
+  ruleTap:['tap','only','the'], ruleNow:['now','only','the'], wrongS:'wrong tap', over:'run over',
+  hudVs:'round {n} · best of {s}', hudNogoStreak:'shape {n} · {over} of {bud}ms', hudNogo:'round {n} of {s} · {h} of {p}', hudStreak:'attempt {n} · {over} of {bud}ms', hudSet:'{n} / {s}',
   // v15 (3.5 / 3.6): the result reads down — what you did, what it is measured against, the difference, then where the run stands
   baseline:'baseline {n} ms', runTotal:'total {n} of {bud} ms', runAvg:'average {n} ms', earlyTap:'tapped early', earlyCost:'the attempt is spent' };
 export const SPOT = { count:['count','the'], find:['find','the'], howMany:'how many?', right:'right · 0 off', said:'you said {k} · {off} off', of5:' · {off} of 5', over:' · run over',

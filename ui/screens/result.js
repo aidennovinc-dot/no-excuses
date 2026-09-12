@@ -10,7 +10,7 @@ import { emit, on } from "../../core/events.js";
 import { VS, sel } from "../../core/state.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, SHARED2, isStreak, lenName, versusOf } from "../../games/registry.js";
-import { Scores, achById, got, isOpen, lenLock, lenOpen, lensOf, markSeen, newMark, unlockHtml, unlockToast, verdict } from "../../progress.js";
+import { Scores, achById, got, isOpen, lenLock, lenOpen, lensOf, markSeen, newMark, tierOf, unlockHtml, unlockToast, verdict } from "../../progress.js";
 import { start } from "../../run/run.js";
 import { Snd } from "../../audio.js";
 import { define, lock } from "../actions.js";
@@ -38,7 +38,11 @@ function renderOverChips(){ const g=GAMES[sel.game]; const vsOk=versusOf(sel.gam
 function renderOverTop(){ const run=lastRun; const g=GC(sel.game,sel.diff,sel.secs); const two=sel.vs>0; $('#over-top').hidden=two||!!(run&&run.practice); $('#over-top').style.display=two||(run&&run.practice)?'none':''; if(two) return;
   const top=Scores.of(sel.game,sel.diff,sel.secs).slice(0,10);
   $('#over-top-title').textContent=T(RESULT.top,{where:`${g.name}${MODE_NAME[sel.diff]?' · '+MODE_NAME[sel.diff]:''} · ${lenName(sel.game,sel.secs,sel.diff)}`})+(g.lower?RESULT.closestFirst:'');
-  $('#over-runs').innerHTML=top.length?top.map((r,i)=>`<tr class="${run&&r.t===run.t?'cur':''}"><td>${i+1}</td><td></td><td>${scoreTxt(sel.game,r.hits,r.d,r.s)}</td><td>${new Date(r.t).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'2-digit'})}</td></tr>`).join(''):`<tr><td colspan="4">${RESULT.noRuns}</td></tr>`; }
+  /* v18 (B.10): THAT RUN'S ROW wears the tier colour on its score, the same colour the big number above it is wearing.
+     Aiden: "I didn't want just the results screen at the end to be blue." Only the run just played — every row in the
+     colour would be a heat map, and the note is about following one number through the screen it lands on. */
+  $('#over-runs').innerHTML=top.length?top.map((r,i)=>{ const cur=run&&r.t===run.t; const tc=cur?tierOf(r):null;
+    return `<tr class="${cur?'cur':''}"><td>${i+1}</td><td></td><td${tc?` style="color:${tc.col}"`:''}>${scoreTxt(sel.game,r.hits,r.d,r.s)}</td><td>${new Date(r.t).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'2-digit'})}</td></tr>`; }).join(''):`<tr><td colspan="4">${RESULT.noRuns}</td></tr>`; }
 function renderOver(run){ const g=GC(run.g,run.d,run.s);
   renderOverChips();
   // vs (v9): both scores side by side, the winner in green. Versus (v10) carries its own pair of counts. v11: Player 1 red, Player 2 blue
@@ -88,6 +92,8 @@ on('run:finish',({run,isBest,two,fresh,ach,adv})=>{ const g=GC(run.g,run.d,run.s
   else if(run.practice) vd.textContent=VERDICT.practice;
   else { const v=verdict(run); vd.textContent=v.line; if(!two) tier=v; }
   vd.className='verdict'+(tier?' v-'+tier.tier:''); vd.style.color=tier?tier.col:'';
+  // v18 (B.10): and the SCORE itself, which is the number the whole screen is about
+  $('#over-score').style.color=tier?tier.col:'';
   lastTier=tier?tier.tier:null;
   renderOver(run);
   // the ad break (v10) comes between the run and the result, every fourth result, never for supporters
@@ -98,13 +104,14 @@ on('run:finish',({run,isBest,two,fresh,ach,adv})=>{ const g=GC(run.g,run.d,run.s
      to the key to watch its root advance one segment. Re-clearing hands down null and plays nothing, and Back from there
      comes straight back here — the run is not finished with. Two-player and practice never get this far. */
   setTimeout(()=>Ads.after(()=>{ show('s-over'); if(run.practice||two) return;
-    const msgs=(fresh||[]).map(u=>[unlockToast(u.key),'','ok'])
+    // v18 (B.12): the fifth field is where an unlock toast LEADS — tap it and the pick sheet opens at that mode or length
+    const msgs=(fresh||[]).map(u=>[unlockToast(u.key),'','ok',false,u.key])
       .concat((ach||[]).map(a=>[T(TOAST.achievement,{name:a.name})+(a.unlocks?' · '+unlockHtml(a):''),a.id,'']));
     /* the tier's sound plays HERE, not at the finish: Snd.end() already owns the moment the run stops, and the ad break
        can stand between the two. A run that earned something pushes its toasts back by the length of the sound, so the
        verdict and an unlock never land on top of each other — the unlock is the bigger sound and it gets clear air. */
     const rest=()=>{ const d=lastTier?600:0; if(lastTier) Snd.verdict(lastTier);
-      msgs.forEach(([m,id,cls],i)=>setTimeout(()=>toast(m,id,cls,!!id),d+i*(id?3400:2600))); renderOverChips(); };
+      msgs.forEach(([m,id,cls,html,go],i)=>setTimeout(()=>toast(m,id,cls,!!id,go),d+i*((id||go)?3400:2600))); renderOverChips(); };
     if(adv) keyBreak(adv,rest); else rest(); }),250); });
 /* v15 (5.1, build 26): a key unlock INTERRUPTS this screen. It was a green toast the player tapped, sitting behind
    however many unlock and achievement toasts came first, and only then did it offer the key — so the one thing the key

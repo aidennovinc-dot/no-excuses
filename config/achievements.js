@@ -69,9 +69,11 @@ export const ACH = [
   { id:'sq_s15',  g:'sequence', tier:'secret', name:'The long one', how:'Round 15 on seven keys', hint:"The long one, on the widest board.", at:{s:7}, live:1 },
   // v7 games — a starter set, no cosmetics attached yet. v11 units: Stopwatch Set = average s, Hidden Set = total px over 10, Flash Set = average ms, Go/No-go Set = ms + penalties
   { id:'tm_close', g:'timing',   tier:'earned', name:'Dead on',       how:'Stopwatch · one attempt within 0.10s', at:{d:'stopwatch'}, live:1 },
-  { id:'tm_wall',  g:'timing',   tier:'pro',    name:'X-ray',         how:'Hidden · a Set under 300px off in total', at:{d:'hidden',s:10} },
+  // v18 (B.4): 300px converted at the ball's measured pace (6.71ms a pixel) is 2013ms — the row asks for 2000ms
+  { id:'tm_wall',  g:'timing',   tier:'pro',    name:'X-ray',         how:'Hidden · a Set under 2000ms off in total', at:{d:'hidden',s:10} },
   { id:'tm_run',   g:'timing',   tier:'pro',    name:'Keeps going',   how:'Stopwatch · a Streak of 10 attempts', at:{d:'stopwatch',s:-1}, live:1 },
-  { id:'tm_s',     g:'timing',   tier:'secret', name:'Metronome',     how:'Stopwatch · a Set averaging under 0.12s', hint:"A whole Set averaging closer than the Pro row asks for one attempt.", at:{d:'stopwatch',s:5} },
+  // v18 (B.2): the Set is a total, so the same standard is 0.12s a round across five — 0.60s, not a new number
+  { id:'tm_s',     g:'timing',   tier:'secret', name:'Metronome',     how:'Stopwatch · a Set under 0.60s off in total', hint:"A whole Set closer, round for round, than the Pro row asks for one attempt.", at:{d:'stopwatch',s:5} },
   /* v17 (B.12): the new secret row — let one Stopwatch attempt run the full CFG.swOver seconds past its target instead of
      tapping. NAME IS A PLACEHOLDER: Aiden names the secret rows himself, and this one is flagged in FEATURES.md for him.
      `live:1` is honest here — `ov` is set the moment the clock runs out and nothing later in the run can take it back. */

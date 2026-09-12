@@ -41,9 +41,14 @@ export const KEY_BARS = {
   // so its row became an orphan the gate would have failed on. A removal, never a generated bar: A2 stands and #371 is
   // still the only thing that may set one
   'sequence:solo:7':      { id:'sq-7', bar:9, dir:'higher', unit:'rounds', conf:'high', basis:'Two unlocks read this exact run — Practice at 8 notes, Timing at round 6. The bar sits one above the higher.' },
-  'timing:stopwatch:5':   { id:'tm-sw-set', bar:0.28, dir:'lower', unit:'s off', conf:'high', basis:'Timing · Hidden opens on one attempt within 0.30s. This is that standard held as a five-round average.' },
+  // v18 (B.2): the Set is a TOTAL now, so the same standard is the old five-round average times five. Not a retune —
+  // a unit conversion, which is the only kind of edit a bar may take from a build rather than from Aiden (A.2)
+  'timing:stopwatch:5':   { id:'tm-sw-set', bar:1.4, dir:'lower', unit:'s total', conf:'high', basis:'Timing · Hidden opens on one attempt within 0.30s. This is that standard held across all five rounds — 0.28s a round, 1.40s in total.' },
   'timing:stopwatch:-1':  { id:'tm-sw-streak', bar:9, dir:'higher', unit:'rounds', conf:'high', basis:'Reaction · Flash opens at round 6 of this exact run, so round 9 is a real step past a threshold the build already trusts.' },
-  'timing:hidden:10':     { id:'tm-hid-set', bar:180, dir:'lower', unit:'px total', conf:'low', basis:'Nothing in the unlock chain touches Hidden. 18px a round is my judgement, and pixels do not travel across screen sizes.' },
+  /* v18 (B.4): converted from 180px, not retuned. Measured headless at 390x844: #gen is 390 x 683.66, the ball crosses
+     it at 117px/s one way and 205px/s the other, so a pixel is 8.55ms across and 4.88ms down — 6.71ms averaged. 180px is
+     1208ms; the bar is 1200. The basis's own complaint is what B.4 fixed: pixels do not travel across screen sizes. */
+  'timing:hidden:10':     { id:'tm-hid-set', bar:1200, dir:'lower', unit:'ms total', conf:'low', basis:'Nothing in the unlock chain touches Hidden. 120ms a round is my judgement — converted from the 180px bar at the ball’s measured pace.' },
   'timing:hidden:-1':     { id:'tm-hid-streak', bar:9, dir:'higher', unit:'rounds', conf:'low', basis:'Matched to Stopwatch · Streak for want of an anchor. Hidden’s budget is not in the config.' },
   'reaction:flash:5':     { id:'rx-fl-set', bar:255, dir:'lower', unit:'ms avg', conf:'high', basis:'Go / No-go opens on a Flash Set under 300ms. 255ms is a good phone average — faster, still reachable.' },
   'reaction:flash:-1':    { id:'rx-fl-streak', bar:5, dir:'higher', unit:'rounds', conf:'med', basis:'500ms budget spending anything over 150ms. At a 255ms average each rep costs ~105ms.' },
@@ -61,7 +66,7 @@ export const KEY_NOTE = {
   'dots': 'Timed — score is hits. No lockout between dots, so the ceiling sits above Quick Tap.',
   'hold': 'Set is an average across its rounds. Streak is endless on a 100% cumulative budget, scored in rounds.',
   'sequence': 'One mode, two key counts. Score is rounds. Speed tightens 15ms a round to a 280ms floor.',
-  'timing': 'Stopwatch scores seconds off, Hidden scores pixels off the marker. Both have Set and Streak.',
-  'reaction': 'Flash is a simple reaction; Go / No-go adds the decision. The Streak budgets are your §C numbers.',
+  'timing': 'Stopwatch scores seconds off, Hidden milliseconds off the marker (B.4). Both Sets are totals (B.2); both have a Streak.',
+  'reaction': 'Flash is a simple reaction; Go / No-go adds the decision — five rounds of three correct taps (B.1b). The Streak budgets are your §C numbers.',
   'spot': 'Count scores total miscount, Find scores total seconds. Both lower is better.',
 };

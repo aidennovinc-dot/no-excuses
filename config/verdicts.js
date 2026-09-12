@@ -25,9 +25,10 @@ export const VERDICT_TIERS = [
   { id:'bad',  name:'bad',            col:'#E0453B', of:null },
 ];
 
-/* A run that ends badly enough to have no tier of its own — Go / No-go's three wrong taps, a timed run with nothing on
-   it, more misses than hits — is `bad`. It has a line already and it is unambiguously the bottom, so it wears the bad
-   tier's colour and sound rather than being the one result on the screen with neither. */
+/* A run that ends badly enough to have no tier of its own — a timed run with nothing on it, more misses than hits — is
+   `bad`. It has a line already and it is unambiguously the bottom, so it wears the bad tier’s colour and sound rather
+   than being the one result on the screen with neither. Go / No-go’s three-wrong-taps ending used to be the third case
+   and is retired at build 31 (v18 B.1c): nothing ends that mode early now. */
 export const VERDICT_FAIL_TIER = 'bad';
 
 export const VERDICTS = {
@@ -76,4 +77,29 @@ export const VERDICTS = {
     ok:  ['Finding them.','Decent search.','Better. Let the odd one come to you.','Mid pace.','You are nearly quick.'],
     good:['Quick eye.','Straight to it, mostly.','Good scanning.','Nearly very quick.','Low times. Good.'],
     ace: ['Very quick eye.','That is not normal. Keep it.','You did not search. You saw.','Nothing wasted.','That will be hard to beat.'] } },
+};
+
+/* v18 (§B.10) — THE TIER ON ONE ROUND'S OWN FIGURE. B.10 puts the verdict colour on the NUMBER everywhere it appears,
+   and in a round-based game that includes each round's result as it lands. A whole run's tier comes from `QUALITY` in
+   progress/rules.js, which an engine may not import (A3) — so the per-round thresholds live here, as data, and
+   `games/_shared/tier.js` is the one function that reads them.
+
+   `at` is [ace, good, ok] in that combination's OWN unit and is a CEILING at every step: every round-based game scores
+   downward (seconds off, milliseconds, % off, miscount), so a round is `ace` at or under the first number, `good` at or
+   under the second, `ok` at or under the third and `bad` above it. Keyed 'game:mode' — the round is always inside one
+   mode, so there is no 'g' fallback to build.
+
+   THE NUMBERS ARE THE ENGINES' OWN dead-on / close cut-offs where they had a pair (Timing 0.10s and 0.30s, Hidden's
+   10px and 35px converted to milliseconds by B.4, Reaction's quick/good at 200 and 300, Estimate's money/close), with a
+   third step added under each so there are four tiers rather than three. Spot · Count is exact / one out / two out, which
+   is the whole range that mode has. Judgement, marked (guess) in FEEDBACK-v18, and one line each to retune. */
+export const ROUND_AT = {
+  'timing:stopwatch': [0.06, 0.10, 0.30],
+  'timing:hidden':    [40, 70, 240],
+  'reaction:flash':   [200, 260, 330],
+  'reaction:nogo':    [280, 360, 470],
+  'hold:grow':        [2, 5, 10],
+  'hold:cut':         [2, 4, 8],
+  'spot:count':       [0, 1, 2],
+  'spot:find':        [1, 2, 4],
 };

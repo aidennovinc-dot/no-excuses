@@ -7,7 +7,7 @@ import { $, T } from "../../core.js";
 import { on } from "../../core/events.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, lenName } from "../../games/registry.js";
-import { ACH, Scores, authorRatio, got, lensOf, unlockHtml } from "../../progress.js";
+import { ACH, Scores, authorRatio, got, lensOf, tierOf, unlockHtml } from "../../progress.js";
 import { quality } from "../../progress/rules.js";
 import { define } from "../actions.js";
 import { chips } from "../chips.js";
@@ -17,7 +17,11 @@ import { toast } from "../toast.js";
 
 const F={ g:prefs.lastGame, d:GAMES[prefs.lastGame].modes[0], s:5 };
 let curT=null;   // the run just played, marked in its row
-function rows(g,d,s,list){ const cfg=GC(g,d,s), c=colsOf(g,d,s); return list.length ? list.map((r,i)=>`<tr class="${i===0&&(r.hits>0||cfg.lower)?'best':''} ${r.t===curT?'cur':''}"><td>${i+1}</td><td></td><td>${fmtScore(g,r.hits,d,s)}</td><td>${c[0][1](r)}</td><td>${c[1][1](r)}</td><td>${new Date(r.t).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'2-digit'})}</td></tr>`).join('') : `<tr><td colspan="6">${RESULT.noRuns}</td></tr>`; }
+// v18 (B.10): the run just played wears its tier colour on its score here too, so the number Aiden watched turn blue on
+// the result screen is the same colour on the board he lands on next. Solo only by construction — L10 keeps every
+// two-player run off a board, and a practice run is never submitted
+function rows(g,d,s,list){ const cfg=GC(g,d,s), c=colsOf(g,d,s); return list.length ? list.map((r,i)=>{ const tc=r.t===curT?tierOf(r):null;
+  return `<tr class="${i===0&&(r.hits>0||cfg.lower)?'best':''} ${r.t===curT?'cur':''}"><td>${i+1}</td><td></td><td${tc?` style="color:${tc.col}"`:''}>${fmtScore(g,r.hits,d,s)}</td><td>${c[0][1](r)}</td><td>${c[1][1](r)}</td><td>${new Date(r.t).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'2-digit'})}</td></tr>`; }).join('') : `<tr><td colspan="6">${RESULT.noRuns}</td></tr>`; }
 /* the profile radar (v9): one axis per game, your best in any mode and length of it.
    v14 (8.6): 1.0 — the outer ring — is the AUTHOR's record for that game, and a score past it pushes the shape OUTSIDE the web
    instead of flattening against it. The cap is 1.15 so a vertex can never reach the game's own label at 1.19. Where there is no

@@ -7,7 +7,17 @@ export const STREAK = -1;
 // the feel. Nothing here is user-facing
 // v17 (B.12): `swOver` is how far past the target a Stopwatch attempt is allowed to run before it stops itself — 10
 // seconds, was 5. Letting one run the whole way is a secret achievement, and the attempt still scores the real difference
-export const CFG = { lockout: 750, countStep: 300, holdRate: 38 /* vmin per second */, dotLeeway: 1.18 /* hidden: hit radius × this */, swOver: 10 };
+// v18 (B.3c / B.7): `hold` is how long a round's own figure sits, readable, before it drains into the running total.
+// Aiden could not read either of them — "it adds immediately and I can't see what happened" — and the two Streaks that
+// do this now share one number so they beat the same way
+export const CFG = { lockout: 750, countStep: 300, holdRate: 38 /* vmin per second */, dotLeeway: 1.18 /* hidden: hit radius × this */, swOver: 10, hold: 800 };
+/* v18 (B.4 / B.5) — TIMING · HIDDEN, in milliseconds. `speed` is the ball's pace as a fraction of the travel it has to
+   cross, which is what it always was (0.3) — but the SCORE is the time between the ball and the marker now, not the
+   pixels, because 100px is a different miss on every phone and 855ms is not. B.5's variation is the Streak's: `band` is
+   how far either side of `speed` a round's pace may be drawn from (±25%), `tilt` the off-axis angle the path may take by
+   `rampTo`, and `far` how much further behind the wall the marker sits each round. The Set draws none of them — it plays
+   exactly as it did, in a new unit. */
+export const HIDDEN = { speed: 0.3, band: 0.25, tilt: 22, far: 0.10, spread: 0.05, rampTo: 12, maxAt: 0.94 };
 // sequence speed is not a choice any more (v9): it starts at 0.5s a key and tightens 15ms a round, floor 0.28s
 export const SEQ_STEP = { start: 500, step: 15, floor: 280 };
 // length faces (v11): the name everywhere, the seconds only on the pick sheet. 7 and 10 are the pass & play lengths (PASS_LEN)
@@ -62,11 +72,13 @@ export const GAMES = {
   // v7 — four new games. v11: Set / Streak per mode; every timing figure is an absolute difference
   'timing': { name:'Timing', modes:['stopwatch','hidden'], unit:' attempts', timed:false, lower:true, lead:true,
     stopwatch:'Tap when you think the time is right.', hidden:'Tap when the ball has reached the marker.',
-    suffix:'s', scoreWord:'s off', streak:{ ...STREAK_CFG },
-    // hidden (v10) is scored in pixels off the marker, not seconds. v11: Set is 10 runs, total px
-    per:{ hidden:{ suffix:'px', scoreWord:'px off', streak:{ ...STREAK_CFG } } } },
+    suffix:'s', scoreWord:'s total', streak:{ ...STREAK_CFG },
+    // v18 (B.4, L5): Hidden is scored in MILLISECONDS off the marker, not pixels — the same miss reads the same on
+    // every phone, which 100px never did. v11: Set is 10 runs, and it is still a total
+    per:{ hidden:{ suffix:'ms', scoreWord:'ms total', streak:{ ...STREAK_CFG } } } },
   'reaction': { name:'Reaction', modes:['flash','nogo'], lenNames:{5:'Best of 5',9:'Best of 9',15:'Best of 15'}, unit:' attempts', timed:false, lower:true, versus:['flash'], vsLens:[5,9,15],
-    flash:'Tap the moment it flashes white.', nogo:'Tap only your shape. Three wrong taps end it.',
+    // v18 (B.1b / B.1c): the mode line says what a round is, and no longer promises an ender that has been removed
+    flash:'Tap the moment it flashes white.', nogo:'Tap only your shape — three times, then it changes.',
     suffix:'ms', scoreWord:'ms', streak:{ ...STREAK_CFG },
     // Go/No-go (v11): Set = 5 rounds (v14 section 5), average ms on right taps + 150ms per wrong tap (v14 A.2); v14 (6.2 / L5): Streak = shapes survived on a 1000ms budget
     per:{ nogo:{ streak:{ ...STREAK_CFG, scoreWord:'shapes' } } } },
@@ -94,10 +106,14 @@ export const GAMES = {
 export const SET_COPY = {
   'hold:grow':        { rounds:7,  set:'7 rounds, lowest average % off wins',            streak:'Highest round wins!' },
   'hold:cut':         { rounds:10, set:'10 rounds, lowest average % off wins',           streak:'Highest round wins!' },
-  'timing:stopwatch': { rounds:5,  set:'5 rounds, lowest average time difference wins',  streak:'Highest round wins!' },
-  'timing:hidden':    { rounds:10, set:'10 rounds, lowest total pixels off wins',        streak:'Highest round wins!' },
-  'reaction:flash':   { rounds:5,  set:'5 rounds, lowest time wins',                     streak:'Highest round wins!' },
-  'reaction:nogo':    { rounds:5,  set:'5 rounds, lowest average reaction time wins — wrong taps add 150ms', streak:'Highest round wins!' },
+  // v18 (B.2, L5): Stopwatch's Set is the SUM of the differences, not their average — Aiden withdrew the average
+  'timing:stopwatch': { rounds:5,  set:'5 rounds, lowest total time difference wins',    streak:'Highest round wins!' },
+  // v18 (B.4, L5): the same total, in milliseconds — pixels do not travel across screen sizes
+  'timing:hidden':    { rounds:10, set:'10 rounds, lowest total milliseconds off wins',  streak:'Highest round wins!' },
+  // v18 (B.6): a slow attempt is scored at 1000ms and counts; there is no retake to hide it
+  'reaction:flash':   { rounds:5,  set:'5 rounds, lowest average time wins — over 1000ms scores 1000ms', streak:'Highest round wins!' },
+  // v18 (B.1b): a round is three correct taps of one shape, so a Set is fifteen; the 150ms is the whole of a wrong tap now (B.1c)
+  'reaction:nogo':    { rounds:5,  set:'5 rounds of 3 taps, lowest average reaction time wins — wrong taps add 150ms', streak:'Highest round wins!' },
   'spot:count':       { rounds:10, set:'10 rounds, lowest total miscount wins',          streak:'Highest round wins!' },
   'spot:find':        { rounds:10, set:'10 rounds, lowest total time wins — 0.5s free each find', streak:'Highest round wins!' },
 };

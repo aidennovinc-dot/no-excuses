@@ -7,7 +7,7 @@
    finish ramp that lands the last downbeat on the clock (B.28), an end cadence in the track's own key (B.30), a flow-state
    layer over the two tap games (B.27) and a duck for Sequence (B.30). Still no percussion. */
 
-import { DUCK, DUCK_TAIL, FLOW_AT, FLOW_SPAN, FLOW_STEM, SCALES, SET_SECS, STEMS, TRACKS, TRACK_PICK, VERDICT_FX } from "./config/audio.js";
+import { DUCK, DUCK_TAIL, FLOW_STEM, SCALES, SET_SECS, STEMS, TRACKS, TRACK_PICK, VERDICT_FX } from "./config/audio.js";
 import { STREAK } from "./config/games.js";
 import { on } from "./core/events.js";
 import { sel } from "./core/state.js";

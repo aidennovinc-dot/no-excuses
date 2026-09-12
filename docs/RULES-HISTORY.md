@@ -263,6 +263,58 @@ Aiden overruled that at build 22: C.1 puts Flash back to the 150 that 6.8 asked 
 with a 200ms wrong tap. Both budgets are unchanged. The runs are deliberately shorter — four or five rounds, not ten —
 and that is the intended effect, not a regression.**
 
+**L5 amended at build 31 (FEEDBACK-v18 §B.1c, §B.2, §B.3, §B.4, §B.6, 2026-09-12), all quoting it.** Five changes, and
+four of them are the same complaint: a run was over before it had started, or a number moved before it could be read.
+
+- **(B.1c) Go / No-go loses its three-wrong-taps run-ender, in the Set and in a pass & play turn alike.** C.4 retired it for
+  the Streak at build 22 on the reasoning that the budget is spent by legal taps as well as by mistakes; B.1c finishes the
+  job for the same reason in reverse — Aiden's note is "wrong taps do nothing I can feel", and an ender is what let the
+  *cost* stay invisible. A wrong tap is now only what L5 already said it was: 150ms on a Set's average, 200ms out of a
+  Streak's budget. It is shown on the card, the score jumps by it, and the screen shakes. The two currencies still are not
+  harmonised (B.3 / C.3).
+- **(B.1b) A Go / No-go ROUND is one target shape and three correct taps of it**, so a Set is five rounds and fifteen taps
+  where it used to be five *shapes* and over in seconds. Every mode deals its round as a block up front — pass & play
+  always did (#375b) and solo rolling shape by shape is what made the target's position guessable. **(B.1d) The first shape
+  after the instruction is always a decoy**, which is the third rule in `dealBlock` beside #375b's two: no shape three
+  times running, no decoy repeated. `RULE_EVERY` and `nextShape()` are retired with the old shape-counting.
+- **(B.2) Timing · Stopwatch · Set is the SUM of its rounds' differences, not their mean.** Aiden: "I might have said
+  average before; I don't want that any more." v14 6.18's exact-mean *deal* is untouched — five rounds averaging 7s still
+  ask for exactly 35.00s — and the baseline line it is measured against moves back onto the Set (B.3d), where v16 §3 had
+  taken it off on the reasoning that a mean has no use for a total.
+- **(B.3) The Stopwatch Streak, four ways.** The budget is **5s, 7.5s past round 10**, where v15 3.8 had set 25 / 30; the
+  targets climb **a whole second a round and are never held**, where they climbed 0.45s and stopped at 9s, which is why
+  "at attempt 14 the target was only 8 seconds"; the difference **holds `CFG.hold` (800ms) before it drains** into the
+  total; and the big number is **the time spent out of the budget** rather than the round "attempt N" already named.
+  The 25s budget existed because two ordinary attempts against a flat 7s target spent a 2s one — with the targets
+  climbing properly the run no longer needs twenty-five seconds of slack to reach round ten.
+- **(B.4) Timing · Hidden is measured in MILLISECONDS.** It was pixels off the marker, and 100px is a different miss on
+  every phone: measured headless at 390×844, `#gen` is 390 × 683.66 and the ball crosses it at 117px/s across and 205px/s
+  down, so a pixel is 8.55ms one way and 4.88ms the other. The budget converts to 671ms and is set at **700**, rounded to
+  a hundred as B.4 asks. Both clearance bars and both achievement rows are **converted at the measured pace, not retuned**
+  — Hidden 180px → 1200ms, Stopwatch 0.28s average → 1.40s total, X-ray 300px → 2000ms, Metronome 0.12s → 0.60s.
+- **(B.6) A Flash Set attempt over 1000ms scores 1000ms and COUNTS.** It used to be thrown away — "too slow · try again ·
+  attempt 2 of 5" — so a Set measured only the attempts the player happened to be quick on, which is the opposite of what
+  a reaction Set is for. `fault()` is retired with it. The Streak is untouched: there the cost is the budget and a retake
+  was never on offer.
+
+**L6 amended at build 31 (FEEDBACK-v18 §B.8, quoting it): `LEN_LIVE`, and a length earn that is written down.**
+B.8 reported two faults in the Reaction · Flash Streak unlock and **both halves of the note were right**, though one of
+them named a mechanism the build does not have.
+
+- The rung is `LEN_RULES['reaction:flash'][1]` — "a Set averaging over 500ms" — and Reaction emits its **running average**
+  as `hits` after every attempt, so one 600ms no-tap made `r.hits > 500` true on attempt one and the toast fired. Aiden
+  called this "the predicate is being met by a single attempt instead of the finished run's average", which is exactly
+  what was happening. The second half of his diagnosis was "it must not carry `live:1`" — and there was **no flag to
+  remove**: a length is not in `UNLOCKS` and has never had one. Build 28's B.5 gave lengths a mid-run announcement and
+  `lenNextLive` handed *every* `LEN_TEST` to it, monotone or not. So the missing thing was the flag itself. `LEN_LIVE` is
+  it, one entry per rung, and the only 0 in the table is Flash's.
+- The other half: "the toast said unlocked, he quit, and Streak was locked." Also right, and **worse than reported** — it
+  was true of every length in the game, not only this one. Length state is derived from run history (1.0b), `abort()`
+  never submits a record, so a quit run left the derivation nothing to read. `bankLen` writes the three-part key the toast
+  already names, on the live path and again at the finish, and `lenLock` reads it back first. That is the standing rule
+  build 23 set for unlocks and achievements — an earn is written the moment it fires — finally applied to the one kind of
+  unlock that had no store entry to write.
+
 ## Bump the build: one command (A6, build 16) — as of build 30, before S.2 put `v0.N` on screen
 
 ```
