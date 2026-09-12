@@ -180,14 +180,14 @@
        build, the device and the last run filled in. An <a>, so the link does its own work; data-act="none" is only the
        click sound — nothing here knows what a mail client is, and nothing is sent without the tester's own send button -->
   <a class="item sub" id="feedback" data-act="none" href="#">Send feedback</a>
-  <div class="hint">v0.33 · batch 14 · keys and chests · 12 sept 2026</div>
+  <div class="hint">v0.34 · the key gate · placeholder bars · 12 sept 2026</div>
 </section>
 
 <section class="screen" id="s-testing" data-back="s-menu" data-dev>
   <button data-act="back" class="back">&larr; BACK</button>
   <div class="eyebrow">testing</div>
   <div class="explain">Not in the released app. Everything here changes what is on this phone only.</div>
-  <div class="chips"><button data-act="dev-fresh" class="chip" id="dev-fresh">fresh game · wipe everything</button><button data-act="dev-open" class="chip" id="dev-open">open everything</button><button data-act="dev-story" class="chip" id="dev-story">replay the intro</button><button data-act="dev-sup" class="chip" id="dev-sup">supporter</button></div>
+  <div class="chips"><button data-act="dev-fresh" class="chip" id="dev-fresh">fresh game · wipe everything</button><button data-act="dev-open" class="chip" id="dev-open">open everything</button><button data-act="dev-story" class="chip" id="dev-story">replay the intro</button><button data-act="dev-sup" class="chip" id="dev-sup">supporter</button><button data-act="dev-bars" class="chip" id="dev-bars">fill pro + author · placeholder</button></div>
   <div class="hint" id="dev-state"></div>
   <!-- v18 (B.26, build 32): a button per animation, so each can be watched without being earned. Dev only (S5) -->
   <div class="hint" id="dev-anim-hint">animations · nothing is stored</div>
@@ -261,12 +261,12 @@
 
 <script type="module" src="./boot.js"></script>
 
-<div id="build">v0.33</div>
+<div id="build">v0.34</div>
 <button id="update">New build available — tap to reload</button>
 <script>
 // build check: version.json is fetched with no-store, so a stale cached page still learns a newer build exists
 (function(){
-  const BUILD="33";
+  const BUILD="34";
   async function check(){
     try{
       const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});

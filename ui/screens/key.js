@@ -52,7 +52,7 @@ import { emit } from "../../core/events.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, lenFull, lenName } from "../../games/registry.js";
 import { isOpen, lenOpen } from "../../progress.js";
-import { barOf, barsMissing, gameKey, isCleared, keyPct, keyState, keyTiers } from "../../progress/key.js";
+import { barOf, barsFaked, barsMissing, gameKey, isCleared, keyPct, keyState, keyTiers, mapOpen } from "../../progress/key.js";
 import { goWhere } from "../../run/run.js";
 import { scoreTxt } from "../format.js";
 import { define } from "../actions.js";
@@ -73,8 +73,10 @@ const tierId = () => keyTiers()[openKey].id;
 const glyph = (id, cls) => `<svg class="kgl ${cls}" viewBox="0 0 48 48" aria-hidden="true">${KEY_ART[id].map(d => `<path d="${d}"></path>`).join('')}</svg>`;
 /* v17 (§A.1 / B.31): NOTHING ABOUT PRO OR AUTHOR EXISTS ON THIS SCREEN UNTIL CHEST 1 IS OPENED. Not a greyed row, not a
    locked glyph, not the word. A first-timer seeing three targets per game is the load Aiden ruled out, and chest 1 is
-   the gate that hands the map over (A.2). One line, here, because `keyTiers()` is the only list of them. */
-const shown = () => keyTiers().filter(k => k.i === 0 || prefs.chest1);
+   the gate that hands the map over (A.2). One line, here, because `keyTiers()` is the only list of them.
+   #411: the gate is mapOpen(), not prefs.chest1 — Testing's OPEN EVERYTHING and Supporter open the map too, the same way
+   they open every other gate. Reading the chest flag alone is what made this screen the one place the switch did nothing. */
+const shown = () => keyTiers().filter(k => k.i === 0 || mapOpen());
 function keys() {
   const list = shown();
   // one tier is not a row of choices — before chest 1 the strip is the theme's name and nothing to press
@@ -175,7 +177,7 @@ function panel() { const box = $('#key-list'); if (!openGame) { box.innerHTML = 
     + `<p>${esc(KEY_NOTE[openGame] || '')}</p>${rows}</div>`; }
 
 /* ---------- which key is on screen ---------- */
-function render() { if (!prefs.chest1) openKey = 0; const t = keyTiers()[openKey]; keys();
+function render() { if (!mapOpen()) openKey = 0; const t = keyTiers()[openKey]; keys();
   // B.31 / B.22: the tier's own tint, dim and ground dress the whole screen, out of config/keys.js. No colour is named here
   const el = $('#s-key'); el.style.setProperty('--ktint', t.tint); el.style.setProperty('--kdim', t.dim || 'var(--line)'); el.style.setProperty('--kground', t.ground); el.dataset.theme = t.id; el.dataset.style = t.style || '';
   $('#key-title').textContent = t.name.toLowerCase();
@@ -183,8 +185,13 @@ function render() { if (!prefs.chest1) openKey = 0; const t = keyTiers()[openKey
   if (t.shell) { $('#key-shell').innerHTML = `${glyph(t.id, 't' + (openKey + 1) + ' big')}<p>${esc(t.lede)}</p><p class="soon">${esc(KEY.soon)}</p>`; return; }
   const st = ring(); panel();
   $('#key-hint').textContent = st.whole ? KEY.completeSub : openGame ? KEY.rowGo : KEY.hint;
-  const miss = barsMissing(); $('#key-warn').hidden = !miss.length;
+  /* a real config mismatch outranks the placeholder note — one of them is a fault, the other is a choice Aiden just
+     made on the Testing screen. But the placeholder note is never silent while the fill is on (A.2): a derived number
+     on screen has to say it is derived, or it is indistinguishable from one he set. */
+  const miss = barsMissing(); const fake = barsFaked() && t.id !== 'clear';
+  $('#key-warn').hidden = !miss.length && !fake;
   if (miss.length) $('#key-warn').textContent = T(KEY.mismatch, { n: miss.length, keys: miss.join(', ') });
+  else if (fake) $('#key-warn').textContent = KEY.faked;
   // B.20: a key that has just become whole gets its moment, once per tier per profile
   if (st.whole && !demo) { const seen = prefs.keyWhole || {}; if (!seen[t.id]) { seen[t.id] = 1; prefs.keyWhole = seen; save(); setTimeout(() => wholeMoment(), 260); } } }
 

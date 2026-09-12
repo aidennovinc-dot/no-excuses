@@ -13,7 +13,7 @@ import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, SHARED2, lenName, lenSub, versusAny, versusOf } from "../../games/registry.js";
 import { Scores, gameOpen, isOpen, lenLock, lenOpen, lensOf, markSeen, needFor, newMark, practiceOpen } from "../../progress.js";
 import { KEYS } from "../../config/keys.js";
-import { gameKey, isShell, keyState } from "../../progress/key.js";
+import { gameKey, isShell, keyState, mapOpen } from "../../progress/key.js";
 import { Snd } from "../../audio.js";
 import { start } from "../../run/run.js";
 import { define } from "../actions.js";
@@ -112,7 +112,8 @@ function drawLines(reveal){ const grid=$('#grid'), svg=$('#gridlines'); if(!svg)
    can never be whole, so its chest simply stays locked with the key's name on it. The number of chests is KEYS.length. */
 const chestOpen=n=>!!prefs['chest'+n];
 function renderChests(){ $$('#grid .chest').forEach(el=>{ const n=+el.dataset.chest, k=KEYS[n-1]; if(!k) return;
-    el.hidden=n>1&&!prefs.chest1; if(el.hidden) return;
+    // #411: the same escape the key map takes — OPEN EVERYTHING and Supporter show all three chests, a first-timer one
+    el.hidden=n>1&&!mapOpen(); if(el.hidden) return;
     const st=isShell(k.id)?{done:0,total:0}:keyState(k.id); const done=chestOpen(n), ready=!done&&st.total>0&&st.done>=st.total;
     el.classList.toggle('locked',!ready&&!done); el.classList.toggle('ready',ready); el.classList.toggle('open',done);
     el.querySelector('.name').textContent=n===1?GRID.chest:GRID['chest'+n];

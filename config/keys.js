@@ -16,7 +16,8 @@
    cleared root wears; `dim`, the unlit line; `ground`, behind the ring. Circuit is recoloured — Aiden's one instruction was
    "not gold" — and wears Frost's white-blue as the trace (guess), so the page's copper is nowhere in the app.
 
-   NEITHER CIRCUIT NOR THORN IS SEEN BEFORE CHEST 1 (§A.1). The key screen shows one tier until `prefs.chest1`, so a
+   NEITHER CIRCUIT NOR THORN IS SEEN BEFORE CHEST 1 (§A.1). The key screen shows one tier until mapOpen() (#411: the
+   chest, OR Testing's OPEN EVERYTHING, OR Supporter — both dev-only, stripped from release by BUILD_FLAGS.dev), so a
    first-timer meets one target per game rather than three, and neither of these loops can even be asked for.
 
    KEY_ART is the glyph per tier, and it gets progressively more elaborate as the difficulty rises (5.3): a plain bow

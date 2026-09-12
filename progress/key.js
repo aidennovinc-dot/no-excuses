@@ -61,10 +61,41 @@ function barOf(c, tier = 'clear') { if (!c || !c.bar) return null; const v = tie
 // a tier's column is FULL when every combination carries a number at it; a shell otherwise
 const tierFull = tier => COMBOS.every(c => barOf(c, tier) !== null);
 const isShell = tier => tier !== 'clear' && !tierFull(tier);
-// tiers 2 and 3 exist for a profile only once chest 1 is opened (A.1 / A.2)
-const tierOpen = tier => tier === 'clear' || !!prefs.chest1;
+/* #411: tiers 2 and 3 exist for a profile only once chest 1 is opened (A.1 / A.2) — OR either of the two dev escapes
+   every other gate in the app already honours, the pattern at ui/screens/progress.js:110. Testing's OPEN EVERYTHING is
+   the one that matters: without it Aiden could not see Circuit or Thorn on his phone before a chest was reachable, which
+   is the whole point of the switch. A.1's intent is untouched — core/store.js:39 reads both flags as `dev && ...`, so
+   BUILD_FLAGS.dev strips them from release and a first-timer still meets exactly one target per game.
+   EVERY gate on this map goes through mapOpen(); a new one that reads prefs.chest1 directly is the bug this fixed. */
+const mapOpen = () => !!(prefs.chest1 || prefs.allOpen || prefs.supporter);
+const tierOpen = tier => tier === 'clear' || mapOpen();
 // the store key: key 1 is the bare combination, so nothing a build-31 profile banked moves
 const skey = (key, tier = 'clear') => tier === 'clear' ? key : `${key}|${tier}`;
+
+/* ---------- the placeholder fill (Testing only, session only) ----------
+   A.2 says a bar is SET BY HAND and never derived, and that rule is not being relaxed: nothing here is ever written to
+   storage, `config/key-bars.js` is not touched, and a reload throws the whole thing away. What it is for is that all
+   sixty pro and author bars are still null (#371), so both those tiers are shells — Aiden could reveal them with
+   OPEN EVERYTHING after #411 and still only ever see "not set yet". This fills them IN MEMORY so the Circuit and Thorn
+   rings draw and play, which is the only way to review the key system before the real numbers exist. The key screen
+   says so out loud while it is on (`barsFaked()`), because a derived number that is not announced is exactly what A.2
+   is protecting against. The gate does the same mutation at _smoke/smoke.mjs to draw the two ring styles.
+   Direction is read from the row, never assumed (C.7): a ceiling gets tighter, a floor gets higher. */
+let faked = null;
+const barsFaked = () => !!faked;
+// a step past `bar` in the direction that combination scores, never equal to what it came from
+function harder(from, bar, dir, f) { if (typeof bar !== 'number' || !Number.isFinite(bar)) return null;
+  let v = Math.max(1, Math.round(bar * (dir === 'lower' ? f.lower : f.higher)));
+  if (v === from) v = dir === 'lower' ? Math.max(1, from - 1) : from + 1;
+  return v; }
+function fillBars(on) {
+  if (on && !faked) { faked = {};
+    for (const k of Object.keys(KEY_BARS)) { const r = KEY_BARS[k]; faked[k] = { pro: r.pro, author: r.author };
+      r.pro = harder(r.bar, r.bar, r.dir, { higher: 1.25, lower: 0.8 });
+      r.author = harder(r.pro, r.bar, r.dir, { higher: 1.5, lower: 0.65 }); } }
+  else if (!on && faked) { for (const k of Object.keys(faked)) { const r = KEY_BARS[k]; if (!r) continue;
+      r.pro = faked[k].pro; r.author = faked[k].author; } faked = null; }
+  return barsFaked(); }
 
 const cleared = () => store.bars;
 const isCleared = (key, tier = 'clear') => !!store.bars[skey(key, tier)];
@@ -161,7 +192,7 @@ function checkKeyAch(run) { if (!run || run.chal || run.practice || run.demo) re
    time pushes on to RADAR_PAST, which is where the flame lives. A shell tier is a rung with no value (A.2): a game cannot
    climb past the last rung that has a number, and the screen draws that rung dashed. `rungs` says which rungs exist. */
 const RADAR_PAST = 1.15;
-function radarRungs() { if (!prefs.chest1) return [{ tier: 'clear', at: 1, shell: false }];
+function radarRungs() { if (!mapOpen()) return [{ tier: 'clear', at: 1, shell: false }];
   return TIERS.map((t, i) => ({ tier: t, at: (i + 1) / TIERS.length, shell: isShell(t) })); }
 // how far a best score sits from `from` to `to` on the combination's own direction, 0..1 (past `to` is > 1)
 function stretch(best, from, to, dir) { if (best === null || from === null || to === null || from === to) return 0;
@@ -182,4 +213,4 @@ function radarOf(g) { const list = BY_GAME[g] || []; const rungs = radarRungs();
     best = Math.max(best, v); }
   return { v: best, rungs, past: best > 1 }; }
 
-export { COMBOS, RADAR_PAST, TIERS, barFor, barOf, barsMissing, barsOrphan, checkKey, checkKeyAch, cleared, combos, credit, frontPct, gameKey, isCleared, isShell, keyAch, keyOf, keyPct, keyState, keyTier, keyTiers, radarOf, radarRungs, skey, tierFull, tierOpen };
+export { COMBOS, RADAR_PAST, TIERS, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, fillBars, checkKeyAch, cleared, combos, credit, frontPct, gameKey, isCleared, isShell, keyAch, keyOf, keyPct, keyState, keyTier, keyTiers, mapOpen, radarOf, radarRungs, skey, tierFull, tierOpen };

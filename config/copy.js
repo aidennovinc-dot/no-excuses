@@ -9,6 +9,7 @@ export const TOAST = {
   devOpenOn:'Everything open · modes and cosmetics', devOpenOff:'Progression back on · only what you earned',
   supOn:'Supporter ON · no ads, all cosmetics, pro length', supOff:'Free tier · ads back on',
   fresh:'Fresh game · runs, unlocks, achievements and intros wiped',
+  barsOn:'Placeholder bars · derived for testing, never saved, gone on reload', barsOff:'Placeholder bars off · Pro and Author are shells again',
   pracLocked:'Locked · Practice from · 8 notes in 7 keys', locked:'Locked · {name}',
   supAlready:'Already a supporter · thank you', supLater:'Purchases arrive in the app build · About → testing → supporter to try it',
   achievement:'Achievement · {name}', copied:'Copied · paste it anywhere',
@@ -189,6 +190,7 @@ export const KEY = { title:'the key', hint:'tap a game · solo runs only',
      each with its own symbol, its locked state and a % while it is under 100. Tiers 2 and 3 are a shell — #372 — and
      `soon` is what they say instead of a target nobody has set (A.2 forbids a build deriving one). */
   keys:'keys', pct:'{n}%', locked:'locked', unlocked:'unlocked', pick:'tap a key',
+  faked:'Every number on this key is a PLACEHOLDER, derived from key 1 for testing. Not set by hand, never saved, gone on reload.',
   soon:'Not set yet. What sits behind this key is still being decided — nothing here is generated, every bar is set by hand.',
   // 5.2: a clearance-bar row is a way IN. Tapping it starts that combination with the bar pinned at the top of the run,
   // through the same goal line an unlock uses (2.2) — one mechanism, not two

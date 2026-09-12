@@ -638,8 +638,9 @@ console.log('\nside screens (v14 section 8)');
     below: document.querySelector('#s-menu [data-go="s-about"]')?.nextElementSibling?.dataset.go,
     inAbout: document.querySelectorAll('#s-about [data-dev]').length, inTesting: document.querySelectorAll('#s-testing [data-act^="dev-"]').length }));
   // AMENDED at build 32 (v18 B.26): six animation buttons joined the four switches
-  (moved.item && moved.below === 's-testing' && moved.inAbout === 0 && moved.inTesting === 10)
-    ? ok('8.10 Testing is its own item directly below About, with all four switches and the six animation buttons, none left in About')
+  // AMENDED at build 34 (#411 / #371): a fifth switch — fill pro + author · placeholder
+  (moved.item && moved.below === 's-testing' && moved.inAbout === 0 && moved.inTesting === 11)
+    ? ok('8.10 Testing is its own item directly below About, with all five switches and the six animation buttons, none left in About')
     : bad('8.10 Testing moved out of About', JSON.stringify(moved));
 }
 
@@ -1807,6 +1808,7 @@ console.log('\nbuild 29 - v17 sections B.19 to B.26');
       const segs = [...document.querySelectorAll('#gridlines .gl')].map(p => { const d = p.getAttribute('d').match(/-?[\d.]+/g).map(Number);
         return { len: Math.round(Math.hypot(d[2] - d[0], d[3] - d[1])), open: p.classList.contains('open') }; });
       return { at, chest: { r: +chest.style.gridRow, c: +chest.style.gridColumn }, segs, order,
+        chests: [1, 2, 3].filter(n => !document.querySelector(`.chest[data-chest="${n}"]`).hidden).length,
         opens: order.map(g => P.gameOpen(g)), cols: getComputedStyle(document.getElementById('grid')).gridTemplateColumns.trim().split(/\s+/).length };
     });
     const seq = gr.at.sequence, est = gr.at.hold;
@@ -1817,21 +1819,31 @@ console.log('\nbuild 29 - v17 sections B.19 to B.26');
     const jumps = steps.slice(1).map((p, i) => Math.abs(p.r - steps[i].r) + Math.abs(p.c - steps[i].c)).filter(d => d !== 1);
     (!jumps.length) ? ok(`B.23 every step of the order is one cell - a ${gr.cols}-column snake, ${steps.length} stops ending at the chest`)
       : bad('B.23 the order runs through neighbouring cells', jumps.join(', '));
-    (gr.segs.length === gr.order.length && gr.segs.every(s => s.len > 4))
-      ? ok(`B.23 ${gr.segs.length} lines drawn, shortest ${Math.min(...gr.segs.map(s => s.len))}px - one per step including the chest`)
-      : bad('B.23 a line per step', JSON.stringify(gr.segs));
+    // AMENDED at build 34 (#411): a stop per game plus a stop per VISIBLE chest, so the lines between them are one fewer.
+    // Hard-coding seven was only ever right for a profile with one chest; the post-chest-1 grid has always drawn nine.
+    const stops = gr.order.length + gr.chests;
+    (gr.segs.length === stops - 1 && gr.segs.every(s => s.len > 4))
+      ? ok(`B.23 ${gr.segs.length} lines drawn for ${stops} stops (${gr.order.length} games + ${gr.chests} chest${gr.chests > 1 ? 's' : ''}), shortest ${Math.min(...gr.segs.map(s => s.len))}px`)
+      : bad('B.23 a line per step', JSON.stringify({ segs: gr.segs, stops }));
     const wrong = gr.segs.slice(0, gr.order.length - 1).map((s, i) => s.open === gr.opens[i + 1] ? null : gr.order[i + 1]).filter(Boolean);
     (!wrong.length) ? ok('B.23 a segment is green where the game it leads to is open and grey where it is locked')
       : bad('B.23 the line colour follows the next game', wrong.join(', '));
     // B.24 - locked: the requirement is key 1's own count, and NOTHING about pro or author is anywhere on the grid (A.1)
-    const ch = await page.evaluate(async () => { const K = await import('./progress/key.js'); const st = K.keyState();
-      const el = document.querySelector('.chest');
-      return { cls: el.className, need: el.querySelector('.pic').dataset.need, total: st.total, done: st.done,
-        text: (document.getElementById('s-pick').innerText || '') + ' ' + (el.querySelector('.pic').dataset.need || '') }; });
+    const ch = await page.evaluate(async () => { const K = await import('./progress/key.js'); const S = await import('./core/store.js'); const R = await import('./ui/router.js');
+      const st = K.keyState(); const el = () => document.querySelector('.chest');
+      const out = { cls: el().className, need: el().querySelector('.pic').dataset.need, total: st.total, done: st.done };
+      // #411: chests 2 and 3 take the key map's escape now, so A.1's subject - someone with no dev flag - has to be seeded for
+      const was = S.prefs.allOpen; S.prefs.allOpen = false; S.save();
+      R.show('s-menu'); await new Promise(r => setTimeout(r, 120)); R.show('s-pick'); await new Promise(r => setTimeout(r, 350));
+      out.shown = [1, 2, 3].map(n => !document.querySelector(`.chest[data-chest="${n}"]`).hidden);
+      out.text = (document.getElementById('s-pick').innerText || '') + ' ' + (el().querySelector('.pic').dataset.need || '');
+      S.prefs.allOpen = was; S.save();
+      return out; });
     (/locked/.test(ch.cls) && ch.need === `clear all ${ch.total} · ${ch.done} so far`)
       ? ok(`B.24 the chest is locked and says what key 1 asks for: "${ch.need}"`) : bad('B.24 the locked chest', JSON.stringify(ch));
-    (!/\bpro\b|author/i.test(ch.text)) ? ok('B.24 / A.1 nothing about the pro or author tiers is on the grid before the chest is opened')
-      : bad('A.1 the grid mentions pro or author', ch.text.slice(0, 120));
+    (!/\bpro\b|author/i.test(ch.text) && ch.shown.join() === 'true,false,false')
+      ? ok('B.24 / A.1 with no dev flag the grid shows one chest and says nothing about the pro or author tiers')
+      : bad('A.1 the grid mentions pro or author', JSON.stringify({ shown: ch.shown, text: ch.text.slice(0, 120) }));
   }
   // B.24: every bar cleared -> the chest is openable, opens once, stores it, and says Gauntlet is not built yet
   {
@@ -2029,7 +2041,8 @@ console.log('\nbuild 30 - v17 sections B.27 to B.33');
       ? ok('B.31 / B.22 Lantern → Circuit → Thorn, each with its own tint, and the loops are still key:roots / key:frost / key:thorn')
       : bad('B.31 a theme and a track per tier', JSON.stringify(missing.map(k => k.id)));
     // nothing about the second and third tier before chest 1 - not a row, not a word (A.1)
-    await setStorage({ ne: { v: 1, prefs: { ...OPEN_PREFS, chest1: 0 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    // #411: allOpen OFF - a first-timer is the subject of A.1, and OPEN EVERYTHING is now an escape from this gate
+    await setStorage({ ne: { v: 1, prefs: { ...OPEN_PREFS, allOpen: false, chest1: 0 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
     await click('[data-go="s-key"]'); await sleep(700);
     const before = await page.evaluate(() => ({ n: document.querySelectorAll('#key-keys .kkey').length,
@@ -2044,6 +2057,92 @@ console.log('\nbuild 30 - v17 sections B.27 to B.33');
       themes: [...document.querySelectorAll('#key-keys .kkey i')].map(i => i.textContent) }));
     (after.n === 3 && after.themes.join(',') === 'Lantern,Circuit,Thorn') ? ok('B.31 all three arrive with chest 1 - ' + after.themes.join(' · '))
       : bad('B.31 chest 1 reveals the other two', JSON.stringify(after));
+    /* #411: OPEN EVERYTHING is an ESCAPE from the A.1 gate, not an exception to it. The rest of the app already let
+       allOpen and supporter stand in for a chest (ui/screens/progress.js:110); the key screen read prefs.chest1 alone,
+       so it was the one place Testing's switch did nothing and Aiden could not see Circuit or Thorn on his phone.
+       A.1's intent is untouched - core/store.js:39 reads both flags as `dev && ...`, so a release build zeroes them. */
+    await setStorage({ ne: { v: 1, prefs: { ...OPEN_PREFS, allOpen: true, chest1: 0 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await click('[data-go="s-key"]'); await sleep(700);
+    const dev = await page.evaluate(async () => { const K = await import('./progress/key.js'); const S = await import('./core/store.js'); const R = await import('./ui/router.js');
+      const read = () => ({ n: document.querySelectorAll('#key-keys .kkey').length,
+        themes: [...document.querySelectorAll('#key-keys .kkey i')].map(i => i.textContent),
+        one: document.getElementById('key-keys').classList.contains('one'),
+        pro: K.tierOpen('pro'), author: K.tierOpen('author'), rungs: K.radarRungs().length });
+      const out = { open: read(), chest: S.prefs.chest1 };
+      // the other half of the same escape, in memory rather than with a second reload
+      S.prefs.allOpen = false; S.prefs.supporter = true; S.save();
+      R.show('s-key'); await new Promise(r => setTimeout(r, 300)); out.sup = read();
+      S.prefs.supporter = false; S.save();
+      R.show('s-key'); await new Promise(r => setTimeout(r, 300)); out.neither = read();
+      return out; });
+    (!dev.chest && dev.open.n === 3 && dev.open.themes.join(',') === 'Lantern,Circuit,Thorn' && !dev.open.one && dev.open.pro && dev.open.author && dev.open.rungs === 3)
+      ? ok('#411 OPEN EVERYTHING reveals all three tiers with chest 1 still shut - the key strip, tierOpen and the radar rungs all take the same escape')
+      : bad('#411 allOpen opens the key map', JSON.stringify(dev.open));
+    (dev.sup.n === 3 && dev.sup.rungs === 3 && dev.sup.pro) ? ok('#411 a supporter takes the same escape, chest or no chest')
+      : bad('#411 supporter opens the key map', JSON.stringify(dev.sup));
+    (dev.neither.n === 1 && dev.neither.rungs === 1 && !dev.neither.pro && dev.neither.one)
+      ? ok('#411 / A.1 with neither flag and no chest it is back to one tier - the escape is an escape, not a hole')
+      : bad('#411 the gate still holds with no flag set', JSON.stringify(dev.neither));
+    /* #411 follow-up: the chest column takes the same escape. pick.js gated chests 2 and 3 on prefs.chest1 alone, the
+       same shape of bug one screen over - so OPEN EVERYTHING revealed the key tiers and still hid the chests. */
+    const chests = await page.evaluate(async () => { const S = await import('./core/store.js'); const R = await import('./ui/router.js');
+      const see = () => [1, 2, 3].map(n => !document.querySelector(`.chest[data-chest="${n}"]`).hidden);
+      S.prefs.allOpen = true; S.prefs.chest1 = 0; S.save(); R.show('s-pick'); await new Promise(r => setTimeout(r, 350));
+      const open = see();
+      S.prefs.allOpen = false; S.save(); R.show('s-menu'); await new Promise(r => setTimeout(r, 120)); R.show('s-pick'); await new Promise(r => setTimeout(r, 350));
+      return { open, shut: see() }; });
+    (chests.open.join() === 'true,true,true' && chests.shut.join() === 'true,false,false')
+      ? ok('#411 the chest column takes the same escape - three chests with OPEN EVERYTHING, one without, chest 1 still shut either way')
+      : bad('#411 the chests follow the key map', JSON.stringify(chests));
+
+    /* #371 workaround: the placeholder fill. All sixty pro and author bars are null, so both tiers are shells and
+       revealing them shows "not set yet" and nothing else. The Testing button fills them IN MEMORY so the two rings can
+       be played. A.2 is not relaxed - nothing is written, config/key-bars.js is untouched, a reload throws it away, and
+       the key screen says every number on it is derived. All four of those are checked here. */
+    const fill = await page.evaluate(async () => { const K = await import('./progress/key.js'); const KB = await import('./config/key-bars.js');
+      const S = await import('./core/store.js'); const R = await import('./ui/router.js');
+      const out = { before: { shellPro: K.isShell('pro'), shellAuthor: K.isShell('author'), faked: K.barsFaked() } };
+      const raw = JSON.parse(localStorage.getItem('ne'));
+      S.prefs.allOpen = true; S.save();
+      K.fillBars(true);
+      const rows = Object.values(KB.KEY_BARS);
+      out.on = { shellPro: K.isShell('pro'), shellAuthor: K.isShell('author'), faked: K.barsFaked(),
+        n: rows.length, filled: rows.filter(r => typeof r.pro === 'number' && typeof r.author === 'number').length,
+        // direction is read from the row (C.7): a floor climbs, a ceiling tightens; equal only where clamped at 1
+        ordered: rows.filter(r => r.dir === 'lower' ? (r.pro <= r.bar && r.author <= r.pro) : (r.pro > r.bar && r.author > r.pro)).length,
+        sample: rows.slice(0, 2).map(r => `${r.dir}: ${r.bar} -> ${r.pro} -> ${r.author}`) };
+      // NOTHING was written: config/key-bars.js is a module literal and the store is byte-identical
+      out.stored = localStorage.getItem('ne') === JSON.stringify(raw) || JSON.parse(localStorage.getItem('ne')).prefs.allOpen === true;
+      out.rawSame = !/\bpro\b/.test(JSON.stringify(JSON.parse(localStorage.getItem('ne')).bars || {}));
+      // the ring draws for Circuit now, and the screen says the numbers are derived
+      R.show('s-key'); await new Promise(r => setTimeout(r, 300));
+      document.querySelector('.kkey[data-kt="1"]').click(); await new Promise(r => setTimeout(r, 350));
+      out.circuit = { segs: document.querySelectorAll('#key-ring .kroot').length, shellHidden: document.getElementById('key-shell').hidden,
+        warn: document.getElementById('key-warn').hidden ? '' : document.getElementById('key-warn').textContent };
+      document.querySelector('.kkey[data-kt="0"]').click(); await new Promise(r => setTimeout(r, 350));
+      out.lantern = { warn: document.getElementById('key-warn').hidden ? '' : document.getElementById('key-warn').textContent };
+      K.fillBars(false);
+      out.off = { shellPro: K.isShell('pro'), shellAuthor: K.isShell('author'), faked: K.barsFaked(),
+        nulls: Object.values(KB.KEY_BARS).filter(r => r.pro === null && r.author === null).length };
+      S.prefs.allOpen = false; S.save();
+      return out; });
+    (fill.before.shellPro && fill.before.shellAuthor && !fill.before.faked && fill.on.filled === fill.on.n && fill.on.ordered === fill.on.n && !fill.on.shellPro && !fill.on.shellAuthor && fill.on.faked)
+      ? ok(`#371 the placeholder fill sets all ${fill.on.n} pro and author bars in the row's own direction (${fill.on.sample.join(' | ')}), and both shells become real tiers`)
+      : bad('#371 the placeholder fill', JSON.stringify(fill.on));
+    (fill.circuit.segs > 0 && fill.circuit.shellHidden && /PLACEHOLDER/.test(fill.circuit.warn))
+      ? ok('#371 / A.2 Circuit draws a playable ring AND says every number on it is derived - a derived bar never appears unannounced')
+      : bad('#371 the filled ring announces itself', JSON.stringify(fill.circuit));
+    (fill.lantern.warn === '') ? ok('#371 key 1 says nothing - its bars are real and were never touched')
+      : bad('#371 the note is only on the faked tiers', JSON.stringify(fill.lantern));
+    (fill.off.nulls === fill.on.n && fill.off.shellPro && fill.off.shellAuthor && !fill.off.faked && fill.rawSame)
+      ? ok('#371 toggling it off restores all sixty nulls, both tiers are shells again, and nothing was ever written to storage')
+      : bad('#371 the fill is session-only and reversible', JSON.stringify({ off: fill.off, rawSame: fill.rawSame }));
+    // and a reload is the real proof it was never persisted
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    const afterLoad = await page.evaluate(async () => { const K = await import('./progress/key.js'); return { shellPro: K.isShell('pro'), faked: K.barsFaked() }; });
+    (afterLoad.shellPro && !afterLoad.faked) ? ok('#371 a reload throws the placeholders away - config/key-bars.js was never the thing that changed')
+      : bad('#371 the fill does not survive a reload', JSON.stringify(afterLoad));
     // the screen asks for the tier's own track, and there is no key:1 left anywhere
     (/keyTiers\(\)\[openKey\]\.track/.test(keyjs30) && !/key:1/.test(keyjs30)) ? ok('B.31 the key screen asks for the tier\'s own loop by name, never by number')
       : bad('B.31 the tier loop is asked for by name');
@@ -2598,7 +2697,8 @@ console.log('\nbuild 32 - v19 section C and v18 sections B.15 to B.27');
   }
   /* ---- B.24: the radar's rungs and the flame ---- */
   {
-    await setStorage({ ne: { v: 3, prefs: { ...OPEN_PREFS, chest1: 0 }, runs: [{ t: NOW, g: 'quick-tap', d: 'two', s: 5, n: '', v: 4, hits: 6, misses: 0 }], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    // #411: allOpen OFF - same reason as the key-strip check above; the radar takes the same escape now
+    await setStorage({ ne: { v: 3, prefs: { ...OPEN_PREFS, allOpen: false, chest1: 0 }, runs: [{ t: NOW, g: 'quick-tap', d: 'two', s: 5, n: '', v: 4, hits: 6, misses: 0 }], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
     await click('[data-go="s-board"]'); await sleep(500);
     const r1 = await page.evaluate(() => ({ web: document.querySelectorAll('#radar polygon.web').length, rungs: document.querySelectorAll('#radar polygon.rung').length, flame: document.querySelectorAll('#radar .flame').length, txt: document.getElementById('s-board').innerText.toLowerCase(), qt: (document.querySelector('#radar text') || {}).textContent }));
@@ -2626,7 +2726,8 @@ console.log('\nbuild 32 - v19 section C and v18 sections B.15 to B.27');
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
     const ka = await page.evaluate(async () => { const K = await import('./progress/key.js'); const S = await import('./core/store.js'); const R = await import('./ui/router.js');
       const rows = K.keyAch(); const out = { n: rows.length, tiers: [...new Set(rows.map(r => r.tier))], perTier: rows.filter(r => r.tier === 'key1').length, live: rows.filter(r => r.live).length };
-      S.prefs.chest1 = 0; S.prefs.progTab = 'ach'; S.store.bars = {}; S.store.ach = {}; S.save();
+      // #411: the dev escapes go off with the chest - the previous block left allOpen on, and A.1's subject has neither
+      S.prefs.chest1 = 0; S.prefs.allOpen = false; S.prefs.supporter = false; S.prefs.progTab = 'ach'; S.store.bars = {}; S.store.ach = {}; S.save();
       R.show('s-prog', { tab: 'ach' }); await new Promise(r => setTimeout(r, 400));
       const heads = () => [...document.querySelectorAll('#achlist h4')].map(h => h.className);
       out.before = heads();
@@ -2670,9 +2771,11 @@ console.log('\nbuild 32 - v19 section C and v18 sections B.15 to B.27');
     await click('[data-act="dev-chest"][data-n="2"]'); await sleep(1200);
     const dc = await page.evaluate(() => { const c = document.querySelector('.chest[data-chest="2"]'); return { screen: (document.querySelector('.screen.on') || {}).id, shown: !c.hidden, opening: c.classList.contains('opening') }; });
     await sleep(3200);
-    const dcAfter = await page.evaluate(() => { const c = document.querySelector('.chest[data-chest="2"]'); return { hidden: c.hidden, chest2: JSON.parse(localStorage.getItem('ne')).prefs.chest2, whole: JSON.parse(localStorage.getItem('ne')).prefs.keyWhole }; });
-    (dw.screen === 's-key' && dw.cls && dwBack === 's-testing' && dc.screen === 's-pick' && dc.shown && dc.opening && dcAfter.hidden && !dcAfter.chest2 && dcAfter.whole && dcAfter.whole.clear === 1)
-      ? ok('B.26 "key complete" plays the moment and Back returns to Testing; "chest 2 opening" shows the chest, plays the opening and puts it away — nothing stored')
+    const dcAfter = await page.evaluate(async () => { const K = await import('./progress/key.js'); const c = document.querySelector('.chest[data-chest="2"]');
+      // AMENDED at build 34 (#411): the resting state is whatever the gate says, not "hidden" - and the demo must clear its own class
+      return { rest: c.hidden === !K.mapOpen(), opening: c.classList.contains('opening'), chest2: JSON.parse(localStorage.getItem('ne')).prefs.chest2, whole: JSON.parse(localStorage.getItem('ne')).prefs.keyWhole }; });
+    (dw.screen === 's-key' && dw.cls && dwBack === 's-testing' && dc.screen === 's-pick' && dc.shown && dc.opening && dcAfter.rest && !dcAfter.opening && !dcAfter.chest2 && dcAfter.whole && dcAfter.whole.clear === 1)
+      ? ok('B.26 "key complete" plays the moment and Back returns to Testing; "chest 2 opening" shows the chest, plays the opening and puts it back exactly as its gate left it — nothing stored')
       : bad('B.26 the buttons play and store nothing', JSON.stringify({ dw, dwBack, dc, dcAfter }));
     await click('[data-act="dev-keyin"]').catch(() => {}); await sleep(300);
     const arrive = await page.evaluate(() => document.getElementById('s-key').classList.contains('first'));

@@ -17,7 +17,7 @@ import { $, $$, T } from "../../core.js";
 import { prefs, reset, save } from "../../core/store.js";
 import { GAMES } from "../../games/registry.js";
 import { ACH, Scores, UNLOCKS, got, seedSeen, unlocked } from "../../progress.js";
-import { keyAch } from "../../progress/key.js";
+import { barsFaked, fillBars, keyAch } from "../../progress/key.js";
 import { define } from "../actions.js";
 import { register, show } from "../router.js";
 import { toast } from "../toast.js";
@@ -25,6 +25,7 @@ import { toast } from "../toast.js";
 function devState(){ if(!BUILD_FLAGS.dev) return; const u=Object.keys(unlocked()).length, a=Object.keys(got()).length, r=Scores.runs().length, na=ACH.length+keyAch().length;
   $('#dev-state').textContent=(prefs.allOpen?ABOUT.devOpen:T(ABOUT.devProg,{u,nu:UNLOCKS.length,a,na}))+T(ABOUT.devRuns,{r})+(prefs.supporter?ABOUT.devSup:ABOUT.devFree);
   $('#dev-open').classList.toggle('sel',!!prefs.allOpen); $('#dev-sup').classList.toggle('sel',!!prefs.supporter);
+  const b=$('#dev-bars'); if(b) b.classList.toggle('sel',barsFaked());
   const h=$('#dev-anim-hint'); if(h) h.textContent=ABOUT.devAnim; }
 // Fresh game: progress goes, the look and the name stay, and the title sequence plays again (L1)
 function freshGame(){ reset(); seedSeen(); show('s-menu',{story:true}); }
@@ -38,6 +39,10 @@ const firstKey=()=>{ const g=Object.keys(GAMES)[0]; const d=GAMES[g].modes[0]; r
 define({
   'dev-open'(){ prefs.allOpen=!prefs.allOpen; save(); devState(); toast(prefs.allOpen?TOAST.devOpenOn:TOAST.devOpenOff); return 'pick'; },
   'dev-sup'(){ prefs.supporter=!prefs.supporter; save(); devState(); toast(prefs.supporter?TOAST.supOn:TOAST.supOff); return 'pick'; },
+  /* #371 is not built yet, so Pro and Author are shells and there is nothing to review. This fills them in memory only —
+     no save(), config/key-bars.js untouched, gone on reload — so the two rings can be played before the real numbers
+     exist. NOT a way to set bars (A.2): the key screen carries a line saying every number on it is derived. */
+  'dev-bars'(){ const on=fillBars(!barsFaked()); devState(); toast(on?TOAST.barsOn:TOAST.barsOff); return 'pick'; },
   'dev-fresh'(){ freshGame(); devState(); toast(TOAST.fresh); return 'pick'; },
   'dev-story'(){ show('s-menu',{story:true}); return 'pick'; },
   // B.26: the animations, each on its own screen, nothing stored
