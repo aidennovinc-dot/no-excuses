@@ -5,8 +5,8 @@
    nothing else to save. Nothing here touches the DOM.
 
    The ladder: v0 is the build-13 layout (seven keys, no version) — fromLegacy() folds it into one record and applies the
-   v8–v11 reshapes that used to run on every boot. v1 is this record. The next change adds `if(raw.v<2) raw=up2(raw)` below
-   and bumps VERSION; a step never edits an earlier one.
+   v8–v11 reshapes that used to run on every boot. v1 is this record; v2 (build 31) and v3 (build 32) are the two unit
+   changes below. The next change adds `if(raw.v<4) raw=up4(raw)` and bumps VERSION; a step never edits an earlier one.
 
    `bars` (build 22) is the key's cleared combinations — a map of '<game>:<mode>:<length>' → when it first cleared. It needs
    no ladder step: a v1 record without one shape-checks to {} like every other map, which is exactly right for a profile
@@ -19,7 +19,7 @@ import { DESIGNS, ITEMS } from "../config/theme.js";
 import { GAMES, GC } from "../games/registry.js";
 import { emit } from "./events.js";
 
-const KEY='ne', VERSION=2, RUNS_CAP=600;
+const KEY='ne', VERSION=3, RUNS_CAP=600;
 const LEGACY=['ne.prefs','ne.runs','ne.unlock','ne.ach','ne.seen','ne.intro','ne.tileSeen'];
 const read=k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } };
 const write=(k,v)=>{ try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } };
@@ -45,6 +45,12 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
        `chest1` is PROGRESS (B.24: chest 1 opened, for good) so Fresh game clears it below; `progTab` is which tab of the
        Progress screen was last open (B.21), a preference like `lastGame`, so Fresh game leaves it alone. */
     chest1:p.chest1?1:0, progTab:p.progTab==='ach'?'ach':'unl',
+    /* v18 (B.16 / B.17, build 32): `pro` is which key the FRONT of the app counts — 0 until the player steps into Pro at
+       chest 1, then 1, then 2 for Author. It is PROGRESS (the step is irreversible, B.16's warning says so) and Fresh game
+       clears it. `chest3` is the Author chest (B.19), progress like the two before it. */
+    pro:[0,1,2].includes(p.pro)?p.pro:0, chest3:p.chest3?1:0,
+    // B.20: which tiers' whole-key moment has played on the keys screen, once each. Progress — Fresh game clears it
+    keyWhole:isObj(p.keyWhole)?Object.fromEntries(Object.entries(p.keyWhole).filter(([k,v])=>['clear','pro','author'].includes(k)&&v).map(([k])=>[k,1])):{},
     /* v17 (build 30): two more, shape-checked the day they are added. `chest2` is PROGRESS (A.3: every pro bar, the
        cosmetic set — of which free music choice is one) so Fresh game clears it; `track` is which music option each
        game plays (B.32), a preference like `lastGame`, so Fresh game leaves it. A value that is not one of that game's
@@ -60,6 +66,7 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
   if(Number.isInteger(p.mig11)&&p.mig11>0) o.mig11=p.mig11;
   // v18 (B.2 / B.4): how many Timing runs the unit change retired, so the app can say so once rather than silently
   if(Number.isInteger(p.mig31)&&p.mig31>0) o.mig31=p.mig31;
+  if(Number.isInteger(p.mig32)&&p.mig32>0) o.mig32=p.mig32;
   return o; }
 const validRun=r=>isObj(r)&&!!GAMES[r.g]&&GAMES[r.g].modes.includes(r.d)&&typeof r.s==='number'&&typeof r.hits==='number'&&typeof r.t==='number';
 /* v18 (B.14): THE CAP NEVER DROPS A ROW THAT IS IN A TOP TEN. It did — the cap was `slice(0, 600)` here and
@@ -129,9 +136,24 @@ function up2(raw){ const runs=Array.isArray(raw.runs)?raw.runs:[];
      the old unit and there is nothing to compare it against, which is why the runs go and nothing else does. */
   raw.v=2; if(n&&isObj(raw.prefs)) raw.prefs.mig31=n; return raw; }
 
+/* v2 → v3 (build 32, v19 §C.5 / §C.6): Go / No-go's SCORING UNIT changed in both lengths — the Set reads ms over the 180ms
+   gate (the same play reads 180 lower, so an old record would sit under every honest new one on a lower-is-better board)
+   and the Streak counts targets where it counted shapes seen (an old shape count would sit above every honest new one).
+   Both families of record go; nothing else does. THE SET BAR STAYS CLEARED if it was — 380 raw and 200 over the gate are
+   the same standard, converted (B.2's rule). THE STREAK BAR'S CLEARED FLAG GOES: five shapes on 1000ms and fifteen targets
+   on 3000ms are not the same standard in a new unit, they are a different bar. Achievements are untouched: rx_clean is
+   "no wrong taps", a claim that did not change unit. */
+function up3(raw){ const runs=Array.isArray(raw.runs)?raw.runs:[];
+  const stale=r=>isObj(r)&&r.g==='reaction'&&r.d==='nogo'&&(r.v||0)<4;
+  const n=runs.filter(stale).length;
+  raw.runs=runs.filter(r=>!stale(r)); raw.runs.forEach(r=>{ if(isObj(r)) r.v=RUN_SCHEMA; });
+  if(isObj(raw.bars)) delete raw.bars['reaction:nogo:-1'];
+  raw.v=3; if(n&&isObj(raw.prefs)) raw.prefs.mig32=n; return raw; }
+
 function load(){ let raw=parse(read(KEY)), legacy=false;
   if(!isObj(raw)){ raw=fromLegacy(); legacy=!!raw; if(!raw) raw={}; }
   if((raw.v||0)<2) raw=up2(raw);
+  if((raw.v||0)<3) raw=up3(raw);
   return { st:{ v:VERSION, prefs:cleanPrefs(raw.prefs), runs:cleanRuns(raw.runs), ach:cleanMap(raw.ach), unlock:cleanMap(raw.unlock), intro:cleanMap(raw.intro), seen:isObj(raw.seen)?cleanMap(raw.seen):null, bars:cleanMap(raw.bars) }, legacy }; }
 
 const { st: store, legacy } = load();
@@ -148,6 +170,6 @@ const musicOn=g=>prefs.musicG[g]!==false;
    profile showed all 27 of them open. Supporter is a dev switch today (S5 gates it out of a release build entirely) and
    Fresh game is the switch for seeing the app as a new player does, so it belongs in this list. When it becomes a real
    purchase at the native build it will be restored from the store rather than from prefs, and this line stays correct. */
-function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,chest1:0,chest2:0}); delete prefs.mig11; delete prefs.mig31; save(); emit('store:reset'); }
+function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,chest1:0,chest2:0,chest3:0,pro:0,keyWhole:{}}); delete prefs.mig11; delete prefs.mig31; delete prefs.mig32; save(); emit('store:reset'); }
 
 export { RUNS_CAP, musicOn, prefs, reset, save, store, trimRuns };

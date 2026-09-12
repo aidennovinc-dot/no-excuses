@@ -24,7 +24,13 @@ import { sel } from "../../core/state.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, lenName } from "../../games/registry.js";
 import { Scores, UNLOCKS, achAll, achById, gameOpen, got, isOpen, lenLock, lenOpen, markSeen, newMark, setPendingAim, unlockHtml, unlockName, unlocked } from "../../progress.js";
-import { keyState } from "../../progress/key.js";
+import { keyAch, keyState, tierOpen } from "../../progress/key.js";
+
+// v18 (B.25): the key achievement sets live in progress/key.js (progress.js cannot import it); this screen reads both lists
+const allAch=()=>achAll().concat(keyAch());
+const findAch=id=>achById(id)||keyAch().find(a=>a.id===id);
+// the second and third key sets are not shown before chest 1 (A.1)
+const groupShown=t=>!/^key[23]$/.test(t)||tierOpen('pro');
 import { define } from "../actions.js";
 import { chips } from "../chips.js";
 import { register, show } from "../router.js";
@@ -61,9 +67,9 @@ const F={ g:'all' };
 function renderAch(){
   const g=got(), all=Scores.runs(), gsel=F.g; const fresh=[]; let k=0;
   $('#ach-g').innerHTML=`<button class="chip" data-act="chip-ach" data-chip="ach-g" data-v="all">${ACH_SCREEN.all}</button>`+Object.entries(GAMES).map(([id,x])=>`<button class="chip" data-act="chip-ach" data-chip="ach-g" data-v="${id}">${x.name}</button>`).join(''); chips('ach','g',gsel);
-  const list=achAll().filter(a=>gsel==='all'||a.g===gsel||a.g==='all');
+  const list=allAch().filter(a=>gsel==='all'||a.g===gsel||a.g==='all');
   const fsGame=gsel==='all'?sel.game:gsel;
-  $('#achlist').innerHTML = Object.keys(TIERS).map(t=>{
+  $('#achlist').innerHTML = Object.keys(TIERS).filter(groupShown).map(t=>{
     const items=list.filter(a=>a.tier===t), done=items.filter(a=>g[a.id]).length;
     if(!items.length) return '';
     return `<h4 class="${t}">${TIERS[t][0]} · ${done}/${items.length}<span>${TIERS[t][1]}</span></h4>`+items.map(a=>{
@@ -100,7 +106,7 @@ function setTab(t,opts){ const tab=tabOf(t); prefs.progTab=tab; save();
   if(tab==='unl') renderUnlocks(); else renderAch();
   if(tab==='ach'&&opts&&opts.ach){ const r=$('#ach-'+opts.ach); if(r){ r.scrollIntoView({block:'center'}); r.classList.add('flash'); } } }
 
-register('s-prog',{ onShow(o){ const a=o.ach?achById(o.ach):null; if(a) F.g=a.g==='all'?'all':a.g;
+register('s-prog',{ onShow(o){ const a=o.ach?findAch(o.ach):null; if(a) F.g=a.g==='all'?'all':a.g;
   $('#unl-hint').textContent=PROGRESS_SCREEN.unlHint; $('#ach-hint').textContent=PROGRESS_SCREEN.achHint;
   $('#unl-lede').textContent=UNLOCKS_SCREEN.lede;
   setTab(o.ach?'ach':o.tab,o); } });
@@ -113,6 +119,6 @@ define({
     show('s-pick',{g,d,s:len}); return 'click'; },
   'chip-ach'(b){ F.g=b.dataset.v; renderAch(); return 'pick'; },
   // an earned achievement (v11) opens Customise at what it unlocked; a locked one still offers the run
-  ach(b){ const a=achById(b.dataset.ach); if(!a) return 'click'; if(got()[a.id]){ if(a.g!=='all') sel.game=a.g; show('s-custom',{unlocks:a.unlocks}); return 'click'; }
+  ach(b){ const a=findAch(b.dataset.ach); if(!a) return 'click'; if(got()[a.id]){ if(a.g!=='all') sel.game=a.g; show('s-custom',{unlocks:a.unlocks}); return 'click'; }
     if((a.g!=='all'||a.id==='fullset')&&a.tier!=='secret') jumpTo(a); return 'click'; },
 });

@@ -297,6 +297,40 @@ four of them are the same complaint: a run was over before it had started, or a 
   a reaction Set is for. `fault()` is retired with it. The Streak is untouched: there the cost is the budget and a retake
   was never on offer.
 
+**L5 amended at build 32 (FEEDBACK-v19 §C.1–§C.6, 2026-09-12, every line quoting it): Go / No-go's dealing and scoring, from
+Aiden's play of build 31.** The Set's shape (five rounds of three) was right; what was wrong was inside a round.
+
+- **(C.1 / C.2) A round is dealt as three SUB-ROUNDS — 1 to 5 decoys, drawn uniformly, then the target.** The target lands
+  2nd to 6th in its sub-round with the mean near four, a five-deep wait is ordinary, and a correct tap is never followed by
+  the target again because at least one decoy is dealt before the next one. Aiden: "it seems to only be appearing on like
+  the second or third… it should be identifying when it IS their shape and seeing when it's not." The dealer is
+  `dealRound()` in `games/reaction/index.js`, built rather than drawn-and-retried; `GO_PAD` and `GO_SPREAD` are retired. A
+  pass & play turn keeps its fixed `PASS_TURNS[0]` shapes and gains C.1 constructively (targets non-adjacent).
+- **(C.3) Five shapes.** `SHAPE_WORD` in `config/games.js` gained diamond and hexagon; a Set's five rounds are one shuffle
+  of the five, so every round has a different target, and decoys come from the other four.
+- **(C.4) The dwell is variable — base ± 180ms, uniform per shape — and NEVER QUICKER THAN BUILD 31.** Cowork's (guess)
+  was 620 ± 180; build 31's fixed beats were 800 (Set) and 1150 (Streak), so the guess sat under both and contradicted
+  the note it carried ("stay on screen longer"). Built as 980 ± 180 and 1330 ± 180 — the old beat is the floor, the range
+  runs 360ms above it. FEATURES.md prints both; Aiden picks.
+- **(C.5) THE 180ms GATE is a scoring rule, not an input window.** Every correct tap contributes max(0, reaction − 180)
+  to the run's total; a tap at or under 180 adds nothing; nothing is forgiven, rejected or re-timed. Aiden named it for
+  the Streak; it is on the Set as well (Cowork's recommendation) so the two modes score on one scale — the Set is the mean
+  of every target's gated figure, an untapped target charged the dwell it was actually given, plus 150 a wrong tap. A
+  scoring unit changed, so `RUN_SCHEMA` is 4 and `up3` retires the Go / No-go records; the Set bar is CONVERTED (380 → 200).
+- **(C.6) The Streak budget is 3000ms and the Streak SCORES IN TARGETS answered, not shapes seen.** At the Set bar's own
+  pace (380 raw, 200 over the gate) fifteen targets spend exactly 3000, so a Streak at that pace lasts one Set's worth.
+  Shapes seen would have paid out on the luck of C.2's deal — one to five decoys a target — which a game of pure skill
+  cannot keep; targets answered is the same number whatever the deal was. The Streak bar is set fresh at 15 targets.
+
+**A.6.5 amended at build 32 (FEEDBACK-v18 §B.15): the FRONT of the app says `67% complete`, not `17 of 30 · 67%`.** The
+cleared count stays on the keys screen, which is the screen a player acts on it from. B.17 re-bases the number once the
+player steps into Pro (`frontPct()` in `progress/key.js`).
+
+**The ring's cleared segment wears the TIER'S TINT since build 32 (FEEDBACK-v18 §B.22).** Build 30's stylesheet said a
+cleared segment stays green because cleared is `--ok` everywhere (L8); the page Aiden approved lights Lantern warm,
+Circuit white-blue and Thorn white, and B.22 asks for that page. Withdrawn for the ring only — green is still L8's
+first-seen mark everywhere else, and the key screen's `.newthing` row flash is still green.
+
 **L6 amended at build 31 (FEEDBACK-v18 §B.8, quoting it): `LEN_LIVE`, and a length earn that is written down.**
 B.8 reported two faults in the Reaction · Flash Streak unlock and **both halves of the note were right**, though one of
 them named a mechanism the build does not have.

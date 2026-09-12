@@ -2,7 +2,7 @@
    sheet for every game (L9): the player row, the mode row, the length row, Go. Three stages — grid, mode, len — and Back
    walks them before it leaves the screen. show('s-pick', {g, d, s}) opens a game's sheet straight at its mode or length row
    (the result screen's Back, an achievement row, a challenge link). Locked things ask the lock box through lock:ask. */
-import { GRID, SHEET } from "../../config/copy.js";
+import { GRID, KEY, SHEET } from "../../config/copy.js";
 import { MODE_NAME, PASS_LEN, SEQ_VS, VS_LEAD, VS_TARGET } from "../../config/games.js";
 import { VS_ART } from "../../config/theme.js";
 import { VS_LINE } from "../../config/copy.js";
@@ -12,7 +12,9 @@ import { VS, sel } from "../../core/state.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, SHARED2, lenName, lenSub, versusAny, versusOf } from "../../games/registry.js";
 import { Scores, gameOpen, isOpen, lenLock, lenOpen, lensOf, markSeen, needFor, newMark, practiceOpen } from "../../progress.js";
-import { keyState } from "../../progress/key.js";
+import { KEYS } from "../../config/keys.js";
+import { gameKey, isShell, keyState } from "../../progress/key.js";
+import { Snd } from "../../audio.js";
 import { start } from "../../run/run.js";
 import { define } from "../actions.js";
 import { goLabel, picOf, scoreTxt } from "../format.js";
@@ -64,7 +66,7 @@ function setStage(st){ stage=st; const g=GAMES[sel.game]; $('#diff-row').classLi
 const GRID_ORDER=Object.keys(GAMES);
 /* the tiles in CHAIN order, whatever order the markup is in, with the chest last. Sorting here rather than trusting the
    DOM means the order can only ever be wrong in config/games.js, which is the one place L6 allows it to be stated. */
-const orderedTiles=()=>$$('#grid .tile').sort((a,b)=>{ const i=t=>t.dataset.game?GRID_ORDER.indexOf(t.dataset.game):GRID_ORDER.length; return i(a)-i(b); });
+const orderedTiles=()=>$$('#grid .tile').filter(t=>!t.hidden).sort((a,b)=>{ const i=t=>t.dataset.game?GRID_ORDER.indexOf(t.dataset.game):GRID_ORDER.length+(+t.dataset.chest||1)-1; return i(a)-i(b); });
 // where tile i sits: row by row, alternating direction, so the path from one to the next is always one step
 function cellOf(i,cols){ const r=Math.floor(i/cols), c=i%cols; return { r:r+1, c:(r%2?cols-c:c+1) }; }
 function colCount(){ const g=$('#grid'); const t=getComputedStyle(g).gridTemplateColumns; const n=t?t.trim().split(/\s+/).length:3; return n>0?n:3; }
@@ -73,15 +75,19 @@ function colCount(){ const g=$('#grid'); const t=getComputedStyle(g).gridTemplat
    the first-visit reveal animates `scale` and a rect taken mid-animation is the wrong box. */
 function pageOff(el){ let x=0, y=0, n=el; while(n){ x+=n.offsetLeft; y+=n.offsetTop; n=n.offsetParent; } return { x, y }; }
 function centreIn(el,root){ const a=pageOff(el), b=pageOff(root); return { x:a.x-b.x+el.offsetWidth/2, y:a.y-b.y+el.offsetHeight/2 }; }
-function layoutGrid(){ const cols=colCount();
-  orderedTiles().forEach((t,i)=>{ const {r,c}=cellOf(i,cols); t.style.gridRow=r; t.style.gridColumn=c; });
+/* v18 (B.19, build 32): THREE CHESTS IN A COLUMN. Chest 1 is the snake's last stop, as before; the Pro and Author chests
+   sit directly under it, in the same column, one row each — so the screen scrolls once they exist. They exist only after
+   chest 1 is open (A.1): renderChests() hides them before that, and a hidden tile takes no cell. */
+function layoutGrid(){ const cols=colCount(); let below=null;
+  orderedTiles().forEach((t,i)=>{ if(t.dataset.chest&&+t.dataset.chest>1){ if(!below) return; t.style.gridRow=below.r+(+t.dataset.chest-1); t.style.gridColumn=below.c; return; }
+    const {r,c}=cellOf(i,cols); t.style.gridRow=r; t.style.gridColumn=c; if(t.dataset.chest==='1') below={r,c}; });
   return cols; }
 function drawLines(reveal){ const grid=$('#grid'), svg=$('#gridlines'); if(!svg) return;
   const tiles=orderedTiles(); if(tiles.length<2) return;
   const w=grid.offsetWidth, h=grid.offsetHeight; if(!w||!h) return;
   svg.setAttribute('viewBox',`0 0 ${w} ${h}`); svg.style.width=w+'px'; svg.style.height=h+'px';
   const pts=tiles.map(t=>centreIn(t.querySelector('.pic'),grid));
-  const open=tiles.map(t=>t.dataset.game?gameOpen(t.dataset.game):!t.classList.contains('locked'));
+  const open=tiles.map(t=>t.dataset.game?gameOpen(t.dataset.game):t.classList.contains('open'));
   let out='';
   for(let i=0;i<pts.length-1;i++){ const a=pts[i], b=pts[i+1];
     const len=Math.hypot(b.x-a.x,b.y-a.y); if(!len) continue;
@@ -99,10 +105,28 @@ function drawLines(reveal){ const grid=$('#grid'), svg=$('#gridlines'); if(!svg)
    they are, opened for good once it has been. §A.2 puts Gauntlet behind it and §A.1 forbids anything about the pro or
    author tiers appearing before it is open — so a locked chest says only what key 1 asks for, and an opened one says
    only what it gave. Gauntlet is not built: the opened chest says so rather than offering a mode that is not there. */
-function renderChest(){ const el=$('#grid .chest'); if(!el) return; const k=keyState();
-  const done=!!prefs.chest1, ready=k.total>0&&k.done>=k.total;
-  el.classList.toggle('locked',!ready&&!done); el.classList.toggle('ready',ready&&!done); el.classList.toggle('open',done);
-  el.querySelector('.pic').dataset.need=done?GRID.chestDone:ready?GRID.chestOpen:T(GRID.chestLocked,{n:k.total,done:k.done}); }
+/* v18 (B.19 / B.20, build 32): three chests. Chest n needs key n whole; it is locked until then, READY once it is (the
+   key's own moment has played on the keys screen, and here the chest breathes and wears the key), and OPEN for good once
+   tapped through "Open the chest?". Chests 2 and 3 are hidden before chest 1 is open (A.1) — not greyed, not there —
+   and a locked one names the key it needs and nothing about what is inside. A shell tier (its bars not yet set, A.2)
+   can never be whole, so its chest simply stays locked with the key's name on it. The number of chests is KEYS.length. */
+const chestOpen=n=>!!prefs['chest'+n];
+function renderChests(){ $$('#grid .chest').forEach(el=>{ const n=+el.dataset.chest, k=KEYS[n-1]; if(!k) return;
+    el.hidden=n>1&&!prefs.chest1; if(el.hidden) return;
+    const st=isShell(k.id)?{done:0,total:0}:keyState(k.id); const done=chestOpen(n), ready=!done&&st.total>0&&st.done>=st.total;
+    el.classList.toggle('locked',!ready&&!done); el.classList.toggle('ready',ready); el.classList.toggle('open',done);
+    el.querySelector('.name').textContent=n===1?GRID.chest:GRID['chest'+n];
+    const need=done?(n===1?GRID.chestDone:GRID['chest'+n+'Done']):ready?GRID.chestOpen:n===1?T(GRID.chestLocked,{n:st.total,done:st.done}):T(KEY.chestNeeds,{key:k.name});
+    el.querySelector('.pic').dataset.need=need; }); }
+/* v18 (B.18, build 32): each game tile's outline fills with its KEY-1 progress — 5 of 8 requirements met is the outline
+   drawn five eighths of the way round, clockwise from the top, in the lilac named KEYFILL in config/theme.js. A game whose
+   key-1 combinations are all cleared is COMPLETE: the outline closes and the picture takes a wash of the same colour, so
+   it reads as a different thing and not merely a fuller line. The outline is an svg rect with pathLength=1 laid over the
+   picture; the fraction comes out of progress/key.js and nothing here counts anything. Key 1 only — it is the quick view
+   of "which games still need work for the key", and the key a first-timer is working on is key 1. */
+function renderFill(){ $$('.tile[data-game]').forEach(t=>{ const g=t.dataset.game; const k=gameKey(g); const pic=t.querySelector('.pic');
+    let svg=pic.querySelector('.kfill'); if(!svg){ pic.insertAdjacentHTML('beforeend','<svg class="kfill" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><rect x="1" y="1" width="98" height="98" pathLength="1"></rect></svg>'); svg=pic.querySelector('.kfill'); }
+    svg.style.setProperty('--kf',k.frac.toFixed(3)); t.classList.toggle('kdone',k.total>0&&k.done===k.total); t.classList.toggle('kpart',k.done>0&&k.done<k.total); }); }
 // locked games are greyed with the condition on the tile (v6). Each tile wears its own game's colours (v10). v11: a padlock badge; the first visit reveals the grid tile by tile; a padlock wipes off when its game opens
 function renderTiles(){ const reveal=!prefs.gridSeen; if(reveal){ prefs.gridSeen=1; save(); } const runs=Scores.runs(); const fresh=[];
   $$('.tile[data-game]').forEach((t,i)=>{ const g=t.dataset.game, open=gameOpen(g); t.classList.toggle('locked',!open); t.querySelector('.pic').dataset.need=open?'':T(SHEET.tileUnlock,{need:needFor(g,GAMES[g].modes[0])});
@@ -117,7 +141,7 @@ function renderTiles(){ const reveal=!prefs.gridSeen; if(reveal){ prefs.gridSeen
     if(open&&!reveal){ const nw=newMark('game:'+g,fresh); if(nw){ t.classList.add('newthing'); t.classList.add('arrive'); } } });
   markSeen(fresh);
   // v17 (B.23 / B.24): the snake placement, the chest's state, then the lines over the top of both
-  layoutGrid(); renderChest(); drawLines(reveal); }
+  renderChests(); renderFill(); layoutGrid(); drawLines(reveal); }
 // a locked mode (v11) is crossed out, not just greyed; tapping it says what it takes
 function fillSheet(){ const g=GAMES[sel.game]; const fresh=[]; $('#diff-row').innerHTML=g.modes.map(d=>{ const open=isOpen(sel.game,d); const nw=open?newMark('mode:'+sel.game+':'+d,fresh):''; return `<button data-act="diff" class="choice ${open?'':'locked'}${nw}" data-diff="${d}"><span class="pic">${picOf(sel.game,d)}</span><span class="txt"><b class="${open?'':'x'}">${MODE_NAME[d]}</b><small class="${open?'':'need'}">${open?g[d]:T(SHEET.toUnlock,{need:needFor(sel.game,d)})}</small></span></button>`; }).join(''); markSeen(fresh); }
 // the length face (v11): the name with its seconds beside it on the pick sheet, the best underneath; a locked length is crossed out
@@ -151,9 +175,30 @@ function openSheet(g,d,s){ const G_=GAMES[g];
 function showChallenge(c){ const el=$('#chal'); el.textContent=''; if(c.score!==''){ const b=document.createElement('b'); b.textContent=String(c.score); el.append(SHEET.chalScored,b,SHEET.chalBeat); } else el.textContent=SHEET.chalSent; el.hidden=false; }
 
 register('s-pick',{
-  onShow({g,d,s}){ if(g){ sel.game=g; prefs.lastGame=g; save(); applyPrefs(g); } renderTiles(); setStage('grid'); if(g) openSheet(g,d,s); },
+  onShow({g,d,s,chestDemo:cd}){ if(g){ sel.game=g; prefs.lastGame=g; save(); applyPrefs(g); } renderTiles(); setStage('grid'); if(g) openSheet(g,d,s); if(cd) setTimeout(()=>chestDemo(cd),500); },
   onBack(){ if(stage==='len'){ setStage(GAMES[sel.game].modes.length===1?'grid':'mode'); return true; } if(stage==='mode'){ setStage('grid'); return true; } return false; },
 });
+/* ---------- v18 (B.20 / B.16, build 32): the ask box, and what the two answers do ---------- */
+let askFn=null;
+function askBox(title,text,yes,no,fn){ askFn=fn||null; $('#ask-title').textContent=title; $('#ask-text').textContent=text; $('#ask-text').hidden=!text;
+  $('#ask-yes').textContent=yes; $('#ask-no').textContent=no; $('#askwrap').classList.add('on'); }
+function closeAsk(){ askFn=null; $('#askwrap').classList.remove('on'); }
+// the opening (build 29, extended): the lid swings, the box flares, the key drops into the lock — then the toast, then chest 1 asks about Pro
+function openChest(b,n,demoOnly){ if(!demoOnly){ prefs['chest'+n]=1; save(); }
+  b.classList.remove('ready'); b.classList.add('open','opening'); Snd.unlockFx();
+  setTimeout(()=>{ b.classList.remove('opening'); if(demoOnly) return; renderChests(); layoutGrid(); drawLines(false);
+    toast(n===1?GRID.chestToast:GRID['chest'+n+'Toast'],'','ok');
+    if(n<KEYS.length) setTimeout(()=>askPro(n),1500); },1600); }
+/* B.16: "Would you like to progress to Pro?" — with the warning that the front of the app stops showing 100% and that it
+   cannot be undone. Yes sets prefs.pro to the tier stepped into, and the menu's number is re-based from then on (B.17). No
+   leaves the opened chest as the way back to the question. Entering Author later is the same ask off chest 2. */
+function askPro(n){ const next=KEYS[n]; if(!next||(prefs.pro|0)>=n) return;
+  askBox(T(KEY.proAsk,{key:next.name}),T(KEY.proWarn,{key:next.name}),T(KEY.proYes,{key:next.name}),KEY.proNo,()=>{ prefs.pro=n; save(); toast(T(KEY.proToast,{key:next.name}),'','ok'); }); }
+// B.26: Testing plays chest n's opening with nothing stored; a chest that is hidden or already open is shown for the demo and put back after
+function chestDemo(n){ const b=$(`#grid .chest[data-chest="${n}"]`); if(!b) return; const was={hidden:b.hidden,cls:b.className};
+  b.hidden=false; b.classList.remove('locked','open','opening'); b.classList.add('ready'); layoutGrid();
+  setTimeout(()=>openChest(b,n,true),400); setTimeout(()=>{ b.hidden=was.hidden; b.className=was.cls; renderChests(); layoutGrid(); drawLines(false); },3600); }
+on('screen:change',({id})=>{ if(id!=='s-pick') closeAsk(); });
 on('challenge',c=>{ show('s-pick',{g:c.g,d:c.d,s:c.s}); showChallenge(c); });
 on('run:abort',()=>show('s-pick'));
 // the snake and its lines are measured, so a rotation has to re-measure them. Only while the grid is the screen on show
@@ -176,12 +221,18 @@ define({
   vs2(b){ sel.vs=+b.dataset.vs2; renderVsRow(); $('#sheet-title').textContent=GAMES[sel.game].name+(sel.vs===1?' · pass & play':' · versus'); renderVsArt(); if(stage==='len') fillTimes(); return 'pick'; },
   /* v17 (B.24): a locked chest says what it takes, the same way every other locked thing does (v15 2.1); an openable
      one opens once and for good, with the unlock toast and the unlock sound, because that is what it is */
-  chest(b){ const k=keyState();
-    if(prefs.chest1){ toast(GRID.chestDone); return 'pick'; }
-    if(!(k.total>0&&k.done>=k.total)){ toast(T(GRID.chestLocked,{n:k.total,done:k.done})); return 'pick'; }
-    prefs.chest1=1; save(); b.classList.remove('ready'); b.classList.add('open','opening');
-    setTimeout(()=>b.classList.remove('opening'),900); renderChest(); drawLines(false);
-    toast(GRID.chestToast,'','ok'); return 'pick'; },
+  /* v18 (B.19 / B.20 / B.16, build 32): a LOCKED chest goes to the keys screen at its key, with the line "get the key to
+     unlock" (his words, guess at the exact line) for chest 1 and the key's name for the others; a READY chest asks "Open the
+     chest?" and opens on yes — the build-29 opening, extended: the key sinks into the lock while the lid swings; an OPEN
+     chest 1 (or 2) offers the step into Pro (or Author) while the player has not taken it, with B.16's warning, and
+     otherwise says what it gave. Nothing here decides what is behind a chest; the copy does. */
+  chest(b){ const n=+b.dataset.chest, k=KEYS[n-1]; if(!k) return 'pick';
+    if(chestOpen(n)){ if(n<KEYS.length&&(prefs.pro|0)<n){ askPro(n); return 'click'; } toast(n===1?GRID.chestDone:GRID['chest'+n+'Done']); return 'pick'; }
+    if(!b.classList.contains('ready')){ toast(n===1?KEY.chestGetKey:T(KEY.chestKeyLine,{key:k.name})); show('s-key',{tier:n-1}); return 'click'; }
+    askBox(KEY.openAsk,'',KEY.openYes,KEY.openNo,()=>openChest(b,n)); return 'click'; },
+  'ask-yes'(){ const f=askFn; closeAsk(); if(f) f(); return 'click'; },
+  'ask-no'(){ closeAsk(); return 'click'; },
+  askwrap(el,e){ if(e.target.closest('#askbox')) return; closeAsk(); return 'click'; },
   praclock(){ toast(TOAST.pracLocked); return 'pick'; },
   prac(b){ sel.practice=+b.dataset.prac; $$('[data-prac]').forEach(c=>c.classList.toggle('sel',c===b)); return 'pick'; },
   // v15 (4.5): how many notes a Sequence versus opens with

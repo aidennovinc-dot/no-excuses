@@ -137,10 +137,11 @@ console.log('\nstatic checks');
   // nobody harmonises them. C.4: the Streak has no wrong-tap run-ender, so the `wrong>=3` test must stay inside a !streak() branch
   { const rx = fs.readFileSync(path.join(root, 'games', 'reaction', 'index.js'), 'utf8');
     const num = k => { const m = rx.match(new RegExp(k + ':\\s*(\\d+)')); return m ? +m[1] : null; };
-    const want = { FLASH_FREE: 150, FLASH_BUD: 500, NOGO_FREE: 150, NOGO_BUD: 1000, NOGO_WRONG_SET: 150, NOGO_WRONG_STREAK: 200 };
+    // AMENDED at build 32 (v19 C.5 / C.6, L5): the Go / No-go gate is 180 and its Streak budget 3000; the wrong-tap costs did not move
+    const want = { FLASH_FREE: 150, FLASH_BUD: 500, NOGO_FREE: 180, NOGO_BUD: 3000, NOGO_WRONG_SET: 150, NOGO_WRONG_STREAK: 200 };
     const got = Object.fromEntries(Object.keys(want).map(k => [k, num(k)]));
     const wrong = Object.keys(want).filter(k => got[k] !== want[k]);
-    wrong.length ? bad('L5 the Reaction budgets', wrong.map(k => `${k}=${got[k]} want ${want[k]}`).join(', ')) : ok('L5 Flash 500/150, Go / No-go 1000/150, wrong tap 200 in a Streak and 150 in a Set (v14 C.1–C.3)');
+    wrong.length ? bad('L5 the Reaction budgets', wrong.map(k => `${k}=${got[k]} want ${want[k]}`).join(', ')) : ok('L5 Flash 500/150, Go / No-go 3000 over the 180ms gate (v19 C.5 / C.6), wrong tap 200 in a Streak and 150 in a Set (v14 C.1–C.3)');
     /(this\.NOGO_WRONG_SET|NOGO_WRONG_STREAK)/.test(rx) && !/this\.NOGO_WRONG\b/.test(rx) ? ok('B.3 no bare NOGO_WRONG left to blur the two currencies') : bad('B.3 the two wrong-tap costs are separate constants');
     /* C.4 retired the three-wrong-taps ending for a STREAK at build 22; v18 (B.1c, L5) retires it for the Set and for a
        pass & play turn too, so the right assertion is now that there is no such test anywhere. A wrong tap is only a
@@ -506,7 +507,8 @@ if (await bootWith('build-13 layout', B13, 's-menu')) {
   (Array.isArray(runs) && runs.length === 2 && runs[0].hits === 12) ? ok('build-13 layout: both runs survive the boot') : bad('build-13 layout: runs survive', JSON.stringify(runs).slice(0, 80));
   // build 18 (A5): the seven keys become one versioned record; every surviving run carries the current schema stamp
   // v18 (B.2 / B.4): the record is v2 and RUN_SCHEMA is 3 — two Timing scoring units changed, so the ladder gained a step
-  (ne && ne.v === 2 && Array.isArray(runs) && runs.every(r => r.v === 3)) ? ok('build-13 layout: migrated to `ne` v2, runs stamped RUN_SCHEMA 3') : bad('build-13 layout: ne v2 + run stamp', JSON.stringify({ v: ne && ne.v, stamps: runs && runs.map(r => r.v) }));
+  // v19 (C.5 / C.6): the record is v3 and RUN_SCHEMA is 4 — Go / No-go's units changed, so the ladder gained its second step
+  (ne && ne.v === 3 && Array.isArray(runs) && runs.every(r => r.v === 4)) ? ok('build-13 layout: migrated to `ne` v3, runs stamped RUN_SCHEMA 4') : bad('build-13 layout: ne v3 + run stamp', JSON.stringify({ v: ne && ne.v, stamps: runs && runs.map(r => r.v) }));
   const left = await page.evaluate(() => ['ne.prefs', 'ne.runs', 'ne.unlock', 'ne.ach', 'ne.seen', 'ne.intro', 'ne.tileSeen'].filter(k => localStorage.getItem(k) !== null));
   left.length === 0 ? ok('build-13 layout: the seven old keys are gone') : bad('build-13 layout: old keys removed', left.join(', '));
   (ne && ne.unlock['dots:blind'] && ne.ach.first && ne.ach.named && ne.intro['quick-tap:two'] && ne.seen && ne.seen['game:dots']) ? ok('build-13 layout: unlocks, achievements, intros and seen carried over') : bad('build-13 layout: maps carried', JSON.stringify({ u: ne && ne.unlock, a: ne && ne.ach, i: ne && ne.intro, s: ne && ne.seen }).slice(0, 160));
@@ -545,7 +547,8 @@ if (await bootWith('corrupt build-13 keys (ne.runs="{}", prefs.scale="foo", pref
     const want = ['quick-tap:two:5', 'timing:stopwatch:-1'].join('|');
     /* the bars and the achievement STAY: they were converted at the measured pace, not retuned, so a player who cleared
        180px has cleared 1200ms. The RUNS go, because a stored `hits` in the old unit has nothing to be compared against. */
-    (ne.v === 2 && kinds.join('|') === want && ne.runs.every(r => r.v === 3) && ne.bars['timing:hidden:10'] && ne.bars['quick-tap:two:5'] && ne.ach.tm_wall && ne.ach.first)
+    // AMENDED at build 32: the survivors come out stamped 4 in a v3 record — up3 runs after up2 and touches none of these
+    (ne.v === 3 && kinds.join('|') === want && ne.runs.every(r => r.v === 4) && ne.bars['timing:hidden:10'] && ne.bars['quick-tap:two:5'] && ne.ach.tm_wall && ne.ach.first)
       ? ok('B.2 / B.4 the v1 → v2 step retires the Stopwatch Set and the Hidden run whose units changed — the Stopwatch Streak and the Quick Tap run stay, and so do the cleared bars and the achievement, because those were converted rather than retuned')
       : bad('B.2 / B.4 the ladder step retires only the records that changed unit', JSON.stringify({ v: ne.v, kinds, bars: Object.keys(ne.bars), ach: Object.keys(ne.ach) }));
   }
@@ -630,8 +633,9 @@ console.log('\nside screens (v14 section 8)');
   const moved = await page.evaluate(() => ({ item: !!document.querySelector('#s-menu [data-go="s-testing"]'),
     below: document.querySelector('#s-menu [data-go="s-about"]')?.nextElementSibling?.dataset.go,
     inAbout: document.querySelectorAll('#s-about [data-dev]').length, inTesting: document.querySelectorAll('#s-testing [data-act^="dev-"]').length }));
-  (moved.item && moved.below === 's-testing' && moved.inAbout === 0 && moved.inTesting === 4)
-    ? ok('8.10 Testing is its own item directly below About, with all four switches and none left in About')
+  // AMENDED at build 32 (v18 B.26): six animation buttons joined the four switches
+  (moved.item && moved.below === 's-testing' && moved.inAbout === 0 && moved.inTesting === 10)
+    ? ok('8.10 Testing is its own item directly below About, with all four switches and the six animation buttons, none left in About')
     : bad('8.10 Testing moved out of About', JSON.stringify(moved));
 }
 
@@ -897,8 +901,9 @@ console.log('\nthe runs (v15 section 3)');
     (f.worst >= f.want) ? ok(`3.1 every Grow target clears the ${f.want} vmin² floor (${f.px} px² here) — smallest dealt in 4,000 rounds was ${f.worst} vmin²`)
       : bad('3.1 the Grow minimum shape size', `floor ${f.want} vmin², smallest dealt ${f.worst} vmin²`); }
   { const f = S3.flash;
-    (f.early === 400 && f.free === 150 && f.bud === 500 && f.nogoFree === 150 && f.nogoWrong === 200)
-      ? ok('3.5 / L5 an early Flash tap spends 400ms, held apart from Flash 500/150 and Go / No-go 1000/150/200')
+    // AMENDED at build 32 (v19 C.5): the Go / No-go gate is 180 now; Flash's three numbers and the Streak's wrong-tap cost did not move
+    (f.early === 400 && f.free === 150 && f.bud === 500 && f.nogoFree === 180 && f.nogoWrong === 200)
+      ? ok('3.5 / L5 an early Flash tap spends 400ms, held apart from Flash 500/150 and Go / No-go 3000 over the 180ms gate / 200')
       : bad('3.5 the Flash early-tap penalty', JSON.stringify(f)); }
   /* v18 (B.3a / B.4, L5) retunes both budgets v15 3.8 set. Stopwatch is 5s / 7.5s, not 25 / 30 - the 25 existed to let a
      run survive two ordinary attempts against a FLAT 7s target, and B.3b's targets climb a whole second a round instead.
@@ -949,14 +954,16 @@ console.log('\nthe keys, the surface and #375 (v15 sections 5 and 6)');
      answers for both - PASS_TURNS[0] for a turn, GO_PER + GO_PAD + a spread for a solo round - and the rule changes once
      per block in every mode, which retires the "flip on RULE_EVERY shapes" branch #375a was written against. The claim
      this check exists to protect is unchanged: a pass & play turn is PASS_TURNS[0] shapes on ONE rule. */
-  { const bl = /blockLen\(\)\{ return this\.two\.on\?this\.two\.per:this\.GO_PER\+this\.GO_PAD\+rnd\(this\.GO_SPREAD\); \}/.test(rx);
+  // AMENDED at build 32 (v19 §C): a solo round is dealRound() — gaps of decoys and a target, no fixed length — so blockLen
+  // answers for the pass & play turn alone and the claim is the same one: PASS_TURNS[0] shapes on ONE rule
+  { const bl = /blockLen\(\)\{ return this\.two\.per; \}/.test(rx);
     const beatLine = (rx.match(/  beat\(\)\{[\s\S]*?\n  nogoTap/) || [''])[0];
     const usesBlock = /this\.bi>=this\.block\.length/.test(beatLine) && !/this\.seen>=this\.ctx\.len/.test(beatLine) && !/RULE_EVERY/.test(beatLine);
     const perTurn = await page.evaluate(async n => { const M = await import('./games/reaction/index.js'); const R = M.default;
       R.ctx = { mode: 'nogo', len: 5 }; R.two = { on: true, per: n }; const got = R.blockLen();
       R.two = { on: false }; R.ctx = null; return got; }, cfg.PASS_TURNS['reaction:nogo'][0]);
     (bl && usesBlock && perTurn === cfg.PASS_TURNS['reaction:nogo'][0])
-      ? ok(`#375a / B.1b a pass & play turn is still PASS_TURNS[0] shapes (${perTurn}) on ONE rule, and a solo round is its own dealt block`)
+      ? ok(`#375a / B.1b / §C a pass & play turn is still PASS_TURNS[0] shapes (${perTurn}) on ONE rule, and a solo round is dealRound()'s own deal`)
       : bad('#375a the turn length comes from PASS_TURNS and the rule does not flip inside a block', `blockLen ${bl} · beat ${usesBlock} · perTurn ${perTurn}`);
     (cfg.PASS_TURNS['reaction:nogo'][0] >= 1) ? ok(`#375a and the config it now reads says ${cfg.PASS_TURNS['reaction:nogo'][0]} shapes, ${cfg.PASS_TURNS['reaction:nogo'][1]} turns each`) : bad('#375a PASS_TURNS row', JSON.stringify(cfg.PASS_TURNS['reaction:nogo'])); }
   /* #375b: the 600ms fallback in twoBlockEnd invented half a player's score whenever the block held no go-shape or the
@@ -1661,8 +1668,9 @@ console.log('\nbuild 28 - v17 sections B.1 to B.18');
       R.show('s-menu'); await new Promise(r => setTimeout(r, 250));
       const el = document.getElementById('menu-key');
       return { first, hidden: el.hidden, text: el.textContent.trim() }; });
-    (m.first && !m.hidden && /^\d+ of \d+ · \d+%$/.test(m.text))
-      ? ok(`A.6.7 the menu carries the same line once a profile has played - "${m.text}" - and nothing before that`)
+    // AMENDED at build 32 (v18 B.15, amending A.6.5): the menu says "N% complete" — the cleared count stays on the keys screen
+    (m.first && !m.hidden && /^\d+% complete$/.test(m.text))
+      ? ok(`A.6.7 / B.15 the menu carries "${m.text}" once a profile has played - and nothing before that`)
       : bad('A.6.7 percentage complete on the menu', JSON.stringify(m));
   }
 
@@ -1819,11 +1827,16 @@ console.log('\nbuild 29 - v17 sections B.19 to B.26');
   // B.24: every bar cleared -> the chest is openable, opens once, stores it, and says Gauntlet is not built yet
   {
     const bars = await page.evaluate(async () => { const K = await import('./progress/key.js'); const o = {}; for (const c of K.COMBOS) o[c.key] = Date.now(); return o; });
-    await setStorage({ ne: { v: 1, prefs: { ...OPEN_PREFS, progTab: 'unl' }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars } });
+    // AMENDED at build 32: a v3 record — a v1 one would run up3, which drops the Go / No-go Streak bar's flag and leaves 29 of 30
+    await setStorage({ ne: { v: 3, prefs: { ...OPEN_PREFS, progTab: 'unl' }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
     await click('[data-go="s-pick"]'); await sleep(700);
     const before = await page.evaluate(() => ({ cls: document.querySelector('.chest').className, need: document.querySelector('.chest .pic').dataset.need }));
-    await click('.chest'); await sleep(700);
+    // AMENDED at build 32 (v18 B.20): a ready chest ASKS first — "Open the chest?" — and the opening runs 1.6s where it ran .9s
+    await click('.chest'); await sleep(300);
+    const asked = await page.evaluate(() => ({ on: document.getElementById('askwrap').classList.contains('on'), title: document.getElementById('ask-title').textContent.trim() }));
+    (asked.on && asked.title === 'Open the chest?') ? ok(`B.20 a whole key's chest asks first - "${asked.title}"`) : bad('B.20 the chest asks before it opens', JSON.stringify(asked));
+    await click('#ask-yes'); await sleep(2000);
     const after = await page.evaluate(() => ({ cls: document.querySelector('.chest').className, need: document.querySelector('.chest .pic').dataset.need,
       lid: getComputedStyle(document.querySelector('.chest .lid')).rotate, toast: document.getElementById('toast').textContent.trim(),
       stored: JSON.parse(localStorage.getItem('ne')).prefs.chest1 }));
@@ -2002,8 +2015,9 @@ console.log('\nbuild 30 - v17 sections B.27 to B.33');
      last two exists on screen until chest 1 is opened. */
   {
     const missing = KY30.KEYS.filter(k => !k.theme || !k.track || !AU30.TRACKS[k.track] || !/^#[0-9A-Fa-f]{6}$/.test(k.tint));
-    (!missing.length && KY30.KEYS.map(k => k.theme).join(' → ') === 'Roots → Frost → Thorn')
-      ? ok('B.31 Roots → Frost → Thorn, each with its own tint and its own loop in config/audio.js')
+    // AMENDED at build 32 (v18 B.22): the art is Lantern → Circuit → Thorn; the loops are still the three build 30 made
+    (!missing.length && KY30.KEYS.map(k => k.theme).join(' → ') === 'Lantern → Circuit → Thorn' && KY30.KEYS.map(k => k.track).join(',') === 'key:roots,key:frost,key:thorn')
+      ? ok('B.31 / B.22 Lantern → Circuit → Thorn, each with its own tint, and the loops are still key:roots / key:frost / key:thorn')
       : bad('B.31 a theme and a track per tier', JSON.stringify(missing.map(k => k.id)));
     // nothing about the second and third tier before chest 1 - not a row, not a word (A.1)
     await setStorage({ ne: { v: 1, prefs: { ...OPEN_PREFS, chest1: 0 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
@@ -2011,15 +2025,15 @@ console.log('\nbuild 30 - v17 sections B.27 to B.33');
     await click('[data-go="s-key"]'); await sleep(700);
     const before = await page.evaluate(() => ({ n: document.querySelectorAll('#key-keys .kkey').length,
       txt: document.getElementById('s-key').textContent.toLowerCase(), theme: document.querySelector('#key-keys .kkey i')?.textContent }));
-    (before.n === 1 && before.theme === 'Roots' && !/\bpro\b/.test(before.txt) && !/author/.test(before.txt))
-      ? ok('B.31 / A.1 one tier before chest 1 - "Roots", and the screen says neither "pro" nor "author" anywhere')
+    (before.n === 1 && before.theme === 'Lantern' && !/\bpro\b/.test(before.txt) && !/author/.test(before.txt))
+      ? ok('B.31 / A.1 one tier before chest 1 - "Lantern", and the screen says neither "pro" nor "author" anywhere')
       : bad('B.31 Frost and Thorn are hidden until chest 1', JSON.stringify(before).slice(0, 200));
     await setStorage({ ne: { v: 1, prefs: { ...OPEN_PREFS, chest1: 1 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
     await click('[data-go="s-key"]'); await sleep(700);
     const after = await page.evaluate(() => ({ n: document.querySelectorAll('#key-keys .kkey').length,
       themes: [...document.querySelectorAll('#key-keys .kkey i')].map(i => i.textContent) }));
-    (after.n === 3 && after.themes.join(',') === 'Roots,Frost,Thorn') ? ok('B.31 all three arrive with chest 1 - ' + after.themes.join(' · '))
+    (after.n === 3 && after.themes.join(',') === 'Lantern,Circuit,Thorn') ? ok('B.31 all three arrive with chest 1 - ' + after.themes.join(' · '))
       : bad('B.31 chest 1 reveals the other two', JSON.stringify(after));
     // the screen asks for the tier's own track, and there is no key:1 left anywhere
     (/keyTiers\(\)\[openKey\]\.track/.test(keyjs30) && !/key:1/.test(keyjs30)) ? ok('B.31 the key screen asks for the tier\'s own loop by name, never by number')
@@ -2057,7 +2071,8 @@ console.log('\nbuild 30 - v17 sections B.27 to B.33');
   /* ---- B.33: the key-unlock animations at 1.5x, and the interlude waiting for them ---- */
   {
     const grow = /animation:krootgrow ([\d.]+)s/.exec(css30), halo = /animation:khaloglow ([\d.]+)s/.exec(css30);
-    const wait = /show\(back\); emit\('key:done'\); \}, (\d+)\)/.exec(keyjs30);
+    // AMENDED at build 32 (v18 B.21): the wait is "3900 + arrive" — the arrival's 2600 when this is the screen's first showing
+    const wait = /show\(back\); emit\('key:done'\); \}, (\d+) \+ arrive\)/.exec(keyjs30);
     const g = grow && +grow[1], h = halo && +halo[1], w = wait && +wait[1];
     (Math.abs(g - .93) < .01 && Math.abs(h - 2.85) < .01 && w >= h * 1000)
       ? ok(`B.33 the unlock animations run at 1.5x - ${g}s and ${h}s - and the interlude waits ${w}ms, past the halo it lights`)
@@ -2127,9 +2142,10 @@ console.log('\nbuild 31 - v18 sections B.1 to B.14');
   /* ---- B.1: Go / No-go, four parts ---- */
   {
     const RXC = await page.evaluate(async () => { const M = await import('./games/reaction/index.js'); const R = M.default;
-      return { per: R.GO_PER, pad: R.GO_PAD, spread: R.GO_SPREAD, max: R.FLASH_MAX, ruleEvery: R.RULE_EVERY }; });
-    (RXC.per === 3 && RXC.pad >= 2 && RXC.spread >= 1 && RXC.ruleEvery === undefined)
-      ? ok(`B.1b a Go / No-go round is ${RXC.per} correct taps of one shape; RULE_EVERY is retired with the old shape-counting`)
+      return { per: R.GO_PER, pad: R.GO_PAD, spread: R.GO_SPREAD, gapMin: R.GO_GAP_MIN, gapMax: R.GO_GAP_MAX, max: R.FLASH_MAX, ruleEvery: R.RULE_EVERY }; });
+    // AMENDED at build 32 (v19 C.2): GO_PAD / GO_SPREAD went with the fixed-length block; the round is GO_PER gaps-and-a-target
+    (RXC.per === 3 && RXC.pad === undefined && RXC.spread === undefined && RXC.gapMin >= 1 && RXC.gapMax > RXC.gapMin && RXC.ruleEvery === undefined)
+      ? ok(`B.1b / C.2 a Go / No-go round is ${RXC.per} correct taps of one shape behind ${RXC.gapMin}–${RXC.gapMax} decoys each; RULE_EVERY, GO_PAD and GO_SPREAD are retired`)
       : bad('B.1b the round constants', JSON.stringify(RXC));
     // B.1c: no wrong-tap run-ender is left anywhere in the engine, in either length
     const enders = [...rx31.matchAll(/[^\n]*wrong\s*>=\s*3[^\n]*/g)].map(m => m[0].trim()).filter(l => !/^[/*]/.test(l));
@@ -2146,7 +2162,7 @@ console.log('\nbuild 31 - v18 sections B.1 to B.14');
     const d = await page.evaluate(async () => { const M = await import('./games/reaction/index.js'); const R = M.default;
       R.ctx = { mode: 'nogo', len: 5 }; R.rule = 'circle';
       const out = { n: 0, first: 0, wrongCount: 0, thrice: 0, dup: 0, lens: {} };
-      for (let i = 0; i < 400; i++) { const n = R.blockLen(); const b = R.dealBlock(n, R.GO_PER); out.n++;
+      for (let i = 0; i < 400; i++) { const b = R.dealRound(); out.n++;
         out.lens[b.length] = (out.lens[b.length] || 0) + 1;
         if (b[0] === R.rule) out.first++;
         if (b.filter(s => s === R.rule).length !== R.GO_PER) out.wrongCount++;
@@ -2154,7 +2170,7 @@ console.log('\nbuild 31 - v18 sections B.1 to B.14');
         for (let j = 1; j < b.length; j++) if (b[j] !== R.rule && b[j] === b[j - 1]) out.dup++; }
       R.ctx = null; return out; });
     (!d.first && !d.wrongCount && !d.thrice && !d.dup)
-      ? ok(`B.1d 400 dealt rounds: the target is never the first shape, always exactly 3 of them, no shape three running, no decoy repeated (lengths ${JSON.stringify(d.lens)})`)
+      ? ok(`B.1d 400 dealt rounds (dealRound since build 32): the target is never the first shape, always exactly 3 of them, no shape three running, no decoy repeated (lengths ${JSON.stringify(d.lens)})`)
       : bad('B.1d the dealing gate, amended', JSON.stringify(d));
     // B.1a: the instruction arrives whole
     /rxBar\(\[\.\.\.\(this\.round>1\?CP\.ruleNow:CP\.ruleTap\),shapeI\(this\.rule\),`<b>\$\{SHAPE_WORD\[this\.rule\]\}<\/b>`\],true\)/.test(rx31)
@@ -2168,7 +2184,8 @@ console.log('\nbuild 31 - v18 sections B.1 to B.14');
     let hudSeen = '';
     // a Go / No-go Set is five rounds of five to seven shapes on an 800ms beat, plus an instruction and a wait each:
     // about forty seconds, where build 30’s was under ten. The loop has to outlast it
-    for (let i = 0; i < 1600; i++) { const at = await onScreen(); if (at === 's-over') break;
+    // build 32 (v19 §C): a round is 6–18 shapes on a 980ms ± 180 dwell, so a Set runs about eighty seconds; the loop outlasts it
+    for (let i = 0; i < 3200; i++) { const at = await onScreen(); if (at === 's-over') break;
       if (await skipAd()) continue;
       if (await clearReady('reaction')) continue;
       const st = await page.evaluate(async () => { const M = await import('./games/reaction/index.js'); const R = M.default;
@@ -2324,6 +2341,331 @@ console.log('\nbuild 31 - v18 sections B.1 to B.14');
     (cap.before === 1 && cap.after === 1 && cap.total <= 600 && cap.top[0] >= 40)
       ? ok(`B.14 601 runs, 25 more submitted: the one Estimate run — the oldest row in the store and its mode’s whole top ten — survives, and the store is back under the cap (${cap.total})`)
       : bad('B.14 the cap never drops a top-10 row', JSON.stringify(cap));
+  }
+}
+
+/* ---- 13. build 32 (v19 §C, v18 §B.15–§B.27): Go / No-go's dealing and scoring, the three tiers, the chests ---- */
+console.log('\nbuild 32 - v19 section C and v18 sections B.15 to B.27');
+{
+  const root32 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const read32 = (...p) => fs.readFileSync(path.join(root32, ...p), 'utf8');
+  const rx32 = read32('games', 'reaction', 'index.js'), keyjs32 = read32('ui', 'screens', 'key.js'), css32 = read32('styles', 'app.css');
+  const store32 = read32('core', 'store.js'), run32 = read32('run', 'run.js'), pkjs32 = read32('progress', 'key.js'), pick32 = read32('ui', 'screens', 'pick.js');
+  const tpl32 = read32('..', '_review', 'scripts', 'catalogue.template.html'), cat32 = read32('..', '_review', 'scripts', 'catalogue.mjs');
+  const G32 = await import(pathToFileURL(path.join(root32, 'config', 'games.js')).href);
+  const KB32 = await import(pathToFileURL(path.join(root32, 'config', 'key-bars.js')).href);
+  const KY32 = await import(pathToFileURL(path.join(root32, 'config', 'keys.js')).href);
+  const CP32 = await import(pathToFileURL(path.join(root32, 'config', 'copy.js')).href);
+  const B32 = await import(pathToFileURL(path.join(root32, 'config', 'build.js')).href);
+  const strip32 = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
+  const svgClick = sel => page.evaluate(s => { const el = document.querySelector(s); if (!el) return false; el.dispatchEvent(new MouseEvent('click', { bubbles: true })); return true; }, sel);
+
+  /* ---- §C statically: the gate, the budget, the gaps, the dwell, the five shapes, the units ---- */
+  {
+    const RXC = await page.evaluate(async () => { const M = await import('./games/reaction/index.js'); const R = M.default;
+      return { free: R.NOGO_FREE, bud: R.NOGO_BUD, wrongSet: R.NOGO_WRONG_SET, wrongStreak: R.NOGO_WRONG_STREAK, gapMin: R.GO_GAP_MIN, gapMax: R.GO_GAP_MAX, dwell: R.NOGO_DWELL, per: R.GO_PER }; });
+    (RXC.free === 180 && RXC.bud === 3000 && RXC.wrongSet === 150 && RXC.wrongStreak === 200)
+      ? ok(`C.5 / C.6 (L5) the gate is ${RXC.free}ms and the Streak budget ${RXC.bud}ms; a wrong tap still adds ${RXC.wrongSet} to a Set and spends ${RXC.wrongStreak} of a Streak`)
+      : bad('C.5 / C.6 the gate and the budget', JSON.stringify(RXC));
+    (RXC.gapMin === 1 && RXC.gapMax === 5) ? ok('C.2 (L5) each target sits behind 1 to 5 decoys — 2nd to 6th in its sub-round') : bad('C.2 the gap range', JSON.stringify(RXC));
+    const D = RXC.dwell || {};
+    (D.set === 980 && D.streak === 1330 && D.spread === 180 && D.set - D.spread >= 800 && D.streak - D.spread >= 1150)
+      ? ok(`C.4 (L5) dwell is ${D.set} ± ${D.spread} on a Set and ${D.streak} ± ${D.spread} on a Streak — never quicker than build 31's 800 / 1150, and variable`)
+      : bad('C.4 the dwell', JSON.stringify(D));
+    (Object.keys(G32.SHAPE_WORD).length === 5 && /\.rxshape\.diamond\{/.test(css32) && /\.rxshape\.hex\{/.test(css32) && /#rxbar i\.diamond/.test(css32) && /\.rxrule i\.hex/.test(css32))
+      ? ok(`C.3 five shapes in SHAPE_WORD (${Object.keys(G32.SHAPE_WORD).join(', ')}), each drawn on the pane, the rule bar and the rule line`)
+      : bad('C.3 five shapes', Object.keys(G32.SHAPE_WORD).join(','));
+    const s32 = strip32(rx32);
+    (/gated\(ms\)\{ return Math\.max\(0,ms-this\.NOGO_FREE\); \}/.test(s32) && /const add=this\.gated\(ms\); if\(this\.streak\(\)\) this\.over\+=add;/.test(s32) && /const all=this\.gatedAll\(\);/.test(s32) && !/this\.beatMs\(\)\)\.fill|fill\(this\.beatMs\(\)\)/.test(s32))
+      ? ok('C.5 every tap goes through gated() — Streak spend and Set mean alike — and a skipped target is charged the dwell it was given')
+      : bad('C.5 the gate is one function on both lengths');
+    (/hits:this\.gotAll,/.test(s32) && G32.GAMES.reaction.per.nogo.streak.scoreWord === 'targets' && /180ms gate/.test(G32.SET_COPY['reaction:nogo'].set) && !/GO_PAD|GO_SPREAD|beatMs\(\)\?1150|\['circle','square','tri'\]/.test(s32))
+      ? ok('C.6 a Streak scores in TARGETS (gotAll) and the sheet says so; the Set line names the 180ms gate; GO_PAD, GO_SPREAD, the fixed beats and the three-shape list are gone')
+      : bad('C.6 the Streak unit and the retired constants');
+    (B32.RUN_SCHEMA === 4 && /function up3\(raw\)/.test(store32) && /r\.d==='nogo'&&\(r\.v\|\|0\)<4/.test(store32) && /delete raw\.bars\['reaction:nogo:-1'\]/.test(store32) && /if\(\(raw\.v\|\|0\)<3\) raw=up3\(raw\);/.test(store32))
+      ? ok('C.5 / C.6 a scoring unit changed, so RUN_SCHEMA is 4 and up3 retires the Go / No-go records and the Streak bar\'s cleared flag, nothing else')
+      : bad('the migration for the Go / No-go unit change', `RUN_SCHEMA ${B32.RUN_SCHEMA}`);
+    const ng = KB32.KEY_BARS['reaction:nogo:5'], ngs = KB32.KEY_BARS['reaction:nogo:-1'];
+    (ng.bar === 200 && ng.dir === 'lower' && ngs.bar === 15 && ngs.dir === 'higher' && ngs.unit === 'targets')
+      ? ok('C.5 / C.6 the Set bar is converted through the gate (380 → 200) and the Streak bar is 15 targets — one Set\'s worth at that pace')
+      : bad('the two Go / No-go bars', JSON.stringify([ng, ngs]));
+  }
+  /* ---- §C as behaviour: 400 dealt rounds, the target order, the dwell draw, the arithmetic ---- */
+  {
+    const d = await page.evaluate(async () => { const M = await import('./games/reaction/index.js'); const R = M.default; const G = await import('./config/games.js');
+      R.ctx = { mode: 'nogo', len: 5 }; R.two = { on: false }; R.rule = 'circle'; R.pool = [];
+      const all = Object.keys(G.SHAPE_WORD);
+      const out = { n: 0, first: 0, count: 0, adjacent: 0, thrice: 0, dup: 0, badDecoy: 0, gaps: {}, lens: {}, min: 99, max: 0, shapesSeen: new Set() };
+      for (let i = 0; i < 400; i++) { const b = R.dealRound(); out.n++;
+        out.lens[b.length] = (out.lens[b.length] || 0) + 1; out.min = Math.min(out.min, b.length); out.max = Math.max(out.max, b.length);
+        if (b[0] === R.rule) out.first++;
+        if (b.filter(s => s === R.rule).length !== R.GO_PER) out.count++;
+        let gap = 0; for (let j = 0; j < b.length; j++) { b[j] === R.rule ? (out.gaps[gap] = (out.gaps[gap] || 0) + 1, gap = 0) : gap++; if (j && b[j] === R.rule && b[j - 1] === R.rule) out.adjacent++; if (b[j] !== R.rule) { out.shapesSeen.add(b[j]); if (!all.includes(b[j])) out.badDecoy++; } }
+        for (let j = 2; j < b.length; j++) if (b[j] === b[j - 1] && b[j] === b[j - 2]) out.thrice++;
+        for (let j = 1; j < b.length; j++) if (b[j] !== R.rule && b[j] === b[j - 1]) out.dup++; }
+      // C.3: a Set's five targets are the five shapes, and a Streak never deals the same target twice running
+      R.rule = ''; R.pool = []; const setOrder = []; for (let i = 0; i < 5; i++) { R.rule = R.nextTarget(); setOrder.push(R.rule); }
+      let repeat = 0; R.rule = ''; R.pool = []; let prev = ''; for (let i = 0; i < 60; i++) { R.rule = R.nextTarget(); if (R.rule === prev) repeat++; prev = R.rule; }
+      // C.4: the dwell draw, per length
+      const dw = { set: [], streak: [] }; for (let i = 0; i < 300; i++) { R.ctx.len = 5; dw.set.push(R.dwellMs()); R.ctx.len = G.STREAK; dw.streak.push(R.dwellMs()); }
+      const rng = a => ({ min: Math.min(...a), max: Math.max(...a), distinct: new Set(a).size });
+      // C.5: the arithmetic on three raw taps at the old bar's pace, then one wrong tap, then a skipped target; and a Streak in targets
+      R.ctx.len = 5; R.times = [380, 380, 380]; R.skipped = []; R.wrong = 0; R.gotAll = 3; const set0 = R.nogoScore().hits;
+      R.wrong = 1; const set1 = R.nogoScore().hits; R.wrong = 0; R.skipped = [980]; const set2 = R.nogoScore().hits;
+      R.times = [100, 150, 180]; R.skipped = []; const setFree = R.nogoScore().hits;
+      R.ctx.len = G.STREAK; R.gotAll = 7; R.seen = 40; const streakHits = R.nogoScore().hits;
+      R.ctx = null; R.times = []; R.skipped = []; R.wrong = 0; R.gotAll = 0; R.seen = 0; R.pool = [];
+      return { ...out, shapesSeen: [...out.shapesSeen].sort(), setOrder, distinctTargets: new Set(setOrder).size, repeat, dwSet: rng(dw.set), dwStreak: rng(dw.streak), set0, set1, set2, setFree, streakHits }; });
+    (!d.first && !d.count && !d.adjacent && !d.thrice && !d.dup && !d.badDecoy)
+      ? ok(`C.1 / C.2 400 dealt rounds: first shape always a decoy, exactly 3 targets, NO TWO TARGETS ADJACENT, no shape three running, no decoy repeated (${d.min}–${d.max} shapes a round)`)
+      : bad('C.1 / C.2 the solo dealer', JSON.stringify({ first: d.first, count: d.count, adjacent: d.adjacent, thrice: d.thrice, dup: d.dup, badDecoy: d.badDecoy }));
+    const gapTot = Object.values(d.gaps).reduce((a, b) => a + b, 0); const gapShare = Object.fromEntries(Object.entries(d.gaps).map(([k, v]) => [k, +(v / gapTot).toFixed(3)]));
+    const gapOk = [1, 2, 3, 4, 5].every(k => (d.gaps[k] || 0) / gapTot >= 0.12) && !d.gaps[0] && !d.gaps[6];
+    gapOk ? ok(`C.2 the target's position is spread — decoys before it, share of 1200 targets: ${JSON.stringify(gapShare)}`) : bad('C.2 the position is drawn uniformly from 1 to 5 decoys', JSON.stringify(gapShare));
+    (d.shapesSeen.length === 4 && d.distinctTargets === 5 && !d.repeat)
+      ? ok(`C.3 decoys come from the other four shapes (${d.shapesSeen.join(', ')}), a Set's five targets are five different shapes (${d.setOrder.join(' → ')}), and a Streak never repeats a target twice running`)
+      : bad('C.3 the five shapes', JSON.stringify({ seen: d.shapesSeen, order: d.setOrder, repeat: d.repeat }));
+    (d.dwSet.min >= 800 && d.dwSet.max <= 1160 && d.dwSet.distinct > 20 && d.dwStreak.min >= 1150 && d.dwStreak.max <= 1510 && d.dwStreak.distinct > 20)
+      ? ok(`C.4 300 dwell draws: a Set shape stays ${d.dwSet.min}–${d.dwSet.max}ms, a Streak shape ${d.dwStreak.min}–${d.dwStreak.max}ms, and the draw varies`)
+      : bad('C.4 the dwell draw', JSON.stringify({ set: d.dwSet, streak: d.dwStreak }));
+    (d.set0 === 200 && d.set1 === 350 && d.set2 === 350 && d.setFree === 0 && d.streakHits === 7)
+      ? ok(`C.5 the arithmetic: three 380ms taps read 200 (over the gate), a wrong tap adds 150 (350), a skipped 980ms target is charged 800 (mean 350), three taps at or under 180 read 0, and a Streak reads its targets (7), not its shapes (40)`)
+      : bad('C.5 the scoring', JSON.stringify({ set0: d.set0, set1: d.set1, set2: d.set2, setFree: d.setFree, streakHits: d.streakHits }));
+    // the migration as behaviour: a v2 record with Go / No-go runs in the old units
+    await setStorage({ ne: { v: 2, prefs: { ...OPEN_PREFS }, runs: [
+        { t: NOW - 1000, g: 'reaction', d: 'nogo', s: 5, n: '', v: 3, hits: 380, misses: 0 }, { t: NOW - 2000, g: 'reaction', d: 'nogo', s: -1, n: '', v: 3, hits: 12, misses: 1 },
+        { t: NOW - 3000, g: 'reaction', d: 'flash', s: 5, n: '', v: 3, hits: 255, misses: 0 }, { t: NOW - 4000, g: 'quick-tap', d: 'two', s: 5, n: '', v: 3, hits: 14, misses: 0 } ],
+      unlock: {}, ach: { rx_clean: NOW }, intro: SEEN_INTRO, seen: {}, bars: { 'reaction:nogo:5': NOW, 'reaction:nogo:-1': NOW, 'quick-tap:two:5': NOW } } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(600);
+    const mig = await page.evaluate(async () => { const S = await import('./core/store.js');
+      return { v: JSON.parse(localStorage.getItem('ne')).v, runs: S.store.runs.map(r => r.g + ':' + r.d), bars: Object.keys(S.store.bars).sort(), ach: Object.keys(S.store.ach), mig: S.prefs.mig32, toast: document.getElementById('toast').textContent.trim() }; });
+    (mig.runs.join(',') === 'reaction:flash,quick-tap:two' && mig.bars.join(',') === 'quick-tap:two:5,reaction:nogo:5' && mig.ach.includes('rx_clean'))
+      ? ok(`C.5 / C.6 a v2 record retires exactly the two Go / No-go runs and the Streak bar's cleared flag — the Set bar, the Flash run, the Quick Tap run and Disciplined stay (${mig.toast || 'toast pending'})`)
+      : bad('the Go / No-go migration', JSON.stringify(mig));
+  }
+  /* ---- B.27: three tiers per row, the shell derived from the column, the catalogue's three inputs ---- */
+  {
+    const rows = Object.values(KB32.KEY_BARS);
+    (rows.every(r => 'pro' in r && 'author' in r && r.pro === null && r.author === null) && KY32.KEYS.every(k => !('shell' in k)))
+      ? ok(`B.27 every one of the ${rows.length} rows carries pro and author, both EMPTY (A.2), and config/keys.js carries no shell flag`)
+      : bad('B.27 the data shape', JSON.stringify(rows.filter(r => !('pro' in r && 'author' in r)).map(r => r.id)));
+    const sh = await page.evaluate(async () => { const K = await import('./progress/key.js'); const S = await import('./core/store.js');
+      S.prefs.chest1 = 1; S.store.bars = {}; S.save();
+      const c = K.COMBOS.find(x => x.g === 'quick-tap' && x.s === 5);
+      const run = { t: Date.now(), g: 'quick-tap', d: 'two', s: 5, misses: 0, hits: c.bar.bar + 50, v: 4 };
+      const adv = K.checkKey(run, false);
+      const out = { shellClear: K.isShell('clear'), shellPro: K.isShell('pro'), shellAuthor: K.isShell('author'), fullClear: K.tierFull('clear'), barPro: K.barOf(c, 'pro'), skey: K.skey('a:b:5', 'pro'),
+        tiers: K.keyTiers().map(k => k.id + ':' + (k.shell ? 'shell' : 'live')), adv: adv && adv.tier, bars: Object.keys(S.store.bars), pct: K.keyPct('pro') };
+      S.store.bars = {}; S.prefs.chest1 = 0; S.save(); return out; });
+    (!sh.shellClear && sh.shellPro && sh.shellAuthor && sh.fullClear && sh.barPro === null && sh.skey === 'a:b:5|pro' && sh.tiers.join(',') === 'clear:live,pro:shell,author:shell')
+      ? ok('B.27 the shell is DERIVED: key 1 is live, Pro and Author are shells while their columns are empty, and a Pro bar reads null')
+      : bad('B.27 isShell / tierFull / barOf', JSON.stringify(sh));
+    (sh.adv === 'clear' && sh.bars.join(',') === 'quick-tap:two:5' && sh.pct.pct === 0 && sh.pct.total === 0)
+      ? ok('B.27 a run far past every bar clears key 1 only — a shell tier banks nothing and its percentage is 0 of 0')
+      : bad('B.27 a shell tier clears nothing', JSON.stringify(sh));
+    (/pro: b \? KY\.barOf\(c, 'pro'\) : null, author: b \? KY\.barOf\(c, 'author'\) : null/.test(cat32) && /id="' \+ PFX\[tier\] \+ r\.id/.test(tpl32) && /inp\('clear'\) \+ inp\('pro'\) \+ inp\('author'\)/.test(tpl32) && /bars: \{ clear: CUR\.clear, pro: CUR\.pro, author: CUR\.author \}/.test(tpl32))
+      ? ok('B.27 the review catalogue emits all three tiers a row and the page saves {bars:{clear,pro,author}} to bars/current')
+      : bad('B.27 the catalogue\'s three inputs');
+  }
+  /* ---- B.15 / B.16 / B.17: "67% complete", the step into Pro, the re-based number ---- */
+  {
+    const fp = await page.evaluate(async () => { const K = await import('./progress/key.js'); const S = await import('./core/store.js'); const R = await import('./ui/router.js'); const C = await import('./config/copy.js');
+      S.store.runs = []; S.store.bars = {}; S.prefs.pro = 0; S.prefs.chest1 = 0; S.prefs.played = 1; S.save();
+      const out = {};
+      for (const c of K.COMBOS) S.store.bars[c.key] = Date.now(); S.save();
+      out.whole = K.frontPct(); R.show('s-menu'); await new Promise(r => setTimeout(r, 250)); out.menuWhole = document.getElementById('menu-key').textContent.trim();
+      S.prefs.pro = 1; S.prefs.chest1 = 1; S.save(); out.rebased = K.frontPct(); R.show('s-menu'); await new Promise(r => setTimeout(r, 250)); out.menuPro = document.getElementById('menu-key').textContent.trim();
+      S.prefs.pro = 2; S.save(); out.author = K.frontPct();
+      S.store.bars = {}; S.prefs.pro = 0; S.prefs.chest1 = 0; S.save(); out.zero = K.frontPct();
+      return { ...out, warn: C.KEY.proWarn, ask: C.KEY.proAsk }; });
+    (fp.whole === 100 && fp.rebased === 30 && fp.author === 30 && fp.zero === 0 && fp.menuPro === '30% complete' && /whole/.test(fp.menuWhole))
+      ? ok(`B.17 key 1 whole reads 100 and "${fp.menuWhole}"; stepped into Pro it re-bases to 30 (Pro is a shell, so 30 + 0.7 × 0) — "${fp.menuPro}"; Author the same step; never back to zero`)
+      : bad('B.17 the re-based percentage', JSON.stringify(fp));
+    (/cannot be undone/i.test(fp.warn) && /stop showing 100%/.test(fp.warn) && /progress to/.test(fp.ask)) ? ok('B.16 the ask carries the warning — the front stops showing 100% and it cannot be undone') : bad('B.16 the warning text', fp.warn);
+    // the flow, driven: every bar cleared -> Open the chest? -> yes -> opened -> progress to Pro? -> yes -> prefs.pro
+    const bars = await page.evaluate(async () => { const K = await import('./progress/key.js'); const o = {}; for (const c of K.COMBOS) o[c.key] = Date.now(); return o; });
+    await setStorage({ ne: { v: 3, prefs: { ...OPEN_PREFS, keySeen: 1 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await click('[data-go="s-pick"]'); await sleep(700);
+    await click('.chest[data-chest="1"]'); await sleep(300); await click('#ask-yes'); await sleep(3600);
+    const pro = await page.evaluate(() => ({ on: document.getElementById('askwrap').classList.contains('on'), title: document.getElementById('ask-title').textContent.trim(), chest1: JSON.parse(localStorage.getItem('ne')).prefs.chest1,
+      c2: !document.querySelector('.chest[data-chest="2"]').hidden, c3: !document.querySelector('.chest[data-chest="3"]').hidden }));
+    (pro.on && /progress to Pro/.test(pro.title) && pro.chest1 === 1 && pro.c2 && pro.c3)
+      ? ok(`B.16 / B.19 the opened chest asks "${pro.title}", and the Pro and Author chests have appeared under it`)
+      : bad('B.16 the ask after the opening', JSON.stringify(pro));
+    await click('#ask-yes'); await sleep(400);
+    const stepped = await page.evaluate(() => JSON.parse(localStorage.getItem('ne')).prefs.pro);
+    await click('#s-pick .back'); await sleep(500);
+    const line = await page.evaluate(() => document.getElementById('menu-key').textContent.trim());
+    (stepped === 1 && line === '30% complete') ? ok(`B.16 / B.17 yes steps into Pro (prefs.pro = 1) and the menu re-bases to "${line}"`) : bad('B.16 the step into Pro', JSON.stringify({ stepped, line }));
+    // B.19: the column — same grid column as chest 1, the two rows under it; each locked one names its key and no number
+    await click('[data-go="s-pick"]'); await sleep(600);
+    const col = await page.evaluate(() => { const c = n => document.querySelector(`.chest[data-chest="${n}"]`); const cell = n => ({ r: +c(n).style.gridRow, col: +c(n).style.gridColumn, need: c(n).querySelector('.pic').dataset.need, cls: c(n).className, name: c(n).querySelector('.name').textContent.trim() });
+      return { 1: cell(1), 2: cell(2), 3: cell(3), scroll: getComputedStyle(document.getElementById('s-pick')).overflowY }; });
+    (col[2].col === col[1].col && col[3].col === col[1].col && col[2].r === col[1].r + 1 && col[3].r === col[1].r + 2 && /locked/.test(col[2].cls) && /locked/.test(col[3].cls) && /Pro/.test(col[2].need) && /Author/.test(col[3].need) && !/\d/.test(col[2].need + col[3].need) && col.scroll === 'auto')
+      ? ok(`B.19 three chests in a column (rows ${col[1].r}, ${col[2].r}, ${col[3].r}); the locked ones say "${col[2].need}" / "${col[3].need}" and nothing about what is inside; the screen scrolls`)
+      : bad('B.19 the chest column', JSON.stringify(col));
+  }
+  /* ---- B.18: the outline fills with key-1 progress; complete is a different thing ---- */
+  {
+    await setStorage({ ne: { v: 3, prefs: { ...OPEN_PREFS }, runs: [{ t: NOW, g: 'quick-tap', d: 'two', s: 5, n: '', v: 4, hits: 9, misses: 0 }], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: { 'quick-tap:two:5': NOW, 'quick-tap:two:15': NOW, 'quick-tap:two:30': NOW } } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await click('[data-go="s-pick"]'); await sleep(700);
+    const kf = await page.evaluate(async () => { const K = await import('./progress/key.js'); const t = document.querySelector('.tile[data-game="quick-tap"]'); const r = t.querySelector('.kfill rect');
+      const cs = getComputedStyle(r); const keyfill = getComputedStyle(document.documentElement).getPropertyValue('--keyfill').trim();
+      const locked = document.querySelector('.tile.locked .kfill'); const lockedShown = locked ? getComputedStyle(locked).display !== 'none' : false;
+      return { kf: t.querySelector('.kfill').style.getPropertyValue('--kf'), frac: K.gameKey('quick-tap').frac, part: t.classList.contains('kpart'), done: t.classList.contains('kdone'), stroke: cs.stroke, dash: cs.strokeDasharray, keyfill, lockedShown, ok: getComputedStyle(document.documentElement).getPropertyValue('--ok').trim() }; });
+    const hex2rgb2 = h => { const n = parseInt(h.slice(1), 16); return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`; };
+    (kf.kf === '0.500' && Math.abs(kf.frac - 0.5) < 1e-6 && kf.part && !kf.done && kf.stroke === hex2rgb2(kf.keyfill) && kf.keyfill !== kf.ok && kf.keyfill !== '#FFFFFF' && /^0\.5/.test(kf.dash))
+      ? ok(`B.18 Quick Tap with 3 of 6 cleared wears an outline drawn half way round (--kf ${kf.kf}, dash ${kf.dash}) in ${kf.keyfill} — not green, not white`)
+      : bad('B.18 the filling outline', JSON.stringify(kf));
+    (!kf.lockedShown) ? ok('B.18 a locked game shows no outline') : bad('B.18 a locked tile draws an outline');
+    const bars6 = await page.evaluate(async () => { const K = await import('./progress/key.js'); const S = await import('./core/store.js'); for (const c of K.COMBOS) if (c.g === 'quick-tap') S.store.bars[c.key] = Date.now(); S.save(); const R = await import('./ui/router.js'); R.show('s-menu'); await new Promise(r => setTimeout(r, 200)); R.show('s-pick'); await new Promise(r => setTimeout(r, 500));
+      const t = document.querySelector('.tile[data-game="quick-tap"]'); return { done: t.classList.contains('kdone'), kf: t.querySelector('.kfill').style.getPropertyValue('--kf'), shadow: getComputedStyle(t.querySelector('.pic')).boxShadow !== 'none' }; });
+    (bars6.done && bars6.kf === '1.000' && bars6.shadow) ? ok('B.18 all six cleared: the outline closes and the picture takes the wash — complete reads as a different thing') : bad('B.18 the complete tile', JSON.stringify(bars6));
+  }
+  /* ---- B.21: the arrival plays the first time the screen is seen, via a clear during a run too ---- */
+  {
+    await setStorage({ ne: { v: 3, prefs: { ...OPEN_PREFS, keySeen: 0, adRuns: 0 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    const arr = await page.evaluate(async () => {
+      const E = await import('./core/events.js'); const S = await import('./core/store.js'); const ST = await import('./core/state.js'); const K = await import('./progress/key.js');
+      Object.assign(ST.sel, { game: 'quick-tap', diff: 'two', secs: 5, vs: 0, practice: 0 }); ST.VS.reset();
+      const bar = K.COMBOS.find(c => c.g === 'quick-tap' && c.d === 'two' && c.s === 5).bar;
+      const run = { t: Date.now(), g: 'quick-tap', d: 'two', s: 5, hits: bar.bar + 3, misses: 0, n: '', v: 4 };
+      const adv = K.checkKey(run, false); if (!adv) return { err: 'no clear' };
+      E.emit('run:record', { run }); E.emit('run:finish', { run, isBest: true, two: false, fresh: [], ach: [], adv });
+      const at = () => (document.querySelector('.screen.on') || {}).id; const wait = ms => new Promise(r => setTimeout(r, ms));
+      // the interlude starts ~1s after the finish (250 ad-break + 420 fade + 320), plays the 2.6s arrival, then the segment
+      await wait(1500); const onKey = at(); const first = document.getElementById('s-key').classList.contains('first');
+      const grewEarly = !!document.querySelector('.kroot.grow');
+      await wait(2900); const grewLater = !!document.querySelector('.kroot.grow');
+      await wait(4200); return { err: null, onKey, first, grewEarly, grewLater, back: at(), seen: JSON.parse(localStorage.getItem('ne')).prefs.keySeen }; });
+    if (arr.err) bad('B.21 the fabricated clear', arr.err);
+    else (arr.onKey === 's-key' && arr.first && !arr.grewEarly && arr.grewLater && arr.back === 's-over' && arr.seen === 1)
+      ? ok('B.21 a first-ever visit that arrives as a clear during a run PLAYS THE ARRIVAL, then the segment, then hands back — and marks the screen seen')
+      : bad('B.21 the interlude plays the arrival first', JSON.stringify(arr));
+    await click('[data-go="s-key"]').catch(() => {}); await sleep(300);
+    const again = await page.evaluate(() => document.getElementById('s-key').classList.contains('first'));
+    (!again) ? ok('B.21 and the Keys menu item does not play it a second time') : bad('B.21 the arrival played twice');
+  }
+  /* ---- B.22 / B.23: the ring in the tier's style, and taps inside it ---- */
+  {
+    (KY32.KEYS.map(k => k.style).join(',') === 'lantern,circuit,thorn' && /spokeOf\(style, i\)/.test(keyjs32) && /style === 'circuit'/.test(keyjs32) && /style === 'thorn'/.test(keyjs32) && /pathLength="1"/.test(keyjs32) && /\.kthorn\{/.test(css32) && /\.kdot2\{/.test(css32) && /\.karc\{/.test(css32))
+      ? ok('B.22 Lantern / Circuit / Thorn are drawn by style — straight glowing spokes, right-angled traces with corner dots, curved branches with thorns — every segment a path of length 1')
+      : bad('B.22 the three styles');
+    await setStorage({ ne: { v: 3, prefs: { ...OPEN_PREFS, chest1: 1, keySeen: 1 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await click('[data-go="s-key"]'); await sleep(500);
+    // fill the two columns IN MEMORY so the two styles can be drawn; a reload discards it
+    const art = await page.evaluate(async () => { const KB = await import('./config/key-bars.js'); const K = await import('./progress/key.js'); const R = await import('./ui/router.js');
+      for (const k in KB.KEY_BARS) { KB.KEY_BARS[k].pro = KB.KEY_BARS[k].bar; KB.KEY_BARS[k].author = KB.KEY_BARS[k].bar; }
+      const out = { shellPro: K.isShell('pro'), shellAuthor: K.isShell('author') };
+      const el = document.getElementById('s-key'); const n = () => ({ style: el.dataset.style, segs: document.querySelectorAll('#key-ring .kroot').length, paths: document.querySelectorAll('#key-ring path.kroot').length,
+        dots: document.querySelectorAll('#key-ring .kdot2').length, thorns: document.querySelectorAll('#key-ring .kthorn').length, ground: !!document.querySelector('#key-ring .kground'), rects: document.querySelectorAll('#key-ring rect.kdot').length, tint: el.style.getPropertyValue('--ktint').trim() });
+      R.show('s-key'); await new Promise(r => setTimeout(r, 300)); out.lantern = n();
+      document.querySelector('.kkey[data-kt="1"]').click(); await new Promise(r => setTimeout(r, 300)); out.circuit = n();
+      document.querySelector('.kkey[data-kt="2"]').click(); await new Promise(r => setTimeout(r, 300)); out.thorn = n();
+      return out; });
+    const N = art.lantern.segs;
+    (!art.shellPro && !art.shellAuthor && art.lantern.style === 'lantern' && art.lantern.paths === N && !art.lantern.dots && !art.lantern.thorns && art.lantern.tint === '#FFD08A'
+      && art.circuit.style === 'circuit' && art.circuit.segs === N && art.circuit.dots > 0 && art.circuit.rects === GAMES.length && art.circuit.tint === '#BFE6FF' && art.circuit.tint !== '#D39A5E'
+      && art.thorn.style === 'thorn' && art.thorn.segs === N && art.thorn.thorns > 0 && !art.thorn.dots && art.thorn.tint === '#FFFFFF' && art.lantern.ground)
+      ? ok(`B.22 with the columns filled in memory the ring redraws per tier — Lantern ${N} glowing segments, Circuit ${N} segments with ${art.circuit.dots} corner dots and square nodes in Frost's white-blue (not the page's copper), Thorn ${N} segments with ${art.thorn.thorns} thorns in white`)
+      : bad('B.22 the three rings', JSON.stringify(art));
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await click('[data-go="s-key"]'); await sleep(500);
+    await svgClick('#key-ring .kground'); await sleep(250);
+    const ground = await onScreen();
+    await svgClick('#key-ring .khit2[data-kg="dots"]'); await sleep(350);
+    const bar = await page.evaluate(() => ({ screen: (document.querySelector('.screen.on') || {}).id, h4: (document.querySelector('#key-list h4') || {}).textContent, sel: !!document.querySelector('.knode.sel[data-kg="dots"]') }));
+    (ground === 's-key' && bar.screen === 's-key' && /Dots/.test(bar.h4 || '') && bar.sel)
+      ? ok('B.23 a tap on the ring\'s ground stays put, and a tap on Dots\' bar selects Dots exactly as its circle does')
+      : bad('B.23 taps inside the ring', JSON.stringify({ ground, ...bar }));
+    await page.evaluate(async () => { const B = await import('./ui/router.js'); B.show('s-menu'); }); await sleep(300);
+  }
+  /* ---- B.24: the radar's rungs and the flame ---- */
+  {
+    await setStorage({ ne: { v: 3, prefs: { ...OPEN_PREFS, chest1: 0 }, runs: [{ t: NOW, g: 'quick-tap', d: 'two', s: 5, n: '', v: 4, hits: 6, misses: 0 }], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await click('[data-go="s-board"]'); await sleep(500);
+    const r1 = await page.evaluate(() => ({ web: document.querySelectorAll('#radar polygon.web').length, rungs: document.querySelectorAll('#radar polygon.rung').length, flame: document.querySelectorAll('#radar .flame').length, txt: document.getElementById('s-board').innerText.toLowerCase(), qt: (document.querySelector('#radar text') || {}).textContent }));
+    (r1.web === 4 && r1.rungs === 0 && r1.flame === 0 && !/\bpro\b|author/.test(r1.txt) && /Quick Tap 50/.test(r1.qt || ''))
+      ? ok(`B.24 / A.1 before chest 1 the radar has one rung — key 1 at the ring — and nothing beyond it; 6 hits against a bar of 12 reads "${r1.qt}"`)
+      : bad('B.24 the single-rung radar', JSON.stringify(r1));
+    await setStorage({ ne: { v: 3, prefs: { ...OPEN_PREFS, chest1: 1 }, runs: [{ t: NOW, g: 'quick-tap', d: 'two', s: 5, n: '', v: 4, hits: 60, misses: 0 }], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await click('[data-go="s-board"]'); await sleep(500);
+    const r2 = await page.evaluate(async () => { const out = { rungs: [...document.querySelectorAll('#radar polygon.rung')].map(p => p.dataset.rung + (p.classList.contains('shell') ? ':dashed' : '')), flame: document.querySelectorAll('#radar .flame').length, qt: (document.querySelector('#radar text') || {}).textContent, dash: getComputedStyle(document.querySelector('#radar polygon.rung.shell')).strokeDasharray };
+      // fill the two columns in memory: 60 hits is past an author bar of 12, so the flame lights
+      const KB = await import('./config/key-bars.js'); for (const k in KB.KEY_BARS) { KB.KEY_BARS[k].pro = KB.KEY_BARS[k].bar; KB.KEY_BARS[k].author = KB.KEY_BARS[k].bar; }
+      const R = await import('./ui/router.js'); R.show('s-menu'); await new Promise(r => setTimeout(r, 200)); R.show('s-board'); await new Promise(r => setTimeout(r, 400));
+      out.full = { rungs: [...document.querySelectorAll('#radar polygon.rung')].map(p => p.dataset.rung + (p.classList.contains('shell') ? ':dashed' : '')), flame: document.querySelectorAll('#radar .flame').length, qt: (document.querySelector('#radar text') || {}).textContent };
+      return out; });
+    (r2.rungs.join(',') === 'clear,pro:dashed,author:dashed' && r2.flame === 0 && /Quick Tap 33/.test(r2.qt || '') && r2.dash !== 'none')
+      ? ok(`B.24 / A.2 after chest 1 three rungs — key 1, then Pro and Author DASHED at no value while their columns are empty; 60 hits against a bar of 12 climbs no further than rung 1 ("${r2.qt}") and no flame`)
+      : bad('B.24 the three rungs with shells', JSON.stringify(r2));
+    (r2.full.rungs.join(',') === 'clear,pro,author' && r2.full.flame === 1 && /Quick Tap 1\d\d/.test(r2.full.qt || ''))
+      ? ok(`B.24 with the columns filled the rungs are solid and a score past the Author time wears the flame ("${r2.full.qt}")`)
+      : bad('B.24 the flame', JSON.stringify(r2.full));
+  }
+  /* ---- B.25: the three achievement sets tied to the keys ---- */
+  {
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    const ka = await page.evaluate(async () => { const K = await import('./progress/key.js'); const S = await import('./core/store.js'); const R = await import('./ui/router.js');
+      const rows = K.keyAch(); const out = { n: rows.length, tiers: [...new Set(rows.map(r => r.tier))], perTier: rows.filter(r => r.tier === 'key1').length, live: rows.filter(r => r.live).length };
+      S.prefs.chest1 = 0; S.prefs.progTab = 'ach'; S.store.bars = {}; S.store.ach = {}; S.save();
+      R.show('s-prog', { tab: 'ach' }); await new Promise(r => setTimeout(r, 400));
+      const heads = () => [...document.querySelectorAll('#achlist h4')].map(h => h.className);
+      out.before = heads();
+      S.prefs.chest1 = 1; S.save(); R.show('s-menu'); await new Promise(r => setTimeout(r, 150)); R.show('s-prog', { tab: 'ach' }); await new Promise(r => setTimeout(r, 400));
+      out.after = heads();
+      // earn: every Quick Tap bar cleared, then the check the run makes
+      for (const c of K.COMBOS) if (c.g === 'quick-tap') S.store.bars[c.key] = Date.now(); S.save();
+      const fresh = K.checkKeyAch({ g: 'quick-tap', d: 'two', s: 5, hits: 1 }); out.fresh = fresh.map(a => a.id); out.stored = Object.keys(S.store.ach);
+      const none = K.checkKeyAch({ g: 'quick-tap', d: 'two', s: 5, hits: 1 }); out.again = none.length;
+      S.store.bars = {}; S.store.ach = {}; S.prefs.chest1 = 0; S.save(); return out; });
+    (ka.n === 24 && ka.tiers.join(',') === 'key1,key2,key3' && ka.perTier === GAMES.length + 1 && ka.live === 0)
+      ? ok(`B.25 24 key achievements — one per game per key plus one per key for the whole key — generated, none of them live`)
+      : bad('B.25 the key sets', JSON.stringify(ka));
+    (ka.before.includes('key1') && !ka.before.includes('key2') && !ka.before.includes('key3') && ka.after.includes('key2') && ka.after.includes('key3'))
+      ? ok('B.25 / A.1 the Achievements tab shows The key before chest 1 and the Pro and Author sets only after it')
+      : bad('B.25 the sets before and after chest 1', JSON.stringify({ before: ka.before, after: ka.after }));
+    (ka.fresh.join(',') === 'key_clear_quick-tap' && ka.stored.includes('key_clear_quick-tap') && ka.again === 0)
+      ? ok('B.25 clearing every Quick Tap bar earns "Quick Tap · The key", banked at once and never twice')
+      : bad('B.25 the earn', JSON.stringify({ fresh: ka.fresh, stored: ka.stored, again: ka.again }));
+    (/const adv=checkKey\(run,two\);[\s\S]{0,400}checkAch\(run\)\.concat\(checkKeyAch\(run\)\)/.test(run32)) ? ok('B.25 run/run.js banks the key BEFORE it asks the achievements, and asks the key sets too') : bad('B.25 the order in run.js');
+  }
+  /* ---- B.20 / B.26: the whole-key moment, and the Testing buttons ---- */
+  {
+    (/kwholeglyph/.test(css32) && /function wholeMoment\(\)/.test(keyjs32) && /prefs\.keyWhole/.test(keyjs32)) ? ok('B.20 the whole-key moment exists — the hub glyph turns and flares, once per tier per profile') : bad('B.20 the whole-key moment');
+    const bars = await page.evaluate(async () => { const K = await import('./progress/key.js'); const o = {}; for (const c of K.COMBOS) o[c.key] = Date.now(); return o; });
+    await setStorage({ ne: { v: 3, prefs: { ...OPEN_PREFS, keySeen: 1 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await click('[data-go="s-key"]'); await sleep(700);
+    const w1 = await page.evaluate(() => ({ cls: document.getElementById('s-key').classList.contains('kwhole'), count: document.getElementById('key-count').textContent.trim(), seen: JSON.parse(localStorage.getItem('ne')).prefs.keyWhole }));
+    await sleep(3600); await click('#s-key .back'); await sleep(400); await click('[data-go="s-key"]'); await sleep(700);
+    const w2 = await page.evaluate(() => document.getElementById('s-key').classList.contains('kwhole'));
+    (w1.cls && /whole/.test(w1.count) && w1.seen && w1.seen.clear === 1 && !w2) ? ok(`B.20 a whole key plays its moment on the keys screen once — "${w1.count}" — and not on the next open`) : bad('B.20 the moment plays once', JSON.stringify({ w1, w2 }));
+    const btns = await page.evaluate(() => [...document.querySelectorAll('#s-testing[data-dev] #dev-anim [data-act]')].map(b => b.dataset.act + (b.dataset.n ? b.dataset.n : '')));
+    (btns.join(',') === 'dev-keyin,dev-seg,dev-whole,dev-chest1,dev-chest2,dev-chest3') ? ok('B.26 six Testing buttons, one per animation, under [data-dev] (S5)') : bad('B.26 the buttons', btns.join(','));
+    await setStorage({ ne: { v: 3, prefs: { ...OPEN_PREFS, keySeen: 1, keyWhole: { clear: 1 } }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await click('[data-go="s-testing"]'); await sleep(300); await click('[data-act="dev-whole"]'); await sleep(700);
+    const dw = await page.evaluate(() => ({ screen: (document.querySelector('.screen.on') || {}).id, cls: document.getElementById('s-key').classList.contains('kwhole') }));
+    await sleep(3400); await click('#s-key .back'); await sleep(400);
+    const dwBack = await onScreen();
+    await click('[data-act="dev-chest"][data-n="2"]'); await sleep(1200);
+    const dc = await page.evaluate(() => { const c = document.querySelector('.chest[data-chest="2"]'); return { screen: (document.querySelector('.screen.on') || {}).id, shown: !c.hidden, opening: c.classList.contains('opening') }; });
+    await sleep(3200);
+    const dcAfter = await page.evaluate(() => { const c = document.querySelector('.chest[data-chest="2"]'); return { hidden: c.hidden, chest2: JSON.parse(localStorage.getItem('ne')).prefs.chest2, whole: JSON.parse(localStorage.getItem('ne')).prefs.keyWhole }; });
+    (dw.screen === 's-key' && dw.cls && dwBack === 's-testing' && dc.screen === 's-pick' && dc.shown && dc.opening && dcAfter.hidden && !dcAfter.chest2 && dcAfter.whole && dcAfter.whole.clear === 1)
+      ? ok('B.26 "key complete" plays the moment and Back returns to Testing; "chest 2 opening" shows the chest, plays the opening and puts it away — nothing stored')
+      : bad('B.26 the buttons play and store nothing', JSON.stringify({ dw, dwBack, dc, dcAfter }));
+    await click('[data-act="dev-keyin"]').catch(() => {}); await sleep(300);
+    const arrive = await page.evaluate(() => document.getElementById('s-key').classList.contains('first'));
+    arrive ? ok('B.26 "key arrival" plays the arrival again') : bad('B.26 the arrival button');
+    await sleep(2500);
   }
 }
 

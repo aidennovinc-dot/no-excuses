@@ -157,3 +157,43 @@ runs the other way**: v16 §3 asserted that the Stopwatch Set showed no baseline
 B.3d reverses both, because B.2 makes the Set a total and a total needs the thing it is measured against. **C.4's
 three-wrong-taps check is now "there is no such test anywhere"** — it used to allow one behind `!this.streak()`, which
 after B.1c would pass vacuously and prove nothing.
+
+**Build 32 (v19 §C, v18 §B.15–§B.27)** — statically: the Go / No-go gate is 180 and the Streak budget 3000 while the two
+wrong-tap costs stand (C.5 / C.6 / L5); each target sits behind 1–5 decoys and `GO_PAD` / `GO_SPREAD` are gone (C.2); the
+dwell is 980 ± 180 on a Set and 1330 ± 180 on a Streak, never under build 31's 800 / 1150 (C.4); `SHAPE_WORD` has five
+shapes and every one is drawn on the pane, the rule bar and the rule line (C.3); `gated()` is the one function both lengths
+score through and no skipped target is charged a constant (C.5); a Streak's `hits` is `gotAll`, the sheet says targets, the
+Set line names the gate, and the three-shape list is gone (C.6); `RUN_SCHEMA` is 4 with `up3` retiring only Go / No-go runs
+and the Streak bar's cleared flag; the two bars are 200 (converted) and 15 targets; every `KEY_BARS` row carries `pro` and
+`author`, both null, and `config/keys.js` has no shell flag (B.27); the catalogue emits three tiers a row and the template
+saves `{bars:{clear,pro,author}}` (B.27); Lantern / Circuit / Thorn are drawn by style with every segment a path of length
+1 (B.22); the whole-key moment exists (B.20); `run/run.js` banks the key before the achievements and asks the key sets (B.25);
+six Testing buttons sit under `[data-dev]` (B.26). In the browser: **400 dealt rounds — first shape always a decoy, exactly
+three targets, NO TWO ADJACENT, no shape three running, no decoy repeated, 6–18 shapes a round** and each of the five gaps
+holds at least 12% of 1200 targets (C.1 / C.2); decoys come from the other four shapes, a Set's five targets are five
+different shapes, a Streak never repeats a target twice running (C.3); 300 dwell draws stay inside each length's range and
+vary (C.4); **three 380ms taps read 200, a wrong tap makes it 350, a skipped 980ms target is charged 800, taps at or under
+180 read 0, and a Streak reads 7 targets where it saw 40 shapes** (C.5 / C.6); a v2 record retires exactly the two Go / No-go
+runs and the Streak bar's flag, keeping the Set bar, the Flash run, the Quick Tap run and Disciplined; the shell is derived
+(key 1 live, Pro and Author shells, a Pro bar null) and a run past every bar clears key 1 only (B.27); key 1 whole reads 100
+and "the key is whole", stepped into Pro it reads **30**, Author the same, never back to zero (B.17); the warning says it
+cannot be undone (B.16); **driven end to end: every bar cleared → "Open the chest?" → yes → opened, the Pro and Author chests
+appear under it, "progress to Pro?" → yes → `prefs.pro` 1 and the menu "30% complete"** (B.16 / B.19 / B.20); the three chests
+share a column, the locked ones name their key and no number, the screen scrolls (B.19); Quick Tap with 3 of 6 cleared wears
+an outline drawn half way round in `KEYFILL`, not green, not white; all six closes it and washes the tile; a locked tile has
+none (B.18); **a first-ever visit that arrives as a clear during a run plays the arrival, then the segment, then hands back,
+and the Keys item does not play it again** (B.21); with the Pro and Author columns filled in memory the ring redraws per
+tier — Lantern glowing segments, Circuit corner dots and square nodes in Frost's white-blue, Thorn thorns in white — and a
+reload discards it (B.22); a tap on the ring's ground stays put and a tap on Dots' bar selects Dots (B.23); the radar has one
+rung before chest 1 and reads "Quick Tap 50" for 6 of 12, three rungs after with Pro and Author dashed and no climb past
+rung 1, and with the columns filled a score past the Author time wears the flame (B.24); 24 key achievements, none live, The
+key shown before chest 1 and the other two sets only after, clearing every Quick Tap bar earns "Quick Tap · The key" once
+(B.25); a whole key plays its moment on the keys screen once and not on the next open (B.20); "key complete" plays it from
+Testing and Back returns there, "chest 2 opening" shows the chest, plays the opening and puts it away with nothing stored,
+"key arrival" plays the arrival again (B.26).
+
+Six earlier assertions were **amended, both ways**: the L5 Reaction budgets (180 / 3000), the store record (v3, runs
+stamped 4) in the build-13 fixture and the B.2 / B.4 ladder test, `#375a`'s `blockLen` shape, B.1b's constants and B.1d's
+dealer (`dealRound`), B.31's theme names (Lantern → Circuit → Thorn, tracks unchanged), B.33's interlude wait (`3900 +
+arrive`), A.6.7's menu line (`N% complete`), build 29's chest opening (it asks first, and runs 1.6s), and 8.10's Testing
+count (ten controls). The B.1b Set drive loop was lengthened to outlast a round of up to eighteen shapes.

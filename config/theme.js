@@ -6,6 +6,10 @@ export const P1C = '#E0453B', P2C = '#6EC6FF';
    is AMBER, the same #FFB020 already in the lead palette above, so the grid gains no new colour. ui/theme.js publishes
    it as --press; nothing else in the app uses it. */
 export const PRESS = { name:'amber', v:'#FFB020' };
+/* v18 (B.18, build 32): a tile's outline fills with its key-1 progress. Not green (L8's first-seen mark), not white (L7's
+   unplayed tile), and not the pressed amber above — LILAC, the #F3D9FF already in the target palette, so the grid gains no
+   new colour. ui/theme.js publishes it as --keyfill; the filled outline and the complete tile's wash both spend it. */
+export const KEYFILL = { name:'lilac', v:'#F3D9FF' };
 // the four backgrounds and the ground tint each one sits on
 export const DESIGNS = { stars:{tint:'#050506'}, grid:{tint:'#070A14'}, rain:{tint:'#0B1008'}, orbs:{tint:'#0E0608'} };
 // Customise: every item, and the achievement id that earns it (`by`). No `by` = open from the start

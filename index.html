@@ -50,12 +50,19 @@
     <!-- v17 (B.24, build 29): the path ends at a CHEST. It needs key 1 — every clearance bar cleared — and opening it
          unlocks Gauntlet (§A.2). Gauntlet itself is not built, so an opened chest says so and nothing about pro or
          author appears on it at any point (§A.1). ui/screens/pick.js owns its three states -->
-    <button data-act="chest" class="tile chest" data-chest="1"><span class="name glow">Chest</span><span class="pic"><svg class="chestart" viewBox="0 0 40 32"><rect class="box" x="5" y="14" width="30" height="14" rx="2"/><path class="lid" d="M5 14a15 9 0 0 1 30 0z"/><rect class="lock" x="17.5" y="15.5" width="5" height="7" rx="1"/></svg></span></button>
+    <button data-act="chest" class="tile chest" data-chest="1"><span class="name glow">Chest</span><span class="pic"><svg class="chestart" viewBox="0 0 40 32"><rect class="box" x="5" y="14" width="30" height="14" rx="2"/><path class="lid" d="M5 14a15 9 0 0 1 30 0z"/><rect class="lock" x="17.5" y="15.5" width="5" height="7" rx="1"/><g class="ckey"><circle cx="20" cy="4" r="3"/><path d="M20 7v8M20 11h3"/></g></svg></span></button>
+    <!-- v18 (B.19, build 32): the Pro and Author chests, in a column under chest 1. Hidden until chest 1 is open (A.1);
+         ui/screens/pick.js places them and owns their states. Each locked one names its key and nothing else -->
+    <button data-act="chest" class="tile chest" data-chest="2" hidden><span class="name glow">Pro chest</span><span class="pic"><svg class="chestart" viewBox="0 0 40 32"><rect class="box" x="5" y="14" width="30" height="14" rx="2"/><path class="lid" d="M5 14a15 9 0 0 1 30 0z"/><rect class="lock" x="17.5" y="15.5" width="5" height="7" rx="1"/><g class="ckey"><circle cx="20" cy="4" r="3"/><path d="M20 7v8M20 11h3"/></g></svg></span></button>
+    <button data-act="chest" class="tile chest" data-chest="3" hidden><span class="name glow">Author chest</span><span class="pic"><svg class="chestart" viewBox="0 0 40 32"><rect class="box" x="5" y="14" width="30" height="14" rx="2"/><path class="lid" d="M5 14a15 9 0 0 1 30 0z"/><rect class="lock" x="17.5" y="15.5" width="5" height="7" rx="1"/><g class="ckey"><circle cx="20" cy="4" r="3"/><path d="M20 7v8M20 11h3"/></g></svg></span></button>
     <!-- v17 (B.23): the unlock order, drawn as thin lines between the tiles. The path is measured off the tiles' own
          boxes in ui/screens/pick.js, so it survives the 4-column breakpoint and any change to the gap -->
     <svg class="gridlines" id="gridlines" aria-hidden="true"></svg>
   </div>
   <div class="hint">tap empty space to go back</div>
+  <!-- v18 (B.20 / B.16, build 32): the ask box — "Open the chest?", then "progress to Pro?" with its warning. Same shape
+       as the lock box; ui/screens/pick.js fills it and answers it -->
+  <div id="askwrap" data-act="askwrap"><div id="askbox"><h3 id="ask-title"></h3><p id="ask-text" hidden></p><div class="row"><button class="item big" id="ask-yes" data-act="ask-yes">Open it</button><button class="item sub" id="ask-no" data-act="ask-no">Not yet</button></div></div></div>
   <div class="sheet" id="sheet">
     <div class="eyebrow" id="sheet-title">quick tap · mode</div>
     <div id="vs-wrap"><div class="chips" id="vs-row"><button data-act="vs" class="chip sel" data-vs="0"><svg viewBox="0 0 22 16"><rect x="7" y="1" width="8" height="14" rx="1.5"/></svg>solo</button><button data-act="vs" class="chip" data-vs="1"><svg viewBox="0 0 22 16"><rect x="1" y="2" width="7" height="12" rx="1.5"/><rect x="14" y="2" width="7" height="12" rx="1.5"/></svg>with a friend</button></div>
@@ -77,7 +84,7 @@
 
 <section class="screen top" id="s-board" data-back="s-menu">
   <button data-act="back" class="back">&larr; BACK</button>
-  <div class="prof"><div class="who">profile <input id="pname" maxlength="10" placeholder="YOU" autocomplete="off"><span class="star" id="pstar"></span></div><svg id="radar" viewBox="-30 -26 260 252"></svg><div class="hint" style="margin-top:0">your best in each game · 100 is Aiden's record</div></div>
+  <div class="prof"><div class="who">profile <input id="pname" maxlength="10" placeholder="YOU" autocomplete="off"><span class="star" id="pstar"></span></div><svg id="radar" viewBox="-30 -26 260 252"></svg><div class="hint" style="margin-top:0" id="radar-hint">your best in each game · the rungs are the key's bars</div></div>
   <div class="eyebrow">scores · local top 10</div>
   <div class="chips" id="bd-g"></div>
   <div class="chips" id="bd-d"></div>
@@ -159,7 +166,7 @@
   <div class="explain">A passion project of simple games of pure skill and minimal frills.<br><br>If you'd like to remove ads, add customisation, and show your support, tap below.</div>
   <button data-act="support" class="support" id="support"><b id="support-title">Support · A$1.99 · once</b><small id="support-text">No ads, ever. Every colour, background and sound pack open from day one, plus the colour wheel. A pro 60-second length in Quick Tap and Dots, with its own boards. A star on your profile.</small></button>
   <div class="tierbox" id="tierbox"></div>
-  <div class="hint">v0.31 · batch 14 · the runs · 12 sept 2026</div>
+  <div class="hint">v0.32 · batch 14 · keys and chests · 12 sept 2026</div>
 </section>
 
 <section class="screen" id="s-testing" data-back="s-menu" data-dev>
@@ -168,6 +175,9 @@
   <div class="explain">Not in the released app. Everything here changes what is on this phone only.</div>
   <div class="chips"><button data-act="dev-fresh" class="chip" id="dev-fresh">fresh game · wipe everything</button><button data-act="dev-open" class="chip" id="dev-open">open everything</button><button data-act="dev-story" class="chip" id="dev-story">replay the intro</button><button data-act="dev-sup" class="chip" id="dev-sup">supporter</button></div>
   <div class="hint" id="dev-state"></div>
+  <!-- v18 (B.26, build 32): a button per animation, so each can be watched without being earned. Dev only (S5) -->
+  <div class="hint" id="dev-anim-hint">animations · nothing is stored</div>
+  <div class="chips" id="dev-anim"><button data-act="dev-keyin" class="chip">key arrival</button><button data-act="dev-seg" class="chip">segment advance</button><button data-act="dev-whole" class="chip">key complete</button><button data-act="dev-chest" data-n="1" class="chip">chest 1 opening</button><button data-act="dev-chest" data-n="2" class="chip">chest 2 opening</button><button data-act="dev-chest" data-n="3" class="chip">chest 3 opening</button></div>
 </section>
 
 <section class="screen" id="s-pass">
@@ -237,12 +247,12 @@
 
 <script type="module" src="./boot.js"></script>
 
-<div id="build">v0.31</div>
+<div id="build">v0.32</div>
 <button id="update">New build available — tap to reload</button>
 <script>
 // build check: version.json is fetched with no-store, so a stale cached page still learns a newer build exists
 (function(){
-  const BUILD="31";
+  const BUILD="32";
   async function check(){
     try{
       const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});

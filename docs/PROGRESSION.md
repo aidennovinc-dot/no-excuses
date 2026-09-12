@@ -65,3 +65,31 @@ test can only become more true as the run goes on, so `liveCheck` banks and toas
 totals, averages and "no wrong taps" claims about a whole run, and still wait for the finish. `abort()` runs one last
 `liveCheck` over the engine's own `result()` so the round that just landed is banked before the quit. The gate asserts all
 of it, statically and by quitting a run mid-flight and reading storage back.
+
+## Build 32 (v18 §B.15–§B.27, 2026-09-12): the tier is an argument
+
+- **Three tiers per row, and the SHELL IS DERIVED (B.27).** `config/key-bars.js` rows carry `bar` (key 1), `pro` and
+  `author`, the same unit and direction each; `barOf(c, tier)` in `progress/key.js` is the one read, `skey(key, tier)` the
+  one store key (`'g:d:s'`, `'g:d:s|pro'`, `'g:d:s|author'`, one map). `isShell(tier)` is "any row of the column is null" —
+  `config/keys.js` carries no flag any more — and a shell tier counts nothing, shows nothing, clears nothing. A.2 stands:
+  Pro and Author start EMPTY and Aiden fills them on the review catalogue's key section (three inputs a row, saving
+  `{bars:{clear,pro,author}}` to `bars/current`); Cowork ports the columns (#371). The day a column is full the tier counts,
+  with no code change. Tiers 2 and 3 also count nothing before chest 1 (A.1 / A.2): the chest hands the map over, and a
+  bar banked quietly before it would make the reveal arrive part-done. `checkKey` tries every open, non-shell tier lowest
+  first, banks every fresh clear, and returns the lowest one — the ring the interlude draws.
+- **The FRONT number (B.15 / B.16 / B.17).** The menu says `67% complete` (A.6.5 amended); `frontPct()` is key 1's own
+  percentage until `prefs.pro` is set, then `30 + floor(0.7 × keyPct(tier).pct)` for the tier stepped into. Stepping in is
+  offered on the opened chest ("Would you like to progress to Pro?") with the warning that the front stops showing 100%
+  and cannot be undone; Not now leaves the opened chest as the way back to the question. Fresh game clears `prefs.pro`.
+- **Three achievement sets (B.25).** `keyAch()` generates 24 rows — `key_<tier>_<game>` "clear every <game> bar on <key>"
+  and `key_<tier>_all` for the whole key — from the same walk. None is `live:1` (whole-set claims). `run/run.js` banks the
+  key BEFORE it asks achievements, and asks `checkKeyAch` beside `checkAch`; `progress.js` cannot import `progress/key.js`,
+  so screens read the key rows from there. `authorAch()`, `authorRatio()` and `AUTHOR_RECORDS` are retired: the Author
+  KEY is that idea, and A.5 (captured once, then frozen) now applies to the `author` column.
+- **The radar (B.24).** `radarOf(g)`: before chest 1 one rung — the best ratio against key 1's bar, capped at 1; after
+  chest 1 three rungs at thirds, a shell tier a dashed rung at no value that no axis can climb past, and a score past the
+  Author time pushes on to `RADAR_PAST` (1.15) with a flame.
+- **The chests (B.19 / B.20).** Chest n needs key n whole. `ui/screens/pick.js` places chests 2 and 3 in a column under
+  chest 1 (hidden before chest 1, A.1), a ready chest asks before it opens, the opening is build 29's extended (the key
+  drops into the lock, 1.6s), and the keys screen plays a whole-key moment once per tier (`prefs.keyWhole`). Each game
+  tile's outline fills with its KEY-1 fraction (B.18, `gameKey(g).frac`, `KEYFILL` lilac).

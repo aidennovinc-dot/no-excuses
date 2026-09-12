@@ -19,7 +19,7 @@ const HOLD_MS=CFG.hold;
 // it: the budget is spent by the reaction-time overspend on legal taps as well as by wrong taps, so mistakes do not have to
 // exhaust it on their own. The Streak has no wrong-tap counter and must not gain one. B.3 still stands — the SET keeps its
 // own 150ms-added penalty and its own three-wrong-taps ending; the two currencies differ and must not be harmonised.
-const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[], faults:0, t0:0, rule:'circle', shown:'', armed:false, over:0, out:false, wrong:0, seen:0, vsN:[0,0], vsDone:false, last1:'', last2:'', two:{on:false}, block:null, blockGo:0, bi:0, got:0, goDealt:0,
+const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[], faults:0, t0:0, rule:'circle', shown:'', armed:false, over:0, out:false, wrong:0, seen:0, vsN:[0,0], vsDone:false, last1:'', last2:'', two:{on:false}, block:null, blockGo:0, bi:0, got:0, goDealt:0, skipped:[], pool:[], dwell:0, gotAll:0,
   // v14 section C.1 (L5, build 22): a Flash Streak spends everything over 150ms of its 500ms budget — the number 6.8 asked for.
   // B.1's 250 was Cowork's reasoning and Aiden overruled it. A good phone tap is ~250–280ms, so nearly every rep spends
   // 100–130ms and a run lasts four or five rounds instead of ten. That is the intended effect, not a regression. Budget unchanged.
@@ -40,8 +40,22 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
      that (five rounds, fifteen correct taps) and a Streak deals a fresh target shape every time a block runs out. A block
      is GO_PER targets among GO_PAD..GO_PAD+GO_SPREAD-1 decoys, the first of which is always a decoy. RULE_EVERY is retired
      with the old "the rule flips every five shapes" reading: the rule changes once per block now, in every mode. */
-  FLASH_FREE:150, FLASH_BUD:500, FLASH_EARLY:400, FLASH_MAX:1000, NOGO_FREE:150, NOGO_BUD:1000, NOGO_WRONG_SET:150, NOGO_WRONG_STREAK:200,
-  GO_PER:3, GO_PAD:2, GO_SPREAD:3,
+  /* v19 (§C, L5, build 32): the Go / No-go numbers after Aiden played build 31.
+     NOGO_FREE is 180 — THE GATE (C.5). It is a scoring rule, not an input window: every correct tap contributes
+     max(0, reaction − 180) ms, so a tap at or under 180 adds nothing and nothing is forgiven, rejected or re-timed. Aiden
+     named the rule for the Streak; it is on the Set as well (Cowork's recommendation, flagged in FEATURES.md) so the two
+     modes score on one scale. NOGO_BUD is 3000 (C.6): at the Set bar's own pace — 380ms raw, 200 over the gate — fifteen
+     targets spend exactly 3000, so a Streak at that pace lasts one Set's worth of targets before its wrong taps.
+     GO_GAP_MIN..GO_GAP_MAX is C.2: each target sits behind 1 to 5 decoys, drawn uniformly, so it lands 2nd to 6th in its
+     sub-round and a five-deep wait is ordinary — the game is discrimination, not reflex. C.1 follows from the same shape:
+     a target is always followed by at least one decoy, so a correct tap is never followed by the target again. GO_PAD and
+     GO_SPREAD are retired with the old "GO_PER targets among 2..4 decoys" block. NOGO_DWELL is C.4: how long a shape
+     stays on screen, base per length ± spread, uniform per shape. The old fixed beats were 800 (Set) and 1150 (Streak);
+     Cowork's (guess) of 620 ± 180 sits BELOW both, which contradicts the note it carries ("stay on screen longer"), so
+     the bases here are the old beats + 180: never quicker than build 31, up to 360ms longer, and variable. FEATURES.md
+     prints both and Aiden picks. */
+  FLASH_FREE:150, FLASH_BUD:500, FLASH_EARLY:400, FLASH_MAX:1000, NOGO_FREE:180, NOGO_BUD:3000, NOGO_WRONG_SET:150, NOGO_WRONG_STREAK:200,
+  GO_PER:3, GO_GAP_MIN:1, GO_GAP_MAX:5, NOGO_DWELL:{ set:980, streak:1330, spread:180 },
   // v15 (3.6): every Flash result reads down the same four lines — the time, the baseline it is measured against, the
   // difference between them, then where the run stands. The running total is BELOW as well as in the HUD above
   /* v18 (B.6): a Flash SET shows no baseline and no difference. Both of them are Streak furniture — the baseline is what
@@ -61,7 +75,7 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
   nogo(){ return this.ctx.mode==='nogo'; }, versus(){ return this.ctx.players===2; },
   // v15 (4.4): pass & play is attempt by attempt, both modes. Flash hands the phone over after every flash; Go / No-go
   // arrives on a beat, so its turn is a block of shapes — one rule period — and the block is scored the way its Set is
-  begin(){ this.round=0; this.times=[]; this.faults=0; this.over=0; this.out=false; this.wrong=0; this.seen=0; this.got=0; this.goDealt=0; this.bi=0; this.block=null; this.vsN=[0,0]; this.vsDone=false;
+  begin(){ this.round=0; this.times=[]; this.faults=0; this.over=0; this.out=false; this.wrong=0; this.seen=0; this.got=0; this.goDealt=0; this.bi=0; this.block=null; this.vsN=[0,0]; this.vsDone=false; this.skipped=[]; this.pool=[]; this.dwell=0; this.gotAll=0;
     this.two=makeTwo(this.ctx,{lower:true,fmt:v=>Math.round(v)+CP.ms}); hud.score('0');
     if(this.versus()) return this.vsRound(); if(this.two.on) return this.next(); if(this.nogo()) return this.nogoBegin(); this.next(); },
   // Flash (v11 / v14 section 5): Set = 5 attempts, average ms. Streak = every ms above 150 (C.1) adds to a total; the run ends at 500, score attempts
@@ -75,7 +89,7 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
     if(this.two.on){ if(this.two.over()) return this.ctx.emit('finish',this.two.record()); return this.two.gate(this,()=>this.turnStart()); }
     if(this.out||(!this.streak()&&this.round>this.ctx.len)) return this.ctx.emit('finish',this.result()); this.hud(); this.again(); },
   // one player's turn: a single flash, or a fresh block of Go / No-go shapes on a fresh rule
-  turnStart(){ this.times=[]; this.wrong=0; this.seen=0; this.goDealt=0; if(this.nogo()) return this.nogoBegin(); this.again(); },
+  turnStart(){ this.times=[]; this.skipped=[]; this.wrong=0; this.seen=0; this.goDealt=0; if(this.nogo()) return this.nogoBegin(); this.again(); },
   // v15 (4.4): what the attempt was worth goes to the player holding the phone, and the turn ends with it
   twoAdd(ms){ const p=this.two.p, was=this.two.scoreOf(p); this.two.add(ms); const to=this.two.scoreOf(p);
     hud.countUp({ audio:this.ctx.audio, from:was, to, ms:500, fmt:v=>String(Math.round(v)), set:t=>{ hud.score(t); this.setTot(+t); }, alive:()=>this.st==='show',
@@ -154,70 +168,99 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
      build 22; B.1c retires it for the Set and for a pass & play turn, and the mode line no longer promises one. */
   /* v18 (B.1b): a ROUND is one target shape. Every mode deals its round as a block up front — pass & play always did
      (#375b), and solo rolling shape by shape is what made the target's position guessable and the run three seconds long. */
-  nogoBegin(){ this.round=0; this.rule=''; this.bi=0; this.block=null; this.blockGo=0; this.nextRule(); },
+  nogoBegin(){ this.round=0; this.rule=''; this.bi=0; this.block=null; this.blockGo=0; this.pool=[]; this.gotAll=0; this.skipped=[]; this.nextRule(); },
+  /* v19 (C.3): the five shapes, and the order the rounds draw on them. SHAPE_WORD in config/games.js is the pool — five
+     since build 32 — and a Set's five rounds are one shuffle of it, so every round of a Set has a different target and the
+     five together cover the pool. A Streak keeps drawing the same way: a fresh shuffle each time the pool runs out, with
+     the one rule the old three-shape draw already kept — the target never repeats twice running. */
+  nextTarget(){ if(!this.pool.length){ const all=Object.keys(SHAPE_WORD).slice(); for(let i=all.length-1;i>0;i--){ const j=rnd(i+1); [all[i],all[j]]=[all[j],all[i]]; }
+      if(all[0]===this.rule&&all.length>1){ const j=1+rnd(all.length-1); [all[0],all[j]]=[all[j],all[0]]; } this.pool=all; }
+    return this.pool.shift(); },
   /* v18 (B.1b): the next target shape, and the block of shapes it is hidden in. A Set stops after ctx.len rounds — five
      rounds of GO_PER correct taps, fifteen in all, where it used to be five SHAPES and over in seconds. A Streak stops
      when the budget is spent and otherwise keeps dealing. The rule never repeats twice running. */
   nextRule(){ this.clearT();
     if(this.streak()?this.over>=this.NOGO_BUD:this.round>=this.ctx.len) return this.nogoEnd();
-    this.round++; const pool=['circle','square','tri'].filter(sh=>sh!==this.rule); this.rule=pool[rnd(pool.length)];
+    this.round++; this.rule=this.nextTarget();
     this.last1=''; this.last2=''; this.bi=0; this.got=0;
-    this.block=this.dealBlock(this.blockLen(),this.two.on?undefined:this.GO_PER);
+    this.block=this.two.on?this.dealBlock(this.two.per):this.dealRound();
     this.blockGo=this.block.filter(sh=>sh===this.rule).length;
     this.hudNogo(); this.rulePause(); },
   /* v15 (#375a, build 26): how many shapes a turn is. In pass & play it is PASS_TURNS['reaction:nogo'][0] — the config
      the build-25 review found was never read, because beat() ended a block on `this.seen >= this.ctx.len`, the Set's own
      round count. The two happened to be the same number, so the block was the right length by coincidence and would have
-     silently followed SET_COPY the day either moved. Solo is unchanged: ctx.len is the length row the player picked. */
-  /* v18 (B.1b): solo deals a ROUND — GO_PER targets among GO_PAD to GO_PAD+GO_SPREAD-1 decoys, so 5, 6 or 7 shapes and
-     the player cannot count the block either. Pass & play is unchanged: PASS_TURNS['reaction:nogo'][0] shapes on one rule. */
-  blockLen(){ return this.two.on?this.two.per:this.GO_PER+this.GO_PAD+rnd(this.GO_SPREAD); },
+     silently followed SET_COPY the day either moved. v19 (§C): a solo round is dealRound() and has no fixed length any
+     more, so this answers for the pass & play turn alone — the claim #375a protects is unchanged. */
+  blockLen(){ return this.two.per; },
+  /* v19 (C.1 / C.2 / C.3, L5): THE SOLO DEALER. A round is GO_PER sub-rounds, and a sub-round is a run of decoys and
+     then the target: the run is GO_GAP_MIN..GO_GAP_MAX decoys long, drawn uniformly, so the target lands 2nd to 6th in
+     its sub-round with the mean near four and a five-deep wait ordinary. That one shape gives every rule the mode has
+     asked for: the first shape after the instruction is a decoy (B.1d), a correct tap is never followed by the target
+     again because at least one decoy is dealt before the next one (C.1), and the position is spread rather than "always
+     second or third" (C.2). It is built, not drawn-and-retried — there is nothing to retry. Decoys come from the other
+     four shapes (C.3) and a decoy never repeats, which is #375b's rule and also what keeps any shape from running three
+     times. A round is 6 to 18 shapes, 12 on average, where build 31's was 5 to 7. */
+  dealRound(){ const others=Object.keys(SHAPE_WORD).filter(s=>s!==this.rule); const out=[]; let prev='';
+    for(let t=0;t<this.GO_PER;t++){ const gap=this.GO_GAP_MIN+rnd(this.GO_GAP_MAX-this.GO_GAP_MIN+1);
+      for(let k=0;k<gap;k++){ const pick=others.filter(s=>s!==prev); prev=pick[rnd(pick.length)]; out.push(prev); }
+      out.push(this.rule); prev=this.rule; }
+    return out; },
   /* v15 (#375b, build 26): DEAL the block, do not roll each beat. Rolling shape by shape can hand a player a turn with
      no go-shape in it at all, and then there is nothing to score them on — which is what the deleted 600ms fallback was
      papering over. A dealt block guarantees at least two go-shapes and keeps both of nextShape()'s fairness rules
-     (v14 6.25): no shape three times running, and a decoy never repeats. Solo still rolls — a Streak has no block to
-     deal, and dealing a solo Set would change a scoring distribution nobody asked to change. */
-  /* v18 (B.1d): AMENDED, not replaced. #375b's two fairness rules stand — no shape three times running, a decoy never
-     repeats — and a third joins them: THE FIRST SHAPE OF A BLOCK IS ALWAYS A DECOY. Aiden's note is that the target was
-     the first thing after the instruction every time, which turns the whole mode into a reaction test with the decision
-     removed. `go` is how many targets the block holds: GO_PER for a solo round (B.1b), and for a pass & play turn the
-     same "at least two, never all of them" draw #375b made. The fallback lays them out TT.TT.TT from index 1, which
-     satisfies all three rules at every length this deals. */
-  dealBlock(n,go){ const others=['circle','square','tri'].filter(s=>s!==this.rule);
-    go=go===undefined?Math.max(2,Math.min(n-1,2+rnd(Math.max(1,n-2)))):Math.max(1,Math.min(n-1,go));
-    let mark=null;
-    for(let a=0;a<60;a++){ const m=Array.from({length:n},(_,i)=>i<go?1:0);
-      for(let i=m.length-1;i>0;i--){ const j=rnd(i+1); [m[i],m[j]]=[m[j],m[i]]; }
-      if(m[0]) continue;   // B.1d: never the first shape
-      if(!m.some((v,i)=>i>1&&v&&m[i-1]&&m[i-2])){ mark=m; break; } }
-    if(!mark){ mark=Array.from({length:n},()=>0); let put=0; for(let i=1;i<n&&put<go;i++){ if(i%3===0) continue; mark[i]=1; put++; } }
-    let prev='', d=rnd(2); return mark.map(v=>{ if(v){ prev=this.rule; return this.rule; }
-      if(others[d]===prev) d=1-d; prev=others[d]; d=1-d; return prev; }); },
-  // v14 (6.26): a Streak was too fast to react to. It runs on a slower beat than the Set
-  beatMs(){ return this.streak()?1150:800; },
+     (v14 6.25): no shape three times running, and a decoy never repeats.
+     v18 (B.1d): the first shape of a block is always a decoy.
+     v19 (C.1): PASS & PLAY ONLY now — a turn is a fixed PASS_TURNS[0] shapes, which C.2's gaps cannot fit, so it keeps
+     its own draw and gains C.1 the constructive way: the targets are chosen NON-ADJACENT (a combination of `go` slots
+     out of n − go, each shifted by its index), never drawn and retried. At five shapes that is exactly two targets, at
+     positions {1,3}, {1,4} or {2,4}. */
+  dealBlock(n){ const others=Object.keys(SHAPE_WORD).filter(s=>s!==this.rule);
+    const maxGo=Math.max(1,Math.floor((n-1)/2)), go=Math.max(1,Math.min(maxGo,2+rnd(Math.max(1,maxGo-1))));
+    // `go` slots among n − go, sorted, each pushed right by its index: no two adjacent, none at index 0
+    const slots=Array.from({length:n-go},(_,i)=>i); for(let i=slots.length-1;i>0;i--){ const j=rnd(i+1); [slots[i],slots[j]]=[slots[j],slots[i]]; }
+    const at=slots.slice(0,go).sort((a,b)=>a-b).map((s,i)=>s+i+1);
+    const mark=Array.from({length:n},(_,i)=>at.includes(i)?1:0);
+    let prev=''; return mark.map(v=>{ if(v){ prev=this.rule; return this.rule; }
+      const pick=others.filter(s=>s!==prev); prev=pick[rnd(pick.length)]; return prev; }); },
+  /* v14 (6.26): a Streak was too fast to react to, so it ran on a slower beat than the Set — 1150 against 800.
+     v19 (C.4, L5): the dwell is VARIABLE now, drawn per shape, uniform in base ± spread from NOGO_DWELL; the base is
+     still per length. The value is drawn once per shape and remembered, because an untapped target is charged the window
+     it was actually given (B.1b's padding), not an average of them. */
+  dwellMs(){ const d=this.NOGO_DWELL; const base=this.streak()?d.streak:d.set; return Math.round(base+(Math.random()*2-1)*d.spread); },
+  beatMs(){ return this.dwell||this.dwellMs(); },
   /* v18 (B.1b / B.1c): the Set line is the ROUND and how far into it you are — "round 2 of 5 · 1 of 3" — where it used
      to count shapes and carry "{w} of 3 wrong", a tally of a run-ender that no longer exists. The Streak line is
      unchanged and already says what it is spending against what budget (B.13). */
   hudNogo(){ if(this.two.on) return hud.timeHtml(this.two.hudLine());
-    hud.time(this.streak()?T(CP.hudNogoStreak,{n:this.seen+1,over:Math.round(this.over),bud:this.NOGO_BUD}):T(CP.hudNogo,{n:Math.min(this.ctx.len,this.round),s:this.ctx.len,h:this.got,p:this.GO_PER})); },
+    hud.time(this.streak()?T(CP.hudNogoStreak,{n:this.round,over:Math.round(this.over),bud:this.NOGO_BUD}):T(CP.hudNogo,{n:Math.min(this.ctx.len,this.round),s:this.ctx.len,h:this.got,p:this.GO_PER})); },
   /* v18 (B.1b): a Set is scored over every target the run DEALT, not only the ones that were tapped. #375b already
      reasoned this out for a pass & play turn — an unanswered target is charged the whole beat window it was given, so
      giving up cannot score better than trying — and fifteen targets a Set instead of two or three is what makes it
-     matter here. Wrong taps still add NOGO_WRONG_SET each (L5), and they are the only thing they do now (B.1c). */
-  setPad(){ return Math.max(0,this.goDealt-this.times.length); },
-  nogoScore(){ const [x,y]=minMax(this.times); if(this.streak()) return {hits:this.seen,misses:this.wrong,x,y,lim:this.NOGO_BUD+'ms'};
-    const all=this.times.concat(Array(this.setPad()).fill(this.beatMs()));
-    return {hits:Math.round((all.length?mean(all):600)+this.NOGO_WRONG_SET*this.wrong),misses:this.wrong,x,y}; },
+     matter here. Wrong taps still add NOGO_WRONG_SET each (L5), and they are the only thing they do now (B.1c).
+     v19 (C.5): everything passes THE GATE first — a target is worth max(0, ms − NOGO_FREE), tapped or not, and the
+     window an untapped one is charged is the dwell it was actually given (`skipped`), which is variable now (C.4). The
+     result is the mean of those gated figures plus 150ms a wrong tap: a Set at the old clearance bar's pace (380ms raw)
+     reads 200 now, which is why config/key-bars.js converts that bar rather than keeping it. */
+  gated(ms){ return Math.max(0,ms-this.NOGO_FREE); },
+  setPad(){ return this.skipped.length; },
+  gatedAll(){ return this.times.map(ms=>this.gated(ms)).concat(this.skipped.map(ms=>this.gated(ms))); },
+  /* v19 (C.6): a Streak SCORES IN TARGETS — the correct taps it banked — not in shapes seen. C.2 makes the number of
+     shapes behind each target a draw of one to five, so "shapes survived" would have paid out on the luck of the deal;
+     the targets a player answered are the same number whatever the deal was, which is the only reading a game of pure
+     skill can keep. `scoreWord` in config/games.js says targets. */
+  nogoScore(){ const [x,y]=minMax(this.times); if(this.streak()) return {hits:this.gotAll,misses:this.wrong,x,y,lim:this.NOGO_BUD+'ms'};
+    const all=this.gatedAll();
+    return {hits:Math.round((all.length?mean(all):this.gated(this.NOGO_DWELL.set))+this.NOGO_WRONG_SET*this.wrong),misses:this.wrong,x,y}; },
   /* v15 (#375b, build 26): what a pass & play BLOCK is worth, and the reason the 600ms fallback could be deleted rather
      than retuned. Every go-shape the block dealt is worth either the tap it got or the whole beat window it was given —
      both real numbers the run produced — plus 150ms a wrong tap, which is how the Set scores (v14 A.2). dealBlock
      guarantees at least two go-shapes, so there is always something to average, and a turn that ended early on three
-     wrong taps is charged for the shapes it never answered instead of being scored better for giving up. */
-  blockScore(){ const pad=Math.max(0,this.goDealt-this.times.length);
-    const all=this.times.concat(Array(pad).fill(this.beatMs()));
-    return (all.length?mean(all):this.beatMs())+this.NOGO_WRONG_SET*this.wrong; },
+     wrong taps is charged for the shapes it never answered instead of being scored better for giving up.
+     v19 (C.5): through the gate, like the Set — the two are one currency. */
+  blockScore(){ const all=this.gatedAll();
+    return (all.length?mean(all):this.gated(this.NOGO_DWELL.set))+this.NOGO_WRONG_SET*this.wrong; },
   // the number under the HUD while a block is being played — the same one it will bank, so it can only improve
-  liveNum(){ return this.streak()?this.seen:Math.round(this.two.on?this.blockScore():this.nogoScore().hits); },
+  liveNum(){ return this.streak()?this.nogoScore().hits:Math.round(this.two.on?this.blockScore():this.nogoScore().hits); },
   /* v18 (B.1a): the instruction ARRIVES WHOLE. It was revealed a word at a time — "tap … only … the … ▲ … triangle" —
      with the last word landing about 880ms into a 2200ms window, so most of the time you had to read it was spent
      watching it appear. `atOnce` on rxBar already existed for Spot (B.14, build 28); Reaction uses it now too. */
@@ -236,17 +279,25 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
   /* v18 (B.1b): the block IS the round. It runs to its end and then the rule changes - for a Set that is the next of
      ctx.len rounds, for a Streak the next target shape, for a pass & play turn the end of the turn. The old
      "flip the rule every RULE_EVERY shapes" branch is retired with RULE_EVERY itself. */
+  // v19 (C.5 / B.1b): a target that left the screen untapped is charged the window it was given — remembered here, on the
+  // beat that replaces it, so the Set's mean and the pass & play block are over every target dealt
+  skipTarget(){ if(this.st==='go') this.skipped.push(this.dwell); },
   beat(){ if(this.streak()&&this.over>=this.NOGO_BUD) return this.nogoEnd();
+    this.skipTarget();
     if(!this.block||this.bi>=this.block.length) return this.two.on?this.twoBlockEnd():this.nextRule();
     const pane=$('#rxpane'); if(!pane) return; this.shown=this.block[this.bi++]; this.seen++; if(this.shown===this.rule) this.goDealt++; this.hudNogo();
-    const v=vmin(), dx=(Math.random()-.5)*24*v, dy=(Math.random()-.5)*22*v, sc=.75+Math.random()*.45, rot=this.shown==='tri'?[0,180,90,270][rnd(4)]:this.shown==='square'?[0,45][rnd(2)]:0;
+    // v19 (C.3): the two new shapes turn like the two that already did — a diamond is a square on its point and stays one
+    const v=vmin(), dx=(Math.random()-.5)*24*v, dy=(Math.random()-.5)*22*v, sc=.75+Math.random()*.45,
+      rot=this.shown==='tri'?[0,180,90,270][rnd(4)]:this.shown==='square'?[0,45][rnd(2)]:this.shown==='hex'?[0,30][rnd(2)]:0;
     // v14 (6.24): the next shape replaces the last one where it stands — square to triangle goes straight through, never to black.
     // Every beat moves, turns and resizes it, so a repeat of the same shape still reads as a new one
     pane.classList.remove('bad'); pane.innerHTML=`<div class="rxshape ${this.shown}" style="translate:${dx}px ${dy}px;scale:${sc};rotate:${rot}deg"></div>`;
-    this.st=this.shown===this.rule?'go':'nogo'; this.arm(); this.later(()=>this.beat(),this.beatMs()); },
+    // v19 (C.4): this shape's own dwell, drawn now and kept until the next beat, so a skipped target is charged exactly it
+    this.dwell=this.dwellMs();
+    this.st=this.shown===this.rule?'go':'nogo'; this.arm(); this.later(()=>this.beat(),this.dwell); },
   nogoTap(ev){ if(this.st==='rule'||this.st==='over') return; const pane=$('#rxpane'); if(!pane) return;
-    if(this.st==='go'&&this.armed){ const ms=Math.max(1,Math.round(ev.t-this.t0)); this.times.push(ms); this.got++; this.st='hit';
-      const add=Math.max(0,ms-this.NOGO_FREE); if(this.streak()) this.over+=add;
+    if(this.st==='go'&&this.armed){ const ms=Math.max(1,Math.round(ev.t-this.t0)); this.times.push(ms); this.got++; this.gotAll++; this.st='hit';
+      const add=this.gated(ms); if(this.streak()) this.over+=add;
       // v18 (B.10): the round's own figure wears its tier colour. Solo only (L4)
       const col=this.roundCol('reaction:nogo',ms);
       pane.innerHTML=`<div class="rxmsg" style="top:40%"><b style="font-size:clamp(28px,9vw,60px)${col?';color:'+col:''}">${ms}<small style="font-size:12px;letter-spacing:.2em">${CP.ms}</small></b>${this.streak()?`<span class="sub">+${add}${CP.ms}</span>`:''}</div>`;

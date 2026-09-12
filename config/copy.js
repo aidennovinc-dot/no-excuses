@@ -15,6 +15,8 @@ export const TOAST = {
   mig11:'Build 11 · {n} old Estimate / Timing / Reaction / Count run{s} retired — the scoring changed',
   // v18 (B.2 / B.4): Stopwatch · Set became a total and Hidden became milliseconds, so records in the old units go
   mig31:'Build 31 · {n} old Timing run{s} retired — Stopwatch · Set is a total now and Hidden is in milliseconds',
+  // v19 (C.5 / C.6): Go / No-go scores over the 180ms gate and its Streak counts targets, so records in the old units go
+  mig32:'Build 32 · {n} old Go / No-go run{s} retired — every tap scores over the 180ms gate now and a Streak counts targets',
   // unlock wording (v11): "Unlock game: Dots" for a game, "Unlock: Dash" for a mode or length
   unlock:'Unlock: {name}', unlockGame:'Unlock game: {name}', unlockPractice:'Unlock: Practice from',
 };
@@ -29,7 +31,11 @@ export const BG_NAME = { stars:'stars', grid:'grid', rain:'rain', orbs:'orbs' };
    Achievements screen and another on the Unlocks screen two menu items above it. B.11 settles which is which: an unlock
    opens something you could not play before and lives in config/unlocks.js; everything here is a mark on something you
    already have, and a few of them happen to come with a colour. The tier id moved with the name (`earned`). */
-export const TIERS = { earned:['Earned','Picked up as you play. Some come with a colour, a background or a sound pack.'], pro:['Pro','harder. bragging rights, a few unlock things'], author:['Author','beat the numbers Aiden set. placeholders until the final build'], secret:['Secret','they exist. what earns them is not written down'] };
+export const TIERS = { earned:['Earned','Picked up as you play. Some come with a colour, a background or a sound pack.'], pro:['Pro','harder. bragging rights, a few unlock things'], secret:['Secret','they exist. what earns them is not written down'],
+  // v18 (B.25, build 32): three sets tied to the keys — one row per game per key and one for the whole key. The second
+  // and third sets are not shown before chest 1 (A.1); ui/screens/progress.js filters them on tierOpen
+  key1:['The key','clear every clearance bar of a game, then all of them'], key2:['Pro key','the same, at the Pro bars'], key3:['Author key','the same, against the author'] };
+export const KEY_ACH = { game:'{game} · {key}', gameHow:'Clear every {game} bar on {key}', whole:'{key} · whole', wholeHow:'Clear every bar on {key}' };
 // the progress rules' own wording: length locks without a rule, the practice row, the Author rows
 export const PROGRESS = { finishOne:'finish one {game} {prev}', finishA:'finish a {game} {prev}', streak:'Streak', practiceFrom:'Practice from', beat:'Beat Aiden — {rec}', none:'—' };
 
@@ -93,7 +99,11 @@ export const PROGRESS_SCREEN = { title:'progress', unl:'Unlocks', ach:'Achieveme
    The chest needs key 1 — every clearance bar cleared — and A.1 forbids anything about pro or author appearing before
    it is opened, so a locked chest says what it takes in key-1 terms and an opened one says only what it gave. */
 export const GRID = { chest:'Chest', chestLocked:'clear all {n} · {done} so far', chestOpen:'tap to open',
-  chestDone:'Gauntlet — coming soon', chestToast:'Chest 1 opened · Gauntlet is not built yet' };
+  chestDone:'Gauntlet — coming soon', chestToast:'Chest 1 opened · Gauntlet is not built yet',
+  // v18 (B.19, build 32): the second and third chests, seen only once chest 1 is open (A.1). A locked one names its key
+  // and nothing else; an opened one says what it gave (A.3: the cosmetic set; A.4: the hard Gauntlet, not built)
+  chest2:'Pro chest', chest3:'Author chest', chest2Done:'Cosmetics — every colour and track', chest3Done:'Hard Gauntlet — coming soon',
+  chest2Toast:'Pro chest opened · every colour, background and track is yours', chest3Toast:'Author chest opened · the hard Gauntlet is not built yet' };
 export const SHEET = { mode:'Mode', toUnlock:'To unlock: {need}', tileUnlock:'to unlock: {need}', locked:'locked', noRun:'no run yet', best:'best', closest:'closest',
   practiceFrom:'practice from', off:'off', pracLocked:'locked · 8 notes in 7 keys',
   // v15 (4.5): Sequence versus asks for two things — the keys (the length row) and how many notes it opens with. The second
@@ -135,7 +145,9 @@ export const SHARE = { text:'{name} scored {score}{rate} on No Excuses · {where
 export const ABOUT = { tier:['No ads, ever.','Every colour, background and sound pack open from day one, plus the colour wheel.','A star on your profile.'],
   supTitleOn:'Supporter · thank you', supTitleOff:'Support · A$1.99 · once', supTextOn:'Thank you — it keeps this going.', supTextOff:'A one-off, if you want to back it.',
   devOpen:'open everything is ON · every mode and cosmetic available', devProg:'progression ON · {u} of {nu} modes earned · {a} of {na} achievements',
-  devRuns:' · {r} runs on record · ', devSup:'supporter ON', devFree:'free tier · ads on' };
+  devRuns:' · {r} runs on record · ', devSup:'supporter ON', devFree:'free tier · ads on',
+  // v18 (B.26, build 32): a button per animation, dev only (S5). Each plays the real animation with nothing stored
+  devAnim:'animations · nothing is stored', devKeyIn:'key arrival', devSeg:'segment advance', devWhole:'key complete', devChest:'chest {n} opening' };
 // v14 (8.9): the `customise · {game} · colours are per game` line at the top is gone — the game chips and the group labels
 // under the preview say both, and the eyebrow was the first thing on a screen that did not need an introduction
 /* v17 (B.32): the two music rows. `track` is the per-game choice, `menu` the front-of-app loop's own switch. A locked
@@ -153,6 +165,9 @@ export const KEY = { title:'the key', hint:'tap a game · solo runs only',
   // v17 (§A.6.5 / A.6.7): the cleared count and the percentage together — the count is what a player acts on, the
   // percentage is what makes it move. It replaces the bare "0 of 31" line here and the same line goes on the menu
   count:'{done} of {total} · {pct}%', whole:'the key is whole', root:'{done}/{total}',
+  // v18 (B.15, amending A.6.5): the FRONT of the app says the percentage alone — "67% complete" — and the cleared count
+  // stays on the keys screen. B.17: once the player steps into Pro the number is re-based (progress/key.js frontPct)
+  menu:'{pct}% complete', menuWhole:'the key is whole · open the chest',
   cleared:'cleared', open:'not yet', floor:'{bar} or more', ceil:'{bar} or less',
   advance:'{game} · {name} cleared', toast:'Key · {game} · {name} cleared',
   none:'no bar set', mismatch:'{n} combination(s) have no clearance bar: {keys}',
@@ -164,7 +179,13 @@ export const KEY = { title:'the key', hint:'tap a game · solo runs only',
   soon:'Not set yet. What sits behind this key is still being decided — nothing here is generated, every bar is set by hand.',
   // 5.2: a clearance-bar row is a way IN. Tapping it starts that combination with the bar pinned at the top of the run,
   // through the same goal line an unlock uses (2.2) — one mechanism, not two
-  aim:'{name} · {want}', rowGo:'tap a row to go and try it' };
+  aim:'{name} · {want}', rowGo:'tap a row to go and try it',
+  // v18 (B.20 / B.16, build 32): the key is whole — the chest asks before it opens, and the opened chest asks about the next tier
+  complete:'{key} is whole', completeSub:'the chest is waiting on game select',
+  openAsk:'Open the chest?', openYes:'Open it', openNo:'Not yet',
+  proAsk:'Would you like to progress to {key}?', proWarn:'The front of the app will stop showing 100% — it counts {key} from here. This cannot be undone. Are you sure?', proYes:'Yes, on to {key}', proNo:'Not now', proToast:'{key} · the front of the app counts it now',
+  // B.19: the locked chests say which key they need and nothing about what is inside
+  chestNeeds:'needs {key}', chestGetKey:'get the key to unlock', chestKeyLine:'{key} opens it' };
 
 // the engines' own words
 export const SEQ = { copy:'copy the notes', yourTurn:'your turn', whoTurn:'{who} · your turn', watch:'round {n} · watch', round:'round {n}',
@@ -210,7 +231,7 @@ export const TIMING = { target:'target', stop:'tap to stop the timer', marker:'t
 export const REACTION = { wait:'wait for it', tap:'TAP', early:'too early', noTap:'no tap', reached:'{bud}ms reached', ms:' ms', quick:'quick', good:'good', slowWord:'slow',
   takes:'Player {n} takes it', tappedEarly:'Player {n} tapped early', draw:'draw', wins:'Player {n} wins',
   ruleTap:['tap','only','the'], ruleNow:['now','only','the'], wrongS:'wrong tap', over:'run over',
-  hudVs:'round {n} · best of {s}', hudNogoStreak:'shape {n} · {over} of {bud}ms', hudNogo:'round {n} of {s} · {h} of {p}', hudStreak:'attempt {n} · {over} of {bud}ms', hudSet:'{n} / {s}',
+  hudVs:'round {n} · best of {s}', hudNogoStreak:'round {n} · {over} of {bud}ms', hudNogo:'round {n} of {s} · {h} of {p}', hudStreak:'attempt {n} · {over} of {bud}ms', hudSet:'{n} / {s}',
   // v15 (3.5 / 3.6): the result reads down — what you did, what it is measured against, the difference, then where the run stands
   baseline:'baseline {n} ms', runTotal:'total {n} of {bud} ms', runAvg:'average {n} ms', earlyTap:'tapped early', earlyCost:'the attempt is spent' };
 export const SPOT = { count:['count','the'], find:['find','the'], howMany:'how many?', right:'right · 0 off', said:'you said {k} · {off} off', of5:' · {off} of 5', over:' · run over',

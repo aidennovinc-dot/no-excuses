@@ -87,5 +87,7 @@ export const ACH = [
   { id:'sp_fast',  g:'spot',     tier:'earned', name:'Spotter',       how:'Find · a Set under 20.00s in total', at:{d:'find',s:10} },
   { id:'sp_clean', g:'spot',     tier:'pro',    name:'No wrong taps', how:'Find · a Set with not one wrong tap', at:{d:'find',s:10} },
 ];
-// Author (v13, 11.3): one row per game, mode and length is generated in progress.js; `rec` is null until Aiden fills it in — a null record can never be beaten
-export const AUTHOR_RECORDS = {};
+/* v18 (B.24 / B.25, build 32): AUTHOR_RECORDS is RETIRED. It was the v13 11.3 idea — one row per combination against a
+   record Aiden would fill in at the final build — and it was never filled. The Author KEY is that idea done properly: the
+   `author` column of config/key-bars.js (B.27) is where his times live, the radar's third rung reads it (B.24) and the
+   Author achievement set is generated from it (B.25). A.5 still holds for that column: captured once, then frozen. */

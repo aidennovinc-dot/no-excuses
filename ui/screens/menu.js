@@ -8,7 +8,7 @@
    rendered before the sequence starts, so nothing about the layout can change while it plays. */
 import { KEY, MENU } from "../../config/copy.js";
 import { $, $$, T } from "../../core.js";
-import { keyPct } from "../../progress/key.js";
+import { frontPct, keyState } from "../../progress/key.js";
 import { emit, on } from "../../core/events.js";
 import { CHAL } from "../../core/platform.js";
 import { prefs, save } from "../../core/store.js";
@@ -34,8 +34,11 @@ function renderMenu(){ const first=firstRun(); const opening=menuWasFirst&&!firs
   /* v17 (§A.6.7): the key-1 percentage on the front of the app, reading the same keyPct() the keys screen reads. It is
      hidden on a profile that has not run anything — A.6.2 makes a new profile 0 of 30 · 0%, and handing a first-timer a
      number that says nothing has happened is the opposite of what §A.6.6 is for. Tapping it opens the keys screen. */
-  const mk=$('#menu-key'); const kp=keyPct();
-  mk.hidden=first; if(!first) mk.textContent=kp.done>=kp.total?KEY.whole:T(KEY.count,kp);
+  /* v18 (B.15 / B.17, build 32): the line is the PERCENTAGE ALONE — "67% complete" — amending A.6.5; the cleared count
+     stays on the keys screen. frontPct() is key 1's own number until the player steps into Pro, and re-based after. A
+     whole key 1 that has not been stepped past says so and points at the chest. */
+  const mk=$('#menu-key'); const pct=frontPct();
+  mk.hidden=first; if(!first) mk.textContent=!prefs.pro&&keyState().whole?KEY.menuWhole:T(KEY.menu,{pct});
   /* v13 (1.3): the card sits above the title; the box holds the requirement and what it opens, nothing else.
      v15 (2.2): it does NOT appear on a fresh profile's first menu open — a player who has not run anything yet is being
      told to play, not handed a target — and it labels itself Next unlock or Next achievement depending on which of the

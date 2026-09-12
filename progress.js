@@ -5,7 +5,7 @@
    screens and the run read them as they always did. Build 18 (refactor stage 4): reads and writes go to the one-key store's
    live record (core/store.js) — unlocked(), got(), Scores.runs() hand back the record's own maps and array. Nothing here touches the DOM. */
 
-import { AUTHOR_RECORDS, ACH as ACH_ROWS } from "./config/achievements.js";
+import { ACH as ACH_ROWS } from "./config/achievements.js";
 import { SCALES } from "./config/audio.js";
 import { ITEMS } from "./config/theme.js";
 import { BG_NAME, ITEM_WORD, PROGRESS, TOAST, UNLOCK_WORD, VERDICT } from "./config/copy.js";
@@ -141,24 +141,11 @@ const Scores = {
 
 /* ---------- achievements: per game, three tiers. progress() gives 0..1 for the bar; at{} is where tapping the row takes you ---------- */
 const ACH = ACH_ROWS.map(a=>{ const o=Object.assign({},a,{test:ACH_TEST[a.id]}); if(ACH_PROGRESS[a.id]) o.progress=ACH_PROGRESS[a.id]; if(ACH_LEFT[a.id]) o.left=ACH_LEFT[a.id]; return o; });
-// one row per game, mode and length. `rec` is null until Aiden fills it in — a null record can never be beaten, so the row stays locked and shows —
-function authorAch(){ const out=[]; for(const g in GAMES) for(const d of GAMES[g].modes) for(const sc of GC(g,d).lens){ const id=`au_${g}_${d}_${sc}`, rec=AUTHOR_RECORDS[id]; const lo=GC(g,d,sc).lower;
-    out.push({ id, g, tier:'author', name:`${GAMES[g].name}${MODE_NAME[d]?' · '+MODE_NAME[d]:''} · ${lenName(g,sc,d)}`, how:T(PROGRESS.beat,{rec:rec===undefined||rec===null?PROGRESS.none:scoreTxt(g,rec,d,sc)}), at:{d,s:sc},
-      test:r=>rec!==undefined&&rec!==null&&r.g===g&&r.d===d&&r.s===sc&&(lo?r.hits<=rec:r.hits>=rec) }); }
-  return out; }
-const achAll=()=>ACH.concat(authorAch());
-/* v14 (8.6): the radar is drawn against the AUTHOR's record, not against an internal curve — 1.0 is Aiden's number and a
-   better score pushes the shape outside the web. One ratio per game: the best any run of it managed against the Author row for
-   that exact mode and length, lower-is-better inverted so both directions read the same way. `null` where there is no Author
-   record to measure against — every row is null today (AUTHOR_RECORDS is empty until the final build, v13 11.3 / Open 5), and
-   the screen falls back to quality() for those games, which is what it has always drawn. */
-function authorRatio(g,runs){ let best=null;
-  for(const r of runs){ if(r.g!==g||r.practice) continue; const rec=AUTHOR_RECORDS[`au_${g}_${r.d}_${r.s}`];
-    if(rec===undefined||rec===null||!(rec>0)) continue;
-    const v=GC(g,r.d,r.s).lower ? (r.hits>0?rec/r.hits:0) : r.hits/rec;
-    if(Number.isFinite(v)&&(best===null||v>best)) best=v; }
-  return best; }
-const achById=id=>ACH.find(a=>a.id===id)||authorAch().find(a=>a.id===id);
+/* v18 (B.24 / B.25, build 32): authorAch() and authorRatio() are retired with AUTHOR_RECORDS. The Author KEY replaced both —
+   progress/key.js generates the three key achievement sets (keyAch) and the radar's rungs (radarOf) from the same tier data.
+   This file cannot import progress/key.js (it imports this one), so screens that need the key rows read them from there. */
+const achAll=()=>ACH;
+const achById=id=>ACH.find(a=>a.id===id);
 const got=()=>store.ach;
 /* v15 (2.5): `live` restricts the pass to the rows flagged live:1 in config/achievements.js — the ones whose test can only
    become more true as a run goes on — and is run from run/run.js on every live tick, so an achievement earned mid-run is in
@@ -216,4 +203,4 @@ function setPendingAim(v){ pendingAim=v; }
 function setPendingGoal(v){ pendingGoal=v; }
 
 
-export { ACH, Scores, UNLOCKS, achAll, achById, authorAch, authorRatio, bankLen, chalRun, checkAch, checkUnlocks, gameOpen, goalFor, got, isNew, isOpen, lenLock, lenNeed, lenNextLive, lenNextOf, lenOpen, lensOf, markSeen, needFor, newMark, nextAch, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, tierMin, tierOf, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict, verdictKey };
+export { ACH, Scores, UNLOCKS, achAll, achById, bankLen, chalRun, checkAch, checkUnlocks, gameOpen, goalFor, got, isNew, isOpen, lenLock, lenNeed, lenNextLive, lenNextOf, lenOpen, lensOf, markSeen, needFor, newMark, nextAch, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, tierMin, tierOf, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict, verdictKey };

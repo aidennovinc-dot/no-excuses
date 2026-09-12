@@ -1,20 +1,22 @@
-/* No Excuses — the three keys (v15 §5.3, build 26; themed at build 30, v17 §B.31). DATA ONLY (A2).
+/* No Excuses — the three keys (v15 §5.3, build 26; themed at build 30, v17 §B.31; re-themed and un-shelled at build 32,
+   v18 §B.22 / §B.27). DATA ONLY (A2).
 
    A.1 settles what the three are and there is no fourth dimension: key 1 is the normal clearance bars, key 2 a pro tier,
    key 3 the author's own times. They are difficulty tiers over the SAME combinations, not three separate collections —
-   so nothing here touches config/key-bars.js, which stays the one place a bar lives (#371, still blocked).
+   so nothing here touches config/key-bars.js, which stays the one place a bar lives. B.27: that file now carries all
+   three tiers per row (`bar`, `pro`, `author`), and A SHELL IS DERIVED FROM IT — a tier whose column has any empty row is
+   a shell, progress/key.js says so, and no flag lives here any more. Pro and Author start empty; A.2 says Aiden sets
+   every bar by hand, so no build may derive one. The day a column is full the tier simply starts counting.
 
-   KEYS 2 AND 3 ARE A SHELL. What actually sits behind them is register #372 and is undecided, and A.2 says Aiden sets
-   every bar by hand, so no build may derive one. `shell:true` is what the key screen reads to say "not decided yet"
-   instead of inventing a target — remove the flag on the day #372 is answered and the tier has data.
+   B.22 — ONE THEME PER TIER: LANTERN → CIRCUIT → THORN, from the proposal page Aiden reviewed 2026-09-10 ("the design for
+   the keys looked fucking amazing"), extracted by Cowork into ../_review/2026-09-10_key-themes-art.js. Visual only: the
+   TRACKS are unchanged — key:roots, key:frost, key:thorn in config/audio.js — so the loops still play what build 30 built.
+   A theme is: `style`, which ui/screens/key.js draws (a lantern's straight glowing spokes and rings, a circuit's
+   right-angled traces with corner dots and square nodes, a thorn's curved branches with spikes); `tint`, the light a
+   cleared root wears; `dim`, the unlit line; `ground`, behind the ring. Circuit is recoloured — Aiden's one instruction was
+   "not gold" — and wears Frost's white-blue as the trace (guess), so the page's copper is nowhere in the app.
 
-   B.31 — ONE THEME PER TIER: ROOTS → FROST → THORN, one tree across three keys. Aiden's brief was "a cool theme per
-   key… black with spikes and white accents for author", and his answer on which set to build was "implement whatever
-   you think is best". A theme is three things and no more: a `tint` the tier's glyph, ring and root wear, a `ground`
-   behind it, and its own loop in config/audio.js. They escalate the way the glyphs do — a living green, then a cold
-   white-blue, then black with white accents.
-
-   NEITHER FROST NOR THORN IS SEEN BEFORE CHEST 1 (§A.1). The key screen shows one tier until `prefs.chest1`, so a
+   NEITHER CIRCUIT NOR THORN IS SEEN BEFORE CHEST 1 (§A.1). The key screen shows one tier until `prefs.chest1`, so a
    first-timer meets one target per game rather than three, and neither of these loops can even be asked for.
 
    KEY_ART is the glyph per tier, and it gets progressively more elaborate as the difficulty rises (5.3): a plain bow
@@ -22,11 +24,11 @@
    three sit in a row and the selected one scales up without redrawing. */
 
 export const KEYS = [
-  { id: 'clear', name: 'The key', theme: 'Roots', track: 'key:roots', tint: '#7FC98B', ground: 'rgba(127,201,139,.10)',
+  { id: 'clear', name: 'The key', theme: 'Lantern', style: 'lantern', track: 'key:roots', tint: '#FFD08A', dim: '#57442C', ground: 'rgba(255,208,138,.12)',
     lede: 'Every clearance bar, once each. Beat one in a solo run and that combination is cleared for good.' },
-  { id: 'pro', name: 'Pro', shell: true, theme: 'Frost', track: 'key:frost', tint: '#BFE6FF', ground: 'rgba(191,230,255,.10)',
+  { id: 'pro', name: 'Pro', theme: 'Circuit', style: 'circuit', track: 'key:frost', tint: '#BFE6FF', dim: '#35506A', ground: 'rgba(191,230,255,.08)',
     lede: 'A harder bar on every combination, for a second pass at a game you already know.' },
-  { id: 'author', name: 'Author', shell: true, theme: 'Thorn', track: 'key:thorn', tint: '#FFFFFF', ground: 'rgba(0,0,0,.55)',
+  { id: 'author', name: 'Author', theme: 'Thorn', style: 'thorn', track: 'key:thorn', tint: '#FFFFFF', dim: '#4D4D4D', ground: 'rgba(0,0,0,.55)',
     lede: "The author's own times. The last thing left to beat." },
 ];
 

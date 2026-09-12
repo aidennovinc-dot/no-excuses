@@ -145,9 +145,11 @@ const QUALITY = {
      average against 1.00s; five rounds of that is 5.00s. Hidden was 800px, which is 5369ms at the ball's measured pace
      (6.71ms a pixel on a 390x844 phone) — 5400ms. Same standard, new unit, in both cases. */
   'timing':r=>1-Math.min(1,r.hits/5), 'timing:hidden':r=>1-Math.min(1,r.hits/5400),
-  'reaction':r=>1-Math.min(1,Math.max(0,r.hits-150)/350), 'reaction:nogo':r=>1-Math.min(1,Math.max(0,r.hits-250)/500),
+  'reaction':r=>1-Math.min(1,Math.max(0,r.hits-150)/350), // v19 (C.5): the Set reads ms over the 180ms gate now, so the curve is re-based by 180 (250 raw → 70), not retuned
+  'reaction:nogo':r=>1-Math.min(1,Math.max(0,r.hits-70)/500),
   'spot':r=>1-Math.min(1,r.hits/12), 'spot:find':r=>1-Math.min(1,Math.max(0,r.hits-8)/22),
-  'streak':r=>Math.min(1,r.hits/12), 'reaction:nogo:streak':r=>Math.min(1,r.hits/40),
+  'streak':r=>Math.min(1,r.hits/12), // v19 (C.6): the Streak counts targets on a 3000ms budget; two Sets' worth is the top of the curve
+  'reaction:nogo:streak':r=>Math.min(1,r.hits/30),
 };
 const quality=(g,d,s,r)=>GV(QUALITY,g,d,s,()=>0)(r);
 

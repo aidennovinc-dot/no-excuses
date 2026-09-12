@@ -333,6 +333,38 @@
   .tile.chest.opening .chestart .lid{animation:chestlid .9s cubic-bezier(.2,1.4,.4,1) both}
   @keyframes chestlid{0%{rotate:0deg}55%{rotate:-132deg}100%{rotate:-118deg}}
   @keyframes chestpop{0%{box-shadow:0 0 0 color-mix(in srgb,var(--ok) 0%,transparent)}40%{box-shadow:0 0 34px color-mix(in srgb,var(--ok) 70%,transparent)}100%{box-shadow:0 0 0 transparent}}
+  /* ---------- v18 (B.18, build 32): the outline fills with key-1 progress ----------
+     An svg rect over the picture, pathLength 1, dashed to the fraction progress/key.js hands over as --kf. Lilac, named
+     KEYFILL in config/theme.js and published as --keyfill — not green (L8), not white (L7), not the pressed amber. A
+     complete game closes the outline and washes the picture in the same colour, so it reads as done, not merely full. */
+  .tile .kfill{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;overflow:visible}
+  .tile .kfill rect{fill:none;stroke:var(--keyfill);stroke-width:2.4;vector-effect:non-scaling-stroke;stroke-dasharray:var(--kf,0) 1;stroke-dashoffset:0;opacity:.9;transition:stroke-dasharray .6s ease}
+  .tile.locked .kfill,.tile.unplayed .kfill{display:none}
+  .tile.kdone .pic{box-shadow:inset 0 0 0 100vmax color-mix(in srgb,var(--keyfill) 16%,transparent)}
+  .tile.kdone .kfill rect{stroke-width:3;opacity:1;filter:drop-shadow(0 0 4px color-mix(in srgb,var(--keyfill) 70%,transparent))}
+  .tile.kdone .name{color:var(--keyfill)}
+  /* B.19 / B.20: three chests. A ready chest wears its key above the lock; the opening (build 29) is EXTENDED — the key
+     drops into the lock and the lid swings, 1.6s where it was .9s, then the box flares. Chests 2 and 3 are hidden tiles
+     until chest 1 is open and take no cell of the grid while hidden. */
+  .tile.chest[hidden]{display:none}
+  .chestart .ckey{fill:none;stroke:var(--ok);stroke-width:1.4;stroke-linecap:round;opacity:0;transform-origin:20px 4px}
+  .tile.chest.ready .chestart .ckey{opacity:1;animation:chestkey 2.6s ease-in-out infinite}
+  @keyframes chestkey{50%{translate:0 -2px;filter:drop-shadow(0 0 4px var(--ok))}}
+  .tile.chest.opening .chestart .ckey{opacity:1;animation:chestkeyin 1.6s cubic-bezier(.4,0,.2,1) both}
+  @keyframes chestkeyin{0%{translate:0 -6px;opacity:1}45%{translate:0 10px;opacity:1;rotate:0deg}60%{translate:0 10px;rotate:90deg}100%{translate:0 10px;rotate:90deg;opacity:0}}
+  .tile.chest.opening .pic{animation:chestpop 1.6s ease-out}
+  .tile.chest.opening .chestart .lid{animation:chestlid 1.6s cubic-bezier(.2,1.4,.4,1) both}
+  @keyframes chestlid{0%{rotate:0deg}55%{rotate:0deg}80%{rotate:-132deg}100%{rotate:-118deg}}
+  @keyframes chestpop{0%{box-shadow:0 0 0 color-mix(in srgb,var(--ok) 0%,transparent)}70%{box-shadow:0 0 34px color-mix(in srgb,var(--ok) 70%,transparent)}100%{box-shadow:0 0 0 transparent}}
+  /* the grid can be five rows once the chests exist, so the screen scrolls */
+  #s-pick{overflow-y:auto;justify-content:flex-start;padding-top:max(24px,env(safe-area-inset-top))}
+  /* B.20 / B.16: the ask box, the lock box's shape */
+  #askwrap{position:absolute;inset:0;display:none;place-items:center;background:color-mix(in srgb,var(--ground) 84%,transparent);z-index:8;padding:24px}
+  #askwrap.on{display:grid}
+  #askbox{display:flex;flex-direction:column;gap:14px;align-items:center;background:var(--panel);border:1px solid var(--ok);padding:22px 20px;max-width:34ch;text-align:center;animation:rise .18s ease-out both}
+  #askbox h3{font-family:var(--title);font-size:14px;letter-spacing:.2em;text-transform:uppercase;color:var(--ok)}
+  #askbox p{font-size:14px;line-height:1.55;color:var(--ink)}
+  #askbox .row{gap:10px}
   /* the grid reveal (v11): tiles arrive one by one on the first visit; locked tiles wear a padlock that wipes off when the game opens */
   .tile.reveal{animation:tilein .5s ease-out both}
   /* v14 (2.1): unseen to being seen — each tile pulses up from nothing rather than sliding in */
@@ -387,6 +419,13 @@
   #radar polygon.me.past{stroke:var(--ok)}
   #radar circle.past{fill:var(--ok)}
   #radar text.past{fill:var(--ok)}
+  /* v18 (B.24, build 32): after chest 1 the web is the three rungs — key 1, Pro, Author — and a shell tier's rung is
+     dashed at no value (A.2). A vertex past the Author rung wears a little flame. */
+  #radar polygon.rung{stroke:var(--line)}
+  #radar polygon.rung[data-rung="author"]{stroke:var(--ink);opacity:.7}
+  #radar polygon.rung.shell{stroke-dasharray:3 4;opacity:.6}
+  #radar .flame path{fill:var(--ok);stroke:none;transform-origin:0 2px;animation:flame .9s ease-in-out infinite alternate}
+  @keyframes flame{0%{scale:1 1;opacity:.85}100%{scale:1.15 1.3;opacity:1}}
   .who{display:flex;align-items:baseline;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--mute)}
   .who input{font:inherit;color:var(--ink);background:none;border:0;border-bottom:1px solid var(--line);width:11ch;text-transform:uppercase;letter-spacing:.18em;padding:4px 0;outline:none;text-align:center}
   .who input:focus{border-color:var(--ink)}
@@ -542,6 +581,43 @@
   #s-key.first .keycount,#s-key.first #key-hint{animation:keyin .5s ease-out 1.9s both}
   /* 5.1: while the interlude plays, nothing on this screen invites a tap — the run is coming straight back */
   #s-key.auto .back,#s-key.auto .keyrow{opacity:.2;transition:opacity .3s ease}
+  /* ---------- v18 (B.22, build 32): the ring in the tier's style — Lantern, Circuit, Thorn ----------
+     config/keys.js names the style, the tint and the dim; ui/screens/key.js draws the shapes; this file only dresses them.
+     A segment is a <path pathLength="1"> in every style, so krootgrow and khaloglow above apply unchanged. A LIT SEGMENT
+     WEARS THE TIER'S TINT since B.22 — the page Aiden approved lights Lantern warm, Circuit white-blue and Thorn white;
+     the build-30 "cleared stays green" line is withdrawn for the ring only (green is still L8's mark everywhere else). */
+  .kroot{fill:none;stroke:var(--kdim,var(--line))}
+  .kroot.on{stroke:var(--ktint)}
+  #s-key[data-style="lantern"] .kroot.on{filter:drop-shadow(0 0 4px color-mix(in srgb,var(--ktint) 70%,transparent))}
+  #s-key[data-style="lantern"] .kroot{stroke-width:2.6}
+  .karc{fill:none;stroke:var(--ktint);stroke-width:1.4;opacity:.55;filter:drop-shadow(0 0 5px color-mix(in srgb,var(--ktint) 60%,transparent))}
+  #s-key[data-style="circuit"] .kroot{stroke-width:2.2;stroke-linecap:square}
+  #s-key[data-style="circuit"] .kroot.on{filter:drop-shadow(0 0 2px color-mix(in srgb,var(--ktint) 50%,transparent))}
+  .kdot2{fill:var(--ground);stroke:var(--kdim,var(--line));stroke-width:1;transition:fill .35s ease,stroke .35s ease}
+  .kdot2.on{fill:var(--ktint);stroke:var(--ktint)}
+  #s-key[data-style="circuit"] .kdot{rx:0}
+  #s-key[data-style="thorn"] .kroot{stroke-width:1.6}
+  #s-key[data-style="thorn"] .kroot.on{filter:none}
+  .kthorn{fill:var(--kdim,var(--line));stroke:none;transition:fill .35s ease}
+  .kthorn.on{fill:var(--ktint)}
+  #s-key[data-style="thorn"] .khub{stroke:var(--ktint);opacity:.9;stroke-width:.8}
+  #s-key[data-style="thorn"] #key-main{background:#000}
+  .khalo{fill:none;stroke:var(--ktint)}
+  @keyframes krootgrow{0%{opacity:0;stroke-width:6;filter:drop-shadow(0 0 7px var(--ktint))}45%{opacity:1;stroke-width:6}100%{opacity:1;stroke-width:3;filter:none}}
+  .kglyph path{fill:none;stroke:inherit}
+  .knode.lit .kdot{stroke:var(--ktint)}
+  .knode.home .kdot{fill:var(--ktint);stroke:var(--ktint)}
+  .knode.home .knum{fill:var(--ktint)}
+  .kglyph.whole{stroke:var(--ktint);filter:drop-shadow(0 0 8px color-mix(in srgb,var(--ktint) 60%,transparent))}
+  /* B.23: the ring's own ground absorbs a tap (its act is silence), and each root has a wide invisible hit line */
+  .kground{cursor:default}
+  .khit2{fill:none;stroke:transparent;stroke-width:22;stroke-linecap:round;cursor:pointer;pointer-events:stroke}
+  /* B.20: the whole-key moment. The hub glyph turns and flares, every root glows once, the count line lands */
+  @keyframes kwholeglyph{0%{rotate:0deg;scale:1}35%{rotate:-18deg;scale:1.25;filter:drop-shadow(0 0 14px var(--ktint))}70%{rotate:8deg;scale:1.12}100%{rotate:0deg;scale:1;filter:drop-shadow(0 0 8px color-mix(in srgb,var(--ktint) 60%,transparent))}}
+  #s-key.kwhole .kglyph{animation:kwholeglyph 2.2s cubic-bezier(.3,.9,.3,1.1) both;transform-box:fill-box;transform-origin:center}
+  #s-key.kwhole .khalo{animation:khaloglow 2.85s ease-out both;filter:blur(5px)}
+  #s-key.kwhole .keycount{animation:keyin .6s ease-out .9s both;color:var(--ktint)}
+  #s-key.kwhole .khub{animation:hubin 1.2s cubic-bezier(.2,.9,.3,1.2) both;transform-box:fill-box;transform-origin:center}
 
 /* ==================================================================
    customise — ui/screens/customise.js
@@ -1113,6 +1189,10 @@
   .rxpane .rxshape{width:34vmin;height:34vmin;background:var(--sq-live)}
   .rxpane .rxshape.circle{border-radius:50%}
   .rxpane .rxshape.tri{clip-path:polygon(50% 0,100% 100%,0 100%)}
+  /* v19 (C.3, build 32): two more shapes so a Set's five rounds draw on five. A diamond is a square on its point and is
+     never rotated (it would become the square); a hexagon is drawn flat-topped and may turn 30° */
+  .rxpane .rxshape.diamond{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+  .rxpane .rxshape.hex{clip-path:polygon(25% 3%,75% 3%,100% 50%,75% 97%,25% 97%,0 50%)}
   .rxmsg{position:absolute;left:0;right:0;top:16%;text-align:center;font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);line-height:1.8}
   .rxmsg b{display:block;font-size:clamp(48px,16vw,110px);color:var(--ink);letter-spacing:0;font-variant-numeric:tabular-nums;font-weight:700}
   .rxmsg b.fb{font-size:clamp(30px,9vw,60px);font-family:var(--title);letter-spacing:.08em;margin-bottom:10px;line-height:1.2}
@@ -1124,6 +1204,8 @@
   .rxrule i.square{border-radius:1px}
   .rxrule i.circle{border-radius:50%}
   .rxrule i.tri{clip-path:polygon(50% 0,100% 100%,0 100%)}
+  .rxrule i.diamond{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+  .rxrule i.hex{clip-path:polygon(25% 3%,75% 3%,100% 50%,75% 97%,25% 97%,0 50%)}
   /* v14 (6.22): white is the WHOLE screen again. The v10 square with burst lines was the preview screen's picture of Flash,
      not the game — the lines are gone and .rxbox with them, so the lit pane is the plain fill defined above */
   .rxpane.hit .rxmsg{z-index:2}
@@ -1133,6 +1215,8 @@
   #rxbar i{display:inline-block;width:20px;height:20px;background:var(--sq-live);vertical-align:-4px;margin:0 4px}
   #rxbar i.circle{border-radius:50%}
   #rxbar i.tri{clip-path:polygon(50% 0,100% 100%,0 100%)}
+  #rxbar i.diamond{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+  #rxbar i.hex{clip-path:polygon(25% 3%,75% 3%,100% 50%,75% 97%,25% 97%,0 50%)}
   #rxbar b{color:var(--ok);font-weight:700}
   .rxpane .rxmsg{top:22%}
 

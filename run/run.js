@@ -22,7 +22,7 @@ import { makeTimers, tapTime } from "../core/timers.js";
 import * as hud from "../games/_shared/hud.js";
 import { ENGINES, GAMES, GC, SHARED2, VERSUS, lenName, versusOf } from "../games/registry.js";
 import { Scores, UNLOCKS, bankLen, chalRun, checkAch, checkUnlocks, goalFor, isOpen, lenNextLive, lenNextOf, lenOpen, lensOf, pendingAim, pendingGoal, setPendingAim, setPendingGoal, unlockHtml, unlockName, unlockToast, unlocked } from "../progress.js";
-import { checkKey } from "../progress/key.js";
+import { checkKey, checkKeyAch } from "../progress/key.js";
 import { scoreTxt } from "../ui/format.js";
 import { game as showGame } from "../ui/router.js";
 import { applyPrefs } from "../ui/theme.js";
@@ -193,7 +193,11 @@ function finish(res){
      ad-break callback — so a player who closed the app on the ad, or never got that far, lost the lot. The result screen
      still SHOWS the toasts and still animates the key; it no longer decides whether any of it was written down.
      Two-player earns nothing (L10); practice and challenge runs are turned away inside the three functions themselves. */
-  const fresh=(two?[]:checkUnlocks(run)).concat(freshLen), ach=two?[]:checkAch(run), adv=checkKey(run,two);
+  /* v18 (B.25, build 32): THE KEY IS BANKED FIRST. The three key achievement sets test "every bar of this game is cleared",
+     so the clear this run just made has to be in the store before the row that it completes is asked — the order used to
+     be achievements then key, which would have made every "clear every bar" row land one run late. */
+  const adv=checkKey(run,two);
+  const fresh=(two?[]:checkUnlocks(run)).concat(freshLen), ach=two?[]:checkAch(run).concat(checkKeyAch(run));
   // the result screen takes it from here: the header, the ad break, the unlock and achievement toasts (ui/screens/result.js)
   emit('run:finish',{run,isBest,two,fresh,ach,adv});
 }
