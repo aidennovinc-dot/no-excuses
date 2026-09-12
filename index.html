@@ -9,7 +9,12 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syncopate:wght@700&family=Archivo:wght@500;800&family=JetBrains+Mono:wght@500;700&display=swap">
+<!-- v18 (B.32, build 33): the fonts are ours now — @font-face lives at the top of styles/app.css and the files in
+     fonts/. The title's two are preloaded because they are on screen before anything else is: Syncopate is the wordmark,
+     Archivo the menu under it. `crossorigin` is not optional even same-origin — a font is fetched in CORS mode, and a
+     preload without it fetches the file a second time. The mono face is small text and can swap in. -->
+<link rel="preload" href="fonts/syncopate-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/archivo-var.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="styles/app.css">
 
 </head><body>
@@ -22,13 +27,14 @@
   <div style="height:6px"></div>
   <button data-act="go" class="item glow" data-go="s-pick">Play</button>
   <button data-act="go" class="item glow" data-go="s-board">Scores</button>
-  <!-- v17 (B.21, build 29): ONE item, two tabs. v15 (2.4) split Unlocks from Achievements because they are different
+  <!-- v18 (B.31, build 33): ONE item, THREE tabs. v15 (2.4) split Unlocks from Achievements because they are different
        things — an unlock opens something, an achievement marks something you already have — and the split survives as
-       the tabs, Unlocks first because unlocks outrank achievements (2.2). What went is the second row on the menu -->
+       the tabs, Game unlocks first because unlocks outrank achievements (2.2). Build 29 took the second row off this
+       menu and build 33 takes the third: Customise is where the achievements one tab across pay out, so it lives with
+       them. Keys stays its own row — it is a second progression system and nothing about it is a picture of the first -->
   <button data-act="go" class="item glow" data-go="s-prog">Progress</button>
   <!-- v15 (5.3): "Keys", plural — three tiers over the same combinations (A.1), the shell for #372 -->
   <button data-act="go" class="item glow" data-go="s-key">Keys</button>
-  <button data-act="go" class="item glow" data-go="s-custom">Customise</button>
   <button data-act="go" class="item glow" data-go="s-about">About</button>
   <button data-act="go" class="item glow" data-go="s-testing" data-dev>Testing</button>
   <!-- v17 (§A.6.7): percentage complete, key 1 only. The same line the keys screen carries, on the front of the app, so
@@ -92,20 +98,52 @@
   <div class="scroll"><table><thead id="runs-h"></thead><tbody id="runs"></tbody></table></div>
 </section>
 
-<!-- v17 (B.21, build 29): PROGRESS — the chain and the achievements, two tabs, one screen (ui/screens/progress.js,
-     the merge of the old unlocks.js and achievements.js; A4 forbids a host screen importing either). Every line on the
-     Unlocks tab is read from UNLOCKS + lenLock (L6) — nothing about a requirement is written here. Shell, still, on the
-     key row: what sits behind keys 2 and 3 is register #372 and is undecided -->
+<!-- v18 (B.31, build 33): PROGRESS — game unlocks, customise and achievements, three tabs, one screen
+     (ui/screens/progress.js, the merge of the old unlocks.js, achievements.js and customise.js; A4 forbids a host
+     screen importing any of them). Every line on the Game unlocks tab is read from UNLOCKS + lenLock (L6) — nothing
+     about a requirement is written here, and a cosmetic's requirement is on the Achievements tab and nowhere else, so
+     no requirement is on this screen twice. Shell, still, on the key row: what sits behind keys 2 and 3 is #372 -->
 <section class="screen top" id="s-prog" data-back="s-menu">
   <button data-act="back" class="back">&larr; BACK</button>
   <div class="chips ptabs" id="prog-tabs">
-    <button data-act="ptab" class="chip" data-tab="unl">Unlocks</button>
+    <button data-act="ptab" class="chip" data-tab="unl">Game unlocks</button>
+    <button data-act="ptab" class="chip" data-tab="cus">Customise</button>
     <button data-act="ptab" class="chip" data-tab="ach">Achievements</button>
   </div>
   <div class="ptab" id="p-unl">
     <div class="eyebrow" id="unl-hint"></div>
     <div class="hint" id="unl-lede"></div>
     <div class="unl scroll" id="unl-list"></div>
+  </div>
+  <!-- the Customise tab. v14 (8.9): no eyebrow line — the game chips and the group labels under the preview say both
+       what this is and that it is per game, and it was the first thing on a screen that needed no introduction -->
+  <div class="ptab" id="p-cus" hidden>
+    <div class="pv" id="pv" data-g="quick-tap">
+      <div class="pvqt"><div class="pad l"><div class="sq" id="pv0"></div></div><div class="pad r"><div class="sq" id="pv1"></div></div><div class="pad l up"><div class="sq" id="pv2"></div></div><div class="pad r up"><div class="sq" id="pv3"></div></div></div>
+      <div class="pvdots"><b class="ld" id="pvlead"></b><b id="pvdot"></b></div>
+      <div class="pvhold"><svg viewBox="0 0 160 100" id="pvhgrow"><circle class="t" cx="80" cy="52" r="30"/><circle class="m" cx="80" cy="52" r="0"/></svg><svg viewBox="0 0 160 100" id="pvhcut"><path class="pa" d="M50 22h60v60H50z"/><path class="pb" d="M50 22h60v60H50z"/><line id="pvhline" x1="50" y1="22" x2="50" y2="82"/></svg><div class="pvtxt" id="pvhtxt" style="bottom:6%"></div></div>
+      <div class="pvseq"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="pvtm"><div class="pvtxt tgt">target<b>7.00</b></div><div class="pvtxt clk"><b id="pvclk">0.00</b></div><div class="pvtxt" id="pvtmres" style="bottom:8%"></div></div>
+      <div class="pvrx" id="pvrx">wait for it</div>
+      <div class="pvsp" id="pvsp"></div>
+      <div id="pvg"></div>
+    </div>
+    <div class="chips" id="pv-g"></div>
+    <!-- v18 (B.30): every group carries its own locked line, UNDER its row. It was one line under the preview plus a
+         toast, and the toast is an overlay pinned to the top of the screen — tap a locked target colour and the word
+         landed across the rows above it, unreadable. At most one of these is ever filled -->
+    <div class="cgroup"><div class="clabel">Target colour</div><div class="sw" data-set="sq" id="c-sq"></div><div class="lockline" data-act="pvlock" id="lk-sq"></div></div>
+    <div class="cgroup" id="g-lead"><div class="clabel">Lead colour</div><div class="sw" data-set="lead" id="c-lead"></div><div class="lockline" data-act="pvlock" id="lk-lead"></div></div>
+    <div class="cgroup" id="g-cut"><div class="clabel">Cut pieces</div><div class="sw" data-set="cut" id="c-cut"></div><div class="lockline" data-act="pvlock" id="lk-cut"></div></div>
+    <div class="cgroup"><div class="clabel">Background</div><div class="sw" data-set="bg" id="c-bg"></div><div class="lockline" data-act="pvlock" id="lk-bg"></div></div>
+    <div class="cgroup"><div class="clabel">Tap sound</div><div class="chips" data-set="snd" id="c-snd"></div><div class="lockline" data-act="pvlock" id="lk-snd"></div></div>
+    <div class="cgroup" id="g-scale"><div class="clabel">Scale</div><div class="chips" data-set="scale" id="c-scale"></div><div class="lockline" data-act="pvlock" id="lk-scale"></div></div>
+    <div class="cgroup" id="g-rate"><div class="clabel">Taps per second</div><div class="chips" data-set="rate" id="c-rate"></div><div class="lockline" data-act="pvlock" id="lk-rate"></div></div>
+    <!-- v18 (B.28): ONE music row, and it is the track this game plays. Not on / off, not a Preview button, not a
+         second row for which one — the row IS the track, named, and a tap plays it. Padlocked until chest 2 (A.3),
+         saying nothing about what opens it (A.1); dev unlock-all opens it so the three can be compared on the phone -->
+    <div class="cgroup"><div class="clabel">Music</div><div class="chips" data-set="track" id="c-track"></div></div>
+    <div class="cgroup"><div class="clabel">Menu music</div><div class="chips" data-set="menumusic" id="c-menumusic"></div></div>
   </div>
   <div class="ptab" id="p-ach" hidden>
     <div class="eyebrow" id="ach-hint"></div>
@@ -132,41 +170,17 @@
   <div id="key-shell" hidden></div>
 </section>
 
-<section class="screen top" id="s-custom" data-back="s-menu">
-  <button data-act="back" class="back">&larr; BACK</button>
-  <div class="pv" id="pv" data-g="quick-tap">
-    <div class="pvqt"><div class="pad l"><div class="sq" id="pv0"></div></div><div class="pad r"><div class="sq" id="pv1"></div></div><div class="pad l up"><div class="sq" id="pv2"></div></div><div class="pad r up"><div class="sq" id="pv3"></div></div></div>
-    <div class="pvdots"><b class="ld" id="pvlead"></b><b id="pvdot"></b></div>
-    <div class="pvhold"><svg viewBox="0 0 160 100" id="pvhgrow"><circle class="t" cx="80" cy="52" r="30"/><circle class="m" cx="80" cy="52" r="0"/></svg><svg viewBox="0 0 160 100" id="pvhcut"><path class="pa" d="M50 22h60v60H50z"/><path class="pb" d="M50 22h60v60H50z"/><line id="pvhline" x1="50" y1="22" x2="50" y2="82"/></svg><div class="pvtxt" id="pvhtxt" style="bottom:6%"></div></div>
-    <div class="pvseq"><i></i><i></i><i></i><i></i><i></i></div>
-    <div class="pvtm"><div class="pvtxt tgt">target<b>7.00</b></div><div class="pvtxt clk"><b id="pvclk">0.00</b></div><div class="pvtxt" id="pvtmres" style="bottom:8%"></div></div>
-    <div class="pvrx" id="pvrx">wait for it</div>
-    <div class="pvsp" id="pvsp"></div>
-    <div id="pvg"></div>
-  </div>
-  <button data-act="pvlock" id="pvlock"></button>
-  <div class="chips" id="pv-g"></div>
-  <div class="cgroup"><div class="clabel">Target colour</div><div class="sw" data-set="sq" id="c-sq"></div></div>
-  <div class="cgroup" id="g-lead"><div class="clabel">Lead colour</div><div class="sw" data-set="lead" id="c-lead"></div></div>
-  <div class="cgroup" id="g-cut"><div class="clabel">Cut pieces</div><div class="sw" data-set="cut" id="c-cut"></div></div>
-  <div class="cgroup"><div class="clabel">Background</div><div class="sw" data-set="bg" id="c-bg"></div></div>
-  <div class="cgroup"><div class="clabel">Tap sound</div><div class="chips" data-set="snd" id="c-snd"></div></div>
-  <div class="cgroup" id="g-scale"><div class="clabel">Scale</div><div class="chips" data-set="scale" id="c-scale"></div></div>
-  <div class="cgroup" id="g-rate"><div class="clabel">Taps per second</div><div class="chips" data-set="rate" id="c-rate"></div></div>
-  <div class="cgroup"><div class="clabel" id="c-music-label">Music</div><div class="chips" data-set="music" id="c-music"></div></div>
-  <!-- v17 (B.32): the track this game plays, and the menu loop's own switch. The row is a padlock until chest 2 (A.3)
-       and says nothing about what opens it (A.1); dev unlock-all opens it so the options can be compared on the phone -->
-  <div class="cgroup"><div class="clabel" id="c-track-label">Track</div><div class="chips" data-set="track" id="c-track"></div></div>
-  <div class="cgroup"><div class="clabel">Menu music</div><div class="chips" data-set="menumusic" id="c-menumusic"></div></div>
-</section>
-
 <section class="screen" id="s-about" data-back="s-menu">
   <button data-act="back" class="back">&larr; BACK</button>
   <div class="wordmark" style="font-size:18px">No Excuses</div>
   <div class="explain">A passion project of simple games of pure skill and minimal frills.<br><br>If you'd like to remove ads, add customisation, and show your support, tap below.</div>
   <button data-act="support" class="support" id="support"><b id="support-title">Support · A$1.99 · once</b><small id="support-text">No ads, ever. Every colour, background and sound pack open from day one, plus the colour wheel. A pro 60-second length in Quick Tap and Dots, with its own boards. A star on your profile.</small></button>
   <div class="tierbox" id="tierbox"></div>
-  <div class="hint">v0.32 · batch 14 · keys and chests · 12 sept 2026</div>
+  <!-- build 33 (the beta paragraph, item 1): the way back from a tester. A mailto built in ui/screens/about.js with the
+       build, the device and the last run filled in. An <a>, so the link does its own work; data-act="none" is only the
+       click sound — nothing here knows what a mail client is, and nothing is sent without the tester's own send button -->
+  <a class="item sub" id="feedback" data-act="none" href="#">Send feedback</a>
+  <div class="hint">v0.33 · batch 14 · keys and chests · 12 sept 2026</div>
 </section>
 
 <section class="screen" id="s-testing" data-back="s-menu" data-dev>
@@ -247,12 +261,12 @@
 
 <script type="module" src="./boot.js"></script>
 
-<div id="build">v0.32</div>
+<div id="build">v0.33</div>
 <button id="update">New build available — tap to reload</button>
 <script>
 // build check: version.json is fetched with no-store, so a stale cached page still learns a newer build exists
 (function(){
-  const BUILD="32";
+  const BUILD="33";
   async function check(){
     try{
       const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});

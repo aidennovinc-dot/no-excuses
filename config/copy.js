@@ -88,12 +88,15 @@ export const UNLOCKS_SCREEN = { title:'unlocks', hint:'tap a locked row to see w
   // v17 (B.9): the number is a placeholder now. The count moved when Sequence lost 5 keys and it will move again the next
   // time a mode is added, and a written-out "thirty-one" is exactly the second copy of a fact L6 forbids everywhere else
   keyLine:'The first key is earned here. Beat a clearance bar once in a solo run and it is cleared for good — the key screen has all {n}.' };
-/* v17 (B.21, build 29): Unlocks and Achievements are ONE menu item with two tabs. They were split at build 23 (v15
-   2.4) because they are different things — an unlock opens something, an achievement marks something you already have —
-   and that distinction is worth keeping; what was not worth keeping is two rows on a menu that already has seven. The
-   split survives as the two tabs, in the same order and for the same reason (unlocks outrank achievements, 2.2). The
-   screen remembers which tab was last open, per profile. L6 is quoted: "the Unlocks screen" is a tab now. */
-export const PROGRESS_SCREEN = { title:'progress', unl:'Unlocks', ach:'Achievements',
+/* v18 (B.31, build 33): THREE tabs on one menu item. Unlocks and Achievements were split at build 23 (v15 2.4) because
+   they are different things — an unlock opens something, an achievement marks something you already have — and that
+   distinction is worth keeping; two menu rows for it was not, so build 29 made them tabs. Build 33 brings Customise in
+   beside them: nearly every cosmetic in it is opened by an achievement one tab across. Unlocks becomes GAME unlocks,
+   which says what it holds (the games, modes and lengths that gate play) and what it does not (a cosmetic, whose
+   requirement stays on the Achievements tab — so no requirement is written twice on a screen that now shows all three).
+   The order is unchanged and so is the reason for it: unlocks outrank achievements (2.2). The screen remembers which
+   tab was last open, per profile. L6 is quoted: "the Unlocks screen" is the Game unlocks tab now. */
+export const PROGRESS_SCREEN = { title:'progress', unl:'Game unlocks', cus:'Customise', ach:'Achievements',
   unlHint:'tap a locked row to see what it takes', achHint:'tap one to go play it' };
 /* v17 (B.23 / B.24, build 29): the game-select grid says what order the games open in, and where that order ENDS.
    The chest needs key 1 — every clearance bar cleared — and A.1 forbids anything about pro or author appearing before
@@ -147,13 +150,23 @@ export const ABOUT = { tier:['No ads, ever.','Every colour, background and sound
   devOpen:'open everything is ON · every mode and cosmetic available', devProg:'progression ON · {u} of {nu} modes earned · {a} of {na} achievements',
   devRuns:' · {r} runs on record · ', devSup:'supporter ON', devFree:'free tier · ads on',
   // v18 (B.26, build 32): a button per animation, dev only (S5). Each plays the real animation with nothing stored
-  devAnim:'animations · nothing is stored', devKeyIn:'key arrival', devSeg:'segment advance', devWhole:'key complete', devChest:'chest {n} opening' };
+  devAnim:'animations · nothing is stored', devKeyIn:'key arrival', devSeg:'segment advance', devWhole:'key complete', devChest:'chest {n} opening',
+  /* build 33: Send feedback, the beta channel's missing half. GitHub Pages was already the way a tester gets the build;
+     what was missing was the way back. It is a mailto and nothing more — no form, no endpoint, no third party — with
+     the build, the device and the last run filled in, because those are the three things a bug report is useless
+     without and the three a tester will not think to include. The body is pre-filled; what they write is their own. */
+  fb:'Send feedback', fbTo:'info@somethingstrange.com.au', fbSubject:'No Excuses {build} — feedback',
+  fbBody:'What happened:\n\n\nWhat you expected:\n\n\n---\nBuild {build} · {when}\n{device}\nLast run: {run}',
+  fbNoRun:'none yet' };
 // v14 (8.9): the `customise · {game} · colours are per game` line at the top is gone — the game chips and the group labels
 // under the preview say both, and the eyebrow was the first thing on a screen that did not need an introduction
 /* v17 (B.32): the two music rows. `track` is the per-game choice, `menu` the front-of-app loop's own switch. A locked
    track row says NOTHING about what opens it — A.1 forbids the pro and author tiers appearing anywhere before chest 1,
    and "a plain padlock, no tier text" is the whole of the requirement. */
-export const CUSTOM = { music:'Music · {game}', track:'Track · {game}', menu:'Menu music', preview:'Preview', lockLine:'Locked · {name} — {how} · <u>show me</u>', wheel:'{word} · {game} · drag to pick' };
+/* v18 (B.28, build 33): one music row, called Music, and it is the track. `music` / `track` / `preview` are gone with
+   the three controls they labelled — the row is the track's own name and a tap plays it. `lockLine` is B.30's line,
+   which now sits under the row it is about instead of over it. */
+export const CUSTOM = { menu:'Menu music', lockLine:'Locked · {name} — {how} · <u>show me</u>', wheel:'{word} · {game} · drag to pick' };
 // v14 (8.1): a row whose requirement is a SET of things says which are left, not just how far along the bar is.
 // v14 (8.5): a secret row shows its own `hint` where an ordinary row shows `how`; `stretch` is the fallback for one without
 export const ACH_SCREEN = { all:'All', done:'done', secret:'secret', hidden:'???', progress:' · {p}% of the way there', stretch:'A stretch past the stretch. You will know.', inGame:' · in {game}', left:' · still to play: {names}' };

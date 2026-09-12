@@ -86,15 +86,23 @@ navigate with `show(id, opts)` and never import another screen. The engines impo
 the run or each other.
 
 **Screens — since build 18.** One file per screen under `ui/screens/`, each owning its DOM: `menu`,
-`pick`, `board`, `progress`, `key`, `customise`, `about`, `testing`, `pass`, `result`, `lockbox`; `index.js`
+`pick`, `board`, `progress`, `key`, `about`, `testing`, `pass`, `result`, `lockbox`; `index.js`
 imports them all. **`progress.js` is new at build 29 (v17 B.21)** — the merge of `unlocks.js` (build 23, v15 2.4) and
 `achievements.js` into ONE screen with two tabs, Unlocks first because unlocks outrank achievements everywhere the next
-thing is surfaced (2.2). It is one file and not a host importing the other two **because A4 forbids a screen importing a
-screen**, and the gate fails on it. Only the tab that is up is rendered; `prefs.progTab` remembers which. Every line on
-the Unlocks tab is read from `UNLOCKS` and `lenNeed` (L6); nothing about a requirement is written in that file or in its
-markup. Its key row is a **shell** on purpose: what sits behind keys 2 and 3 is register #372 and is undecided, so it
-says only what is true today. `show('s-prog', {ach:id})` opens the achievements tab at a row — the toast and Customise
-both do it. **`key.js` is new at build 22 (v14 §9.2–9.7)** — the second progression system, its own menu item
+thing is surfaced (2.2). **`customise.js` joined it at build 33 (v18 B.31)** and the screen is three tabs: *Game
+unlocks · Customise · Achievements*. Aiden's reason — "anything that opens customisation goes under customise;
+achievements is just extra" — is that nearly every cosmetic is paid for by an achievement one tab across, so the two
+belong on one screen. Unlocks became **Game** unlocks in the same move: it holds the games, modes and lengths that gate
+PLAY, and a cosmetic's requirement stays on the Achievements tab, so no requirement is written twice on a screen that
+now shows all three. It is one file and not a host importing the other three **because A4 forbids a screen importing a
+screen**, and the gate fails on it. Only the tab that is up is rendered; `prefs.progTab` remembers which, and takes
+three values since build 33. Every line on the Game unlocks tab is read from `UNLOCKS` and `lenNeed` (L6); nothing about
+a requirement is written in that file or in its markup. Its key row is a **shell** on purpose: what sits behind keys 2
+and 3 is register #372 and is undecided, so it says only what is true today. `show('s-prog', {ach:id})` opens the
+Achievements tab at a row — the toast does it; an earned achievement's payout is a tab change inside the screen now,
+not a navigation. **The menu row and the screen id did not move**: B.31 names the tab titles, not the row, and Progress
+covers unlocks and achievements outright while Customise is what they pay out. Keys stays its own menu item — it is the
+second progression system and nothing about it is a picture of the first. **`key.js` is new at build 22 (v14 §9.2–9.7)** — the second progression system, its own menu item
 below Progress (below Achievements until build 29 merged the two). **Rebuilt at build 26 (v15 §5) as KEYS, plural:** a row of three tiers on top, the ring and its panel
 under whichever is selected, and a shell screen for keys 2 and 3. Three ways in now: from the menu; from a result screen
 that just cleared a bar with `{advance, from:'s-over'}` (Back returns to the run); and from the same screen with

@@ -197,3 +197,22 @@ stamped 4) in the build-13 fixture and the B.2 / B.4 ladder test, `#375a`'s `blo
 dealer (`dealRound`), B.31's theme names (Lantern → Circuit → Thorn, tracks unchanged), B.33's interlude wait (`3900 +
 arrive`), A.6.7's menu line (`N% complete`), build 29's chest opening (it asks first, and runs 1.6s), and 8.10's Testing
 count (ten controls). The B.1b Set drive loop was lengthened to outlast a round of up to eighteen shapes.
+
+**Build 33 (v18, batch 14 · §B.28–§B.32)** — statically: `ui/screens/customise.js` is deleted, `index.js` no longer
+imports it, `#s-custom` and its menu row are gone from the markup and `#p-cus` is a tab of `s-prog`; the three tabs read
+*Game unlocks · Customise · Achievements* in that order and Keys is still its own menu item; `cleanPrefs` shape-checks
+all three values of `progTab` (B.31). Driven: each tab renders and only the one that is up is shown — unlock rows,
+customise groups and achievement rows all non-empty — the tab last open is stored, and an earned achievement's payout
+opens the **Customise tab** without navigating anywhere, because it is the same screen now (B.31). The on / off row,
+both Preview buttons and the per-game row labels are gone from markup and screen alike; the Music row is the three
+tracks by name with exactly one selected and no button reading Preview, On or Off (B.28) — and the build-30 locked-row
+assertion was **amended both ways**: it counts ONE button now, not a track plus a preview, and asserts the label is
+`Music`. `cut()` exists in `audio.js` and both `run()` and `stop()` call it, so no bar of an outgoing track can ring
+over the incoming one, and menu loop → preview → loop again runs clean end to end (B.29). A locked target colour on a
+fresh profile writes its requirement into `#lk-sq` — inside the same `.cgroup`, positioned below the swatch row, the
+only filled line on the screen, with the toast **not** on — and tapping that line opens the achievement that earns it
+(B.30). No request to `fonts.googleapis.com` or `fonts.gstatic.com` is made anywhere in the whole run (every URL the
+page asks for is logged from the first navigation); five `@font-face` rules point at three files that exist in
+`fonts/`, every one `font-display:swap`; the Google `<link>` is gone; the title's two are preloaded with `crossorigin`;
+and `document.fonts` resolves with the page's own faces (B.32). `IGNORED_REQUEST` no longer forgives the font hosts —
+S4's "Stage 5 bundles them" is done, so a request to either is a regression rather than a tolerated failure.

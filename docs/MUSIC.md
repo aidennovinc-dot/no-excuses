@@ -14,9 +14,20 @@ VERDICT_FX) is in the `config/` paragraph of `RULES-HISTORY.md` → Structure, a
   each with its own wave, its own step pattern across one bar, and a role (`pad` `stab` `arp` `lead` `bass` `sub`
   `drone`) — plus `beats`, the bar length, and since build 30 `per` `form` `vol` on the track and `lv` `lpv` `lp` `q`
   `hold` `ct` on a voice. `audio.js` schedules exactly what the data says and knows nothing else about any track.
-  **Three options per game, keyed `'<game>:<name>'` — the ids are NAMES since build 30 (v17 B.30)**, because B.32 puts
-  them on a row in Customise and "Tide / Glass / Breath" is the only version of that row worth reading. `TRACK_OPTS` is
+  **Three options per game, keyed `'<game>:<name>'` — the ids are NAMES since build 30 (v17 B.30)**, because they are
+  the row in Customise and "Tide / Glass / Breath" is the only version of that row worth reading. `TRACK_OPTS` is
   one list per game, `TRACK_PICK` is what a fresh profile plays, and `prefs.track[game]` is what this player chose.
+  **Since build 33 (v18 B.28) that row is the WHOLE of Customise's music.** It was four controls — on / off, a Preview
+  button, which track, a second Preview button — for a thing Aiden names in one word: the label is `Music`, the buttons
+  are the tracks, and a tap plays one. Locked, the row is the single track this game is set to, behind a padlock and
+  saying nothing about what opens it (A.1); it still previews, because hearing what you have is not the reward. **The
+  per-game on / off switch went with the row** — `musicOn(g)` is still read by `Music.start` and a profile that stored
+  `false` for a game before build 33 is still silent there with no way back, which is logged in `UNVERIFIED.md` and is
+  the open question on the item. The menu loop keeps its own on / off row.
+  **A preview cuts what is playing (v18 B.29, build 33).** `loop()` schedules a bar at a time, so clearing the interval
+  left the outgoing track ringing over the incoming one — "both playing gets confusing". `cut()` retires the bed's gain
+  node and the stem and flow nodes with it, and `run()` and `stop()` both call it, so no two tracks can overlap
+  anywhere: the menu loop, a preview and a run's own track each get a clean bed.
   **Quick Tap · Held is the build-26 loop note for note** — it is the quality bar Aiden named, so it is in the running
   rather than replaced, and the gate asserts it. Two options of one game may not share a wave set and a pattern set:
   "three options" that differ only in speed or pitch is the complaint batch 12 answered.

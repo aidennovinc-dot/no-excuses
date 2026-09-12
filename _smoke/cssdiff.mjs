@@ -82,7 +82,8 @@ await page.evaluate(() => document.querySelector('#diff-row').children[0].click(
 await page.evaluate(() => { const b = [...document.querySelectorAll('#time-row .tbtn')].find(x => x.classList.contains('locked')); b && b.click(); }); await sleep(400); await compare('lock box');
 await click('#lock-no'); await sleep(300);
 await setNe({ allOpen: true, story: 1, gridSeen: 1, name: 'AIDEN', snd: 'off' }); await goto(); await sleep(600); await compare('menu · open');
-for (const s of ['s-board', 's-ach', 's-custom', 's-about']) { await click(`[data-go="${s}"]`); await sleep(700); await compare(s); if (s === 's-custom') { await click('#c-sq button[data-v="wheel"]'); await sleep(400); await compare('wheel'); await click('#wheel-done'); await sleep(300); for (const g of ['dots', 'hold', 'sequence', 'timing', 'reaction', 'spot']) { await click(`#pv-g [data-v="${g}"]`); await sleep(400); await compare(`customise · ${g}`); } } await click('.back'); await sleep(500); }
+// build 33 (B.31): Customise is the middle tab of s-prog, so the walk opens the screen and taps the tab
+for (const s of ['s-board', 's-ach', 's-prog', 's-about']) { await click(`[data-go="${s}"]`); await sleep(700); await compare(s); if (s === 's-prog') { await click('#prog-tabs [data-tab="cus"]'); await sleep(400); await compare('customise'); await click('#c-sq button[data-v="wheel"]'); await sleep(400); await compare('wheel'); await click('#wheel-done'); await sleep(300); for (const g of ['dots', 'hold', 'sequence', 'timing', 'reaction', 'spot']) { await click(`#pv-g [data-v="${g}"]`); await sleep(400); await compare(`customise · ${g}`); } } await click('.back'); await sleep(500); }
 await click('[data-go="s-pick"]'); await sleep(500); await click('.tile[data-game="dots"]'); await sleep(400);
 await click('[data-vs="1"]'); await sleep(400); await compare('sheet · friend');
 await click('[data-vs2="2"]'); await sleep(400); await compare('sheet · versus');

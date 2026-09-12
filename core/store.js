@@ -44,7 +44,8 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
        `keySeen` that reset() cleared and load() never created, and that is the mistake this line exists to not repeat.
        `chest1` is PROGRESS (B.24: chest 1 opened, for good) so Fresh game clears it below; `progTab` is which tab of the
        Progress screen was last open (B.21), a preference like `lastGame`, so Fresh game leaves it alone. */
-    chest1:p.chest1?1:0, progTab:p.progTab==='ach'?'ach':'unl',
+    // v18 (B.31, build 33): three tabs, so the field takes three values — Customise joined Game unlocks and Achievements
+    chest1:p.chest1?1:0, progTab:['cus','ach'].includes(p.progTab)?p.progTab:'unl',
     /* v18 (B.16 / B.17, build 32): `pro` is which key the FRONT of the app counts — 0 until the player steps into Pro at
        chest 1, then 1, then 2 for Author. It is PROGRESS (the step is irreversible, B.16's warning says so) and Fresh game
        clears it. `chest3` is the Author chest (B.19), progress like the two before it. */

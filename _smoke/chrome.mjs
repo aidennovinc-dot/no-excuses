@@ -17,5 +17,8 @@ export async function phonePage(browser, deviceScaleFactor = 2) {
   return page;
 }
 
-// requests the gate is allowed to see fail: the update poll (no-store, offline is fine) and, for now, Google Fonts (S4 bundles them in Stage 5)
-export const IGNORED_REQUEST = u => u.includes('version.json') || u.includes('fonts.googleapis.com') || u.includes('fonts.gstatic.com');
+/* requests the gate is allowed to see fail: the update poll, and nothing else. Google Fonts was on this list until
+   build 33 — v18 (B.32) self-hosts the three families, so a request to either font host is now a REGRESSION rather
+   than a tolerated failure, and FONT_HOST is what the build-33 assertion counts. */
+export const IGNORED_REQUEST = u => u.includes('version.json');
+export const FONT_HOST = u => u.includes('fonts.googleapis.com') || u.includes('fonts.gstatic.com');

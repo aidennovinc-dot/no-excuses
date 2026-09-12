@@ -4,6 +4,29 @@
    identical to the single-block version across every screen and game state when this split was made. */
 
 /* ==================================================================
+   fonts (v18 B.32, build 33) — self-hosted, latin only
+   ==================================================================
+   Was three families pulled off fonts.googleapis.com on every visit: a stylesheet request, a DNS
+   lookup and a TLS handshake to a second origin before a single glyph could be asked for. These are
+   the same files Google serves, latin subset only, in `../fonts/`.
+
+   Archivo and JetBrains Mono are VARIABLE fonts and one file carries every weight of each, so the
+   two blocks per family point at the same URL — exactly as Google's own CSS does. Only Syncopate
+   ships a static face. Three files, 82KB.
+
+   No `unicode-range`: the app is English. `←`, `→` and `✓` are outside the latin subset and already
+   fell back to the system font under Google Fonts, so nothing about them changes.
+
+   `font-display: swap` — the app paints in the fallback stack and swaps when the file lands, which
+   is what the fallbacks in `--title` / `--display` / `--mono` are for. The title's two (Syncopate
+   700 for the wordmark, Archivo for the menu under it) are preloaded in index.html. */
+  @font-face{font-family:"Syncopate";font-style:normal;font-weight:700;font-display:swap;src:url(../fonts/syncopate-700.woff2) format("woff2")}
+  @font-face{font-family:"Archivo";font-style:normal;font-weight:500;font-display:swap;src:url(../fonts/archivo-var.woff2) format("woff2")}
+  @font-face{font-family:"Archivo";font-style:normal;font-weight:800;font-display:swap;src:url(../fonts/archivo-var.woff2) format("woff2")}
+  @font-face{font-family:"JetBrains Mono";font-style:normal;font-weight:500;font-display:swap;src:url(../fonts/jetbrains-mono-var.woff2) format("woff2")}
+  @font-face{font-family:"JetBrains Mono";font-style:normal;font-weight:700;font-display:swap;src:url(../fonts/jetbrains-mono-var.woff2) format("woff2")}
+
+/* ==================================================================
    shell — index.html, core/ — the root, type, buttons, chips, the screen frame, tables, the build bar
    ================================================================== */
   /* No Excuses — styles (build 18, refactor stage 4). Moved out of index.html as one block; the sections come next. */
@@ -34,6 +57,9 @@
   .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--mute)}
   button{font:inherit;color:var(--ink);background:none;border:0;cursor:pointer}
   button:focus-visible{outline:1px solid var(--ink);outline-offset:4px}
+  /* build 33: Send feedback is the one <a> in the app — a mailto, so the link does its own work. It reads as an .item
+     and nothing else; without this it would arrive underlined and browser-blue */
+  a.item{color:var(--ink);text-decoration:none;cursor:pointer;display:inline-block}
   .item{font-weight:500;font-size:20px;letter-spacing:.14em;text-transform:uppercase;padding:11px 18px;opacity:.85}
   .item:hover,.item:focus-visible{opacity:1;outline:none;text-decoration:underline;text-underline-offset:8px}
   .item.sub{font-size:17px}
@@ -623,7 +649,9 @@
    customise — ui/screens/customise.js
    ================================================================== */
   /* customise */
-  #s-custom{gap:12px;justify-content:flex-start;padding-top:max(18px,env(safe-area-inset-top));overflow-y:auto}
+  /* v18 (B.31, build 33): Customise is a TAB now, so the tab scrolls rather than the screen — the tab row above it has
+     to stay put, which is what the whole screen scrolling would have taken away */
+  #p-cus{gap:12px;flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-bottom:18px}
   .pv{width:min(84vw,320px);aspect-ratio:16/10;background:var(--ground);border:1px solid var(--line);position:relative;overflow:hidden;pointer-events:none;flex:none}
   /* v9: every preview has the same finger as the pre-game demo, and shows the tap and what comes of it */
   #pvg{position:absolute;left:0;top:0;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;border:2px solid var(--ink);outline:2px solid #0a0a0b;background:color-mix(in srgb,var(--ink) 18%,transparent);opacity:0;transition:left .4s cubic-bezier(.3,.7,.3,1),top .4s cubic-bezier(.3,.7,.3,1),opacity .2s;box-shadow:inset 0 0 0 2px #0a0a0b;z-index:5}
@@ -677,8 +705,13 @@
   .pv[data-g="sequence"] .pvseq{display:flex}
   .pvseq i{flex:1;background:var(--sq);border-radius:0 0 4px 4px}
   .pvseq i.lit{background:var(--sq-live)}
-  #pvlock{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--cue);text-transform:uppercase;min-height:16px;text-align:center;max-width:36ch;line-height:1.5;padding:6px 10px}
-  #pvlock u{color:var(--ink);text-decoration:underline;text-underline-offset:4px}
+  /* v18 (B.30): the locked line sits UNDER the row it is about, one per group, and takes no height until it has
+     something to say — never over the options, and never a toast (the toast is pinned to the top of the screen, which
+     is what made it unreadable). It is a button in everything but name: a tap goes to the achievement that opens it */
+  .lockline{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--cue);text-transform:uppercase;text-align:center;max-width:36ch;line-height:1.5;cursor:pointer}
+  .lockline:empty{display:none}
+  .lockline:not(:empty){padding:2px 10px 4px}
+  .lockline u{color:var(--ink);text-decoration:underline;text-underline-offset:4px}
   .cgroup{display:flex;flex-direction:column;gap:8px;align-items:center}
   .clabel{font-family:var(--mono);font-size:13px;letter-spacing:.24em;text-transform:uppercase;color:var(--ink)}
   .sw{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
@@ -1120,7 +1153,7 @@
      same shape as the target */
   #hfield #hicon{position:absolute;left:50%;right:auto;bottom:auto;top:4px;width:13vmin;height:13vmin;margin-left:-6.5vmin}
   #hfield #hicon.big{width:22vmin;height:22vmin;right:auto;left:50%;top:1%;margin-left:-11vmin}
-  .sheet.len #lenwrap,.choice,#vsart.on,#vs-sub:not([hidden]),#lockwrap.on #lockbox,#wheelwrap.on #wheelbox,.mch,#over-vs .chip,#over-chips2 .chip,#over-chips3 .chip,.ach .a.lock,.ach h4,#pvlock:not(:empty),#hcalc.on,#adbreak.on>div,.tbtn,#s-pass.on>*,#nextup:not([hidden]){animation:rise .18s ease-out both}
+  .sheet.len #lenwrap,.choice,#vsart.on,#vs-sub:not([hidden]),#lockwrap.on #lockbox,#wheelwrap.on #wheelbox,.mch,#over-vs .chip,#over-chips2 .chip,#over-chips3 .chip,.ach .a.lock,.ach h4,.lockline:not(:empty),#hcalc.on,#adbreak.on>div,.tbtn,#s-pass.on>*,#nextup:not([hidden]){animation:rise .18s ease-out both}
   /* Estimate (v11): the target's outline stays up while you grow */
   #hfield #hg path{stroke:var(--cue)}
 

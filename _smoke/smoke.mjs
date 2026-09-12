@@ -32,7 +32,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { serve } from './server.mjs';
-import { launch, phonePage, IGNORED_REQUEST } from './chrome.mjs';
+import { launch, phonePage, FONT_HOST, IGNORED_REQUEST } from './chrome.mjs';
 
 const own = !process.argv[2];
 const srv = own ? await serve() : null;
@@ -163,6 +163,9 @@ page.on('pageerror', e => errors.push('pageerror: ' + e.message));
 page.on('console', m => { if (m.type() === 'error' && !IGNORED_REQUEST(m.text())) errors.push('console: ' + m.text()); });
 page.on('requestfailed', r => { const u = r.url(); if (!IGNORED_REQUEST(u)) errors.push('requestfailed: ' + u + ' ' + (r.failure()?.errorText || '')); });
 page.on('dialog', async d => { errors.push('dialog opened: ' + d.message()); await d.dismiss(); });
+// v18 (B.32, build 33): every URL the page asks for, for the whole run — the font assertion counts the ones that left the origin
+const reqs = [];
+page.on('request', r => reqs.push(r.url()));
 
 const onScreen = () => page.$eval('.screen.on', s => s.id).catch(() => null);
 const inGame = () => page.$eval('#game', g => g.classList.contains('on')).catch(() => false);
@@ -314,7 +317,8 @@ for (const g of GAMES) {
   await click('#grid'); await sleep(200);
 }
 // the other screens open and render
-for (const s of ['s-board', 's-prog', 's-key', 's-custom', 's-about', 's-testing']) { await click('.back'); await sleep(250); await click(`[data-go="${s}"]`); await sleep(600); (await onScreen()) === s ? ok(`${s} opens`) : bad(`${s} opens`, 'on ' + (await onScreen())); }
+// build 33 (B.31): s-custom is gone — Customise is the middle tab of s-prog, so there is one fewer menu row to open
+for (const s of ['s-board', 's-prog', 's-key', 's-about', 's-testing']) { await click('.back'); await sleep(250); await click(`[data-go="${s}"]`); await sleep(600); (await onScreen()) === s ? ok(`${s} opens`) : bad(`${s} opens`, 'on ' + (await onScreen())); }
 
 // ---- 2b. the Set and Streak lines on every sheet come from the one table (L5 / v14 section 5) ----
 console.log('\nsheet copy comes from SET_COPY (L5)');
@@ -605,17 +609,17 @@ console.log('\nside screens (v14 section 8)');
   await setStorage({});                        // a brand-new profile: everything unseen, which is what 8.7 broke
   await page.reload({ waitUntil: 'networkidle0' }); await sleep(500);
   await page.evaluate(() => document.body.click()); await sleep(900);
-  await click('[data-go="s-custom"]'); await sleep(1400);   // past the .6s first-seen highlight
+  // build 33 (B.31): Customise is the middle tab of Progress now
+  await click('[data-go="s-prog"]'); await sleep(300); await click('#prog-tabs [data-tab="cus"]'); await sleep(1400);   // past the .6s first-seen highlight
   // 8.7: the highlight used to end on `background-color:transparent` under animation-fill-mode:both, which held forever —
   // so every first-seen swatch was left blank. The target colours must still be their own colour once it has played
   const sw = await page.evaluate(() => { const b = document.querySelector('#c-sq button'); if (!b) return null;
     const bg = getComputedStyle(b).backgroundColor; const a = /rgba?\(([^)]+)\)/.exec(bg); const parts = a ? a[1].split(',') : [];
     return { cls: b.className.trim(), bg, alpha: parts.length > 3 ? parseFloat(parts[3]) : 1 }; });
   (sw && sw.alpha > .9) ? ok(`8.7 a first-seen target colour still shows its colour (${sw.bg})`) : bad('8.7 target colours blank on first load', JSON.stringify(sw));
-  (await page.evaluate(() => !document.querySelector('#s-custom .eyebrow'))) ? ok('8.9 the Customise eyebrow line is gone') : bad('8.9 the Customise eyebrow line is gone');
-  await click('#s-custom .back'); await sleep(400);
-  // v17 (B.21, build 29): Achievements is the second TAB of Progress, so the walk is one more tap and one less screen
-  await click('[data-go="s-prog"]'); await sleep(400); await click('#prog-tabs [data-tab="ach"]'); await sleep(400);
+  (await page.evaluate(() => !document.querySelector('#p-cus .eyebrow'))) ? ok('8.9 the Customise eyebrow line is gone') : bad('8.9 the Customise eyebrow line is gone');
+  // v18 (B.31, build 33): Achievements is the THIRD tab of the same screen, so this is one tap, not a screen change
+  await click('#prog-tabs [data-tab="ach"]'); await sleep(400);
   const ach = await page.evaluate(() => {
     const row = document.getElementById('ach-qt_clean5'), sec = document.getElementById('ach-qt_s5'), ev = document.getElementById('ach-every');
     return { ox: getComputedStyle(document.getElementById('achlist')).overflowX,
@@ -1141,20 +1145,21 @@ console.log('\nbutton actions (every data-act at least once)');
   await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
   await setStorage({ 'ne.prefs': { ...OPEN_PREFS, name: 'AIDEN' } });
   await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
-  // customise: swatch, wheel + done, sound pack, scale (Sequence), music on/off + preview, game chip, lock line
-  await tap('[data-go="s-custom"]'); await sleep(300);
+  // customise: swatch, wheel + done, sound pack, scale (Sequence), the music row, game chip, lock line.
+  // build 33 (B.31): it is the middle tab of Progress, so the walk opens that screen and taps the tab
+  await tap('[data-go="s-prog"]'); await sleep(300); await tap('#prog-tabs [data-tab="cus"]', 'progress · customise tab'); await sleep(300);
   await tap('#c-sq button:nth-child(2)', 'customise · target colour');
   await tap('#c-sq button[data-v="wheel"]', 'customise · colour wheel'); await tap('#wheel-done');
   await tap('#c-bg button:nth-child(2)', 'customise · background');
   await tap('#c-snd button:nth-child(2)', 'customise · sound pack'); await tap('#c-snd button:nth-child(1)', 'customise · sound pack back');
   await tap('#pv-g [data-v="sequence"]', 'customise · game chip');
   await tap('#c-scale button:nth-child(2)', 'customise · scale');
-  await tap('#c-music button:nth-child(2)', 'customise · music off'); await tap('#c-music button:nth-child(1)', 'customise · music on'); await tap('#c-music-pv', 'customise · music preview');
-  // build 30 (B.32): the track this game plays, the menu loop's own switch, and the preview that is on the track row
-  await tap('#c-track button:nth-child(2)', 'customise · track'); await tap('#c-track button:last-child', 'customise · track preview');
+  // build 33 (B.28): ONE music row and it is the track — no on / off, no Preview button. A tap on a track plays it
+  await tap('#c-track button:nth-child(2)', 'customise · track'); await tap('#c-track button:nth-child(1)', 'customise · track back');
   await tap('#c-menumusic button:nth-child(2)', 'customise · menu music off'); await tap('#c-menumusic button:nth-child(1)', 'customise · menu music on');
-  await tap('#pvlock', 'customise · lock line');
-  await sleep(400); await tap('#s-custom .back', 'customise · back');
+  // build 33 (B.30): the locked line is under its own group now, not one line under the preview
+  await tap('#lk-sq', 'customise · lock line');
+  await sleep(400); await tap('#s-prog .back', 'customise · back');
   // scores: game, mode, length chips
   await tap('[data-go="s-board"]'); await tap('#bd-g [data-v="dots"]', 'board · game chip'); await tap('#bd-d [data-v="lead"]', 'board · mode chip'); await tap('#bd-s [data-v="15"]', 'board · length chip');
   await sleep(400); await tap('#s-board .back', 'board · back');
@@ -1206,7 +1211,7 @@ console.log('\nbutton actions (every data-act at least once)');
   (await onScreen()) === 's-pick' ? ok('result back opens the pick sheet') : bad('result back opens the pick sheet', 'on ' + (await onScreen()));
   await tap('#time-row .tbtn:nth-child(2)', 'sheet · length'); await tap('[data-vs="1"]', 'sheet · with a friend'); await tap('[data-vs2="1"]', 'sheet · pass & play'); await tap('[data-vs="0"]', 'sheet · solo');
   // build 18: the chips are one act per screen, and the overlays (lock box, Next card, the full stop) are acts too
-  const expected = ['go', 'back', 'game', 'diff', 'time', 'vs', 'vs2', 'lvl-back', 'go-btn', 'quit', 'over-back', 'share', 'chip-bd', 'chip-pv', 'chip-ach', 'chip-over', 'item', 'music-pv', 'pvlock', 'ach', 'unl', 'prac', 'dev-open', 'dev-sup', 'dev-story', 'support', 'wheel-done', 'lock-no', 'lock-go', 'nextup', 'egg', 'ptab', 'chest', 'track-pv'];
+  const expected = ['go', 'back', 'game', 'diff', 'time', 'vs', 'vs2', 'lvl-back', 'go-btn', 'quit', 'over-back', 'share', 'chip-bd', 'chip-pv', 'chip-ach', 'chip-over', 'item', 'pvlock', 'ach', 'unl', 'prac', 'dev-open', 'dev-sup', 'dev-story', 'support', 'wheel-done', 'lock-no', 'lock-go', 'nextup', 'egg', 'ptab', 'chest'];
   const missing = expected.filter(a => !seen.has(a));
   missing.length ? bad('every data-act driven once', 'not driven: ' + missing.join(', ')) : ok(`every data-act driven once (${expected.length}) — not covered: again, pass-go, to-games, seqdone, praclock, dev-fresh, adskip, toast`);
 }
@@ -1728,15 +1733,19 @@ console.log('\nbuild 29 - v17 sections B.19 to B.26');
     (!inHtml && !inCopy && !inCss) ? ok('B.20 "play one run · the rest opens" is gone - the element, the copy row and the rule')
       : bad('B.20 the first-run menu line', JSON.stringify({ inHtml, inCopy, inCss }));
   }
-  // ---- B.21: one menu item, two tabs, and the two old screens are gone from the document ----
+  /* ---- B.21: one menu item, and the old screens are gone from the document ----
+     AMENDED at build 33 (v18 B.31): THREE tabs, not two — Customise joined them and `s-custom` went the way `s-unl`
+     and `s-ach` went at build 29. The point of the assertion is unchanged and is what it still tests: one menu row
+     where there were two (three now), no orphan screen left in the document, and Game unlocks first (2.2). */
   {
     const m = await page.evaluate(() => ({
       items: [...document.querySelectorAll('#s-menu .item')].map(b => b.textContent.trim()),
-      prog: !!document.getElementById('s-prog'), old: !!document.getElementById('s-unl') || !!document.getElementById('s-ach'),
+      prog: !!document.getElementById('s-prog'),
+      old: !!document.getElementById('s-unl') || !!document.getElementById('s-ach') || !!document.getElementById('s-custom'),
       tabs: [...document.querySelectorAll('#prog-tabs .chip')].map(c => c.dataset.tab) }));
-    (m.prog && !m.old && m.items.includes('Progress') && !m.items.includes('Unlocks') && !m.items.includes('Achievements') && m.tabs.join() === 'unl,ach')
-      ? ok(`B.21 one menu item - ${m.items.join(' · ')} - with tabs ${m.tabs.join(' / ')}, Unlocks first (2.2)`)
-      : bad('B.21 Unlocks and Achievements are one item with two tabs', JSON.stringify(m));
+    (m.prog && !m.old && m.items.includes('Progress') && !m.items.includes('Unlocks') && !m.items.includes('Achievements') && !m.items.includes('Customise') && m.tabs.join() === 'unl,cus,ach')
+      ? ok(`B.21 / B.31 one menu item - ${m.items.join(' · ')} - with tabs ${m.tabs.join(' / ')}, Game unlocks first (2.2)`)
+      : bad('B.21 / B.31 Unlocks, Customise and Achievements are one item with three tabs', JSON.stringify(m));
     const files = fs.readdirSync(path.join(root29, 'ui', 'screens'));
     (!files.includes('unlocks.js') && !files.includes('achievements.js') && files.includes('progress.js'))
       ? ok('B.21 one screen file, not a host importing two (A4)') : bad('B.21 the two screen files are merged', files.join(', '));
@@ -2044,24 +2053,27 @@ console.log('\nbuild 30 - v17 sections B.27 to B.33');
   {
     await setStorage({ ne: { v: 1, prefs: { story: 1, gridSeen: 1, played: 1, menuSeen: 1, snd: 'off', musicG: {} }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
-    await click('[data-go="s-custom"]'); await sleep(500);
+    await click('[data-go="s-prog"]'); await sleep(300); await click('#prog-tabs [data-tab="cus"]'); await sleep(500);
+    // AMENDED at build 33 (v18 B.28): the row is ONE button now — the track — because the Preview button beside it went
     const locked = await page.evaluate(() => { const b = [...document.querySelectorAll('#c-track button')];
       return { n: b.length, first: b[0]?.textContent, lock: b[0]?.classList.contains('locked'), plain: b[0]?.classList.contains('plain'),
+        label: document.getElementById('c-track').parentElement.querySelector('.clabel')?.textContent,
         txt: document.getElementById('c-track').parentElement.textContent.toLowerCase(), menu: document.querySelectorAll('#c-menumusic button').length }; });
-    (locked.n === 2 && locked.lock && locked.plain && locked.menu === 2 && !/pro|author|chest|tier/.test(locked.txt))
-      ? ok(`B.32 / A.1 the track row is the track it plays ("${locked.first}"), a padlock and a preview - and says nothing about what opens it`)
-      : bad('B.32 the locked track row', JSON.stringify(locked));
+    (locked.n === 1 && locked.lock && locked.plain && locked.label === 'Music' && locked.menu === 2 && !/pro|author|chest|tier/.test(locked.txt))
+      ? ok(`B.28 / A.1 the music row is one row, the track it plays ("${locked.first}") behind a padlock - and says nothing about what opens it`)
+      : bad('B.28 the locked music row', JSON.stringify(locked));
     // dev unlock-all opens it, and picking one is stored and played
     await setStorage({ ne: { v: 1, prefs: { ...OPEN_PREFS, menuSeen: 1 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
-    await click('[data-go="s-custom"]'); await sleep(500);
+    await click('[data-go="s-prog"]'); await sleep(300); await click('#prog-tabs [data-tab="cus"]'); await sleep(500);
     await page.evaluate(() => document.querySelectorAll('#c-track button')[1].click()); await sleep(500);
     const open30 = await page.evaluate(() => ({ n: document.querySelectorAll('#c-track button').length,
       stored: JSON.parse(localStorage.getItem('ne')).prefs.track, sel: document.querySelector('#c-track button.sel')?.textContent }));
     const g0 = open30.stored && Object.keys(open30.stored)[0];
-    (open30.n === 4 && g0 && AU30.TRACK_OPTS[g0].includes(open30.stored[g0]))
-      ? ok(`B.32 unlock-all opens the row: three options and a preview, and "${open30.sel}" is stored as ${g0} → ${open30.stored[g0]}`)
-      : bad('B.32 choosing a track', JSON.stringify(open30));
+    // AMENDED at build 33 (B.28): three options and nothing else on the row
+    (open30.n === 3 && g0 && AU30.TRACK_OPTS[g0].includes(open30.stored[g0]))
+      ? ok(`B.28 unlock-all opens the row: the three options, and "${open30.sel}" is stored as ${g0} → ${open30.stored[g0]}`)
+      : bad('B.28 choosing a track', JSON.stringify(open30));
     // the choice is a preference, not the default: TRACK_PICK is untouched and Fresh game keeps it
     const kept = await page.evaluate(async () => { const S = await import('./core/store.js'); S.reset();
       return { track: JSON.parse(localStorage.getItem('ne')).prefs.track, chest2: JSON.parse(localStorage.getItem('ne')).prefs.chest2 }; });
@@ -2666,6 +2678,172 @@ console.log('\nbuild 32 - v19 section C and v18 sections B.15 to B.27');
     const arrive = await page.evaluate(() => document.getElementById('s-key').classList.contains('first'));
     arrive ? ok('B.26 "key arrival" plays the arrival again') : bad('B.26 the arrival button');
     await sleep(2500);
+  }
+}
+
+/* ---- 14. build 33 (v18 §B.28–§B.32): the surface ---- */
+console.log('\nbuild 33 - v18 sections B.28 to B.32');
+{
+  const root33 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const read33 = (...p) => fs.readFileSync(path.join(root33, ...p), 'utf8');
+  const html33 = read33('index.html'), css33 = read33('styles', 'app.css'), audio33 = read33('audio.js');
+  const prog33 = read33('ui', 'screens', 'progress.js'), store33 = read33('core', 'store.js');
+
+  /* ---- B.31: ONE screen, three tabs, one file. A4 forbids a screen importing a screen, so a tab host that called
+     into customise.js would be the thing it forbids — this is the merge, and the file it replaced is gone. ---- */
+  {
+    const gone = !fs.existsSync(path.join(root33, 'ui', 'screens', 'customise.js'));
+    const idx = read33('ui', 'screens', 'index.js');
+    const markup = { custom: /id="s-custom"/.test(html33), row: /data-go="s-custom"/.test(html33), cus: /id="p-cus"/.test(html33) };
+    (gone && !/customise\.js"/.test(idx) && !markup.custom && !markup.row && markup.cus)
+      ? ok('B.31 Customise is a tab of s-prog: customise.js is deleted, the screen and its menu row are gone, #p-cus is on s-prog')
+      : bad('B.31 the merge', JSON.stringify({ gone, markup }));
+    // the three tabs, in Aiden's order, and Keys still its own menu item
+    const tabs = [...html33.matchAll(/data-act="ptab" class="chip" data-tab="(\w+)">([^<]+)</g)].map(m => [m[1], m[2]]);
+    const keyRow = /data-go="s-key"/.test(html33);
+    (tabs.length === 3 && tabs[0][1] === 'Game unlocks' && tabs[1][1] === 'Customise' && tabs[2][1] === 'Achievements' && keyRow)
+      ? ok(`B.31 (L6) three tabs — ${tabs.map(t => t[1]).join(' · ')} — and Keys stays its own menu item`)
+      : bad('B.31 the tabs', JSON.stringify({ tabs, keyRow }));
+    // the third value is shape-checked in the store the day it is added, which is the rule build 28 exists to not repeat
+    /progTab.*\['cus','ach'\]\.includes/.test(store33.replace(/\s/g, '')) || /\['cus', ?'ach'\]\.includes\(p\.progTab\)/.test(store33)
+      ? ok('B.31 prefs.progTab takes all three tabs (cleanPrefs)') : bad('B.31 progTab is still two-valued');
+
+    // each tab renders, and the one that is up is the only one rendered
+    await setStorage({ ne: { v: 1, prefs: { ...OPEN_PREFS, menuSeen: 1 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await click('[data-go="s-prog"]'); await sleep(500);
+    const walk = {};
+    for (const t of ['unl', 'cus', 'ach']) { await click(`#prog-tabs [data-tab="${t}"]`); await sleep(600);
+      walk[t] = await page.evaluate(t => ({ shown: [...document.querySelectorAll('#s-prog .ptab')].filter(p => !p.hidden).map(p => p.id),
+        rows: document.querySelectorAll(t === 'unl' ? '#unl-list .urow' : t === 'cus' ? '#p-cus .cgroup' : '#achlist .a').length,
+        stored: JSON.parse(localStorage.getItem('ne')).prefs.progTab }), t); }
+    (walk.unl.shown.join() === 'p-unl' && walk.cus.shown.join() === 'p-cus' && walk.ach.shown.join() === 'p-ach'
+      && walk.unl.rows > 0 && walk.cus.rows > 0 && walk.ach.rows > 0 && walk.ach.stored === 'ach')
+      ? ok(`B.31 one tab at a time — ${walk.unl.rows} unlock rows, ${walk.cus.rows} customise groups, ${walk.ach.rows} achievements — and the last one open is remembered`)
+      : bad('B.31 the tabs render', JSON.stringify(walk));
+    /* an earned achievement still opens what it paid for — the same screen now, so it is a tab change and not a
+       navigation. `first` ("Showed up") pays out the second target colour, which is why it is the row this earns. */
+    await setStorage({ ne: { v: 1, prefs: { story: 1, gridSeen: 1, played: 1, menuSeen: 1, snd: 'off', musicG: {} }, runs: [], ach: { first: Date.now() }, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await click('[data-go="s-prog"]'); await sleep(300); await click('#prog-tabs [data-tab="ach"]'); await sleep(500);
+    const jumped = await page.evaluate(() => { const b = document.getElementById('ach-first'); if (!b) return null; const done = b.classList.contains('done'); b.click(); return done; });
+    await sleep(600);
+    const after = await page.evaluate(() => ({ screen: (document.querySelector('.screen.on') || {}).id, tab: document.getElementById('p-cus').hidden ? 'other' : 'cus',
+      flashed: !!document.querySelector('#c-sq button.pvw') }));
+    (jumped && after.screen === 's-prog' && after.tab === 'cus' && after.flashed)
+      ? ok('B.31 an earned achievement opens the Customise TAB and flashes the swatch it paid for — one screen, so nothing navigates')
+      : bad('B.31 the achievement payout', JSON.stringify({ jumped, after }));
+  }
+
+  /* ---- B.28: one music row, called Music, and it is the track. The locked half is asserted in the build-30 block
+     above (amended there); this is the open half and the absence of everything the row used to carry. ---- */
+  {
+    const dead = { music: /id="c-music"/.test(html33), pv: /music-pv|track-pv/.test(html33 + prog33), label: /c-track-label|c-music-label/.test(html33 + prog33) };
+    (!dead.music && !dead.pv && !dead.label)
+      ? ok('B.28 the on / off row, both Preview buttons and the per-game row labels are gone — one row, called Music')
+      : bad('B.28 what the row used to carry', JSON.stringify(dead));
+    // unlock-all so the row is the open three; the locked shape is the build-30 block above
+    await setStorage({ ne: { v: 1, prefs: { ...OPEN_PREFS, menuSeen: 1 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await click('[data-go="s-prog"]'); await sleep(300); await click('#prog-tabs [data-tab="cus"]'); await sleep(500);
+    const row = await page.evaluate(() => { const grp = document.getElementById('c-track').parentElement;
+      const b = [...grp.querySelectorAll('button')];
+      return { label: grp.querySelector('.clabel').textContent, n: b.length, named: b.map(x => x.textContent), sel: b.filter(x => x.classList.contains('sel')).length }; });
+    (row.label === 'Music' && row.n === 3 && row.sel === 1 && row.named.every(n => n && !/preview|^on$|^off$/i.test(n)))
+      ? ok(`B.28 the Music row is the three tracks by name (${row.named.join(' · ')}), one of them this game's`)
+      : bad('B.28 the open music row', JSON.stringify(row));
+  }
+
+  /* ---- B.29: previewing a track silences the menu loop. loop() schedules a BAR at a time, so clearing the interval
+     leaves the outgoing track ringing — the fix is that the bed's gain node is retired, and that is what is asserted:
+     structurally in audio.js (a preview cannot start without it) and live, that a preview leaves one track playing. */
+  {
+    const cuts = { has: /function cut\(\)/.test(audio33), onRun: /function run\(t,id,sh\)\{ if\(tr\) cut\(\);/.test(audio33), onStop: /stop\(\)\{ clearInterval\(timer\); timer=0; cut\(\);/.test(audio33) };
+    (cuts.has && cuts.onRun && cuts.onStop)
+      ? ok('B.29 a track that replaces another cuts it first, and stopping cuts what is already scheduled')
+      : bad('B.29 the cut', JSON.stringify(cuts));
+    /* live: the loop, a preview over it, the hand back. Nobody in a Claude Code session can HEAR whether the overlap
+       is gone (logged in UNVERIFIED.md) — what is testable is that the retire-and-rebuild path runs clean through a
+       menu loop, a preview over it and the loop resuming, which is the sequence that used to leave two beds ringing. */
+    const live = await page.evaluate(async () => { const M = await import('./audio.js');
+      try { M.Music.menu('menu'); await new Promise(r => setTimeout(r, 250));
+        M.Music.preview('quick-tap', 400); await new Promise(r => setTimeout(r, 700));
+        M.Music.menu('menu'); await new Promise(r => setTimeout(r, 200)); M.Music.stop(); return { ok: 1 }; }
+      catch (e) { return { err: String(e) }; } });
+    live.ok ? ok('B.29 menu loop → preview → loop again runs clean: each bed is retired as the next one starts') : bad('B.29 the preview path', live.err);
+  }
+
+  /* ---- B.30: the locked line goes UNDER its row, never over it, and the toast is off this path ---- */
+  {
+    // a profile with nothing earned: the target-colour row has locked swatches
+    await setStorage({ ne: { v: 1, prefs: { story: 1, gridSeen: 1, played: 1, menuSeen: 1, snd: 'off', musicG: {} }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await click('[data-go="s-prog"]'); await sleep(300); await click('#prog-tabs [data-tab="cus"]'); await sleep(600);
+    const lock = await page.evaluate(() => { const b = document.querySelector('#c-sq button.locked'); if (!b) return { none: 1 };
+      b.click(); return null; });
+    await sleep(400);
+    const shown = lock && lock.none ? null : await page.evaluate(() => { const ln = document.getElementById('lk-sq'), grp = document.getElementById('c-sq');
+      const r = ln.getBoundingClientRect(), gr = grp.getBoundingClientRect(), t = document.getElementById('toast');
+      return { text: ln.textContent.trim(), sameGroup: ln.parentElement === grp.parentElement, under: r.top >= gr.bottom - 1,
+        ach: ln.dataset.ach, toast: t.classList.contains('on'),
+        others: [...document.querySelectorAll('.lockline')].filter(x => x.textContent.trim()).length }; });
+    (shown && shown.text && shown.sameGroup && shown.under && shown.ach && !shown.toast && shown.others === 1)
+      ? ok(`B.30 a locked swatch says what opens it under its own row ("${shown.text.slice(0, 40)}…"), one line on the screen, no toast over anything`)
+      : bad('B.30 the locked line', JSON.stringify(shown));
+    // and the line is the way in: it opens the achievement that pays for it, on the tab beside it
+    if (shown && shown.ach) { await click('#lk-sq'); await sleep(500);
+      const to = await page.evaluate(() => ({ screen: (document.querySelector('.screen.on') || {}).id, ach: !document.getElementById('p-ach').hidden }));
+      (to.screen === 's-prog' && to.ach) ? ok('B.30 the locked line opens the achievement that earns it') : bad('B.30 where the line leads', JSON.stringify(to)); }
+  }
+
+  /* ---- B.32: the fonts are ours. No request leaves the origin for one, the faces are declared with swap, and the
+     title's two are preloaded. `reqs` is every URL the page has asked for since the gate started. ---- */
+  {
+    const off = reqs.filter(FONT_HOST);
+    !off.length ? ok(`B.32 no font request left the origin in ${reqs.length} requests — Google Fonts is gone`) : bad('B.32 a font request left the origin', [...new Set(off)].join(', '));
+    const faces = [...css33.matchAll(/@font-face\{font-family:"([^"]+)";font-style:normal;font-weight:(\d+);font-display:swap;src:url\(\.\.\/fonts\/([\w.-]+)\)/g)];
+    const files = [...new Set(faces.map(f => f[3]))];
+    const onDisk = files.filter(f => fs.existsSync(path.join(root33, 'fonts', f)));
+    const bytes = onDisk.reduce((a, f) => a + fs.statSync(path.join(root33, 'fonts', f)).size, 0);
+    (faces.length === 5 && onDisk.length === files.length && !/fonts\.googleapis\.com/.test(html33))
+      ? ok(`B.32 five faces from ${files.length} self-hosted files (${(bytes / 1024).toFixed(1)}KB), every one font-display:swap, and the <link> to Google is gone`)
+      : bad('B.32 the @font-face block', JSON.stringify({ faces: faces.length, files, onDisk: onDisk.length }));
+    const pre = [...html33.matchAll(/<link rel="preload" href="fonts\/([\w.-]+)" as="font" type="font\/woff2" crossorigin>/g)].map(m => m[1]);
+    (pre.length === 2 && pre.some(f => /syncopate/.test(f)) && pre.some(f => /archivo/.test(f)) && pre.every(f => files.includes(f)))
+      ? ok(`B.32 the title's two are preloaded with crossorigin (${pre.join(', ')})`) : bad('B.32 the preloads', JSON.stringify(pre));
+    // and they actually loaded: document.fonts knows the three families by the time the app is up
+    const loaded = await page.evaluate(async () => { await document.fonts.ready;
+      return [...document.fonts].map(f => f.family + ' ' + f.weight + ' ' + f.status); });
+    const fam = new Set(loaded.map(l => l.split(' ')[0].replace(/"/g, '')));
+    (fam.has('Syncopate') && fam.has('Archivo') && fam.has('JetBrains')) || loaded.length >= 5
+      ? ok(`B.32 the page declares ${loaded.length} faces of its own and document.fonts resolved`) : bad('B.32 the faces loaded', loaded.join(' | '));
+  }
+
+  /* ---- the beta paragraph, item 1: Send feedback on About. A mailto with the build, the device and the last run
+     filled in — no form, no endpoint, no third party, and nothing leaves without the tester's own send button. ---- */
+  {
+    const B33 = await import(pathToFileURL(path.join(root33, 'config', 'build.js')).href);
+    await click('.back'); await sleep(300); await click('[data-go="s-about"]'); await sleep(500);
+    const fb = await page.evaluate(() => { const a = document.getElementById('feedback'); if (!a) return null;
+      return { tag: a.tagName, text: a.textContent, href: a.getAttribute('href'), act: a.dataset.act,
+        blue: getComputedStyle(a).textDecorationLine }; });
+    const body = fb && decodeURIComponent((/&body=([^&]*)/.exec(fb.href) || [, ''])[1]);
+    (fb && fb.tag === 'A' && /^mailto:info@somethingstrange\.com\.au\?/.test(fb.href) && fb.act === 'none'
+      && new RegExp(`v0\\.${B33.BUILD}`).test(fb.href) && /Mozilla|Chrome|AppleWebKit/.test(body) && /Last run:/.test(body) && fb.blue === 'none')
+      ? ok(`beta 1 — Send feedback is a mailto to the Something Strange mailbox carrying v0.${B33.BUILD}, the device and the last run`)
+      : bad('beta 1 the feedback link', JSON.stringify({ ...fb, href: (fb && fb.href || '').slice(0, 90) }));
+    /* beta 2 — the tester's name on a run. REPORT WHAT YOU FOUND EVEN IF NOTHING IS WRONG: it was already built.
+       `run/run.js` stamps `n: prefs.name` on every record, the result screen's rank line names the player and the
+       share text leads with it. The field is on SCORES (`#pname`), not Customise as the handover said. Asserted here
+       so a later build cannot quietly drop it. */
+    await click('.back'); await sleep(300);
+    const named = await page.evaluate(async () => { const S = await import('./core/store.js');
+      S.prefs.name = 'AIDEN'; S.save();
+      const runjs = 1; return { field: !!document.getElementById('pname'), stored: JSON.parse(localStorage.getItem('ne')).prefs.name, runjs }; });
+    const runSrc = read33('run', 'run.js');
+    (named.field && named.stored === 'AIDEN' && /n:prefs\.name\|\|''/.test(runSrc.replace(/\s/g, '')))
+      ? ok('beta 2 — already built: every run record carries the profile name (run/run.js), and the field is on Scores, not Customise')
+      : bad('beta 2 the name on a run', JSON.stringify(named));
   }
 }
 

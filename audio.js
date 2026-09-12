@@ -152,9 +152,22 @@ const Music=(()=>{
   const pick=id=>TR[id]||TR[id+':'+opt(id)]||TR['quick-tap:held'];
   let tr=null, timer=0, next=0, bar=0, hits=[], sHits=[[],[]], fHits=[], mode='', mg=null, sg=[null,null], fg=null;
   let st=null, secs=0, stems=false, flow=false, shape=null, fin=null, duckT=0;
-  function nodes(){ const a=AC(); if(!a) return null; if(!mg||mg.context!==a){ mg=a.createGain(); mg.gain.value=1; mg.connect(a.destination);
-      sg=[0,1].map(()=>{ const g=a.createGain(); g.gain.value=0; g.connect(a.destination); return g; });
+  function nodes(){ const a=AC(); if(!a) return null;
+    if(!mg||mg.context!==a){ mg=a.createGain(); mg.gain.value=1; mg.connect(a.destination); }
+    if(!sg[0]||sg[0].context!==a){ sg=[0,1].map(()=>{ const g=a.createGain(); g.gain.value=0; g.connect(a.destination); return g; });
       fg=a.createGain(); fg.gain.value=0; fg.connect(a.destination); } return a; }
+  /* v18 (B.29) — SILENCE IS NOT THE SAME AS "STOP SCHEDULING", and that is the whole of the bug. `loop()` schedules a
+     bar of notes at a time into the audio clock, so clearing the interval leaves up to a full bar of the outgoing track
+     already started and unstoppable — which is exactly what Aiden heard when a preview opened over the menu loop:
+     "both playing gets confusing". A started oscillator cannot be unscheduled, so the bed's gain node is RETIRED
+     instead — ramped to nothing over CUT and dropped — and every note still hanging off it goes quiet with it. The
+     stems and the flow layer ride their own nodes and are retired in the same breath, so nothing of the old track is
+     left anywhere. Called wherever one track replaces another, which makes it structural: the preview, the menu loop
+     and a run's own track can never overlap again, not only on the screen the note was filed against. */
+  const CUT=.05;
+  function cut(){ const a=ac; const old=[mg,sg[0],sg[1],fg].filter(Boolean); mg=null; sg=[null,null]; fg=null;
+    for(const n of old){ try{ if(a){ n.gain.cancelScheduledValues(a.currentTime); n.gain.setTargetAtTime(0,a.currentTime,CUT); } }catch(e){}
+      setTimeout(()=>{ try{ n.disconnect(); }catch(e){} },700); } }
   /* v14 (4.15 / 10.2): a versus run hands its closeness up as st.tension, and the track tightens with it. Past .6 it swaps bed
      — a fifth up and faster — so the last stretch of a close versus sounds like a different piece of music.
      v16 (1.5, A.1): `st.fin` is 0..1, "how far into the finish this run is", set by run/run.js from the engine's own fin()
@@ -210,7 +223,8 @@ const Music=(()=>{
         try{ fg.gain.setTargetAtTime(want,a.currentTime,.12); }catch(e){ fg.gain.value=want; }
         schedule(Object.assign({},tr,FLOW_STEM),next,barSec,vol,fg,fHits,sh); }
       next+=barSec; bar++; } }
-  function run(t,id,sh){ const a=nodes(); if(!a) return; tr=t; mode=id; bar=0; hits=[]; sHits=[[],[]]; fHits=[]; shape=sh||null; fin=null;
+  // B.29: a track that replaces another cuts it first — nodes() then builds the incoming track its own clean bed
+  function run(t,id,sh){ if(tr) cut(); const a=nodes(); if(!a) return; tr=t; mode=id; bar=0; hits=[]; sHits=[[],[]]; fHits=[]; shape=sh||null; fin=null;
     endTune=keyOf(t); next=a.currentTime+.05; clearInterval(timer); timer=setInterval(loop,80); loop(); }
   // what the end cadence needs to land in this track's key: the nearest transposition, and whether the track is minor
   function keyOf(t){ const semi=Math.round(12*Math.log2(t.root/110)), wrap=((semi%12)+18)%12-6;
@@ -255,8 +269,8 @@ const Music=(()=>{
     tracks(){ return Object.keys(TR); },
     // what B.29 asks to be reported: one row per track, the arc a known run gets and the long form's own length
     lengths(){ return Object.keys(TR).map(id=>({ id, name:TR[id].name, form:formOf(TR[id]), barSec:+barSecOf(TR[id]).toFixed(2), formSec:+(formOf(TR[id])*barSecOf(TR[id])).toFixed(1), phase:phaseOf(TR[id]), longSec:longSec(TR[id]) })); },
-    stop(){ clearInterval(timer); tr=null; mode=''; shape=null; fin=null; duckT=0; if(mg) try{ mg.gain.cancelScheduledValues(0); mg.gain.value=1; }catch(e){}
-      if(sg[0]) try{ sg[0].gain.value=0; sg[1].gain.value=0; }catch(e){} if(fg) try{ fg.gain.value=0; }catch(e){} } };
+    // B.29: stopping cuts what is already in the air too — the bar that was scheduled a moment ago is the whole problem
+    stop(){ clearInterval(timer); timer=0; cut(); tr=null; mode=''; shape=null; fin=null; duckT=0; } };
 })();
 duckHook=(sec,at)=>Music.duck(sec,at);
 
