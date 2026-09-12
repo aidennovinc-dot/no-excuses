@@ -52,8 +52,11 @@ console.log('\nstatic checks');
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const { BUILD } = await import(pathToFileURL(path.join(root, 'config', 'build.js')).href);
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8'); const vj = JSON.parse(fs.readFileSync(path.join(root, 'version.json'), 'utf8'));
-  const places = [html.match(/<div class="hint">build (\d+) ·/)?.[1], html.match(/<div id="build">build (\d+)<\/div>/)?.[1], html.match(/const BUILD="(\d+)";/)?.[1], String(vj.build)];
-  places.every(p => p === String(BUILD)) ? ok(`A6 build ${BUILD} in config/build.js = index.html ×3 = version.json`) : bad('A6 one build number', JSON.stringify(places) + ' vs config ' + BUILD);
+  // v18 (S.2, batch 14): the two places a person reads wear `v0.N`; the constant and version.json stay the bare integer (A6)
+  const places = [html.match(/<div class="hint">v0\.(\d+) ·/)?.[1], html.match(/<div id="build">v0\.(\d+)<\/div>/)?.[1], html.match(/const BUILD="(\d+)";/)?.[1], String(vj.build)];
+  places.every(p => p === String(BUILD)) ? ok(`A6 build ${BUILD} in config/build.js = index.html ×3 = version.json (visible two as v0.${BUILD})`) : bad('A6 one build number', JSON.stringify(places) + ' vs config ' + BUILD);
+  const oldForm = html.match(/<div class="hint">build \d+ ·|<div id="build">build \d+</g) || [];
+  (!oldForm.length && /'v0\.'\+j\.build/.test(html)) ? ok('S.2 v0.N on screen — hint line, #build and the update bar; no `build N` form left') : bad('S.2 v0.N on screen', oldForm.join(' | ') || 'update bar does not name v0.N');
   const strip = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
   const cfg = fs.readdirSync(path.join(root, 'config')).filter(f => f.endsWith('.js'));
   const dirty = cfg.filter(f => /\bimport\b|=>|\bfunction\b/.test(strip(fs.readFileSync(path.join(root, 'config', f), 'utf8'))));

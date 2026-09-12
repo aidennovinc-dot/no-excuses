@@ -159,7 +159,7 @@
   <div class="explain">A passion project of simple games of pure skill and minimal frills.<br><br>If you'd like to remove ads, add customisation, and show your support, tap below.</div>
   <button data-act="support" class="support" id="support"><b id="support-title">Support · A$1.99 · once</b><small id="support-text">No ads, ever. Every colour, background and sound pack open from day one, plus the colour wheel. A pro 60-second length in Quick Tap and Dots, with its own boards. A star on your profile.</small></button>
   <div class="tierbox" id="tierbox"></div>
-  <div class="hint">build 30 · batch 13 · the music · 11 sept 2026</div>
+  <div class="hint">v0.30 · batch 13 · the music · 12 sept 2026</div>
 </section>
 
 <section class="screen" id="s-testing" data-back="s-menu" data-dev>
@@ -237,7 +237,7 @@
 
 <script type="module" src="./boot.js"></script>
 
-<div id="build">build 30</div>
+<div id="build">v0.30</div>
 <button id="update">New build available — tap to reload</button>
 <script>
 // build check: version.json is fetched with no-store, so a stale cached page still learns a newer build exists
@@ -247,7 +247,8 @@
     try{
       const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});
       const j=await r.json();
-      if(j.build && String(j.build)!==BUILD){ const u=document.getElementById('update'); u.classList.add('on'); u.onclick=()=>location.reload(true); }
+      // v18 (S.2): the bar names the build it found, in the v0.N form a person reads; BUILD and j.build stay the bare integer (A6)
+      if(j.build && String(j.build)!==BUILD){ const u=document.getElementById('update'); u.textContent='v0.'+j.build+' is ready — tap to reload'; u.classList.add('on'); u.onclick=()=>location.reload(true); }
     }catch(e){}
   }
   check(); document.addEventListener('visibilitychange',()=>{ if(!document.hidden) check(); });
