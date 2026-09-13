@@ -44,6 +44,7 @@ const picOf=(g,d)=>(PIC[g]||(()=>''))(d);
    v15 (6.5, build 26): pass & play says just "Go", for every game. It used to read "Go · 10s each" on Quick Tap and Dots
    and "Go · pass & play" on the five that share a run — a length on a button whose own length row is hidden, and a label
    naming the mode the player had just picked two chips ago. SHEET.goEach and SHEET.goPass are retired with it. */
-const goLabel=(g,d,versus)=>versus?SHEET.goVersus:SHEET.go;
+// v21 (F.5, build 35): versus says just "Go" as well. SHEET.goVersus ('Go · versus', on screen as GO VERSUS) is retired
+const goLabel=()=>SHEET.go;
 
 export { COLS, FMT, PIC, colsOf, fmtOf, fmtScore, goLabel, picOf, scoreTxt };

@@ -8,6 +8,7 @@
 import { HUD } from "../../config/copy.js";
 import { CFG, VS_CAP, VS_LEAD, VS_TARGET } from "../../config/games.js";
 import { $, T, pWho, vmin, winner } from "../../core.js";
+import * as hud from "./hud.js";
 
 const VX={ id:'versus', noIntro:true, ctx:null, n:[0,0], tgt:[0,0], lock:[0,0], streak:[0,0], pos:[null,null], next:[null,null], raf:0, t0:0, done:false, target:100,
   qt(){ return this.ctx.game==='quick-tap'; },
@@ -35,14 +36,20 @@ const VX={ id:'versus', noIntro:true, ctx:null, n:[0,0], tgt:[0,0], lock:[0,0], 
        whichever of the two is further along — the same pair of conditions `score` ends the run on. Presentation (L10). */
     const px=p=>Math.max(this.n[p]/this.target, Math.max(0,p?-d:d)/VS_LEAD);
     if(this.ctx) this.ctx.emit('live',{vsTension:Math.min(1,near),vsP:[Math.min(1,px(0)),Math.min(1,px(1))]}); },
-  score(p){ this.n[p]++; const el=$('#vn'+p); el.textContent=this.n[p]; this.ctx.audio.hit(); const d=this.n[0]-this.n[1]; const k=Math.min(1,Math.abs(d)/VS_LEAD)*50; const bar=$('#vslead'); bar.style.width=k+'%'; bar.style.left=d>=0?'50%':(50-k)+'%'; $('#vsdiff').innerHTML=d===0?HUD.level:T(HUD.lead,{who:pWho(d>0?0:1),n:Math.abs(d)});
+  // v21 (G.7, build 35): the count ticks up and pulses in that player's own colour (L4)
+  score(p){ this.n[p]++; const el=$('#vn'+p); hud.tick(el,this.n[p],p); this.ctx.audio.hit(); const d=this.n[0]-this.n[1]; const k=Math.min(1,Math.abs(d)/VS_LEAD)*50; const bar=$('#vslead'); bar.style.width=k+'%'; bar.style.left=d>=0?'50%':(50-k)+'%'; $('#vsdiff').innerHTML=d===0?HUD.level:T(HUD.lead,{who:pWho(d>0?0:1),n:Math.abs(d)});
     this.lean(d);
     // 4.14: first to the target, or first to lead by VS_LEAD
     if(Math.abs(d)>=VS_LEAD||this.n[p]>=this.target) this.end(); },
+  /* v21 (F.3, build 35): THE PAD A PLAYER HIT ANSWERS THE FINGER. The lit square moves on to a random pad and that is often
+     the same one, so a correct tap could change nothing on screen at all — two players read that as a miss. Presentation
+     only (L10). Pass & play was checked for the same gap and does not have it: it runs the solo timed engine, which rings
+     the next pad, pops a repeated one and swells the big count on every hit. */
+  tapped(p,i){ const pad=$(`[data-vs-side="${p}:${i}"]`); if(!pad) return; pad.classList.remove('tapped'); void pad.offsetWidth; pad.classList.add('tapped'); },
   // a pad tap carries the player and the pad (data-vs-side); a field tap carries the point
   input(ctx,ev){ if(ev.player!==undefined) this.padTap(ev.player,ev.target); else this.fieldTap(ev); },
   padTap(p,i){ if(!this.ctx.timers.alive()||this.done||this.lock[p]) return; const n=this.pads(); if(i>=n) return;
-    if(this.tgt[p]===i){ this.score(p); const prev=this.tgt[p]; let t=Math.random()*n|0; if(t===prev){ this.streak[p]++; if(this.streak[p]>=3){ t=(prev+1+(Math.random()*(n-1)|0))%n; this.streak[p]=0; } } else this.streak[p]=0; this.tgt[p]=t; this.renderQT(); }
+    if(this.tgt[p]===i){ this.tapped(p,i); this.score(p); const prev=this.tgt[p]; let t=Math.random()*n|0; if(t===prev){ this.streak[p]++; if(this.streak[p]>=3){ t=(prev+1+(Math.random()*(n-1)|0))%n; this.streak[p]=0; } } else this.streak[p]=0; this.tgt[p]=t; this.renderQT(); }
     // 4.12: a wrong tap reads like it does in solo — a red flash over that player's half and a beat of lockout, not a blank screen
     else { this.lock[p]=performance.now()+CFG.lockout; this.ctx.audio.miss(); this.renderQT(); this.flash(p); if(navigator.vibrate) navigator.vibrate(30); } },
   flash(p){ const h=halfOf(p); h.classList.remove('miss'); void h.offsetWidth; h.classList.add('miss'); this.ctx.timers.later(()=>h.classList.remove('miss'),CFG.lockout); },

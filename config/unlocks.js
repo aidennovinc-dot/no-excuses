@@ -47,7 +47,8 @@ export const LEN_RULES = {
   // v17 (B.6, L6): "N hits in a row" — a miss resets the count, which is what Aiden meant and what the predicate now does
   'quick-tap:two':  [null,'7 hits in a row, no misses, in a {game} {prev}','24 hits in a {game} {prev}'],
   'quick-tap:four': [null,'7 hits in a row, no misses, in a {game} {prev}','24 hits in a {game} {prev}'],
-  'dots:blind':     [null,'6 hits in a row, no misses, in a {game} · {mode} {prev}','24 hits in a {game} · {mode} {prev}'],
+  // #415 (L6, build 35): Blind Marathon is 22 hits in a Blind Dash, down from 24. Lead keeps its 28
+  'dots:blind':     [null,'6 hits in a row, no misses, in a {game} · {mode} {prev}','22 hits in a {game} · {mode} {prev}'],
   'dots:lead':      [null,'9 hits in a row, no misses, in a {game} · {mode} {prev}','28 hits in a {game} · {mode} {prev}'],
   // v17 (B.9, L6): 5 keys is gone, so the ladder is 3 → 7 with nothing between. Seven asks for EIGHT notes in 3 keys,
   // not the old six: skipping a rung has to cost something, and two more notes is the step the missing rung used to be (guess)

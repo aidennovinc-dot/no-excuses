@@ -18,11 +18,12 @@
 
 /* Best first, which is the order they are tested in. `of` is the index into THAT GAME'S `at` — so a tier's threshold is
    never written here, only which of the game's three numbers it reads. `of:null` is the floor: below all three. */
+// The Verdict Desk (Aiden, 2026-09-13, built at build 35): the four names are his — they were almost perfect / good / alright / bad
 export const VERDICT_TIERS = [
-  { id:'ace',  name:'almost perfect', col:'#6EC6FF', of:0 },
-  { id:'good', name:'good',           col:'#3DD68C', of:1 },
-  { id:'ok',   name:'alright',        col:'#E8C547', of:2 },
-  { id:'bad',  name:'bad',            col:'#E0453B', of:null },
+  { id:'ace',  name:'Amazing!', col:'#6EC6FF', of:0 },
+  { id:'good', name:'Great!',   col:'#3DD68C', of:1 },
+  { id:'ok',   name:'Good.',    col:'#E8C547', of:2 },
+  { id:'bad',  name:'Meh.',     col:'#E0453B', of:null },
 ];
 
 /* A run that ends badly enough to have no tier of its own — a timed run with nothing on it, more misses than hits — is
@@ -31,38 +32,63 @@ export const VERDICT_TIERS = [
    and is retired at build 31 (v18 B.1c): nothing ends that mode early now. */
 export const VERDICT_FAIL_TIER = 'bad';
 
+/* BUILD 35 — two changes to this table, and the file they came from.
+   v20 (D.10): Timing and Reaction are keyed PER MODE. Stopwatch (seconds off) and Hidden (ms off the marker) shared one `at`
+   triple, and so did Flash (raw ms) and Go / No-go (ms over the 180ms gate) — Aiden: "hidden and stopwatch should be
+   separated". Each of the four is seeded with its parent's lines and numbers, the `hold` / `hold:cut` pattern already here,
+   and the two parent rows are gone rather than left as a second copy nothing reads. verdictKey() and GV() take 'g:d' first,
+   so nothing that looks a verdict up changed. Timing was Aiden's call; Reaction is Cowork's by the same argument.
+   The Verdict Desk (Aiden, 2026-09-13; `_review/2026-09-13_personal_verdict-desk-edits.md`): his `at` triples for Quick
+   Tap, Dots, both Estimate modes and Sequence, and his lines for Quick Tap, Dots and both Estimate modes. Not built, and
+   each still build 34's: Quick Tap `ok/4` and Estimate · Grow `bad/0` (both half-typed — the file says confirm first),
+   Estimate · Grow `ace/0`, `ace/2`, `good/0`, `good/4` (not edited), every line for Sequence, Timing, Reaction and Spot,
+   and Timing's thresholds (#414 — the 24000 scale was an artefact of the page, not a decision). The `at` values are his
+   thresholds in each game's own unit against QUALITY's scale: Quick Tap 2.90 / 2.20 / 1.50 a second over 6, Dots 2.50 /
+   2.00 / 1.40 over 4.5, Grow 5 / 10 / 30% off over 40, Cut 4.5 / 8 / 15% off over 40, Sequence 11 / 8 / 5 notes over 16. */
 export const VERDICTS = {
-  'quick-tap': { at:[.85,.6,.35], lines:{
-    bad: ['Warming up. Go again.','Slow hands. They get faster.','That was a stretch, not a run.','Barely moving. Again.','Your thumbs were somewhere else.'],
-    ok:  ['Landing them. Now stop looking.','Solid enough. Push it.','Steady. Speed is the next problem.','Fine. Faster.','Halfway to quick.'],
-    good:['Quick. The next tier is close.','Good hands.','That is a proper run.','Fast, and it held.','Close to sharp.'],
-    ace: ['Sharp. Very sharp.','That is not normal. Keep it.','Nothing left on the table.','Thumbs like that are a warning.','Do that again and I will believe it.'] } },
-  'dots': { at:[.85,.6,.35], lines:{
-    bad: ['Finding the screen. Go again.','The dot was winning.','Chasing, not catching.','Late every time. Again.','You looked for it. Stop looking.'],
-    ok:  ['Landing them. Faster now.','Getting there. Cut the travel.','Decent. Move sooner.','You are catching most of them.','Good enough to beat next time.'],
-    good:['Quick hands.','Straight lines. Good.','That is real speed.','Barely a wasted move.','Close to radar.'],
-    ace: ['Radar. That is not normal.','You were there before it was.','Nothing wasted.','That run will be hard to repeat.','Keep it. Frame it.'] } },
-  'hold': { at:[.85,.6,.35], lines:{
-    bad: ['Nowhere near. Feel the rate, not the shape.','Wild. Slow the hold down.','Miles off. Count it.','That was a guess.','The shape is not the point. The rate is.'],
-    ok:  ['Close-ish. Trust the count.','In the area. Tighten it.','Better. Stop early, not late.','Reasonable. Not right.','You are reading it, roughly.'],
-    good:['Good eye.','Tight. Nearly there.','You felt that one.','Small errors, every round.','One step off machine.'],
-    ace: ['Machine-adjacent.','That is not normal. Keep it.','Dead on, round after round.','Nothing to correct.','You have the rate memorised.'] } },
-  'hold:cut': { at:[.85,.6,.35], lines:{
-    bad: ['Way off. Look at the whole shape first.','That cut was hopeful.','Halves are not where you think.','Wild line. Again.','You cut before you looked.'],
-    ok:  ['Getting there. Think in halves.','Near enough to annoy you.','Better. Slow the line down.','Rough, but reading it.','The eye is coming.'],
-    good:['Good eye.','Clean lines.','Nearly surgical.','You saw the split.','Tight cutting.'],
-    ace: ['Surgical.','That is not normal. Keep it.','Every line where it should be.','Nothing to take off that.','You cut it before you drew it.'] } },
-  'sequence': { at:[.85,.6,.35], lines:{
+  'quick-tap': { at:[.4833,.3667,.25], lines:{
+    bad: ['Warming up, try again!','A few mistakes?',"Alright let's go again.",'Could be quicker...','Do you need a coffee?'],
+    ok:  ['Good work!','Steady pace!','Keep pushing!','Decent speed.','Halfway to quick.'],
+    good:['Great job!','Proper fast.','Solid run!',"You're switched on today.",'Well done!'],
+    ace: ['Look at you go!',"You're flying!","You're a Quick Tap master!",'Do those thumbs come with a warning?','Quick.  Damn quick.'] } },
+  'dots': { at:[.5556,.4444,.3111], lines:{
+    bad: ['Maybe try fingers instead of thumbs?','The dots might be winning...','Have another crack.','Can we pick up the speed?','You need to be one with the dots'],
+    ok:  ['You own the dots.','Decent speed, can you go faster?',"In the 20's!","That's worthy of the first key.",'Solid, but could you improve?'],
+    good:['Quick work!','Great job!','That was some serious speed.','Very good run!','Be one with the dots.'],
+    ace: ['Are you cheating?','Quickest hands in the West.','That will be hard to top.','You are the Dots master!','Wow, what a run!'] } },
+  'hold': { at:[.875,.75,.25], lines:{
+    bad: ['Nowhere near. Feel the rate, not the shape.','Make sure you match the total area','A bit off but not the worst','Were you just guessing or...','Back to the drawing board.'],
+    ok:  ['Decent estimation skills!','In the ball park for sure.','Not a bad run at all.','Reasonable, but could you do better?',"You're getting there!"],
+    good:['Good eye.','Tight. Nearly there!','You were on the ball for that one!','Close to being an amazing run!','One step off machine.'],
+    ace: ['Machine-adjacent.','That was not a normal run.','Dead on, round after round.','Nothing to correct, perfection.','Your estimation skills are unmatched!'] } },
+  'hold:cut': { at:[.8875,.8,.625], lines:{
+    bad: ["I wouldn't let you cut my birthday cake...",'Hmmmm, maybe we work on this one.','Give me back that knife please.','Do you understand the game or...?','Measure twice, cut once'],
+    ok:  ['Getting there, solid run!','Close enough, good enough.','Good run, could we improve?','Taking your time, nice to see!','You know your percentages!'],
+    good:["You've got the eye!",'Clean cutting.','Certified birthday cake cutter!','See the cut, be the cut.','Sliced and diced!'],
+    ace: ['Surgical!','Wow, excellent cutting!','Are you a doctor?',"Surely there's cheating involved...","You're a pro!"] } },
+  'sequence': { at:[.6875,.5,.3125], lines:{
     bad: ['Short memory. Go again.','Lost it early.','Three notes and gone.','Watch it, then play it.','That went fast.'],
     ok:  ['Building. Say it out loud.','Middling memory.','Better. Stop rushing the reply.','You are holding some of it.','Halfway to long.'],
     good:['Long memory.','That is a real chain.','You held it together.','Nearly very long.','Good hold on it.'],
     ace: ['Very long memory.','That is not normal. Keep it.','You are storing these somewhere.','Nothing dropped.','Hard to beat that.'] } },
-  'timing': { at:[.85,.6,.35], lines:{
+  // v20 (D.10): was one 'timing' row. Seeded from it, identical until Aiden writes them apart (#413 / #414)
+  'timing:stopwatch': { at:[.85,.6,.35], lines:{
     bad: ['Way off. Count it out loud.','The clock won.','Seconds are longer than that.','Not close. Again.','You guessed. It showed.'],
     ok:  ['Getting the rhythm.','In the region.','Better. Trust the first count.','Nearly honest timing.','You are close to the beat.'],
     good:['Good clock.','Tight timing.','You felt the second.','Nearly very good.','That is a steady internal beat.'],
     ace: ['Very good clock.','That is not normal. Keep it.','Dead on, repeatedly.','You do not need the timer.','Nothing to correct.'] } },
-  'reaction': { at:[.85,.6,.35], lines:{
+  'timing:hidden': { at:[.85,.6,.35], lines:{
+    bad: ['Way off. Count it out loud.','The clock won.','Seconds are longer than that.','Not close. Again.','You guessed. It showed.'],
+    ok:  ['Getting the rhythm.','In the region.','Better. Trust the first count.','Nearly honest timing.','You are close to the beat.'],
+    good:['Good clock.','Tight timing.','You felt the second.','Nearly very good.','That is a steady internal beat.'],
+    ace: ['Very good clock.','That is not normal. Keep it.','Dead on, repeatedly.','You do not need the timer.','Nothing to correct.'] } },
+  // v20 (D.10): was one 'reaction' row — raw ms and ms over the 180ms gate shared one triple. Seeded from it
+  'reaction:flash': { at:[.85,.6,.35], lines:{
+    bad: ['Asleep. Go again.','Slow off the mark.','You blinked.','Late. Every time.','Wake up and run it again.'],
+    ok:  ['Awake.','Respectable. Not quick.','Better. Stop guessing the flash.','Mid. Push it down.','You are nearly fast.'],
+    good:['Quick.','Good reflexes.','That is a fast hand.','Nearly very quick.','Low numbers. Good.'],
+    ace: ['Very quick.','That is not normal. Keep it.','Faster than most people can blink.','Nothing between seeing and tapping.','Do that twice and I will worry.'] } },
+  'reaction:nogo': { at:[.85,.6,.35], lines:{
     bad: ['Asleep. Go again.','Slow off the mark.','You blinked.','Late. Every time.','Wake up and run it again.'],
     ok:  ['Awake.','Respectable. Not quick.','Better. Stop guessing the flash.','Mid. Push it down.','You are nearly fast.'],
     good:['Quick.','Good reflexes.','That is a fast hand.','Nearly very quick.','Low numbers. Good.'],

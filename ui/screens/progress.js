@@ -239,7 +239,9 @@ define({
   // an earned achievement (v11) opens the Customise tab at what it unlocked; a locked one still offers the run
   ach(b){ const a=findAch(b.dataset.ach); if(!a) return 'click'; if(got()[a.id]){ if(a.g!=='all') sel.game=a.g; setTab('cus',{unlocks:a.unlocks}); return 'click'; }
     if((a.g!=='all'||a.id==='fullset')&&a.tier!=='secret') jumpTo(a); return 'click'; },
-  'chip-pv'(b){ F.g=b.dataset.v; renderCustom(); return 'pick'; },
+  /* v21 (F.4, build 35): a locked swatch being PREVIEWED belongs to the game it was tapped on. `pvTry` survived the game chip,
+     so light blue tried on Quick Tap was drawn on Dots' preview, and on every game after it, until something else cleared it. */
+  'chip-pv'(b){ F.g=b.dataset.v; pvTry.set=null; pvSeen.by=null; renderCustom(); return 'pick'; },
   // B.30: the locked line is the control now — a tap on it goes to the achievement that opens the item
   pvlock(b){ if(b.dataset.ach) setTab('ach',{ach:b.dataset.ach}); return 'click'; },
   'wheel-done'(){ Wheel.close(); return 'click'; },

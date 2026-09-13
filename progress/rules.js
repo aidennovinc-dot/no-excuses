@@ -59,7 +59,8 @@ const LEN_TEST = {
   // they never said "no misses" and a total is a fair thing to ask of a whole run
   'quick-tap:two':  [null, inRow(7), r=>r.hits>=24],
   'quick-tap:four': [null, inRow(7), r=>r.hits>=24],
-  'dots:blind':     [null, inRow(6), r=>r.hits>=24],
+  // #415 (L6, quoted in FEEDBACK-v21 "Also carried", build 35): Blind Marathon asks 22 hits in a Blind Dash, was 24
+  'dots:blind':     [null, inRow(6), r=>r.hits>=22],
   'dots:lead':      [null, inRow(9), r=>r.hits>=28],
   // v17 (B.9, L6): one rung, not two — 5 keys is gone and 7 opens on eight notes in 3 keys
   'sequence:solo':  [null, r=>r.s===3&&r.hits>=8],
@@ -140,7 +141,15 @@ const ACH_PROGRESS = {
 
 /* ---------- quality 0..1 per game, mode and length: picks the verdict tier and draws the radar. Every lower-is-better one runs 1 − score/limit ---------- */
 const QUALITY = {
-  'quick-tap':r=>r.hits/r.s/(r.d==='four'?5:6), 'dots':r=>r.hits/r.s/4.5, 'hold':r=>1-Math.min(1,r.hits/12), 'sequence':r=>r.hits/16,
+  /* v20 (D.9, build 35): Quick Tap's two modes share ONE curve, ÷6 — Aiden: "two and four should just be the same". Four was
+     ÷5, so "Amazing!" sat at 5.10/s in Two and 4.25/s in Four; Four is now simply harder to tier well in, which is what the
+     chain already says (v17 B.7), and Dots' two modes have always shared one. Quality is worked out when it is shown and is
+     not on the run record, so nothing migrates.
+     The Verdict Desk (2026-09-13, build 35): Estimate's scale is 40% off, was 12 — a tier could not sit past the far edge
+     of the curve, which is why 30% was impossible to enter. Grow and Cut read the same key, and both of Aiden's `at`
+     triples in config/verdicts.js are written against 40. Timing's 24000 is NOT this — it came from a widening rule in the
+     editing page, not a decision, and Timing keeps 5 and 5400 until he re-enters it (#414). */
+  'quick-tap':r=>r.hits/r.s/6, 'dots':r=>r.hits/r.s/4.5, 'hold':r=>1-Math.min(1,r.hits/40), 'sequence':r=>r.hits/16,
   /* v18 (B.2 / B.4): both Timing Sets changed unit, so both curves are re-based rather than retuned. Stopwatch was an
      average against 1.00s; five rounds of that is 5.00s. Hidden was 800px, which is 5369ms at the ball's measured pace
      (6.71ms a pixel on a 390x844 phone) — 5400ms. Same standard, new unit, in both cases. */

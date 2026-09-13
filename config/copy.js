@@ -45,20 +45,22 @@ export const PROGRESS = { finishOne:'finish one {game} {prev}', finishA:'finish 
    called too much information, and anything that needs one does not belong on an intro screen. The word-by-word reveal
    went with it (run/run.js). The line itself STAYS: he asked for it on 2026-09-04 and again on 2026-09-05, and it is
    what teaches the rule. Cowork's earlier idea of moving the rule into the 3-2-1 top strip is superseded and not built. */
+/* The Verdict Desk (Aiden, 2026-09-13; built at build 35 from _review/2026-09-13_personal_verdict-desk-edits.md): twelve of
+   the thirteen lines are his words now. Quick Tap · Two keeps the line it had — he did not change it. */
 export const INTRO = {
   'quick-tap:two':  ['Tap the box when it lights up.'],
-  'quick-tap:four': ['Tap the white pad.'],
-  'dots:blind':     ['Tap the dot where it lands.'],
-  'dots:lead':      ['Tap the dot where it lands.'],
-  'hold:grow':      ['Watch it grow. Tap and hold until yours matches.'],
-  'hold:cut':       ['Draw a line through the shape.'],
-  'sequence:solo':  ['Copy the notes.'],
-  'timing:stopwatch':['Tap to stop the timer.'],
-  'timing:hidden':  ['Tap when the ball reaches the marker.'],
-  'reaction:flash': ['Tap the moment it goes white.'],
-  'reaction:nogo':  ['Tap only the shape you were told.'],
-  'spot:count':     ['Count the shape you were shown.'],
-  'spot:find':      ['Find the shape you were shown.'],
+  'quick-tap:four': ['Four buttons this time!'],
+  'dots:blind':     ['Tap as many dots as you can.'],
+  'dots:lead':      ['Tap the dot.  The outline leads the way.'],
+  'hold:grow':      ['Grow your shape to match the area.'],
+  'hold:cut':       ['Cut the shape to the target %.'],
+  'sequence:solo':  ['Copy the notes.  How far can you get?'],
+  'timing:stopwatch':['Stop the watch at the target time.'],
+  'timing:hidden':  ['Tap the ball when it reaches the outline.'],
+  'reaction:flash': ['Test your reaction time.'],
+  'reaction:nogo':  ['Tap only when you see your shape.'],
+  'spot:count':     ['Count how many of your shape appears.'],
+  'spot:find':      ['Quickly find and tap your shape.'],
 };
 // v16 (A.3): the first run of each GAME ends its intro here instead of dropping straight into the 3-2-1 — one tap, once
 export const INTRO_READY = { ready:'Ready?', tap:'tap to begin' };
@@ -115,7 +117,8 @@ export const SHEET = { mode:'Mode', toUnlock:'To unlock: {need}', tileUnlock:'to
   opens:'open with', notes:'notes',
   // v14 (7.1): the result screen's button is Try again until something is changed, and only then does it become Go
   // v15 (6.5, build 26): goEach ('Go · {n}s each') and goPass ('Go · pass & play') are retired — a pass & play Go says just Go
-  go:'Go', tryAgain:'Try again', goVersus:'Go · versus', passTitle:' · pass & play', versusTitle:' · versus',
+  // v21 (F.5, build 35): and so does versus — goVersus ('Go · versus', GO VERSUS on screen) is retired the same way
+  go:'Go', tryAgain:'Try again', passTitle:' · pass & play', versusTitle:' · versus',
   chalScored:'A friend scored ', chalBeat:' — beat it', chalSent:'A friend sent you this one' };
 export const LOCK = { text:'{name}<b>To unlock: {need}</b>' };
 // v14 (4.2): the sub-copy under the two-player picture is gone — no "take turns on one phone", no "{n} seconds each", no grey
@@ -151,6 +154,8 @@ export const ABOUT = { tier:['No ads, ever.','Every colour, background and sound
   devOpen:'open everything is ON · every mode and cosmetic available', devProg:'progression ON · {u} of {nu} modes earned · {a} of {na} achievements',
   devRuns:' · {r} runs on record · ', devSup:'supporter ON', devFree:'free tier · ads on',
   // v18 (B.26, build 32): a button per animation, dev only (S5). Each plays the real animation with nothing stored
+  // v21 (F.2, build 35): the audio context read out live — its state, how many times it has been rebuilt, the last thing that happened
+  devAudio:'audio · {state} · context {gen}{why}',
   devAnim:'animations · nothing is stored', devKeyIn:'key arrival', devSeg:'segment advance', devWhole:'key complete', devChest:'chest {n} opening',
   /* build 33: Send feedback, the beta channel's missing half. GitHub Pages was already the way a tester gets the build;
      what was missing was the way back. It is a mailto and nothing more — no form, no endpoint, no third party — with

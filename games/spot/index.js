@@ -157,7 +157,8 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
     const w=sh===this.o1?0:1; this.st='show'; cancelAnimationFrame(this.raf); this.vsN[w]++;
     // A.2: the round goes to the owner, and it lights in the owner's colour (L4)
     els[best].classList.remove('puls'); els[best].classList.add('odd',w?'p2':'p1'); els.forEach((el,i)=>{ if(i!==best) el.classList.add('dim'); });
-    hud.timeHtml(this.vsLine());
+    // v21 (G.7, build 35): the line is redrawn with the new count in it, so the scorer's number pulses in their colour (L4)
+    hud.timeHtml(this.vsLine()); hud.pulse($('#hud-time .spvs b.'+(w?'p2':'p1')),w);
     $('#gen').insertAdjacentHTML('beforeend',`<div class="glbl bot"><b class="${w?'p2':'p1'}">${T(CP.vsTook,{n:w+1})}</b>${f2((performance.now()-this.t0)/1000)}s</div>`);
     this.ctx.audio.hit(); this.later(()=>this.vsFindRound(),1500); },
   vsEnd(){ const [a,b]=this.vsN; const w=winner(a,b); this.st='over'; rxBar(null); cancelAnimationFrame(this.raf);

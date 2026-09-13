@@ -19,7 +19,7 @@ import { DESIGNS, ITEMS } from "../config/theme.js";
 import { GAMES, GC } from "../games/registry.js";
 import { emit } from "./events.js";
 
-const KEY='ne', VERSION=3, RUNS_CAP=600;
+const KEY='ne', VERSION=4, RUNS_CAP=600;
 const LEGACY=['ne.prefs','ne.runs','ne.unlock','ne.ach','ne.seen','ne.intro','ne.tileSeen'];
 const read=k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } };
 const write=(k,v)=>{ try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } };
@@ -68,6 +68,8 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
   // v18 (B.2 / B.4): how many Timing runs the unit change retired, so the app can say so once rather than silently
   if(Number.isInteger(p.mig31)&&p.mig31>0) o.mig31=p.mig31;
   if(Number.isInteger(p.mig32)&&p.mig32>0) o.mig32=p.mig32;
+  // v21 (F.4, build 35): how many games' colours up4 put back to white
+  if(Number.isInteger(p.mig35)&&p.mig35>0) o.mig35=p.mig35;
   return o; }
 const validRun=r=>isObj(r)&&!!GAMES[r.g]&&GAMES[r.g].modes.includes(r.d)&&typeof r.s==='number'&&typeof r.hits==='number'&&typeof r.t==='number';
 /* v18 (B.14): THE CAP NEVER DROPS A ROW THAT IS IN A TOP TEN. It did — the cap was `slice(0, 600)` here and
@@ -151,10 +153,26 @@ function up3(raw){ const runs=Array.isArray(raw.runs)?raw.runs:[];
   if(isObj(raw.bars)) delete raw.bars['reaction:nogo:-1'];
   raw.v=3; if(n&&isObj(raw.prefs)) raw.prefs.mig32=n; return raw; }
 
+/* v3 → v4 (build 35, v21 §F.4): EVERY GAME'S COLOURS GO BACK TO WHITE, ONCE. Aiden saw colours on game select he never
+   chose — Quick Tap light blue, Dots lime. What was found, in full, is in FEATURES.md (build 35); the short of it is that
+   NOTHING in the app writes a player colour into prefs, and the only two writers of `prefs.col` are Customise's swatch tap
+   and its colour wheel. But the game-select tile and Customise's selected ring both read `colOf(g)` — the same stored
+   value — so a colour a tile shows IS in storage, which is the case F.4 says gets a ladder step. A stored colour cannot
+   say whether it was chosen or tapped while looking, so every game's `sq` / `lead` / `cut` is cleared and `cleanPrefs`
+   seeds white and red again. Cosmetic only: an earned swatch stays earned (achievements are untouched), the background,
+   tint, sound pack and every other preference stay, and a colour picked from here on is a choice that sticks.
+   `mig35` is how many games had a colour that was not the default, so the count is on record. */
+function up4(raw){ const p=isObj(raw.prefs)?raw.prefs:null; let n=0;
+  if(p&&isObj(p.col)){ for(const g in p.col){ const c=p.col[g]; if(!isObj(c)) continue;
+      const off=(v,d)=>typeof v==='string'&&HEX.test(v)&&v.toUpperCase()!==d; if(off(c.sq,SQ)||off(c.lead,LEAD)||(off(c.cut,SQ)&&c.cut!==c.sq)) n++; }
+    p.col={}; }
+  raw.v=4; if(n&&p) p.mig35=n; return raw; }
+
 function load(){ let raw=parse(read(KEY)), legacy=false;
   if(!isObj(raw)){ raw=fromLegacy(); legacy=!!raw; if(!raw) raw={}; }
   if((raw.v||0)<2) raw=up2(raw);
   if((raw.v||0)<3) raw=up3(raw);
+  if((raw.v||0)<4) raw=up4(raw);
   return { st:{ v:VERSION, prefs:cleanPrefs(raw.prefs), runs:cleanRuns(raw.runs), ach:cleanMap(raw.ach), unlock:cleanMap(raw.unlock), intro:cleanMap(raw.intro), seen:isObj(raw.seen)?cleanMap(raw.seen):null, bars:cleanMap(raw.bars) }, legacy }; }
 
 const { st: store, legacy } = load();
@@ -171,6 +189,6 @@ const musicOn=g=>prefs.musicG[g]!==false;
    profile showed all 27 of them open. Supporter is a dev switch today (S5 gates it out of a release build entirely) and
    Fresh game is the switch for seeing the app as a new player does, so it belongs in this list. When it becomes a real
    purchase at the native build it will be restored from the store rather than from prefs, and this line stays correct. */
-function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,chest1:0,chest2:0,chest3:0,pro:0,keyWhole:{}}); delete prefs.mig11; delete prefs.mig31; delete prefs.mig32; save(); emit('store:reset'); }
+function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,chest1:0,chest2:0,chest3:0,pro:0,keyWhole:{}}); delete prefs.mig11; delete prefs.mig31; delete prefs.mig32; delete prefs.mig35; save(); emit('store:reset'); }
 
 export { RUNS_CAP, musicOn, prefs, reset, save, store, trimRuns };

@@ -78,6 +78,15 @@ unit changes, and the store's ladder gains a step the same day).
 - **Every progression gate honours `allOpen` and `supporter`, never a chest or unlock flag alone** — `!!(prefs.chestN || prefs.allOpen || prefs.supporter)`, the shape at `ui/screens/progress.js:110` and `mapOpen()` in `progress/key.js`. Testing's OPEN EVERYTHING is how Aiden reviews locked content on his phone, so a gate that reads the flag by itself is a gate he cannot see past; #411 was the key screen doing exactly that while the rest of the app did not. This takes nothing from A.1 — `core/store.js` reads both dev flags as `dev && ...`, so `BUILD_FLAGS.dev` zeroes them in release and a first-timer still meets one target per game.
 - **A first-play intro is ONE line** (`INTRO` in `config/copy.js`); a player's first run of each GAME ends on a "Ready?" tap.
 - **One mechanism pins a goal**: `goWhere` → `pendingAim` → `#goal`; an aim the player asked for outranks `goalFor`'s automatic offer.
+- **Try to unlock lands on the HIGHEST open mode and length when `where` names none** (v20 D.8): `whereOf` in `run/run.js`; a named one that is locked falls back the same way, and it never lands on a locked one.
+- **An AudioContext that will not resume is rebuilt, not retried** (v21 F.2): every resume goes through `revive()` in `audio.js` — foreground, `pageshow`, the context's own `statechange`, the next tap — and anything holding a node or a clock time registers in `rebinds`. Testing reads the state out (S5). Verified only on a phone.
+- **With nothing selected the pick sheet is `hidden`** (v21 F.1) — out of the layout, never just translated under the map; `hideSheet()` empties it after the slide down.
+- **No player colour is ever written where customisation lives** (v21 F.4, L4): the only writers of `prefs.col` are Customise's swatch tap and its wheel; a game is white until a colour is chosen for it. The store is v4 — `up4` cleared every game's colours once (`mig35`).
+- **Every Go button says Go** — versus too (v21 F.5, `goLabel`).
+- **A newly unlocked MODE is green until a run of it is on record** (v20 D.1): `newPlay(g,d)` reads the run store; L8's first-seen `newMark` / `markSeen` is a separate fact and untouched. **Selected beats green** (D.2) — the selected line on a mode, the amber outline on a tile.
+- **The whole-run rate holds until `RATE_RUN_FLOOR` (2.0s)** (v20 D.3a, L5 quoted); **`peak` is the intervals in a trailing second** (D.3b), and nothing reads a stored one, so it took no `RUN_SCHEMA` step.
+- **A verdict row is per mode wherever a game's modes score in different units** (v20 D.10: `timing:stopwatch` / `timing:hidden`, `reaction:flash` / `reaction:nogo`, no parent row left); Quick Tap's two modes share one ÷6 curve (D.9).
+- **Every live score ticks** (v21 G.7): `hud.tick(el, text, p)` — a `TICK.ms` (90) count-up and pulse, interruptible, in the player's colour in versus (L4), presentation only (L10); a running countUp / addUp writes `#score` straight through. A correct versus pad pulses (F.3, `VX.tapped`).
 
 ## Structure — the module map; full text in `docs/RULES-HISTORY.md` → Structure
 
@@ -95,7 +104,7 @@ Achievements tabs), `key`, `about`, `testing`, `pass`, `result`, `lockbox`. A sc
 onBack})` on `ui/router.js` and `define({act})` on `ui/actions.js`; `data-back` in the markup is the stack.
 
 **The store (A5, S3)** — one localStorage key `ne`, `{v, prefs, runs, ach, unlock, intro, seen, bars}` in
-`core/store.js`, `v` 3 since build 32 (two ladder steps: `up2` build 31, `up3` build 32). A new `prefs` field goes into
+`core/store.js`, `v` 4 since build 35 (three ladder steps: `up2` build 31, `up3` build 32, `up4` build 35 — every game's colours back to white, F.4). A new `prefs` field goes into
 `cleanPrefs` in the commit that adds it; Fresh game clears progress and keeps preferences; `runs` is capped at 600; dev
 switches exist only while `BUILD_FLAGS.dev` is true (S5). `bars` holds all three tiers (`'g:d:s'`, `'g:d:s|pro'`, `'g:d:s|author'`).
 

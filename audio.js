@@ -9,17 +9,63 @@
 
 import { DUCK, DUCK_TAIL, FLOW_STEM, SCALES, SET_SECS, STEMS, TRACKS, TRACK_PICK, VERDICT_FX } from "./config/audio.js";
 import { STREAK } from "./config/games.js";
-import { on } from "./core/events.js";
+import { emit, on } from "./core/events.js";
 import { sel } from "./core/state.js";
 import { musicOn, prefs } from "./core/store.js";
 /* ---------- sound: synthesised, tiny, quiet. The pack colours hit / miss / click; tick, go and end are the same everywhere ---------- */
 // v10: iOS marks the context "interrupted" (not "suspended") when the app goes to the background, and only a resume inside a touch brings it back — so every touch checks, and so does coming back to the foreground
-let ac=null; const AC=()=>{ if(!ac){ try{ ac=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } if(ac&&ac.state!=='running'){ try{ ac.resume(); }catch(e){} } return ac; };
+/* v21 (F.2, build 35) — WHAT THAT PATH DID, READ BEFORE ANY OF THIS WAS WRITTEN: three bare `resume()` calls — here, on
+   every capture-phase pointerdown, and on visibilitychange — and nothing else. None awaited the promise or looked at the
+   state afterwards, nothing listened to the context's own `statechange`, and there was no way back from a context that
+   will not resume: every tone after that is scheduled into a clock that never moves, which is total silence — music AND
+   effects — until the app is killed. That is the report, and it is why it is the context and not the loop scheduler.
+   F.2's four parts, in its order: (a) resume on foreground — visibilitychange, plus pageshow for a page restored from
+   memory; (b) the context's own statechange, because iOS reports `interrupted`; (c) a resume that has not brought it
+   back inside REVIVE_MS REBUILDS the context and re-points everything built on it — `rebinds`, which the music uses to
+   drop its bed, stems and flow nodes and re-anchor its clock, and the end sound to forget the old clock's time; (d) the
+   next tap tries again, and a tap may rebuild even a context that never ran, because a tap is the one moment iOS lets a
+   new one start. NOT REPRODUCIBLE ON A DESKTOP — it needs the phone (FEATURES.md, UNVERIFIED.md). */
+const REVIVE_MS=400;
+let ac=null, acGen=0, acWhy='', acLast='', reviving=null;
+const rebinds=[];
+const newCtx=()=>{ try{ return new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; } };
+/* S5: what Testing reads out — the state, how many times the context has been rebuilt, the last REBUILD and the last thing
+   that happened. The rebuild is kept on its own: a rebuilt context reports `statechange · running` a moment later, and that
+   would otherwise wipe the one line Aiden is reading for after coming back to the app. */
+const audioState=()=>({ state:ac?ac.state:'none', gen:acGen, why:acWhy, last:acLast });
+function told(why){ acWhy=why; emit('audio:state',audioState()); }
+function adopt(c){ if(!c) return null; if(c.state==='running') c._ran=1;
+  if(c.addEventListener) c.addEventListener('statechange',()=>{ if(c!==ac) return; if(c.state==='running') c._ran=1; told('statechange · '+c.state);
+    if(c.state!=='running'&&c.state!=='closed'&&!document.hidden) revive('statechange'); });
+  return c; }
+const AC=()=>{ if(!ac){ ac=adopt(newCtx()); if(ac) told('created'); } if(ac&&ac.state!=='running'){ try{ ac.resume(); }catch(e){} } return ac; };
+// (c): a new context, the old one closed, and everything that held a node or a time on the old one told to let go
+function rebuild(why){ const old=ac, c=newCtx(); if(!c) return false; ac=adopt(c); acGen++;
+  try{ if(old&&old.state!=='closed') old.close(); }catch(e){}
+  try{ c.resume(); }catch(e){}
+  for(const f of rebinds){ try{ f(c); }catch(e){} }
+  acLast='rebuilt · '+why; told(acLast); return true; }
+/* (a) (b) (d): a resume that can tell it failed. A context that had been running and will not come back is rebuilt; one
+   that never ran is only rebuilt inside a tap — outside one iOS would start the new context suspended too, and rebuilding
+   it on every foreground would be a loop with nothing to show for it. It is marked `_dead` instead, and the next tap
+   rebuilds it on the spot, inside the gesture. Never while the page is hidden: a backgrounded context is meant to stop. */
+function revive(why,tap){ const c=ac; if(!c||c.state==='running'||c.state==='closed'||document.hidden) return Promise.resolve(!!c&&c.state==='running');
+  if(tap&&c._dead){ rebuild(why); return Promise.resolve(ac.state==='running'); }
+  if(reviving) return reviving;
+  reviving=new Promise(done=>{ let over=false;
+    const end=()=>{ if(over) return; over=true; reviving=null;
+      if(ac===c&&c.state!=='running'){ if(c._ran||tap) rebuild(why); else c._dead=1; }
+      done(!!ac&&ac.state==='running'); };
+    try{ const p=c.resume(); if(p&&p.then) p.then(()=>{ if(c.state==='running') end(); },end); }catch(e){ end(); }
+    setTimeout(end,REVIVE_MS); });
+  return reviving; }
 /* two things the music tells the effects, set below and read here. `endTune` is the key the run's track was in, so the
    end cadence lands in it instead of always in A (B.30); `duckHook` is Sequence's music ducking under its own keys. */
 let endTune=null, duckHook=null;
 const Snd = (()=>{
   let lastEnd=0;
+  // v21 (F.2 c): the end sound's de-duplication is a time on the OLD clock; a rebuilt clock starts at zero and would mute it for as long as the old one had run
+  rebinds.push(()=>{ lastEnd=-9; });
   /* build 27: `dest` is a gain node to run through instead of the destination — the music's master bus, the two versus
      stems and the flow layer use it; every sound effect leaves it undefined and goes straight out.
      build 30: `o` is the per-note shaping the new tracks need — {lp, q} a lowpass, {hold} a fraction of the note to hold
@@ -152,6 +198,12 @@ const Music=(()=>{
   const pick=id=>TR[id]||TR[id+':'+opt(id)]||TR['quick-tap:held'];
   let tr=null, timer=0, next=0, bar=0, hits=[], sHits=[[],[]], fHits=[], mode='', mg=null, sg=[null,null], fg=null;
   let st=null, secs=0, stems=false, flow=false, shape=null, fin=null, duckT=0;
+  /* v21 (F.2 c): A REBUILT CONTEXT STRANDS EVERYTHING BUILT ON THE OLD ONE. The bed, the two stems and the flow layer are
+     gain nodes of a context that is now closed, and `next` is a time on its clock — the loop would schedule nothing until
+     the new clock caught up with where the old one had got to. Drop the nodes (nodes() builds all four again on the next
+     tick, on the new context, which is the re-point) and re-anchor the clock where the new one is. The track, its bar and
+     its form carry on from where they were. */
+  rebinds.push(c=>{ mg=null; sg=[null,null]; fg=null; duckT=0; if(tr){ next=c.currentTime+.05; fin=null; } });
   function nodes(){ const a=AC(); if(!a) return null;
     if(!mg||mg.context!==a){ mg=a.createGain(); mg.gain.value=1; mg.connect(a.destination); }
     if(!sg[0]||sg[0].context!==a){ sg=[0,1].map(()=>{ const g=a.createGain(); g.gain.value=0; g.connect(a.destination); return g; });
@@ -267,6 +319,8 @@ const Music=(()=>{
         out.push([+(b*barSec+e.p*barSec).toFixed(4),+e.f.toFixed(2),+e.f1.toFixed(2),Math.round(ms),e.w,+(e.g*env(b)).toFixed(5),Math.round(e.am||Math.max(4,(e.a||.06)*ms)),Math.round(e.lp||0),+(e.q||.7).toFixed(2),+(e.h||0).toFixed(2)]); });
       return { id, name:t.name||id, bpm:t.bpm, root:t.root, beats:t.beats||4, bars:n, form, loopSec:+(n*barSec).toFixed(3), longSec:longSec(t), plan:out }; },
     tracks(){ return Object.keys(TR); },
+    // v21 (F.2): what the gate reads after a rebuild — is the bed on the live context, and is the clock anchored to it
+    probe(){ return { bed:!!mg&&mg.context===ac, playing:!!tr, next, now:ac?ac.currentTime:0 }; },
     // what B.29 asks to be reported: one row per track, the arc a known run gets and the long form's own length
     lengths(){ return Object.keys(TR).map(id=>({ id, name:TR[id].name, form:formOf(TR[id]), barSec:+barSecOf(TR[id]).toFixed(2), formSec:+(formOf(TR[id])*barSecOf(TR[id])).toFixed(1), phase:phaseOf(TR[id]), longSec:longSec(TR[id]) })); },
     // B.29: stopping cuts what is already in the air too — the bar that was scheduled a moment ago is the whole problem
@@ -282,8 +336,10 @@ let menuT=0;
 on('screen:change',({id})=>{ clearTimeout(menuT); if(id==='game') return; menuT=setTimeout(()=>Music.menu(id==='s-key'?'key:roots':'menu'),900); });
 
 // build 18 (refactor stage 4, was in boot.js): every touch and every return to the foreground checks the context is running; the first touch unlocks it
-document.addEventListener('pointerdown',()=>{ if(ac&&ac.state!=='running'){ try{ ac.resume(); }catch(e){} } },{capture:true,passive:true});
-document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&ac&&ac.state!=='running'){ try{ ac.resume(); }catch(e){} } });
+// v21 (F.2): all three now go through revive(), the resume that can tell it failed — (d) the tap, (a) the foreground and a page restored from memory
+document.addEventListener('pointerdown',()=>{ if(ac&&ac.state!=='running') revive('tap',true); },{capture:true,passive:true});
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&ac&&ac.state!=='running') revive('foreground'); });
+addEventListener('pageshow',()=>{ if(ac&&ac.state!=='running') revive('pageshow'); });
 document.addEventListener('pointerdown',()=>Snd.unlock(),{once:true});
 
-export { AC, Music, Snd, ac };
+export { AC, Music, Snd, ac, audioState, rebuild, revive };

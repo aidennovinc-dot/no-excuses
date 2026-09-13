@@ -216,3 +216,36 @@ page asks for is logged from the first navigation); five `@font-face` rules poin
 `fonts/`, every one `font-display:swap`; the Google `<link>` is gone; the title's two are preloaded with `crossorigin`;
 and `document.fonts` resolves with the page's own faces (B.32). `IGNORED_REQUEST` no longer forgives the font hosts —
 S4's "Stage 5 bundles them" is done, so a request to either is a regression rather than a tolerated failure.
+
+**Build 35 (batch 15 · FEEDBACK-v21 §F.1–§F.5, §G.7; FEEDBACK-v20 §D.1–§D.3, §D.8–§D.10; #415; the Verdict Desk)** —
+**F.2** statically: `statechange`, `revive()` with its `REVIVE_MS` timeout, `rebuild()` walking `rebinds`, foreground and
+`pageshow` and the capture-phase tap all going through `revive`, the music's rebind dropping its nodes and re-anchoring
+`next`, and `#dev-audio` inside the dev-only Testing section. Driven, with the context forced: a context that suspends and
+resumes is kept (no rebuild); one that had run and whose `resume()` never settles is closed and rebuilt; straight after a
+rebuild the music's bed is gone and `next` sits on the NEW clock, and one tick later the bed is back on the live context;
+a never-run context is marked dead rather than rebuilt, and the next tap rebuilds it; Testing reads `audio · … · context N
+· rebuilt · tap`. **Nothing here proves the phone is no longer silent** — that is Aiden's check. **F.1**: the sheet is
+`hidden` in the markup and `hideSheet()` hides and empties it; a cold load with Estimate as the last game has no sheet,
+no title, no modes, and the screen scrolls no further than the grid and its hint; a picked game slides it up, Back takes
+it away again. **F.4**: exactly two writers of `prefs.col[g][k]` in the app, both in `ui/screens/progress.js`, and no player
+colour near one; the store is v4 with `up4` on the ladder and `mig35` shape-checked; a v3 record holding light blue and
+lime loads white with `mig35` 2 and white tiles; a locked swatch tried on Quick Tap is not painted on Dots' preview; a
+colour chosen for Quick Tap shows on its tile only; a versus run leaves neither player colour in the store. **F.3 / F.5 /
+G.7**, driven in a Quick Tap versus: Go reads "Go"; each player's correct tap pulses the pad they hit; each count ticks for
+90ms with that player's colour in its keyframe; two ticks on one number leave one animation and the newer value. **D.3a**
+driven in a whole-run Dash: every reading before 2.0s is `0.0/s` with taps on the board and the average arrives after;
+the solo big count ticks for 90ms. **D.3b**: `peakRate` reads 0, 0, 1, 3, 0, 2 for six fixed tap lists. **D.1 / D.2**:
+Four unlocked and unplayed is green on its tile and its row and Two is not, `markSeen` still records it, the pressed tile is
+amber with no green, a selected first-seen-and-unplayed mode wears the ink line, and one recorded run of Four clears the
+green. **D.8**: every `UNLOCKS` row's destination is open on a fresh profile and with everything open, and the nine that
+name no mode or length land on the highest (the list is printed). **D.9 / D.10 / #415 / Verdict Desk**: tier names, Aiden's
+five `at` triples, his lines for Quick Tap, Dots, Grow and Cut line for line with the two half-typed lines absent and the
+four unedited Grow lines kept, Sequence untouched, the thirteen intro lines, the four per-mode Timing and Reaction rows
+seeded from their parents with no parent left; Two and Four read 0.5 at 3/s; Estimate's scale is 40; the thresholds played
+back through `tierOf` (2.90/s Amazing!, 2.80 not; Grow 5% / 30% / 31%; Sequence 11 notes); Blind Marathon at 22 and not 21.
+
+Four earlier assertions were **amended, both ways**: the build-13 fixture and the B.2 / B.4 ladder test expect a v4 record;
+the build-13 fixture's carried Quick Tap colour now comes out white with `mig35` counted (F.4); and 1.2d's Blind Marathon
+pair is 22 / 21, was 24 / 23 (#415). The first gate run failed three new checks and nothing old: the F.2 readout lost its
+"rebuilt" note to the new context's own `statechange` a moment later — kept separately now, because Aiden reads that line —
+and the sheet's markup still carried a placeholder title.

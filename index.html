@@ -69,8 +69,9 @@
   <!-- v18 (B.20 / B.16, build 32): the ask box — "Open the chest?", then "progress to Pro?" with its warning. Same shape
        as the lock box; ui/screens/pick.js fills it and answers it -->
   <div id="askwrap" data-act="askwrap"><div id="askbox"><h3 id="ask-title"></h3><p id="ask-text" hidden></p><div class="row"><button class="item big" id="ask-yes" data-act="ask-yes">Open it</button><button class="item sub" id="ask-no" data-act="ask-no">Not yet</button></div></div></div>
-  <div class="sheet" id="sheet">
-    <div class="eyebrow" id="sheet-title">quick tap · mode</div>
+  <!-- v21 (F.1, build 35): hidden until a game is picked — a sheet with nothing selected is out of the layout, not just off screen -->
+  <div class="sheet" id="sheet" hidden>
+    <div class="eyebrow" id="sheet-title"></div>
     <div id="vs-wrap"><div class="chips" id="vs-row"><button data-act="vs" class="chip sel" data-vs="0"><svg viewBox="0 0 22 16"><rect x="7" y="1" width="8" height="14" rx="1.5"/></svg>solo</button><button data-act="vs" class="chip" data-vs="1"><svg viewBox="0 0 22 16"><rect x="1" y="2" width="7" height="12" rx="1.5"/><rect x="14" y="2" width="7" height="12" rx="1.5"/></svg>with a friend</button></div>
     <div class="chips" id="vs-sub" hidden><button data-act="vs2" class="chip" data-vs2="1"><svg viewBox="0 0 22 16"><rect x="1" y="2" width="7" height="12" rx="1.5"/><rect x="14" y="2" width="7" height="12" rx="1.5"/><path d="M9 8h4M11 6l2 2-2 2"/></svg>pass &amp; play</button><button data-act="vs2" class="chip" data-vs2="2"><svg viewBox="0 0 22 16"><rect x="1" y="2" width="7" height="12" rx="1.5"/><rect x="14" y="2" width="7" height="12" rx="1.5"/><path d="M11 5v6"/></svg>versus</button></div></div>
     <div id="vsart"></div>
@@ -180,7 +181,7 @@
        build, the device and the last run filled in. An <a>, so the link does its own work; data-act="none" is only the
        click sound — nothing here knows what a mail client is, and nothing is sent without the tester's own send button -->
   <a class="item sub" id="feedback" data-act="none" href="#">Send feedback</a>
-  <div class="hint">v0.34 · the key gate · placeholder bars · 12 sept 2026</div>
+  <div class="hint">v0.35 · batch 15 · bugs and the runs · 14 sept 2026</div>
 </section>
 
 <section class="screen" id="s-testing" data-back="s-menu" data-dev>
@@ -189,6 +190,8 @@
   <div class="explain">Not in the released app. Everything here changes what is on this phone only.</div>
   <div class="chips"><button data-act="dev-fresh" class="chip" id="dev-fresh">fresh game · wipe everything</button><button data-act="dev-open" class="chip" id="dev-open">open everything</button><button data-act="dev-story" class="chip" id="dev-story">replay the intro</button><button data-act="dev-sup" class="chip" id="dev-sup">supporter</button><button data-act="dev-bars" class="chip" id="dev-bars">fill pro + author · placeholder</button></div>
   <div class="hint" id="dev-state"></div>
+  <!-- v21 (F.2, build 35): the audio context's state, live — background the app, come back, read this line. Dev only (S5) -->
+  <div class="hint" id="dev-audio"></div>
   <!-- v18 (B.26, build 32): a button per animation, so each can be watched without being earned. Dev only (S5) -->
   <div class="hint" id="dev-anim-hint">animations · nothing is stored</div>
   <div class="chips" id="dev-anim"><button data-act="dev-keyin" class="chip">key arrival</button><button data-act="dev-seg" class="chip">segment advance</button><button data-act="dev-whole" class="chip">key complete</button><button data-act="dev-chest" data-n="1" class="chip">chest 1 opening</button><button data-act="dev-chest" data-n="2" class="chip">chest 2 opening</button><button data-act="dev-chest" data-n="3" class="chip">chest 3 opening</button></div>
@@ -261,12 +264,12 @@
 
 <script type="module" src="./boot.js"></script>
 
-<div id="build">v0.34</div>
+<div id="build">v0.35</div>
 <button id="update">New build available — tap to reload</button>
 <script>
 // build check: version.json is fetched with no-store, so a stale cached page still learns a newer build exists
 (function(){
-  const BUILD="34";
+  const BUILD="35";
   async function check(){
     try{
       const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});

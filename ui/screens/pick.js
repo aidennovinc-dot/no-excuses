@@ -11,7 +11,7 @@ import { emit, on } from "../../core/events.js";
 import { VS, sel } from "../../core/state.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, SHARED2, lenName, lenSub, versusAny, versusOf } from "../../games/registry.js";
-import { Scores, gameOpen, isOpen, lenLock, lenOpen, lensOf, markSeen, needFor, newMark, practiceOpen } from "../../progress.js";
+import { Scores, gameOpen, isOpen, lenLock, lenOpen, lensOf, markSeen, needFor, newMark, newPlay, practiceOpen } from "../../progress.js";
 import { KEYS } from "../../config/keys.js";
 import { gameKey, isShell, keyState, mapOpen } from "../../progress/key.js";
 import { Snd } from "../../audio.js";
@@ -43,7 +43,22 @@ function renderVsArt(){ const box=$('#vsart'); if(!sel.vs){ box.classList.remove
 function renderVsRow(){ const g=sel.game; const vsOk=stage==='mode'?versusAny(g):versusOf(g,sel.diff); if(sel.vs===2&&!vsOk) sel.vs=1;
   $$('#vs-row [data-vs]').forEach(c=>c.classList.toggle('sel',(c.dataset.vs==='0')===(sel.vs===0)));
   const sub=$('#vs-sub'); const showSub=sel.vs>0; sub.hidden=!showSub; sub.querySelector('[data-vs2="2"]').hidden=!vsOk; $$('#vs-sub [data-vs2]').forEach(c=>c.classList.toggle('sel',+c.dataset.vs2===sel.vs)); }
-function setStage(st){ stage=st; const g=GAMES[sel.game]; $('#diff-row').classList.remove('picking'); $('#grid').classList.toggle('dim',st!=='grid'); $('#sheet').classList.toggle('up',st!=='grid'); $('#sheet').classList.toggle('len',st==='len');
+/* v21 (F.1, build 35): WITH NOTHING SELECTED THE SHEET LEAVES THE LAYOUT. It was only ever translated off the bottom, and
+   #s-pick scrolls — a transformed box still counts towards its scroll container's overflow — so on a cold load the map
+   could be dragged up to show a whole pick sheet parked under it, drawn for whatever game `sel` last held (Estimate, on a
+   profile whose last game was Estimate). Opacity or a transform cannot take a box out of the layout; `hidden` can. It comes
+   off before the slide up and goes back on once the slide down has run, so the animation Aiden passed is untouched, and
+   hiding it clears what it held — a sheet with no game selected renders nothing. */
+const SHEET_OUT=340;   // the sheet's own .32s slide, and a frame
+let sheetT=0;
+function hideSheet(){ const sh=$('#sheet'); sh.hidden=true; sh.classList.remove('up','len','two');
+  $('#diff-row').innerHTML=''; $('#time-row').innerHTML=''; $('#sheet-title').textContent=''; $('#vsart').innerHTML=''; $('#vsart').classList.remove('on','vs2'); }
+function setStage(st){ stage=st; clearTimeout(sheetT); const sh=$('#sheet'); $('#diff-row').classList.remove('picking'); $('#grid').classList.toggle('dim',st!=='grid');
+  if(st==='grid'){ $$('.tile').forEach(t=>t.classList.remove('keep')); if(sh.hidden) return;
+    if(!sh.classList.contains('up')){ hideSheet(); return; }
+    sh.classList.remove('up','len'); sheetT=setTimeout(()=>{ if(stage==='grid') hideSheet(); },SHEET_OUT); return; }
+  if(sh.hidden){ sh.hidden=false; void sh.offsetWidth; }
+  const g=GAMES[sel.game]; sh.classList.add('up'); sh.classList.toggle('len',st==='len');
   $('#diff-row').classList.toggle('single',g.modes.length===1);
   $('#seq-opts').style.display='none'; $('#vs-wrap').style.display=st==='mode'||(st==='len'&&g.modes.length===1)?'':'none'; renderVsRow();
   if(st==='grid'){ $$('.tile').forEach(t=>t.classList.remove('keep')); } $('#sheet-title').textContent=g.name+(sel.vs===1?SHEET.passTitle:sel.vs===2?SHEET.versusTitle:''); $('#len-title').textContent=SHEET.mode;
@@ -133,6 +148,8 @@ function renderTiles(){ const reveal=!prefs.gridSeen; if(reveal){ prefs.gridSeen
   $$('.tile[data-game]').forEach((t,i)=>{ const g=t.dataset.game, open=gameOpen(g); t.classList.toggle('locked',!open); t.querySelector('.pic').dataset.need=open?'':T(SHEET.tileUnlock,{need:needFor(g,GAMES[g].modes[0])});
     // v13 (1.2 / L7): white until the game has been played once — colour arrives with the first recorded run
     const played=runs.some(r=>r.g===g), c=colOf(g); t.classList.toggle('unplayed',!played);
+    // v20 (D.1): a game holding a newly unlocked mode that has not been played wears the green line until it has
+    t.classList.toggle('newplay',open&&GAMES[g].modes.some(d=>newPlay(g,d)));
     t.style.setProperty('--sq-live',played?c.sq:'#FFFFFF'); t.style.setProperty('--cue',played?c.lead:'#8A8883');
     t.classList.remove('reveal','newthing','arrive'); t.style.animationDelay=''; if(reveal){ t.classList.add('reveal'); t.style.animationDelay=(i*120)+'ms'; }
     /* v15 (6.3, build 26): a game unlocked since you were last here ARRIVES the first time it is seen, on top of L8's
@@ -144,7 +161,7 @@ function renderTiles(){ const reveal=!prefs.gridSeen; if(reveal){ prefs.gridSeen
   // v17 (B.23 / B.24): the snake placement, the chest's state, then the lines over the top of both
   renderChests(); renderFill(); layoutGrid(); drawLines(reveal); }
 // a locked mode (v11) is crossed out, not just greyed; tapping it says what it takes
-function fillSheet(){ const g=GAMES[sel.game]; const fresh=[]; $('#diff-row').innerHTML=g.modes.map(d=>{ const open=isOpen(sel.game,d); const nw=open?newMark('mode:'+sel.game+':'+d,fresh):''; return `<button data-act="diff" class="choice ${open?'':'locked'}${nw}" data-diff="${d}"><span class="pic">${picOf(sel.game,d)}</span><span class="txt"><b class="${open?'':'x'}">${MODE_NAME[d]}</b><small class="${open?'':'need'}">${open?g[d]:T(SHEET.toUnlock,{need:needFor(sel.game,d)})}</small></span></button>`; }).join(''); markSeen(fresh); }
+function fillSheet(){ const g=GAMES[sel.game]; const fresh=[]; $('#diff-row').innerHTML=g.modes.map(d=>{ const open=isOpen(sel.game,d); const nw=open?newMark('mode:'+sel.game+':'+d,fresh):''; const np=open&&newPlay(sel.game,d)?' newplay':''; return `<button data-act="diff" class="choice ${open?'':'locked'}${nw}${np}" data-diff="${d}"><span class="pic">${picOf(sel.game,d)}</span><span class="txt"><b class="${open?'':'x'}">${MODE_NAME[d]}</b><small class="${open?'':'need'}">${open?g[d]:T(SHEET.toUnlock,{need:needFor(sel.game,d)})}</small></span></button>`; }).join(''); markSeen(fresh); }
 // the length face (v11): the name with its seconds beside it on the pick sheet, the best underneath; a locked length is crossed out
 const lenFace=(g,s,d,vs)=>{ if(g==='sequence') return `<span class="keys">${'<i></i>'.repeat(s)}</span>${lenName(g,s,d,vs)}`; return lenName(g,s,d,vs); };
 // the length buttons only select (v10); Go starts. The whole block slides up together, the same for every game. Pass & play fixes the length; versus has none (Reaction versus has a best-of)

@@ -11,7 +11,9 @@
    nothing: the arrival is asked for with `arrive`, which clears `prefs.keySeen` for that one open only; the advance is a
    fabricated `advance` object the key screen animates over whatever ring is drawn; the whole-key moment is asked for by
    name; a chest opening runs pick.js's own openChest with `demoOnly`, which puts the tile back afterwards. */
+import { audioState } from "../../audio.js";
 import { BUILD_FLAGS } from "../../config/build.js";
+import { on } from "../../core/events.js";
 import { ABOUT, TOAST } from "../../config/copy.js";
 import { $, $$, T } from "../../core.js";
 import { prefs, reset, save } from "../../core/store.js";
@@ -22,7 +24,13 @@ import { define } from "../actions.js";
 import { register, show } from "../router.js";
 import { toast } from "../toast.js";
 
-function devState(){ if(!BUILD_FLAGS.dev) return; const u=Object.keys(unlocked()).length, a=Object.keys(got()).length, r=Scores.runs().length, na=ACH.length+keyAch().length;
+/* v21 (F.2, build 35, S5): THE AUDIO CONTEXT, READ OUT. Its state, how many times it has been rebuilt, and the last thing
+   that happened to it — live, because the rebuild path can only be checked on a phone and this is how it gets checked:
+   background the app, come back, read the line. Dev only, like everything on this screen. */
+function devAudio(){ if(!BUILD_FLAGS.dev) return; const el=$('#dev-audio'); if(!el) return; const a=audioState();
+  el.textContent=T(ABOUT.devAudio,{state:a.state,gen:a.gen,why:(a.last?' · '+a.last:'')+(a.why&&a.why!==a.last?' · '+a.why:'')}); }
+on('audio:state',devAudio);
+function devState(){ if(!BUILD_FLAGS.dev) return; devAudio(); const u=Object.keys(unlocked()).length, a=Object.keys(got()).length, r=Scores.runs().length, na=ACH.length+keyAch().length;
   $('#dev-state').textContent=(prefs.allOpen?ABOUT.devOpen:T(ABOUT.devProg,{u,nu:UNLOCKS.length,a,na}))+T(ABOUT.devRuns,{r})+(prefs.supporter?ABOUT.devSup:ABOUT.devFree);
   $('#dev-open').classList.toggle('sel',!!prefs.allOpen); $('#dev-sup').classList.toggle('sel',!!prefs.supporter);
   const b=$('#dev-bars'); if(b) b.classList.toggle('sel',barsFaked());

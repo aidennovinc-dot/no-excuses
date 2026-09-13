@@ -240,10 +240,22 @@ function liveCheck(part){ if(!R.on) return;
      so the line ticks green only when R.lenDone says a real test passed. The announcement is one pass, above. */
   if(R.goal&&!R.goalHit&&(R.goal.len?R.lenDone:(u[R.goal.key]||R.goal.test(run)))){ R.goalHit=true; $('#goal').classList.add('hit'); } }
 // a locked game or mode (v10): the lock box's Try to unlock — straight into the game, with the goal line up
-function goWhere(w){ if(!w) return; const G_=GAMES[w.g]; sel.game=w.g; prefs.lastGame=w.g; save();
-  sel.diff=w.d&&isOpen(w.g,w.d)?w.d:(G_.modes.find(d=>isOpen(w.g,d))||G_.modes[0]); if(!isOpen(sel.game,sel.diff)) return emit('lock:ask',{g:sel.game,d:sel.diff});
-  const lens=lensOf(w.g,sel.diff); sel.secs=w.s||(lens.includes(sel.secs)&&lenOpen(w.g,sel.diff,sel.secs)?sel.secs:lens.find(s=>lenOpen(w.g,sel.diff,s))); if(!lenOpen(sel.game,sel.diff,sel.secs)) sel.secs=lens[0]; sel.vs=0; sel.practice=0; VS.reset(); setPendingAim(w.need||''); setPendingGoal(w.aim||null); start(); }
+/* v20 (D.8, build 35): WHERE "TRY TO UNLOCK" LANDS. Most requirements name no length — "35 hits in any Quick Tap run" — and
+   the jump took whatever length the sheet was last left on, or failing that the SHORTEST open one: Dots · Blind landed in a
+   Sprint, where 35 hits is seven a second. It is not a Dots case; most rows in UNLOCK_TEST are the same shape. A `where`
+   that names no mode, or no length, now resolves the HIGHEST one open at jump time — and a named one that is locked falls
+   back the same way, so the jump never lands on a locked mode or length. A `where` that names an open mode and length
+   lands exactly there, as it always did. `whereOf` is the pure half, so the gate can ask it about every row. */
+const topOpen=(list,open)=>{ for(let i=list.length-1;i>=0;i--) if(open(list[i])) return list[i]; return undefined; };
+function whereOf(w){ const G_=GAMES[w.g];
+  const d=w.d&&isOpen(w.g,w.d)?w.d:(topOpen(G_.modes,m=>isOpen(w.g,m))||G_.modes[0]);
+  const lens=lensOf(w.g,d), named=w.s!==undefined&&w.s!==null&&lens.includes(w.s)&&lenOpen(w.g,d,w.s);
+  const s=named?w.s:topOpen(lens,x=>lenOpen(w.g,d,x));
+  return { g:w.g, d, s:s===undefined?lens[0]:s }; }
+function goWhere(w){ if(!w) return; sel.game=w.g; prefs.lastGame=w.g; save();
+  const at=whereOf(w); sel.diff=at.d; if(!isOpen(sel.game,sel.diff)) return emit('lock:ask',{g:sel.game,d:sel.diff});
+  sel.secs=at.s; sel.vs=0; sel.practice=0; VS.reset(); setPendingAim(w.need||''); setPendingGoal(w.aim||null); start(); }
 
 const introActive=()=>Intro.active();
 const introTap=()=>Intro.tap();
-export { R, abort, active, goWhere, input, introActive, introTap, liveCheck, start };
+export { R, abort, active, goWhere, input, introActive, introTap, liveCheck, start, whereOf };

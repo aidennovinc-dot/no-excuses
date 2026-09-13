@@ -9,7 +9,12 @@ import * as hud from "./hud.js";
 // enough that stopping is felt inside a second
 const FLOW_WIN=1500;
 // best hits in any rolling second — a test readout for setting the Blind thresholds (v5)
-const peakRate=t=>{ let best=0; for(let i=0,j=0;i<t.length;i++){ while(t[i]-t[j]>1000) j++; best=Math.max(best,i-j+1); } return best; };
+/* v20 (D.3b, build 35): INTERVALS, NOT TAPS. The window was always a true trailing second — the run-start cause in D.3 is
+   absent here — but it returned the COUNT of taps inside it, `i-j+1`, and N taps spanning a second are N-1 gaps: two taps
+   900ms apart read 2/s. It is the gaps now, so every peak is one lower than it was. Nothing stored needs a RUN_SCHEMA step:
+   `peak` is printed on the result screen of the run that made it and read by nothing else — no board, bar, unlock or
+   achievement — so an old record's number is never shown or compared again (FEATURES.md, build 35). */
+const peakRate=t=>{ let best=0; for(let i=0,j=0;i<t.length;i++){ while(t[i]-t[j]>1000) j++; best=Math.max(best,i-j); } return best; };
 
 /* v17 (B.6, L6): `row` is the longest run of hits with no miss between them, and `rowNow` the one in progress. Every
    "N hits, no misses" rung in the chain reads it — Aiden's words were "7 consecutive hits with no misses", and the old

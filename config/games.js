@@ -50,6 +50,15 @@ export const VS_TARGET = { 'quick-tap':100, 'dots':60, 'spot':5 };
 // the rate bar's top, hits per second, for the timed games. v14 (6.6): Quick Tap tops out at 4/s — 6 put every real run in the
 // bottom half of the bar, so the bar never moved where the player actually plays
 export const RATE_MAX = { 'quick-tap':4, 'dots':4.5 };
+/* v20 (D.3a, build 35 — the feedback line quotes L5 on this number): the rate bar's WHOLE-RUN reading holds until the run
+   has this many seconds behind it. It divided taps by the time since the first frame, so one tap at 0.16s printed 6.3/s.
+   Until the floor it holds what it last showed (0.0/s at a start); after it, it averages from run start exactly as it did.
+   The live reading — the rolling gaps, the default — never spiked and is untouched. 2.0 is the (guess). */
+export const RATE_RUN_FLOOR = 2.0;
+/* v21 (G.7, build 35): every live score's count-up and pulse. `ms` is inside Cowork's 80–100, 90 the (guess) — any longer
+   and it smears once taps come faster than three a second; `scale` is how far the number swells at the top (guess).
+   games/_shared/hud.js is the only reader. Presentation only (L10). */
+export const TICK = { ms: 90, scale: 1.12 };
 // v11: a Streak length scores rounds survived — higher wins — whatever the mode's Set scores. `streak` on a game is that override
 export const STREAK_CFG = { lower:false, suffix:'', scoreWord:'rounds' };
 

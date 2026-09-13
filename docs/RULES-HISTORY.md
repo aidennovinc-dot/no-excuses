@@ -62,6 +62,53 @@ text here is the rule with its history.
   — not each mode — the intro ends on a "Ready?" they tap. Cowork's idea of moving the rule into the 3-2-1 top strip is
   superseded and must not be built.
 
+### Added at build 35 (batch 15: FEEDBACK-v20 §D.1–§D.3, §D.8–§D.10; FEEDBACK-v21 §F.1–§F.5, §G.7; #415), 2026-09-14
+
+- **Try to unlock lands on the highest open mode and length (v20 D.8).** Most requirements name no length — "35 hits in any
+  Quick Tap run" — and the jump took whatever length the sheet was last left on, or the shortest open one, so Dots · Blind
+  landed in a Sprint where 35 hits is seven a second. It was never a Dots case: nine of the thirteen `UNLOCKS` rows name no
+  mode or no length. `whereOf(w)` in `run/run.js` resolves the highest open one — the last in the config's own order — at
+  jump time, a named one that is locked falls back the same way, and the gate walks every row on a fresh profile and with
+  everything open. The nine destinations that changed are listed in `../FEATURES.md` (build 35).
+- **An AudioContext that will not resume is rebuilt (v21 F.2).** What v10 §7.5 built was three bare `resume()` calls with
+  nothing checking whether they worked, no `statechange` listener and no way back from a context iOS leaves `interrupted`
+  — total silence until the app is killed. `revive()` is the one resume: foreground, `pageshow`, `statechange`, and the
+  next tap. A context that had been running and has not come back inside `REVIVE_MS` is closed and rebuilt, and everything
+  holding something of the old one registers in `rebinds` — the music drops its bed, stems and flow node and re-anchors
+  its clock; the end sound forgets the old clock's time. A context that never ran is rebuilt only inside a tap, the one
+  moment iOS lets a new one start. Testing reads out the state, the rebuild count, the last rebuild and the last event.
+  **It cannot be reproduced on a desktop**; the gate forces each path, the phone is the check.
+- **With nothing selected the pick sheet is `hidden` (v21 F.1).** It was only ever `translateY(100%)` inside a scrolling
+  screen, and a transformed box still counts towards its container's overflow — so the map could be dragged up to show a
+  whole sheet drawn for the last game. Opacity or a transform cannot take a box out of the layout; `hidden` does, and
+  `hideSheet()` empties it once the slide down has run.
+- **No player colour is written where customisation lives (v21 F.4, L4).** Investigated before anything was changed: no
+  code writes `P1C` / `P2C` into prefs, and the only two writers of `prefs.col` are Customise's swatch tap and its wheel
+  (the gate counts them). The stray colours Aiden saw were target swatches, not Player 2. The game-select tile and
+  Customise's selected ring read the same stored value, so a colour on a tile is in storage — `up4` clears every game's
+  colours once (store v4, `mig35`), and a game is white until a colour is chosen for it. The one real leak found — a
+  locked swatch's preview surviving the Customise game chip — is fixed.
+- **Every Go button says Go (v21 F.5).** `SHEET.goVersus` is retired the way `goEach` and `goPass` were at build 26.
+- **A newly unlocked mode is green until it has been played; selected beats green (v20 D.1 / D.2).** Seen and played are
+  two facts. `newMark` / `markSeen` still answer "has this been on screen" — L8's first-seen mark, and D.5's question —
+  and clear on sight. `newPlay(g,d)` answers "has a run of it been recorded", off the run store, and wears the same green
+  line on the mode's row and its game's tile. An earned unlock is what makes a mode "newly unlocked"; Quick Tap · Two and
+  OPEN EVERYTHING have nothing to announce. D.2 was the cascade, not the class order: `.newthing` carries
+  `border-color:…!important`, so the selected line lost to it however the classes were written.
+- **The whole-run rate waits for 2.0s; `peak` counts gaps (v20 D.3, L5 quoted on the 2.0).** The whole-run reading divided
+  taps by time from the first frame — one tap at 0.16s printed 6.3/s — and now holds until `RATE_RUN_FLOOR`. `peakRate`
+  was a true trailing second all along, but counted taps, and N taps spanning a second are N−1 gaps. `peak` is shown on
+  the result of the run that made it and read by nothing else, so the unit change retired nothing.
+- **A verdict row is per mode wherever the modes score in different units (v20 D.10).** Stopwatch (seconds off) and Hidden
+  (ms off the marker) shared one `at` triple, as did Flash (raw ms) and Go / No-go (ms over the gate). Four rows now, each
+  seeded from its parent, and the parent rows are gone. Quick Tap's Two and Four share one ÷6 curve (D.9), as Dots' two
+  modes always have.
+- **Every live score ticks (v21 G.7).** `hud.tick` walks the number to its new value over `TICK.ms` (90, guess) and pulses
+  it; a newer tick ends an older one, so nothing smears above three taps a second. Versus pulses in the scorer's colour
+  (L4). A countUp or addUp already walking `#score` frame by frame writes straight through. The big count's .18s pop went
+  with it. A correct versus pad pulses too (F.3) — the lit square often moved on to the same pad and nothing on screen
+  changed. Presentation only (L10).
+
 ## Structure — the full text as of build 30
 
 `CLAUDE.md` keeps the module map. This is the paragraph-by-paragraph description it carried at build 30: the DAG, the
@@ -356,6 +403,21 @@ them named a mechanism the build does not have.
   already names, on the live path and again at the finish, and `lenLock` reads it back first. That is the standing rule
   build 23 set for unlocks and achievements — an earn is written the moment it fires — finally applied to the one kind of
   unlock that had no store entry to write.
+
+**Build 35 (batch 15, 2026-09-14) — one amendment and four quotes that change no value.**
+
+- **L6 amended (register #415, quoted in FEEDBACK-v21 "Also carried"): Dots · Blind Marathon opens at 22 hits in a Blind
+  Dash, down from 24.** `LEN_TEST['dots:blind'][2]` and its `LEN_RULES` sentence; Lead's 28 is untouched. The rung stays
+  `LEN_LIVE` 1 — a hit count only grows.
+- **L5 quoted (v20 D.3a) on the rate bar's 2.0s whole-run floor (`RATE_RUN_FLOOR`).** No value in the L5 row moved; the
+  quote is recorded here so the number has a home. The live (rolling) reading is untouched.
+- **L4 quoted (v21 F.4, G.7), applied not amended.** F.4: no player colour is ever written where customisation lives — none
+  ever was (the stray colours were target swatches). G.7: the versus score pulse wears the scorer's own colour.
+- **L10 quoted (v21 F.3, G.7), applied not amended.** The versus pad pulse and the score tick are presentation; nothing in
+  them reaches a board, a key, a bar, an unlock or an achievement.
+- **L8 NOT amended by v20 D.1, and why.** D.1 did not quote L8 and did not need to: the first-seen highlight still fires
+  once and is still marked seen (`newMark` / `markSeen` are untouched, and D.5 still reads them). "Green until played" is a
+  second, separate fact read off the run store, drawn with the same green line.
 
 ## Bump the build: one command (A6, build 16) — as of build 30, before S.2 put `v0.N` on screen
 

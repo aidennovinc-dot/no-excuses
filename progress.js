@@ -33,6 +33,12 @@ function markSeen(keys){ const st=store.seen||{}; let ch=false; for(const k of k
 const isNew=k=>{ const st=seenAll(); return !!st&&!st[k]; };
 // the class to put on a freshly-unlocked element, and the key to mark once it has been rendered
 function newMark(key,bag){ if(!isNew(key)) return ''; if(bag) bag.push(key); return ' newthing'; }
+/* v20 (D.1, build 35): SEEN AND PLAYED ARE TWO FACTS. newMark / markSeen answer "has this been on screen" — L8's first-seen
+   pulse, and D.5's question — and clear on sight; that is untouched. A newly unlocked MODE also stays green until a run of
+   it is on record, and that is read off the RUN STORE, not a flag, so it can never disagree with the board. "Newly
+   unlocked" is an earned unlock in the store: a mode open from the start (Quick Tap · Two), or open only because OPEN
+   EVERYTHING is on, has nothing to announce. A two-player or practice run is never recorded, so it does not clear it. */
+const newPlay=(g,d)=>!!unlocked()[g+':'+d]&&!Scores.runs().some(r=>r.g===g&&r.d===d);
 function openKeys(){ const k=[]; for(const g in GAMES){ if(gameOpen(g)) k.push('game:'+g); for(const d of GAMES[g].modes){ if(!isOpen(g,d)) continue; k.push('mode:'+g+':'+d); for(const sc of GC(g,d).lens) if(lenOpen(g,d,sc)) k.push('len:'+g+':'+d+':'+sc); } }
   if(practiceOpen()) k.push('len:sequence:solo:practice'); const a=got(); for(const id in a) k.push('ach:'+id);
   /* v17 (B.10): THE COSMETICS. This walk never included them, so on a brand-new profile the first open of Customise lit
@@ -203,4 +209,4 @@ function setPendingAim(v){ pendingAim=v; }
 function setPendingGoal(v){ pendingGoal=v; }
 
 
-export { ACH, Scores, UNLOCKS, achAll, achById, bankLen, chalRun, checkAch, checkUnlocks, gameOpen, goalFor, got, isNew, isOpen, lenLock, lenNeed, lenNextLive, lenNextOf, lenOpen, lensOf, markSeen, needFor, newMark, nextAch, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, tierMin, tierOf, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict, verdictKey };
+export { ACH, Scores, UNLOCKS, achAll, achById, bankLen, chalRun, checkAch, checkUnlocks, gameOpen, goalFor, got, isNew, isOpen, lenLock, lenNeed, lenNextLive, lenNextOf, lenOpen, lensOf, markSeen, needFor, newMark, newPlay, nextAch, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, tierMin, tierOf, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict, verdictKey };

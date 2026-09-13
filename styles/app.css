@@ -1329,3 +1329,21 @@
   #vs.close{animation:vsclose 1.5s ease-in-out infinite}
   @keyframes vsclose{0%,100%{transform:translate(0)}25%{transform:translate(-2px,1px)}75%{transform:translate(2px,-1px)}}
   @media (prefers-reduced-motion:reduce){#vs.close{animation:none}}
+
+  /* ---------- v20 / v21 (batch 15, build 35): the new-mode green, selection over it, the versus pad ---------- */
+  /* D.1: a newly unlocked MODE stays green until a run of it is on record — the same green line L8's first-seen mark draws
+     on game select, no new treatment. On its row in the sheet and on its game's tile. */
+  .choice.newplay{border-color:var(--ok)}
+  .tile.newplay .pic{border-color:var(--ok)}
+  /* D.2: SELECTED BEATS GREEN. `.newthing` carries `border-color:…!important`, so the selected line lost to it however the
+     classes in fillSheet were ordered — the class list was never the problem, the cascade was. A selected mode wears its
+     ordinary selected line; a pressed tile its amber outline with no green border under it. The 170ms green of a mode being
+     PICKED (v14 4.6) is the tap's own confirmation and still wins for its 170ms, on every mode alike. */
+  .choice.sel.newthing,.choice.sel.newplay{border-color:var(--ink)!important}
+  .choice.sel.picked{border-color:var(--ok)!important}
+  .tile.keep.newthing .pic,.tile.keep.newplay .pic{border-color:var(--press)}
+  /* F.3: a versus pad answers the finger that hit it — the lit square often moves on to the SAME pad, which changed nothing
+     on screen and read as a miss. (guess) .14s. Presentation only (L10) */
+  .pad.tapped{animation:padtap .14s ease-out}
+  @keyframes padtap{0%{scale:.93;filter:brightness(1.6)}100%{scale:1;filter:none}}
+  @media (prefers-reduced-motion:reduce){.pad.tapped{animation:none}}
