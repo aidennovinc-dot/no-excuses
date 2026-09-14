@@ -6,22 +6,22 @@
 
    The ladder: v0 is the build-13 layout (seven keys, no version) — fromLegacy() folds it into one record and applies the
    v8–v11 reshapes that used to run on every boot. v1 is this record; v2 (build 31) and v3 (build 32) are the two unit
-   changes below, v4 (build 35) the colours, v5 (build 40) the named chests. The next change adds `if(raw.v<6) raw=up6(raw)`
-   and bumps VERSION; a step never edits an earlier one.
+   changes below, v4 (build 35) the colours, v5 (build 40) the named chests, v6 (build 42) the music everywhere. The next change adds
+   `if(raw.v<7) raw=up7(raw)` and bumps VERSION; a step never edits an earlier one.
 
    `bars` (build 22) is the key's cleared combinations — a map of '<game>:<mode>:<length>' → when it first cleared. It needs
    no ladder step: a v1 record without one shape-checks to {} like every other map, which is exactly right for a profile
    that has never met the key. progress/key.js is the only writer.
 
    The storage adapter is the three one-liners read / write / drop. Stage 5's platform.js swaps them for Capacitor Preferences. */
-import { SCALES, TRACK_OPTS } from "../config/audio.js";
+import { KEY_THEMES, SCALES, TRACK_OPTS } from "../config/audio.js";
 import { BUILD_FLAGS, RUN_SCHEMA } from "../config/build.js";
 import { CHESTS } from "../config/chests.js";
 import { DESIGNS, ITEMS } from "../config/theme.js";
 import { GAMES, GC } from "../games/registry.js";
 import { emit } from "./events.js";
 
-const KEY='ne', VERSION=5, RUNS_CAP=600;
+const KEY='ne', VERSION=6, RUNS_CAP=600;
 const LEGACY=['ne.prefs','ne.runs','ne.unlock','ne.ach','ne.seen','ne.intro','ne.tileSeen'];
 const read=k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } };
 const write=(k,v)=>{ try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } };
@@ -67,6 +67,11 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
        it. A value that is not one of that game's own options is dropped, which means renaming an option costs a player their
        choice and never their boot. (`chest2`, shape-checked beside it until build 39, is the Pro chest in `chests` now.) */
     track:{},
+    /* v23 (L.7c, build 42): `everywhere` is the music EVERY run plays — 'game' (each game its own track, `track` above) or a key theme,
+       named by the chest that opens it ('key' | 'pro' | 'thorns', KEY_THEMES in config/audio.js). One field, and both the key screen's
+       SET THIS MUSIC and Customise's Everywhere row write it. A preference, so Fresh game keeps it; a theme whose chest is shut is KEPT and
+       not applied — everywhere() below reads it as 'game' — the L.11a pattern. Anything that is not one of the four becomes 'game'. */
+    everywhere:Object.keys(KEY_THEMES).includes(p.everywhere)?p.everywhere:'game',
     /* v21 / v20 (build 37): shape-checked the day they arrived. `retro` is G.4's retroactive clears not yet seen on the keys screen —
        progress. `devKeys` is G.8's per-key snapshot — a dev switch, so it exists only while BUILD_FLAGS.dev is on (S5).
        BUILD 40: `gateOff` (G.3's gate) and `pctSeen` (D.4's per-key figure) are retired with the gate and the per-key front number;
@@ -206,12 +211,20 @@ function up5(raw){ const p=isObj(raw.prefs)?raw.prefs:null;
     for(const k of ['chest1','chest2','chest3','pro','gateOff','pctSeen']) delete p[k]; }
   raw.v=5; return raw; }
 
+/* v5 → v6 (build 42, v23 §L.7c): ONE MUSIC SETTING FOR EVERY RUN. `everywhere` arrives as 'game' — every game its own track, which is what
+   every profile played before this build, so nobody's music changes on update. It only ever ADDS the field (the build-40 lesson): a record
+   that already carries one — hand-built, or restored — keeps it, and cleanPrefs shape-checks whatever is there. */
+function up6(raw){ const p=isObj(raw.prefs)?raw.prefs:null;
+  if(p&&p.everywhere===undefined) p.everywhere='game';
+  raw.v=6; return raw; }
+
 function load(){ let raw=parse(read(KEY)), legacy=false;
   if(!isObj(raw)){ raw=fromLegacy(); legacy=!!raw; if(!raw) raw={}; }
   if((raw.v||0)<2) raw=up2(raw);
   if((raw.v||0)<3) raw=up3(raw);
   if((raw.v||0)<4) raw=up4(raw);
   if((raw.v||0)<5) raw=up5(raw);
+  if((raw.v||0)<6) raw=up6(raw);
   return { st:{ v:VERSION, prefs:cleanPrefs(raw.prefs), runs:cleanRuns(raw.runs), ach:cleanMap(raw.ach), unlock:cleanMap(raw.unlock), intro:cleanMap(raw.intro), seen:isObj(raw.seen)?cleanMap(raw.seen):null, bars:cleanMap(raw.bars) }, legacy }; }
 
 const { st: store, legacy } = load();
@@ -226,8 +239,12 @@ if(save()&&legacy) LEGACY.forEach(drop);
    made in Customise is KEPT and not applied: the defaults apply meanwhile — white target and red lead, the stock background, the
    default tap sound, scale, rate bar, track and music (L.11a). The moment the chest opens, look() hands back what was chosen. */
 const opened=id=>!!((prefs.chests&&prefs.chests[id])||prefs.allOpen||prefs.supporter);
-const LOOK={ bg:'stars', tint:'', snd:'space', scale:'penta', rate:'live', track:{} };
+const LOOK={ bg:'stars', tint:'', snd:'space', scale:'penta', rate:'live', track:{}, everywhere:'game' };
 const look=k=>opened('games')?prefs[k]:LOOK[k];
+/* v23 (L.7b / L.7c, build 42): THE MUSIC EVERY RUN PLAYS, as the app reads it — the stored key theme only while the chest that opens it is
+   open (or a dev escape, like every gate), otherwise 'game'. A locked theme can therefore never be selected by any route, stored or tapped;
+   audio.js, the key screen and Customise all read this one function. */
+const everywhere=()=>{ const v=look('everywhere'); return Object.keys(KEY_THEMES).includes(v)&&opened(v)?v:'game'; };
 const lookCol=g=>opened('games')?(prefs.col[g]||prefs.col['quick-tap']):{ sq:SQ, lead:LEAD, cut:SQ };
 const musicOn=g=>!opened('games')||prefs.musicG[g]!==false;
 /* Fresh game (the Testing screen's dev switch): progress goes, the look and the name stay.
@@ -240,4 +257,4 @@ const musicOn=g=>!opened('games')||prefs.musicG[g]!==false;
    purchase at the native build it will be restored from the store rather than from prefs, and this line stays correct. */
 function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,chests:cleanChests(null),cusSeen:0,readySeen:cleanChests(null),spill:cleanChests(null),keyWhole:{},retro:{},retroCol:{},devKeys:{}}); delete prefs.mig11; delete prefs.mig31; delete prefs.mig32; delete prefs.mig35; delete prefs.meterSeen; delete prefs.devMeter; save(); emit('store:reset'); }
 
-export { RUNS_CAP, look, lookCol, musicOn, opened, prefs, reset, save, store, trimRuns };
+export { RUNS_CAP, everywhere, look, lookCol, musicOn, opened, prefs, reset, save, store, trimRuns };

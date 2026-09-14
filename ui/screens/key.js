@@ -59,10 +59,10 @@ import { KEY_ART } from "../../config/keys.js";
 import { MODE_NAME } from "../../config/games.js";
 import { $, T, esc } from "../../core.js";
 import { emit, on } from "../../core/events.js";
-import { prefs, save } from "../../core/store.js";
+import { everywhere, prefs, save } from "../../core/store.js";
 import { GAMES, lenFull, lenName } from "../../games/registry.js";
 import { isOpen, lenOpen, modeCount } from "../../progress.js";
-import { bandPct, barOf, barsFaked, barsMissing, chestState, gameKey, isCleared, keyChest, keyState, keyTiers, meter, openChest, placeholderCount, readyChest, retroTier, skey, tierOpen } from "../../progress/key.js";
+import { bandPct, barOf, barsFaked, barsMissing, chestOpen, chestState, gameKey, isCleared, keyChest, keyState, keyTiers, meter, openChest, placeholderCount, readyChest, retroTier, skey, tierOpen } from "../../progress/key.js";
 import { goWhere } from "../../run/run.js";
 import { scoreTxt } from "../format.js";
 import { define, lock } from "../actions.js";
@@ -201,6 +201,16 @@ function panel() { const box = $('#key-list'); if (!openGame) { box.innerHTML = 
   // …and then the mark is spent, once each (L8)
   if (spent.length) { for (const rk of spent) delete retro[rk]; prefs.retro = retro; save(); } }
 
+/* ---------- v23 (L.7b, build 42): what plays on a key's screen, and SET THIS MUSIC at its foot ----------
+   A key's theme is heard here only once the chest it opens is open (`music` in config/keys.js). Before that the front of the app's own loop
+   carries on (guess: "a locked key has no theme to hear" — the menu loop rather than silence), and the button is not there either. A tap
+   stores that chest in prefs.everywhere — every run's music from then on — and the button reads PLAYING EVERYWHERE in green. There is one
+   button and one field, so the other two keys read SET THIS MUSIC again the moment they are on screen. Customise's Everywhere row writes the
+   same field through the same store, and neither screen imports the other (A4). */
+const themeOf = t => t.music && chestOpen(t.music) ? t.track : 'menu';
+function musicBtn(t) { const b = $('#key-music'), open = !!t.music && chestOpen(t.music), on = open && everywhere() === t.music;
+  b.hidden = !open; b.classList.toggle('on', on); b.textContent = on ? KEY.musicOn : KEY.setMusic; }
+
 /* ---------- which key is on screen ---------- */
 /* L.10a: the four chests in a row, each in its state, with its name — the only chest reads on this screen go through chestState(). v23 (L.9a,
    build 41): each in its OWN sprite, from ui/chest.js — the same four the map and the ceremony draw */
@@ -208,7 +218,7 @@ const chestRow = () => `<div class="kchests">${CHESTS.map(c => `<span class="kch
 function render() { const tiers = keyTiers();
   // a tier that is not open cannot be the one on screen: fall to the first open one, or to key 1 on the quiet screen (L.10a)
   if (!tierOpen(tiers[openKey].id)) { const i = tiers.findIndex(k => tierOpen(k.id)); openKey = i < 0 ? 0 : i; }
-  const t = tiers[openKey]; keys();
+  const t = tiers[openKey]; keys(); musicBtn(t);
   // B.31 / B.22: the tier's own tint, dim and ground dress the whole screen, out of config/keys.js. No colour is named here
   const el = $('#s-key'); el.style.setProperty('--ktint', t.tint); el.style.setProperty('--kdim', t.dim || 'var(--line)'); el.style.setProperty('--kground', t.ground); el.dataset.theme = t.id; el.dataset.style = t.style || '';
   $('#key-title').textContent = t.name.toLowerCase();
@@ -300,9 +310,10 @@ register('s-key', { onShow({ advance: a, from, auto: to, tier, whole, arrive, ce
     // B.26: Testing asks for the arrival again by clearing the flag first; it asks for the whole-key moment by name
     if (arrive) { prefs.keySeen = 0; }
     render();
-    // v16 (1.3): each key tier has its own loop, rising in intensity the way the glyphs do. The screen change starts key 1;
-    // this and the tier button keep it in step with whichever tier is open
-    Music.menu(keyTiers()[openKey].track);
+    // v16 (1.3): each key tier has its own loop, rising in intensity the way the glyphs do. This and the tier button keep it in step with
+    // whichever tier is open. Build 42 (L.7b): only once that key's chest is open — the menu loop until then — and audio.js no longer
+    // starts one of its own when the screen changes
+    Music.menu(themeOf(keyTiers()[openKey]));
     const arrived = !auto && firstIn();
     if (whole) setTimeout(() => wholeMoment(), 300);
     /* B.26 → v23 (L.6, build 41): Testing replays a chest's CEREMONY here with nothing stored — the meter holds where it is, and the tap
@@ -311,7 +322,7 @@ register('s-key', { onShow({ advance: a, from, auto: to, tier, whole, arrive, ce
       playCeremony($('#key-cere'), cer, { was: m, now: m, onDone: () => show('s-pick', { spillDemo: cer }) }); }, 300);
     if (pending) { const p = pending; pending = null; if (auto) setTimeout(() => interlude(p, auto), 320); else setTimeout(() => advance(p), 260); }
     // L.8b: a chest ready as the screen opens is opened on it — after the first-ever arrival, if that is playing
-    else if (!demo && readyChest()) setTimeout(() => { if ($('#s-key').classList.contains('on') && !auto && autoOpen()) Music.menu(keyTiers()[openKey].track); }, arrived ? OPEN_AFTER_ARRIVAL : OPEN_AT); },
+    else if (!demo && readyChest()) setTimeout(() => { if ($('#s-key').classList.contains('on') && !auto && autoOpen()) Music.menu(themeOf(keyTiers()[openKey])); }, arrived ? OPEN_AFTER_ARRIVAL : OPEN_AT); },
   // a fresh clear arrived from a result screen: Back belongs to the run, not to the menu
   // L.6 (build 41): a ceremony is not skippable, so nothing goes Back while one is on
   onBack() { if (ceremonyOn() || auto) return true; if (!cameFrom) return false; const to = cameFrom; cameFrom = null; show(to); return true; } });
@@ -322,7 +333,10 @@ define({
   // v21 (G.2): a locked key says what opens it and stays where it is — its ring and its numbers are what A.1 still hides
   // v23 (L.10a): key 1 included, until the Games chest
   'key-tier'(el) { const i = +el.dataset.kt; if (!tierOpen(keyTiers()[i].id)) { toast(i === 0 ? KEY.gamesToast : KEY.lockedToast); return 'pick'; }
-    openKey = i; openGame = null; render(); Music.menu(keyTiers()[openKey].track); return 'pick'; },
+    openKey = i; openGame = null; render(); Music.menu(themeOf(keyTiers()[openKey])); return 'pick'; },
+  // v23 (L.7b, build 42): this key's theme becomes every run's music. Once it is, a second tap changes nothing (guess)
+  'key-music'() { const t = keyTiers()[openKey]; if (!t.music || !chestOpen(t.music)) return undefined;
+    if (everywhere() !== t.music) { prefs.everywhere = t.music; save(); } musicBtn(t); return 'pick'; },
   'key-game'(el) { const g = el.dataset.kg; openGame = openGame === g ? null : g; render(); return 'pick'; },
   // B.23: a tap on the ring's own ground is nothing — not Back, not a sound
   'key-ground'() { return undefined; },

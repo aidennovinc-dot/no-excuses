@@ -277,6 +277,36 @@ credited (`openChest`) before a frame of its ceremony plays, and `ui/ceremony.js
 - **`config/` inventory:** `chests.js` gained `METER_BANDS`, `CHEST_LOOK`, `CEREMONY`, `CEREMONY_FX`, `SPILL`; `audio.js` gained `CHEST_FX`,
   `CHEST_NOISE`, `CHEST_STING`, `CHEST_READY_FX`, `HUSH`; `copy.js` gained `CHEST_WORDS[].to`, `CHEST_SOON` and `KEY.tapOn`.
 
+### Amended at build 42 (batch 16, the key themes: FEEDBACK-v23 §L.7 a–e), 2026-09-15
+
+**L10 quoted: music and one preference — nothing in this build clears a bar, opens a chest or banks anything. A4: the key screen and
+Customise write one field through `core/store.js` and neither imports the other.**
+
+- **v17 §B.31 / v16 1.3 amended (L.7a): the three key themes are rewritten** as `theme:key` / `theme:pro` / `theme:thorns` — each in its motif
+  from the first beat with every voice in bar 1 (no intro, no fade-up, no build), escalating Key → Pro → Thorns, on the same roots and chords.
+  Supersedes batch 13's "really likes the key music" and 2026-09-10's "Still is cool background music for the key" (L.7: the later note wins).
+  The build-30 `key:roots` / `key:frost` / `key:thorn` are kept ONE build as `retired:42`, played only by the review board; `CHEST_STING` points
+  at the new ids with no note moved. Was: Roots' melody 1.4s in, bass silent 4 bars; Frost's melody silent 38s; Thorn's filters shut for 32s.
+- **v16 1.3 amended (L.7b): a key's screen plays its theme only once the chest that key opens is open** — the menu loop until then (guess:
+  "a locked key has no theme to hear"). `audio.js`'s screen-change timer no longer chooses the key screen's loop: the router emits
+  `screen:change` before `onShow`, so since build 30 it asked for Roots 900ms after `key.js` asked for the Pro or Author tab's own.
+- **New (L.7b / L.7c): ONE music setting for every run, `prefs.everywhere`** ('game' | 'key' | 'pro' | 'thorns'). SET THIS MUSIC at the foot of a
+  key screen, visible only once its chest is open, writes it and reads PLAYING EVERYWHERE in green; Customise's **Everywhere** row (Per game /
+  Key / Pro / Thorns) sits above the tracks and writes it too. Both read `everywhere()`, which reads a theme whose chest is shut as 'game', so a
+  locked theme is never applied by any route. A shut theme is crossed out with its chest under it and a tap chooses nothing. While a theme plays
+  everywhere the tracks grey with one note under them — a `.cnote`, not a `.lockline`, so B.30's "at most one filled" is unchanged — and a track
+  tap goes back to Per game with that track chosen. A second tap on PLAYING EVERYWHERE changes nothing (guess).
+- **v18 B.28 extended, not amended:** the Music row is still the track, one row, padlocked until the Pro chest; the Everywhere row is above it.
+- **New (L.7d): a theme as run music takes the one path a game's track takes** — `pickRun(g)` in `Music.start`, before `shapeFor` — so the
+  finish ramp (B.28), the arc (B.29), the versus stems (1.4), the flow hum (B.27), Sequence's duck (B.30, keyed on the game) and the end
+  cadence apply unchanged. The menu loop does not follow the setting (guess). `FLOW_AT` stays 2.7 (v18 B.9, Aiden's words): L.7d's "above
+  3.0 taps/s" restates the rule without quoting it.
+- **The store is v6** — `up6` adds `everywhere: 'game'` where it is absent and never replaces one (the build-40 lesson). `RUN_SCHEMA` unchanged (4).
+  `everywhere` is a preference: Fresh game keeps it.
+- **`config/` inventory:** `audio.js` gained `theme:key`, `theme:pro`, `theme:thorns`, `KEY_THEMES`, `KEY_THEMES_RETIRED` and a `retired` field on
+  three tracks; `keys.js` gained `music` per key and its `track`s moved; `copy.js` gained `CUSTOM.perGame` / `openChest` / `themeOn` and
+  `KEY.setMusic` / `musicOn`. `Music.probe()` reports `track`, `arc`, `arcBars`, `stems`, `flow`, `fin`.
+
 ## Structure — the full text as of build 30
 
 `CLAUDE.md` keeps the module map. This is the paragraph-by-paragraph description it carried at build 30: the DAG, the

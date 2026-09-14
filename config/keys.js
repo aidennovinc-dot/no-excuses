@@ -13,7 +13,8 @@
 
    B.22 — ONE THEME PER TIER: LANTERN → CIRCUIT → THORN, from the proposal page Aiden reviewed 2026-09-10 ("the design for
    the keys looked fucking amazing"), extracted by Cowork into ../_review/2026-09-10_key-themes-art.js. Visual only: the
-   TRACKS are unchanged — key:roots, key:frost, key:thorn in config/audio.js — so the loops still play what build 30 built.
+   TRACKS were unchanged — key:roots, key:frost, key:thorn in config/audio.js — so the loops still played what build 30 built (until
+   build 42's rewrite, below).
    A theme is: `style`, which ui/screens/key.js draws (a lantern's straight glowing spokes and rings, a circuit's
    right-angled traces with corner dots and square nodes, a thorn's curved branches with spikes); `tint`, the light a
    cleared root wears; `dim`, the unlit line; `ground`, behind the ring. Circuit is recoloured — Aiden's one instruction was
@@ -28,12 +29,16 @@
    with roots, a ringed bow with frost spurs, then the Author's rosette with wards and thorns. Same 48x48 box, so the
    three sit in a row and the selected one scales up without redrawing. */
 
+/* v23 (§L.7a / §L.7b, build 42): `track` is the rewritten theme (theme:key / theme:pro / theme:thorns in config/audio.js; the build-30
+   key:roots / key:frost / key:thorn are retired). `music` is the CHEST that opens the theme — the chest this key opens when it is whole
+   (L.12), so a key's theme is its own reward — and the value prefs.everywhere takes when SET THIS MUSIC is tapped on this key's screen.
+   Before that chest opens, the button is not there and the theme does not play on the screen (guess, L.7b). */
 export const KEYS = [
-  { id: 'clear', name: 'The key', theme: 'Lantern', style: 'lantern', track: 'key:roots', tint: '#FFD08A', dim: '#57442C', ground: 'rgba(255,208,138,.12)',
+  { id: 'clear', name: 'The key', theme: 'Lantern', style: 'lantern', track: 'theme:key', music: 'key', tint: '#FFD08A', dim: '#57442C', ground: 'rgba(255,208,138,.12)',
     lede: 'Every clearance bar, once each. Beat one in a solo run and that combination is cleared for good.' },
-  { id: 'pro', name: 'Pro', theme: 'Circuit', style: 'circuit', track: 'key:frost', tint: '#BFE6FF', dim: '#35506A', ground: 'rgba(191,230,255,.08)',
+  { id: 'pro', name: 'Pro', theme: 'Circuit', style: 'circuit', track: 'theme:pro', music: 'pro', tint: '#BFE6FF', dim: '#35506A', ground: 'rgba(191,230,255,.08)',
     lede: 'A harder bar on every combination, for a second pass at a game you already know.' },
-  { id: 'author', name: 'Author', theme: 'Thorn', style: 'thorn', track: 'key:thorn', tint: '#FFFFFF', dim: '#4D4D4D', ground: 'rgba(0,0,0,.55)',
+  { id: 'author', name: 'Author', theme: 'Thorn', style: 'thorn', track: 'theme:thorns', music: 'thorns', tint: '#FFFFFF', dim: '#4D4D4D', ground: 'rgba(0,0,0,.55)',
     lede: "The author's own times. The last thing left to beat." },
 ];
 

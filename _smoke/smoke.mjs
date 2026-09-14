@@ -90,7 +90,8 @@ console.log('\nstatic checks');
         if (ss[i][0] === ss[j][0] && ss[i][1] === ss[j][1]) same.push(g + ' ' + os[i] + '/' + os[j]);
     }
     // build 30 (B.31): the key loops are the three THEMES now, not key:1..3
-    const extra = ['menu', 'key:roots', 'key:frost', 'key:thorn'].filter(k => !AU.TRACKS[k]);
+    // AMENDED at build 42 (v23 L.7a): the three themes are theme:key / theme:pro / theme:thorns; the build-30 three stay one build, retired, for the A/B
+    const extra = ['menu', ...Object.values(AU.KEY_THEMES || {}), 'key:roots', 'key:frost', 'key:thorn'].filter(k => !AU.TRACKS[k]).concat(Object.keys(AU.KEY_THEMES || {}).length === 3 ? [] : ['KEY_THEMES']);
     if (miss.length || badv.length) bad('§1.1 three playable options per game', [...miss, ...badv].join(', '));
     else if (same.length) bad('§1.1 the three options are different music', 'same voicing and rhythm: ' + same.join(', '));
     else if (extra.length) bad('§1.2 / §1.3 the menu loop and one per key', 'missing: ' + extra.join(', '));
@@ -513,7 +514,7 @@ if (await bootWith('build-13 layout', B13, 's-menu')) {
   // v18 (B.2 / B.4): the record is v2 and RUN_SCHEMA is 3 — two Timing scoring units changed, so the ladder gained a step
   // v19 (C.5 / C.6): the record is v3 and RUN_SCHEMA is 4 — Go / No-go's units changed, so the ladder gained its second step
   // AMENDED at build 35 (v21 F.4): the record is v4 - up4 is the ladder's third step
-  (ne && ne.v === 5 /* AMENDED at build 40: the ladder ends at v5 */ && Array.isArray(runs) && runs.every(r => r.v === 4)) ? ok('build-13 layout: migrated to `ne` v5, runs stamped RUN_SCHEMA 4') : bad('build-13 layout: ne v5 + run stamp', JSON.stringify({ v: ne && ne.v, stamps: runs && runs.map(r => r.v) }));
+  (ne && ne.v === 6 /* AMENDED at build 40: the ladder ends at v5; at build 42 at v6 (up6, L.7c) */ && Array.isArray(runs) && runs.every(r => r.v === 4)) ? ok('build-13 layout: migrated to `ne` v6, runs stamped RUN_SCHEMA 4') : bad('build-13 layout: ne v6 + run stamp', JSON.stringify({ v: ne && ne.v, stamps: runs && runs.map(r => r.v) }));
   const left = await page.evaluate(() => ['ne.prefs', 'ne.runs', 'ne.unlock', 'ne.ach', 'ne.seen', 'ne.intro', 'ne.tileSeen'].filter(k => localStorage.getItem(k) !== null));
   left.length === 0 ? ok('build-13 layout: the seven old keys are gone') : bad('build-13 layout: old keys removed', left.join(', '));
   (ne && ne.unlock['dots:blind'] && ne.ach.first && ne.ach.named && ne.intro['quick-tap:two'] && ne.seen && ne.seen['game:dots']) ? ok('build-13 layout: unlocks, achievements, intros and seen carried over') : bad('build-13 layout: maps carried', JSON.stringify({ u: ne && ne.unlock, a: ne && ne.ach, i: ne && ne.intro, s: ne && ne.seen }).slice(0, 160));
@@ -553,7 +554,7 @@ if (await bootWith('corrupt build-13 keys (ne.runs="{}", prefs.scale="foo", pref
     /* the bars and the achievement STAY: they were converted at the measured pace, not retuned, so a player who cleared
        180px has cleared 1200ms. The RUNS go, because a stored `hits` in the old unit has nothing to be compared against. */
     // AMENDED at build 32: the survivors come out stamped 4 in a v3 record — up3 runs after up2 and touches none of these
-    (ne.v === 5 /* AMENDED at build 40: the ladder runs on to v5 */ && kinds.join('|') === want && ne.runs.every(r => r.v === 4) && ne.bars['timing:hidden:10'] && ne.bars['quick-tap:two:5'] && ne.ach.tm_wall && ne.ach.first)
+    (ne.v === 6 /* AMENDED at build 40: the ladder runs on to v5; at build 42 to v6 */ && kinds.join('|') === want && ne.runs.every(r => r.v === 4) && ne.bars['timing:hidden:10'] && ne.bars['quick-tap:two:5'] && ne.ach.tm_wall && ne.ach.first)
       ? ok('B.2 / B.4 the v1 → v2 step retires the Stopwatch Set and the Hidden run whose units changed — the Stopwatch Streak and the Quick Tap run stay, and so do the cleared bars and the achievement, because those were converted rather than retuned')
       : bad('B.2 / B.4 the ladder step retires only the records that changed unit', JSON.stringify({ v: ne.v, kinds, bars: Object.keys(ne.bars), ach: Object.keys(ne.ach) }));
   }
@@ -2056,8 +2057,9 @@ console.log('\nbuild 30 - v17 sections B.27 to B.33');
   {
     const missing = KY30.KEYS.filter(k => !k.theme || !k.track || !AU30.TRACKS[k.track] || !/^#[0-9A-Fa-f]{6}$/.test(k.tint));
     // AMENDED at build 32 (v18 B.22): the art is Lantern → Circuit → Thorn; the loops are still the three build 30 made
-    (!missing.length && KY30.KEYS.map(k => k.theme).join(' → ') === 'Lantern → Circuit → Thorn' && KY30.KEYS.map(k => k.track).join(',') === 'key:roots,key:frost,key:thorn')
-      ? ok('B.31 / B.22 Lantern → Circuit → Thorn, each with its own tint, and the loops are still key:roots / key:frost / key:thorn')
+    // AMENDED at build 42 (v23 L.7a): the loops are the rewritten themes, theme:key / theme:pro / theme:thorns
+    (!missing.length && KY30.KEYS.map(k => k.theme).join(' → ') === 'Lantern → Circuit → Thorn' && KY30.KEYS.map(k => k.track).join(',') === 'theme:key,theme:pro,theme:thorns')
+      ? ok('B.31 / B.22 Lantern → Circuit → Thorn, each with its own tint, and the loops are the build-42 themes theme:key / theme:pro / theme:thorns (AMENDED at build 42, L.7a)')
       : bad('B.31 a theme and a track per tier', JSON.stringify(missing.map(k => k.id)));
     // nothing about the second and third tier before chest 1 - not a row, not a word (A.1)
     // #411: allOpen OFF - a first-timer is the subject of A.1, and OPEN EVERYTHING is now an escape from this gate
@@ -2165,7 +2167,8 @@ console.log('\nbuild 30 - v17 sections B.27 to B.33');
     (!afterLoad.shellPro && !afterLoad.faked && typeof afterLoad.pro === 'number') ? ok('#371 a reload reads the file again - both columns full, nothing faked')
       : bad('#371 the fill does not survive a reload', JSON.stringify(afterLoad));
     // the screen asks for the tier's own track, and there is no key:1 left anywhere
-    (/keyTiers\(\)\[openKey\]\.track/.test(keyjs30) && !/key:1/.test(keyjs30)) ? ok('B.31 the key screen asks for the tier\'s own loop by name, never by number')
+    // AMENDED at build 42 (v23 L.7b): the loop goes through themeOf(), which hands back the tier's own track once its chest is open and the menu loop until then
+    (/themeOf\(keyTiers\(\)\[openKey\]\)/.test(keyjs30) && /\? t\.track : 'menu'/.test(keyjs30) && !/key:1/.test(keyjs30)) ? ok('B.31 the key screen asks for the tier\'s own loop by name, never by number (through themeOf, AMENDED at build 42)')
       : bad('B.31 the tier loop is asked for by name');
   }
   /* ---- B.32: music in Customise. A row per game and a row for the menu loop, locked behind chest 2 (A.3) with a
@@ -2217,7 +2220,8 @@ console.log('\nbuild 30 - v17 sections B.27 to B.33');
   {
     const gen = fs.readFileSync(path.resolve(root30, '..', '_review', 'scripts', 'catalogue.mjs'), 'utf8');
     const tpl = fs.readFileSync(path.resolve(root30, '..', '_review', 'scripts', 'catalogue.template.html'), 'utf8');
-    const reads = /\{ *long: *1 *\}/.test(gen) && /\{ *run:/.test(gen) && /\{ *flow: *1 *\}/.test(gen) && /key:roots/.test(gen);
+    // AMENDED at build 42 (v23 L.7e): the key themes are read out of KEY_THEMES, not named
+    const reads = /\{ *long: *1 *\}/.test(gen) && /\{ *run:/.test(gen) && /\{ *flow: *1 *\}/.test(gen) && /AU\.KEY_THEMES/.test(gen);
     const plays = /hold > 0/.test(tpl) && /createBiquadFilter/.test(tpl) && /what a run plays/.test(tpl);
     (reads && plays) ? ok('the catalogue reads the arc, the long form and the flow layer out of the running app, and plays the filter and the hold the new tracks use')
       : bad('the review board carries build 30\'s music', JSON.stringify({ reads, plays }));
@@ -3088,7 +3092,7 @@ console.log('\nbuild 35 - batch 15, bugs and the runs');
     (writers.length === 2 && writers.every(w => w === 'ui/screens/customise.js' /* AMENDED at build 39: Customise's code is its own file again */) && !near.length)
       ? ok('F.4 investigated: the only two writers of a game colour are Customise\'s swatch tap and its wheel, and no player colour is written near prefs.col anywhere')
       : bad('F.4 who writes prefs.col', JSON.stringify({ writers, near }));
-    (/VERSION=5/.test(store35) /* AMENDED at build 40: v5, the named chests (up5) */ && /if\(\(raw\.v\|\|0\)<4\) raw=up4\(raw\);/.test(store35) && /o\.mig35=p\.mig35/.test(store35) && /'chip-pv'\(b\)\{ F\.g=b\.dataset\.v; pvTry\.set=null;/.test(prog35))
+    (/VERSION=6/.test(store35) /* AMENDED at build 40: v5, the named chests (up5); at build 42: v6, the music everywhere (up6) */ && /if\(\(raw\.v\|\|0\)<4\) raw=up4\(raw\);/.test(store35) && /o\.mig35=p\.mig35/.test(store35) && /'chip-pv'\(b\)\{ F\.g=b\.dataset\.v; pvTry\.set=null;/.test(prog35))
       ? ok('F.4 the store is v4 with up4 on the ladder and mig35 shape-checked, and a previewed swatch is dropped when the game chip changes')
       : bad('F.4 the ladder step and the preview reset');
     const COLS = { 'quick-tap': { sq: '#9BE8FF', lead: '#C8322A', cut: '#9BE8FF' }, dots: { sq: '#C6FF7A', lead: '#C8322A', cut: '#C6FF7A' }, hold: { sq: '#FFFFFF', lead: '#C8322A', cut: '#FFFFFF' } };
@@ -3097,7 +3101,7 @@ console.log('\nbuild 35 - batch 15, bugs and the runs');
     await click('[data-go="s-pick"]'); await sleep(500);
     const f4 = await page.evaluate(() => { const ne = JSON.parse(localStorage.getItem('ne')); const t = g => document.querySelector(`.tile[data-game="${g}"]`).style.getPropertyValue('--sq-live').trim().toUpperCase();
       return { v: ne.v, mig: ne.prefs.mig35, sq: [...new Set(Object.values(ne.prefs.col).map(c => c.sq))], qt: t('quick-tap'), dots: t('dots') }; });
-    (f4.v === 5 /* AMENDED at build 40: the ladder runs on to v5 */ && f4.mig === 2 && f4.sq.join() === '#FFFFFF' && f4.qt === '#FFFFFF' && f4.dots === '#FFFFFF')
+    (f4.v === 6 /* AMENDED at build 40: the ladder runs on to v5; at build 42 to v6 */ && f4.mig === 2 && f4.sq.join() === '#FFFFFF' && f4.qt === '#FFFFFF' && f4.dots === '#FFFFFF')
       ? ok('F.4 a v3 record holding light blue on Quick Tap and lime on Dots loads as v4 with every game white again (mig35 2), and both played tiles are white')
       : bad('F.4 the colours go back to white', JSON.stringify(f4));
     await click('#s-pick .back'); await sleep(300); await click('[data-go="s-custom"]'); await sleep(500);
@@ -3897,7 +3901,7 @@ console.log('\nbuild 39 - batch 16, the surface');
     await click('[data-go="s-custom"]'); await sleep(1200);
     const live = await page.evaluate(() => ({ screen: (document.querySelector('.screen.on') || {}).id, groups: document.querySelectorAll('#s-custom .cgroup').length,
       sw: document.querySelectorAll('#c-sq button').length, g: document.getElementById('pv').dataset.g, scrolls: getComputedStyle(document.getElementById('s-custom')).overflowY }));
-    (live.screen === 's-custom' && live.groups === 9 && live.sw > 1 && live.g && live.scrolls === 'auto')
+    (live.screen === 's-custom' && live.groups === 10 /* AMENDED at build 42 (v23 L.7c): the Everywhere row is a tenth group */ && live.sw > 1 && live.g && live.scrolls === 'auto')
       ? ok(`L.4a the menu row opens it: ${live.groups} groups, ${live.sw} target colours, previewing ${live.g}, and the screen scrolls as it did at build 32`)
       : bad('L.4a Customise opens from the menu', JSON.stringify(live));
     await click('#s-custom .back'); await sleep(400);
@@ -4255,12 +4259,12 @@ console.log('\nbuild 40 - batch 16, four chests and the meter');
   /* ---- 9. the store is v5: the chests named, one ladder step; the retired fields gone ---- */
   {
     const st9 = read40('core', 'store.js');
-    (/VERSION=5/.test(st9) && /if\(\(raw\.v\|\|0\)<5\) raw=up5\(raw\);/.test(st9) && /chests:cleanChests\(p\.chests\)/.test(st9) && !/\bpro:\[0,1,2\]|chest1:p\.chest1|gateOff:p\.gateOff|pctSeen:isObj/.test(st9))
+    (/VERSION=6/.test(st9) /* AMENDED at build 42: v6 (up6, L.7c) follows up5 */ && /if\(\(raw\.v\|\|0\)<5\) raw=up5\(raw\);/.test(st9) && /chests:cleanChests\(p\.chests\)/.test(st9) && !/\bpro:\[0,1,2\]|chest1:p\.chest1|gateOff:p\.gateOff|pctSeen:isObj/.test(st9))
       ? ok('store v5: up5 on the ladder, `chests` shape-checked by name, and `pro`, `chest1`-`chest3`, `gateOff` and `pctSeen` no longer read') : bad('store v5 statics');
     await setStorage({ ne: { v: 4, prefs: { ...PLAIN40, chest1: 1, chest2: 1, chest3: 0, pro: 1, gateOff: 1, pctSeen: { clear: 40 } }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
     const mg = await page.evaluate(() => { const ne = JSON.parse(localStorage.getItem('ne')); return { v: ne.v, chests: ne.prefs.chests, gone: ['chest1', 'chest2', 'chest3', 'pro', 'gateOff', 'pctSeen'].filter(k => k in ne.prefs) }; });
-    (mg.v === 5 && JSON.stringify(mg.chests) === '{"games":1,"key":1,"pro":1,"thorns":0}' && !mg.gone.length)
+    (mg.v === 6 /* AMENDED at build 42: up6 runs after up5 */ && JSON.stringify(mg.chests) === '{"games":1,"key":1,"pro":1,"thorns":0}' && !mg.gone.length)
       ? ok('store v5: a v4 record with chest 1 and chest 2 open loads with the Games, Key and Pro chests open - Games too, because chest 1 already waited for every mode (G.3) - and the retired fields dropped') : bad('store v5 migration', JSON.stringify(mg));
   }
 
@@ -4353,7 +4357,8 @@ console.log('\nbuild 41 - batch 16, the moments');
     for (const id of IDS) { const s = AU41.CHEST_STING[id], tr = s && AU41.TRACKS[s.track]; if (!tr) { stingBad.push(id + ' no theme'); continue; }
       end[id] = Math.max(...s.notes.map(n => n[0] + n[2] / 1000)); if (end[id] < 3 || end[id] > 6.05) stingBad.push(`${id} ${end[id]}s`);
       for (const n of s.notes) { const f = tr.root * 2 * Math.pow(2, n[1] / 12); if (n[2] < 700 || (n[5] || 0) < 40) stingBad.push(`${id} short or hard ${n}`); if (f > 523.3 && n[2] < 1200) stingBad.push(`${id} short high ${Math.round(f)}Hz`); } }
-    const themes = IDS.map(id => AU41.CHEST_STING[id].track).join() === 'key:roots,key:roots,key:frost,key:thorn';
+    // AMENDED at build 42 (v23 L.7a): each sting points at the rewritten theme, same root and chords as the one it was cut from
+    const themes = IDS.map(id => AU41.CHEST_STING[id].track).join() === 'theme:key,theme:key,theme:pro,theme:thorns';
     const fxBad = [];
     for (const id of IDS) for (const e of AU41.CHEST_FX[id]) if (e[3] < 250 && e[1] > 400) fxBad.push(`${id} ${e[1]}Hz ${e[3]}ms`);
     const sigFx = id => JSON.stringify((AU41.CHEST_FX[id] || []).map(e => [e[0], e[1], e[4]]));
@@ -4468,6 +4473,160 @@ console.log('\nbuild 41 - batch 16, the moments');
       && /'chests'\]\.forEach/.test(tpl) && /id="g-chests"/.test(tpl) && /REF\.chestFx/.test(tpl) && /w === 'noise'/.test(tpl))
       ? ok(`L.11e / L.10d / L.8f the catalogue carries ${want41.length} chest cards - 16 chest states, four ceremonies at five frames each with their sting and effects on a button, the meter at nine values, a spill per chest - drawn by the app's own renderers; and the second driver answers a ceremony's "tap to continue" as the gate does`)
       : bad('L.11e the catalogue cards', JSON.stringify({ shots: shots.length, missing: want41.filter(s => !shots.includes(s)) }));
+  }
+}
+
+/* ---- 22. build 42 (batch 16, the key themes - FEEDBACK-v23 §L.7 a-e). Music and one preference; nothing clears, opens or banks anything (L10) ---- */
+console.log('\nbuild 42 - batch 16, the key themes');
+{
+  const root42 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const read42 = (...p) => fs.readFileSync(path.join(root42, ...p), 'utf8');
+  const strip42 = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
+  const AU42 = await import(pathToFileURL(path.join(root42, 'config', 'audio.js')).href);
+  const KY42 = await import(pathToFileURL(path.join(root42, 'config', 'keys.js')).href);
+  const CH42 = await import(pathToFileURL(path.join(root42, 'config', 'chests.js')).href);
+  const THEMES = ['key', 'pro', 'thorns'], IDS42 = THEMES.map(k => (AU42.KEY_THEMES || {})[k]);
+  const PLAIN42 = { story: 1, gridSeen: 1, played: 1, menuSeen: 1, keySeen: 1, snd: 'off', musicG: {}, spill: { games: 1, key: 1, pro: 1, thorns: 1 }, readySeen: { games: 1, key: 1, pro: 1, thorns: 1 } };
+  const boot42 = async (prefs, v = 6) => { await setStorage({ ne: { v, prefs: { ...PLAIN42, ...prefs }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(450); };
+  const LV42 = c => c === 'x' ? 1 : (c >= '1' && c <= '9') ? +c / 10 : 0;
+
+  /* ---- 1. L.7a: three rewritten themes in their motif from the first step, escalating, to batch 12's rules; the build-30 three kept one build, retired ---- */
+  {
+    const T = AU42.KEY_THEMES || {}, R = AU42.KEY_THEMES_RETIRED || {};
+    const shape = Object.keys(T).join() === THEMES.join() && IDS42.every(id => AU42.TRACKS[id] && !AU42.TRACKS[id].retired)
+      && KY42.KEYS.map(k => k.track).join() === IDS42.join() && KY42.KEYS.map(k => k.music).join() === THEMES.join()
+      && KY42.KEYS.every(k => (CH42.CHESTS.find(c => c.id === k.music) || {}).needs === k.id)
+      && Object.values(R).join() === 'key:roots,key:frost,key:thorn' && Object.values(R).every(id => AU42.TRACKS[id] && AU42.TRACKS[id].retired === 42)
+      && THEMES.every(k => AU42.TRACKS[T[k]].root === AU42.TRACKS[R[k]].root);
+    // no intro, no fade-up, no build, read off the data: every level and filter string opens at 70% or more and never rests or drops under
+    // 60%, so no voice drops out at a loop point; a lead hits on the first step; the form is whole chord cycles, so the loop lands on chord 1
+    const opens = [];
+    for (const id of IDS42) { const t = AU42.TRACKS[id]; if (!t) continue;
+      if (t.form % (t.ch.length * (t.per || 1))) opens.push(`${id} form ${t.form} is not whole chord cycles`);
+      if (!t.voices.some(v => v.v === 'lead' && /[xo]/.test((v.pat || 'x')[0]) && v.seq[0] !== null)) opens.push(`${id} no motif on the first step`);
+      t.voices.forEach((v, i) => { for (const s of [v.lv, v.lpv].filter(Boolean)) { if (LV42(s[0]) < .7) opens.push(`${id} voice ${i} opens at ${s[0]}`); if ([...s].some(c => LV42(c) < .6)) opens.push(`${id} voice ${i} drops: ${s}`); }
+        if (!/[xo]/.test(v.pat || 'x')) opens.push(`${id} voice ${i} never sounds`); }); }
+    await boot42({});
+    const pl = await page.evaluate(async ids => { const M = await import('./audio.js'); const A = await import('./config/audio.js');
+      return ids.map(id => { const t = A.TRACKS[id], full = M.Music.plan(id), one = M.Music.plan(id, { bars: 1 }), beat = 60000 / t.bpm, barSec = 60 / t.bpm * (t.beats || 4);
+        return { id, bad: full.plan.filter(e => (e[3] < 700 && e[1] >= 300) || (e[1] > 523.3 && e[3] < 1200)).slice(0, 3).map(e => `${Math.round(e[1])}Hz ${e[3]}ms`),
+          first: one.plan.length ? Math.min(...one.plan.map(e => e[0])) : -1, slow: one.plan.filter(e => e[6] > beat).length,
+          bars: new Set(full.plan.map(e => Math.floor(e[0] / barSec + 1e-6))).size, form: full.form, rate: +(full.plan.length / full.loopSec).toFixed(2),
+          longSec: M.Music.lengths().find(r => r.id === id).longSec, leads: t.voices.filter(v => v.v === 'lead').length, root: t.root, sawBass: t.voices.some(v => v.v === 'bass' && v.w === 'sawtooth') }; }); }, IDS42);
+    const [k, p, th] = pl;
+    const rules = pl.every(x => !x.bad.length && x.first === 0 && !x.slow && x.bars === x.form && x.longSec >= 180);
+    const escalate = k.rate < p.rate && p.rate < th.rate && k.leads === 1 && p.leads === 2 && th.leads >= 2 && th.root < k.root && th.sawBass;
+    (shape && !opens.length && rules && escalate)
+      ? ok(`L.7a three rewritten key themes (${IDS42.join(', ')}): each in its motif on the first step with every voice sounding in bar 1 at full gain inside a beat - no intro, no fade-up, no build - and no voice resting or dropping under 60% anywhere, so nothing drops out at a loop point; every bar sounds, the form is whole chord cycles, the long form ${pl.map(x => Math.round(x.longSec) + 's').join(' / ')}; nothing under 700ms above 300 Hz and nothing above C5 under 1200ms (batch 12); escalating ${pl.map(x => x.rate).join(' < ')} notes a second, Pro and Thorns with a second voice, Thorns the lowest root on a sawtooth bass; the build-30 three kept under their old ids, retired, same roots`)
+      : bad('L.7a the rewritten themes', JSON.stringify({ shape, opens: opens.slice(0, 5), pl }));
+  }
+
+  /* ---- 2. L.7c: ONE store key, one ladder step - it round-trips, nonsense is dropped, and a theme whose chest is shut is kept and never applied ---- */
+  {
+    const src = strip42(read42('core', 'store.js'));
+    const stat = /VERSION=6/.test(src) && /if\(\(raw\.v\|\|0\)<6\) raw=up6\(raw\);/.test(src) && /p\.everywhere===undefined\) p\.everywhere='game'/.test(src) && /everywhere:Object\.keys\(KEY_THEMES\)\.includes\(p\.everywhere\)/.test(src);
+    await boot42({ chests: { games: 1, key: 1, pro: 1 } }, 5);
+    const a = await page.evaluate(async () => { const S = await import('./core/store.js'); const out = { v: S.store.v, first: S.prefs.everywhere, eff: S.everywhere() }; S.prefs.everywhere = 'pro'; S.save(); return out; });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    const b = await page.evaluate(async () => { const S = await import('./core/store.js'); const raw = JSON.parse(localStorage.getItem('ne')); return { v: raw.v, stored: raw.prefs.everywhere, eff: S.everywhere() }; });
+    await boot42({ chests: { games: 1, key: 1 }, everywhere: 'key' }, 5);
+    const kept = await page.evaluate(async () => (await import('./core/store.js')).prefs.everywhere);
+    await boot42({ chests: { games: 1, key: 1 }, everywhere: 'thorns' });
+    const shut = await page.evaluate(async () => { const S = await import('./core/store.js'); const M = await import('./audio.js'); const st = await import('./core/state.js');
+      st.sel.vs = 0; M.Music.start('dots', { on: true, live: false }, 20); const id = M.Music.probe().track; M.Music.stop(); return { stored: S.prefs.everywhere, eff: S.everywhere(), id }; });
+    await boot42({ chests: { games: 1 }, everywhere: 'constructor' });
+    const junk = await page.evaluate(async () => (await import('./core/store.js')).prefs.everywhere);
+    (stat && a.v === 6 && a.first === 'game' && a.eff === 'game' && b.v === 6 && b.stored === 'pro' && b.eff === 'pro' && kept === 'key' && shut.stored === 'thorns' && shut.eff === 'game' && shut.id === 'dots:waltz' && junk === 'game')
+      ? ok('L.7c one store key, prefs.everywhere, and one ladder step (v5 → v6): a v5 record arrives with it as Per game, and one that already carries a theme keeps it (up6 adds, never replaces); a theme round-trips a reload; "constructor" is dropped; a theme whose chest is shut is KEPT and never applied - everywhere() reads Per game and a Dots run plays Waltz')
+      : bad('L.7c the store key', JSON.stringify({ stat, a, b, kept, shut, junk }));
+  }
+
+  /* ---- 3. L.7c: Customise's EVERYWHERE row above the tracks; a shut theme crossed out with its chest under it and unselectable; a theme on greys the tracks
+     with one line; a track tapped then goes back to Per game with that track chosen ---- */
+  {
+    await boot42({ chests: { games: 1, key: 1 } });
+    await click('[data-go="s-custom"]'); await sleep(500);
+    const cu = await page.evaluate(async () => { const wait = ms => new Promise(r => setTimeout(r, ms)); const S = await import('./core/store.js');
+      const row = () => [...document.querySelectorAll('#c-everywhere button')].map(b => ({ v: b.dataset.v, txt: b.innerText.replace(/\s+/g, ' ').trim(), sel: b.classList.contains('sel'), shut: b.classList.contains('shut'), x: b.querySelector('s') ? getComputedStyle(b.querySelector('s')).textDecorationLine : '' }));
+      const grp = document.getElementById('g-everywhere'), music = document.getElementById('c-track').closest('.cgroup');
+      const out = { above: !!(grp.compareDocumentPosition(music) & Node.DOCUMENT_POSITION_FOLLOWING), label: grp.querySelector('.clabel').textContent, before: row(), note0: document.getElementById('cn-track').textContent };
+      document.querySelector('#c-everywhere [data-v="thorns"]').click(); await wait(200); out.shutTap = { stored: S.prefs.everywhere, sel: (row().find(b => b.sel) || {}).v };
+      document.querySelector('#c-everywhere [data-v="key"]').click(); await wait(300);
+      out.on = { stored: JSON.parse(localStorage.getItem('ne')).prefs.everywhere, sel: (row().find(b => b.sel) || {}).v, grey: [...document.querySelectorAll('#c-track button')].every(b => b.classList.contains('grey')),
+        note: document.getElementById('cn-track').textContent, opac: getComputedStyle(document.querySelector('#c-track button')).opacity };
+      return out; });
+    await boot42({ chests: { games: 1, key: 1, pro: 1 }, everywhere: 'key' });
+    await click('[data-go="s-custom"]'); await sleep(500);
+    const back = await page.evaluate(async () => { const wait = ms => new Promise(r => setTimeout(r, ms)); const S = await import('./core/store.js'); const bs = [...document.querySelectorAll('#c-track button')];
+      const before = { grey: bs.every(x => x.classList.contains('grey')), n: bs.length }; const pick = bs.find(x => !x.classList.contains('sel')), v = pick.dataset.v; pick.click(); await wait(300);
+      return { before, v, stored: S.prefs.everywhere, track: S.prefs.track[document.getElementById('pv').dataset.g], grey: [...document.querySelectorAll('#c-track button')].some(x => x.classList.contains('grey')),
+        note: document.getElementById('cn-track').textContent, sel: (document.querySelector('#c-everywhere .sel') || { dataset: {} }).dataset.v }; });
+    const bf = Object.fromEntries(cu.before.map(x => [x.v, x]));
+    (cu.above && cu.label === 'Everywhere' && cu.before.map(x => x.v).join() === 'game,key,pro,thorns' && bf.game.sel && bf.game.txt === 'PER GAME' && bf.key.txt === 'KEY' && !bf.key.shut
+      && bf.pro.shut && bf.thorns.shut && /open the Pro chest/i.test(bf.pro.txt) && /open the Thorns chest/i.test(bf.thorns.txt) && bf.thorns.x === 'line-through' && cu.note0 === ''
+      && cu.shutTap.stored === 'game' && cu.shutTap.sel === 'game' && cu.on.stored === 'key' && cu.on.sel === 'key' && cu.on.grey && cu.on.note === 'key theme playing everywhere' && +cu.on.opac < .5
+      && back.before.grey && back.before.n === 3 && back.stored === 'game' && back.track === back.v && !back.grey && back.note === '' && back.sel === 'game')
+      ? ok('L.7c Customise\'s EVERYWHERE row sits above the tracks - Per game / Key / Pro / Thorns - Pro and Thorns crossed out with "open the Pro chest" / "open the Thorns chest" under them, and a tap on a shut one chooses nothing; Key is chosen and stored, and the tracks grey with "key theme playing everywhere" under them; a tap on a greyed track goes back to Per game with that track chosen')
+      : bad('L.7c the Everywhere row', JSON.stringify({ cu, back }));
+  }
+
+  /* ---- 4. L.7b: SET THIS MUSIC at the foot of a key screen whose chest is open; a key whose chest is shut plays no theme and its button cannot be pressed;
+     the tap writes the one key and reads PLAYING EVERYWHERE in green, the other keys revert, and Customise reads the same key (A4) ---- */
+  {
+    const keyAt = async i => { await page.evaluate(async i => { const R = await import('./ui/router.js'); R.show('s-menu'); await new Promise(r => setTimeout(r, 120)); R.show('s-key', { tier: i }); }, i); await sleep(1200);
+      return page.evaluate(async () => { const M = await import('./audio.js'); const b = document.getElementById('key-music'), r = b.getBoundingClientRect(), s = document.getElementById('build').getBoundingClientRect();
+        return { track: M.Music.probe().track, hidden: b.hidden, txt: b.textContent, on: b.classList.contains('on'), clear: b.hidden || r.bottom <= s.top, stored: JSON.parse(localStorage.getItem('ne')).prefs.everywhere }; }); };
+    await boot42({ chests: { games: 1 } });
+    const locked = await keyAt(0);
+    await boot42({ chests: { games: 1, key: 1, pro: 1 } });
+    const k0 = await keyAt(0), k1 = await keyAt(1), k2 = await keyAt(2);
+    await page.evaluate(() => document.getElementById('key-music').click()); await sleep(200);
+    const k2tap = await page.evaluate(() => JSON.parse(localStorage.getItem('ne')).prefs.everywhere);
+    await keyAt(1); await page.evaluate(() => document.getElementById('key-music').click()); await sleep(250);
+    const k1on = await page.evaluate(async () => { const M = await import('./audio.js'); const b = document.getElementById('key-music');
+      return { txt: b.textContent, on: b.classList.contains('on'), col: getComputedStyle(b).color, stored: JSON.parse(localStorage.getItem('ne')).prefs.everywhere, track: M.Music.probe().track }; });
+    await click('#key-keys [data-kt="0"]'); await sleep(400);
+    const k0after = await page.evaluate(async () => { const M = await import('./audio.js'); const b = document.getElementById('key-music'); return { txt: b.textContent, on: b.classList.contains('on'), track: M.Music.probe().track }; });
+    await click('#key-keys [data-kt="1"]'); await sleep(300);
+    const k1back = await page.evaluate(() => document.getElementById('key-music').textContent);
+    const cus = await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-custom'); await new Promise(r => setTimeout(r, 400)); return (document.querySelector('#c-everywhere .sel') || { dataset: {} }).dataset.v; });
+    const srcKey = strip42(read42('ui', 'screens', 'key.js')), srcCus = strip42(read42('ui', 'screens', 'customise.js')), srcAud = strip42(read42('audio.js'));
+    const a4 = !/screens\/customise|"\.\/customise\.js"/.test(srcKey) && !/screens\/key|"\.\/key\.js"/.test(srcCus) && /everywhere\(\)/.test(srcKey) && /everywhere\(\)/.test(srcCus) && !/key:roots/.test(srcAud);
+    (locked.hidden && locked.track === 'menu' && !k0.hidden && k0.txt === 'SET THIS MUSIC' && k0.track === 'theme:key' && k0.clear && !k1.hidden && k1.track === 'theme:pro' && k2.hidden && k2.track === 'menu' && k2tap === 'game'
+      && k1on.txt === 'PLAYING EVERYWHERE' && k1on.on && k1on.col === 'rgb(61, 214, 140)' && k1on.stored === 'pro' && k0after.txt === 'SET THIS MUSIC' && !k0after.on && k0after.track === 'theme:key' && k1back === 'PLAYING EVERYWHERE' && cus === 'pro' && a4)
+      ? ok('L.7b with only the Games chest open, key 1\'s screen has no button and plays the menu loop (a locked key has no theme, guess); with its chest open SET THIS MUSIC sits at the foot of the screen clear of the build stamp and key 1 plays its theme - and Pro its own a second after arriving on the Pro tab, where build 30\'s screen timer used to swap in Roots; Author\'s, its Thorns chest shut, plays no theme and its button does nothing; the tap stores Pro and reads PLAYING EVERYWHERE in green, key 1 reads SET THIS MUSIC again, and Customise\'s Everywhere row reads the same key - neither screen imports the other (A4)')
+      : bad('L.7b SET THIS MUSIC', JSON.stringify({ locked, k0, k1, k2, k2tap, k1on, k0after, k1back, cus, a4 }));
+  }
+
+  /* ---- 5. L.7d: a key theme as run music takes the one path a game's track takes, so it obeys every run-music rule; the menu loop is not the setting (guess) ---- */
+  {
+    await boot42({ chests: { games: 1, key: 1, pro: 1 }, everywhere: 'pro' });
+    const rm = await page.evaluate(async () => { const M = await import('./audio.js'); const st = await import('./core/state.js'); const A = await import('./config/audio.js'); const wait = ms => new Promise(r => setTimeout(r, ms)); const out = {};
+      const t = A.TRACKS['theme:pro'], barSec = 60 / t.bpm * (t.beats || 4);
+      st.sel.vs = 0; M.Music.start('quick-tap', { on: true, live: true, end: performance.now() + 4500, flow: 1 }, 20); await wait(500); out.timed = M.Music.probe();
+      M.Music.start('hold', { on: true, live: false }, 0, 'grow'); out.set = Object.assign(M.Music.probe(), { want: +((A.SET_SECS['hold:grow'] + 3) / barSec).toFixed(2) });
+      M.Music.start('spot', { on: true, live: false }, 0); out.open = M.Music.probe();
+      st.sel.vs = 2; M.Music.start('reaction', { on: true, live: true, vsP: [.4, .6] }, 0, 'flash'); out.vs = M.Music.probe(); st.sel.vs = 0;
+      M.Music.stop(); M.Music.menu('menu'); out.menu = M.Music.probe(); M.Music.stop();
+      return out; });
+    const srcAud = strip42(read42('audio.js'));
+    const one = /const t=pickRun\(g\); run\(t,g,shapeFor\(t,g,d,len\)\)/.test(srcAud) && (srcAud.match(/pickRun\(/g) || []).length === 1 && /menu\(id\)\{[^\n]*const t=TR\[id\]/.test(srcAud);
+    (one && rm.timed.track === 'theme:pro' && rm.timed.arc && rm.timed.fin && rm.timed.flow && !rm.timed.stems
+      && rm.set.track === 'theme:pro' && rm.set.arc && Math.abs(rm.set.arcBars - rm.set.want) < .02 && !rm.set.flow
+      && rm.open.track === 'theme:pro' && !rm.open.arc && rm.vs.track === 'theme:pro' && rm.vs.stems && !rm.vs.flow && rm.menu.track === 'menu')
+      ? ok(`L.7d with Pro set everywhere, every run plays theme:pro through the one path a game's track takes (pickRun, then shapeFor): a 20s Quick Tap run gets the arc, lands its last five seconds on the clock and arms the flow hum; an Estimate Grow Set gets the arc sized to SET_SECS (${rm.set.arcBars} bars); an open-ended run gets the long form; a versus run gets both stems; Sequence's duck keys on the game, not the track; and the menu loop stays the menu (guess)`)
+      : bad('L.7d the theme as run music', JSON.stringify({ one, rm }));
+  }
+
+  /* ---- 6. L.7e: the catalogue - the new themes on the music cards and linked both ways with their key screen cards, the old three once more marked retired, the Everywhere row photographed ---- */
+  {
+    const gen = read42('..', '_review', 'scripts', 'catalogue.mjs'), tpl = read42('..', '_review', 'scripts', 'catalogue.template.html');
+    const shots = JSON.parse(read42('..', '_review', 'scripts', 'catalogue.annotations.json')).map(x => x.shot);
+    const catOk = { gen: /AU\.KEY_THEMES\)/.test(gen) && /AU\.KEY_THEMES_RETIRED\)/.test(gen) && /'13d-s-key-lantern'/.test(gen) && /prefs\.everywhere = 'pro'/.test(gen),
+      tpl: /(\\u266a|♪) its theme/.test(tpl) && /(\\u266a|♪) its key screen/.test(tpl) && /t\.retired/.test(tpl), shot: shots.includes('13g-s-custom-everywhere') };
+    (catOk.gen && catOk.tpl && catOk.shot)
+      ? ok('L.7e the catalogue carries the three rewritten themes on the music cards, each linked to its key screen card and back (the build-27 pattern), the build-30 three once more marked retired for the A/B, SET THIS MUSIC on the key shots (Pro photographed PLAYING EVERYWHERE) and the Everywhere row on its own card')
+      : bad('L.7e the catalogue', JSON.stringify(catOk));
   }
 }
 

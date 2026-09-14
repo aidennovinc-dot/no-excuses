@@ -166,7 +166,11 @@
     <!-- v18 (B.28): ONE music row, and it is the track this game plays. Not on / off, not a Preview button, not a
          second row for which one — the row IS the track, named, and a tap plays it. Padlocked until chest 2 (A.3),
          saying nothing about what opens it (A.1); dev unlock-all opens it so the three can be compared on the phone -->
-    <div class="cgroup"><div class="clabel">Music</div><div class="chips" data-set="track" id="c-track"></div></div>
+    <!-- v23 (L.7c, build 42): EVERYWHERE - Per game / Key / Pro / Thorns, one row above the tracks, and the same field (prefs.everywhere) the
+         key screen's SET THIS MUSIC writes. A theme whose chest is shut is crossed out with that chest under it. #cn-track is the one line
+         under the tracks while a key theme plays everywhere - a note, not a lockline, so B.30's "at most one filled" is untouched -->
+    <div class="cgroup" id="g-everywhere"><div class="clabel">Everywhere</div><div class="chips" data-set="everywhere" id="c-everywhere"></div></div>
+    <div class="cgroup"><div class="clabel">Music</div><div class="chips" data-set="track" id="c-track"></div><div class="cnote" id="cn-track"></div></div>
     <div class="cgroup"><div class="clabel">Menu music</div><div class="chips" data-set="menumusic" id="c-menumusic"></div></div>
 </section>
 
@@ -189,6 +193,9 @@
     <div class="scroll" id="key-list" hidden></div>
   </div>
   <div id="key-shell" hidden></div>
+  <!-- v23 (L.7b, build 42): SET THIS MUSIC - at the foot of the screen, only once the chest this key opens is open; PLAYING EVERYWHERE in
+       green once that theme is every run's music. ui/screens/key.js musicBtn() -->
+  <button class="keymusic" id="key-music" data-act="key-music" hidden></button>
 </section>
 
 <section class="screen" id="s-about" data-back="s-menu">
@@ -201,7 +208,7 @@
        build, the device and the last run filled in. An <a>, so the link does its own work; data-act="none" is only the
        click sound — nothing here knows what a mail client is, and nothing is sent without the tester's own send button -->
   <a class="item sub" id="feedback" data-act="none" href="#">Send feedback</a>
-  <div class="hint">v0.41 · batch 16 · the moments · 14 sept 2026</div>
+  <div class="hint">v0.42 · batch 16 · the moments · 15 sept 2026</div>
 </section>
 
 <section class="screen" id="s-testing" data-back="s-menu" data-dev>
@@ -294,12 +301,12 @@
 
 <script type="module" src="./boot.js"></script>
 
-<div id="build">v0.41</div>
+<div id="build">v0.42</div>
 <button id="update">New build available — tap to reload</button>
 <script>
 // build check: version.json is fetched with no-store, so a stale cached page still learns a newer build exists
 (function(){
-  const BUILD="41";
+  const BUILD="42";
   async function check(){
     try{
       const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});

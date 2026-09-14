@@ -431,3 +431,35 @@ carry exactly the 33 chest cards, the template has the Chests group, `REF.chestF
 #426 B — the chest sound is `Snd.chest`, `unlockFx` is never called, and the banner is the ceremony; L.8b — the Games chest's open is read at
 the reveal with the meter counted up there, and its tap goes to the map; L.8b's interlude — the Key chest's ceremony hushes the music and the
 result WAITS for "tap to continue" and comes back on that tap.
+
+**Build 42 (batch 16, the key themes — FEEDBACK-v23 §L.7 a–e)** — **L.7a**: `KEY_THEMES` names three tracks, none retired, that
+`config/keys.js` plays in order; each key's `music` is the chest whose `needs` is that key; the build-30 three stay under their old ids with
+`retired: 42` and the same roots. Read off the data: every level and filter string opens at 70% or more and never rests or drops under 60%,
+a lead hits on the first step, and the form is whole chord cycles. Read off `Music.plan`: bar 1's first note is at 0 and none attacks
+slower than a beat, every bar of the form sounds, nothing under 700ms is at 300 Hz or above, nothing above C5 lasts under 1200ms, and the
+long form passes 180s. Key < Pro < Thorns in notes a second, one lead on Key and two on Pro and Thorns, Thorns the lowest root on a sawtooth
+bass. **L.7c, the store**: `VERSION=6`; `up6` is in the ladder and adds only where the field is absent. A v5 record reaches v6 as 'game',
+and one already carrying 'key' keeps it. 'pro' round-trips a reload; 'constructor' is dropped. A stored 'thorns' with the Thorns chest shut
+stays stored, `everywhere()` reads 'game', and a Dots run plays `dots:waltz`. **L.7c, Customise**: `#g-everywhere` comes before the Music
+group, labelled Everywhere, chips game / key / pro / thorns, Per game selected. Pro and Thorns carry `shut`, "open the Pro chest" / "open the
+Thorns chest" and a line-through. A Thorns tap stores nothing. A Key tap stores it and greys every track chip (opacity under .5), with "key
+theme playing everywhere" in `#cn-track`. With Key set and the Pro chest open, a greyed track tap stores 'game' and that track, and clears the
+grey and the note. **L.7b**: with the Games chest only, key 1 has no button and plays `menu`. With Games, Key and Pro open, key 1's button
+reads SET THIS MUSIC above the stamp and plays `theme:key`. Pro still plays `theme:pro` 1.2s after arriving on its tab (build 30's timer
+swapped in Roots). Author hides its button and plays `menu`, and a click on the hidden button stores nothing. Pro's tap stores 'pro' and reads
+PLAYING EVERYWHERE in `rgb(61, 214, 140)`. Key 1 then reads SET THIS MUSIC and Pro PLAYING EVERYWHERE again, Customise's selected chip is
+'pro', neither screen imports the other, and `audio.js` no longer names `key:roots`. **L.7d**: `Music.start` resolves the track in one
+`pickRun(g)` before `shapeFor`, and `menu()` still takes `TR[id]`. With Pro set:
+- a 20s solo Quick Tap run probes `theme:pro` with an arc, a finish plan and the flow layer, and no stems;
+- an Estimate Grow Set gets an arc of (SET_SECS + 3) ÷ bar bars;
+- an open-ended Spot run gets the long form;
+- a versus Reaction run gets the stems;
+- `Music.menu('menu')` plays `menu`.
+
+**L.7e**: `catalogue.mjs` reads `AU.KEY_THEMES` and `AU.KEY_THEMES_RETIRED`, names `13d-s-key-lantern`, and sets Pro everywhere for the key
+shots. The template links "its theme" and "its key screen" and marks `t.retired`. `13g-s-custom-everywhere` is annotated.
+
+**Amended:** §1's extras include `KEY_THEMES`. B.31 / B.22 reads `theme:key,theme:pro,theme:thorns`. B.31's "by name" check reads
+`themeOf(keyTiers()[openKey])` and its `? t.track : 'menu'`. L.4a counts ten Customise groups, the Everywhere row being the tenth. Build 30's catalogue check reads
+`AU.KEY_THEMES`. L.6's stings point at `theme:key,theme:key,theme:pro,theme:thorns`. Every store-version check expects v6: the build-13
+layout, the v1 fixture, F.4's source and fixture, and L.10's `up5` source and migration.

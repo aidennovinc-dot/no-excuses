@@ -208,7 +208,10 @@ export const ABOUT = { tier:['No ads, ever.','Every colour, background and sound
 /* v18 (B.28, build 33): one music row, called Music, and it is the track. `music` / `track` / `preview` are gone with
    the three controls they labelled — the row is the track's own name and a tap plays it. `lockLine` is B.30's line,
    which now sits under the row it is about instead of over it. */
-export const CUSTOM = { menu:'Menu music', lockLine:'Locked · {name} — {how} · <u>show me</u>', wheel:'{word} · {game} · drag to pick' };
+export const CUSTOM = { menu:'Menu music', lockLine:'Locked · {name} — {how} · <u>show me</u>', wheel:'{word} · {game} · drag to pick',
+  // v23 (L.7c, build 42): the Everywhere row — Per game, or a key theme by its track's name; a shut theme names its chest under it
+  // (GRID.chest); and the one line under the tracks while a key theme plays everywhere
+  perGame:'Per game', openChest:'open the {chest}', themeOn:'key theme playing everywhere' };
 // v14 (8.1): a row whose requirement is a SET of things says which are left, not just how far along the bar is.
 // v14 (8.5): a secret row shows its own `hint` where an ordinary row shows `how`; `stretch` is the fallback for one without
 export const ACH_SCREEN = { all:'All', done:'done', secret:'secret', hidden:'???', progress:' · {p}% of the way there', stretch:'A stretch past the stretch. You will know.', inGame:' · in {game}', left:' · still to play: {names}' };
@@ -232,6 +235,8 @@ export const KEY = { title:'the key', hint:'tap a game · solo runs only',
      each with its own symbol, its locked state and a % while it is under 100. Tiers 2 and 3 are a shell — #372 — and
      `soon` is what they say instead of a target nobody has set (A.2 forbids a build deriving one). */
   keys:'keys', pct:'{n}%', locked:'locked', unlocked:'unlocked', pick:'tap a key',
+  // v23 (L.7b, build 42): the button at the foot of a key screen whose chest is open, and what it reads once that theme is every run's music
+  setMusic:'SET THIS MUSIC', musicOn:'PLAYING EVERYWHERE',
   faked:'Every number on this key is a PLACEHOLDER, derived from key 1 for testing. Not set by hand, never saved, gone on reload.',
   /* build 38 (#426, A.2 amended): both columns carry GENERATED placeholders, and a generated number on screen says so.
      `soon` is what a tier says if a column ever has an empty cell again */

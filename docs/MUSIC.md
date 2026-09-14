@@ -100,3 +100,35 @@ VERDICT_FX) is in the `config/` paragraph of `RULES-HISTORY.md` → Structure, a
   **`Music.hush(on)` ducks the bed FULLY under a ceremony** (`HUSH`: 0.08s down, 0.4s back on the tap) — a flag as well as a ramp, so a bed
   built mid-ceremony starts silent. **The levels are not measured:** `_smoke/loudness.mjs` renders tracks, not effects, and these gains were set
   beside `unlockFx` and the verdict sounds by eye. That is the first thing to re-tune on the phone.
+- **THE KEY THEMES ARE REWRITTEN, AND ANY ONE OF THEM CAN BE EVERY RUN'S MUSIC (v23 §L.7, build 42).** `theme:key` / `theme:pro` /
+  `theme:thorns` in `config/audio.js`. The build-30 `key:roots` / `key:frost` / `key:thorn` stay ONE build as `retired:42` so the review board
+  can A/B them; nothing in the app plays them, and the next build drops them. None of this has been heard (UNVERIFIED.md).
+  **The complaint was measured before anything was written.** Roots' melody entered 1.4s into a 5.7s bar, with its bass silent for 4 bars
+  and its top pad for 8; Frost's arp was silent for 10s and its melody for 38s; Thorn's filters opened from shut over 32s and its melody
+  waited 32s. So the rewrite is in the ARRANGEMENT, and each key keeps its root and chords. That also keeps all four chest stings resolving
+  into the theme they were cut from: `CHEST_STING[].track` points at the new ids, and no note moved.
+  **What every theme is written to (all gated).** In its motif on the first step. Every voice sounds in bar 1 at 70% or more of its level and
+  at full gain inside a beat: no intro, no fade-up, no build. No level or filter string rests or drops under 60%, so no voice drops out at a
+  loop point. The form is whole chord cycles. Nothing under 700ms above 300 Hz and nothing above C5 under 1200ms (batch 12, the sting rule).
+  The long form passes 180s.
+  **The escalation is in the writing, not in the gain.**
+  · **Key, 88 bpm on G:** one melody over a held chord, a drone and a slow bass — 4.8 notes a second.
+  · **Pro, 112 bpm on D:** a chord a bar, the melody plus a second voice answering it off the beat, a bass pulse and a low arp — 9.8.
+  · **Thorns, 76 bpm on E:** detuned sawtooth pads with their filters moving, a sawtooth bass, an arp both ways, the melody and its answer
+    — 11.1, and the lowest root.
+  Every melody is 16 bars: 8, then a variation. `vol` 0.57 / 0.58 / 0.76 comes from `_smoke/loudness.mjs`: at 1.0 the three rendered
+  −35.1 / −35.3 / −37.6 dB, and the game tracks sit between −39.4 and −41.2.
+  **ONE SETTING, `prefs.everywhere` — 'game' | 'key' | 'pro' | 'thorns'** (store v6, `up6`). `KEY_THEMES` maps a chest id to its theme.
+  `music` in `config/keys.js` names the chest each key's theme waits for: the chest that key opens when it is whole (L.12). `everywhere()` in
+  `core/store.js` is the only read, and a theme whose chest is shut reads as 'game', so a locked theme is never applied, whichever route
+  stored it. SET THIS MUSIC at the foot of a key screen and Customise's Everywhere row both write it (A4).
+  **`Music.start` resolves it once, in `pickRun(g)`, before `shapeFor`.** So a theme playing as run music gets every rule a game's track
+  gets, and none of those rules knows about themes: the arc on a clock or a Set (B.29), the last five seconds (B.28), the versus stems
+  (1.4), the flow hum on solo Quick Tap and Dots (B.27), Sequence's duck (keyed on the game, not the track) and the end cadence in the
+  theme's key. **The menu loop does not read the setting (guess, L.7d).** **`FLOW_AT` stays 2.7:** L.7d says "above 3.0 taps/s", but 2.7 is
+  Aiden's own number (v18 B.9) and the note does not quote it.
+  **A key's screen plays its theme only once that key's chest is open.** Until then the menu loop plays (guess: "a locked key has no theme
+  to hear"). **`audio.js`'s screen-change timer no longer touches the key screen.** The router emits `screen:change` before `onShow`, so
+  since build 30 the timer asked for Roots 900ms after `key.js` had asked for the tab's own loop, and arriving on the Pro or Author tab
+  heard Roots within a second. **`Music.probe()` reports `track`, `arc`, `arcBars`, `stems`, `flow` and `fin`**, which is what the gate
+  reads to prove a theme is under the run rules.

@@ -228,7 +228,8 @@ function keyChest(tier) { const c = CHESTS.find(x => x.needs === tier); if (!c |
    column in config/key-bars.js is not yet full is a SHELL — it answers with no combinations at all rather than a
    fabricated total (A.2). `locked` means "not finished", which is what a key that has not turned yet is. */
 // v17 (B.31): the tier's theme rides along — its name, its tint and its own loop. The screen never names a theme itself
-const skin = k => ({ theme: k.theme, style: k.style, track: k.track, tint: k.tint, dim: k.dim, ground: k.ground });
+// build 42 (L.7b): `music` is the chest that opens this key's theme (config/keys.js) — the key screen's SET THIS MUSIC reads it
+const skin = k => ({ theme: k.theme, style: k.style, track: k.track, music: k.music, tint: k.tint, dim: k.dim, ground: k.ground });
 function keyTier(i) { const k = KEYS[i]; if (!k) return null;
   if (isShell(k.id)) return Object.assign({ i, id: k.id, name: k.name, lede: k.lede, shell: true, done: 0, total: 0, frac: 0, pct: 0, whole: false, locked: true }, skin(k));
   const st = keyState(k.id), p = keyPct(k.id);

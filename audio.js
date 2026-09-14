@@ -7,11 +7,11 @@
    finish ramp that lands the last downbeat on the clock (B.28), an end cadence in the track's own key (B.30), a flow-state
    layer over the two tap games (B.27) and a duck for Sequence (B.30). Still no percussion. */
 
-import { CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, DUCK, DUCK_TAIL, FLOW_STEM, HUSH, SCALES, SET_SECS, STEMS, TRACKS, TRACK_PICK, VERDICT_FX } from "./config/audio.js";
+import { CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, DUCK, DUCK_TAIL, FLOW_STEM, HUSH, KEY_THEMES, SCALES, SET_SECS, STEMS, TRACKS, TRACK_PICK, VERDICT_FX } from "./config/audio.js";
 import { STREAK } from "./config/games.js";
 import { emit, on } from "./core/events.js";
 import { sel } from "./core/state.js";
-import { look, musicOn, prefs } from "./core/store.js";
+import { everywhere, look, musicOn, prefs } from "./core/store.js";
 /* ---------- sound: synthesised, tiny, quiet. The pack colours hit / miss / click; tick, go and end are the same everywhere ---------- */
 // v10: iOS marks the context "interrupted" (not "suspended") when the app goes to the background, and only a resume inside a touch brings it back — so every touch checks, and so does coming back to the foreground
 /* v21 (F.2, build 35) — WHAT THAT PATH DID, READ BEFORE ANY OF THIS WAS WRITTEN: three bare `resume()` calls — here, on
@@ -257,6 +257,12 @@ const Music=(()=>{
   const opt=g=>(look('track')&&look('track')[g])||TRACK_PICK[g]||'a';
   // '<game>' -> the option this profile plays; 'menu' / 'key:roots' / an explicit '<game>:tide' are taken as given
   const pick=id=>TR[id]||TR[id+':'+opt(id)]||TR['quick-tap:held'];
+  /* v23 (L.7d, build 42): WHAT A RUN PLAYS. A key theme set to play everywhere (core/store.js everywhere() — 'game' while its chest is shut)
+     is every game's run track; otherwise the game's own. It is resolved HERE, once, before shapeFor — so a theme gets every run-music rule
+     a game's track gets and not one of those rules had to learn what a theme is: the arc sized to a Set or a clock (B.29), the last five
+     seconds landing on the finish (B.28), the versus stems (1.4), the flow hum on solo Quick Tap and Dots (B.27), Sequence's duck (B.30)
+     and the end cadence in its key. The menu loop does not read it (guess, L.7d). */
+  const pickRun=g=>{ const th=KEY_THEMES[everywhere()]; return (th&&TR[th])||pick(g); };
   let tr=null, timer=0, next=0, bar=0, hits=[], sHits=[[],[]], fHits=[], mode='', mg=null, sg=[null,null], fg=null;
   let st=null, secs=0, stems=false, flow=false, shape=null, fin=null, duckT=0, hushed=false;
   /* v21 (F.2 c): A REBUILT CONTEXT STRANDS EVERYTHING BUILT ON THE OLD ONE. The bed, the two stems and the flow layer are
@@ -352,7 +358,7 @@ const Music=(()=>{
   return {
     start(g,state,len,d){ st=state||null; secs=(len>0&&len!==STREAK)?len:0; stems=sel.vs===2;
       flow=!sel.vs&&(g==='quick-tap'||g==='dots');
-      if(!musicOn(g)){ this.stop(); return; } const t=pick(g); run(t,g,shapeFor(t,g,d,len)); },
+      if(!musicOn(g)){ this.stop(); return; } const t=pickRun(g); run(t,g,shapeFor(t,g,d,len)); },
     /* v16 (1.2 / 1.3): the front of the app has music too — one menu loop, and one per key tier. Called from the screen
        change below and from ui/screens/key.js when a tier is selected. Idempotent: asking for the loop that is already
        playing does nothing, so moving between menu screens never restarts it. */
@@ -386,7 +392,9 @@ const Music=(()=>{
       return { id, name:t.name||id, bpm:t.bpm, root:t.root, beats:t.beats||4, bars:n, form, loopSec:+(n*barSec).toFixed(3), longSec:longSec(t), plan:out }; },
     tracks(){ return Object.keys(TR); },
     // v21 (F.2): what the gate reads after a rebuild — is the bed on the live context, and is the clock anchored to it
-    probe(){ return { bed:!!mg&&mg.context===ac, playing:!!tr, next, now:ac?ac.currentTime:0, hushed }; },
+    // v23 (L.7d, build 42): and which track is playing, and which run-music rules it is under — what the gate reads for a key theme in a run
+    probe(){ return { bed:!!mg&&mg.context===ac, playing:!!tr, next, now:ac?ac.currentTime:0, hushed, track:tr?Object.keys(TR).find(k=>TR[k]===tr)||'':'',
+      arc:!!(shape&&shape.arc), arcBars:shape&&shape.arc?+shape.bars.toFixed(2):0, stems, flow, fin:!!fin }; },
     // what B.29 asks to be reported: one row per track, the arc a known run gets and the long form's own length
     lengths(){ return Object.keys(TR).map(id=>({ id, name:TR[id].name, form:formOf(TR[id]), barSec:+barSecOf(TR[id]).toFixed(2), formSec:+(formOf(TR[id])*barSecOf(TR[id])).toFixed(1), phase:phaseOf(TR[id]), longSec:longSec(TR[id]) })); },
     // B.29: stopping cuts what is already in the air too — the bar that was scheduled a moment ago is the whole problem
@@ -397,9 +405,13 @@ duckHook=(sec,at)=>Music.duck(sec,at);
 /* v16 (1.2): the menu has its own music, and it plays across the front of the app rather than only on one screen —
    stopping it to walk to the pick sheet and back would be worse than not having it. The game layer is the exception:
    a run's own track takes over there, and Music.start / Music.stop own it. The keys screen asks for its tier's loop
-   itself (ui/screens/key.js) — this only sets the opening one. */
+   itself (ui/screens/key.js) — this only sets the opening one.
+   BUILD 42 (L.7b): THE KEY SCREEN IS LEFT TO key.js ENTIRELY. The router emits screen:change BEFORE a screen's onShow, so key.js asked for
+   its key's loop and then this timer asked for 'key:roots' 900ms later whatever was on screen — arriving on the Pro or Author tab (a chest
+   word, a key interlude) swapped its loop for Roots within a second, since build 30. With a key's theme now silent until its chest opens,
+   key.js is the one thing that may choose what plays there. */
 let menuT=0;
-on('screen:change',({id})=>{ clearTimeout(menuT); if(id==='game') return; menuT=setTimeout(()=>Music.menu(id==='s-key'?'key:roots':'menu'),900); });
+on('screen:change',({id})=>{ clearTimeout(menuT); if(id==='game'||id==='s-key') return; menuT=setTimeout(()=>Music.menu('menu'),900); });
 
 // build 18 (refactor stage 4, was in boot.js): every touch and every return to the foreground checks the context is running; the first touch unlocks it
 // v21 (F.2): all three now go through revive(), the resume that can tell it failed — (d) the tap, (a) the foreground and a page restored from memory

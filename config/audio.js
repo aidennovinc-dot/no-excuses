@@ -211,25 +211,73 @@ export const TRACKS = {
              { v:'arp', w:'sine', dir:'up', pat:'x...o...x.......', sus:1.2, g:.012, at:.03 },
              { v:'bass', w:'sine', pat:'x...', sus:.92, g:.05, atms:110 } ] },
 
-  /* ---------- the keys (v17 §B.31) — ONE THEME PER TIER, and the theme is a piece of music as much as a glyph.
+  /* ---------- v23 (§L.7a, build 42): THE THREE KEY THEMES, REWRITTEN — Key → Pro → Thorns ----------
+     Aiden, on build 41's: "it takes far too long to get into the meat of things, and by then the person would have already exited".
+     Measured, that was literal: Roots' melody came in 1.4s into a 5.7s bar and its bass and top pad were silent for its first four and
+     eight bars; Frost's arp was silent for 10s and its melody for 38s; Thorn's filters opened from shut over 32s and its melody waited 32s.
+     So the rewrite is in the ARRANGEMENT, and the harmony of each key stays: the same root and the same chords, which is also what keeps
+     the four chest stings (below) resolving into the theme they are cut from.
+     THE RULES THESE ARE WRITTEN TO, and the gate reads every one: each theme is in its motif on the first beat of the first bar, and every
+     voice sounds in that bar at 70% of its level or more, at full gain inside one beat — no intro, no fade-up, no build; no level string
+     carries a rest or drops under 60%, so no voice drops out at a loop point; the form is a whole number of chord cycles, so the loop lands
+     back on the first chord; batch 12's "long gradual notes, no short high-pitched notes" as the chest stings have it — anything under
+     700ms is under 300 Hz, anything above C5 lasts 1200ms or more. The written pass is 16 bars of a 16-bar melody (8 bars, then a
+     variation), and the long form walks the level strings past three minutes like every other track.
+     ESCALATION is in the writing, not the gain: Key is one melody over a held chord, steady and warm; Pro is faster, a chord a bar, a
+     driving bass pulse and a low arp under it, and a SECOND voice answering the melody off the beat; Thorns is the lowest root, a sawtooth
+     bass, filters moving, an arp in both directions and the answering voice too — the most notes a second of the three (gated).
+     `music` in config/keys.js names the chest that opens each theme, and KEY_THEMES below maps that chest to its track — one field in the
+     store (prefs.everywhere) and both surfaces read it.
+     NOBODY HAS HEARD THESE. No audio device in a Claude Code session (UNVERIFIED.md). `vol` came out of _smoke/loudness.mjs: at 1.0 the
+     three rendered −35.1 / −35.3 / −37.6 dB against about −40 for the game tracks, so 0.57 / 0.58 / 0.76 bring each to −40. ---------- */
+  // Key: G, the Roots chords, a chord a bar. One melody, two long notes a bar, over a held triangle chord, a drone and a slow bass
+  'theme:key':{ name:'Key', vol:0.57, root:98, bpm:88, beats:4, form:16, ch:[[0,7,12,14],[-2,5,10,12],[-4,3,8,12],[-2,5,10,14]], bass:[0,-2,-4,-2],
+    voices:[ { v:'lead', w:'sine', pat:'x.x.', seq:[24,19, 22,24, 20,24, 17,14, 24,26, 24,22, 19,15, 17,14, 26,24, 22,26, 27,24, 22,17, 19,24, 26,22, 20,19, 17,14], sus:1.9, hold:.35, at:.12, g:.02, lv:'xxxxxxx9' },
+             { v:'pad', w:'triangle', pat:'x', sus:1.02, hold:.7, at:.1, g:.011, lv:'x9xx9xx8xx9x' },
+             { v:'drone', w:'sine', pat:'x', sus:1, hold:.8, at:.1, g:.04 },
+             { v:'bass', w:'triangle', o:1, pat:'x...x...', sus:3.6, hold:.5, at:.08, g:.026, lp:340 },
+             { v:'pad', w:'sine', add:12, pat:'x', sus:1.02, hold:.6, at:.12, g:.004, lv:'8999xx99' } ] },
+  // Pro: D, the Frost chords, faster and a chord a bar. The melody, a second voice answering it off the beat, a bass pulse and a low arp
+  'theme:pro':{ name:'Pro', vol:0.58, root:146.8, bpm:112, beats:4, form:16,
+    ch:[[0,7,14,19],[-2,5,12,17],[-5,2,9,14],[-3,4,11,16],[0,7,14,21],[3,10,17,22],[-2,5,12,19],[-7,0,7,14]], bass:[0,-2,-5,-3,0,3,-2,-7],
+    voices:[ { v:'lead', w:'sine', o:-1, pat:'x...x...', seq:[19,14, 17,12, 14,21, 16,11, 21,19, 22,17, 19,17, 14,12, 21,19, 17,19, 21,14, 16,23, 19,21, 22,17, 19,12, 14,7], sus:5, hold:.4, at:.1, g:.016, lv:'xxxx9xxx' },
+             { v:'lead', w:'triangle', o:-1, pat:'..x...x.', seq:[12,7, 10,5, 9,14, 11,4, 14,12, 15,10, 12,7, 7,2, 14,9, 12,10, 9,2, 11,16, 12,14, 10,15, 7,12, 2,7], sus:5, hold:.4, at:.1, g:.012, lp:1600, lv:'x9xxx9xx' },
+             { v:'bass', w:'triangle', pat:'x.ox.ox.', sus:.9, at:.08, g:.04, lp:420 },
+             { v:'arp', w:'triangle', o:-2, dir:'up', pat:'x.o.x.o.x.o.x.o.', sus:1.6, at:.1, g:.014, lp:900, lpv:'x9876789' },
+             { v:'pad', w:'sine', o:-1, pat:'x', sus:1.02, hold:.75, at:.1, g:.009, lv:'9xx9xxx8x9' } ] },
+  // Thorns: E, the Thorn chords, a chord a bar. Two detuned sawtooth pads with their filters moving, a sawtooth bass, an arp up and down,
+  // the melody and the answering voice under it
+  'theme:thorns':{ name:'Thorns', vol:0.76, root:82.4, bpm:76, beats:4, form:16,
+    ch:[[0,7,12,15],[1,8,13,17],[0,7,12,15],[-2,5,10,13],[0,7,12,15],[1,8,13,17],[-4,3,8,12],[-6,1,6,10]], bass:[0,1,0,-2,0,1,-4,-6],
+    voices:[ { v:'lead', w:'sine', o:1, pat:'x.x.', seq:[7,3, 8,13, 12,7, 5,1, 7,3, 8,1, 3,0, -2,1, 15,12, 13,8, 7,12, 10,5, 3,7, 8,13, 12,8, 6,1], sus:1.7, hold:.35, at:.1, g:.013, lv:'xxx9xxx9' },
+             { v:'lead', w:'triangle', o:-1, pat:'.x.x', seq:[12,15, 13,17, 12,7, 10,13, 15,12, 17,13, 8,12, 6,10, 7,12, 8,13, 15,19, 13,17, 12,15, 13,8, 15,12, 10,6], sus:1.6, hold:.4, at:.1, g:.012, lp:900 },
+             { v:'pad', w:'sawtooth', pat:'x', sus:1.02, hold:.75, at:.08, g:.008, lp:1000, q:1.5, lpv:'x98789x98' },
+             { v:'pad', w:'sawtooth', pat:'x', sus:1.02, hold:.75, at:.08, g:.006, ct:11, lp:1000, q:1.5, lpv:'x9878989x9' },
+             { v:'bass', w:'sawtooth', o:1, pat:'x..x..x.x..x..x.', sus:2, at:.05, g:.03, lp:240, q:1.2 },
+             { v:'arp', w:'triangle', o:-1, dir:'updown', pat:'xoxoxoxoxoxoxoxo', sus:1.3, at:.1, g:.012, lp:700, lpv:'x9876789' },
+             { v:'drone', w:'sine', o:1, pat:'x', sus:1.02, hold:.85, at:.06, g:.035 } ] },
+
+  /* ---------- RETIRED AT BUILD 42 (v23 §L.7a): the build-30 themes, kept under their old ids for ONE build so the review board can play
+     them beside the rewrites, then dropped. Nothing in the app plays them — config/keys.js and every sting point at the three above.
+     The build-30 note, for the record: ONE THEME PER TIER, and the theme is a piece of music as much as a glyph.
      Roots → Frost → Thorn: one tree across three keys, which is what makes them read as a progression rather than
      three collections. Roots IS the build-27 Estimate loop 'Still' grown out — Aiden's board note was "Still is cool
-     background music for the key", so it moved here rather than being replaced. Frost and Thorn are not heard before
-     chest 1 (§A.1): the key screen shows neither tier until then, so neither loop can be asked for. ---------- */
-  'key:roots':{ name:'Still, grown', vol:1.34, root:98, bpm:84, beats:8, form:16, ch:[[0,7,12,14],[-2,5,10,12],[-4,3,8,12],[-2,5,10,14]], bass:[0,-2,-4,-2],
+     background music for the key", so it moved here rather than being replaced (superseded by v23 §L.7: "it takes far too long to get
+     into the meat of things"). ---------- */
+  'key:roots':{ name:'Still, grown', retired:42, vol:1.34, root:98, bpm:84, beats:8, form:16, ch:[[0,7,12,14],[-2,5,10,12],[-4,3,8,12],[-2,5,10,14]], bass:[0,-2,-4,-2],
     voices:[ { v:'drone', w:'sine', pat:'x', sus:1, g:.055, at:.3 },
              { v:'pad', w:'triangle', pat:'x', sus:.9, g:.012, at:.45 },
              { v:'lead', w:'sine', pat:'....x...', seq:[24,null,26,null,24,null,19,null,22,null,24,null,26,null,null,null], sus:1.8, g:.02, at:.15 },
              { v:'bass', w:'triangle', o:1, pat:'x.......', sus:7, hold:.5, at:.15, g:.028, lp:340, lv:'....5678xxxxxxxx' },
              { v:'pad', w:'sine', add:12, pat:'x', sus:1.04, hold:.7, at:.5, g:.004, lv:'........3456789x' } ] },
-  'key:frost':{ name:'Frost', vol:0.68, root:146.8, bpm:100, beats:4, per:2, form:32,
+  'key:frost':{ name:'Frost', retired:42, vol:0.68, root:146.8, bpm:100, beats:4, per:2, form:32,
     ch:[[0,7,14,19],[-2,5,12,17],[-5,2,9,14],[-3,4,11,16],[0,7,14,21],[3,10,17,22],[-2,5,12,19],[-7,0,7,14]], bass:[0,-2,-5,-3,0,3,-2,-7],
     voices:[ { v:'pad', w:'sine', o:-1, pat:'x', sus:1.04, hold:.8, at:.35, g:.011 },
              { v:'pad', w:'triangle', o:-1, pat:'x', sus:1.04, hold:.75, at:.4, g:.007, ct:9, lp:2600, lpv:'3456789x' },
              { v:'arp', w:'triangle', o:-2, dir:'up', pat:'x.o.x.o.o.x.o.x.', sus:1.8, at:.1, g:.015, lp:900, lv:'....456789xxxxxxxxxxxxxxxxxx9876' },
              { v:'bass', w:'triangle', pat:'x', sus:1.02, hold:.6, at:.2, g:.03, lp:380 },
              { v:'lead', w:'sine', o:1, pat:'x...', seq:[7,null,null,null,5,null,null,null,2,null,4,null,null,null,null,null], sus:3.6, hold:.3, at:.55, g:.004, lv:'................xxxxxxxxxxxxxxxx' } ] },
-  'key:thorn':{ name:'Thorn', vol:1.14, root:82.4, bpm:60, beats:4, per:2, form:32,
+  'key:thorn':{ name:'Thorn', retired:42, vol:1.14, root:82.4, bpm:60, beats:4, per:2, form:32,
     ch:[[0,7,12,15],[1,8,13,17],[0,7,12,15],[-2,5,10,13],[0,7,12,15],[1,8,13,17],[-4,3,8,12],[-6,1,6,10]], bass:[0,1,0,-2,0,1,-4,-6],
     voices:[ { v:'pad', w:'sawtooth', pat:'x', sus:1.04, hold:.8, at:.4, g:.008, lp:1100, q:1.5, lpv:'1234567899xxxxxxxxxx987654321111' },
              { v:'pad', w:'sawtooth', pat:'x', sus:1.04, hold:.8, at:.45, g:.006, ct:11, lp:1100, q:1.5, lpv:'1234567899xxxxxxxxxx987654321111' },
@@ -237,6 +285,13 @@ export const TRACKS = {
              { v:'drone', w:'sine', o:1, pat:'x', sus:1.02, hold:.85, at:.3, g:.04 },
              { v:'lead', w:'sine', o:1, pat:'x...', seq:[19,null,null,null,20,null,null,null], sus:3, hold:.1, at:.7, g:.005, lv:'........xxxxxxxxxxxxxxxxxxxxxxxx' } ] },
 };
+
+/* v23 (§L.7b / §L.7c, build 42): WHICH THEME A CHEST OPENS — the value prefs.everywhere takes, keyed by the chest's id, mapped to its track.
+   'game' (every game its own track) is the one value that is not here. The key screen's SET THIS MUSIC and Customise's Everywhere row both
+   write that one field; core/store.js everywhere() reads it back, and a theme whose chest is shut reads as 'game'. RETIRED is the build-30
+   theme each one replaced, which only the review board plays (L.7e). */
+export const KEY_THEMES = { key:'theme:key', pro:'theme:pro', thorns:'theme:thorns' };
+export const KEY_THEMES_RETIRED = { key:'key:roots', pro:'key:frost', thorns:'key:thorn' };
 
 /* the versus stems (v16 §1.4). ONE pair for every game, because a stem has to LINE UP with whatever the round's base
    loop is — it takes that track's root, bpm, bar length, chords and bass, and only the voicing is its own. Player 1
@@ -308,16 +363,17 @@ export const CHEST_FX = {
 };
 export const CHEST_NOISE = { thorns: [[2.7, 180, .14, 1200]] };
 export const CHEST_STING = {
-  games: { track: 'key:roots', notes: [[0, -2, 1600, 'triangle', .012, 400], [0, 5, 1600, 'triangle', .012, 400], [0, 10, 1600, 'triangle', .012, 400], [.2, 24, 1200, 'sine', .012, 300],
+  // build 42 (L.7a): each sting points at the rewritten theme — same root and chords as the one it was cut from, so no note moved
+  games: { track: 'theme:key', notes: [[0, -2, 1600, 'triangle', .012, 400], [0, 5, 1600, 'triangle', .012, 400], [0, 10, 1600, 'triangle', .012, 400], [.2, 24, 1200, 'sine', .012, 300],
     [1.4, 0, 1800, 'triangle', .013, 300], [1.4, 7, 1800, 'triangle', .013, 300], [1.4, 12, 1800, 'triangle', .013, 300], [1.4, 26, 1800, 'sine', .01, 500]] },
-  key: { track: 'key:roots', notes: [[0, -12, 3900, 'sine', .04, 800], [0, -4, 1500, 'triangle', .012, 500], [0, 3, 1500, 'triangle', .012, 500], [0, 8, 1500, 'triangle', .012, 500],
+  key: { track: 'theme:key', notes: [[0, -12, 3900, 'sine', .04, 800], [0, -4, 1500, 'triangle', .012, 500], [0, 3, 1500, 'triangle', .012, 500], [0, 8, 1500, 'triangle', .012, 500],
     [1.3, -2, 1400, 'triangle', .012, 400], [1.3, 5, 1400, 'triangle', .012, 400], [1.3, 10, 1400, 'triangle', .012, 400], [1.0, 24, 1400, 'sine', .012, 400],
     [2.5, 0, 1500, 'triangle', .013, 300], [2.5, 7, 1500, 'triangle', .013, 300], [2.5, 12, 1500, 'triangle', .013, 300], [2.5, 26, 1500, 'sine', .01, 500]] },
-  pro: { track: 'key:frost', notes: [[0, -14, 1800, 'sine', .014, 500], [0, -7, 1800, 'triangle', .01, 500], [0, 0, 1800, 'triangle', .01, 500],
+  pro: { track: 'theme:pro', notes: [[0, -14, 1800, 'sine', .014, 500], [0, -7, 1800, 'triangle', .01, 500], [0, 0, 1800, 'triangle', .01, 500],
     [1.6, -19, 1800, 'sine', .016, 400], [1.6, -12, 1800, 'triangle', .01, 400], [1.6, -5, 1800, 'triangle', .01, 400],
     [3.2, -12, 1800, 'sine', .016, 300], [3.2, -5, 1800, 'triangle', .011, 300], [3.2, 2, 1800, 'triangle', .011, 300],
     [.6, 7, 1400, 'sine', .01, 500], [2.0, 5, 1400, 'sine', .01, 500], [3.4, 4, 1600, 'sine', .01, 600]] },
-  thorns: { track: 'key:thorn', notes: [[0, -12, 5900, 'sine', .045, 3000], [1.2, -6, 2000, 'sawtooth', .008, 900, 800], [1.2, 1, 2000, 'sawtooth', .008, 900, 800],
+  thorns: { track: 'theme:thorns', notes: [[0, -12, 5900, 'sine', .045, 3000], [1.2, -6, 2000, 'sawtooth', .008, 900, 800], [1.2, 1, 2000, 'sawtooth', .008, 900, 800],
     [3.1, 0, 2900, 'sawtooth', .009, 200, 1100], [3.1, 7, 2900, 'sawtooth', .009, 200, 1100], [3.1, 15, 2900, 'sawtooth', .007, 200, 1100], [3.2, 19, 2800, 'sine', .008, 600]] },
 };
 export const CHEST_READY_FX = [[0, 146.8, 146.8, 460, 'sine', .03, 50], [.24, 220, 220, 700, 'sine', .03, 80]];
