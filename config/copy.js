@@ -155,7 +155,8 @@ export const ABOUT = { tier:['No ads, ever.','Every colour, background and sound
   devRuns:' · {r} runs on record · ', devSup:'supporter ON', devFree:'free tier · ads on',
   // v18 (B.26, build 32): a button per animation, dev only (S5). Each plays the real animation with nothing stored
   // v21 (F.2, build 35): the audio context read out live — its state, how many times it has been rebuilt, the last thing that happened
-  devAudio:'audio · {state} · context {gen}{why}',
+  // v22 (§J.1, build 36): the clock beside the state — the state is the value that lied. STOPPED is a running state with a still clock
+  devAudio:'audio · {state} · clock {clock} · context {gen}{why}', devClock:'+{dt}s in {wall}s', devClockStopped:'+0.000s in {wall}s · STOPPED', devClockWait:'measuring',
   devAnim:'animations · nothing is stored', devKeyIn:'key arrival', devSeg:'segment advance', devWhole:'key complete', devChest:'chest {n} opening',
   /* build 33: Send feedback, the beta channel's missing half. GitHub Pages was already the way a tester gets the build;
      what was missing was the way back. It is a mailto and nothing more — no form, no endpoint, no third party — with

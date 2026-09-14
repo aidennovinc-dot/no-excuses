@@ -109,6 +109,24 @@ text here is the rule with its history.
   with it. A correct versus pad pulses too (F.3) — the lit square often moved on to the same pad and nothing on screen
   changed. Presentation only (L10).
 
+### Amended at build 36 (FEEDBACK-v22 §J.1; the Verdict Desk export), 2026-09-14
+
+- **`running` is never taken on trust (v22 §J.1).** Build 35's F.2 shipped and the music still did not come back after
+  backgrounding. Aiden read the Testing screen after the failure: `audio · running`, no sound. WebKit can leave
+  `AudioContext.state` at `running` after an interruption while `currentTime` has stopped, and every entry into F.2's
+  recovery — the tap, visibilitychange and pageshow call sites, and `revive()` itself — was gated on `state !== 'running'`,
+  so none fired. **F.2's ladder is unchanged; the gates came off the foreground paths.** Off a tap, a context reading
+  `running` goes to `live()`: sample `currentTime`, wait `LIVE_MS` (150ms), sample again, rebuild if it has not moved. A
+  resume that ends `running` is checked the same way. **The tap never waits** — it runs on every tap of every game — so it
+  keeps a gate (not running, or `_suspect`) and compares the clock against the sample already taken, synchronously; a
+  stuck clock is rebuilt inside the gesture, which is the one moment iOS lets a new context start. Going hidden, `pagehide`,
+  a foreground check in flight and a freshly rebuilt context all mark `_suspect`. **The Testing line reports the clock**
+  (`clock +N.NNNs in N.Ns`, `STOPPED` when it has not moved) because `state` is the value that lied.
+- **The Verdict Desk export replaces the 2026-09-13 snapshot as the source of the verdict data.** Version 658, 269 entries:
+  every line it carries for all eleven rows, Reaction's thresholds, and the per-round ceilings for Cut, Flash and Go /
+  No-go. **Timing's thresholds are still not built** — its `at`, its QUALITY scales and its ROUND_AT stay build 34's until
+  Aiden says they are re-entered (#414); its lines are built.
+
 ## Structure — the full text as of build 30
 
 `CLAUDE.md` keeps the module map. This is the paragraph-by-paragraph description it carried at build 30: the DAG, the

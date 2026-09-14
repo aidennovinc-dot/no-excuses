@@ -32,23 +32,27 @@ export const VERDICT_TIERS = [
    and is retired at build 31 (v18 B.1c): nothing ends that mode early now. */
 export const VERDICT_FAIL_TIER = 'bad';
 
-/* BUILD 35 — two changes to this table, and the file they came from.
-   v20 (D.10): Timing and Reaction are keyed PER MODE. Stopwatch (seconds off) and Hidden (ms off the marker) shared one `at`
-   triple, and so did Flash (raw ms) and Go / No-go (ms over the 180ms gate) — Aiden: "hidden and stopwatch should be
-   separated". Each of the four is seeded with its parent's lines and numbers, the `hold` / `hold:cut` pattern already here,
-   and the two parent rows are gone rather than left as a second copy nothing reads. verdictKey() and GV() take 'g:d' first,
-   so nothing that looks a verdict up changed. Timing was Aiden's call; Reaction is Cowork's by the same argument.
-   The Verdict Desk (Aiden, 2026-09-13; `_review/2026-09-13_personal_verdict-desk-edits.md`): his `at` triples for Quick
-   Tap, Dots, both Estimate modes and Sequence, and his lines for Quick Tap, Dots and both Estimate modes. Not built, and
-   each still build 34's: Quick Tap `ok/4` and Estimate · Grow `bad/0` (both half-typed — the file says confirm first),
-   Estimate · Grow `ace/0`, `ace/2`, `good/0`, `good/4` (not edited), every line for Sequence, Timing, Reaction and Spot,
-   and Timing's thresholds (#414 — the 24000 scale was an artefact of the page, not a decision). The `at` values are his
-   thresholds in each game's own unit against QUALITY's scale: Quick Tap 2.90 / 2.20 / 1.50 a second over 6, Dots 2.50 /
-   2.00 / 1.40 over 4.5, Grow 5 / 10 / 30% off over 40, Cut 4.5 / 8 / 15% off over 40, Sequence 11 / 8 / 5 notes over 16. */
+/* BUILD 35 — v20 (D.10): Timing and Reaction are keyed PER MODE. Stopwatch (seconds off) and Hidden (ms off the marker)
+   shared one `at` triple, and so did Flash (raw ms) and Go / No-go (ms over the 180ms gate) — Aiden: "hidden and stopwatch
+   should be separated". The parent rows are gone rather than left as a second copy nothing reads; verdictKey() and GV()
+   take 'g:d' first, so nothing that looks a verdict up changed.
+
+   BUILD 36 — THE VERDICT DESK EXPORT, version 658, 269 entries (`_review/2026-09-14_personal_verdict-desk-export.md`). It
+   supersedes the 2026-09-13 snapshot (version 425), which build 35 built from and which was short by ~157 edits. Built:
+   every line in the export, for all twelve keys — the two half-typed lines are Aiden's own fixes now ("Almost a Great!",
+   "Ooft, maybe try another round."); Reaction's two `at` triples; the per-round ceilings below for Cut, Flash and Go /
+   No-go. A line the export leaves blank keeps what it had. Trailing spaces trimmed; spelling and punctuation are his,
+   untouched. NOT BUILT — THE DO-NOT-BUILD-TIMING WARNING STILL STANDS: the export carries Timing thresholds (`at` for
+   Hidden and two of Stopwatch's three, and four per-round ceilings), and Timing keeps build 34's `at`, its scale in
+   progress/rules.js and its ROUND_AT until Aiden says his numbers are re-entered (#414). Timing's LINES are built — the
+   warning is about the scale that widened the thresholds, not about words.
+   The `at` values are thresholds in each game's own unit against QUALITY's scale: Quick Tap 2.90 / 2.20 / 1.50 a second
+   over 6, Dots 2.50 / 2.00 / 1.40 over 4.5, Grow 5 / 10 / 30% off over 40, Cut 4.5 / 8 / 15% off over 40, Sequence 11 /
+   8 / 5 notes over 16, Flash 230 / 265 / 295ms, Go / No-go 320 / 350 / 405 on its 70ms-offset curve. */
 export const VERDICTS = {
   'quick-tap': { at:[.4833,.3667,.25], lines:{
     bad: ['Warming up, try again!','A few mistakes?',"Alright let's go again.",'Could be quicker...','Do you need a coffee?'],
-    ok:  ['Good work!','Steady pace!','Keep pushing!','Decent speed.','Halfway to quick.'],
+    ok:  ['Good work!','Steady pace!','Keep pushing!','Decent speed.','Almost a Great!'],
     good:['Great job!','Proper fast.','Solid run!',"You're switched on today.",'Well done!'],
     ace: ['Look at you go!',"You're flying!","You're a Quick Tap master!",'Do those thumbs come with a warning?','Quick.  Damn quick.'] } },
   'dots': { at:[.5556,.4444,.3111], lines:{
@@ -56,53 +60,57 @@ export const VERDICTS = {
     ok:  ['You own the dots.','Decent speed, can you go faster?',"In the 20's!","That's worthy of the first key.",'Solid, but could you improve?'],
     good:['Quick work!','Great job!','That was some serious speed.','Very good run!','Be one with the dots.'],
     ace: ['Are you cheating?','Quickest hands in the West.','That will be hard to top.','You are the Dots master!','Wow, what a run!'] } },
+  // build 36: ace/2 is not in the export and keeps build 34's line
   'hold': { at:[.875,.75,.25], lines:{
-    bad: ['Nowhere near. Feel the rate, not the shape.','Make sure you match the total area','A bit off but not the worst','Were you just guessing or...','Back to the drawing board.'],
+    bad: ['Ooft, maybe try another round.','Make sure you match the total area','A bit off but not the worst','Were you just guessing or...','Back to the drawing board.'],
     ok:  ['Decent estimation skills!','In the ball park for sure.','Not a bad run at all.','Reasonable, but could you do better?',"You're getting there!"],
-    good:['Good eye.','Tight. Nearly there!','You were on the ball for that one!','Close to being an amazing run!','One step off machine.'],
-    ace: ['Machine-adjacent.','That was not a normal run.','Dead on, round after round.','Nothing to correct, perfection.','Your estimation skills are unmatched!'] } },
+    good:['Great eye!','Tight. Nearly there!','You were on the ball for that one!','Close to being an amazing run!','One step off perfect.'],
+    ace: ['Machine-like!','That was not a normal run.','Dead on, round after round.','Nothing to correct, perfection.','Your estimation skills are unmatched!'] } },
   'hold:cut': { at:[.8875,.8,.625], lines:{
     bad: ["I wouldn't let you cut my birthday cake...",'Hmmmm, maybe we work on this one.','Give me back that knife please.','Do you understand the game or...?','Measure twice, cut once'],
     ok:  ['Getting there, solid run!','Close enough, good enough.','Good run, could we improve?','Taking your time, nice to see!','You know your percentages!'],
     good:["You've got the eye!",'Clean cutting.','Certified birthday cake cutter!','See the cut, be the cut.','Sliced and diced!'],
     ace: ['Surgical!','Wow, excellent cutting!','Are you a doctor?',"Surely there's cheating involved...","You're a pro!"] } },
   'sequence': { at:[.6875,.5,.3125], lines:{
-    bad: ['Short memory. Go again.','Lost it early.','Three notes and gone.','Watch it, then play it.','That went fast.'],
-    ok:  ['Building. Say it out loud.','Middling memory.','Better. Stop rushing the reply.','You are holding some of it.','Halfway to long.'],
-    good:['Long memory.','That is a real chain.','You held it together.','Nearly very long.','Good hold on it.'],
-    ace: ['Very long memory.','That is not normal. Keep it.','You are storing these somewhere.','Nothing dropped.','Hard to beat that.'] } },
-  // v20 (D.10): was one 'timing' row. Seeded from it, identical until Aiden writes them apart (#413 / #414)
+    bad: ['Was that a mistaken tap?','Lost it early!','I know you can do better than that.','Go on, have another crack!','Whoops!'],
+    ok:  ['Decent performance.','Not half bad!','Can you get to 8?','Taxing the memory.','You’ve got more in you!'],
+    good:['Great memory!','A long chain!','An ear for music!','Very good run!','Nicely done!'],
+    ace: ['Photographic!','Far above average!','A modern day Mozart.','Sequence master!','Amazing!'] } },
+  // build 36: lines from the export; `at` is build 34's — DO NOT BUILD Timing (#414). ok/0 is not in the export and keeps its line
   'timing:stopwatch': { at:[.85,.6,.35], lines:{
-    bad: ['Way off. Count it out loud.','The clock won.','Seconds are longer than that.','Not close. Again.','You guessed. It showed.'],
-    ok:  ['Getting the rhythm.','In the region.','Better. Trust the first count.','Nearly honest timing.','You are close to the beat.'],
-    good:['Good clock.','Tight timing.','You felt the second.','Nearly very good.','That is a steady internal beat.'],
-    ace: ['Very good clock.','That is not normal. Keep it.','Dead on, repeatedly.','You do not need the timer.','Nothing to correct.'] } },
+    bad: ['I’ll keep my watch.','Maybe try this one again.','Maybe tap in time?','Have another crack.','Appreciate the attempt.'],
+    ok:  ['Getting the rhythm.','In the ballpark!','Learn to trust your gut.','Not bad at all.','Close, but I think you could do better!'],
+    good:['Great intuition.','Tight.  Tight tight tight tight!','On a roll!','Very close timing.','Very very good.'],
+    ace: ['The human-stopwatch hybrid!','Who needs clocks when we have you?','The stopwatch master!','More accurate than my Casio!','Uncanny performance!'] } },
+  // build 36: lines from the export; `at` is build 34's — DO NOT BUILD Timing (#414)
   'timing:hidden': { at:[.85,.6,.35], lines:{
-    bad: ['Way off. Count it out loud.','The clock won.','Seconds are longer than that.','Not close. Again.','You guessed. It showed.'],
-    ok:  ['Getting the rhythm.','In the region.','Better. Trust the first count.','Nearly honest timing.','You are close to the beat.'],
-    good:['Good clock.','Tight timing.','You felt the second.','Nearly very good.','That is a steady internal beat.'],
-    ace: ['Very good clock.','That is not normal. Keep it.','Dead on, repeatedly.','You do not need the timer.','Nothing to correct.'] } },
-  // v20 (D.10): was one 'reaction' row — raw ms and ms over the 180ms gate shared one triple. Seeded from it
-  'reaction:flash': { at:[.85,.6,.35], lines:{
-    bad: ['Asleep. Go again.','Slow off the mark.','You blinked.','Late. Every time.','Wake up and run it again.'],
-    ok:  ['Awake.','Respectable. Not quick.','Better. Stop guessing the flash.','Mid. Push it down.','You are nearly fast.'],
-    good:['Quick.','Good reflexes.','That is a fast hand.','Nearly very quick.','Low numbers. Good.'],
-    ace: ['Very quick.','That is not normal. Keep it.','Faster than most people can blink.','Nothing between seeing and tapping.','Do that twice and I will worry.'] } },
-  'reaction:nogo': { at:[.85,.6,.35], lines:{
-    bad: ['Asleep. Go again.','Slow off the mark.','You blinked.','Late. Every time.','Wake up and run it again.'],
-    ok:  ['Awake.','Respectable. Not quick.','Better. Stop guessing the flash.','Mid. Push it down.','You are nearly fast.'],
-    good:['Quick.','Good reflexes.','That is a fast hand.','Nearly very quick.','Low numbers. Good.'],
-    ace: ['Very quick.','That is not normal. Keep it.','Faster than most people can blink.','Nothing between seeing and tapping.','Do that twice and I will worry.'] } },
+    bad: ['Was there an accidental tap in there?','The wall won that one.','It really was hidden…','Maybe another attempt?','Have another go!'],
+    ok:  ['Feel the ball, be the ball.','In the ball park.','A touch early or late, but solid!','Decent read.','Getting there!'],
+    good:['Great tracking!','Very close!','Nice run!','Well judged.','You’re a natural!'],
+    ace: ['You can see through walls!','Right on the marker.','How did you track that?','Perfect judgement.','X-ray vision!'] } },
+  // build 36: Aiden's thresholds and lines; bad/1 is not in the export and keeps its line
+  'reaction:flash': { at:[.7714,.6714,.5857], lines:{
+    bad: ['Did you nod off?','Slow off the mark.','You blinked!','Late every time.','Do you need a coffee?'],
+    ok:  ['Consistent but not that quick','Decent but could be better','Bang on average!','Not the worst.','Try again but focus this time!'],
+    good:['Quick hands!','Great reflexes.','Very sharp.','Nicely quick.','Great reactions!'],
+    ace: ['Lightning quick!','Faster than a blink.','Like a cat!','That is elite.','Reaction master!'] } },
+  'reaction:nogo': { at:[.5,.44,.33], lines:{
+    bad: ['Don’t let them trick you.','Make sure to focus.','You need to be own with the shapes.','Make a stronger coffee?','Have another go, try again.'],
+    ok:  ['Decent reactions.','You got it!.','Good run.','Decent discipline.','Keep at it!'],
+    good:['Great control!','We couldn’t fool you.','Quick and careful.','Very good run!','You know your shapes.'],
+    ace: ['Perfect discipline!','Very very very quick.','Nothing fooled you.','Sharp and patient.','You nailed it!'] } },
+  // build 36: lines from the export; `at` was not in it and stays
   'spot:count': { at:[.85,.6,.35], lines:{
-    bad: ['Guessing. Slow down.','That was a number, not a count.','Miles out.','Look at the whole screen.','You counted the wrong things.'],
-    ok:  ['Half of them. Look wider.','Getting closer.','Better. Stop counting one by one.','Roughly right.','The eye is coming.'],
-    good:['Good eye.','Nearly all of them.','You are seeing the group.','Tight counting.','Close to exact.'],
-    ace: ['That is not normal. Keep it.','Exact, round after round.','You see the number, not the shapes.','Nothing missed.','Hard to do better.'] } },
+    bad: ['Blinked and you missed it.','Back to pre-school perhaps?','Counting the wrong shapes?','Don’t count them one by one.','Have another crack.'],
+    ok:  ['Decent guesses!','Good intuition.','Stop counting one by one.','Not bad, not bad at all','Good stuff.'],
+    good:['Great eye!','Nearly spot on.','Tight counting.','Very close!','You have the knack for counting.'],
+    ace: ['Your subconscious mind is strong!','This game is too easy for you.','Brilliant performance!','The counting savant!','The shape detective!'] } },
+  // build 36: lines from the export; ace/4 and ok/0, ok/1, ok/3 are not in it and keep theirs; `at` stays
   'spot:find': { at:[.85,.6,.35], lines:{
-    bad: ['Slow. Scan, do not stare.','It was there the whole time.','Too long on each one.','Lost in the crowd.','Again, and look wider.'],
-    ok:  ['Finding them.','Decent search.','Better. Let the odd one come to you.','Mid pace.','You are nearly quick.'],
-    good:['Quick eye.','Straight to it, mostly.','Good scanning.','Nearly very quick.','Low times. Good.'],
-    ace: ['Very quick eye.','That is not normal. Keep it.','You did not search. You saw.','Nothing wasted.','That will be hard to beat.'] } },
+    bad: ['It was there the whole time!','Too long on each one.','Lost in the crowd.','Scan, do not stare.','Look wider and go again.'],
+    ok:  ['Finding them.','Decent search.','Let the odd one come to you.','Mid pace.','Nearly quick!'],
+    good:['Quick eye!','Great scanning.','Straight to it, mostly.','Low times, nice.','Very good run!'],
+    ace: ['You did not search, you saw!','Straight to it, every time.','Nothing wasted.','Very quick eye.','That will be hard to beat.'] } },
 };
 
 /* v18 (§B.10) — THE TIER ON ONE ROUND'S OWN FIGURE. B.10 puts the verdict colour on the NUMBER everywhere it appears,
@@ -118,14 +126,16 @@ export const VERDICTS = {
    THE NUMBERS ARE THE ENGINES' OWN dead-on / close cut-offs where they had a pair (Timing 0.10s and 0.30s, Hidden's
    10px and 35px converted to milliseconds by B.4, Reaction's quick/good at 200 and 300, Estimate's money/close), with a
    third step added under each so there are four tiers rather than three. Spot · Count is exact / one out / two out, which
-   is the whole range that mode has. Judgement, marked (guess) in FEEDBACK-v18, and one line each to retune. */
+   is the whole range that mode has. Judgement, marked (guess) in FEEDBACK-v18, and one line each to retune.
+   BUILD 36 (the Verdict Desk export): Cut, Flash and Go / No-go are Aiden's numbers. Timing's two rows are NOT — the
+   export carries Stopwatch 0.1 / 0.3 / 0.55 and Hidden's third step at 95, and DO NOT BUILD Timing still stands (#414). */
 export const ROUND_AT = {
   'timing:stopwatch': [0.06, 0.10, 0.30],
   'timing:hidden':    [40, 70, 240],
-  'reaction:flash':   [200, 260, 330],
-  'reaction:nogo':    [280, 360, 470],
+  'reaction:flash':   [225, 255, 285],
+  'reaction:nogo':    [299, 330, 400],
   'hold:grow':        [2, 5, 10],
-  'hold:cut':         [2, 4, 8],
+  'hold:cut':         [3.5, 5.5, 9],
   'spot:count':       [0, 1, 2],
   'spot:find':        [1, 2, 4],
 };

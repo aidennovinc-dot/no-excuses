@@ -26,35 +26,74 @@ import { musicOn, prefs } from "./core/store.js";
    next tap tries again, and a tap may rebuild even a context that never ran, because a tap is the one moment iOS lets a
    new one start. NOT REPRODUCIBLE ON A DESKTOP — it needs the phone (FEATURES.md, UNVERIFIED.md). */
 const REVIVE_MS=400;
-let ac=null, acGen=0, acWhy='', acLast='', reviving=null;
+/* v22 (§J.1, build 36) — THE STATE LIED. Build 35 shipped F.2 and the music still did not come back: Aiden's Testing screen
+   read `audio · running` with no sound. After an interruption iOS can leave `state === 'running'` while `currentTime` has
+   stopped moving, and every way into the recovery was gated on `state !== 'running'` — the tap, visibilitychange and
+   pageshow call sites, and revive() itself — so not one fired, nothing was rebuilt, and every tone went into a frozen
+   clock. F.2's ladder below is right and stays. What changed is that `running` is no longer taken on trust: off a tap,
+   live() samples `currentTime`, waits LIVE_MS, samples again, and a clock that has not moved is rebuilt whatever the state
+   says. A resume that ends `running` is checked the same way.
+   THE TAP NEVER WAITS. The capture-phase pointerdown runs on every tap of every game, so it costs one flag read: only a
+   context that is not running, or one marked `_suspect` — the page went hidden, a foreground check is out, a rebuilt context
+   not yet seen moving — reaches revive(), and there the clock is compared against the sample already taken, synchronously.
+   A stuck clock is rebuilt inside the gesture, the one moment iOS lets a new context start; a moving one clears the flag.
+   No timer is ever started from a tap. */
+const LIVE_MS=150;
+let ac=null, acGen=0, acWhy='', acLast='', acChecks=0, acClock=null, reviving=null;
 const rebinds=[];
 const newCtx=()=>{ try{ return new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; } };
 /* S5: what Testing reads out — the state, how many times the context has been rebuilt, the last REBUILD and the last thing
    that happened. The rebuild is kept on its own: a rebuilt context reports `statechange · running` a moment later, and that
-   would otherwise wipe the one line Aiden is reading for after coming back to the app. */
-const audioState=()=>({ state:ac?ac.state:'none', gen:acGen, why:acWhy, last:acLast });
+   would otherwise wipe the one line Aiden is reading for after coming back to the app.
+   v22 (§J.1): `checks` is how many timed clock checks have run and `clock` is what the last one measured. */
+const audioState=()=>({ state:ac?ac.state:'none', gen:acGen, why:acWhy, last:acLast, checks:acChecks, clock:acClock });
+// v22 (§J.1): what Testing samples once a second — the clock itself, because the state is the value that lied
+const audioClock=()=>({ t:ac?ac.currentTime:null, p:performance.now(), gen:acGen });
 function told(why){ acWhy=why; emit('audio:state',audioState()); }
-function adopt(c){ if(!c) return null; if(c.state==='running') c._ran=1;
-  if(c.addEventListener) c.addEventListener('statechange',()=>{ if(c!==ac) return; if(c.state==='running') c._ran=1; told('statechange · '+c.state);
+// v22 (§J.1): a clock sample kept on the context, and the only two conclusions the tap path may draw from it without waiting
+const mark=c=>{ c._t=c.currentTime; c._p=performance.now(); };
+const stuck=c=>c._p!==undefined&&performance.now()-c._p>=LIVE_MS&&c.currentTime<=c._t;
+const moved=c=>c._p!==undefined&&c.currentTime>c._t;
+function adopt(c,suspect){ if(!c) return null; if(c.state==='running') c._ran=1; mark(c); if(suspect) c._suspect=1;
+  if(c.addEventListener) c.addEventListener('statechange',()=>{ if(c!==ac) return; if(c.state==='running'){ c._ran=1; mark(c); } told('statechange · '+c.state);
     if(c.state!=='running'&&c.state!=='closed'&&!document.hidden) revive('statechange'); });
   return c; }
 const AC=()=>{ if(!ac){ ac=adopt(newCtx()); if(ac) told('created'); } if(ac&&ac.state!=='running'){ try{ ac.resume(); }catch(e){} } return ac; };
-// (c): a new context, the old one closed, and everything that held a node or a time on the old one told to let go
-function rebuild(why){ const old=ac, c=newCtx(); if(!c) return false; ac=adopt(c); acGen++;
+// (c): a new context, the old one closed, and everything that held a node or a time on the old one told to let go.
+// v22 (§J.1): the replacement is suspect until its clock has been seen moving, so the first tap on it checks it
+function rebuild(why){ const old=ac, c=newCtx(); if(!c) return false; ac=adopt(c,true); acGen++;
   try{ if(old&&old.state!=='closed') old.close(); }catch(e){}
   try{ c.resume(); }catch(e){}
   for(const f of rebinds){ try{ f(c); }catch(e){} }
   acLast='rebuilt · '+why; told(acLast); return true; }
+/* v22 (§J.1): THE TIMED CHECK. Never from a tap, and at most one per context at a time. The sample it compares against is its
+   own — a `statechange` re-marks the context mid-check, and measuring from that would call a moving clock stopped. */
+function live(c,why){ if(c._checking) return c._checking;
+  acChecks++; c._suspect=1; mark(c); const t0=c._t, p0=c._p;
+  return c._checking=new Promise(done=>setTimeout(()=>{ c._checking=null;
+    if(ac!==c||c.state==='closed'||document.hidden) return done(!!ac&&ac.state==='running');
+    const dt=c.currentTime-t0; acClock={ dt:+dt.toFixed(3), ms:Math.round(performance.now()-p0), why };
+    if(dt<=0){ rebuild(why+' · clock stopped'); return done(!!ac&&ac.state==='running'); }
+    c._suspect=0; told('clock moving · '+why); done(true); },LIVE_MS)); }
 /* (a) (b) (d): a resume that can tell it failed. A context that had been running and will not come back is rebuilt; one
    that never ran is only rebuilt inside a tap — outside one iOS would start the new context suspended too, and rebuilding
    it on every foreground would be a loop with nothing to show for it. It is marked `_dead` instead, and the next tap
-   rebuilds it on the spot, inside the gesture. Never while the page is hidden: a backgrounded context is meant to stop. */
-function revive(why,tap){ const c=ac; if(!c||c.state==='running'||c.state==='closed'||document.hidden) return Promise.resolve(!!c&&c.state==='running');
+   rebuilds it on the spot, inside the gesture. Never while the page is hidden: a backgrounded context is meant to stop.
+   v22 (§J.1): a context reading `running` is no longer waved through — off a tap it goes to live(), on a tap it is read
+   against its last sample with no wait. */
+function revive(why,tap){ const c=ac; if(!c||c.state==='closed'||document.hidden) return Promise.resolve(!!c&&c.state==='running');
+  if(c.state==='running'){ if(!tap) return live(c,why);
+    if(stuck(c)){ rebuild(why+' · clock stopped'); return Promise.resolve(!!ac&&ac.state==='running'); }
+    if(moved(c)) c._suspect=0;
+    return Promise.resolve(true); }
   if(tap&&c._dead){ rebuild(why); return Promise.resolve(ac.state==='running'); }
   if(reviving) return reviving;
   reviving=new Promise(done=>{ let over=false;
     const end=()=>{ if(over) return; over=true; reviving=null;
-      if(ac===c&&c.state!=='running'){ if(c._ran||tap) rebuild(why); else c._dead=1; }
+      if(ac===c&&c.state!=='running'){ if(c._ran||tap) rebuild(why); else c._dead=1; return done(!!ac&&ac.state==='running'); }
+      // v22 (§J.1): a resume that says `running` is not believed either — off a tap it is checked; on a tap it stays suspect
+      if(ac===c&&!tap) return live(c,why).then(done);
+      if(ac===c){ c._suspect=1; mark(c); }
       done(!!ac&&ac.state==='running'); };
     try{ const p=c.resume(); if(p&&p.then) p.then(()=>{ if(c.state==='running') end(); },end); }catch(e){ end(); }
     setTimeout(end,REVIVE_MS); });
@@ -337,9 +376,15 @@ on('screen:change',({id})=>{ clearTimeout(menuT); if(id==='game') return; menuT=
 
 // build 18 (refactor stage 4, was in boot.js): every touch and every return to the foreground checks the context is running; the first touch unlocks it
 // v21 (F.2): all three now go through revive(), the resume that can tell it failed — (d) the tap, (a) the foreground and a page restored from memory
-document.addEventListener('pointerdown',()=>{ if(ac&&ac.state!=='running') revive('tap',true); },{capture:true,passive:true});
-document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&ac&&ac.state!=='running') revive('foreground'); });
-addEventListener('pageshow',()=>{ if(ac&&ac.state!=='running') revive('pageshow'); });
+/* v22 (§J.1, build 36): THE STATE GATE IS OFF THE FOREGROUND PATHS — a context reading `running` is exactly the one that
+   lied, so visibilitychange and pageshow hand every return to revive() and revive() decides. Going hidden marks the context
+   suspect and samples its clock, so a tap after returning is checked even if no foreground event arrives. The TAP keeps a
+   gate, because it runs on every tap of every game: only a context that is not running, or one marked suspect, is looked
+   at, and revive() never waits on a tap. */
+document.addEventListener('pointerdown',()=>{ if(ac&&(ac.state!=='running'||ac._suspect)) revive('tap',true); },{capture:true,passive:true});
+document.addEventListener('visibilitychange',()=>{ if(!ac) return; if(document.hidden){ ac._suspect=1; mark(ac); return; } revive('foreground'); });
+addEventListener('pagehide',()=>{ if(ac){ ac._suspect=1; mark(ac); } });
+addEventListener('pageshow',()=>{ if(ac) revive('pageshow'); });
 document.addEventListener('pointerdown',()=>Snd.unlock(),{once:true});
 
-export { AC, Music, Snd, ac, audioState, rebuild, revive };
+export { AC, Music, Snd, ac, audioClock, audioState, rebuild, revive };

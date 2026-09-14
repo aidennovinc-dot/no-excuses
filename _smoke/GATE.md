@@ -249,3 +249,23 @@ the build-13 fixture's carried Quick Tap colour now comes out white with `mig35`
 pair is 22 / 21, was 24 / 23 (#415). The first gate run failed three new checks and nothing old: the F.2 readout lost its
 "rebuilt" note to the new context's own `statechange` a moment later — kept separately now, because Aiden reads that line —
 and the sheet's markup still carried a placeholder title.
+
+**Build 36 (FEEDBACK-v22 §J.1; the Verdict Desk export, version 658)** — **§J.1** statically: no `state !== 'running'` gate
+left on the visibilitychange or pageshow call sites or at the top of `revive()`; `LIVE_MS` is 150 and `live()` is the timed
+check; the tap's branch of `revive()` starts no timer and calls no `live()`; a resume that ends `running` goes to `live()`;
+Testing samples `audioClock()`. Driven, with `currentTime` frozen by hand while `state` still reads `running` — which is
+exactly what iOS did: a healthy context is checked ONCE on foreground and kept; a frozen one is rebuilt on foreground and on
+pageshow, and the music bed comes back on the live context; a resume that ends `running` on a frozen clock is rebuilt; fifty
+taps on a healthy context start no check and rebuild nothing (the §J.1 trap); a hidden page marks the context suspect and
+the next tap on a frozen clock rebuilds it synchronously, inside the gesture, with no timer; a suspect context whose clock is
+moving is cleared by a tap. Testing's line carries `clock +N.NNNs in N.Ns` and, with the clock held still,
+`+0.000s … · STOPPED`. **Nothing here proves the phone is no longer silent** — that is Aiden's check. **The export**: every
+line it carries across all eleven verdict rows, the blanks keeping theirs, no stray whitespace; Reaction's two `at` triples
+and the per-round ceilings for Cut, Flash and Go / No-go; Timing's `at`, per-round ceilings and QUALITY scales unmoved (DO
+NOT BUILD Timing); Flash 230 / 231 / 295 / 296ms and Go / No-go 320 / 321 played back through `tierOf`. **Four build 35
+assertions amended, both ways:** the F.2 readout regex takes the clock between the state and the context; **the F.2 shape
+check matched the foreground and tap listeners by the very `state!=='running'` gate §J.1 removes — it was asserting the bug,
+and it was the one failure on build 36's first gate run**; the 09-13 Verdict Desk line check now holds only Dots and Cut (the
+export moved the rest) and Sequence's first ace line is the export's; D.10's four rows are asserted per mode with Timing's
+numbers unmoved, no longer as identical seeded copies. The lesson worth keeping: **a check written to prove a fix exists can
+pin the fix's blind spot in place** — grep the gate for the condition a bug report says is wrong.

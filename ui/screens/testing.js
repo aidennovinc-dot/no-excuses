@@ -11,7 +11,7 @@
    nothing: the arrival is asked for with `arrive`, which clears `prefs.keySeen` for that one open only; the advance is a
    fabricated `advance` object the key screen animates over whatever ring is drawn; the whole-key moment is asked for by
    name; a chest opening runs pick.js's own openChest with `demoOnly`, which puts the tile back afterwards. */
-import { audioState } from "../../audio.js";
+import { audioClock, audioState } from "../../audio.js";
 import { BUILD_FLAGS } from "../../config/build.js";
 import { on } from "../../core/events.js";
 import { ABOUT, TOAST } from "../../config/copy.js";
@@ -27,9 +27,20 @@ import { toast } from "../toast.js";
 /* v21 (F.2, build 35, S5): THE AUDIO CONTEXT, READ OUT. Its state, how many times it has been rebuilt, and the last thing
    that happened to it — live, because the rebuild path can only be checked on a phone and this is how it gets checked:
    background the app, come back, read the line. Dev only, like everything on this screen. */
+/* v22 (§J.1, build 36): AND ITS CLOCK. `state` is the value that lied — Aiden read `audio · running` with no sound — so the
+   line also says how far `currentTime` moved against the wall clock since the last reading, sampled once a second while this
+   screen is up, and a clock that did not move says STOPPED whatever the state says. The interval lives only while Testing
+   is the screen on show; a rebuild between two samples starts the measurement again rather than comparing two clocks. */
+let clockT=0, clockPrev=null, clockTxt='';
+function sampleClock(){ const a=audioClock();
+  if(clockPrev&&a.t!==null&&clockPrev.t!==null&&a.gen===clockPrev.gen){ const dt=a.t-clockPrev.t, wall=(a.p-clockPrev.p)/1000;
+    clockTxt=T(dt>0?ABOUT.devClock:ABOUT.devClockStopped,{dt:Math.max(0,dt).toFixed(3),wall:wall.toFixed(1)}); }
+  else clockTxt='';
+  clockPrev=a; devAudio(); }
 function devAudio(){ if(!BUILD_FLAGS.dev) return; const el=$('#dev-audio'); if(!el) return; const a=audioState();
-  el.textContent=T(ABOUT.devAudio,{state:a.state,gen:a.gen,why:(a.last?' · '+a.last:'')+(a.why&&a.why!==a.last?' · '+a.why:'')}); }
+  el.textContent=T(ABOUT.devAudio,{state:a.state,clock:clockTxt||ABOUT.devClockWait,gen:a.gen,why:(a.last?' · '+a.last:'')+(a.why&&a.why!==a.last?' · '+a.why:'')}); }
 on('audio:state',devAudio);
+on('screen:change',({id})=>{ if(id!=='s-testing'&&clockT){ clearInterval(clockT); clockT=0; } });
 function devState(){ if(!BUILD_FLAGS.dev) return; devAudio(); const u=Object.keys(unlocked()).length, a=Object.keys(got()).length, r=Scores.runs().length, na=ACH.length+keyAch().length;
   $('#dev-state').textContent=(prefs.allOpen?ABOUT.devOpen:T(ABOUT.devProg,{u,nu:UNLOCKS.length,a,na}))+T(ABOUT.devRuns,{r})+(prefs.supporter?ABOUT.devSup:ABOUT.devFree);
   $('#dev-open').classList.toggle('sel',!!prefs.allOpen); $('#dev-sup').classList.toggle('sel',!!prefs.supporter);
@@ -41,7 +52,8 @@ function freshGame(){ reset(); seedSeen(); show('s-menu',{story:true}); }
 // build 20 found this as a boot crash waiting to happen: the sweep must not name one screen, because [data-dev] is now on the
 // menu item and this whole section as well as anything About keeps
 if(!BUILD_FLAGS.dev) $$('[data-dev]').forEach(el=>el.remove());
-register('s-testing',{ onShow(){ devState(); } });
+// v22 (§J.1): the clock is sampled once a second for as long as this screen is up, starting fresh each time it opens
+register('s-testing',{ onShow(){ clockPrev=null; clockTxt=''; devState(); if(BUILD_FLAGS.dev){ clearInterval(clockT); sampleClock(); clockT=setInterval(sampleClock,1000); } } });
 // B.26: the first game's first combination is the segment the advance demo lights — a real key, drawn over the ring as it is
 const firstKey=()=>{ const g=Object.keys(GAMES)[0]; const d=GAMES[g].modes[0]; return { g, d, key:`${g}:${d}:5`, tier:'clear', was:0, done:1, total:1 }; };
 define({
