@@ -339,3 +339,28 @@ fill finds nothing on a full table and fills exactly one emptied cell; B.27 chec
 a cell, and proves a full column clears like a real tier; B.17's message; B.24 makes its dashed rungs by emptying both columns
 and expects solid rungs and the flame on the file's numbers; the build-32 Go / No-go migration check reads key-1 bars only,
 because boot now credits Pro.
+
+**Build 39 (batch 16, the surface — FEEDBACK-v23 §L.2–§L.5)** — **L.4a**: statically, all twenty-three Customise controls
+(preview, finger, game chips, every group, every locked line) are inside `s-custom` and none is left on `s-prog`,
+`renderCustom` / `Wheel` / `pvStep` live in `ui/screens/customise.js` and nowhere in `progress.js`, the file imports no
+screen (A4), and the menu reads Play · Scores · Progress · Keys · Customise · About; live, the menu row opens it with its nine
+groups and the screen itself scrolls. **L.4b**: the three tab labels, uppercase, at the chip's own font size, none past the
+edge at 390px, the row count printed; a stored `cus` lands on Customise unlocks and is rewritten `cul`. **L.4c — THE
+PARTITION**: with everything open, the ids rendered on Customise unlocks and on Achievements (filter All) are disjoint,
+their union is exactly `ACH` + `keyAch()`, Game unlocks renders no achievement, the middle tab is exactly the rows with
+`unlocks` and agrees with `achTab()`, no key row pays out, and `show('s-prog', {ach})` lands on the tab `achTab()` names with
+the row flashed. **L.2**: statically no `em.u` rule and no `.ach` / `.unl` label rule reading `--cue` or `--miss`; live, on a
+profile with some of each tab earned, every label is `--ink` until earned and `--ok` once, and none is red. **L.4d**: an earned
+middle-tab row opens Customise with its swatch ringed and NOT applied, previews the row's own game (Pinpoint → Dots), a lead
+colour from an all-games row is shown on a game that has a lead row, and an unearned row still goes to play it (the sheet or
+the lock box). **L.5**: statically every `overflow-y:auto` selector but `.otwrap` carries the `::after` spacer and `#build`
+reads the tokens; live, fourteen scrollers (Customise on five games, the three tabs, Scores, the key list, game select with a
+sheet up, About, Testing) are scrolled to the bottom and their last control — the Go button on game select — must end above
+the stamp's top; the line printed says which ones actually scroll at 390×844. **Amended back or on:** 6b (8.3 reads Clean ·
+Sprint · Two and 8.1 reads Every game on Customise unlocks); the side-screen walk opens `s-custom`; section 7 opens Customise
+off the menu and taps the new tab; B.21 expects the Customise row and `unl,cul,ach`; B.31 reversed both ways (customise.js
+back, `s-custom` and its row present, no `#p-cus`, the middle tab `cul`, the store's mapping, an earned row opening the SCREEN);
+B.28, B.30 (the locked line lands on the flashed Customise-unlocks row), B.32 and F.4 open `s-custom`; the build-33 and
+build-35 source reads include `customise.js`; F.1's clamp lets Game select scroll past the map by one flex gap and the stamp
+spacer and requires the spacer to be there; F.4's two `prefs.col` writers are in `customise.js`; section 7's jump row is
+Clean · Sprint · Two.

@@ -103,8 +103,12 @@ export const UNLOCKS_SCREEN = { title:'unlocks', hint:'tap a locked row to see w
    requirement stays on the Achievements tab — so no requirement is written twice on a screen that now shows all three).
    The order is unchanged and so is the reason for it: unlocks outrank achievements (2.2). The screen remembers which
    tab was last open, per profile. L6 is quoted: "the Unlocks screen" is the Game unlocks tab now. */
-export const PROGRESS_SCREEN = { title:'progress', unl:'Game unlocks', cus:'Customise', ach:'Achievements',
-  unlHint:'tap a locked row to see what it takes', achHint:'tap one to go play it' };
+/* v23 (L.4, build 39): Customise is its own menu row again (v21 G.6) and the middle tab is the LIST of what can be earned
+   there — CUSTOMISE UNLOCKS (guess; "Rewards" retired because it does not say unlock). A cosmetic's requirement is on that
+   tab and nowhere else. `culGroup` heads its groups, one per Customise row a payout lands in (guess on the words). */
+export const PROGRESS_SCREEN = { title:'progress', unl:'Game unlocks', cul:'Customise unlocks', ach:'Achievements',
+  unlHint:'tap a locked row to see what it takes', culHint:'tap an earned one to use it', achHint:'tap one to go play it',
+  culGroup:{ sq:'Target colours', lead:'Lead colours', cut:'Cut pieces', bg:'Backgrounds', snd:'Tap sounds', scale:'Scales', rate:'Taps per second', wheel:'Colour wheel' } };
 /* v17 (B.23 / B.24, build 29): the game-select grid says what order the games open in, and where that order ENDS.
    The chest needs key 1 — every clearance bar cleared — and A.1 forbids anything about pro or author appearing before
    it is opened, so a locked chest says what it takes in key-1 terms and an opened one says only what it gave. */

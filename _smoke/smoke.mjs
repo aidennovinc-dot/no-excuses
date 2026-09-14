@@ -317,8 +317,8 @@ for (const g of GAMES) {
   await click('#grid'); await sleep(200);
 }
 // the other screens open and render
-// build 33 (B.31): s-custom is gone — Customise is the middle tab of s-prog, so there is one fewer menu row to open
-for (const s of ['s-board', 's-prog', 's-key', 's-about', 's-testing']) { await click('.back'); await sleep(250); await click(`[data-go="${s}"]`); await sleep(600); (await onScreen()) === s ? ok(`${s} opens`) : bad(`${s} opens`, 'on ' + (await onScreen())); }
+// AMENDED at build 39 (v23 L.4a): s-custom is back — Customise is its own menu row again (a tab of s-prog from build 33 to 38)
+for (const s of ['s-board', 's-prog', 's-custom', 's-key', 's-about', 's-testing']) { await click('.back'); await sleep(250); await click(`[data-go="${s}"]`); await sleep(600); (await onScreen()) === s ? ok(`${s} opens`) : bad(`${s} opens`, 'on ' + (await onScreen())); }
 
 // ---- 2b. the Set and Streak lines on every sheet come from the one table (L5 / v14 section 5) ----
 console.log('\nsheet copy comes from SET_COPY (L5)');
@@ -610,25 +610,31 @@ console.log('\nside screens (v14 section 8)');
   await setStorage({});                        // a brand-new profile: everything unseen, which is what 8.7 broke
   await page.reload({ waitUntil: 'networkidle0' }); await sleep(500);
   await page.evaluate(() => document.body.click()); await sleep(900);
-  // build 33 (B.31): Customise is the middle tab of Progress now
-  await click('[data-go="s-prog"]'); await sleep(300); await click('#prog-tabs [data-tab="cus"]'); await sleep(1400);   // past the .6s first-seen highlight
+  // AMENDED at build 39 (v23 L.4a): Customise is its own screen again (it was the middle tab of Progress, builds 33-38)
+  await click('[data-go="s-custom"]'); await sleep(1400);   // past the .6s first-seen highlight
   // 8.7: the highlight used to end on `background-color:transparent` under animation-fill-mode:both, which held forever —
   // so every first-seen swatch was left blank. The target colours must still be their own colour once it has played
   const sw = await page.evaluate(() => { const b = document.querySelector('#c-sq button'); if (!b) return null;
     const bg = getComputedStyle(b).backgroundColor; const a = /rgba?\(([^)]+)\)/.exec(bg); const parts = a ? a[1].split(',') : [];
     return { cls: b.className.trim(), bg, alpha: parts.length > 3 ? parseFloat(parts[3]) : 1 }; });
   (sw && sw.alpha > .9) ? ok(`8.7 a first-seen target colour still shows its colour (${sw.bg})`) : bad('8.7 target colours blank on first load', JSON.stringify(sw));
-  (await page.evaluate(() => !document.querySelector('#p-cus .eyebrow'))) ? ok('8.9 the Customise eyebrow line is gone') : bad('8.9 the Customise eyebrow line is gone');
-  // v18 (B.31, build 33): Achievements is the THIRD tab of the same screen, so this is one tap, not a screen change
-  await click('#prog-tabs [data-tab="ach"]'); await sleep(400);
+  (await page.evaluate(() => !document.querySelector('#s-custom .eyebrow'))) ? ok('8.9 the Customise eyebrow line is gone') : bad('8.9 the Customise eyebrow line is gone');
+  // AMENDED at build 39 (v23 L.4a): Customise is its own screen again, so Achievements is back through the Progress menu row
+  await click('#s-custom .back'); await sleep(400); await click('[data-go="s-prog"]'); await sleep(300); await click('#prog-tabs [data-tab="ach"]'); await sleep(400);
+  /* AMENDED at build 39 (v23 L.4c): Clean · Sprint · Four and Every game pay out a cosmetic, so both live on Customise unlocks
+     now. 8.3 reads Clean · Sprint · Two (Quick Tap, no payout) and 8.1 reads Every game on its own tab */
+  const evTxt = async () => { await click('#prog-tabs [data-tab="cul"]'); await sleep(400);
+    const t = await page.evaluate(() => (document.querySelector('#cul-every small') || {}).textContent || null);
+    await click('#prog-tabs [data-tab="ach"]'); await sleep(400); return t; };
   const ach = await page.evaluate(() => {
-    const row = document.getElementById('ach-qt_clean5'), sec = document.getElementById('ach-qt_s5'), ev = document.getElementById('ach-every');
+    const row = document.getElementById('ach-qt_bclean5'), sec = document.getElementById('ach-qt_s5'), ev = document.getElementById('ach-every');
     return { ox: getComputedStyle(document.getElementById('achlist')).overflowX,
       lead: row ? (row.querySelector('span i') || {}).textContent : null,
       leadFirst: row ? row.querySelector('span').firstElementChild?.tagName : null,
       secret: sec ? (sec.querySelector('small') || {}).textContent : null,
       left: ev ? (ev.querySelector('small') || {}).textContent : null };
   });
+  ach.left = await evTxt();
   (ach.ox === 'hidden') ? ok('8.2 the achievements list has no sideways axis to be left panned on') : bad('8.2 achievements list overflow-x', ach.ox);
   (ach.leadFirst === 'I' && ach.lead === 'Quick Tap') ? ok('8.3 the game name leads the achievement title') : bad('8.3 the game name leads the title', JSON.stringify(ach));
   (ach.secret && !/^A stretch past/.test(ach.secret)) ? ok(`8.5 a secret row is described: "${ach.secret.slice(0, 46)}…"`) : bad('8.5 secret achievements get descriptions', ach.secret);
@@ -1151,8 +1157,8 @@ console.log('\nbutton actions (every data-act at least once)');
   await setStorage({ 'ne.prefs': { ...OPEN_PREFS, name: 'AIDEN' } });
   await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
   // customise: swatch, wheel + done, sound pack, scale (Sequence), the music row, game chip, lock line.
-  // build 33 (B.31): it is the middle tab of Progress, so the walk opens that screen and taps the tab
-  await tap('[data-go="s-prog"]'); await sleep(300); await tap('#prog-tabs [data-tab="cus"]', 'progress · customise tab'); await sleep(300);
+  // AMENDED at build 39 (v23 L.4a): Customise is its own menu row again, so the walk opens it straight off the menu
+  await tap('[data-go="s-custom"]', 'customise'); await sleep(300);
   await tap('#c-sq button:nth-child(2)', 'customise · target colour');
   await tap('#c-sq button[data-v="wheel"]', 'customise · colour wheel'); await tap('#wheel-done');
   await tap('#c-bg button:nth-child(2)', 'customise · background');
@@ -1164,7 +1170,7 @@ console.log('\nbutton actions (every data-act at least once)');
   await tap('#c-menumusic button:nth-child(2)', 'customise · menu music off'); await tap('#c-menumusic button:nth-child(1)', 'customise · menu music on');
   // build 33 (B.30): the locked line is under its own group now, not one line under the preview
   await tap('#lk-sq', 'customise · lock line');
-  await sleep(400); await tap('#s-prog .back', 'customise · back');
+  await sleep(400); await tap('#s-custom .back', 'customise · back');
   // scores: game, mode, length chips
   await tap('[data-go="s-board"]'); await tap('#bd-g [data-v="dots"]', 'board · game chip'); await tap('#bd-d [data-v="lead"]', 'board · mode chip'); await tap('#bd-s [data-v="15"]', 'board · length chip');
   await sleep(400); await tap('#s-board .back', 'board · back');
@@ -1175,8 +1181,8 @@ console.log('\nbutton actions (every data-act at least once)');
   (await onScreen()) === 's-key' ? ok('the Unlocks screen\'s key row opens the key') : bad('unlocks · key row', 'on ' + (await onScreen()));
   await tap('#s-key .back', 'key · back'); await sleep(300);
   // achievements: filter chip, a row that jumps to a sheet (Quick Tap · Clean · Sprint · Four)
-  await tap('[data-go="s-prog"]'); await tap('#prog-tabs [data-tab="ach"]', 'progress · achievements tab'); await tap('#ach-g [data-v="quick-tap"]', 'achievements · filter chip');
-  await tap('#ach-qt_clean5', 'achievements · jump row'); await sleep(300);
+  await tap('[data-go="s-prog"]'); await tap('#prog-tabs [data-tab="cul"]', 'progress · customise unlocks tab'); await tap('#prog-tabs [data-tab="ach"]', 'progress · achievements tab'); await tap('#ach-g [data-v="quick-tap"]', 'achievements · filter chip');
+  await tap('#ach-qt_bclean5', 'achievements · jump row');   // AMENDED at build 39 (v23 L.4c): Clean · Sprint · Four pays out a colour, so it is on Customise unlocks await sleep(300);
   (await onScreen()) === 's-pick' ? ok('achievement row jumps to its pick sheet') : bad('achievement row jumps to its pick sheet', 'on ' + (await onScreen()));
   await tap('#lvl-back', 'sheet · mode back'); await tap('#diff-row .choice:nth-child(2)', 'sheet · mode');
   await tap('#prac-row [data-prac]', 'sheet · practice from'); await tap('#grid', 'sheet · grid');
@@ -1746,9 +1752,10 @@ console.log('\nbuild 29 - v17 sections B.19 to B.26');
     const m = await page.evaluate(() => ({
       items: [...document.querySelectorAll('#s-menu .item')].map(b => b.textContent.trim()),
       prog: !!document.getElementById('s-prog'),
-      old: !!document.getElementById('s-unl') || !!document.getElementById('s-ach') || !!document.getElementById('s-custom'),
+      old: !!document.getElementById('s-unl') || !!document.getElementById('s-ach'), custom: !!document.getElementById('s-custom'),
       tabs: [...document.querySelectorAll('#prog-tabs .chip')].map(c => c.dataset.tab) }));
-    (m.prog && !m.old && m.items.includes('Progress') && !m.items.includes('Unlocks') && !m.items.includes('Achievements') && !m.items.includes('Customise') && m.tabs.join() === 'unl,cus,ach')
+    // AMENDED at build 39 (v23 L.4a / L.4b): Customise is a menu row and a screen again, and the middle tab is Customise unlocks
+    (m.prog && !m.old && m.custom && m.items.includes('Progress') && !m.items.includes('Unlocks') && !m.items.includes('Achievements') && m.items.includes('Customise') && m.tabs.join() === 'unl,cul,ach')
       ? ok(`B.21 / B.31 one menu item - ${m.items.join(' · ')} - with tabs ${m.tabs.join(' / ')}, Game unlocks first (2.2)`)
       : bad('B.21 / B.31 Unlocks, Customise and Achievements are one item with three tabs', JSON.stringify(m));
     const files = fs.readdirSync(path.join(root29, 'ui', 'screens'));
@@ -2160,7 +2167,7 @@ console.log('\nbuild 30 - v17 sections B.27 to B.33');
   {
     await setStorage({ ne: { v: 1, prefs: { story: 1, gridSeen: 1, played: 1, menuSeen: 1, snd: 'off', musicG: {} }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
-    await click('[data-go="s-prog"]'); await sleep(300); await click('#prog-tabs [data-tab="cus"]'); await sleep(500);
+    await click('[data-go="s-custom"]'); await sleep(500);
     // AMENDED at build 33 (v18 B.28): the row is ONE button now — the track — because the Preview button beside it went
     const locked = await page.evaluate(() => { const b = [...document.querySelectorAll('#c-track button')];
       return { n: b.length, first: b[0]?.textContent, lock: b[0]?.classList.contains('locked'), plain: b[0]?.classList.contains('plain'),
@@ -2172,7 +2179,7 @@ console.log('\nbuild 30 - v17 sections B.27 to B.33');
     // dev unlock-all opens it, and picking one is stored and played
     await setStorage({ ne: { v: 1, prefs: { ...OPEN_PREFS, menuSeen: 1 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
-    await click('[data-go="s-prog"]'); await sleep(300); await click('#prog-tabs [data-tab="cus"]'); await sleep(500);
+    await click('[data-go="s-custom"]'); await sleep(500);
     await page.evaluate(() => document.querySelectorAll('#c-track button')[1].click()); await sleep(500);
     const open30 = await page.evaluate(() => ({ n: document.querySelectorAll('#c-track button').length,
       stored: JSON.parse(localStorage.getItem('ne')).prefs.track, sel: document.querySelector('#c-track button.sel')?.textContent }));
@@ -2814,25 +2821,25 @@ console.log('\nbuild 33 - v18 sections B.28 to B.32');
   const root33 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const read33 = (...p) => fs.readFileSync(path.join(root33, ...p), 'utf8');
   const html33 = read33('index.html'), css33 = read33('styles', 'app.css'), audio33 = read33('audio.js');
-  const prog33 = read33('ui', 'screens', 'progress.js'), store33 = read33('core', 'store.js');
+  const prog33 = read33('ui', 'screens', 'progress.js') + read33('ui', 'screens', 'customise.js'), store33 = read33('core', 'store.js');   // build 39: Customise's code is its own file again
 
   /* ---- B.31: ONE screen, three tabs, one file. A4 forbids a screen importing a screen, so a tab host that called
      into customise.js would be the thing it forbids — this is the merge, and the file it replaced is gone. ---- */
   {
-    const gone = !fs.existsSync(path.join(root33, 'ui', 'screens', 'customise.js'));
+    const gone = fs.existsSync(path.join(root33, 'ui', 'screens', 'customise.js'));   // AMENDED at build 39 (v23 L.4a): the file is back
     const idx = read33('ui', 'screens', 'index.js');
     const markup = { custom: /id="s-custom"/.test(html33), row: /data-go="s-custom"/.test(html33), cus: /id="p-cus"/.test(html33) };
-    (gone && !/customise\.js"/.test(idx) && !markup.custom && !markup.row && markup.cus)
-      ? ok('B.31 Customise is a tab of s-prog: customise.js is deleted, the screen and its menu row are gone, #p-cus is on s-prog')
+    (gone && /customise\.js"/.test(idx) && markup.custom && markup.row && !markup.cus)
+      ? ok('B.31 AMENDED (v23 L.4a): customise.js is back and imported, s-custom and its menu row exist, and no #p-cus is left on s-prog')
       : bad('B.31 the merge', JSON.stringify({ gone, markup }));
     // the three tabs, in Aiden's order, and Keys still its own menu item
     const tabs = [...html33.matchAll(/data-act="ptab" class="chip" data-tab="(\w+)">([^<]+)</g)].map(m => [m[1], m[2]]);
     const keyRow = /data-go="s-key"/.test(html33);
-    (tabs.length === 3 && tabs[0][1] === 'Game unlocks' && tabs[1][1] === 'Customise' && tabs[2][1] === 'Achievements' && keyRow)
+    (tabs.length === 3 && tabs[0][1] === 'Game unlocks' && tabs[1][1] === 'Customise unlocks' && tabs[1][0] === 'cul' && tabs[2][1] === 'Achievements' && keyRow)   // AMENDED at build 39 (v23 L.4b)
       ? ok(`B.31 (L6) three tabs — ${tabs.map(t => t[1]).join(' · ')} — and Keys stays its own menu item`)
       : bad('B.31 the tabs', JSON.stringify({ tabs, keyRow }));
     // the third value is shape-checked in the store the day it is added, which is the rule build 28 exists to not repeat
-    /progTab.*\['cus','ach'\]\.includes/.test(store33.replace(/\s/g, '')) || /\['cus', ?'ach'\]\.includes\(p\.progTab\)/.test(store33)
+    /progTab:p\.progTab==='cus'\?'cul':\['cul','ach'\]\.includes\(p\.progTab\)/.test(store33.replace(/\s/g, ''))   // AMENDED at build 39: unl / cul / ach, and the old cus lands on cul
       ? ok('B.31 prefs.progTab takes all three tabs (cleanPrefs)') : bad('B.31 progTab is still two-valued');
 
     // each tab renders, and the one that is up is the only one rendered
@@ -2840,25 +2847,26 @@ console.log('\nbuild 33 - v18 sections B.28 to B.32');
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
     await click('[data-go="s-prog"]'); await sleep(500);
     const walk = {};
-    for (const t of ['unl', 'cus', 'ach']) { await click(`#prog-tabs [data-tab="${t}"]`); await sleep(600);
+    for (const t of ['unl', 'cul', 'ach']) { await click(`#prog-tabs [data-tab="${t}"]`); await sleep(600);
       walk[t] = await page.evaluate(t => ({ shown: [...document.querySelectorAll('#s-prog .ptab')].filter(p => !p.hidden).map(p => p.id),
-        rows: document.querySelectorAll(t === 'unl' ? '#unl-list .urow' : t === 'cus' ? '#p-cus .cgroup' : '#achlist .a').length,
+        rows: document.querySelectorAll(t === 'unl' ? '#unl-list .urow' : t === 'cul' ? '#cul-list .a' : '#achlist .a').length,
         stored: JSON.parse(localStorage.getItem('ne')).prefs.progTab }), t); }
-    (walk.unl.shown.join() === 'p-unl' && walk.cus.shown.join() === 'p-cus' && walk.ach.shown.join() === 'p-ach'
-      && walk.unl.rows > 0 && walk.cus.rows > 0 && walk.ach.rows > 0 && walk.ach.stored === 'ach')
-      ? ok(`B.31 one tab at a time — ${walk.unl.rows} unlock rows, ${walk.cus.rows} customise groups, ${walk.ach.rows} achievements — and the last one open is remembered`)
+    (walk.unl.shown.join() === 'p-unl' && walk.cul.shown.join() === 'p-cul' && walk.ach.shown.join() === 'p-ach'
+      && walk.unl.rows > 0 && walk.cul.rows > 0 && walk.ach.rows > 0 && walk.ach.stored === 'ach')
+      ? ok(`B.31 one tab at a time — ${walk.unl.rows} unlock rows, ${walk.cul.rows} customise unlocks, ${walk.ach.rows} achievements — and the last one open is remembered`)
       : bad('B.31 the tabs render', JSON.stringify(walk));
     /* an earned achievement still opens what it paid for — the same screen now, so it is a tab change and not a
        navigation. `first` ("Showed up") pays out the second target colour, which is why it is the row this earns. */
     await setStorage({ ne: { v: 1, prefs: { story: 1, gridSeen: 1, played: 1, menuSeen: 1, snd: 'off', musicG: {} }, runs: [], ach: { first: Date.now() }, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
-    await click('[data-go="s-prog"]'); await sleep(300); await click('#prog-tabs [data-tab="ach"]'); await sleep(500);
-    const jumped = await page.evaluate(() => { const b = document.getElementById('ach-first'); if (!b) return null; const done = b.classList.contains('done'); b.click(); return done; });
+    // AMENDED at build 39 (v23 L.4c / L.4d): Showed up pays out a colour, so it is on Customise unlocks, and it opens the Customise SCREEN
+    await click('[data-go="s-prog"]'); await sleep(300); await click('#prog-tabs [data-tab="cul"]'); await sleep(500);
+    const jumped = await page.evaluate(() => { const b = document.getElementById('cul-first'); if (!b) return null; const done = b.classList.contains('done'); b.click(); return done; });
     await sleep(600);
-    const after = await page.evaluate(() => ({ screen: (document.querySelector('.screen.on') || {}).id, tab: document.getElementById('p-cus').hidden ? 'other' : 'cus',
+    const after = await page.evaluate(() => ({ screen: (document.querySelector('.screen.on') || {}).id, tab: 'screen',
       flashed: !!document.querySelector('#c-sq button.pvw') }));
-    (jumped && after.screen === 's-prog' && after.tab === 'cus' && after.flashed)
-      ? ok('B.31 an earned achievement opens the Customise TAB and flashes the swatch it paid for — one screen, so nothing navigates')
+    (jumped && after.screen === 's-custom' && after.flashed)
+      ? ok('B.31 AMENDED (v23 L.4d): an earned achievement opens the Customise SCREEN and rings the swatch it paid for')
       : bad('B.31 the achievement payout', JSON.stringify({ jumped, after }));
   }
 
@@ -2872,7 +2880,7 @@ console.log('\nbuild 33 - v18 sections B.28 to B.32');
     // unlock-all so the row is the open three; the locked shape is the build-30 block above
     await setStorage({ ne: { v: 1, prefs: { ...OPEN_PREFS, menuSeen: 1 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
-    await click('[data-go="s-prog"]'); await sleep(300); await click('#prog-tabs [data-tab="cus"]'); await sleep(500);
+    await click('[data-go="s-custom"]'); await sleep(500);
     const row = await page.evaluate(() => { const grp = document.getElementById('c-track').parentElement;
       const b = [...grp.querySelectorAll('button')];
       return { label: grp.querySelector('.clabel').textContent, n: b.length, named: b.map(x => x.textContent), sel: b.filter(x => x.classList.contains('sel')).length }; });
@@ -2905,7 +2913,7 @@ console.log('\nbuild 33 - v18 sections B.28 to B.32');
     // a profile with nothing earned: the target-colour row has locked swatches
     await setStorage({ ne: { v: 1, prefs: { story: 1, gridSeen: 1, played: 1, menuSeen: 1, snd: 'off', musicG: {} }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
-    await click('[data-go="s-prog"]'); await sleep(300); await click('#prog-tabs [data-tab="cus"]'); await sleep(600);
+    await click('[data-go="s-custom"]'); await sleep(600);
     const lock = await page.evaluate(() => { const b = document.querySelector('#c-sq button.locked'); if (!b) return { none: 1 };
       b.click(); return null; });
     await sleep(400);
@@ -2919,8 +2927,8 @@ console.log('\nbuild 33 - v18 sections B.28 to B.32');
       : bad('B.30 the locked line', JSON.stringify(shown));
     // and the line is the way in: it opens the achievement that pays for it, on the tab beside it
     if (shown && shown.ach) { await click('#lk-sq'); await sleep(500);
-      const to = await page.evaluate(() => ({ screen: (document.querySelector('.screen.on') || {}).id, ach: !document.getElementById('p-ach').hidden }));
-      (to.screen === 's-prog' && to.ach) ? ok('B.30 the locked line opens the achievement that earns it') : bad('B.30 where the line leads', JSON.stringify(to)); }
+      const to = await page.evaluate(() => ({ screen: (document.querySelector('.screen.on') || {}).id, ach: !document.getElementById('p-cul').hidden, row: !!document.querySelector('#cul-list .a.flash') }));
+      (to.screen === 's-prog' && to.ach && to.row) ? ok('B.30 the locked line opens the achievement that earns it - on Customise unlocks, flashed (AMENDED at build 39, v23 L.4c)') : bad('B.30 where the line leads', JSON.stringify(to)); }
   }
 
   /* ---- B.32: the fonts are ours. No request leaves the origin for one, the faces are declared with swap, and the
@@ -2982,7 +2990,7 @@ console.log('\nbuild 35 - batch 15, bugs and the runs');
   const imp35 = (...p) => import(pathToFileURL(path.join(root35, ...p)).href);
   const html35 = read35('index.html'), css35 = read35('styles', 'app.css'), audio35 = read35('audio.js'), hud35 = read35('games', '_shared', 'hud.js');
   const vs35 = read35('games', '_shared', 'versus.js'), rx35 = read35('games', 'reaction', 'index.js'), sp35 = read35('games', 'spot', 'index.js');
-  const pick35 = read35('ui', 'screens', 'pick.js'), prog35 = read35('ui', 'screens', 'progress.js'), store35 = read35('core', 'store.js'), rules35 = read35('progress', 'rules.js'), run35 = read35('run', 'run.js');
+  const pick35 = read35('ui', 'screens', 'pick.js'), prog35 = read35('ui', 'screens', 'progress.js') + read35('ui', 'screens', 'customise.js'), store35 = read35('core', 'store.js'), rules35 = read35('progress', 'rules.js'), run35 = read35('run', 'run.js');
   const V35 = await imp35('config', 'verdicts.js'), C35 = await imp35('config', 'copy.js'), G35 = await imp35('config', 'games.js'), U35 = await imp35('config', 'unlocks.js'), TH35 = await imp35('config', 'theme.js');
   const NOW35 = Date.now();
   const rgb35 = hex => { const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex); return m ? `rgb(${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)})` : hex; };
@@ -3050,8 +3058,9 @@ console.log('\nbuild 35 - batch 15, bugs and the runs');
     await click('[data-go="s-pick"]'); await sleep(600);
     const cold = () => page.evaluate(() => { const s = document.getElementById('s-pick'), sh = document.getElementById('sheet'), g = document.getElementById('grid'), h = s.querySelector(':scope > .hint');
       const end = Math.max(g.offsetTop + g.offsetHeight, h ? h.offsetTop + h.offsetHeight : 0);
-      return { hidden: sh.hidden, display: getComputedStyle(sh).display, title: document.getElementById('sheet-title').textContent, modes: document.getElementById('diff-row').children.length, scroll: s.scrollHeight, client: s.clientHeight, end, pad: parseFloat(getComputedStyle(s).paddingBottom) || 0 }; });
-    const clamp = c => c.scroll <= Math.max(c.client, Math.ceil(c.end + c.pad) + 2);
+      return { hidden: sh.hidden, display: getComputedStyle(sh).display, title: document.getElementById('sheet-title').textContent, modes: document.getElementById('diff-row').children.length, scroll: s.scrollHeight, client: s.clientHeight, end, pad: parseFloat(getComputedStyle(s).paddingBottom) || 0, gap: parseFloat(getComputedStyle(s).rowGap) || 0, after: parseFloat(getComputedStyle(s, '::after').height) || 0 }; });
+    // AMENDED at build 39 (v23 L.5): after the map comes the stamp's clearance - one flex gap and the --stampclear spacer - and nothing else
+    const clamp = c => c.after > 0 && c.scroll <= Math.max(c.client, Math.ceil(c.end + c.gap + c.after + c.pad) + 2);
     const c1 = await cold();
     (c1.hidden && c1.display === 'none' && !c1.title && !c1.modes && clamp(c1))
       ? ok(`F.1 a cold load with Estimate as the last game has no sheet at all - nothing rendered - and the screen scrolls to ${c1.scroll}px against a map ending at ${Math.round(c1.end)}px`)
@@ -3071,7 +3080,7 @@ console.log('\nbuild 35 - batch 15, bugs and the runs');
     const files = walk(root35);
     const writers = files.flatMap(f => [...fs.readFileSync(f, 'utf8').matchAll(/prefs\.col\[[^\]]+\]\[[^\]]+\]\s*=(?!=)/g)].map(() => path.relative(root35, f).replace(/\\/g, '/')));
     const near = files.filter(f => /prefs\.col[^;\n]*\b(P1C|P2C)\b/.test(fs.readFileSync(f, 'utf8'))).map(f => path.relative(root35, f));
-    (writers.length === 2 && writers.every(w => w === 'ui/screens/progress.js') && !near.length)
+    (writers.length === 2 && writers.every(w => w === 'ui/screens/customise.js' /* AMENDED at build 39: Customise's code is its own file again */) && !near.length)
       ? ok('F.4 investigated: the only two writers of a game colour are Customise\'s swatch tap and its wheel, and no player colour is written near prefs.col anywhere')
       : bad('F.4 who writes prefs.col', JSON.stringify({ writers, near }));
     (/VERSION=4/.test(store35) && /if\(\(raw\.v\|\|0\)<4\) raw=up4\(raw\);/.test(store35) && /o\.mig35=p\.mig35/.test(store35) && /'chip-pv'\(b\)\{ F\.g=b\.dataset\.v; pvTry\.set=null;/.test(prog35))
@@ -3086,7 +3095,7 @@ console.log('\nbuild 35 - batch 15, bugs and the runs');
     (f4.v === 4 && f4.mig === 2 && f4.sq.join() === '#FFFFFF' && f4.qt === '#FFFFFF' && f4.dots === '#FFFFFF')
       ? ok('F.4 a v3 record holding light blue on Quick Tap and lime on Dots loads as v4 with every game white again (mig35 2), and both played tiles are white')
       : bad('F.4 the colours go back to white', JSON.stringify(f4));
-    await click('#s-pick .back'); await sleep(300); await click('[data-go="s-prog"]'); await sleep(300); await click('#prog-tabs [data-tab="cus"]'); await sleep(500);
+    await click('#s-pick .back'); await sleep(300); await click('[data-go="s-custom"]'); await sleep(500);
     const tried = await page.evaluate(() => { const b = document.querySelector('#c-sq button.locked'); if (!b) return null; b.click(); return b.dataset.v; });
     await sleep(300);
     const onQt = await page.evaluate(() => document.getElementById('pv').style.getPropertyValue('--sq-live').trim().toUpperCase());
@@ -3095,7 +3104,7 @@ console.log('\nbuild 35 - batch 15, bugs and the runs');
     (tried && onQt === tried.toUpperCase() && onDots.sq === '#FFFFFF' && !onDots.line && !onDots.pvw)
       ? ok(`F.4 a locked swatch tried on Quick Tap (${tried}) stays on Quick Tap - Dots' preview is its own white, with no locked line and no ring carried across`)
       : bad('F.4 the preview follows the game chip', JSON.stringify({ tried, onQt, onDots }));
-    await page.evaluate(async () => { const S = await import('./core/store.js'); S.prefs.allOpen = true; S.save(); const R = await import('./ui/router.js'); R.show('s-menu'); await new Promise(r => setTimeout(r, 150)); R.show('s-prog', { tab: 'cus' }); await new Promise(r => setTimeout(r, 400)); });
+    await page.evaluate(async () => { const S = await import('./core/store.js'); S.prefs.allOpen = true; S.save(); const R = await import('./ui/router.js'); R.show('s-menu'); await new Promise(r => setTimeout(r, 150)); R.show('s-custom'); await new Promise(r => setTimeout(r, 400)); });
     await click('#pv-g [data-v="quick-tap"]'); await sleep(250); await click('#c-sq button[data-v="#9BE8FF"]'); await sleep(300);
     await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-pick'); }); await sleep(500);
     const chose = await page.evaluate(() => { const t = g => document.querySelector(`.tile[data-game="${g}"]`).style.getPropertyValue('--sq-live').trim().toUpperCase(); return { qt: t('quick-tap'), dots: t('dots'), stored: JSON.parse(localStorage.getItem('ne')).prefs.col['quick-tap'].sq }; });
@@ -3840,6 +3849,176 @@ console.log('\nbuild 38 - the tile keeps its amber, Author waits for the Pro che
     (gone && !a2.pro.includes(gone) && a2.pro.length === want.length - 1 && a3.pro.includes(gone) && a3.pro.length === want.length)
       ? ok('#426 once per column: a Pro bar removed by hand is NOT re-banked on the next boot, and a different column credits once more')
       : bad('#426 retro on arrival runs once per column', JSON.stringify({ gone, a2: a2.pro.length, a3: a3.pro.length }));
+  }
+}
+
+/* ---- 19. build 39 (batch 16, the surface - FEEDBACK-v23 §L.2-§L.5): Customise out of Progress, the partition, the labels, the stamp ---- */
+console.log('\nbuild 39 - batch 16, the surface');
+{
+  const root39 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const read39 = (...p) => fs.readFileSync(path.join(root39, ...p), 'utf8');
+  const html39 = read39('index.html'), css39 = read39('styles', 'app.css'), prog39 = read39('ui', 'screens', 'progress.js'), cus39 = read39('ui', 'screens', 'customise.js'), store39 = read39('core', 'store.js');
+  const INK39 = 'rgb(232, 230, 225)', OK39 = 'rgb(61, 214, 140)', RED39 = ['rgb(200, 50, 42)', 'rgb(179, 38, 30)', 'rgb(224, 69, 59)'];
+  const NOW39 = Date.now();
+  const PLAIN39 = { story: 1, gridSeen: 1, played: 1, menuSeen: 1, snd: 'off', musicG: {} };
+
+  /* ---- 1. L.4a: Customise is its own screen, menu item and file again - content untouched (v18 B.31 amended, A4) ---- */
+  {
+    const custom = (html39.match(/<section class="screen top" id="s-custom"[\s\S]*?<\/section>/) || [''])[0];
+    const prog = (html39.match(/<section class="screen top" id="s-prog"[\s\S]*?<\/section>/) || [''])[0];
+    const ids = ['pv', 'pvg', 'pv-g', 'c-sq', 'c-lead', 'c-cut', 'c-bg', 'c-snd', 'c-scale', 'c-rate', 'c-track', 'c-menumusic', 'lk-sq', 'lk-lead', 'lk-cut', 'lk-bg', 'lk-snd', 'lk-scale', 'lk-rate', 'g-lead', 'g-cut', 'g-scale', 'g-rate'];
+    const missing = ids.filter(id => !custom.includes(`id="${id}"`)), left = ids.filter(id => prog.includes(`id="${id}"`));
+    const menu = [...html39.matchAll(/<button data-act="go" class="item glow" data-go="(s-[\w-]+)"[^>]*>([^<]+)</g)].map(m => m[2]);
+    const code = { moved: /function renderCustom\(\)/.test(cus39) && /const Wheel=/.test(cus39) && /function pvStep\(\)/.test(cus39), gone: !/renderCustom|Wheel|pvStep|pvTry/.test(prog39), reg: /register\('s-custom'/.test(cus39), sibling: /from "\.\/[\w-]+\.js"/.test(cus39) };
+    (!missing.length && !left.length && menu.join(' · ').includes('Progress · Keys · Customise · About') && code.moved && code.gone && code.reg && !code.sibling)
+      ? ok(`L.4a Customise is its own screen again - all ${ids.length} of its controls on s-custom, none left on Progress, its own file importing no screen (A4), and a menu row: ${menu.join(' · ')}`)
+      : bad('L.4a Customise out of Progress', JSON.stringify({ missing, left, menu, code }));
+    await setStorage({ ne: { v: 4, prefs: { ...OPEN_PREFS, menuSeen: 1 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await click('[data-go="s-custom"]'); await sleep(1200);
+    const live = await page.evaluate(() => ({ screen: (document.querySelector('.screen.on') || {}).id, groups: document.querySelectorAll('#s-custom .cgroup').length,
+      sw: document.querySelectorAll('#c-sq button').length, g: document.getElementById('pv').dataset.g, scrolls: getComputedStyle(document.getElementById('s-custom')).overflowY }));
+    (live.screen === 's-custom' && live.groups === 9 && live.sw > 1 && live.g && live.scrolls === 'auto')
+      ? ok(`L.4a the menu row opens it: ${live.groups} groups, ${live.sw} target colours, previewing ${live.g}, and the screen scrolls as it did at build 32`)
+      : bad('L.4a Customise opens from the menu', JSON.stringify(live));
+    await click('#s-custom .back'); await sleep(400);
+  }
+
+  /* ---- 2. L.4b: the middle tab reads CUSTOMISE UNLOCKS, and three labels that long wrap the bar instead of shrinking the type ---- */
+  {
+    await click('[data-go="s-prog"]'); await sleep(500);
+    const tb = await page.evaluate(() => { const cs = [...document.querySelectorAll('#prog-tabs .chip')];
+      const probe = document.createElement('button'); probe.className = 'chip'; document.body.appendChild(probe); const base = getComputedStyle(probe).fontSize; probe.remove();
+      return { tabs: cs.map(c => c.dataset.tab + ':' + c.textContent.trim()), sizes: [...new Set(cs.map(c => getComputedStyle(c).fontSize))], base, upper: cs.every(c => getComputedStyle(c).textTransform === 'uppercase'),
+        rows: new Set(cs.map(c => c.offsetTop)).size, inside: cs.every(c => { const r = c.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; }), w: innerWidth }; });
+    (tb.tabs.join('|') === 'unl:Game unlocks|cul:Customise unlocks|ach:Achievements' && tb.upper && tb.sizes.length === 1 && tb.sizes[0] === tb.base && tb.inside)
+      ? ok(`L.4b the tabs read GAME UNLOCKS · CUSTOMISE UNLOCKS · ACHIEVEMENTS in the chip's own ${tb.base} on ${tb.rows} row(s) at ${tb.w}px - the row wraps, the type does not shrink, nothing past the edge`)
+      : bad('L.4b the tab bar', JSON.stringify(tb));
+    await click('#s-prog .back'); await sleep(400);
+    // a profile left on the old Customise tab (builds 33-38) comes back on Customise unlocks, not on nothing
+    await setStorage({ ne: { v: 4, prefs: { ...OPEN_PREFS, menuSeen: 1, progTab: 'cus' }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await click('[data-go="s-prog"]'); await sleep(500);
+    const old = await page.evaluate(() => ({ stored: JSON.parse(localStorage.getItem('ne')).prefs.progTab, cul: !document.getElementById('p-cul').hidden, rows: document.querySelectorAll('#cul-list .a').length }));
+    (old.stored === 'cul' && old.cul && old.rows > 0)
+      ? ok(`L.4b a stored 'cus' from builds 33-38 opens on Customise unlocks (${old.rows} rows) and is stored as 'cul'`) : bad('L.4b the old tab value', JSON.stringify(old));
+    (/progTab:p\.progTab==='cus'\?'cul':\['cul','ach'\]\.includes\(p\.progTab\)\?p\.progTab:'unl'/.test(store39.replace(/\s/g, '')))
+      ? ok('L.4b cleanPrefs takes unl / cul / ach and maps the old cus onto cul') : bad('L.4b cleanPrefs progTab');
+  }
+
+  /* ---- 3. L.4c: the three tabs are a PARTITION - disjoint, and together exactly ACH + keyAch(); Game unlocks is the chain (L6) ---- */
+  {
+    const pt = await page.evaluate(async () => { const P = await import('./progress.js'); const K = await import('./progress/key.js'); const R = await import('./ui/router.js');
+      const wait = ms => new Promise(r => setTimeout(r, ms)); const ids = s => [...document.querySelectorAll(s)].map(b => b.dataset.ach);
+      R.show('s-menu'); await wait(100); R.show('s-prog', { tab: 'unl' }); await wait(400); const unl = ids('#unl-list [data-ach]'), unlRows = document.querySelectorAll('#unl-list .urow').length;
+      R.show('s-menu'); await wait(100); R.show('s-prog', { tab: 'cul' }); await wait(400); const cul = ids('#cul-list .a'), culHeads = [...document.querySelectorAll('#cul-list h4')].map(h => h.textContent.trim());
+      R.show('s-menu'); await wait(100); R.show('s-prog', { tab: 'ach' }); await wait(400); document.querySelector('#ach-g [data-v="all"]')?.click(); await wait(300); const ach = ids('#achlist .a');
+      const keys = K.keyAch();
+      return { unl, unlRows, cul, culHeads, ach, table: P.ACH.map(a => a.id).concat(keys.map(a => a.id)), withUnlocks: P.ACH.filter(a => a.unlocks).map(a => a.id),
+        pureCul: P.ACH.concat(keys).filter(a => P.achTab(a) === 'cul').map(a => a.id), keyPaid: keys.filter(a => a.unlocks).length }; });
+    const srt = a => a.slice().sort().join();
+    const both = pt.cul.filter(id => pt.ach.includes(id)), union = new Set([...pt.cul, ...pt.ach]);
+    const lost = pt.table.filter(id => !union.has(id)), extra = [...union].filter(id => !pt.table.includes(id));
+    (!pt.unl.length && pt.unlRows > 0 && !both.length && !lost.length && !extra.length && pt.cul.length + pt.ach.length === pt.table.length)
+      ? ok(`L.4c the three tabs are a partition: Game unlocks ${pt.unlRows} rows and no achievement (L6), Customise unlocks ${pt.cul.length}, Achievements ${pt.ach.length} - disjoint, and together exactly ACH + keyAch() (${pt.table.length})`)
+      : bad('L.4c the partition', JSON.stringify({ unl: pt.unl, both, lost, extra, n: [pt.cul.length, pt.ach.length, pt.table.length] }));
+    (srt(pt.cul) === srt(pt.withUnlocks) && srt(pt.pureCul) === srt(pt.cul) && !pt.keyPaid)
+      ? ok(`L.4c Customise unlocks is every row with an unlocks field and nothing else, by achTab() - grouped ${pt.culHeads.join(' / ')}`)
+      : bad('L.4c what the middle tab holds', JSON.stringify({ cul: pt.cul, want: pt.withUnlocks }));
+    // an achievement toast, and a locked cosmetic's line, open Progress on the tab the row lives on, at the row
+    const route = await page.evaluate(async () => { const R = await import('./ui/router.js'); const wait = ms => new Promise(r => setTimeout(r, ms));
+      R.show('s-menu'); await wait(100); R.show('s-prog', { ach: 'first' }); await wait(500);
+      const a = { cul: !document.getElementById('p-cul').hidden, flash: !!document.querySelector('#cul-first.flash') };
+      R.show('s-menu'); await wait(100); R.show('s-prog', { ach: 'qt_bclean5' }); await wait(500);
+      const b = { ach: !document.getElementById('p-ach').hidden, flash: !!document.querySelector('#ach-qt_bclean5.flash') };
+      return { a, b }; });
+    (route.a.cul && route.a.flash && route.b.ach && route.b.flash)
+      ? ok('L.4c {ach} lands on the tab achTab() names: Showed up on Customise unlocks, Clean · Sprint · Two on Achievements, each row flashed')
+      : bad('L.4c where {ach} lands', JSON.stringify(route));
+  }
+
+  /* ---- 4. L.2 + L.4d: every label white until earned and green once, on all three tabs, never red; an earned middle-tab row opens
+     Customise with its item picked out (not applied); an unearned one still goes to play it ---- */
+  {
+    const flat = css39.replace(/\/\*[\s\S]*?\*\//g, '');
+    const rule = { red: /em\.u\{/.test(flat), cueOnLabel: /\.(?:ach|unl)[^{}]*\bem[^{}]*\{[^}]*var\(--(?:cue|miss)\)/.test(flat), cls: /\?'u':''/.test(prog39) };
+    (!rule.red && !rule.cueOnLabel && !rule.cls)
+      ? ok('L.2 the build-8 red label rule (.ach .lock em.u in --cue) is gone, and no Progress label rule reads a red') : bad('L.2 a red label rule is left', JSON.stringify(rule));
+    await setStorage({ ne: { v: 4, prefs: { ...PLAIN39 }, runs: [{ t: NOW39, g: 'quick-tap', d: 'two', s: 5, n: '', v: 4, hits: 9, misses: 0 }], ach: { first: NOW39, qt_bclean5: NOW39 }, unlock: { 'quick-tap:four': NOW39 }, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    const lab = await page.evaluate(async () => { const R = await import('./ui/router.js'); const wait = ms => new Promise(r => setTimeout(r, ms)); const out = {};
+      for (const [t, s] of [['unl', '#unl-list .urow'], ['cul', '#cul-list .a'], ['ach', '#achlist .a']]) { R.show('s-menu'); await wait(100); R.show('s-prog', { tab: t }); await wait(1800);
+        out[t] = [...document.querySelectorAll(s)].map(b => ({ id: b.dataset.ach || b.dataset.d || 'key', done: b.classList.contains('done'), cols: [...b.querySelectorAll(':scope > .rw, :scope > em')].map(e => getComputedStyle(e).color) })); }
+      return out; });
+    const judge = rows => { const wrong = rows.filter(r => !r.cols.length || r.cols.some(c => c !== (r.done ? OK39 : INK39))); return { n: rows.length, done: rows.filter(r => r.done).length, wrong: wrong.length, sample: wrong[0] }; };
+    const J = { unl: judge(lab.unl), cul: judge(lab.cul), ach: judge(lab.ach) };
+    const reds = Object.values(lab).flat().flatMap(r => r.cols).filter(c => RED39.includes(c)).length;
+    (['unl', 'cul', 'ach'].every(t => J[t].n && J[t].done && J[t].done < J[t].n && !J[t].wrong) && !reds)
+      ? ok(`L.2 every label is white until earned and green once, on all three tabs - Game unlocks ${J.unl.done}/${J.unl.n}, Customise unlocks ${J.cul.done}/${J.cul.n}, Achievements ${J.ach.done}/${J.ach.n} earned - and not one is red`)
+      : bad('L.2 the label colours', JSON.stringify({ J, reds }));
+    const nav = await page.evaluate(async () => { const R = await import('./ui/router.js'); const S = await import('./core/store.js'); const wait = ms => new Promise(r => setTimeout(r, ms)); const on = () => (document.querySelector('.screen.on') || {}).id;
+      const open = async id => { R.show('s-menu'); await wait(100); R.show('s-prog', { tab: 'cul' }); await wait(500); document.getElementById('cul-' + id)?.click(); await wait(500); };
+      const out = {};
+      await open('first');
+      out.first = { screen: on(), ring: !!document.querySelector('#c-sq button[data-v="#FFE9C4"].pvw'), applied: Object.values(S.prefs.col || {}).some(c => c && c.sq === '#FFE9C4') };
+      S.store.ach.dt_pin = Date.now(); S.save(); await open('dt_pin');
+      out.game = { screen: on(), g: document.getElementById('pv').dataset.g, ring: !!document.querySelector('#c-sq button[data-v="#FFD1DC"].pvw') };
+      S.store.ach.every = Date.now(); S.save(); await open('every');
+      out.lead = { screen: on(), g: document.getElementById('pv').dataset.g, shown: document.getElementById('g-lead').style.display !== 'none', ring: !!document.querySelector('#c-lead button[data-v="#FFB020"].pvw') };
+      await open('dt_sweep');
+      out.unearned = { screen: on(), box: document.getElementById('lockwrap').classList.contains('on') };
+      return out; });
+    if (nav.unearned.box) { await click('#lock-no'); await sleep(300); }
+    (nav.first.screen === 's-custom' && nav.first.ring && !nav.first.applied && nav.game.screen === 's-custom' && nav.game.g === 'dots' && nav.game.ring)
+      ? ok(`L.4d an earned row opens Customise with its item ringed - Showed up's target colour picked out and NOT applied, Pinpoint previewed on its own game (${nav.game.g})`)
+      : bad('L.4d an earned row goes to Customise', JSON.stringify(nav));
+    (nav.lead.screen === 's-custom' && nav.lead.shown && nav.lead.ring)
+      ? ok(`L.4d Every game's lead colour is shown on a game that has a lead row (${nav.lead.g}) - the build-38 tab scrolled to a hidden row there`)
+      : bad('L.4d a payout into a hidden group', JSON.stringify(nav.lead));
+    (nav.unearned.screen === 's-pick' || (nav.unearned.screen === 's-prog' && nav.unearned.box))
+      ? ok(`L.4d an unearned row still goes to play it - Sweep ${nav.unearned.box ? 'asks the lock box, Dots being locked on this profile' : 'opens its sheet'}`)
+      : bad('L.4d an unearned row', JSON.stringify(nav.unearned));
+  }
+
+  /* ---- 5. L.5: the build stamp never sits on the last thing a scrolling screen holds. Every scroller ends with --stampclear of
+     space; each is scrolled to the bottom and its last control measured against the stamp ---- */
+  {
+    const flat = css39.replace(/\/\*[\s\S]*?\*\//g, '');
+    const autos = [...flat.matchAll(/(?:^|\})\s*([^{}@]+?)\s*\{[^}]*overflow-y:auto/g)].flatMap(m => m[1].split(',').map(s => s.trim()));
+    const spacer = ((flat.match(/([^{}]+)\{content:"";display:block;flex:none;height:var\(--stampclear\)\}/) || [])[1] || '').split(',').map(s => s.trim());
+    const bare = autos.filter(s => s !== '.otwrap' && !spacer.includes(s + '::after'));
+    (/--stampclear:calc\(var\(--stampat\) \+ var\(--stamp\) \+ 16px\)/.test(flat) && /#build\{[^}]*bottom:var\(--stampat\)[^}]*font:500 var\(--stamp\)\/1/.test(flat) && autos.length && !bare.length)
+      ? ok(`L.5 every overflow-y:auto scroller ends with the stamp's offset + height + a 16px line of space (${autos.filter(s => s !== '.otwrap').join(', ')}); .otwrap, the result's fixed top-10 box mid-screen, is left out`)
+      : bad('L.5 a scroller without the stamp clearance', JSON.stringify({ autos, bare, spacer }));
+    const runs = Array.from({ length: 10 }, (_, i) => ({ t: NOW39 - i * 1000, g: 'quick-tap', d: 'two', s: 5, n: 'AIDEN', v: 4, hits: 10 + i, misses: 0 }));
+    await setStorage({ ne: { v: 4, prefs: { ...OPEN_PREFS, menuSeen: 1, name: 'AIDEN', keySeen: 1 }, runs, ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(500);
+    const st = await page.evaluate(async () => { const R = await import('./ui/router.js'); const wait = ms => new Promise(r => setTimeout(r, ms));
+      const stamp = document.getElementById('build').getBoundingClientRect();
+      const one = async (label, screen, opts, sel, prep, lastSel) => { R.show('s-menu'); await wait(120); R.show(screen, opts); await wait(900); if (prep) { prep(); await wait(700); }
+        const el = document.querySelector(sel); if (!el || !el.getClientRects().length) return { label, none: 1 };
+        const oy = getComputedStyle(el).overflowY, scrolls = (oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight + 1;
+        el.scrollTop = el.scrollHeight; await wait(300);
+        const kids = [...el.children].filter(c => c.getClientRects().length && !['absolute', 'fixed'].includes(getComputedStyle(c).position));
+        const last = lastSel ? document.querySelector(lastSel) : kids[kids.length - 1];
+        const lb = last ? last.getBoundingClientRect().bottom : 0, eb = el.getBoundingClientRect().bottom, vis = Math.min(lb, eb);
+        return { label, scrolls, bottom: Math.round(vis), clear: vis <= stamp.top, last: last ? (last.id ? '#' + last.id : String(last.className || last.tagName)) : null }; };
+      const out = [];
+      for (const g of ['quick-tap', 'dots', 'hold', 'sequence', 'timing']) out.push(await one('Customise · ' + g, 's-custom', { g }, '#s-custom'));
+      out.push(await one('Progress · Game unlocks', 's-prog', { tab: 'unl' }, '#unl-list'));
+      out.push(await one('Progress · Customise unlocks', 's-prog', { tab: 'cul' }, '#cul-list'));
+      out.push(await one('Progress · Achievements', 's-prog', { tab: 'ach' }, '#achlist'));
+      out.push(await one('Scores', 's-board', {}, '#s-board .scroll'));
+      out.push(await one('Keys · Quick Tap open', 's-key', {}, '#key-list', () => document.querySelector('.knode[data-kg="quick-tap"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))));
+      out.push(await one('Game select · Quick Tap sheet', 's-pick', { g: 'quick-tap', d: 'two' }, '#s-pick', null, '#go-btn'));
+      out.push(await one('About', 's-about', {}, '#s-about'));
+      out.push(await one('Testing', 's-testing', {}, '#s-testing'));
+      R.show('s-menu'); return { top: Math.round(stamp.top), out }; });
+    const under = st.out.filter(r => !r.none && !r.clear), none = st.out.filter(r => r.none).map(r => r.label);
+    console.log('       L.5 measured: ' + st.out.map(r => r.none ? `${r.label} (not drawn)` : `${r.label} ${r.scrolls ? 'SCROLLS' : 'fits'} ${r.bottom}px`).join(' | '));
+    (!under.length)
+      ? ok(`L.5 scrolled to the bottom, nothing ends under the stamp (its top at ${st.top}px). Scrolls at 390x844: ${st.out.filter(r => r.scrolls).map(r => r.label).join(', ') || 'none'}${none.length ? '; not drawn: ' + none.join(', ') : ''}`)
+      : bad('L.5 the stamp covers a last control', JSON.stringify({ top: st.top, under }));
   }
 }
 

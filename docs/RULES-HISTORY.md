@@ -185,6 +185,34 @@ text here is the rule with its history.
 - **G.4 widened: retroactive credit also runs when a column ARRIVES for a tier that is already open** (Aiden: "yes, silently,
   once") — `retroArrived()` at boot, once per column, keyed by `prefs.retroCol`.
 
+### Amended at build 39 (batch 16, the surface: FEEDBACK-v23 §L.2–§L.5), 2026-09-14
+
+- **v18 B.31 amended (v21 G.6, restated as v23 L.4a): Customise is its own menu item and its own screen again.** Build 33 made
+  it the middle tab of Progress, reading the 2026-09-11 "merge into two tabs" instruction as covering it. G.6 called that a
+  misread on 2026-09-14 and was scheduled for build 37 (#418), then moved to 38 and to 39 without being built, so build 38
+  still showed build 33's layout. `ui/screens/customise.js` is the build-38 tab's code, moved; the menu row sits between
+  Keys and About, where it was at build 32. A4 unchanged: Progress sends a player there with `show('s-custom', …)`.
+- **Progress is GAME UNLOCKS · CUSTOMISE UNLOCKS · ACHIEVEMENTS, and the three are a partition (v23 L.4b / L.4c).** One test,
+  `achTab()` in `progress.js`: an `ACH` row with `unlocks` is on Customise unlocks and nowhere else; everything else, key
+  rows included, is on Achievements; Game unlocks is the chain (L6) and holds no achievement. **L6's parenthetical moves
+  with it** — "a cosmetic's requirement stays on the Achievements tab" becomes "is on the Customise unlocks tab" (L.4c
+  names L6). `prefs.progTab` is `unl` / `cul` / `ach`; a stored `cus` lands on `cul` with no store step (a preference, not
+  progress). The label CUSTOMISE UNLOCKS is a guess ("Rewards" retired because it does not say unlock); at 390px the three
+  wrap the tab row to two rows rather than shrinking the 11px chip type.
+- **A Progress label is white until earned, green once, never red (v23 L.2; v21 G.6's last sentence).** The red was
+  `.ach .lock em.u{color:var(--cue)}`, written at build 8 and carried into `styles/app.css` at build 18: every unearned
+  row with `unlocks` wore the cue red on its "unlocks …" label. G.6 was never built, so the rule was not scoped to one tab
+  — it did not exist. Now one rule on all three tabs.
+- **An earned Customise-unlocks row opens Customise with that item ringed (v23 L.4d; the 2026-09-05 rule).** Picked out,
+  not applied (guess). Unearned rows still go to play it; an earned Achievements row with no payout goes to play it too
+  (guess — build 38 sent it to the Customise tab with nothing to show). A payout into a group the previewed game hides
+  (Every game's lead colour) previews the first game that shows it.
+- **New: the build stamp never covers a control (v23 L.5).** `#build` is fixed to the viewport and screens scroll under
+  it; on Customise it sat on the Menu music label. Every `overflow-y:auto` scroller ends with a `::after` spacer of
+  `--stampclear` = the stamp's offset + its 11px + a 16px line (guess). A pseudo-element rather than padding because
+  bottom padding inside a scrolling flex column is not honoured by every engine (unverified on iOS — UNVERIFIED.md).
+  `.otwrap`, the result's top-10 box mid-screen, is exempt.
+
 ## Structure — the full text as of build 30
 
 `CLAUDE.md` keeps the module map. This is the paragraph-by-paragraph description it carried at build 30: the DAG, the

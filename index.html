@@ -30,11 +30,15 @@
   <!-- v18 (B.31, build 33): ONE item, THREE tabs. v15 (2.4) split Unlocks from Achievements because they are different
        things — an unlock opens something, an achievement marks something you already have — and the split survives as
        the tabs, Game unlocks first because unlocks outrank achievements (2.2). Build 29 took the second row off this
-       menu and build 33 takes the third: Customise is where the achievements one tab across pay out, so it lives with
-       them. Keys stays its own row — it is a second progression system and nothing about it is a picture of the first -->
+       menu. Build 33 took the third, Customise, into the tabs; build 39 (v21 G.6 / v23 L.4a, amending B.31) gives it back,
+       and the middle tab is the LIST of customisation unlocks. Keys stays its own row — it is a second progression
+       system and nothing about it is a picture of the first -->
   <button data-act="go" class="item glow" data-go="s-prog">Progress</button>
   <!-- v15 (5.3): "Keys", plural — three tiers over the same combinations (A.1), the shell for #372 -->
   <button data-act="go" class="item glow" data-go="s-key">Keys</button>
+  <!-- v23 (L.4a, build 39): Customise is its own menu item again, where it was at build 32 — the ability to customise is
+       "its own menu option in itself" (Aiden). ui/screens/customise.js -->
+  <button data-act="go" class="item glow" data-go="s-custom">Customise</button>
   <button data-act="go" class="item glow" data-go="s-about">About</button>
   <button data-act="go" class="item glow" data-go="s-testing" data-dev>Testing</button>
   <!-- v17 (§A.6.7): percentage complete, key 1 only. The same line the keys screen carries, on the front of the app, so
@@ -99,16 +103,16 @@
   <div class="scroll"><table><thead id="runs-h"></thead><tbody id="runs"></tbody></table></div>
 </section>
 
-<!-- v18 (B.31, build 33): PROGRESS — game unlocks, customise and achievements, three tabs, one screen
-     (ui/screens/progress.js, the merge of the old unlocks.js, achievements.js and customise.js; A4 forbids a host
-     screen importing any of them). Every line on the Game unlocks tab is read from UNLOCKS + lenLock (L6) — nothing
-     about a requirement is written here, and a cosmetic's requirement is on the Achievements tab and nowhere else, so
-     no requirement is on this screen twice. Shell, still, on the key row: what sits behind keys 2 and 3 is #372 -->
+<!-- v18 (B.31, build 33): PROGRESS — three tabs, one screen (ui/screens/progress.js, the merge of the old unlocks.js and
+     achievements.js; A4 forbids a host screen importing either). v23 (L.4, build 39): the tabs are GAME UNLOCKS ·
+     CUSTOMISE UNLOCKS · ACHIEVEMENTS and they are a partition — a cosmetic's requirement is on the middle tab and nowhere
+     else, so no requirement is on this screen twice. Every line on the Game unlocks tab is read from UNLOCKS + lenLock
+     (L6). Three labels that long wrap the tab row at 390px; the row wraps rather than the type shrinking (L.4b) -->
 <section class="screen top" id="s-prog" data-back="s-menu">
   <button data-act="back" class="back">&larr; BACK</button>
   <div class="chips ptabs" id="prog-tabs">
     <button data-act="ptab" class="chip" data-tab="unl">Game unlocks</button>
-    <button data-act="ptab" class="chip" data-tab="cus">Customise</button>
+    <button data-act="ptab" class="chip" data-tab="cul">Customise unlocks</button>
     <button data-act="ptab" class="chip" data-tab="ach">Achievements</button>
   </div>
   <div class="ptab" id="p-unl">
@@ -116,9 +120,23 @@
     <div class="hint" id="unl-lede"></div>
     <div class="unl scroll" id="unl-list"></div>
   </div>
-  <!-- the Customise tab. v14 (8.9): no eyebrow line — the game chips and the group labels under the preview say both
-       what this is and that it is per game, and it was the first thing on a screen that needed no introduction -->
-  <div class="ptab" id="p-cus" hidden>
+  <!-- v23 (L.4c / L.4d, build 39): every achievement that pays out a cosmetic, grouped by the Customise row it pays into -->
+  <div class="ptab" id="p-cul" hidden>
+    <div class="eyebrow" id="cul-hint"></div>
+    <div class="ach scroll" id="cul-list"></div>
+  </div>
+  <div class="ptab" id="p-ach" hidden>
+    <div class="eyebrow" id="ach-hint"></div>
+    <div class="chips" id="ach-g"></div>
+    <div class="ach scroll" id="achlist"></div>
+  </div>
+</section>
+
+<!-- CUSTOMISE (build 18; the middle tab of Progress from build 33 to 38; its own screen again at build 39, v21 G.6 /
+     v23 L.4a, amending v18 B.31 — content untouched). ui/screens/customise.js. v14 (8.9): no eyebrow line — the game
+     chips and the group labels under the preview say both what this is and that it is per game -->
+<section class="screen top" id="s-custom" data-back="s-menu">
+  <button data-act="back" class="back">&larr; BACK</button>
     <div class="pv" id="pv" data-g="quick-tap">
       <div class="pvqt"><div class="pad l"><div class="sq" id="pv0"></div></div><div class="pad r"><div class="sq" id="pv1"></div></div><div class="pad l up"><div class="sq" id="pv2"></div></div><div class="pad r up"><div class="sq" id="pv3"></div></div></div>
       <div class="pvdots"><b class="ld" id="pvlead"></b><b id="pvdot"></b></div>
@@ -145,12 +163,6 @@
          saying nothing about what opens it (A.1); dev unlock-all opens it so the three can be compared on the phone -->
     <div class="cgroup"><div class="clabel">Music</div><div class="chips" data-set="track" id="c-track"></div></div>
     <div class="cgroup"><div class="clabel">Menu music</div><div class="chips" data-set="menumusic" id="c-menumusic"></div></div>
-  </div>
-  <div class="ptab" id="p-ach" hidden>
-    <div class="eyebrow" id="ach-hint"></div>
-    <div class="chips" id="ach-g"></div>
-    <div class="ach scroll" id="achlist"></div>
-  </div>
 </section>
 
 <!-- the key (build 22, v14 9.2-9.7). Option A: the key dead centre, seven games on a ring, a root per game growing
@@ -181,7 +193,7 @@
        build, the device and the last run filled in. An <a>, so the link does its own work; data-act="none" is only the
        click sound — nothing here knows what a mail client is, and nothing is sent without the tester's own send button -->
   <a class="item sub" id="feedback" data-act="none" href="#">Send feedback</a>
-  <div class="hint">v0.38 · pro and author placeholders · two answers to 37 · 14 sept 2026</div>
+  <div class="hint">v0.39 · batch 16 · the surface · 14 sept 2026</div>
 </section>
 
 <section class="screen" id="s-testing" data-back="s-menu" data-dev>
@@ -269,12 +281,12 @@
 
 <script type="module" src="./boot.js"></script>
 
-<div id="build">v0.38</div>
+<div id="build">v0.39</div>
 <button id="update">New build available — tap to reload</button>
 <script>
 // build check: version.json is fetched with no-store, so a stale cached page still learns a newer build exists
 (function(){
-  const BUILD="38";
+  const BUILD="39";
   async function check(){
     try{
       const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});

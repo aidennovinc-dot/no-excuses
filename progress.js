@@ -152,6 +152,10 @@ const ACH = ACH_ROWS.map(a=>{ const o=Object.assign({},a,{test:ACH_TEST[a.id]});
    This file cannot import progress/key.js (it imports this one), so screens that need the key rows read them from there. */
 const achAll=()=>ACH;
 const achById=id=>ACH.find(a=>a.id===id);
+/* v23 (L.4c, build 39): which Progress tab an achievement lives on — the ONE test, so the three tabs are a partition. A row
+   that pays out a cosmetic is on Customise unlocks and nowhere else; every other row, key rows included, is on Achievements.
+   Game unlocks is the chain (L6) and lists no achievement. */
+const achTab=a=>a&&a.unlocks?'cul':'ach';
 const got=()=>store.ach;
 /* v15 (2.5): `live` restricts the pass to the rows flagged live:1 in config/achievements.js — the ones whose test can only
    become more true as a run goes on — and is run from run/run.js on every live tick, so an achievement earned mid-run is in
@@ -213,4 +217,4 @@ function setPendingGoal(v){ pendingGoal=v; }
    chest. progress/key.js asks this through modesOpen(); nothing reads store.unlock for the chest itself. */
 function modeCount(){ let open=0, total=0; for(const g in GAMES) for(const d of GAMES[g].modes){ total++; if(modeOpen(g,d,true)) open++; } return { open, total }; }
 
-export { ACH, Scores, UNLOCKS, achAll, achById, bankLen, chalRun, checkAch, checkUnlocks, gameOpen, goalFor, got, isNew, isOpen, lenLock, lenNeed, lenNextLive, lenNextOf, lenOpen, lensOf, markSeen, modeCount, needFor, newMark, newPlay, nextAch, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, tierMin, tierOf, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict, verdictKey };
+export { ACH, Scores, UNLOCKS, achAll, achById, achTab, bankLen, chalRun, checkAch, checkUnlocks, gameOpen, goalFor, got, isNew, isOpen, lenLock, lenNeed, lenNextLive, lenNextOf, lenOpen, lensOf, markSeen, modeCount, needFor, newMark, newPlay, nextAch, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, tierMin, tierOf, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict, verdictKey };

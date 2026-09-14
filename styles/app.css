@@ -30,7 +30,13 @@
    shell — index.html, core/ — the root, type, buttons, chips, the screen frame, tables, the build bar
    ================================================================== */
   /* No Excuses — styles (build 18, refactor stage 4). Moved out of index.html as one block; the sections come next. */
-  #build{position:fixed;left:0;right:0;bottom:max(6px,env(safe-area-inset-bottom));text-align:center;font:500 11px/1 var(--mono);color:var(--mute);pointer-events:none;z-index:50;opacity:.7}
+  #build{position:fixed;left:0;right:0;bottom:var(--stampat);text-align:center;font:500 var(--stamp)/1 var(--mono);color:var(--mute);pointer-events:none;z-index:50;opacity:.7}
+  /* v23 (L.5, build 39): THE STAMP NEVER COVERS A CONTROL. #build is fixed to the viewport while a screen scrolls under it,
+     so on Customise the v0.38 stamp sat on the Menu music label. Every scroller ends with the stamp's offset, its height
+     and one line more of empty space (guess: a 16px line), so the last thing in it clears the stamp when scrolled to the
+     bottom. A pseudo-element, not padding: bottom padding inside a scrolling flex column is not honoured by every engine,
+     and a flex item is. .otwrap (the result's top-10 box) sits mid-screen and is left out. The gate scrolls each one. */
+  #s-pick::after,#s-about::after,#s-over::after,#s-custom::after,.scroll::after{content:"";display:block;flex:none;height:var(--stampclear)}
   #update{display:none;position:fixed;left:16px;right:16px;bottom:max(28px,calc(env(safe-area-inset-bottom) + 24px));z-index:60;padding:14px;border-radius:12px;background:var(--ok);color:#000;font:800 14px var(--display);text-align:center;border:0}
   #update.on{display:block}
   :root{
@@ -38,6 +44,7 @@
     --panel:color-mix(in srgb,var(--ground) 94%,#fff); --line:color-mix(in srgb,var(--ground) 86%,#fff); --sq:color-mix(in srgb,var(--ground) 90%,#fff);
     --sq-live:#FFFFFF; --cue:#C8322A; --miss:#B3261E; --ok:#3DD68C;
     --glow:rgba(232,230,225,.30);
+    --stamp:11px; --stampat:max(6px,env(safe-area-inset-bottom)); --stampclear:calc(var(--stampat) + var(--stamp) + 16px);
     --title:"Syncopate","Michroma",var(--display); --display:"Archivo",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
   }
   *{box-sizing:border-box;margin:0;padding:0}
@@ -466,7 +473,7 @@
      this file, which a .chips/.scroll display rule would otherwise outrank (the v13 3.1 trap). */
   .ptabs{margin-bottom:2px}
   .ptab{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;min-height:0}
-  #p-ach{gap:12px}
+  #p-ach,#p-cul{gap:12px}
 
   /* the same row shape as the achievements list, on purpose — they are two halves of one idea and used to be one screen.
      Same no-sideways-axis rule as v14 8.2: an accidental left-swipe must not leave the rows off-centre */
@@ -481,6 +488,8 @@
   .unl .lock>span:first-child{color:var(--mute)}
   .unl .lock small{color:var(--ok)}
   .unl .done>span:first-child,.unl .done em{color:var(--ok)}
+  /* v23 (L.2, build 39): a label is white until it is earned and green once it is — on every tab, never red */
+  .unl .lock em{color:var(--ink)}
   .unl .urow:active{background:color-mix(in srgb,var(--ink) 6%,transparent)}
   #unl-lede{width:min(92vw,440px);margin:0 auto 4px;text-align:left;line-height:1.5}
 
@@ -502,7 +511,14 @@
   /* v14 (8.3): the game name leads the title, so it sits before the name and not after it */
   .ach .a>span:first-child i{font-style:normal;color:var(--mute);font-size:9px;letter-spacing:.16em;margin-right:8px;text-transform:uppercase}
   .ach em{font-style:normal;color:var(--mute);font-size:10px;letter-spacing:.12em;text-transform:uppercase;align-self:start}
-  .ach .lock em.u{color:var(--cue)}
+  /* v23 (L.2, build 39): this was `.ach .lock em.u{color:var(--cue)}` from build 8 — an unearned "unlocks …" label in the cue
+     red, and red means a miss everywhere else in the game. White until earned, green once (v21 G.6, never built until now) */
+  .ach .lock em{color:var(--ink)}
+  /* v23 (L.4d): a Customise unlocks row leads with what it pays out, white until earned and green once; the achievement and
+     its criterion sit under it, the game name leading them the way it leads a title (8.3) */
+  .ach .a.cu.lock>span.rw{color:var(--ink)}
+  .ach .a.cu small i{font-style:normal;color:var(--mute);font-size:9px;letter-spacing:.16em;margin-right:8px;text-transform:uppercase}
+  .ach .a.cu .rw i.sw{display:inline-block;width:10px;height:10px;vertical-align:-1px;margin:0 0 0 6px;border:1px solid var(--line)}
   .ach .done>span:first-child,.ach .done em{color:var(--ok)}
   .ach .done .pbar i{background:var(--ok)}
   .ach .a small.go{color:var(--ink);opacity:.7}
@@ -649,9 +665,9 @@
    customise — ui/screens/customise.js
    ================================================================== */
   /* customise */
-  /* v18 (B.31, build 33): Customise is a TAB now, so the tab scrolls rather than the screen — the tab row above it has
-     to stay put, which is what the whole screen scrolling would have taken away */
-  #p-cus{gap:12px;flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-bottom:18px}
+  /* v18 (B.31, build 33) made Customise a TAB that scrolled inside itself; v23 (L.4a, build 39) makes it its own screen
+     again, so the SCREEN scrolls, as it did at build 32 (.screen.top gives it the top alignment and padding) */
+  #s-custom{gap:12px;overflow-y:auto;overscroll-behavior:contain}
   .pv{width:min(84vw,320px);aspect-ratio:16/10;background:var(--ground);border:1px solid var(--line);position:relative;overflow:hidden;pointer-events:none;flex:none}
   /* v9: every preview has the same finger as the pre-game demo, and shows the tap and what comes of it */
   #pvg{position:absolute;left:0;top:0;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;border:2px solid var(--ink);outline:2px solid #0a0a0b;background:color-mix(in srgb,var(--ink) 18%,transparent);opacity:0;transition:left .4s cubic-bezier(.3,.7,.3,1),top .4s cubic-bezier(.3,.7,.3,1),opacity .2s;box-shadow:inset 0 0 0 2px #0a0a0b;z-index:5}

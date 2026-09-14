@@ -4,6 +4,7 @@ import "./menu.js";
 import "./pick.js";
 import "./board.js";
 import "./progress.js";
+import "./customise.js";
 import "./key.js";
 import "./about.js";
 import "./testing.js";
