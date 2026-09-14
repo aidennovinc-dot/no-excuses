@@ -100,7 +100,10 @@ function lenNextLive(g,d,s){ const n=lenNextOf(g,d,s); if(!n) return null;
 function goalFor(g,d,s){ if(prefs.allOpen) return null; const u=unlocked(); const x=UNLOCKS.find(x=>!u[x.key]&&x.where.g===g&&(!x.where.d||x.where.d===d)&&(!x.where.s||x.where.s===s)); if(x) return x;
   const c=GC(g,d), i=c.lens.indexOf(s); if(i>=0&&i<c.lens.length-1){ const nxt=c.lens[i+1], L=lenLock(g,d,nxt); if(L){ const test=(LEN_TEST[g+':'+d]||[])[i+1]; return { key:g+':'+d+':'+nxt, need:L.need, where:{g,d,s}, live:1, len:L, test:r=>r.g===g&&r.d===d&&r.s===s&&(test?test(r):true) }; } } return null; }
 const chalAt=(g,d)=>!!CHAL&&CHAL.g===g&&CHAL.d===d;
-const modeOpen=(g,d,noChal)=>!!prefs.allOpen||(!noChal&&chalAt(g,d))||g==='quick-tap'&&d==='two'||!!unlocked()[g+':'+d]||!UNLOCKS.some(u=>u.key===g+':'+d);
+// v23 (§M.4, build 40): a mode open on a brand-new profile — Quick Tap · Two, and any mode the chain has no row for. The meter's
+// modes band leaves these out (METER.freeStart), so a new profile reads 0% rather than 1 of 13
+const freeMode=(g,d)=>g==='quick-tap'&&d==='two'||!UNLOCKS.some(u=>u.key===g+':'+d);
+const modeOpen=(g,d,noChal)=>!!prefs.allOpen||(!noChal&&chalAt(g,d))||!!unlocked()[g+':'+d]||freeMode(g,d);
 const isOpen=(g,d)=>modeOpen(g,d,false);
 // build 14 (S2): a run that only the challenge link let happen — a mode or length still locked on this profile — is tagged chal:1 at finish and never reaches a board or an achievement
 const chalRun=(g,d,s)=>chalAt(g,d)&&(!modeOpen(g,d,true)||!!lenLock(g,d,s,true));
@@ -215,6 +218,20 @@ function setPendingGoal(v){ pendingGoal=v; }
 /* v21 (G.3, build 37): how much of the unlock chain (L6) is open — every MODE, because chest 1 waits for "every game mode
    being unlocked". Read without the challenge-link exception, so a link that opened one mode for one run cannot open a
    chest. progress/key.js asks this through modesOpen(); nothing reads store.unlock for the chest itself. */
-function modeCount(){ let open=0, total=0; for(const g in GAMES) for(const d of GAMES[g].modes){ total++; if(modeOpen(g,d,true)) open++; } return { open, total }; }
+// build 40 (§M.4): `free` is how many of them a brand-new profile already has — the meter's modes band counts past those
+function modeCount(){ let open=0, total=0, free=0; for(const g in GAMES) for(const d of GAMES[g].modes){ total++; if(freeMode(g,d)) free++; if(modeOpen(g,d,true)) open++; } return { open, total, free }; }
 
-export { ACH, Scores, UNLOCKS, achAll, achById, achTab, bankLen, chalRun, checkAch, checkUnlocks, gameOpen, goalFor, got, isNew, isOpen, lenLock, lenNeed, lenNextLive, lenNextOf, lenOpen, lensOf, markSeen, modeCount, needFor, newMark, newPlay, nextAch, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, tierMin, tierOf, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict, verdictKey };
+/* v23 (L.8f / G.8, build 40): Testing's GAMES CHEST switch and reset (S5, dev only). The Games chest opens on every mode in the chain,
+   so its switch writes every mode row of UNLOCKS into the store and remembers what the store held — switching off puts exactly that
+   back — and its reset takes every mode row out again. Mode rows only ('game:mode'): a length or Practice from is not what the chest
+   counts. It lives here, beside the chain, because nothing in progress/key.js may touch store.unlock (G.3's assertion). The snapshot
+   rides in prefs.devKeys.games, which core/store.js shape-checks only while BUILD_FLAGS.dev is on. */
+const modeRows=()=>UNLOCKS.map(u=>u.key).filter(k=>k!=='sequence:practice'&&k.split(':').length===2);
+const devModesOn=()=>!!(prefs.devKeys&&prefs.devKeys.games);
+function devModesAll(on){ const u=unlocked(), dk=Object.assign({},prefs.devKeys);
+  if(on&&!dk.games){ dk.games=modeRows().filter(k=>u[k]); for(const k of modeRows()) if(!u[k]) u[k]=Date.now(); }
+  else if(!on&&dk.games){ const keep=new Set(dk.games); for(const k of modeRows()) if(!keep.has(k)) delete u[k]; delete dk.games; }
+  prefs.devKeys=dk; save(); return devModesOn(); }
+function devModesReset(){ const u=unlocked(); for(const k of modeRows()) delete u[k]; if(prefs.devKeys) delete prefs.devKeys.games; save(); }
+
+export { ACH, Scores, UNLOCKS, achAll, achById, achTab, bankLen, chalRun, checkAch, checkUnlocks, devModesAll, devModesOn, devModesReset, freeMode, gameOpen, goalFor, got, isNew, isOpen, lenLock, lenNeed, lenNextLive, lenNextOf, lenOpen, lensOf, markSeen, modeCount, needFor, newMark, newPlay, nextAch, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, tierMin, tierOf, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict, verdictKey };

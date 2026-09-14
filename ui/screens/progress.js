@@ -30,14 +30,17 @@ import { sel } from "../../core/state.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, lenName } from "../../games/registry.js";
 import { Scores, UNLOCKS, achAll, achById, achTab, gameOpen, got, isOpen, lenLock, lenOpen, markSeen, newMark, setPendingAim, unlockHtml, unlockName, unlocked } from "../../progress.js";
-import { keyAch, keyState, tierOpen } from "../../progress/key.js";
+import { chestOpen, keyAch, keyState, tierOpen } from "../../progress/key.js";
+import { toast } from "../toast.js";
+import { TOAST } from "../../config/copy.js";
 
 // v18 (B.25): the key achievement sets live in progress/key.js (progress.js cannot import it); this screen reads both lists
 const allAch=()=>achAll().concat(keyAch());
 const findAch=id=>achById(id)||keyAch().find(a=>a.id===id);
 // the second and third key sets are not shown before chest 1 (A.1)
 // build 38: each key's achievement set waits for that key's own chest — the Pro set for chest 1, the Author set for the Pro chest
-const groupShown=t=>t==='key2'?tierOpen('pro'):t==='key3'?tierOpen('author'):true;
+// build 40 (L.10a): and key 1's set waits for the Games chest, which is what reveals key 1
+const groupShown=t=>t==='key1'?tierOpen('clear'):t==='key2'?tierOpen('pro'):t==='key3'?tierOpen('author'):true;
 import { define } from "../actions.js";
 import { chips } from "../chips.js";
 import { register, show } from "../router.js";
@@ -59,14 +62,15 @@ function renderUnlocks(){
   for(const g in GAMES){ if(!gameOpen(g)) continue; for(const d of GAMES[g].modes) for(const s of GC(g,d).lens){ const L=lenLock(g,d,s); if(!L&&GC(g,d).lens.indexOf(s)===0) continue;
     const name=`${GAMES[g].name}${MODE_NAME[d]?' · '+MODE_NAME[d]:''} · ${lenName(g,s,d)}`;
     lens.push(row('u'+(L?' lock':' done'),name,L?L.need:'',L?UNLOCKS_SCREEN.locked:UNLOCKS_SCREEN.done,` data-g="${g}" data-d="${d}" data-s="${s}"`)); } }
-  const k=keyState();
+  // v23 (L.10a, build 40): key 1 is quiet until the Games chest — the key row says what opens it, with no count
+  const k=keyState(), kq=!tierOpen('clear');
   $('#unl-list').innerHTML=
     `<h4>${UNLOCKS_SCREEN.games}</h4>${chain}`+
     `<h4>${UNLOCKS_SCREEN.lens}</h4>${lens.join('')||''}`+
     `<h4>${UNLOCKS_SCREEN.keys}</h4>`+
     // v17 (B.9): the count in the key line is read from the same keyState() the row's own figure comes from — a literal
     // would have gone stale the day Sequence lost 5 keys, which is the day it did
-    row('u key'+(k.done>=k.total?' done':' lock'),UNLOCKS_SCREEN.keys,T(UNLOCKS_SCREEN.keyLine,{n:k.total}),`${k.done}/${k.total}`,' data-key="1"');
+    row('u key'+(!kq&&k.done>=k.total?' done':' lock'),UNLOCKS_SCREEN.keys,kq?PROGRESS_SCREEN.keyLocked:T(UNLOCKS_SCREEN.keyLine,{n:k.total}),kq?UNLOCKS_SCREEN.locked:`${k.done}/${k.total}`,' data-key="1"');
   markSeen(fresh);
 }
 
@@ -144,7 +148,8 @@ function setTab(t,opts){ const tab=tabOf(t); prefs.progTab=tab; save(); opts=opt
   if(opts.ach&&tab!=='unl'){ const r=$(`#${tab}-${opts.ach}`); if(r){ r.scrollIntoView({block:'center'}); r.classList.add('flash'); } } }
 
 register('s-prog',{ onShow(o){ const a=o.ach?findAch(o.ach):null; if(a&&achTab(a)==='ach') A.g=a.g==='all'?'all':a.g;
-  $('#unl-hint').textContent=PROGRESS_SCREEN.unlHint; $('#cul-hint').textContent=PROGRESS_SCREEN.culHint; $('#ach-hint').textContent=PROGRESS_SCREEN.achHint;
+  // v23 (L.11a, build 40): the Customise unlocks tab is NOT gated — it is the list of what can be earned — but it says what opens Customise until it opens (guess)
+  $('#unl-hint').textContent=PROGRESS_SCREEN.unlHint; $('#cul-hint').textContent=chestOpen('games')?PROGRESS_SCREEN.culHint:PROGRESS_SCREEN.culLocked; $('#ach-hint').textContent=PROGRESS_SCREEN.achHint;
   $('#unl-lede').textContent=UNLOCKS_SCREEN.lede;
   setTab(a?achTab(a):o.tab,o); } });
 define({
@@ -158,7 +163,9 @@ define({
   /* an EARNED row that paid out a cosmetic opens Customise — its own screen again since build 39 — with that game previewed
      and the item picked out (v11; v23 L.4d). Every other row, earned or not, goes where it is played: build 38 sent an earned
      row with no payout to the Customise tab with nothing to show, and that tab is gone (guess: to play it, as the hint says) */
+  /* v23 (L.11a, build 40): Customise is locked until the Games chest — an earned row still banks and still shows green, and a tap on it
+     says what opens Customise instead of opening a screen that is not open yet */
   ach(b){ const a=findAch(b.dataset.ach); if(!a) return 'click';
-    if(got()[a.id]&&a.unlocks){ show('s-custom',{g:a.g==='all'?null:a.g,unlocks:a.unlocks}); return 'click'; }
+    if(got()[a.id]&&a.unlocks){ if(!chestOpen('games')){ toast(TOAST.cusLocked,'','',true); return 'pick'; } show('s-custom',{g:a.g==='all'?null:a.g,unlocks:a.unlocks}); return 'click'; }
     if((a.g!=='all'||a.id==='fullset')&&a.tier!=='secret') jumpTo(a); return 'click'; },
 });

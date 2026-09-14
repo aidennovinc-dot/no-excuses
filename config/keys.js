@@ -19,9 +19,10 @@
    cleared root wears; `dim`, the unlit line; `ground`, behind the ring. Circuit is recoloured — Aiden's one instruction was
    "not gold" — and wears Frost's white-blue as the trace (guess), so the page's copper is nowhere in the app.
 
-   NEITHER CIRCUIT NOR THORN IS SEEN BEFORE CHEST 1 (§A.1). The key screen shows one tier until mapOpen() (#411: the
-   chest, OR Testing's OPEN EVERYTHING, OR Supporter — both dev-only, stripped from release by BUILD_FLAGS.dev), so a
-   first-timer meets one target per game rather than three, and neither of these loops can even be asked for.
+   NEITHER CIRCUIT NOR THORN IS SEEN BEFORE ITS CHEST (§A.1, as narrowed by v21 G.1 / G.2: the keys are on the strip, their
+   numbers are not). Since build 40 (v23 §L.10) each tier opens with the chest config/chests.js says reveals it — key 1 with the
+   Games chest, Pro with the Key chest, Author with the Pro chest — through tierOpen() (#411: the chest, OR Testing's OPEN
+   EVERYTHING, OR Supporter — both dev-only, stripped from release by BUILD_FLAGS.dev).
 
    KEY_ART is the glyph per tier, and it gets progressively more elaborate as the difficulty rises (5.3): a plain bow
    with roots, a ringed bow with frost spurs, then the Author's rosette with wards and thorns. Same 48x48 box, so the

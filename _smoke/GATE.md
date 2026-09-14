@@ -364,3 +364,41 @@ B.28, B.30 (the locked line lands on the flashed Customise-unlocks row), B.32 an
 build-35 source reads include `customise.js`; F.1's clamp lets Game select scroll past the map by one flex gap and the stamp
 spacer and requires the spacer to be there; F.4's two `prefs.col` writers are in `customise.js`; section 7's jump row is
 Clean · Sprint · Two.
+
+**Build 40 (batch 16, four chests and the 0–400 meter — FEEDBACK-v23 §L.8 a–c f, §L.10 a–c e, §L.11 a c, §L.12, G.8 extended)** —
+**L.10**: `config/chests.js` holds exactly games · key · pro · thorns with what each needs and reveals, data only (A2); nothing in the
+app's code, markup, copy or stylesheet names a chest by number, and G.3's gate (`glgate`, `gateOff`, "unlock all games first"), both
+asks, `frontPct`, `prefs.pro` and `mapOpen` are gone. **L.10e — STRICTLY SEQUENTIAL**: across 256 states of opened chests × modes open ×
+whole keys no chest is ready while the chest before it is shut, and one behind a shut chest always reads `before`; opening the Games chest
+on a profile whose bests beat every bar on every tier banks exactly the key-1 bars — nothing on Pro or Author, the retro marks bare —
+takes the meter 100 → 200, leaves the Key chest ready, and a second open does nothing. **L.8a / L.10b — ONE METER**: `meter()` in
+`progress/key.js`, read by the menu, the map and the key screen, none of which reads `keyPct` or `frontPct`; a new profile 0, one mode past
+the start 8 (§M.4), every mode 100; with every bar on every key banked underneath it still reads 100 before the Games chest and 200 before
+the Key chest, 300 before the Pro chest and 400 after it; half of key 1 reads 150. **L.8b**: with every mode unlocked the Games chest is
+ready on the map and there is no ask box in the page; its tap opens the key screen and the chest opens there by itself — stored, its
+already-beaten key-1 bars credited, the meter counted up to `meter()` and written as `meterSeen`, one chest sound, no toast; the next
+visit opens nothing; back on the map it is open with CUSTOMISE · THE KEY beside it in its own row and the Key chest reads
+`N% · opens at 200%`. **Both drivers**: a live clear that makes key 1 whole interrupts the result as always, the Key chest opens inside
+the interlude (Pro revealed) and the result is back on time. **L.11a**: Customise crossed out with "open the Games chest" and a tap stays
+on the menu; the defaults apply (white target, stock background, default tap sound) while the stored choices are kept; the Customise
+unlocks tab is not gated, says "open the Games chest to use them", and its earned row does not open a locked screen; once the chest is
+open the strike wipes, the row is green until Customise first opens, the stored choices apply, and a colour earned while it was locked is
+first-seen green there. **L.12**: `keyChest()` is exported and the key screen reads no chest flag of its own; a whole key 1 with its chest
+open carries `key-chest` on the hub, which lands on the map with the Key chest flashed and open; a key in progress carries none.
+**L.8f / G.8 extended**: eight per-chest Testing buttons; the Games switch takes the meter to 100 and the chest to ready, the Key switch
+to 200, and each switch off restores what the profile held; each reset backs its chest out; "set meter to N%" reads 250 and off reads the
+profile again. **Store v5**: `up5` on the ladder and `chests` shape-checked; a v4 record with chest 1 and chest 2 open loads with the
+Games, Key and Pro chests open and the retired fields dropped. **§M.2**: before the Games chest a run past a key-1 bar banks nothing and
+hands back no interlude, the tile outline stays at 0, no key set is listed and the key screen shows only the modes count.
+
+**Amended back or on, both ways:** 8.7's brand-new profile has the Games chest open (Customise waits for it); 8.10 counts 22 Testing
+controls; A.6's count line reads the meter (100% under OPEN EVERYTHING); B.21 reads each menu row's label alone; B.23 counts the chests
+by name; B.24 — the locked chest is the Games chest with the chain's count and all four are on the map, and the openable chest is the Key
+chest, opening on its key screen with no ask; B.31 / #411 — before the Games chest all three keys are crossed out, key 1 with "open the
+Games chest", and four chests either way; B.32, B.30 and F.4 open the Games chest before visiting Customise, and F.4 reads store v5; B.27
+opens Games and Key where it opened chest 1; B.15–B.17 reversed into the retirement check, the meter on the menu and the four-chest
+column; B.25 — no key set before the Games chest, The key after it, Pro after the Key chest; B.26 — seven animation buttons named by chest,
+the demo resting as the chest's own state; G.8 per chest; G.1 / G.2 — four chests, all three keys crossed out before Games, the Key chest
+reading the meter after it; G.3 reversed — no gate and no `gated`, the Games chest ready once every mode is open; G.4 and #426 B open the
+Key chest on its key screen, with no toast any more; D.4 counts the meter up from `meterSeen`; 38.2's tier, rung and set lines and its
+chests by name; L.4a's menu regex takes `data-act="custom"`; L.2 / L.4d's profile has the Games chest open.

@@ -213,6 +213,36 @@ text here is the rule with its history.
   bottom padding inside a scrolling flex column is not honoured by every engine (unverified on iOS — UNVERIFIED.md).
   `.otwrap`, the result's top-10 box mid-screen, is exempt.
 
+### Amended at build 40 (batch 16, four chests and the 0–400 meter: FEEDBACK-v23 §L.8 a–c f, §L.10 a–c e, §L.11 a c, §L.12, G.8 extended), 2026-09-14
+
+- **v18 B.19 / B.20 and v21 G.1–G.4 AMENDED (L.10, quoting all six): FOUR chests, named by what opens them — Games, Key, Pro, Thorns —
+  never numbered.** Was: three chests, chest n needing key n whole, chest 1 also waiting for every game mode behind a gate on the
+  connector (G.3). Now the all-modes condition IS the Games chest, and the gate symbol, "unlock all games first" and `prefs.gateOff` are
+  gone. The chests after it keep "open the previous chest" (G.1). Strictly sequential, asserted (L.10e). Aiden's reason (17:5x): the
+  100%-but-locked state was awkward, and the first hour of play had no chest it could open. `00_Control/DECISIONS.md`'s 2026-09-10 chest
+  entry carries a dated "narrowed by batch 16" line.
+- **L6 quoted (L.10a): the chain is untouched, and opens a chest.** `config/unlocks.js` and `progress/rules.js` still read no chest
+  (asserted, as G.3 asserted it); `modeCount()` gained `free`, the modes a new profile starts with, for the meter's first band.
+- **v17 §A.1, as G.1 / G.2 narrowed it — key 1 joins Pro and Author behind a chest (L.10a).** Before the Games chest key 1 is crossed out
+  with "open the Games chest", counts nothing, interrupts nothing, fills no outline and lists no achievement set; its already-beaten bars
+  bank silently when the chest opens (G.4, extended one chest earlier). §M.2 went unanswered and L.10a was built as written.
+- **v18 B.15 / B.16 / B.17 RETIRED (L.8a / L.8b).** "67% complete" re-based to 30 when the player stepped into Pro, and the step was asked
+  for and warned. Now there is one meter, 0–400, never reset: modes, then key 1, Pro and Author, each band counting only once its chest
+  is open. `frontPct()`, `prefs.pro` and both asks are gone. The menu line keeps its `N% complete` (guess); A.6.5 as amended by B.15 —
+  "the percentage alone" — still holds.
+- **v20 D.4 amended (L.8e): one last-painted figure, `prefs.meterSeen`, not one per key** — the count-up fires on every rise, in any band.
+- **New (L.8b): a ready chest opens on its key screen by itself** — plain in this build (lid up, its words, the meter counting up); the
+  ceremony is build 41's.
+- **v21 G.6 / v23 L.4a narrowed (L.11a): Customise is locked until the Games chest opens.** Crossed out (v17: crossed, not greyed) with
+  "open the Games chest" under it; green until first opened (L8, v20 D.5); defaults apply meanwhile and every stored choice is kept. The
+  Customise unlocks tab is not gated.
+- **New (L.12): a whole key taps through to its chest** — `keyChest()` on `progress/key.js`, one predicate, no chest read on the key
+  screen (A4).
+- **v21 G.8 extended (L.8f, S5): Testing's switches and resets are per chest, four of each, plus "set meter to N%".**
+- **v17 §A.3 unchanged in substance:** free music choice was "chest 2's"; it is the Pro chest's, by name.
+- **The store is v5** — `up5`: `chest1` → Key and Games, `chest2` → Pro, `chest3` → Thorns; `pro`, `gateOff`, `pctSeen` dropped. `RUN_SCHEMA`
+  unchanged (4).
+
 ## Structure — the full text as of build 30
 
 `CLAUDE.md` keeps the module map. This is the paragraph-by-paragraph description it carried at build 30: the DAG, the

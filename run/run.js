@@ -17,7 +17,7 @@ import { P1C, P2C } from "../config/theme.js";
 import { $, T, pWho } from "../core.js";
 import { emit } from "../core/events.js";
 import { VS, sel } from "../core/state.js";
-import { prefs, save, store } from "../core/store.js";
+import { look, prefs, save, store } from "../core/store.js";
 import { makeTimers, tapTime } from "../core/timers.js";
 import * as hud from "../games/_shared/hud.js";
 import { ENGINES, GAMES, GC, SHARED2, VERSUS, lenName, versusOf } from "../games/registry.js";
@@ -82,7 +82,7 @@ function pbShow(){ const g=GAMES[sel.game], pb=Scores.best(sel.game,sel.diff,sel
   else { gh.textContent=T(HUD.best,{score:scoreTxt(sel.game,pb,sel.diff,sel.secs)}); gh.classList.add('on'); } }
 function makeCtx(){ const id=R.id; const timers=makeTimers(()=>R.on&&R.id===id);
   // v15 (4.5): `opens` joins practice and scale as a Sequence-only extra on the contract's set — how many notes a versus starts on
-  return { root:$('#game'), game:sel.game, cfg:GC(sel.game,sel.diff,sel.secs), mode:sel.diff, len:sel.secs, players:sel.vs, practice:sel.practice||0, opens:sel.opens||3, scale:sel.scale, rateMode:prefs.rate, timers, audio:Snd, rand:Math.random,
+  return { root:$('#game'), game:sel.game, cfg:GC(sel.game,sel.diff,sel.secs), mode:sel.diff, len:sel.secs, players:sel.vs, practice:sel.practice||0, opens:sel.opens||3, scale:sel.scale, rateMode:look('rate'), timers, audio:Snd, rand:Math.random,
     /* v16 (1.5): a round-based engine says how far into its finish it is — the final round of a Set, a Streak budget past
        80% — and the music reads it. A timed run needs nothing here: the clock already tells audio.js. MUSIC ONLY (A.1). */
     emit(name,data){ if(R.id!==id) return; if(name==='finish') finish(data); else if(name==='live'){ if(eng&&eng.fin) R.fin=Math.max(0,Math.min(1,eng.fin()||0)); liveCheck(data); } } }; }

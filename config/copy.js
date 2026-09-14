@@ -22,8 +22,12 @@ export const TOAST = {
   mig32:'Build 32 · {n} old Go / No-go run{s} retired — every tap scores over the 180ms gate now and a Streak counts targets',
   // unlock wording (v11): "Unlock game: Dots" for a game, "Unlock: Dash" for a mode or length
   unlock:'Unlock: {name}', unlockGame:'Unlock game: {name}', unlockPractice:'Unlock: Practice from',
-  // v21 (G.8, build 37): Testing's per-key switches (S5)
+  // v21 (G.8, build 37): Testing's per-key switches (S5). v23 (L.8f, build 40): per CHEST now — four of them — and the meter field
   devKeyOn:'{key} · every bar cleared · switch off to go back', devKeyOff:'{key} · back to what it held', devKeyReset:'{key} · reset · bars, chest and its achievements',
+  devModesOn:'Games chest · every mode unlocked · switch off to go back', devModesOff:'Games chest · the modes back to what they were', devModesReset:'Games chest · reset · every mode locked again, the chest shut',
+  devMeterSet:'Meter shows {n}% · nothing earned, only the override stored', devMeterOff:'Meter override off · it reads what the profile earned',
+  // v23 (L.11a, build 40): Customise waits for the Games chest
+  cusLocked:'Open the Games chest first<small>unlock every game mode, then open it from Keys</small>',
 };
 // what an achievement opens, as a line under it
 export const UNLOCK_WORD = { wheel:'unlocks the colour wheel', bg:'unlocks {bg} background', snd:'unlocks {v} sounds', item:'unlocks {word}' };
@@ -85,7 +89,8 @@ export const VERDICT = { fail:'Run over — go again.', nothing:'Nothing landed.
    `nextAch` is only ever reached once the whole chain is finished (progress.js nextGoal). */
 /* v17 (B.20, build 29): `note` is gone. "play one run · the rest opens" sat under a menu whose every other item was
    already struck through — the strikes say it, and the first run un-strikes them one at a time (v15 6.2). */
-export const MENU = { next:'<em>Next unlock</em><span>{need} → {name}</span>', nextAch:'<em>Next achievement</em><span>{need} → {name}</span>' };
+// v23 (L.11a, build 40): `cusNeed` sits under the crossed-out Customise row until the Games chest opens
+export const MENU = { next:'<em>Next unlock</em><span>{need} → {name}</span>', nextAch:'<em>Next achievement</em><span>{need} → {name}</span>', cusNeed:'open the Games chest' };
 /* v15 (2.4): the Unlocks screen — the chain on its own page, split off from Achievements. Everything that OPENS something
    lives here; Achievements keeps the rest. What sits behind keys 2 and 3 is register #372 and is not decided, so the key
    line below says only what is true today. */
@@ -108,21 +113,32 @@ export const UNLOCKS_SCREEN = { title:'unlocks', hint:'tap a locked row to see w
    tab and nowhere else. `culGroup` heads its groups, one per Customise row a payout lands in (guess on the words). */
 export const PROGRESS_SCREEN = { title:'progress', unl:'Game unlocks', cul:'Customise unlocks', ach:'Achievements',
   unlHint:'tap a locked row to see what it takes', culHint:'tap an earned one to use it', achHint:'tap one to go play it',
+  // v23 (L.11a, build 40): the tab is not gated, but until the Games chest it says what opens Customise (guess); the key row there waits for it too
+  culLocked:'open the Games chest to use them', keyLocked:'open the Games chest',
   culGroup:{ sq:'Target colours', lead:'Lead colours', cut:'Cut pieces', bg:'Backgrounds', snd:'Tap sounds', scale:'Scales', rate:'Taps per second', wheel:'Colour wheel' } };
 /* v17 (B.23 / B.24, build 29): the game-select grid says what order the games open in, and where that order ENDS.
    The chest needs key 1 — every clearance bar cleared — and A.1 forbids anything about pro or author appearing before
    it is opened, so a locked chest says what it takes in key-1 terms and an opened one says only what it gave. */
-export const GRID = { chest:'Chest', chestLocked:'clear all {n} · {done} so far', chestOpen:'tap to open',
-  chestDone:'Gauntlet — coming soon', chestToast:'Chest 1 opened · Gauntlet is not built yet',
-  // v18 (B.19, build 32): the second and third chests, seen only once chest 1 is open (A.1). A locked one names its key
-  // and nothing else; an opened one says what it gave (A.3: the cosmetic set; A.4: the hard Gauntlet, not built)
-  chest2:'Pro chest', chest3:'Author chest', chest2Done:'Cosmetics — every colour and track', chest3Done:'Hard Gauntlet — coming soon',
-  chest2Toast:'Pro chest opened · every colour, background and track is yours', chest3Toast:'Author chest opened · the hard Gauntlet is not built yet',
-  /* v21 (G.1 / G.3, build 37): chests 2 and 3 are on the map from the start, locked, each saying what opens it — and never
-     a number about what is inside (v17 A.1, narrowed). Chest 1 also waits for every game MODE; the count is the chain's
-     own (progress.js modeCount). Placeholder wording, one line each to change. */
-  chestPrev:'open the previous chest', chestPrevToast:'Open the previous chest first',
-  chestGate:'unlock all games first · {open} of {total} modes', chestGateToast:'Unlock all games first<small>{open} of {total} modes unlocked</small>' };
+/* v23 (L.10 / L.11, build 40): FOUR chests, named by what opens them and never numbered — Games, Key, Pro, Thorns. The Games chest
+   REPLACES v21 G.3's gate, so "unlock all games first" is retired with the gate symbol: the Games chest's locked line is the chain's
+   own count (L.10c). Every chest after it keeps "open the previous chest" (G.1), and once the one before it is open a locked chest
+   reads the meter and the figure it opens at (L.8a — every surface reads the meter). An opened chest's own line is plain; what it
+   GAVE is CHEST_WORDS below, the column beside it. Placeholder wording, one line each to change. */
+export const GRID = { chest:{ games:'Games chest', key:'Key chest', pro:'Pro chest', thorns:'Thorns chest' },
+  chestModes:'unlock every game · {open} of {total}', chestModesToast:'Unlock every game first<small>{open} of {total} modes unlocked</small>',
+  chestMeter:'{pct}% · opens at {at}%', chestOpen:'tap to open', chestOpened:'opened', tba:'tba',
+  chestPrev:'open the previous chest', chestPrevToast:'Open the previous chest first' };
+/* v23 (L.11c, build 40): WHAT EACH CHEST GIVES, one entry per chest and a line per word, so Aiden can rewrite them on the next Desk.
+   An opened chest shows them as a plain column to its right (L.11b animates them in build 41); nothing shows beside a chest that is
+   not open. `tba` marks a placeholder reward — the 2026-09-10 cosmetic set and hard Gauntlet, reopened by L.11 — and none of these
+   is a tap target yet (L.11b). §M.3 went unanswered, so this is the recommended set (guess): Author has waited for the Pro chest since
+   build 38, so the Key chest says PRO KEY rather than "PRO · AUTHOR REVEALED" and the Pro chest carries AUTHOR KEY; the Games chest
+   also names THE KEY, because opening it is what reveals key 1 (L.10a). */
+export const CHEST_WORDS = {
+  games:[{ w:'CUSTOMISE' }, { w:'THE KEY' }],
+  key:[{ w:'GAUNTLET' }, { w:'PRO KEY' }],
+  pro:[{ w:'AUTHOR KEY' }, { w:'COSMETIC SET', tba:1 }],
+  thorns:[{ w:'HARD GAUNTLET', tba:1 }] };
 export const SHEET = { mode:'Mode', toUnlock:'To unlock: {need}', tileUnlock:'to unlock: {need}', locked:'locked', noRun:'no run yet', best:'best', closest:'closest',
   practiceFrom:'practice from', off:'off', pracLocked:'locked · 8 notes in 7 keys',
   // v15 (4.5): Sequence versus asks for two things — the keys (the length row) and how many notes it opens with. The second
@@ -171,6 +187,8 @@ export const ABOUT = { tier:['No ads, ever.','Every colour, background and sound
   // v22 (§J.1, build 36): the clock beside the state — the state is the value that lied. STOPPED is a running state with a still clock
   devAudio:'audio · {state} · clock {clock} · context {gen}{why}', devClock:'+{dt}s in {wall}s', devClockStopped:'+0.000s in {wall}s · STOPPED', devClockWait:'measuring',
   devAnim:'animations · nothing is stored', devKeyIn:'key arrival', devSeg:'segment advance', devWhole:'key complete', devChest:'chest {n} opening',
+  // v23 (L.8f, build 40): the meter as the app reads it right now, and whether Testing's override is what it is reading
+  devMeter:'meter · {n}%{over}', devMeterOver:' · SET BY TESTING',
   /* build 33: Send feedback, the beta channel's missing half. GitHub Pages was already the way a tester gets the build;
      what was missing was the way back. It is a mailto and nothing more — no form, no endpoint, no third party — with
      the build, the device and the last run filled in, because those are the three things a bug report is useless
@@ -199,8 +217,9 @@ export const KEY = { title:'the key', hint:'tap a game · solo runs only',
   // percentage is what makes it move. It replaces the bare "0 of 31" line here and the same line goes on the menu
   count:'{done} of {total} · {pct}%', whole:'the key is whole', root:'{done}/{total}',
   // v18 (B.15, amending A.6.5): the FRONT of the app says the percentage alone — "67% complete" — and the cleared count
-  // stays on the keys screen. B.17: once the player steps into Pro the number is re-based (progress/key.js frontPct)
-  menu:'{pct}% complete', menuWhole:'the key is whole · open the chest',
+  // stays on the keys screen. (B.17's re-base at Pro is retired at build 40 — the number is the meter, progress/key.js meter())
+  // v23 (L.8a, build 40): the percentage is the METER, 0–400 — "142% complete" — and a chest waiting to be opened says so
+  menu:'{pct}% complete', menuReady:'{pct}% · the {chest} is ready',
   cleared:'cleared', open:'not yet', floor:'{bar} or more', ceil:'{bar} or less',
   advance:'{game} · {name} cleared', toast:'Key · {game} · {name} cleared',
   none:'no bar set', mismatch:'{n} combination(s) have no clearance bar: {keys}',
@@ -217,12 +236,14 @@ export const KEY = { title:'the key', hint:'tap a game · solo runs only',
   // 5.2: a clearance-bar row is a way IN. Tapping it starts that combination with the bar pinned at the top of the run,
   // through the same goal line an unlock uses (2.2) — one mechanism, not two
   aim:'{name} · {want}', rowGo:'tap a row to go and try it',
-  // v18 (B.20 / B.16, build 32): the key is whole — the chest asks before it opens, and the opened chest asks about the next tier
-  complete:'{key} is whole', completeSub:'the chest is waiting on game select',
-  openAsk:'Open the chest?', openYes:'Open it', openNo:'Not yet',
-  proAsk:'Would you like to progress to {key}?', proWarn:'The front of the app will stop showing 100% — it counts {key} from here. This cannot be undone. Are you sure?', proYes:'Yes, on to {key}', proNo:'Not now', proToast:'{key} · the front of the app counts it now',
-  // B.19: the locked chests say which key they need and nothing about what is inside
-  chestNeeds:'needs {key}', chestGetKey:'get the key to unlock', chestKeyLine:'{key} opens it',
+  // v18 (B.20, build 32): the key is whole. v23 (L.12, build 40): and the key itself is the way to its chest (guess on the words)
+  complete:'{key} is whole', completeSub:'tap the key to go to its chest', completeOpen:'tap the key to see what its chest gave',
+  /* v23 (L.8b, build 40): "Open the chest?" and "Would you like to progress to {key}?" are RETIRED with the double confirmation, and so
+     are B.19's "needs {key}" lines — a chest reads the meter now. A chest opens on the key screen by itself; `opened` is what it says */
+  opened:'{chest} opened',
+  /* v23 (L.10a, build 40): before the Games chest the key screen shows only the modes count, the meter and the four chests (guess on the words) */
+  quiet:'Unlock every game mode and the Games chest opens the key.', quietCount:'{open} of {total} modes · {pct}%',
+  gamesChest:'open the Games chest', gamesToast:'Open the Games chest first — every game mode unlocked opens it',
   // v21 (G.2 / v20 D.7, build 37): all three keys are on the strip from the start. A locked one is crossed out with what opens
   // it underneath — the locked-mode pattern, SHEET.toUnlock around this — and nothing about its numbers (v17 A.1, narrowed)
   prevChest:'open the previous chest', lockedToast:'Open the previous chest first — this key’s numbers stay hidden until then' };

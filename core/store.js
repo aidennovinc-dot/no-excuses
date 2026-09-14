@@ -6,7 +6,8 @@
 
    The ladder: v0 is the build-13 layout (seven keys, no version) — fromLegacy() folds it into one record and applies the
    v8–v11 reshapes that used to run on every boot. v1 is this record; v2 (build 31) and v3 (build 32) are the two unit
-   changes below. The next change adds `if(raw.v<4) raw=up4(raw)` and bumps VERSION; a step never edits an earlier one.
+   changes below, v4 (build 35) the colours, v5 (build 40) the named chests. The next change adds `if(raw.v<6) raw=up6(raw)`
+   and bumps VERSION; a step never edits an earlier one.
 
    `bars` (build 22) is the key's cleared combinations — a map of '<game>:<mode>:<length>' → when it first cleared. It needs
    no ladder step: a v1 record without one shape-checks to {} like every other map, which is exactly right for a profile
@@ -15,11 +16,12 @@
    The storage adapter is the three one-liners read / write / drop. Stage 5's platform.js swaps them for Capacitor Preferences. */
 import { SCALES, TRACK_OPTS } from "../config/audio.js";
 import { BUILD_FLAGS, RUN_SCHEMA } from "../config/build.js";
+import { CHESTS } from "../config/chests.js";
 import { DESIGNS, ITEMS } from "../config/theme.js";
 import { GAMES, GC } from "../games/registry.js";
 import { emit } from "./events.js";
 
-const KEY='ne', VERSION=4, RUNS_CAP=600;
+const KEY='ne', VERSION=5, RUNS_CAP=600;
 const LEGACY=['ne.prefs','ne.runs','ne.unlock','ne.ach','ne.seen','ne.intro','ne.tileSeen'];
 const read=k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } };
 const write=(k,v)=>{ try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } };
@@ -30,6 +32,8 @@ const HEX=/^#[0-9a-f]{6}$/i;
 const hex=(v,d)=>typeof v==='string'&&HEX.test(v)?v:d;
 const SND=ITEMS.snd.map(i=>i.v), RATES=ITEMS.rate.map(i=>i.v);
 const SQ='#FFFFFF', LEAD='#C8322A';
+// v23 (L.10, build 40): the four chests by name (config/chests.js), each opened (1) or not (0). Anything else in the map is dropped
+const cleanChests=raw=>Object.fromEntries(CHESTS.map(c=>[c.id,isObj(raw)&&raw[c.id]?1:0]));
 
 /* ---------- the shape of each field. Anything that is not what its default is becomes the default; the rest is kept ---------- */
 // S5: the two dev flags are read only while BUILD_FLAGS.dev is on — a `supporter: true` planted in storage is nothing in a release build
@@ -42,33 +46,34 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
     col:{}, story:p.story?1:0, played:p.played?1:0, gridSeen:p.gridSeen?1:0, menuSeen:p.menuSeen?1:0, keySeen:p.keySeen?1:0,
     /* v17 (build 29): two new fields, both shape-checked here the day they are added — build 28 spent two builds with a
        `keySeen` that reset() cleared and load() never created, and that is the mistake this line exists to not repeat.
-       `chest1` is PROGRESS (B.24: chest 1 opened, for good) so Fresh game clears it below; `progTab` is which tab of the
+       `chest1` was PROGRESS (B.24: chest 1 opened, for good) so Fresh game cleared it; `progTab` is which tab of the
        Progress screen was last open (B.21), a preference like `lastGame`, so Fresh game leaves it alone. */
     // v18 (B.31, build 33): three tabs, so the field takes three values — Customise joined Game unlocks and Achievements
     // v23 (L.4, build 39): Customise left again and the middle tab is Customise unlocks, `cul` — a stored 'cus' lands on it
-    chest1:p.chest1?1:0, progTab:p.progTab==='cus'?'cul':['cul','ach'].includes(p.progTab)?p.progTab:'unl',
-    /* v18 (B.16 / B.17, build 32): `pro` is which key the FRONT of the app counts — 0 until the player steps into Pro at
-       chest 1, then 1, then 2 for Author. It is PROGRESS (the step is irreversible, B.16's warning says so) and Fresh game
-       clears it. `chest3` is the Author chest (B.19), progress like the two before it. */
-    pro:[0,1,2].includes(p.pro)?p.pro:0, chest3:p.chest3?1:0,
+    // v23 (L.10, build 40): `chest1` is retired into `chests` — four chests by name, each opened or not. PROGRESS, so Fresh game clears it
+    chests:cleanChests(p.chests), progTab:p.progTab==='cus'?'cul':['cul','ach'].includes(p.progTab)?p.progTab:'unl',
+    /* v23 (L.8b / L.11a, build 40): `pro` (B.16 / B.17's step into Pro) and `chest1` / `chest2` / `chest3` are RETIRED — the meter never
+       re-bases, so there is no step to store, and the chests are named (`chests`, above; up5 moves the old flags across). `cusSeen` is
+       L8's green on the Customise menu row, held until the screen is first opened after the Games chest (v20 D.5). Progress: Fresh
+       game clears it. */
+    cusSeen:p.cusSeen?1:0,
     // B.20: which tiers' whole-key moment has played on the keys screen, once each. Progress — Fresh game clears it
     keyWhole:isObj(p.keyWhole)?Object.fromEntries(Object.entries(p.keyWhole).filter(([k,v])=>['clear','pro','author'].includes(k)&&v).map(([k])=>[k,1])):{},
-    /* v17 (build 30): two more, shape-checked the day they are added. `chest2` is PROGRESS (A.3: every pro bar, the
-       cosmetic set — of which free music choice is one) so Fresh game clears it; `track` is which music option each
-       game plays (B.32), a preference like `lastGame`, so Fresh game leaves it. A value that is not one of that game's
-       own options is dropped, which means renaming an option costs a player their choice and never their boot. */
-    chest2:p.chest2?1:0, track:{},
-    /* v21 / v20 (build 37): four more, shape-checked the day they arrive. `gateOff` is G.3's chest gate having animated away
-       and `retro` G.4's retroactive clears not yet seen on the keys screen — both progress. `pctSeen` is D.4's last-painted
-       front percentage per key, progress too. Fresh game clears all three. `devKeys` is G.8's per-key snapshot — a dev
-       switch, so it exists only while BUILD_FLAGS.dev is on (S5). */
-    gateOff:p.gateOff?1:0,
-    retro:isObj(p.retro)?Object.fromEntries(Object.keys(p.retro).filter(k=>/^[\w-]+:\w+:-?\d+\|(pro|author)$/.test(k)).map(k=>[k,1])):{},
-    /* build 38 (#426): `retroCol` is each of the Pro and Author columns as it stood the last time retroactive credit ran, as a
-       string — progress/key.js retroArrived() credits a column once, at boot, when it differs. Progress: Fresh game clears it. */
-    retroCol:isObj(p.retroCol)?Object.fromEntries(Object.entries(p.retroCol).filter(([k,v])=>['pro','author'].includes(k)&&typeof v==='string'&&v.length<4000)):{},
-    pctSeen:isObj(p.pctSeen)?Object.fromEntries(Object.entries(p.pctSeen).filter(([k,v])=>['clear','pro','author'].includes(k)&&Number.isInteger(v)&&v>=0&&v<=100)):{},
-    devKeys:dev&&isObj(p.devKeys)?Object.fromEntries(Object.entries(p.devKeys).filter(([k,v])=>['clear','pro','author'].includes(k)&&Array.isArray(v)).map(([k,v])=>[k,v.filter(x=>typeof x==='string')])):{},
+    /* v17 (build 30): `track` is which music option each game plays (B.32), a preference like `lastGame`, so Fresh game leaves
+       it. A value that is not one of that game's own options is dropped, which means renaming an option costs a player their
+       choice and never their boot. (`chest2`, shape-checked beside it until build 39, is the Pro chest in `chests` now.) */
+    track:{},
+    /* v21 / v20 (build 37): shape-checked the day they arrived. `retro` is G.4's retroactive clears not yet seen on the keys screen —
+       progress. `devKeys` is G.8's per-key snapshot — a dev switch, so it exists only while BUILD_FLAGS.dev is on (S5).
+       BUILD 40: `gateOff` (G.3's gate) and `pctSeen` (D.4's per-key figure) are retired with the gate and the per-key front number;
+       a key-1 row can be retroactive now (the Games chest credits key 1, G.4 extended), so a bare combination is allowed; and
+       `devKeys.games` is the Games chest's snapshot of the modes its switch opened. */
+    retro:isObj(p.retro)?Object.fromEntries(Object.keys(p.retro).filter(k=>/^[\w-]+:\w+:-?\d+(\|(pro|author))?$/.test(k)).map(k=>[k,1])):{},
+    /* build 38 (#426): `retroCol` is each column as it stood the last time retroactive credit ran, as a string — progress/key.js
+       retroArrived() credits a Pro or Author column once, at boot, when it differs; build 40's Games chest writes key 1's. Progress:
+       Fresh game clears it. */
+    retroCol:isObj(p.retroCol)?Object.fromEntries(Object.entries(p.retroCol).filter(([k,v])=>['clear','pro','author'].includes(k)&&typeof v==='string'&&v.length<4000)):{},
+    devKeys:dev&&isObj(p.devKeys)?Object.fromEntries(Object.entries(p.devKeys).filter(([k,v])=>['games','clear','pro','author'].includes(k)&&Array.isArray(v)).map(([k,v])=>[k,v.filter(x=>typeof x==='string')])):{},
     rate:RATES.includes(p.rate)?p.rate:'live' };   // v14 (6.7): which taps-per-second reading the rate bar shows
   // 'menu' is a music switch like a game's (B.32 gives the menu loop its own off switch) and is the one non-game key here
   if(isObj(p.musicG)) for(const g of Object.keys(GAMES).concat('menu')) if(typeof p.musicG[g]==='boolean') o.musicG[g]=p.musicG[g];
@@ -82,6 +87,11 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
   if(Number.isInteger(p.mig32)&&p.mig32>0) o.mig32=p.mig32;
   // v21 (F.4, build 35): how many games' colours up4 put back to white
   if(Number.isInteger(p.mig35)&&p.mig35>0) o.mig35=p.mig35;
+  /* v23 (L.8a / D.4, build 40): the meter as last painted, 0–400 — one figure, not one per key. Absent until something has painted it,
+     so nothing ever counts up from nothing. Progress: Fresh game clears it. `devMeter` is Testing's "set meter to N%" (L.8f, S5) —
+     read only while BUILD_FLAGS.dev is on, like every other dev field. */
+  if(Number.isInteger(p.meterSeen)&&p.meterSeen>=0&&p.meterSeen<=400) o.meterSeen=p.meterSeen;
+  if(dev&&Number.isInteger(p.devMeter)&&p.devMeter>=0&&p.devMeter<=400) o.devMeter=p.devMeter;
   return o; }
 const validRun=r=>isObj(r)&&!!GAMES[r.g]&&GAMES[r.g].modes.includes(r.d)&&typeof r.s==='number'&&typeof r.hits==='number'&&typeof r.t==='number';
 /* v18 (B.14): THE CAP NEVER DROPS A ROW THAT IS IN A TOP TEN. It did — the cap was `slice(0, 600)` here and
@@ -180,11 +190,24 @@ function up4(raw){ const p=isObj(raw.prefs)?raw.prefs:null; let n=0;
     p.col={}; }
   raw.v=4; if(n&&p) p.mig35=n; return raw; }
 
+/* v4 → v5 (build 40, v23 §L.10): THE CHESTS ARE NAMED. `chest1` (key 1 whole) is the Key chest, `chest2` (Pro whole) the Pro chest,
+   `chest3` (Author whole) the Thorns chest — and a profile that had chest 1 open gets the new Games chest open too, silently, because
+   v21 G.3 already made chest 1 wait for every game mode (§M default). `pro` (B.16's step into Pro), `gateOff` (G.3's gate) and
+   `pctSeen` (the per-key front figure) are retired with the things they stored. Nothing is banked or taken away here: bars, runs and
+   achievements are untouched, and a key-1 clear banked before the Games chest existed stays banked. */
+function up5(raw){ const p=isObj(raw.prefs)?raw.prefs:null;
+  // a record that already names a chest keeps it (a hand-built or restored record can carry both shapes); the old flags only ever add
+  if(p){ const was=n=>!!p['chest'+n], had=id=>!!(isObj(p.chests)&&p.chests[id]);
+    p.chests={ games:was(1)||had('games')?1:0, key:was(1)||had('key')?1:0, pro:was(2)||had('pro')?1:0, thorns:was(3)||had('thorns')?1:0 };
+    for(const k of ['chest1','chest2','chest3','pro','gateOff','pctSeen']) delete p[k]; }
+  raw.v=5; return raw; }
+
 function load(){ let raw=parse(read(KEY)), legacy=false;
   if(!isObj(raw)){ raw=fromLegacy(); legacy=!!raw; if(!raw) raw={}; }
   if((raw.v||0)<2) raw=up2(raw);
   if((raw.v||0)<3) raw=up3(raw);
   if((raw.v||0)<4) raw=up4(raw);
+  if((raw.v||0)<5) raw=up5(raw);
   return { st:{ v:VERSION, prefs:cleanPrefs(raw.prefs), runs:cleanRuns(raw.runs), ach:cleanMap(raw.ach), unlock:cleanMap(raw.unlock), intro:cleanMap(raw.intro), seen:isObj(raw.seen)?cleanMap(raw.seen):null, bars:cleanMap(raw.bars) }, legacy }; }
 
 const { st: store, legacy } = load();
@@ -192,7 +215,17 @@ const prefs = store.prefs;
 function save(){ return write(KEY,JSON.stringify(store)); }
 // the record is written back once at boot — repaired fields stick — and the old keys go only once the new record is safely down
 if(save()&&legacy) LEGACY.forEach(drop);
-const musicOn=g=>prefs.musicG[g]!==false;
+
+/* v23 (L.11a, build 40): WHAT THE APP READS INSTEAD OF A CUSTOMISE CHOICE WHILE CUSTOMISE IS LOCKED. `opened(id)` is a chest opened —
+   or either dev escape, like every progression gate (#411) — and progress/key.js exports it as chestOpen(), the one read of a chest;
+   it lives here because ui/theme.js and audio.js sit below progress/ in the module graph. Until the Games chest opens, every choice
+   made in Customise is KEPT and not applied: the defaults apply meanwhile — white target and red lead, the stock background, the
+   default tap sound, scale, rate bar, track and music (L.11a). The moment the chest opens, look() hands back what was chosen. */
+const opened=id=>!!((prefs.chests&&prefs.chests[id])||prefs.allOpen||prefs.supporter);
+const LOOK={ bg:'stars', tint:'', snd:'space', scale:'penta', rate:'live', track:{} };
+const look=k=>opened('games')?prefs[k]:LOOK[k];
+const lookCol=g=>opened('games')?(prefs.col[g]||prefs.col['quick-tap']):{ sq:SQ, lead:LEAD, cut:SQ };
+const musicOn=g=>!opened('games')||prefs.musicG[g]!==false;
 /* Fresh game (the Testing screen's dev switch): progress goes, the look and the name stay.
    v17 (B.10): `supporter` goes too. It did not, and that is the answer to "is dev unlock-all leaking into a normal
    profile, or is the lock check wrong" — neither. The lock check is exact on a genuinely fresh profile (measured: 7 of 8
@@ -201,6 +234,6 @@ const musicOn=g=>prefs.musicG[g]!==false;
    profile showed all 27 of them open. Supporter is a dev switch today (S5 gates it out of a release build entirely) and
    Fresh game is the switch for seeing the app as a new player does, so it belongs in this list. When it becomes a real
    purchase at the native build it will be restored from the store rather than from prefs, and this line stays correct. */
-function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,chest1:0,chest2:0,chest3:0,pro:0,keyWhole:{},gateOff:0,retro:{},retroCol:{},pctSeen:{},devKeys:{}}); delete prefs.mig11; delete prefs.mig31; delete prefs.mig32; delete prefs.mig35; save(); emit('store:reset'); }
+function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,chests:cleanChests(null),cusSeen:0,keyWhole:{},retro:{},retroCol:{},devKeys:{}}); delete prefs.mig11; delete prefs.mig31; delete prefs.mig32; delete prefs.mig35; delete prefs.meterSeen; delete prefs.devMeter; save(); emit('store:reset'); }
 
-export { RUNS_CAP, musicOn, prefs, reset, save, store, trimRuns };
+export { RUNS_CAP, look, lookCol, musicOn, opened, prefs, reset, save, store, trimRuns };

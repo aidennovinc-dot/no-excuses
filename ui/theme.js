@@ -3,10 +3,13 @@
 import { DESIGNS, KEYFILL, PRESS } from "../config/theme.js";
 import { on } from "../core/events.js";
 import { sel } from "../core/state.js";
-import { prefs, save } from "../core/store.js";
+import { look, lookCol, prefs, save } from "../core/store.js";
 
-const colOf=g=>prefs.col[g]||prefs.col['quick-tap'];
-function applyPrefs(g){ const r=document.documentElement.style; const c=colOf(g||sel?.game||prefs.lastGame); r.setProperty('--sq-live',c.sq); r.setProperty('--cue',c.lead); r.setProperty('--cutp',c.cut||c.sq); r.setProperty('--ground',prefs.tint||DESIGNS[prefs.bg].tint);
+/* v23 (L.11a, build 40): what is DRAWN reads the look, not the choice — until the Games chest opens Customise is locked and the
+   defaults apply (white target, red lead, the stock background); every choice stays stored and applies the moment it opens.
+   Customise's own swatches still read prefs directly: that screen is the choice, and it cannot be opened before then. */
+const colOf=g=>lookCol(g);
+function applyPrefs(g){ const r=document.documentElement.style; const c=colOf(g||sel?.game||prefs.lastGame); r.setProperty('--sq-live',c.sq); r.setProperty('--cue',c.lead); r.setProperty('--cutp',c.cut||c.sq); r.setProperty('--ground',look('tint')||DESIGNS[look('bg')].tint);
   // v17 (B.22, build 29): the pressed game's outline. Named in config/theme.js (amber) so the stylesheet never picks a colour
   r.setProperty('--press',PRESS.v);
   // v18 (B.18, build 32): the key-progress outline on game select, named in config/theme.js (lilac)

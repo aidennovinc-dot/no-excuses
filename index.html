@@ -38,7 +38,9 @@
   <button data-act="go" class="item glow" data-go="s-key">Keys</button>
   <!-- v23 (L.4a, build 39): Customise is its own menu item again, where it was at build 32 — the ability to customise is
        "its own menu option in itself" (Aiden). ui/screens/customise.js -->
-  <button data-act="go" class="item glow" data-go="s-custom">Customise</button>
+  <!-- v23 (L.11a, build 40): LOCKED until the Games chest opens - crossed out (v17: crossed, not greyed) with what opens it under
+       it, and green until first opened once it is (L8, v20 D.5). data-act="custom" so ui/screens/menu.js can refuse the tap -->
+  <button data-act="custom" class="item glow" data-go="s-custom">Customise<small class="cusneed" id="cus-need" hidden></small></button>
   <button data-act="go" class="item glow" data-go="s-about">About</button>
   <button data-act="go" class="item glow" data-go="s-testing" data-dev>Testing</button>
   <!-- v17 (§A.6.7): percentage complete, key 1 only. The same line the keys screen carries, on the front of the app, so
@@ -57,22 +59,24 @@
     <button data-act="game" class="tile" data-game="timing"><span class="name glow">Timing</span><span class="pic"><span class="mini tm"><i class="h"></i><i class="w"></i><i class="h"></i></span></span></button>
     <button data-act="game" class="tile" data-game="reaction"><span class="name glow">Reaction</span><span class="pic"><span class="mini rx"></span></span></button>
     <button data-act="game" class="tile" data-game="spot"><span class="name glow">Spot</span><span class="pic"><span class="mini fd"><i></i><i class="t"></i><i></i><i class="w c"></i><i class="t"></i><i></i></span></span></button>
-    <!-- v17 (B.24, build 29): the path ends at a CHEST. It needs key 1 — every clearance bar cleared — and opening it
-         unlocks Gauntlet (§A.2). Gauntlet itself is not built, so an opened chest says so and nothing about pro or
-         author appears on it at any point (§A.1). ui/screens/pick.js owns its three states -->
-    <button data-act="chest" class="tile chest" data-chest="1"><span class="name glow">Chest</span><span class="pic"><svg class="chestart" viewBox="0 0 40 32"><rect class="box" x="5" y="14" width="30" height="14" rx="2"/><path class="lid" d="M5 14a15 9 0 0 1 30 0z"/><rect class="lock" x="17.5" y="15.5" width="5" height="7" rx="1"/><g class="ckey"><circle cx="20" cy="4" r="3"/><path d="M20 7v8M20 11h3"/></g></svg></span></button>
-    <!-- v18 (B.19, build 32): the Pro and Author chests, in a column under chest 1. Hidden until chest 1 is open (A.1);
-         ui/screens/pick.js places them and owns their states. Each locked one names its key and nothing else -->
-    <button data-act="chest" class="tile chest" data-chest="2" hidden><span class="name glow">Pro chest</span><span class="pic"><svg class="chestart" viewBox="0 0 40 32"><rect class="box" x="5" y="14" width="30" height="14" rx="2"/><path class="lid" d="M5 14a15 9 0 0 1 30 0z"/><rect class="lock" x="17.5" y="15.5" width="5" height="7" rx="1"/><g class="ckey"><circle cx="20" cy="4" r="3"/><path d="M20 7v8M20 11h3"/></g></svg></span></button>
-    <button data-act="chest" class="tile chest" data-chest="3" hidden><span class="name glow">Author chest</span><span class="pic"><svg class="chestart" viewBox="0 0 40 32"><rect class="box" x="5" y="14" width="30" height="14" rx="2"/><path class="lid" d="M5 14a15 9 0 0 1 30 0z"/><rect class="lock" x="17.5" y="15.5" width="5" height="7" rx="1"/><g class="ckey"><circle cx="20" cy="4" r="3"/><path d="M20 7v8M20 11h3"/></g></svg></span></button>
+    <!-- v23 (L.10, build 40): FOUR chests down the path, named by what opens them - Games, Key, Pro, Thorns - never numbered
+         (config/chests.js). The Games chest is the snake's last stop and REPLACES v21 G.3's gate on the connector into it; the
+         Key, Pro and Thorns chests stack under it, on the map from the start (G.1). ui/screens/pick.js places them and owns
+         their states. An opened chest shows what it gave as a column of words beside it (L.11c) - plain until build 41 -->
+    <button data-act="chest" class="tile chest" data-chest="games"><span class="name glow">Games chest</span><span class="pic"><svg class="chestart" viewBox="0 0 40 32"><rect class="box" x="5" y="14" width="30" height="14" rx="2"/><path class="lid" d="M5 14a15 9 0 0 1 30 0z"/><rect class="lock" x="17.5" y="15.5" width="5" height="7" rx="1"/><g class="ckey"><circle cx="20" cy="4" r="3"/><path d="M20 7v8M20 11h3"/></g></svg></span></button>
+    <button data-act="chest" class="tile chest" data-chest="key"><span class="name glow">Key chest</span><span class="pic"><svg class="chestart" viewBox="0 0 40 32"><rect class="box" x="5" y="14" width="30" height="14" rx="2"/><path class="lid" d="M5 14a15 9 0 0 1 30 0z"/><rect class="lock" x="17.5" y="15.5" width="5" height="7" rx="1"/><g class="ckey"><circle cx="20" cy="4" r="3"/><path d="M20 7v8M20 11h3"/></g></svg></span></button>
+    <button data-act="chest" class="tile chest" data-chest="pro"><span class="name glow">Pro chest</span><span class="pic"><svg class="chestart" viewBox="0 0 40 32"><rect class="box" x="5" y="14" width="30" height="14" rx="2"/><path class="lid" d="M5 14a15 9 0 0 1 30 0z"/><rect class="lock" x="17.5" y="15.5" width="5" height="7" rx="1"/><g class="ckey"><circle cx="20" cy="4" r="3"/><path d="M20 7v8M20 11h3"/></g></svg></span></button>
+    <button data-act="chest" class="tile chest" data-chest="thorns"><span class="name glow">Thorns chest</span><span class="pic"><svg class="chestart" viewBox="0 0 40 32"><rect class="box" x="5" y="14" width="30" height="14" rx="2"/><path class="lid" d="M5 14a15 9 0 0 1 30 0z"/><rect class="lock" x="17.5" y="15.5" width="5" height="7" rx="1"/><g class="ckey"><circle cx="20" cy="4" r="3"/><path d="M20 7v8M20 11h3"/></g></svg></span></button>
+    <!-- L.11c: what an opened chest gave, one word per line, in the grid cell beside it. Empty and hidden for a chest that is not open -->
+    <div class="chestwords" data-for="games" hidden></div>
+    <div class="chestwords" data-for="key" hidden></div>
+    <div class="chestwords" data-for="pro" hidden></div>
+    <div class="chestwords" data-for="thorns" hidden></div>
     <!-- v17 (B.23): the unlock order, drawn as thin lines between the tiles. The path is measured off the tiles' own
          boxes in ui/screens/pick.js, so it survives the 4-column breakpoint and any change to the gap -->
     <svg class="gridlines" id="gridlines" aria-hidden="true"></svg>
   </div>
   <div class="hint">tap empty space to go back</div>
-  <!-- v18 (B.20 / B.16, build 32): the ask box — "Open the chest?", then "progress to Pro?" with its warning. Same shape
-       as the lock box; ui/screens/pick.js fills it and answers it -->
-  <div id="askwrap" data-act="askwrap"><div id="askbox"><h3 id="ask-title"></h3><p id="ask-text" hidden></p><div class="row"><button class="item big" id="ask-yes" data-act="ask-yes">Open it</button><button class="item sub" id="ask-no" data-act="ask-no">Not yet</button></div></div></div>
   <!-- v21 (F.1, build 35): hidden until a game is picked — a sheet with nothing selected is out of the layout, not just off screen -->
   <div class="sheet" id="sheet" hidden>
     <div class="eyebrow" id="sheet-title"></div>
@@ -173,6 +177,8 @@
   <button data-act="back" class="back">&larr; BACK</button>
   <div class="eyebrow" id="key-title">keys</div>
   <div class="keyrow" id="key-keys"></div>
+  <!-- v23 (L.8b, build 40): a chest that opened on this screen, plainly - lid up, its name, the meter counting up, its words. Build 41 makes it a ceremony -->
+  <div class="keyopen" id="key-open" hidden></div>
   <div id="key-main">
     <svg id="key-ring" viewBox="0 0 300 300" aria-hidden="true"></svg>
     <div class="keycount" id="key-count"></div>
@@ -193,7 +199,7 @@
        build, the device and the last run filled in. An <a>, so the link does its own work; data-act="none" is only the
        click sound — nothing here knows what a mail client is, and nothing is sent without the tester's own send button -->
   <a class="item sub" id="feedback" data-act="none" href="#">Send feedback</a>
-  <div class="hint">v0.39 · batch 16 · the surface · 14 sept 2026</div>
+  <div class="hint">v0.40 · batch 16 · four chests · 14 sept 2026</div>
 </section>
 
 <section class="screen" id="s-testing" data-back="s-menu" data-dev>
@@ -209,9 +215,14 @@
   <!-- v21 (G.8, build 37): a switch and a reset PER KEY, so a key state can be set up and backed out of without Fresh game.
        The switch clears every bar of that key and remembers what it held; switching it off puts that back. The reset backs
        the key out entirely — its bars, its chest and its achievements. Dev only (S5) -->
-  <div class="hint" id="dev-key-hint">keys · one at a time</div>
-  <div class="chips" id="dev-keys"><button data-act="dev-keyall" data-k="0" class="chip">key 1 · all cleared</button><button data-act="dev-keyall" data-k="1" class="chip">key 2 · all cleared</button><button data-act="dev-keyall" data-k="2" class="chip">key 3 · all cleared</button><button data-act="dev-keyreset" data-k="0" class="chip">reset key 1</button><button data-act="dev-keyreset" data-k="1" class="chip">reset key 2</button><button data-act="dev-keyreset" data-k="2" class="chip">reset key 3</button></div>
-  <div class="chips" id="dev-anim"><button data-act="dev-keyin" class="chip">key arrival</button><button data-act="dev-seg" class="chip">segment advance</button><button data-act="dev-whole" class="chip">key complete</button><button data-act="dev-chest" data-n="1" class="chip">chest 1 opening</button><button data-act="dev-chest" data-n="2" class="chip">chest 2 opening</button><button data-act="dev-chest" data-n="3" class="chip">chest 3 opening</button></div>
+  <!-- v23 (L.8f / G.8 extended, build 40): PER CHEST now, four of them - the switch fills what opens that chest (every mode for Games,
+       a key's every bar for the other three) and remembers what it held; the reset backs the chest out. And a field that sets the
+       meter to any figure for review, with nothing earned (S5) -->
+  <div class="hint" id="dev-key-hint">chests · one at a time</div>
+  <div class="chips" id="dev-keys"><button data-act="dev-chestall" data-chest="games" class="chip">games chest · every mode</button><button data-act="dev-chestall" data-chest="key" class="chip">key chest · key 1 cleared</button><button data-act="dev-chestall" data-chest="pro" class="chip">pro chest · pro cleared</button><button data-act="dev-chestall" data-chest="thorns" class="chip">thorns chest · author cleared</button><button data-act="dev-chestreset" data-chest="games" class="chip">reset games chest</button><button data-act="dev-chestreset" data-chest="key" class="chip">reset key chest</button><button data-act="dev-chestreset" data-chest="pro" class="chip">reset pro chest</button><button data-act="dev-chestreset" data-chest="thorns" class="chip">reset thorns chest</button></div>
+  <div class="hint" id="dev-meter-now"></div>
+  <div class="chips" id="dev-meter-row"><input id="dev-meter" type="number" min="0" max="400" step="1" inputmode="numeric" placeholder="0–400" aria-label="meter percentage"><button data-act="dev-meter" class="chip" id="dev-meterset">set meter to N%</button><button data-act="dev-meteroff" class="chip" id="dev-meteroff">meter · as earned</button></div>
+  <div class="chips" id="dev-anim"><button data-act="dev-keyin" class="chip">key arrival</button><button data-act="dev-seg" class="chip">segment advance</button><button data-act="dev-whole" class="chip">key complete</button><button data-act="dev-chest" data-chest="games" class="chip">games chest opening</button><button data-act="dev-chest" data-chest="key" class="chip">key chest opening</button><button data-act="dev-chest" data-chest="pro" class="chip">pro chest opening</button><button data-act="dev-chest" data-chest="thorns" class="chip">thorns chest opening</button></div>
 </section>
 
 <section class="screen" id="s-pass">
@@ -281,12 +292,12 @@
 
 <script type="module" src="./boot.js"></script>
 
-<div id="build">v0.39</div>
+<div id="build">v0.40</div>
 <button id="update">New build available — tap to reload</button>
 <script>
 // build check: version.json is fetched with no-store, so a stale cached page still learns a newer build exists
 (function(){
-  const BUILD="39";
+  const BUILD="40";
   async function check(){
     try{
       const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});

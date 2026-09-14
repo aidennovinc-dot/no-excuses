@@ -4,7 +4,7 @@
    next screen. */
 import { $ } from "../core.js";
 import { on } from "../core/events.js";
-import { prefs } from "../core/store.js";
+import { look, prefs } from "../core/store.js";
 
 const cv=$('#stars'), cx=cv.getContext('2d'); let W,H,pts=[],dpr=1, paused=false, running=false;
 function size(){ dpr=devicePixelRatio||1; W=cv.width=innerWidth*dpr; H=cv.height=innerHeight*dpr;
@@ -18,7 +18,7 @@ const DRAW={
   rain(t){ cx.strokeStyle='#E8E6E1'; cx.lineWidth=dpr; for(const p of pts.slice(0,40)){ if(!reduce){ p.y+=p.v; if(p.y>H+p.l) p.y=-p.l; } cx.globalAlpha=p.a*.28; cx.beginPath(); cx.moveTo(p.x,p.y-p.l); cx.lineTo(p.x,p.y); cx.stroke(); } },
   orbs(t){ for(const p of pts.slice(0,6)){ const x=p.x+(reduce?0:Math.sin(t/4000+p.ph)*40*dpr), y=p.y+(reduce?0:Math.cos(t/5200+p.ph)*30*dpr); const gr=cx.createRadialGradient(x,y,0,x,y,p.R); gr.addColorStop(0,'rgba(232,230,225,.09)'); gr.addColorStop(1,'rgba(232,230,225,0)'); cx.globalAlpha=1; cx.fillStyle=gr; cx.beginPath(); cx.arc(x,y,p.R,0,6.28); cx.fill(); } },
 };
-function draw(t){ if(paused){ running=false; return; } cx.clearRect(0,0,W,H); (DRAW[prefs.bg]||DRAW.stars)(t); requestAnimationFrame(draw); }
+function draw(t){ if(paused){ running=false; return; } cx.clearRect(0,0,W,H); (DRAW[look('bg')]||DRAW.stars)(t); requestAnimationFrame(draw); }
 function resume(){ if(running) return; running=true; requestAnimationFrame(draw); }
 function startAtmosphere(){ addEventListener('resize',size); size(); running=true; draw(0); }
 on('screen:change',({id})=>{ const run=id==='game'; cv.style.opacity=run?0:1; paused=run; if(!run) resume(); });

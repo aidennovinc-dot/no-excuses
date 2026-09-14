@@ -158,3 +158,54 @@ of it, statically and by quitting a run mid-flight and reading storage back.
   never credits twice, the next boot does not undo Testing's per-key reset, and replacing a placeholder with a real number
   changes the column and credits once more against it.
 - **Testing's "fill pro + author · placeholder" fills EMPTY cells only**, so on the shipped table it finds nothing and says so.
+
+## Build 40 (v23 §L.8 a–c f, §L.10 a–c e, §L.11 a c, §L.12, G.8 extended; 2026-09-14): four chests and the 0–400 meter
+
+- **FOUR CHESTS, NAMED BY WHAT OPENS THEM (L.10) — `config/chests.js`.** Games (every mode in the chain), Key (key 1 whole), Pro (Pro
+  whole), Thorns (Author whole), never numbered in code, copy or docs. Strictly sequential (L.10e): `chestState(id)` in
+  `progress/key.js` is `open`, `before` (the chest ahead is shut — "open the previous chest", G.1), `ready` or `locked`, and nothing is
+  ever ready behind a shut chest (gated across 256 states). **The Games chest replaces v21 G.3's gate** — no gate symbol, no "unlock all
+  games first", no `prefs.gateOff`; `modesOpen()` is what opens the Games chest now. `prefs.chests` is `{games, key, pro, thorns}`; store
+  v5's `up5` maps `chest1` → Key and Games (G.3 already made chest 1 wait for every mode), `chest2` → Pro, `chest3` → Thorns.
+- **Each tier opens with the chest that reveals it** (`CHESTS[].opens`): key 1 with Games, Pro with Key, Author with Pro — `tierOpen()` is
+  that one line. **Key 1 is quiet before the Games chest (L.10a, §M.2):** `checkKey` banks nothing on a closed tier, so there is no
+  interlude; no tile outline fill; no key-1 achievement set; the Game unlocks tab's key row says "open the Games chest"; and the key
+  screen shows only the modes count, the meter and the four chests. Opening the Games chest credits already-beaten key-1 bars silently —
+  `retroBank(['clear'])`, G.4 one chest earlier. `retroArrived()` still leaves key 1 alone at boot: its column is Aiden's numbers, never a
+  placeholder that arrives. A key-1 clear banked before build 40 stays banked and shows from the Games chest on.
+- **ONE METER, 0–400, NEVER RESET (L.8a / L.10b) — `meter()` in `progress/key.js`, and every surface reads it.** Band 1 is modes unlocked
+  ÷ modes total, not counting the modes a new profile starts with (`METER.freeStart`, §M.4 — a new profile reads 0%, one mode past it
+  8%); bands 2–4 are each key's CLEARED bars ÷ its bars (`METER.partial:false`, §M.1; `true` reads `keyPct()`'s partial credit), each
+  only once its chest is open — so the meter cannot pass 100 before Games or 200 before Key, and the gate asserts it with every bar on
+  every key banked underneath. It reads: the menu card (`N% complete`, D.4's count-up off one `prefs.meterSeen`), a locked key chest on
+  the map (`N% · opens at 200%`, `chestAt(id)`), the key screen's count line (`19 of 30 · 142%`) and the key strip (`bandPct(tier)`, that
+  key's own share). `METER.modes:false` would hide band 1 and make it 0–300. **B.15–B.17 retired:** `frontPct()`, the 30/70 re-base,
+  `prefs.pro`, `prefs.pctSeen`. `keyPct()` stays, for `METER.partial` and the A.6 checks.
+- **THE OPEN HAPPENS ON THE KEY SCREEN, BY ITSELF (L.8b).** A chest tap goes to its key screen (`CHESTS[].screen`); a locked Games chest
+  toasts the chain's count and stays put (G.3's "never send you to the keys" kept); a chest behind a shut one says so. When the key screen
+  opens with a chest ready, `openChest(id)` runs 600ms in (2.7s if the first-ever arrival is playing): the chest is stored, the tier it
+  reveals credited silently, and a plain lid-up banner (`#key-open`) shows the chest's name, its words and the meter counting up from
+  `was` to `now` through `core/count.js`, with one `Snd.unlockFx()`. **"Open the chest?" and "Would you like to progress to Pro?" are gone
+  with the ask box.** A result-screen interlude whose clear tops a band opens the chest 2.5s in, inside the 3.9s hand-back, so neither
+  driver waits any longer and nothing waits for a tap. Opened is opened — the next visit plays nothing.
+- **CUSTOMISE WAITS FOR THE GAMES CHEST (L.11a).** The menu row is crossed out with "open the Games chest" under it and refuses the tap;
+  the first draw after the chest opens wipes the strike (the menu's own unstrike) and the row is green until Customise is first opened
+  (`prefs.cusSeen`, D.5). Meanwhile the defaults apply: `look(k)` / `lookCol(g)` in `core/store.js` give ui/theme.js, audio.js, the
+  atmosphere, the run's rate bar and Sequence's scale the defaults while every stored choice is kept — so `opened(id)` lives in the store
+  (theme and audio sit below `progress/` in the module graph) and `chestOpen()` in `progress/key.js` is the same function. The Customise
+  unlocks tab is not gated and says "open the Games chest to use them" until then; an earned row's tap toasts rather than opening a locked
+  screen. Cosmetic achievements still bank, and their items are first-seen green in Customise when it opens (the existing `newMark` —
+  nothing marks a cosmetic seen until Customise draws it).
+- **WHAT EACH CHEST GIVES, IN WORDS (L.11c) — `CHEST_WORDS` in `config/copy.js`.** A plain column beside an opened chest on the map (the free
+  grid cell to its right, to its left where that is taken) and in the key screen's banner; nothing beside a chest that is not open. Games →
+  CUSTOMISE, THE KEY; Key → GAUNTLET, PRO KEY; Pro → AUTHOR KEY, COSMETIC SET (tba); Thorns → HARD GAUNTLET (tba) — §M.3's set. Not tap
+  targets yet (L.11b is build 41).
+- **A WHOLE KEY TAPS THROUGH TO ITS CHEST (L.12).** `keyChest(tier)` — the chest whose `needs` is this tier, once the key is whole and that
+  chest is ready or open — puts a hit disc over the hub glyph (`key-chest`); the map opens with that chest scrolled into view and picked
+  out. The key screen reads no chest flag of its own (A4).
+- **Testing, per chest (L.8f, G.8 extended, S5).** A switch and a reset for each of the four. Games' switch writes every mode row of
+  UNLOCKS and snapshots what the store held (`devModesAll` in `progress.js` — nothing in `progress/key.js` may touch `store.unlock`);
+  the other three are the old per-key switches on the key that fills each. "Set meter to N%" writes `prefs.devMeter`, which `meter()`
+  returns while it is set. The four chest-opening buttons still play build 32's lid swing on the map; build 41 replaces them.
+- **The radar keeps key 1's rung before the Games chest (guess)** — it is the Scores screen's picture of a player's best, and with no rung
+  it would draw nothing.

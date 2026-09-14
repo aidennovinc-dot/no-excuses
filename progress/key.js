@@ -26,18 +26,21 @@
    COLUMN IS NULL — derived here from the data, never a flag in config/keys.js — and a shell tier counts nothing, shows
    nothing and clears nothing. A.2 AS AMENDED AT BUILD 38 (#426): a build may generate a marked PLACEHOLDER bar, and both
    columns are full of them — isPlaceholder() tells a generated number from one Aiden set; everything else here treats both alike.
-   Tiers 2 and 3 also count nothing before chest 1 (A.1 / A.2): the chest is what hands the map over, and a pro bar
-   quietly banked before it would make the reveal arrive part-done.
-   B.17: the FRONT of the app shows one number, and entering Pro re-bases it — key 1 done is 30%, Pro fills the other 70;
-   entering Author is the same step again. `prefs.pro` is which tier the player has stepped into (0, 1, 2).
    B.25: the three achievement sets tied to the keys are generated here (keyAch), one row per game per tier plus one per
    tier for the whole key — they read the same gameKey / keyState every screen reads, so a second walk never exists.
-   B.24: radarOf(g) is the Scores radar's axis — how far a game's best sits against its three rungs. */
+   B.24: radarOf(g) is the Scores radar's axis — how far a game's best sits against its three rungs.
+
+   v23 (§L.8 / §L.10 / §L.12, build 40): FOUR CHESTS AND ONE METER. The chests are config/chests.js — Games, Key, Pro, Thorns, named
+   by what opens them — and every tier opens with the chest that reveals it: key 1 with the Games chest (§L.10a — KEY 1 IS QUIET
+   UNTIL THEN), Pro with the Key chest, Author with the Pro chest. The meter is ONE function, meter(), 0–400, never reset; the menu
+   card, the map's chests and the key screen all read it. B.15–B.17's frontPct() and its 30/70 re-base are RETIRED with the step
+   into Pro (L.8b removed the "proceed to pro" confirmation), and v21 G.3's gate is retired into the Games chest itself. */
+import { CHESTS, METER } from "../config/chests.js";
 import { KEY_BARS } from "../config/key-bars.js";
 import { KEYS } from "../config/keys.js";
 import { KEY_ACH } from "../config/copy.js";
 import { T } from "../core.js";
-import { prefs, save, store } from "../core/store.js";
+import { opened, prefs, save, store } from "../core/store.js";
 import { GAMES, GC } from "../games/registry.js";
 import { Scores, modeCount } from "../progress.js";
 
@@ -62,26 +65,25 @@ function barOf(c, tier = 'clear') { if (!c || !c.bar) return null; const v = tie
 // a tier's column is FULL when every combination carries a number at it; a shell otherwise
 const tierFull = tier => COMBOS.every(c => barOf(c, tier) !== null);
 const isShell = tier => tier !== 'clear' && !tierFull(tier);
-/* #411: tiers 2 and 3 exist for a profile only once chest 1 is opened (A.1 / A.2) — OR either of the two dev escapes
-   every other gate in the app already honours, the pattern at ui/screens/progress.js:110. Testing's OPEN EVERYTHING is
-   the one that matters: without it Aiden could not see Circuit or Thorn on his phone before a chest was reachable, which
-   is the whole point of the switch. A.1's intent is untouched — core/store.js:39 reads both flags as `dev && ...`, so
-   BUILD_FLAGS.dev strips them from release and a first-timer still meets exactly one target per game.
-   EVERY gate on this map goes through mapOpen(); a new one that reads prefs.chest1 directly is the bug this fixed. */
-const mapOpen = () => !!(prefs.chest1 || prefs.allOpen || prefs.supporter);
-/* build 38 (Aiden, 2026-09-14 — "Author should wait for the Pro chest"): EACH TIER OPENS WITH ITS OWN CHEST. Pro with chest 1,
-   exactly as mapOpen() says; Author with chest 2. Both still take the two dev escapes. Everything that asks whether a tier is
-   open — the key strip, clears, retroactive credit, the key achievement sets, the radar's rungs — follows from this line. */
-const tierOpen = tier => { const i = tierIx(tier); return i === 0 || !!(prefs['chest' + i] || prefs.allOpen || prefs.supporter); };
-/* v21 (G.3, build 37 — amending v18 B.19 / B.20, where chest 1 needed key 1 whole and nothing else): CHEST 1 ALSO WAITS FOR
-   EVERY GAME MODE TO BE UNLOCKED. THIS IS THE ONE PLACE THE TWO PROGRESSION SYSTEMS TOUCH — the unlock chain (L6) and the
-   key — so it is one predicate, here beside mapOpen(), reading the chain through progress.js's modeCount() and never
-   store.unlock. It honours the two dev escapes like every other progression gate. The gate cannot strand the chest: every
-   key-1 bar belongs to a mode the chain reaches without it (checked 2026-09-14, asserted in the gate), so a Gauntlet or
-   anything else put behind chest 1 can never be given a key-1 bar without the gate going red. */
+/* #411: EVERY PROGRESSION GATE HONOURS THE TWO DEV ESCAPES — Testing's OPEN EVERYTHING and Supporter — never a chest flag alone.
+   A.1's intent is untouched: core/store.js reads both flags as `dev && ...`, so BUILD_FLAGS.dev strips them from release.
+   BUILD 40: the one read of a chest is chestOpen(id), which is core/store.js opened() — it lives there because ui/theme.js and
+   audio.js (Customise's defaults, L.11a) sit below this file in the module graph — and every gate on the map goes through it. */
+const chestOpen = id => opened(id);
+/* build 40 (v23 §L.10, amending build 38's "chest n opens tier n+1"): EACH TIER OPENS WITH THE CHEST THAT REVEALS IT — key 1 with the
+   Games chest, Pro with the Key chest, Author with the Pro chest (config/chests.js `opens`). Key 1 is QUIET until the Games chest
+   (§L.10a, §M.2): no clear is banked, no number shown, no interlude, no outline fill, no key-1 achievement set — and the bars a saved
+   best already beats bank silently when the chest opens (G.4, extended). Everything that asks whether a tier is open follows from this. */
+const tierOpen = tier => { const c = CHESTS.find(x => x.opens === tier); return !c || chestOpen(c.id); };
+/* v21 (G.3, build 37): THE ONE PLACE THE TWO PROGRESSION SYSTEMS TOUCH — every game mode unlocked — reading the chain through
+   progress.js's modeCount() and never store.unlock. BUILD 40 (L.10): it is no longer a gate on the connector into chest 1; it is what
+   opens the Games chest. The chest cannot be stranded: every key-1 bar belongs to a mode the chain reaches without it (asserted in the
+   gate), so a Gauntlet or anything else put behind a chest can never be given a key-1 bar, or count toward the Games chest. */
 const modesOpen = () => !!(prefs.allOpen || prefs.supporter) || (m => m.total > 0 && m.open === m.total)(modeCount());
 // the store key: key 1 is the bare combination, so nothing a build-31 profile banked moves
 const skey = (key, tier = 'clear') => tier === 'clear' ? key : `${key}|${tier}`;
+// which tier a store key (or a retro mark) belongs to — the inverse of skey, so no screen parses a store key itself
+const retroTier = k => { const i = String(k).indexOf('|'); return i < 0 ? 'clear' : k.slice(i + 1); };
 
 /* ---------- build 38 (#426, A.2 amended): which numbers are GENERATED ----------
    A placeholder is a number site/scripts/placeholders.mjs wrote, marked on its row in config/key-bars.js as
@@ -128,7 +130,8 @@ function barFor(run) { return KEY_BARS[keyOf(run.g, run.d, run.s)] || null; }
 /* the one write. A solo run that beats a bar it had not beaten before clears that combination for good and hands the
    caller what to animate; anything else — including beating a bar already cleared — returns null and plays nothing (9.5).
    B.27: every OPEN, NON-SHELL tier is tried, lowest first, and every fresh clear is banked; what comes back is the lowest
-   tier's clear, because that is the ring the interlude draws. A run that clears two tiers at once banks both. */
+   tier's clear, because that is the ring the interlude draws. A run that clears two tiers at once banks both.
+   BUILD 40: key 1 is a tier like the others now — before the Games chest it is not open, so nothing banks and nothing interrupts. */
 function checkKey(run, two) { if (!eligible(run, two)) return null;
   const key = keyOf(run.g, run.d, run.s), c = COMBOS.find(x => x.key === key); if (!c || !c.bar) return null;
   let first = null, wrote = false;
@@ -145,7 +148,9 @@ function checkKey(run, two) { if (!eligible(run, two)) return null;
    else is its ratio against its own bar, CAPPED AT 0.9 (A.6.1), so an uncleared combination can never read as done and the
    last stretch to 100% is always real clearing. A.6.3: a zero bar or a zero best is credit 0 rather than a divide — the
    ceilings are the ones at risk. A.6.4: it reads BEST scores, which only improve, so it only ever goes up; it is never
-   computed from one run. Pass & play and versus never reach store.runs at all (L10 / 9.4), so "solo" needs no filter here. */
+   computed from one run. Pass & play and versus never reach store.runs at all (L10 / 9.4), so "solo" needs no filter here.
+   BUILD 40: no surface prints this any more — the meter counts cleared bars (METER.partial false, §M.1). It stays because it is
+   what METER.partial true reads, and the gate keeps its arithmetic honest. */
 const bestOf = c => Scores.best(c.g, c.d, c.s);
 function credit(c, tier = 'clear') { if (isCleared(c.key, tier)) return 1;
   const bar = barOf(c, tier); if (bar === null) return 0;
@@ -158,15 +163,6 @@ function keyPct(tier = 'clear') { const st = keyState(tier);
   if (isShell(tier)) return { done: 0, total: 0, pct: 0, tier };
   const sum = COMBOS.reduce((n, c) => n + credit(c, tier), 0);
   return { done: st.done, total: st.total, pct: st.total ? Math.floor(100 * sum / st.total) : 0, tier }; }
-/* B.15 / B.17: THE ONE NUMBER ON THE FRONT OF THE APP. Before the player steps into Pro it is key 1's own percentage. Once
-   they have (prefs.pro = 1), key 1 counts as 30 and Pro fills the remaining 70 — "it might stay at, like, thirty percent,
-   and then the remaining seventy percent goes towards completion of pro" — and stepping into Author later is the same
-   re-basing again: everything before it is 30, Author fills 70. It never goes back to zero and it never shows 100 again
-   until the tier it is measuring is whole, which is the warning B.16 makes the player read first. */
-const FRONT_BASE = 30;
-function frontPct() { const into = Math.max(0, Math.min(TIERS.length - 1, prefs.pro | 0));
-  if (!into) return keyPct('clear').pct;
-  return FRONT_BASE + Math.floor((100 - FRONT_BASE) * keyPct(TIERS[into]).pct / 100); }
 
 // a game's root: how many of its own combinations are cleared at a tier, and the fraction that makes
 function gameKey(g, tier = 'clear') { const list = BY_GAME[g] || []; const done = list.filter(c => isCleared(c.key, tier)).length;
@@ -175,6 +171,52 @@ function gameKey(g, tier = 'clear') { const list = BY_GAME[g] || []; const done 
 function keyState(tier = 'clear') { const games = Object.keys(GAMES).map(g => gameKey(g, tier));
   const done = games.reduce((n, x) => n + x.done, 0), total = games.reduce((n, x) => n + x.total, 0);
   return { tier, games, done, total, frac: total ? done / total : 0, whole: total > 0 && done === total }; }
+
+/* ---------- v23 (§L.8a / §L.10b, build 40): THE METER — one number, 0–400, and every surface reads this function ----------
+   Band 1 is the MODES band: modes unlocked ÷ modes total, not counting the ones a new profile starts with (METER.freeStart, §M.4).
+   Bands 2–4 are key 1, Pro and Author: each key's CLEARED bars ÷ its bars (METER.partial false, L.8a; true reads keyPct()'s
+   partial credit instead, §M.1) — and A BAND COUNTS ONLY ONCE THE CHEST THAT REVEALS ITS TIER IS OPEN, so the meter cannot pass 100
+   before the Games chest or 200 before the Key chest; the gate asserts both. It never resets: nothing it reads goes down but a Testing
+   reset. Supersedes B.15–B.17's frontPct() and its 30/70 re-base, retired with the step into Pro (L.8b). Shown as a whole number
+   with its sign — 142% (L.8a). Testing's "set meter to N%" (L.8f, S5) is the one override: prefs.devMeter exists only in a dev build. */
+const bandOf = tier => { if (!tierOpen(tier) || isShell(tier)) return 0;
+  if (METER.partial) return keyPct(tier).pct / 100;
+  const st = keyState(tier); return st.total ? st.done / st.total : 0; };
+function meterBands() { const m = modeCount(), free = METER.freeStart ? m.free : 0, den = m.total - free;
+  const modes = den > 0 ? Math.max(0, Math.min(1, (m.open - free) / den)) : 0;
+  return (METER.modes ? [modes] : []).concat(TIERS.map(bandOf)); }
+// the 1e-9 is floating point, not generosity: 100 × 0.29 is 28.999…, and a band that is 29% full must read 29
+const meterReal = () => Math.floor(METER.band * meterBands().reduce((n, v) => n + v, 0) + 1e-9);
+const meter = () => typeof prefs.devMeter === 'number' ? prefs.devMeter : meterReal();
+const meterMax = () => METER.band * (TIERS.length + (METER.modes ? 1 : 0));
+// one key's own band as a whole percentage — the key strip's figure, the same share the meter adds for it
+const bandPct = tier => Math.floor(100 * bandOf(tier) + 1e-9);
+
+/* ---------- v23 (§L.10, build 40): the four chests ----------
+   A chest is OPEN once opened, for good; BEFORE while the chest ahead of it is shut ("open the previous chest", G.1); READY when the
+   chest ahead is open and what it needs is met; LOCKED otherwise. Strictly sequential (L.10e) — nothing is ever ready behind a shut
+   chest, and the gate asserts it. What each needs: 'modes' is modesOpen(); a tier id is that key whole (a shell never is, A.2).
+   chestAt(id) is the meter figure at which it becomes ready — the top of the band before it. */
+const chestIx = id => CHESTS.findIndex(c => c.id === id);
+const chestOf = id => CHESTS.find(c => c.id === id) || null;
+const chestMet = id => { const c = chestOf(id); if (!c) return false; if (c.needs === 'modes') return modesOpen(); return !isShell(c.needs) && keyState(c.needs).whole; };
+function chestState(id) { const i = chestIx(id); if (i < 0) return null; if (chestOpen(id)) return 'open';
+  if (i > 0 && !chestOpen(CHESTS[i - 1].id)) return 'before';
+  return chestMet(id) ? 'ready' : 'locked'; }
+const readyChest = () => { const c = CHESTS.find(x => chestState(x.id) === 'ready'); return c ? c.id : null; };
+const chestAt = id => { const i = chestIx(id); if (i < 0) return null; const n = i + (METER.modes ? 1 : 0); return n > 0 ? n * METER.band : null; };
+/* L.8b: THE OPEN, and it happens on the key screen by itself — no "Open the chest?", no "progress to Pro?". Only a READY chest opens;
+   it is stored for good, the tier it reveals is credited against saved bests SILENTLY (G.4, which now reaches key 1 as well), and what
+   comes back is the meter before and after, so the screen can count it up (D.4). Opened is opened: a second call is null. */
+function openChest(id) { if (chestState(id) !== 'ready') return null; const c = chestOf(id), was = meter();
+  prefs.chests = Object.assign({}, prefs.chests, { [id]: 1 }); save();
+  const fresh = c.opens ? retroBank([c.opens]) : [];
+  return { id, was, now: meter(), fresh }; }
+/* v23 (§L.12, build 40): WHERE A WHOLE KEY TAPS THROUGH TO. The chest a key opens — the one whose `needs` is this tier — once the key is
+   whole and that chest is ready or already open; null for a key still in progress, which does nothing new on tap. The key screen asks
+   this and nothing else about a chest (A4). */
+function keyChest(tier) { const c = CHESTS.find(x => x.needs === tier); if (!c || isShell(tier) || !keyState(tier).whole) return null;
+  const st = chestState(c.id); return st === 'ready' || st === 'open' ? { id: c.id, state: st } : null; }
 
 /* the three keys (v15 §5.3 / A.1, build 26). They are difficulty TIERS over the same combinations, not three collections:
    key 1 is the clearance bars this file already keeps, key 2 a pro tier and key 3 the author's times. B.27: a tier whose
@@ -192,7 +234,8 @@ const keyTiers = () => KEYS.map((_, i) => keyTier(i));
    One row per game per tier — clear every one of that game's bars at that tier — and one per tier for the whole key:
    3 × (7 + 1) = 24 rows, generated from the same walk as everything else here, never listed. Each is a whole-set claim,
    so none carries live:1; run/run.js banks the key BEFORE it asks these, so a clear and the row it completes land on the
-   same run. The Pro and Author sets are not shown before chest 1 (A.1) — the Achievements tab filters on tierOpen. */
+   same run. Each set waits for its own tier's chest — key 1's for the Games chest since build 40 — and the Achievements tab
+   filters on tierOpen. */
 function keyAch() { const out = [];
   KEYS.forEach((k, i) => { const tier = k.id;
     for (const g in GAMES) out.push({ id: `key_${tier}_${g}`, g, tier: `key${i + 1}`, kt: tier, name: T(KEY_ACH.game, { game: GAMES[g].name, key: k.name }), how: T(KEY_ACH.gameHow, { game: GAMES[g].name, key: k.name }), at: {},
@@ -206,14 +249,15 @@ function checkKeyAch(run) { if (!run || run.chal || run.practice || run.demo) re
   if (fresh.length) save(); return fresh; }
 
 /* ---------- B.24: the Scores radar, measured against the three rungs ----------
-   One value per game, 0..RADAR_PAST. Before chest 1 the axis is key 1 alone: the best ratio of any of the game's
-   combinations against its clearance bar, capped at 1 — one rung and nothing beyond it (A.1). After chest 1 the three
-   rungs sit at thirds: rung 1 is key 1's bar, rung 2 the Pro bar, rung 3 the Author time, and a score past the Author
+   One value per game, 0..RADAR_PAST. Before the Key chest the axis is key 1 alone: the best ratio of any of the game's
+   combinations against its clearance bar, capped at 1 — one rung and nothing beyond it (A.1). After it the rungs sit at
+   even steps: rung 1 is key 1's bar, rung 2 the Pro bar, rung 3 the Author time, and a score past the Author
    time pushes on to RADAR_PAST, which is where the flame lives. A shell tier is a rung with no value (A.2): a game cannot
    climb past the last rung that has a number, and the screen draws that rung dashed. `rungs` says which rungs exist. */
 const RADAR_PAST = 1.15;
-// build 38: one rung per OPEN tier, evenly spaced — key 1 alone before chest 1, two after it, three once the Pro chest is open
-function radarRungs() { const open = TIERS.filter(tierOpen);
+/* build 38: one rung per OPEN tier, evenly spaced. BUILD 40: key 1's rung is always there, Games chest or not — the radar is the Scores
+   screen's picture of a player's best, not the key, and with no rung it would have nothing to draw (guess) */
+function radarRungs() { const open = TIERS.filter((t, i) => !i || tierOpen(t));
   return open.map((t, i) => ({ tier: t, at: (i + 1) / open.length, shell: isShell(t) })); }
 // how far a best score sits from `from` to `to` on the combination's own direction, 0..1 (past `to` is > 1)
 function stretch(best, from, to, dir) { if (best === null || from === null || to === null || from === to) return 0;
@@ -236,22 +280,22 @@ function radarOf(g) { const list = BY_GAME[g] || []; const rungs = radarRungs();
 
 /* ---------- v21 (G.4, build 37): retroactive credit when a chest opens ----------
    A chest reveals tiers whose bars the player may already have beaten. Every newly revealed, non-shell bar is judged
-   against the SAVED BEST for its combination and banked on the spot, SILENTLY — no toast, no unlock sound, no interlude. The
-   one sound and the one animation are the chest's own (ui/screens/pick.js openChest). `prefs.retro` marks what was banked
-   this way so the keys screen can wear L8's green on those rows the first time they are on screen, and then drop the mark.
-   The key achievements a retroactive clear completes are banked the same quiet way. A run that clears a bar LIVE still
-   announces itself exactly as it always has: checkKey() hands the result screen its interlude. Idempotent — a second chest
-   opening, or a second call, banks nothing it has already banked.
+   against the SAVED BEST for its combination and banked on the spot, SILENTLY — no toast, no unlock sound, no interlude.
+   `prefs.retro` marks what was banked this way so the keys screen can wear L8's green on those rows the first time they are
+   on screen, and then drop the mark. The key achievements a retroactive clear completes are banked the same quiet way. A run
+   that clears a bar LIVE still announces itself exactly as it always has: checkKey() hands the result screen its interlude.
+   Idempotent — a second chest opening, or a second call, banks nothing it has already banked.
    BUILD 38 (#426 — Aiden: "yes, silently, once"): THE SAME CREDIT WHEN THE NUMBERS ARRIVE INSTEAD OF A CHEST. A profile whose
-   Pro or Author tier was already open when its column filled (a chest opened against build 37's empty columns, or Testing's
-   OPEN EVERYTHING) never saw a chest open for those bars. retroArrived() runs at boot and credits every open, non-shell tier
-   whose column differs from the one last credited — `prefs.retroCol[tier]`, the column as a string, written by every credit
-   including a chest's. So a reload never credits twice, the next boot does not undo Testing's per-key reset, and replacing a
-   placeholder with Aiden's number changes the column and credits once more against the new bar. `only` limits a credit to
-   the tiers it names. */
+   Pro or Author tier was already open when its column filled never saw a chest open for those bars. retroArrived() runs at boot
+   and credits every open, non-shell tier whose column differs from the one last credited — `prefs.retroCol[tier]`, the column as
+   a string, written by every credit including a chest's. So a reload never credits twice, the next boot does not undo Testing's
+   per-key reset, and replacing a placeholder with Aiden's number changes the column and credits once more against the new bar.
+   `only` limits a credit to the tiers it names.
+   BUILD 40 (L.10a): the Games chest credits KEY 1 this way too — bars cleared before it opens bank at open, silently. retroArrived()
+   still leaves key 1 alone: its column is Aiden's own numbers, never a placeholder that arrives. */
 const colSig = tier => COMBOS.map(c => { const v = barOf(c, tier); return v === null ? '' : v; }).join(',');
 function retroBank(only) { const fresh = [], sig = Object.assign({}, prefs.retroCol);
-  for (const tier of TIERS) { if (tier === 'clear' || (only && !only.includes(tier)) || !tierOpen(tier) || isShell(tier)) continue;
+  for (const tier of TIERS) { if ((only && !only.includes(tier)) || !tierOpen(tier) || isShell(tier)) continue;
     sig[tier] = colSig(tier);
     for (const c of COMBOS) { const bar = barOf(c, tier); if (bar === null || isCleared(c.key, tier)) continue;
       const best = bestOf(c); if (best === null || !beats({ hits: best }, bar, c.bar.dir)) continue;
@@ -266,9 +310,11 @@ const retroArrived = () => { const due = TIERS.filter(t => t !== 'clear' && tier
 /* ---------- v21 (G.8, build 37): Testing's per-key switches (S5, dev only) ----------
    devKeyAll(tier, on) clears every bar of one key and REMEMBERS what that key held, so switching it off puts exactly that
    back — the state a test started from, not an empty key. devKeyReset(tier) backs the key out entirely: its bars, its
-   whole-key moment, its chest, the step into the tier after it, its retroactive marks, its last-seen percentage and its
-   three key achievements. The buttons are [data-dev] and the snapshot is shape-checked only while BUILD_FLAGS.dev is on, so
-   none of this exists in a release build. */
+   whole-key moment, the chest it opens, its retroactive marks and its three key achievements. The buttons are [data-dev] and
+   the snapshot is shape-checked only while BUILD_FLAGS.dev is on, so none of this exists in a release build.
+   v23 (L.8f, build 40): the switches are PER CHEST on the screen — four of them — and a key's switch is its chest's: the Key chest's
+   is key 1, the Pro chest's Pro, the Thorns chest's Author. The Games chest's is the chain's, in progress.js (devModesAll), because
+   nothing here may touch store.unlock; devChestReset('games') shuts the chest itself. devSetMeter(n) is "set meter to N%". */
 const devKeyOn = tier => !!(prefs.devKeys && prefs.devKeys[tier]);
 function devKeyAll(tier, on) { const dk = Object.assign({}, prefs.devKeys);
   if (on && !dk[tier]) { dk[tier] = COMBOS.map(c => skey(c.key, tier)).filter(k => store.bars[k]);
@@ -277,14 +323,21 @@ function devKeyAll(tier, on) { const dk = Object.assign({}, prefs.devKeys);
     for (const c of COMBOS) { const k = skey(c.key, tier); if (!keep.has(k)) delete store.bars[k]; }
     delete dk[tier]; }
   prefs.devKeys = dk; save(); return devKeyOn(tier); }
-function devKeyReset(tier) { const n = tierIx(tier) + 1;
-  for (const c of COMBOS) delete store.bars[skey(c.key, tier)];
+// a reset never leaves the last-painted meter above what the profile now holds, or the next rise would count up from a ghost
+const seenDown = () => { if (typeof prefs.meterSeen === 'number' && prefs.meterSeen > meterReal()) prefs.meterSeen = meterReal(); };
+function devKeyReset(tier) { const c = CHESTS.find(x => x.needs === tier);
+  for (const cb of COMBOS) delete store.bars[skey(cb.key, tier)];
   if (prefs.keyWhole) delete prefs.keyWhole[tier];
-  prefs['chest' + n] = 0; if ((prefs.pro | 0) >= n) prefs.pro = n - 1;
-  if (prefs.retro) for (const k of Object.keys(prefs.retro)) if (k.endsWith('|' + tier)) delete prefs.retro[k];
-  if (prefs.pctSeen) delete prefs.pctSeen[tier];
+  if (c) prefs.chests = Object.assign({}, prefs.chests, { [c.id]: 0 });
+  if (prefs.retro) for (const k of Object.keys(prefs.retro)) if (retroTier(k) === tier) delete prefs.retro[k];
   if (prefs.devKeys) delete prefs.devKeys[tier];
   for (const id of Object.keys(store.ach)) if (id.startsWith(`key_${tier}_`)) delete store.ach[id];
-  save(); }
+  seenDown(); save(); }
+function devChestReset(id) { const c = chestOf(id); if (!c) return;
+  if (c.needs === 'modes') { prefs.chests = Object.assign({}, prefs.chests, { [id]: 0 }); prefs.cusSeen = 0; seenDown(); save(); return; }
+  devKeyReset(c.needs); }
+function devSetMeter(n) { if (n === null || n === '' || !Number.isFinite(+n)) delete prefs.devMeter;
+  else prefs.devMeter = Math.max(0, Math.min(meterMax(), Math.round(+n)));
+  save(); return meter(); }
 
-export { COMBOS, RADAR_PAST, TIERS, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, fillBars, checkKeyAch, cleared, combos, credit, devKeyAll, devKeyOn, devKeyReset, frontPct, gameKey, isCleared, isPlaceholder, isShell, keyAch, keyOf, keyPct, keyState, keyTier, keyTiers, mapOpen, modesOpen, placeholderCount, radarOf, radarRungs, retroArrived, retroBank, skey, tierFull, tierOpen };
+export { COMBOS, RADAR_PAST, TIERS, bandPct, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, checkKeyAch, chestAt, chestOpen, chestState, cleared, combos, credit, devChestReset, devKeyAll, devKeyOn, devKeyReset, devSetMeter, fillBars, gameKey, isCleared, isPlaceholder, isShell, keyAch, keyChest, keyOf, keyPct, keyState, keyTier, keyTiers, meter, meterMax, modesOpen, openChest, placeholderCount, radarOf, radarRungs, readyChest, retroArrived, retroBank, retroTier, skey, tierFull, tierOpen };

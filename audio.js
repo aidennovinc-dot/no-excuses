@@ -11,7 +11,7 @@ import { DUCK, DUCK_TAIL, FLOW_STEM, SCALES, SET_SECS, STEMS, TRACKS, TRACK_PICK
 import { STREAK } from "./config/games.js";
 import { emit, on } from "./core/events.js";
 import { sel } from "./core/state.js";
-import { musicOn, prefs } from "./core/store.js";
+import { look, musicOn, prefs } from "./core/store.js";
 /* ---------- sound: synthesised, tiny, quiet. The pack colours hit / miss / click; tick, go and end are the same everywhere ---------- */
 // v10: iOS marks the context "interrupted" (not "suspended") when the app goes to the background, and only a resume inside a touch brings it back — so every touch checks, and so does coming back to the foreground
 /* v21 (F.2, build 35) — WHAT THAT PATH DID, READ BEFORE ANY OF THIS WAS WRITTEN: three bare `resume()` calls — here, on
@@ -109,7 +109,7 @@ const Snd = (()=>{
      stems and the flow layer use it; every sound effect leaves it undefined and goes straight out.
      build 30: `o` is the per-note shaping the new tracks need — {lp, q} a lowpass, {hold} a fraction of the note to hold
      full gain for before the existing exponential release. A note with no `o` behaves exactly as it did. */
-  function tone(f0,f1,ms,type,gain,at,attack,force,dest,o){ const a=AC(); if(!a||(prefs.snd==='off'&&!force)) return; const t=at||a.currentTime; const dur=Math.max(.02,ms/1000);
+  function tone(f0,f1,ms,type,gain,at,attack,force,dest,o){ const a=AC(); if(!a||(look('snd')==='off'&&!force)) return; const t=at||a.currentTime; const dur=Math.max(.02,ms/1000);
     const osc=a.createOscillator(), g=a.createGain(); osc.type=type; osc.frequency.setValueAtTime(f0,t); osc.frequency.exponentialRampToValueAtTime(Math.max(1,f1),t+dur);
     const atk=attack?Math.min(dur*.95,attack/1000):0;
     g.gain.setValueAtTime(atk?0.0001:gain,t); if(atk) g.gain.exponentialRampToValueAtTime(gain,t+atk);
@@ -120,8 +120,8 @@ const Snd = (()=>{
   return { unlock:AC, tone,
     // 'sigh' (v8): a breathy fall on every tap. Earned by the Grand tour. It is a joke, and it is meant to be
     // v11 loudness pass: hit ≈ .07, miss ≈ .08 in every pack, nothing above the game-end sound (.10)
-    hit(){ prefs.snd==='click' ? tone(1800,1200,25,'square',.06) : prefs.snd==='wood' ? tone(900,500,45,'triangle',.08) : prefs.snd==='sigh' ? (tone(560,190,300,'sine',.07,0,40),tone(2200,900,220,'sawtooth',.012,0,30)) : tone(700,1500,70,'sine',.07); },
-    miss(){ prefs.snd==='click' ? tone(300,120,60,'square',.08) : prefs.snd==='wood' ? tone(180,90,140,'triangle',.08) : prefs.snd==='sigh' ? tone(240,50,520,'sine',.08,0,60) : tone(220,70,180,'triangle',.08); },
+    hit(){ look('snd')==='click' ? tone(1800,1200,25,'square',.06) : look('snd')==='wood' ? tone(900,500,45,'triangle',.08) : look('snd')==='sigh' ? (tone(560,190,300,'sine',.07,0,40),tone(2200,900,220,'sawtooth',.012,0,30)) : tone(700,1500,70,'sine',.07); },
+    miss(){ look('snd')==='click' ? tone(300,120,60,'square',.08) : look('snd')==='wood' ? tone(180,90,140,'triangle',.08) : look('snd')==='sigh' ? tone(240,50,520,'sine',.08,0,60) : tone(220,70,180,'triangle',.08); },
     /* a key rings out on its own (v5): the tone decays over `ms`, it is never cut by the key being let go.
        v17 (B.30): a ringing key DUCKS the Sequence bed. It is both halves of the complaint in one line — the game
        playing the pattern and the player copying it both come through here — and audio ducks only while a Sequence
@@ -134,7 +134,7 @@ const Snd = (()=>{
     // sequence: "your turn" — two quick rising notes, on top of the visual (v7)
     turn(){ const a=AC(); if(!a) return; const t=a.currentTime; tone(660,660,90,'sine',.07,t); tone(990,990,160,'sine',.08,t+.09); },
     // one click family (v11): every menu tap is click(); picking an option is select() — the same tone, a step higher (×1.12)
-    click(k){ k=k||1; prefs.snd==='click' ? tone(1500*k,1100*k,14,'square',.03) : prefs.snd==='wood' ? tone(1000*k,600*k,22,'triangle',.05) : prefs.snd==='sigh' ? tone(700*k,380*k,60,'sine',.03) : tone(2400*k,1800*k,14,'sine',.035); },
+    click(k){ k=k||1; look('snd')==='click' ? tone(1500*k,1100*k,14,'square',.03) : look('snd')==='wood' ? tone(1000*k,600*k,22,'triangle',.05) : look('snd')==='sigh' ? tone(700*k,380*k,60,'sine',.03) : tone(2400*k,1800*k,14,'sine',.035); },
     select(){ this.click(1.12); },
     tick(){ tone(880,880,70,'sine',.07); },
     go(){ tone(1320,1320,140,'sine',.08); },
@@ -164,7 +164,7 @@ const Snd = (()=>{
     verdict(id){ const a=AC(); if(!a) return; const ev=VERDICT_FX[id]; if(!ev) return; const t=a.currentTime;
       for(const [at,f0,f1,ms,w,g,am] of ev) tone(f0,f1,ms,w,g,t+at,am); },
     // v13 (6.6): the counting whoosh — one voice sweeping low to high for the length of the count, so the pitch follows the fill
-    whoosh(ms,f0,f1){ const a=AC(); if(!a||prefs.snd==='off') return null; const t=a.currentTime, dur=Math.max(120,ms)/1000;
+    whoosh(ms,f0,f1){ const a=AC(); if(!a||look('snd')==='off') return null; const t=a.currentTime, dur=Math.max(120,ms)/1000;
       const o=a.createOscillator(), n=a.createOscillator(), g=a.createGain(), f=a.createBiquadFilter();
       o.type='sawtooth'; n.type='sine'; f.type='lowpass';
       o.frequency.setValueAtTime(f0||110,t); o.frequency.exponentialRampToValueAtTime(f1||660,t+dur);
@@ -232,7 +232,8 @@ const longSec = t => +(repeatBars(t,phaseOf(t))*barSecOf(t)).toFixed(1);
 
 const Music=(()=>{
   const TR=TRACKS;
-  const opt=g=>(prefs.track&&prefs.track[g])||TRACK_PICK[g]||'a';
+  // v23 (L.11a, build 40): a chosen track is a Customise choice — until the Games chest opens, look('track') is empty and the default plays
+  const opt=g=>(look('track')&&look('track')[g])||TRACK_PICK[g]||'a';
   // '<game>' -> the option this profile plays; 'menu' / 'key:roots' / an explicit '<game>:tide' are taken as given
   const pick=id=>TR[id]||TR[id+':'+opt(id)]||TR['quick-tap:held'];
   let tr=null, timer=0, next=0, bar=0, hits=[], sHits=[[],[]], fHits=[], mode='', mg=null, sg=[null,null], fg=null;

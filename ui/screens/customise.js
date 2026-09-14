@@ -20,9 +20,10 @@ import { DESIGNS, ITEMS } from "../../config/theme.js";
 import { $, $$, T, esc } from "../../core.js";
 import { on } from "../../core/events.js";
 import { sel } from "../../core/state.js";
-import { musicOn, prefs } from "../../core/store.js";
+import { musicOn, prefs, save } from "../../core/store.js";
 import { GAMES } from "../../games/registry.js";
 import { ACH, achById, got, markSeen, newMark } from "../../progress.js";
+import { chestOpen } from "../../progress/key.js";
 import { define } from "../actions.js";
 import { chips } from "../chips.js";
 import { register, show } from "../router.js";
@@ -66,7 +67,8 @@ function renderCustom(){
      before chest 1). A locked row still previews — hearing what you have is not the reward. Dev unlock-all opens it,
      which is how Aiden compares the three on his phone before either chest is reachable. TRACK_PICK is still the
      default; `prefs.track` is only what he chose. */
-  const free=!!(prefs.chest2||prefs.allOpen||prefs.supporter), opts=TRACK_OPTS[F.g]||[], cur=prefs.track[F.g]||TRACK_PICK[F.g];
+  // v23 (L.10, build 40): "chest 2" is the Pro chest by name — chestOpen() honours the two dev escapes, as every gate does (#411)
+  const free=chestOpen('pro'), opts=TRACK_OPTS[F.g]||[], cur=prefs.track[F.g]||TRACK_PICK[F.g];
   $('#c-track').innerHTML = (free?opts:[cur]).map(o=>{ const t=TRACKS[F.g+':'+o]||{};
     return `<button data-act="item" data-v="${o}" class="opt ${o===cur?'sel':''} ${free?'':'locked plain'}">${esc(t.name||o)}</button>`; }).join('');
   // the menu loop is not a game's, so it gets its own switch rather than hiding inside one game's row
@@ -140,7 +142,8 @@ on('screen:change',({id})=>{ if(id==='game') $('#wheelwrap').classList.remove('o
    the way the tab did it (v23 L.4d, "with that item selected" — picked out, not applied: applying it would change a
    colour he has chosen without asking, guess). A payout into a group this game does not show (Every game's lead colour
    on a game with no lead) previews the first game that shows it; the tab scrolled to a hidden row and showed nothing. */
-register('s-custom',{ onShow(o){ const k=o.unlocks?o.unlocks[0]:null;
+// v23 (L.11a / D.5, build 40): the menu row stays green until this screen is first opened after the Games chest — this is that opening
+register('s-custom',{ onShow(o){ const k=o.unlocks?o.unlocks[0]:null; if(chestOpen('games')&&!prefs.cusSeen){ prefs.cusSeen=1; save(); }
   F.g=o.g&&GAMES[o.g]?o.g:sel.game;
   if(k&&!shows(F.g,k)) F.g=Object.keys(GAMES).find(g=>shows(g,k))||F.g;
   pvTry.set=null; pvSeen.by=null; renderCustom();
