@@ -9,7 +9,9 @@ export const TOAST = {
   devOpenOn:'Everything open · modes and cosmetics', devOpenOff:'Progression back on · only what you earned',
   supOn:'Supporter ON · no ads, all cosmetics, pro length', supOff:'Free tier · ads back on',
   fresh:'Fresh game · runs, unlocks, achievements and intros wiped',
-  barsOn:'Placeholder bars · derived for testing, never saved, gone on reload', barsOff:'Placeholder bars off · Pro and Author are shells again',
+  // build 38 (#426): the columns carry generated placeholders now, so the test fill only ever finds EMPTY cells to fill
+  barsOn:'Test fill · empty Pro / Author bars derived in memory, never saved, gone on reload', barsOff:'Test fill off · the cells it filled are empty again',
+  barsNone:'Nothing to fill · every Pro and Author bar has a number (placeholders since build 38)',
   pracLocked:'Locked · Practice from · 8 notes in 7 keys', locked:'Locked · {name}',
   supAlready:'Already a supporter · thank you', supLater:'Purchases arrive in the app build · About → testing → supporter to try it',
   achievement:'Achievement · {name}', copied:'Copied · paste it anywhere',
@@ -204,7 +206,10 @@ export const KEY = { title:'the key', hint:'tap a game · solo runs only',
      `soon` is what they say instead of a target nobody has set (A.2 forbids a build deriving one). */
   keys:'keys', pct:'{n}%', locked:'locked', unlocked:'unlocked', pick:'tap a key',
   faked:'Every number on this key is a PLACEHOLDER, derived from key 1 for testing. Not set by hand, never saved, gone on reload.',
-  soon:'Not set yet. What sits behind this key is still being decided — nothing here is generated, every bar is set by hand.',
+  /* build 38 (#426, A.2 amended): both columns carry GENERATED placeholders, and a generated number on screen says so.
+     `soon` is what a tier says if a column ever has an empty cell again */
+  placeholder:'{n} of the {total} numbers on this key are PLACEHOLDERS, generated from key 1 — not set by hand yet.',
+  soon:'Not set yet. At least one bar on this key has no number — not a placeholder, and not one set by hand.',
   // 5.2: a clearance-bar row is a way IN. Tapping it starts that combination with the bar pinned at the top of the run,
   // through the same goal line an unlock uses (2.2) — one mechanism, not two
   aim:'{name} · {want}', rowGo:'tap a row to go and try it',

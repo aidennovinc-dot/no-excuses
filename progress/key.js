@@ -24,7 +24,8 @@
    instead, and every store write is keyed by tier — 'g:d:s' for key 1, 'g:d:s|pro' and 'g:d:s|author' for the other two,
    so one map in store.bars holds all three and Fresh game clears them together. A TIER IS A SHELL WHILE ANY ROW OF ITS
    COLUMN IS NULL — derived here from the data, never a flag in config/keys.js — and a shell tier counts nothing, shows
-   nothing and clears nothing: A.2 forbids deriving a bar, so until Aiden has filled the column there is no bar to beat.
+   nothing and clears nothing. A.2 AS AMENDED AT BUILD 38 (#426): a build may generate a marked PLACEHOLDER bar, and both
+   columns are full of them — isPlaceholder() tells a generated number from one Aiden set; everything else here treats both alike.
    Tiers 2 and 3 also count nothing before chest 1 (A.1 / A.2): the chest is what hands the map over, and a pro bar
    quietly banked before it would make the reveal arrive part-done.
    B.17: the FRONT of the app shows one number, and entering Pro re-bases it — key 1 done is 30%, Pro fills the other 70;
@@ -68,7 +69,10 @@ const isShell = tier => tier !== 'clear' && !tierFull(tier);
    BUILD_FLAGS.dev strips them from release and a first-timer still meets exactly one target per game.
    EVERY gate on this map goes through mapOpen(); a new one that reads prefs.chest1 directly is the bug this fixed. */
 const mapOpen = () => !!(prefs.chest1 || prefs.allOpen || prefs.supporter);
-const tierOpen = tier => tier === 'clear' || mapOpen();
+/* build 38 (Aiden, 2026-09-14 — "Author should wait for the Pro chest"): EACH TIER OPENS WITH ITS OWN CHEST. Pro with chest 1,
+   exactly as mapOpen() says; Author with chest 2. Both still take the two dev escapes. Everything that asks whether a tier is
+   open — the key strip, clears, retroactive credit, the key achievement sets, the radar's rungs — follows from this line. */
+const tierOpen = tier => { const i = tierIx(tier); return i === 0 || !!(prefs['chest' + i] || prefs.allOpen || prefs.supporter); };
 /* v21 (G.3, build 37 — amending v18 B.19 / B.20, where chest 1 needed key 1 whole and nothing else): CHEST 1 ALSO WAITS FOR
    EVERY GAME MODE TO BE UNLOCKED. THIS IS THE ONE PLACE THE TWO PROGRESSION SYSTEMS TOUCH — the unlock chain (L6) and the
    key — so it is one predicate, here beside mapOpen(), reading the chain through progress.js's modeCount() and never
@@ -79,14 +83,21 @@ const modesOpen = () => !!(prefs.allOpen || prefs.supporter) || (m => m.total > 
 // the store key: key 1 is the bare combination, so nothing a build-31 profile banked moves
 const skey = (key, tier = 'clear') => tier === 'clear' ? key : `${key}|${tier}`;
 
+/* ---------- build 38 (#426, A.2 amended): which numbers are GENERATED ----------
+   A placeholder is a number site/scripts/placeholders.mjs wrote, marked on its row in config/key-bars.js as
+   `placeholder:{ <tier>:{ v, conf, basis } }`. The marker counts only while the cell still holds `v`: a number Aiden has
+   changed in place is his, whatever the marker says — the same test the generator writes by, so the two never disagree about
+   which bars are his. Everything else in this file treats a placeholder as a bar like any other; this is how to tell. */
+function isPlaceholder(c, tier) { if (!c || !c.bar || tier === 'clear') return false;
+  const m = c.bar.placeholder && c.bar.placeholder[tier], v = barOf(c, tier); return !!m && v !== null && m.v === v; }
+const placeholderCount = tier => COMBOS.filter(c => isPlaceholder(c, tier)).length;
+
 /* ---------- the placeholder fill (Testing only, session only) ----------
-   A.2 says a bar is SET BY HAND and never derived, and that rule is not being relaxed: nothing here is ever written to
-   storage, `config/key-bars.js` is not touched, and a reload throws the whole thing away. What it is for is that all
-   sixty pro and author bars are still null (#371), so both those tiers are shells — Aiden could reveal them with
-   OPEN EVERYTHING after #411 and still only ever see "not set yet". This fills them IN MEMORY so the Circuit and Thorn
-   rings draw and play, which is the only way to review the key system before the real numbers exist. The key screen
-   says so out loud while it is on (`barsFaked()`), because a derived number that is not announced is exactly what A.2
-   is protecting against. The gate does the same mutation at _smoke/smoke.mjs to draw the two ring styles.
+   Build 34 added this because all sixty pro and author bars were null (#371) and both tiers were shells nobody could review:
+   it filled them IN MEMORY — nothing written, config/key-bars.js untouched, gone on reload. BUILD 38 (#426) FILLED BOTH
+   COLUMNS in the file with marked placeholders, so on the shipped table this has nothing left to do, and A.2 as amended
+   forbids overwriting a number that is there, generated or not. So it fills EMPTY cells only, and `barsFaked()` is true only
+   while it actually filled one — a tap that finds nothing to fill leaves it off. The key screen says so while it is on.
    Direction is read from the row, never assumed (C.7): a ceiling gets tighter, a floor gets higher. */
 let faked = null;
 const barsFaked = () => !!faked;
@@ -97,9 +108,11 @@ function harder(from, bar, dir, f) { if (typeof bar !== 'number' || !Number.isFi
   return v; }
 function fillBars(on) {
   if (on && !faked) { faked = {};
-    for (const k of Object.keys(KEY_BARS)) { const r = KEY_BARS[k]; faked[k] = { pro: r.pro, author: r.author };
-      r.pro = harder(r.bar, r.bar, r.dir, { higher: 1.25, lower: 0.8 });
-      r.author = harder(r.pro, r.bar, r.dir, { higher: 1.5, lower: 0.65 }); } }
+    for (const k of Object.keys(KEY_BARS)) { const r = KEY_BARS[k]; if (r.pro !== null && r.author !== null) continue;
+      faked[k] = { pro: r.pro, author: r.author };
+      if (r.pro === null) r.pro = harder(r.bar, r.bar, r.dir, { higher: 1.25, lower: 0.8 });
+      if (r.author === null) r.author = harder(r.pro, r.bar, r.dir, { higher: 1.5, lower: 0.65 }); }
+    if (!Object.keys(faked).length) faked = null; }
   else if (!on && faked) { for (const k of Object.keys(faked)) { const r = KEY_BARS[k]; if (!r) continue;
       r.pro = faked[k].pro; r.author = faked[k].author; } faked = null; }
   return barsFaked(); }
@@ -199,8 +212,9 @@ function checkKeyAch(run) { if (!run || run.chal || run.practice || run.demo) re
    time pushes on to RADAR_PAST, which is where the flame lives. A shell tier is a rung with no value (A.2): a game cannot
    climb past the last rung that has a number, and the screen draws that rung dashed. `rungs` says which rungs exist. */
 const RADAR_PAST = 1.15;
-function radarRungs() { if (!mapOpen()) return [{ tier: 'clear', at: 1, shell: false }];
-  return TIERS.map((t, i) => ({ tier: t, at: (i + 1) / TIERS.length, shell: isShell(t) })); }
+// build 38: one rung per OPEN tier, evenly spaced — key 1 alone before chest 1, two after it, three once the Pro chest is open
+function radarRungs() { const open = TIERS.filter(tierOpen);
+  return open.map((t, i) => ({ tier: t, at: (i + 1) / open.length, shell: isShell(t) })); }
 // how far a best score sits from `from` to `to` on the combination's own direction, 0..1 (past `to` is > 1)
 function stretch(best, from, to, dir) { if (best === null || from === null || to === null || from === to) return 0;
   return (best - from) / (to - from); }
@@ -227,14 +241,27 @@ function radarOf(g) { const list = BY_GAME[g] || []; const rungs = radarRungs();
    this way so the keys screen can wear L8's green on those rows the first time they are on screen, and then drop the mark.
    The key achievements a retroactive clear completes are banked the same quiet way. A run that clears a bar LIVE still
    announces itself exactly as it always has: checkKey() hands the result screen its interlude. Idempotent — a second chest
-   opening, or a second call, banks nothing it has already banked. */
-function retroBank() { const fresh = [];
-  for (const tier of TIERS) { if (tier === 'clear' || !tierOpen(tier) || isShell(tier)) continue;
+   opening, or a second call, banks nothing it has already banked.
+   BUILD 38 (#426 — Aiden: "yes, silently, once"): THE SAME CREDIT WHEN THE NUMBERS ARRIVE INSTEAD OF A CHEST. A profile whose
+   Pro or Author tier was already open when its column filled (a chest opened against build 37's empty columns, or Testing's
+   OPEN EVERYTHING) never saw a chest open for those bars. retroArrived() runs at boot and credits every open, non-shell tier
+   whose column differs from the one last credited — `prefs.retroCol[tier]`, the column as a string, written by every credit
+   including a chest's. So a reload never credits twice, the next boot does not undo Testing's per-key reset, and replacing a
+   placeholder with Aiden's number changes the column and credits once more against the new bar. `only` limits a credit to
+   the tiers it names. */
+const colSig = tier => COMBOS.map(c => { const v = barOf(c, tier); return v === null ? '' : v; }).join(',');
+function retroBank(only) { const fresh = [], sig = Object.assign({}, prefs.retroCol);
+  for (const tier of TIERS) { if (tier === 'clear' || (only && !only.includes(tier)) || !tierOpen(tier) || isShell(tier)) continue;
+    sig[tier] = colSig(tier);
     for (const c of COMBOS) { const bar = barOf(c, tier); if (bar === null || isCleared(c.key, tier)) continue;
       const best = bestOf(c); if (best === null || !beats({ hits: best }, bar, c.bar.dir)) continue;
       const k = skey(c.key, tier); store.bars[k] = Date.now(); fresh.push(k); } }
-  if (fresh.length) { prefs.retro = Object.assign({}, prefs.retro, Object.fromEntries(fresh.map(k => [k, 1]))); save(); checkKeyAch({}); }
+  prefs.retroCol = sig;
+  if (fresh.length) prefs.retro = Object.assign({}, prefs.retro, Object.fromEntries(fresh.map(k => [k, 1])));
+  save(); if (fresh.length) checkKeyAch({});
   return fresh; }
+const retroArrived = () => { const due = TIERS.filter(t => t !== 'clear' && tierOpen(t) && !isShell(t) && (prefs.retroCol || {})[t] !== colSig(t));
+  return due.length ? retroBank(due) : []; };
 
 /* ---------- v21 (G.8, build 37): Testing's per-key switches (S5, dev only) ----------
    devKeyAll(tier, on) clears every bar of one key and REMEMBERS what that key held, so switching it off puts exactly that
@@ -260,4 +287,4 @@ function devKeyReset(tier) { const n = tierIx(tier) + 1;
   for (const id of Object.keys(store.ach)) if (id.startsWith(`key_${tier}_`)) delete store.ach[id];
   save(); }
 
-export { COMBOS, RADAR_PAST, TIERS, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, fillBars, checkKeyAch, cleared, combos, credit, devKeyAll, devKeyOn, devKeyReset, frontPct, gameKey, isCleared, isShell, keyAch, keyOf, keyPct, keyState, keyTier, keyTiers, mapOpen, modesOpen, radarOf, radarRungs, retroBank, skey, tierFull, tierOpen };
+export { COMBOS, RADAR_PAST, TIERS, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, fillBars, checkKeyAch, cleared, combos, credit, devKeyAll, devKeyOn, devKeyReset, frontPct, gameKey, isCleared, isPlaceholder, isShell, keyAch, keyOf, keyPct, keyState, keyTier, keyTiers, mapOpen, modesOpen, placeholderCount, radarOf, radarRungs, retroArrived, retroBank, skey, tierFull, tierOpen };

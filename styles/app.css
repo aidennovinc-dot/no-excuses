@@ -1360,9 +1360,11 @@
      the SHEET's own ground (--panel, and the pass & play sheet's green-tinted one), not the grid's — the gate measures
      the contrast. Everywhere else `.sel` appears is unchanged: this is the game-then-mode pick only. */
   .choice.sel{border-color:var(--press)}
-  .grid.dim .tile.keep .pic{outline-color:var(--line)}
-  .grid.dim .tile.keep .name{color:var(--mute)}
-  .grid.dim .tile.keep.newthing .pic,.grid.dim .tile.keep.newplay .pic{border-color:var(--line)}
+  /* AMENDED at build 38 (Aiden): the tile demotes once a mode is CHOSEN (`.grid.chosen`, set in setStage), not the moment the
+     sheet is up — until a mode is tapped the tile is still the live choice and keeps its amber */
+  .grid.chosen .tile.keep .pic{outline-color:var(--line)}
+  .grid.chosen .tile.keep .name{color:var(--mute)}
+  .grid.chosen .tile.keep.newthing .pic,.grid.chosen .tile.keep.newplay .pic{border-color:var(--line)}
 
   /* ---------- v21 §G / v20 §D (build 37): keys and chests ---------- */
   /* G.2 / D.7: a locked key is CROSSED OUT, not greyed — the locked-mode pattern — with what opens it underneath and no number */

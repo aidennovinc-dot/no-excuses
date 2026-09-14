@@ -121,3 +121,40 @@ of it, statically and by quitting a run mid-flight and reading storage back.
 - **Testing: a switch and a reset per key (G.8, S5).** `devKeyAll(tier, on)` clears every bar of one key and snapshots what it
   held in `prefs.devKeys`, so off restores it; `devKeyReset(tier)` backs the key out — bars, whole-key moment, chest, the step
   into the tier after it, retro marks, last-seen %, key achievements. Dev only.
+
+## Build 38 (Aiden's answers to build 37, 2026-09-14): Author waits for the Pro chest
+
+- **Each tier opens with its own chest.** Build 37 kept the old reveal — chest 1 opened Pro AND Author — which left the Author
+  key reading "open the previous chest" while it opened a chest early. Aiden: Author waits for the Pro chest. `tierOpen(tier)`
+  is now `chest n opens tier n+1`, with the two dev escapes, and it is the only read: the key strip crosses Author out until
+  chest 2, `checkKey` banks nothing on Author before it, `retroBank` credits Author's already-beaten bars when the Pro chest
+  opens (silently, G.4), the Achievements tab shows the Author set only then, and `radarRungs()` draws one rung per open tier
+  — one before chest 1, two after it, three after the Pro chest. `mapOpen()` still means "chest 1, or a dev escape" and is
+  what Pro's tier reads.
+
+## Build 38 (#426, 2026-09-14): Pro and Author placeholders — A.2 amended
+
+- **A.2, as amended (Aiden asked for it directly):** a build MAY generate a PLACEHOLDER bar, if it is marked as one and
+  replaceable a row at a time; it may still NEVER set a real bar or silently correct one. Both columns of
+  `config/key-bars.js` are full of them. **`scripts/placeholders.mjs` (`npm run placeholders`) is the only writer:** `bar` ×
+  1.15 / × 1.30 on a floor, × 0.80 / × 0.65 on a ceiling, rounded to the row's own precision, then the floors — nothing
+  reaction-timed faster than 180ms of genuine reaction (Flash · Set's Author, 170 → 180, is the only clamp), and no Timing or
+  Estimate Set tighter than Aiden's own Amazing! round (`ROUND_AT[0]`) held every round. Each tier ends strictly harder than
+  the one below; a row that cannot be is refused, not written.
+- **The marker is the rule.** `placeholder:{ <tier>:{ v, conf:'low', basis } }` on the row, `v` the number generated. A cell
+  is the generator's while it is null or still holds its marker's `v`; anything else is a person's number and is left byte
+  for byte, value and marker, so a real number is never regenerated, rounded, corrected or re-derived. `isPlaceholder(c,
+  tier)` in `progress/key.js` reads the marker by the same test. `--set <id> pro|author <n>` writes a real number and drops
+  that cell's marker; `--check` fails when either file is not the generator's output; `--clear` puts the shells back. `bar`
+  is never written by any of it.
+- **What a full column switches on — no new mechanism, only build 32–38 code meeting numbers for the first time:** the
+  Circuit and Thorn rings (no `.kkey.shell` dimming); `checkKey` banking Pro and Author clears on open tiers (one run can clear
+  two or three at once, and the interlude still draws the lowest); `keyPct` and `frontPct` counting after the step into Pro;
+  chests 2 and 3 openable once their key is whole; the Pro and Author achievement sets earnable; solid radar rungs and the
+  flame; and `retroBank()` finding bars to credit. The key screen says how many numbers on the open tier are placeholders.
+- **Retroactive credit when the numbers arrive (Aiden: "yes, silently, once").** A tier already open when its column filled
+  never saw a chest open. `retroArrived()` runs at boot and credits every open, non-shell tier whose column differs from
+  `prefs.retroCol[tier]` — the column as it stood when last credited, written by every credit including a chest's. A reload
+  never credits twice, the next boot does not undo Testing's per-key reset, and replacing a placeholder with a real number
+  changes the column and credits once more against it.
+- **Testing's "fill pro + author · placeholder" fills EMPTY cells only**, so on the shipped table it finds nothing and says so.

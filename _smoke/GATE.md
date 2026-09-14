@@ -305,3 +305,37 @@ three keys before chest 1, the second and third locked with no number — **A.1 
 about pro or author is on screen" had to become one that proves "nothing about their numbers is"**; build 35's D.2 reads the
 selected line and the demoted tile as §K draws them; build 35's G.7 finds the walk through `core/count.js`; build 35's D.10
 and build 36's export checks carry Timing's new numbers, the two corrected lines and labels that no longer say DO NOT BUILD.
+
+**Build 38 (Aiden's two answers to build 37)** — **the tile keeps its amber until a mode is chosen**: the demote rule is
+`.grid.chosen`, not `.grid.dim`, and `setStage()` sets it only for a game with more than one mode and a mode selected; driven —
+Quick Tap's mode row with nothing tapped has the tile as the one amber thing, choosing Two moves the amber to Two and demotes
+the tile, going back to the mode row with Two still selected keeps it that way, and Sequence (one mode) keeps the tile amber on
+its length row. **Author waits for the Pro chest**: `tierOpen()` is chest n for tier n+1 with the dev escapes, `radarRungs()`
+is one rung per open tier and the Achievements tab asks per tier; driven with the columns filled in memory and chest 1 open —
+Pro open, Author crossed out on the strip, two radar rungs, no Author set, a run past every bar clears key 1 and Pro and banks
+nothing on Author — then opening the Pro chest credits Author's already-beaten bar silently, opens all three keys and rungs,
+and shows the Author set. **Five build 37 and earlier assertions amended back or on:** B.22 and build 35's D.2 expect the
+tile's amber with no mode chosen; §K counts the tile as one amber thing and expects it on the mode row; build 37's G.2 expects
+Author still crossed out after chest 1; build 37's G.4 expects chest 1 to credit Pro only; B.25 expects the Author set to wait
+for the Pro chest.
+
+**Build 38 (#426, A.2 amended: Pro and Author placeholders)** — **the file is the generator's output**: regenerating
+`config/key-bars.js` with `scripts/placeholders.mjs` changes nothing, `--clear` takes all sixty cells back to null with no marker
+left and filling that gives the file back byte for byte, and `../_review/key-bars.json` is what it writes. **The scheme, every
+cell**: the multiplier for the row's own direction, the row's own precision, each tier strictly harder than the one below, none
+past its floor, each marked `conf:'low'` with a basis naming its multiplier — and Flash · Set's Author clamped to 180, saying so.
+**NEVER OVERWRITE**: a number put in through `--set` (its marker dropped) and a number typed over a placeholder (its stale marker
+left) survive two generator runs byte for byte, reported kept, with every other cell and every key-1 `bar` untouched; `--set`
+refuses `bar`. **The app reads the marker by the same test**: thirty Pro and thirty Author placeholders, none on key 1, a number
+changed in place is no longer one, and the key screen counts them per tier. **A — parity**: Lantern, Circuit and Thorn each run
+the advance (`krootgrow` under the `khaloglow` halo), the whole-key moment and the staged first open with the same animations,
+and lit segments, halos and the count line wear that tier's tint; statically the last `krootgrow` reads `--ktint` and no
+`[data-style]` rule touches an animation. **B — retroactive credit has something to bank**: a profile whose bests beat every
+other Pro bar opens chest 1 and banks exactly those, silently (one chest sound, one toast); a profile with no runs banks none.
+**Retro on arrival** (Aiden: "yes, silently, once"): a profile with chest 1 already open boots and banks the Pro bars its bests
+beat, with no toast and `retroCol.pro` written; a banked bar removed by hand is not re-banked on the next boot; a changed column
+credits once more. **Six earlier assertions amended:** 5.3 expects no shell and the Author ring with its placeholder line; #371's
+fill finds nothing on a full table and fills exactly one emptied cell; B.27 checks the full columns, makes its shells by emptying
+a cell, and proves a full column clears like a real tier; B.17's message; B.24 makes its dashed rungs by emptying both columns
+and expects solid rungs and the flame on the file's numbers; the build-32 Go / No-go migration check reads key-1 bars only,
+because boot now credits Pro.

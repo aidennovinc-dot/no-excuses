@@ -37,7 +37,8 @@ import { keyAch, keyState, tierOpen } from "../../progress/key.js";
 const allAch=()=>achAll().concat(keyAch());
 const findAch=id=>achById(id)||keyAch().find(a=>a.id===id);
 // the second and third key sets are not shown before chest 1 (A.1)
-const groupShown=t=>!/^key[23]$/.test(t)||tierOpen('pro');
+// build 38: each key's achievement set waits for that key's own chest — the Pro set for chest 1, the Author set for the Pro chest
+const groupShown=t=>t==='key2'?tierOpen('pro'):t==='key3'?tierOpen('author'):true;
 import { define } from "../actions.js";
 import { chips } from "../chips.js";
 import { register, show } from "../router.js";

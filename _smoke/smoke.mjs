@@ -1026,13 +1026,16 @@ console.log('\nthe keys, the surface and #375 (v15 sections 5 and 6)');
   (k1.screen === 's-key' && k1.n === 3 && k1.sel === 0 && k1.ring) ? ok(`5.3 three keys, the first one open — ${k1.pct.join(' · ')}`) : bad('5.3 the three keys', JSON.stringify(k1));
   (k1.paths.length === 3 && k1.paths[0] < k1.paths[1] && k1.paths[1] < k1.paths[2]) ? ok(`5.3 each key is more elaborate than the one before it (${k1.paths.join(' → ')} strokes, the Author's most)`) : bad('5.3 the glyphs get more elaborate', JSON.stringify(k1.paths));
   (/^\d+%$/.test(k1.pct[0])) ? ok(`5.3 a key under 100% wears its % — "${k1.pct[0]}"`) : bad('5.3 the % overlay', JSON.stringify(k1.pct));
-  (!k1.shell[0] && k1.shell[1] && k1.shell[2]) ? ok('5.3 keys 2 and 3 are marked as the shell they are (#372)') : bad('5.3 the shell flags', JSON.stringify(k1.shell));
-  // tapping key 3 opens the Author key's screen, and it says nothing about a target nobody has set (A.2)
+  // AMENDED at build 38 (#426): both columns carry generated placeholders, so no key is a shell any more
+  (!k1.shell[0] && !k1.shell[1] && !k1.shell[2]) ? ok('5.3 / #426 no key is a shell - Pro and Author carry generated placeholder bars') : bad('5.3 the shell flags', JSON.stringify(k1.shell));
+  // tapping key 3 opens the Author key's own ring, and every generated number on it says so (A.2 as amended)
   await page.evaluate(() => document.querySelector('.kkey[data-kt="2"]').click()); await sleep(320);
-  const k3 = await page.evaluate(() => ({ main: document.getElementById('key-main').hidden, shell: !document.getElementById('key-shell').hidden,
-    txt: document.getElementById('key-shell').textContent.replace(/\s+/g, ' ').trim(), rings: document.querySelectorAll('#key-shell .kroot').length,
+  const k3 = await page.evaluate(() => ({ main: !document.getElementById('key-main').hidden, shell: !document.getElementById('key-shell').hidden,
+    rings: document.querySelectorAll('#key-ring .kroot').length, style: document.getElementById('s-key').dataset.style,
+    warn: document.getElementById('key-warn').hidden ? '' : document.getElementById('key-warn').textContent.trim(),
     title: document.getElementById('key-title').textContent.trim() }));
-  (k3.main && k3.shell && !k3.rings && /not set yet/i.test(k3.txt)) ? ok(`5.3 the Author key opens its own screen — "${k3.title}" — a shell that says so, with no ring and no invented bar`) : bad('5.3 the shell screen', JSON.stringify(k3));
+  (k3.main && !k3.shell && k3.rings > 0 && k3.style === 'thorn' && /^(\d+) of the \1 numbers on this key are PLACEHOLDERS/.test(k3.warn))
+    ? ok(`5.3 / #426 the Author key opens its own ring - "${k3.title}", ${k3.rings} segments in Thorn - and says "${k3.warn}"`) : bad('5.3 the Author screen', JSON.stringify(k3));
   await page.evaluate(() => document.querySelector('.kkey[data-kt="0"]').click()); await sleep(320);
 
   /* 5.2: a clearance-bar row is a way IN. It uses the same pendingAim the achievement-at-the-top uses (2.2), so the bar
@@ -1797,7 +1800,7 @@ console.log('\nbuild 29 - v17 sections B.19 to B.26');
         press: getComputedStyle(document.documentElement).getPropertyValue('--press').trim(),
         ok: getComputedStyle(document.documentElement).getPropertyValue('--ok').trim() }; });
     const hex2rgb = h => { const n = parseInt(h.slice(1), 16); return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`; };
-    (pr.keep && pr.col === hex2rgb(TH29.PRESS.v) && pr.press === TH29.PRESS.v && pr.col !== hex2rgb(pr.ok) && !/255, 255, 255/.test(pr.col) && pr.wasDim && pr.dimCol !== pr.col)
+    (pr.keep && pr.col === hex2rgb(TH29.PRESS.v) && pr.press === TH29.PRESS.v && pr.col !== hex2rgb(pr.ok) && !/255, 255, 255/.test(pr.col) && pr.wasDim && pr.dimCol === pr.col) /* AMENDED again at build 38 (Aiden): no mode chosen yet, so the tile keeps its amber with the sheet up */
       ? ok(`B.22 the pressed game wears an ${TH29.PRESS.name} outline (${pr.col}, ${pr.width}) - named in config/theme.js, not green (L8) and not white (L7)`)
       : bad('B.22 the pressed outline', JSON.stringify(pr));
     await click('#grid'); await sleep(400);
@@ -2101,52 +2104,52 @@ console.log('\nbuild 30 - v17 sections B.27 to B.33');
       ? ok('#411 AMENDED at build 37 (G.1): all three chests are on the map with OPEN EVERYTHING and without it, chest 1 still shut either way - the build 37 block checks what each one says')
       : bad('#411 the chests follow the key map', JSON.stringify(chests));
 
-    /* #371 workaround: the placeholder fill. All sixty pro and author bars are null, so both tiers are shells and
-       revealing them shows "not set yet" and nothing else. The Testing button fills them IN MEMORY so the two rings can
-       be played. A.2 is not relaxed - nothing is written, config/key-bars.js is untouched, a reload throws it away, and
-       the key screen says every number on it is derived. All four of those are checked here. */
+    /* #371 workaround: the placeholder fill. AMENDED at build 38 (#426): both columns carry GENERATED placeholders in
+       config/key-bars.js now, so on the shipped table the fill has nothing to fill - and A.2 as amended forbids overwriting a
+       number that is there, generated or not. It fills EMPTY cells only, is on only while it filled one, and is still
+       session-only: nothing written, the file untouched, a reload throws it away. Checked on one cell emptied in memory. */
     const fill = await page.evaluate(async () => { const K = await import('./progress/key.js'); const KB = await import('./config/key-bars.js');
-      const S = await import('./core/store.js'); const R = await import('./ui/router.js');
+      const S = await import('./core/store.js'); const R = await import('./ui/router.js'); const wait = ms => new Promise(r => setTimeout(r, ms));
+      const rows = Object.values(KB.KEY_BARS), snap = rows.map(r => [r.pro, r.author]);
+      const same = skip => rows.every((r, i) => r === skip || (r.pro === snap[i][0] && r.author === snap[i][1]));
+      const warn = () => document.getElementById('key-warn').hidden ? '' : document.getElementById('key-warn').textContent;
       const out = { before: { shellPro: K.isShell('pro'), shellAuthor: K.isShell('author'), faked: K.barsFaked() } };
-      const raw = JSON.parse(localStorage.getItem('ne'));
       S.prefs.allOpen = true; S.save();
+      out.full = { on: K.fillBars(true), faked: K.barsFaked(), same: same(null) }; K.fillBars(false);
+      // empty ONE Pro cell: Pro is a shell again, and the fill fills exactly that cell, in the row's own direction (C.7)
+      const r0 = KB.KEY_BARS['quick-tap:two:5'], was = r0.pro; r0.pro = null;
+      out.hole = { shellPro: K.isShell('pro'), shellAuthor: K.isShell('author') };
       K.fillBars(true);
-      const rows = Object.values(KB.KEY_BARS);
-      out.on = { shellPro: K.isShell('pro'), shellAuthor: K.isShell('author'), faked: K.barsFaked(),
-        n: rows.length, filled: rows.filter(r => typeof r.pro === 'number' && typeof r.author === 'number').length,
-        // direction is read from the row (C.7): a floor climbs, a ceiling tightens; equal only where clamped at 1
-        ordered: rows.filter(r => r.dir === 'lower' ? (r.pro <= r.bar && r.author <= r.pro) : (r.pro > r.bar && r.author > r.pro)).length,
-        sample: rows.slice(0, 2).map(r => `${r.dir}: ${r.bar} -> ${r.pro} -> ${r.author}`) };
-      // NOTHING was written: config/key-bars.js is a module literal and the store is byte-identical
-      out.stored = localStorage.getItem('ne') === JSON.stringify(raw) || JSON.parse(localStorage.getItem('ne')).prefs.allOpen === true;
-      out.rawSame = !/\bpro\b/.test(JSON.stringify(JSON.parse(localStorage.getItem('ne')).bars || {}));
-      // the ring draws for Circuit now, and the screen says the numbers are derived
-      R.show('s-key'); await new Promise(r => setTimeout(r, 300));
-      document.querySelector('.kkey[data-kt="1"]').click(); await new Promise(r => setTimeout(r, 350));
-      out.circuit = { segs: document.querySelectorAll('#key-ring .kroot').length, shellHidden: document.getElementById('key-shell').hidden,
-        warn: document.getElementById('key-warn').hidden ? '' : document.getElementById('key-warn').textContent };
-      document.querySelector('.kkey[data-kt="0"]').click(); await new Promise(r => setTimeout(r, 350));
-      out.lantern = { warn: document.getElementById('key-warn').hidden ? '' : document.getElementById('key-warn').textContent };
+      out.on = { faked: K.barsFaked(), pro: r0.pro, shellPro: K.isShell('pro'), others: same(r0), dir: typeof r0.pro === 'number' && r0.pro > r0.bar };
+      R.show('s-key'); await wait(300);
+      document.querySelector('.kkey[data-kt="1"]').click(); await wait(350);
+      out.circuit = { segs: document.querySelectorAll('#key-ring .kroot').length, shellHidden: document.getElementById('key-shell').hidden, warn: warn() };
+      document.querySelector('.kkey[data-kt="0"]').click(); await wait(350);
+      out.lantern = { warn: warn() };
       K.fillBars(false);
-      out.off = { shellPro: K.isShell('pro'), shellAuthor: K.isShell('author'), faked: K.barsFaked(),
-        nulls: Object.values(KB.KEY_BARS).filter(r => r.pro === null && r.author === null).length };
+      out.off = { pro: r0.pro, shellPro: K.isShell('pro'), faked: K.barsFaked() };
+      r0.pro = was; out.restored = !K.isShell('pro') && same(null);
+      out.rawSame = !/\|pro\b/.test(JSON.stringify(JSON.parse(localStorage.getItem('ne')).bars || {}));
       S.prefs.allOpen = false; S.save();
       return out; });
-    (fill.before.shellPro && fill.before.shellAuthor && !fill.before.faked && fill.on.filled === fill.on.n && fill.on.ordered === fill.on.n && !fill.on.shellPro && !fill.on.shellAuthor && fill.on.faked)
-      ? ok(`#371 the placeholder fill sets all ${fill.on.n} pro and author bars in the row's own direction (${fill.on.sample.join(' | ')}), and both shells become real tiers`)
-      : bad('#371 the placeholder fill', JSON.stringify(fill.on));
-    (fill.circuit.segs > 0 && fill.circuit.shellHidden && /PLACEHOLDER/.test(fill.circuit.warn))
-      ? ok('#371 / A.2 Circuit draws a playable ring AND says every number on it is derived - a derived bar never appears unannounced')
+    (!fill.before.shellPro && !fill.before.shellAuthor && !fill.before.faked && !fill.full.on && !fill.full.faked && fill.full.same)
+      ? ok('#371 / #426 with both columns full the fill finds nothing to fill - it stays off and changes no number, generated or not')
+      : bad('#371 the fill on a full table', JSON.stringify({ before: fill.before, full: fill.full }));
+    (fill.hole.shellPro && !fill.hole.shellAuthor && fill.on.faked && fill.on.dir && !fill.on.shellPro && fill.on.others)
+      ? ok(`#371 an emptied Pro cell makes Pro a shell again, and the fill fills exactly that cell (${fill.on.pro}, above the bar) and touches nothing else`)
+      : bad('#371 the fill fills empty cells only', JSON.stringify({ hole: fill.hole, on: fill.on }));
+    (fill.circuit.segs > 0 && fill.circuit.shellHidden && /derived from key 1 for testing/.test(fill.circuit.warn))
+      ? ok('#371 / A.2 Circuit draws its ring and says the test fill is on - a derived bar never appears unannounced')
       : bad('#371 the filled ring announces itself', JSON.stringify(fill.circuit));
-    (fill.lantern.warn === '') ? ok('#371 key 1 says nothing - its bars are real and were never touched')
-      : bad('#371 the note is only on the faked tiers', JSON.stringify(fill.lantern));
-    (fill.off.nulls === fill.on.n && fill.off.shellPro && fill.off.shellAuthor && !fill.off.faked && fill.rawSame)
-      ? ok('#371 toggling it off restores all sixty nulls, both tiers are shells again, and nothing was ever written to storage')
-      : bad('#371 the fill is session-only and reversible', JSON.stringify({ off: fill.off, rawSame: fill.rawSame }));
+    (fill.lantern.warn === '') ? ok('#371 key 1 says nothing - none of its bars is generated or filled')
+      : bad('#371 the note is only on the tiers carrying generated or filled numbers', JSON.stringify(fill.lantern));
+    (fill.off.pro === null && fill.off.shellPro && !fill.off.faked && fill.restored && fill.rawSame)
+      ? ok('#371 toggling it off empties that cell again, and nothing was ever written to storage')
+      : bad('#371 the fill is session-only and reversible', JSON.stringify({ off: fill.off, restored: fill.restored, rawSame: fill.rawSame }));
     // and a reload is the real proof it was never persisted
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
-    const afterLoad = await page.evaluate(async () => { const K = await import('./progress/key.js'); return { shellPro: K.isShell('pro'), faked: K.barsFaked() }; });
-    (afterLoad.shellPro && !afterLoad.faked) ? ok('#371 a reload throws the placeholders away - config/key-bars.js was never the thing that changed')
+    const afterLoad = await page.evaluate(async () => { const K = await import('./progress/key.js'); const KB = await import('./config/key-bars.js'); return { shellPro: K.isShell('pro'), faked: K.barsFaked(), pro: KB.KEY_BARS['quick-tap:two:5'].pro }; });
+    (!afterLoad.shellPro && !afterLoad.faked && typeof afterLoad.pro === 'number') ? ok('#371 a reload reads the file again - both columns full, nothing faked')
       : bad('#371 the fill does not survive a reload', JSON.stringify(afterLoad));
     // the screen asks for the tier's own track, and there is no key:1 left anywhere
     (/keyTiers\(\)\[openKey\]\.track/.test(keyjs30) && !/key:1/.test(keyjs30)) ? ok('B.31 the key screen asks for the tier\'s own loop by name, never by number')
@@ -2555,30 +2558,42 @@ console.log('\nbuild 32 - v19 section C and v18 sections B.15 to B.27');
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(600);
     const mig = await page.evaluate(async () => { const S = await import('./core/store.js');
       return { v: JSON.parse(localStorage.getItem('ne')).v, runs: S.store.runs.map(r => r.g + ':' + r.d), bars: Object.keys(S.store.bars).sort(), ach: Object.keys(S.store.ach), mig: S.prefs.mig32, toast: document.getElementById('toast').textContent.trim() }; });
-    (mig.runs.join(',') === 'reaction:flash,quick-tap:two' && mig.bars.join(',') === 'quick-tap:two:5,reaction:nogo:5' && mig.ach.includes('rx_clean'))
+    // AMENDED at build 38 (#426): key-1 bars only - with Pro now a real tier, boot credits this profile's 14-hit run against Pro's 14 too
+    (mig.runs.join(',') === 'reaction:flash,quick-tap:two' && mig.bars.filter(k => !k.includes('|')).join(',') === 'quick-tap:two:5,reaction:nogo:5' && mig.ach.includes('rx_clean'))
       ? ok(`C.5 / C.6 a v2 record retires exactly the two Go / No-go runs and the Streak bar's cleared flag — the Set bar, the Flash run, the Quick Tap run and Disciplined stay (${mig.toast || 'toast pending'})`)
       : bad('the Go / No-go migration', JSON.stringify(mig));
   }
   /* ---- B.27: three tiers per row, the shell derived from the column, the catalogue's three inputs ---- */
   {
     const rows = Object.values(KB32.KEY_BARS);
-    (rows.every(r => 'pro' in r && 'author' in r && r.pro === null && r.author === null) && KY32.KEYS.every(k => !('shell' in k)))
-      ? ok(`B.27 every one of the ${rows.length} rows carries pro and author, both EMPTY (A.2), and config/keys.js carries no shell flag`)
-      : bad('B.27 the data shape', JSON.stringify(rows.filter(r => !('pro' in r && 'author' in r)).map(r => r.id)));
-    const sh = await page.evaluate(async () => { const K = await import('./progress/key.js'); const S = await import('./core/store.js');
+    // AMENDED at build 38 (#426): both columns are FULL - every Pro and Author number a generated placeholder whose marker still holds
+    (rows.every(r => typeof r.pro === 'number' && typeof r.author === 'number' && r.placeholder && r.placeholder.pro && r.placeholder.pro.v === r.pro && r.placeholder.author && r.placeholder.author.v === r.author) && KY32.KEYS.every(k => !('shell' in k)))
+      ? ok(`B.27 / #426 every one of the ${rows.length} rows carries pro and author, each a GENERATED placeholder whose marker still holds (A.2 as amended), and config/keys.js carries no shell flag`)
+      : bad('B.27 the data shape', JSON.stringify(rows.filter(r => !(typeof r.pro === 'number' && typeof r.author === 'number' && r.placeholder)).map(r => r.id)));
+    const sh = await page.evaluate(async () => { const K = await import('./progress/key.js'); const S = await import('./core/store.js'); const KB = await import('./config/key-bars.js');
       S.prefs.chest1 = 1; S.store.bars = {}; S.save();
       const c = K.COMBOS.find(x => x.g === 'quick-tap' && x.s === 5);
       const run = { t: Date.now(), g: 'quick-tap', d: 'two', s: 5, misses: 0, hits: c.bar.bar + 50, v: 4 };
+      // the shell is still DERIVED: empty one Pro and one Author cell in memory and both tiers are shells again
+      const r1 = KB.KEY_BARS['dots:blind:5'], was = [r1.pro, r1.author]; r1.pro = null; r1.author = null;
       const adv = K.checkKey(run, false);
-      const out = { shellClear: K.isShell('clear'), shellPro: K.isShell('pro'), shellAuthor: K.isShell('author'), fullClear: K.tierFull('clear'), barPro: K.barOf(c, 'pro'), skey: K.skey('a:b:5', 'pro'),
+      const out = { shellClear: K.isShell('clear'), shellPro: K.isShell('pro'), shellAuthor: K.isShell('author'), fullClear: K.tierFull('clear'), barPro: K.barOf(K.COMBOS.find(x => x.key === 'dots:blind:5'), 'pro'), skey: K.skey('a:b:5', 'pro'),
         tiers: K.keyTiers().map(k => k.id + ':' + (k.shell ? 'shell' : 'live')), adv: adv && adv.tier, bars: Object.keys(S.store.bars), pct: K.keyPct('pro') };
+      // …and with the columns full again the same run is a real clear on every open tier
+      r1.pro = was[0]; r1.author = was[1]; S.store.bars = {};
+      const adv2 = K.checkKey(run, false);
+      out.full = { tiers: K.keyTiers().map(k => k.id + ':' + (k.shell ? 'shell' : 'live')), adv: adv2 && adv2.tier, bars: Object.keys(S.store.bars).sort(), author: K.tierOpen('author'), pct: K.keyPct('pro') };
       S.store.bars = {}; S.prefs.chest1 = 0; S.save(); return out; });
     (!sh.shellClear && sh.shellPro && sh.shellAuthor && sh.fullClear && sh.barPro === null && sh.skey === 'a:b:5|pro' && sh.tiers.join(',') === 'clear:live,pro:shell,author:shell')
-      ? ok('B.27 the shell is DERIVED: key 1 is live, Pro and Author are shells while their columns are empty, and a Pro bar reads null')
+      ? ok('B.27 the shell is still DERIVED: empty one Pro and one Author cell and key 1 stays live while Pro and Author are shells, the emptied bar reading null')
       : bad('B.27 isShell / tierFull / barOf', JSON.stringify(sh));
     (sh.adv === 'clear' && sh.bars.join(',') === 'quick-tap:two:5' && sh.pct.pct === 0 && sh.pct.total === 0)
-      ? ok('B.27 a run far past every bar clears key 1 only — a shell tier banks nothing and its percentage is 0 of 0')
+      ? ok('B.27 a run far past every bar clears key 1 only while they are shells — a shell tier banks nothing and its percentage is 0 of 0')
       : bad('B.27 a shell tier clears nothing', JSON.stringify(sh));
+    (sh.full.tiers.join(',') === 'clear:live,pro:live,author:live' && sh.full.adv === 'clear' && sh.full.pct.total > 0
+      && sh.full.bars.join(',') === (sh.full.author ? 'quick-tap:two:5,quick-tap:two:5|author,quick-tap:two:5|pro' : 'quick-tap:two:5,quick-tap:two:5|pro'))
+      ? ok(`#426 with the columns full the same run is a real clear on every open tier (${sh.full.bars.join(', ')}), the interlude still draws key 1's, and Pro counts ${sh.full.pct.done} of ${sh.full.pct.total}`)
+      : bad('#426 a full column is a real tier', JSON.stringify(sh.full));
     (/pro: b \? KY\.barOf\(c, 'pro'\) : null, author: b \? KY\.barOf\(c, 'author'\) : null/.test(cat32) && /id="' \+ PFX\[tier\] \+ r\.id/.test(tpl32) && /inp\('clear'\) \+ inp\('pro'\) \+ inp\('author'\)/.test(tpl32) && /bars: \{ clear: CUR\.clear, pro: CUR\.pro, author: CUR\.author \}/.test(tpl32))
       ? ok('B.27 the review catalogue emits all three tiers a row and the page saves {bars:{clear,pro,author}} to bars/current')
       : bad('B.27 the catalogue\'s three inputs');
@@ -2595,7 +2610,7 @@ console.log('\nbuild 32 - v19 section C and v18 sections B.15 to B.27');
       S.store.bars = {}; S.prefs.pro = 0; S.prefs.chest1 = 0; S.save(); out.zero = K.frontPct();
       return { ...out, warn: C.KEY.proWarn, ask: C.KEY.proAsk }; });
     (fp.whole === 100 && fp.rebased === 30 && fp.author === 30 && fp.zero === 0 && fp.menuPro === '30% complete' && /whole/.test(fp.menuWhole))
-      ? ok(`B.17 key 1 whole reads 100 and "${fp.menuWhole}"; stepped into Pro it re-bases to 30 (Pro is a shell, so 30 + 0.7 × 0) — "${fp.menuPro}"; Author the same step; never back to zero`)
+      ? ok(`B.17 key 1 whole reads 100 and "${fp.menuWhole}"; stepped into Pro it re-bases to 30 (nothing on Pro played yet, so 30 + 0.7 × 0) — "${fp.menuPro}"; Author the same step; never back to zero`)
       : bad('B.17 the re-based percentage', JSON.stringify(fp));
     (/cannot be undone/i.test(fp.warn) && /stop showing 100%/.test(fp.warn) && /progress to/.test(fp.ask)) ? ok('B.16 the ask carries the warning — the front stops showing 100% and it cannot be undone') : bad('B.16 the warning text', fp.warn);
     // the flow, driven: every bar cleared -> Open the chest? -> yes -> opened -> progress to Pro? -> yes -> prefs.pro
@@ -2713,17 +2728,21 @@ console.log('\nbuild 32 - v19 section C and v18 sections B.15 to B.27');
     await setStorage({ ne: { v: 3, prefs: { ...OPEN_PREFS, chest1: 1 }, runs: [{ t: NOW, g: 'quick-tap', d: 'two', s: 5, n: '', v: 4, hits: 60, misses: 0 }], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
     await click('[data-go="s-board"]'); await sleep(500);
-    const r2 = await page.evaluate(async () => { const out = { rungs: [...document.querySelectorAll('#radar polygon.rung')].map(p => p.dataset.rung + (p.classList.contains('shell') ? ':dashed' : '')), flame: document.querySelectorAll('#radar .flame').length, qt: (document.querySelector('#radar text') || {}).textContent, dash: getComputedStyle(document.querySelector('#radar polygon.rung.shell')).strokeDasharray };
-      // fill the two columns in memory: 60 hits is past an author bar of 12, so the flame lights
-      const KB = await import('./config/key-bars.js'); for (const k in KB.KEY_BARS) { KB.KEY_BARS[k].pro = KB.KEY_BARS[k].bar; KB.KEY_BARS[k].author = KB.KEY_BARS[k].bar; }
-      const R = await import('./ui/router.js'); R.show('s-menu'); await new Promise(r => setTimeout(r, 200)); R.show('s-board'); await new Promise(r => setTimeout(r, 400));
-      out.full = { rungs: [...document.querySelectorAll('#radar polygon.rung')].map(p => p.dataset.rung + (p.classList.contains('shell') ? ':dashed' : '')), flame: document.querySelectorAll('#radar .flame').length, qt: (document.querySelector('#radar text') || {}).textContent };
+    /* AMENDED at build 38 (#426): the columns are full of placeholders, so the solid rungs and the flame are what the FILE draws
+       now, and the dashed shells are the case that has to be made - by emptying both columns in memory */
+    const r2 = await page.evaluate(async () => { const read = () => ({ rungs: [...document.querySelectorAll('#radar polygon.rung')].map(p => p.dataset.rung + (p.classList.contains('shell') ? ':dashed' : '')), flame: document.querySelectorAll('#radar .flame').length, qt: (document.querySelector('#radar text') || {}).textContent });
+      const R = await import('./ui/router.js'); const KB = await import('./config/key-bars.js');
+      const out = { full: read() }, keep = {};
+      for (const k in KB.KEY_BARS) { keep[k] = [KB.KEY_BARS[k].pro, KB.KEY_BARS[k].author]; KB.KEY_BARS[k].pro = null; KB.KEY_BARS[k].author = null; }
+      R.show('s-menu'); await new Promise(r => setTimeout(r, 200)); R.show('s-board'); await new Promise(r => setTimeout(r, 400));
+      out.shell = read(); const d = document.querySelector('#radar polygon.rung.shell'); out.shell.dash = d ? getComputedStyle(d).strokeDasharray : 'none';
+      for (const k in keep) { KB.KEY_BARS[k].pro = keep[k][0]; KB.KEY_BARS[k].author = keep[k][1]; }
       return out; });
-    (r2.rungs.join(',') === 'clear,pro:dashed,author:dashed' && r2.flame === 0 && /Quick Tap 33/.test(r2.qt || '') && r2.dash !== 'none')
-      ? ok(`B.24 / A.2 after chest 1 three rungs — key 1, then Pro and Author DASHED at no value while their columns are empty; 60 hits against a bar of 12 climbs no further than rung 1 ("${r2.qt}") and no flame`)
-      : bad('B.24 the three rungs with shells', JSON.stringify(r2));
+    (r2.shell.rungs.join(',') === 'clear,pro:dashed,author:dashed' && r2.shell.flame === 0 && /Quick Tap 33/.test(r2.shell.qt || '') && r2.shell.dash !== 'none')
+      ? ok(`B.24 / A.2 after chest 1 three rungs — with both columns emptied, Pro and Author are DASHED at no value; 60 hits against a bar of 12 climbs no further than rung 1 ("${r2.shell.qt}") and no flame`)
+      : bad('B.24 the three rungs with shells', JSON.stringify(r2.shell));
     (r2.full.rungs.join(',') === 'clear,pro,author' && r2.full.flame === 1 && /Quick Tap 1\d\d/.test(r2.full.qt || ''))
-      ? ok(`B.24 with the columns filled the rungs are solid and a score past the Author time wears the flame ("${r2.full.qt}")`)
+      ? ok(`B.24 / #426 on the placeholder columns the rungs are solid and a score past the Author bar wears the flame ("${r2.full.qt}")`)
       : bad('B.24 the flame', JSON.stringify(r2.full));
   }
   /* ---- B.25: the three achievement sets tied to the keys ---- */
@@ -2746,8 +2765,8 @@ console.log('\nbuild 32 - v19 section C and v18 sections B.15 to B.27');
     (ka.n === 24 && ka.tiers.join(',') === 'key1,key2,key3' && ka.perTier === GAMES.length + 1 && ka.live === 0)
       ? ok(`B.25 24 key achievements — one per game per key plus one per key for the whole key — generated, none of them live`)
       : bad('B.25 the key sets', JSON.stringify(ka));
-    (ka.before.includes('key1') && !ka.before.includes('key2') && !ka.before.includes('key3') && ka.after.includes('key2') && ka.after.includes('key3'))
-      ? ok('B.25 / A.1 the Achievements tab shows The key before chest 1 and the Pro and Author sets only after it')
+    (ka.before.includes('key1') && !ka.before.includes('key2') && !ka.before.includes('key3') && ka.after.includes('key2') && !ka.after.includes('key3')) /* AMENDED at build 38: the Author set waits for the Pro chest */
+      ? ok('B.25 / A.1 the Achievements tab shows The key before chest 1 and the Pro set after it - the Author set waits for the Pro chest (build 38)')
       : bad('B.25 the sets before and after chest 1', JSON.stringify({ before: ka.before, after: ka.after }));
     (ka.fresh.join(',') === 'key_clear_quick-tap' && ka.stored.includes('key_clear_quick-tap') && ka.again === 0)
       ? ok('B.25 clearing every Quick Tap bar earns "Quick Tap · The key", banked at once and never twice')
@@ -3159,7 +3178,7 @@ console.log('\nbuild 35 - batch 15, bugs and the runs');
       ? ok('D.1 Quick Tap · Four, unlocked and never played, is green on its tile and on its row; Two is not; markSeen still records it on sight (kept for D.5)')
       : bad('D.1 green until played', JSON.stringify({ grid1, row }));
     // AMENDED at build 37 (v22 §K): with the mode sheet up the pressed tile demotes - its border is the line colour, never green and never amber
-    (!sameCol(row.tileB, '#3DD68C') && !sameCol(row.tileB, TH35.PRESS.v)) ? ok(`D.2 / §K the pressed tile wears no green border under it, and with the sheet up it is not amber either (${row.tileB})`) : bad('D.2 the pressed tile over green', row.tileB);
+    sameCol(row.tileB, TH35.PRESS.v) ? ok(`D.2 / §K the pressed tile wears its amber and no green under it until a mode is chosen (AMENDED again at build 38) (${row.tileB})`) : bad('D.2 the pressed tile over green', row.tileB);
     await page.evaluate(() => document.querySelector('#diff-row .choice[data-diff="four"]').click()); await sleep(600);
     const picked = await page.evaluate(() => { const b = document.querySelector('#diff-row .choice[data-diff="four"]'); return { cls: b.className, border: getComputedStyle(b).borderTopColor }; });
     (/\bsel\b/.test(picked.cls) && /newplay/.test(picked.cls) && /newthing/.test(picked.cls) && sameCol(picked.border, TH35.PRESS.v))   // AMENDED at build 37 (§K): the selected line is --press
@@ -3418,9 +3437,9 @@ console.log('\nbuild 37 - keys and chests');
 
   /* ---- c. §K: one colour for "this is what you chose" - and its three checks ---- */
   {
-    (/\n  \.choice\.sel\{border-color:var\(--press\)\}/.test(css37) && /\.grid\.dim \.tile\.keep \.pic\{outline-color:var\(--line\)\}/.test(css37) && /\.grid\.dim \.tile\.keep \.name\{color:var\(--mute\)\}/.test(css37)
+    (/\n  \.choice\.sel\{border-color:var\(--press\)\}/.test(css37) && /\.grid\.chosen \.tile\.keep \.pic\{outline-color:var\(--line\)\}/.test(css37) && /\.grid\.chosen \.tile\.keep \.name\{color:var\(--mute\)\}/.test(css37)
       && /\.choice\.sel\.newthing,\.choice\.sel\.newplay\{border-color:var\(--press\)!important\}/.test(css37) && /\.choice\.sel\.picked\{border-color:var\(--ok\)!important\}/.test(css37))
-      ? ok('§K a selected mode takes --press, the pressed tile demotes while the sheet is up, first-seen and unplayed modes take --press when selected, and .picked keeps --ok (the tap\'s own 170ms confirmation)')
+      ? ok('§K a selected mode takes --press, the pressed tile demotes once a mode is chosen (build 38), first-seen and unplayed modes take --press when selected, and .picked keeps --ok (the tap\'s own 170ms confirmation)')
       : bad('§K the rules');
     await setStorage({ ne: { v: 4, prefs: { ...OPEN_PREFS }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
@@ -3429,7 +3448,7 @@ console.log('\nbuild 37 - keys and chests');
       const P = getComputedStyle(document.documentElement).getPropertyValue('--press').trim(), OK = getComputedStyle(document.documentElement).getPropertyValue('--ok').trim();
       const rgb = h => { const n = parseInt(h.slice(1), 16); return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`; };
       const grid = document.getElementById('grid'), sheet = document.getElementById('sheet');
-      const amber = t => [getComputedStyle(t.querySelector('.pic')).outlineColor, getComputedStyle(t.querySelector('.name')).color, ...[...document.querySelectorAll('#diff-row .choice')].filter(c => c.offsetParent).map(c => getComputedStyle(c).borderTopColor)].filter(c => c === rgb(P)).length;
+      const amber = t => [(getComputedStyle(t.querySelector('.pic')).outlineColor === rgb(P) || getComputedStyle(t.querySelector('.name')).color === rgb(P)) ? rgb(P) : '', ...[...document.querySelectorAll('#diff-row .choice')].filter(c => c.offsetParent).map(c => getComputedStyle(c).borderTopColor)].filter(c => c === rgb(P)).length;
       const qt = document.querySelector('.tile[data-game="quick-tap"]'); qt.click(); await wait(450);
       const out = { P, mode: { dim: grid.classList.contains('dim'), stage: sheet.classList.contains('len') ? 'len' : 'mode', outline: getComputedStyle(qt.querySelector('.pic')).outlineColor, line: (() => { const p = document.createElement('i'); p.style.cssText = 'position:absolute;border-top:1px solid var(--line)'; document.body.appendChild(p); const c = getComputedStyle(p).borderTopColor; p.remove(); return c; })(), name: getComputedStyle(qt.querySelector('.name')).color, amber: amber(qt) } };
       const two = document.querySelector('#diff-row .choice[data-diff="two"]'); two.click(); await wait(60);
@@ -3448,8 +3467,8 @@ console.log('\nbuild 37 - keys and chests');
       out.okRgb = rgb(OK); return out; });
     (k.mode.dim && k.mode.stage === 'mode' && k.seq.dim && k.seq.stage === 'len')
       ? ok('§K check 1: .grid.dim is on for the MODE sheet (Quick Tap) as well as the length sheet (Sequence, one mode) - it is set for every stage but the grid') : bad('§K check 1', JSON.stringify({ mode: k.mode, seq: k.seq }));
-    (k.mode.outline === k.mode.line && k.mode.name === 'rgb(110, 108, 104)' && k.mode.amber === 0 && k.len.sel === rgb37(k.P) && k.len.amber === 1 && k.picked === k.okRgb)
-      ? ok(`§K one amber thing at a time: with the mode sheet up the pressed tile demotes to the line colour and nothing is amber; once a mode is chosen it is the one amber thing (${k.len.sel}); for the 170ms of the tap it flashes --ok first`)
+    (k.mode.outline === rgb37(k.P) && k.mode.amber === 1 && k.len.sel === rgb37(k.P) && k.len.amber === 1 && k.picked === k.okRgb)
+      ? ok(`§K one amber thing at a time: with the mode row up and nothing tapped the pressed tile is the one amber thing; once a mode is chosen that mode is (AMENDED at build 38) (${k.len.sel}); for the 170ms of the tap it flashes --ok first`)
       : bad('§K one colour for what you chose', JSON.stringify({ mode: k.mode, len: k.len, picked: k.picked }));
     (k.contrast.plain >= 3 && k.contrast.pass >= 3)
       ? ok(`§K check 3: --press against the sheet's own ground is ${k.contrast.plain}:1, and ${k.contrast.pass}:1 on the pass & play sheet - past the 3:1 a UI line needs`) : bad('§K check 3 the contrast', JSON.stringify(k.contrast));
@@ -3507,7 +3526,7 @@ console.log('\nbuild 37 - keys and chests');
       ? ok(`G.2 / D.7 all three keys on the strip; Pro and Author crossed out (crossed, not greyed) with "${u[1]}" underneath and no percentage; the first key still shows ${u[0]}`) : bad('G.2 / D.7 the key strip', JSON.stringify(g12.keys));
     (/^Open the previous chest first/.test(g12.keyTap.toast) && g12.keyTap.title === 'the key' && g12.keyTap.sel === 0)
       ? ok('G.2 / A.1 a locked key says what opens it and does not open - no ring, no numbers') : bad('G.2 the locked key tap', JSON.stringify(g12.keyTap));
-    (g12.keysAfter.join() === 'false,false,false') ? ok('G.2 with chest 1 open no key is crossed out - the reveal rule is the one it always was (mapOpen)') : bad('G.2 after chest 1', JSON.stringify(g12.keysAfter));
+    (g12.keysAfter.join() === 'false,false,true') ? ok('G.2 with chest 1 open the Pro key opens and the Author key stays crossed out until the Pro chest (AMENDED at build 38)') : bad('G.2 after chest 1', JSON.stringify(g12.keysAfter));
   }
 
   /* ---- G.3: chest 1 waits for every game mode - the one crossing between the chain and the key ---- */
@@ -3572,8 +3591,8 @@ console.log('\nbuild 37 - keys and chests');
       out.rows = [...document.querySelectorAll('#key-list .krow.done.newthing')].map(r => r.dataset.kk);
       out.retroAfter = Object.keys(S.prefs.retro || {}).filter(x => x.endsWith('|pro'));
       K.fillBars(false); return out; });
-    (g4.ready && g4.pro && g4.author && g4.retro.join() === 'quick-tap:two:5|author,quick-tap:two:5|pro' && g4.fx === 1 && g4.toasts.length === 1 && /Chest 1 opened/.test(g4.toasts[0]))
-      ? ok(`G.4 opening chest 1 banks the Pro and Author bars a saved best already beats, SILENTLY - one chest sound, one toast ("${g4.toasts[0]}"), no unlock toast and no unlock sound for the clears`)
+    (g4.ready && g4.pro && !g4.author && g4.retro.join() === 'quick-tap:two:5|pro' && g4.fx === 1 && g4.toasts.length === 1 && /Chest 1 opened/.test(g4.toasts[0]))
+      ? ok(`G.4 opening chest 1 banks the Pro bars a saved best already beats, SILENTLY (Author waits for the Pro chest, build 38) - one chest sound, one toast ("${g4.toasts[0]}"), no unlock toast and no unlock sound for the clears`)
       : bad('G.4 the retroactive clear is silent', JSON.stringify(g4));
     (g4.live === 'pro' && /if\(adv\) keyBreak\(adv,rest\)/.test(read37('ui', 'screens', 'result.js')))
       ? ok('G.4 a LIVE clear still announces - checkKey hands back the fresh Pro clear and the result screen interrupts for it, exactly as before') : bad('G.4 the live clear', JSON.stringify({ live: g4.live }));
@@ -3599,6 +3618,228 @@ console.log('\nbuild 37 - keys and chests');
       ? ok('D.4 back at the menu with key 1 up from 0% to 20% since it was last shown, the figure pulses and counts up with the count-up\'s own whoosh, and 20 is written when it is painted') : bad('D.4 the count-up', JSON.stringify(d4));
     (!d4.again.up && d4.again.txt === '20% complete' && !d4.down.up && d4.down.txt === '20% complete' && d4.down.seen === 20)
       ? ok('D.4 painting the same figure again plays nothing, and a figure LOWER than the one last seen never counts down') : bad('D.4 once, and never down', JSON.stringify({ again: d4.again, down: d4.down }));
+  }
+}
+
+/* ---- 18. build 38 (Aiden's two answers to build 37, 2026-09-14): the tile keeps its amber until a mode is chosen; Author waits for the Pro chest ---- */
+console.log('\nbuild 38 - the tile keeps its amber, Author waits for the Pro chest');
+{
+  const root38 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const read38 = (...p) => fs.readFileSync(path.join(root38, ...p), 'utf8');
+  const css38 = read38('styles', 'app.css'), pick38 = read38('ui', 'screens', 'pick.js'), key38 = read38('progress', 'key.js'), prog38 = read38('ui', 'screens', 'progress.js');
+
+  /* ---- 1. the pressed tile keeps --press until a mode is actually chosen ---- */
+  {
+    (/\.grid\.chosen \.tile\.keep \.pic\{outline-color:var\(--line\)\}/.test(css38) && !/\.grid\.dim \.tile\.keep \.pic\{outline-color/.test(css38)
+      && /classList\.toggle\('chosen',st!=='grid'&&GAMES\[sel\.game\]\.modes\.length>1&&!!\$\('#diff-row \.choice\.sel'\)\)/.test(pick38))
+      ? ok('38.1 the tile demotes on `.grid.chosen` - a mode selected on a game with more than one - and no longer on `.grid.dim`') : bad('38.1 the rule');
+    await setStorage({ ne: { v: 4, prefs: { ...OPEN_PREFS }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await click('[data-go="s-pick"]'); await sleep(600);
+    const q1 = await page.evaluate(async () => { const wait = ms => new Promise(r => setTimeout(r, ms));
+      const P = getComputedStyle(document.documentElement).getPropertyValue('--press').trim(); const n = parseInt(P.slice(1), 16); const A = `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`;
+      const grid = document.getElementById('grid'), sheet = document.getElementById('sheet');
+      const tileAmber = t => getComputedStyle(t.querySelector('.pic')).outlineColor === A;
+      const choices = () => [...document.querySelectorAll('#diff-row .choice')].filter(c => c.offsetParent && getComputedStyle(c).borderTopColor === A).length;
+      const qt = document.querySelector('.tile[data-game="quick-tap"]'); qt.click(); await wait(450);
+      const out = { mode: { chosen: grid.classList.contains('chosen'), tile: tileAmber(qt), choices: choices() } };
+      document.querySelector('#diff-row .choice[data-diff="two"]').click(); await wait(600);
+      out.len = { chosen: grid.classList.contains('chosen'), tile: tileAmber(qt), choices: choices() };
+      document.querySelector('#diff-row .choice.sel').click(); await wait(400);
+      out.back = { stage: sheet.classList.contains('len') ? 'len' : 'mode', chosen: grid.classList.contains('chosen'), tile: tileAmber(qt), choices: choices() };
+      document.querySelector('#s-pick .back').click(); await wait(500);
+      const seq = document.querySelector('.tile[data-game="sequence"]'); seq.click(); await wait(500);
+      out.seq = { stage: sheet.classList.contains('len') ? 'len' : 'mode', chosen: grid.classList.contains('chosen'), tile: tileAmber(seq) };
+      return out; });
+    (!q1.mode.chosen && q1.mode.tile && q1.mode.choices === 0)
+      ? ok('38.1 with the mode row up and nothing tapped the pressed tile keeps its amber, and it is the only amber thing') : bad('38.1 the mode row', JSON.stringify(q1.mode));
+    (q1.len.chosen && !q1.len.tile && q1.len.choices === 1 && q1.back.stage === 'mode' && q1.back.chosen && !q1.back.tile && q1.back.choices === 1)
+      ? ok('38.1 once a mode is chosen it takes the amber and the tile demotes - still so when the sheet goes back to the mode row with that mode selected') : bad('38.1 a chosen mode', JSON.stringify({ len: q1.len, back: q1.back }));
+    (q1.seq.stage === 'len' && !q1.seq.chosen && q1.seq.tile)
+      ? ok('38.1 Sequence has no mode row to tap, so its tile keeps the amber on its length row') : bad('38.1 a one-mode game', JSON.stringify(q1.seq));
+  }
+
+  /* ---- 2. each tier opens with its own chest: Pro with chest 1, Author with the Pro chest ---- */
+  {
+    (/const tierOpen = tier => \{ const i = tierIx\(tier\); return i === 0 \|\| !!\(prefs\['chest' \+ i\] \|\| prefs\.allOpen \|\| prefs\.supporter\); \};/.test(key38)
+      && /function radarRungs\(\) \{ const open = TIERS\.filter\(tierOpen\);/.test(key38)
+      && /const groupShown=t=>t==='key2'\?tierOpen\('pro'\):t==='key3'\?tierOpen\('author'\):true;/.test(prog38))
+      ? ok('38.2 one line decides a tier: chest n opens tier n+1, with the dev escapes - and the radar and the Achievements tab ask it per tier') : bad('38.2 the rule');
+    await setStorage({ ne: { v: 4, prefs: { story: 1, gridSeen: 1, played: 1, snd: 'off', musicG: {}, keySeen: 1 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    const q2 = await page.evaluate(async () => { const K = await import('./progress/key.js'); const S = await import('./core/store.js'); const R = await import('./ui/router.js');
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      S.prefs.chest1 = 1; S.prefs.chest2 = 0; S.store.runs = [{ t: Date.now(), g: 'quick-tap', d: 'two', s: 5, n: '', v: 4, hits: 40, misses: 0 }]; S.save(); K.fillBars(true);
+      const out = { pro: K.tierOpen('pro'), author: K.tierOpen('author'), rungs: K.radarRungs().map(r => r.tier).join() };
+      out.live = (K.checkKey({ g: 'quick-tap', d: 'two', s: 5, hits: 40, misses: 0, t: Date.now(), v: 4 }, false) || {}).tier;
+      out.proBar = !!S.store.bars['quick-tap:two:5|pro']; out.authorBar = !!S.store.bars['quick-tap:two:5|author'];
+      R.show('s-key'); await wait(600); out.strip = [...document.querySelectorAll('#key-keys .kkey')].map(b => b.classList.contains('locked')).join();
+      R.show('s-prog', { tab: 'ach' }); await wait(500); out.sets = [...document.querySelectorAll('#achlist h4')].map(h => h.className).filter(c => /^key/.test(c)).join();
+      S.prefs.chest2 = 1; S.save(); out.retro = K.retroBank().join(); out.author2 = K.tierOpen('author'); out.rungs2 = K.radarRungs().map(r => r.tier).join();
+      R.show('s-menu'); await wait(150); R.show('s-key'); await wait(500); out.strip2 = [...document.querySelectorAll('#key-keys .kkey')].map(b => b.classList.contains('locked')).join();
+      R.show('s-prog', { tab: 'ach' }); await wait(500); out.sets2 = [...document.querySelectorAll('#achlist h4')].map(h => h.className).filter(c => /^key/.test(c)).join();
+      K.fillBars(false); S.prefs.chest1 = 0; S.prefs.chest2 = 0; S.store.bars = {}; S.store.runs = []; S.save(); return out; });
+    (q2.pro && !q2.author && q2.rungs === 'clear,pro' && q2.strip === 'false,false,true' && q2.sets === 'key1,key2')
+      ? ok('38.2 with chest 1 open and the Pro chest shut: Pro is open, Author is crossed out on the strip, the radar has two rungs and the Achievements tab shows no Author set') : bad('38.2 before the Pro chest', JSON.stringify(q2));
+    (q2.live === 'clear' && q2.proBar && !q2.authorBar)
+      ? ok('38.2 a run that beats every bar clears key 1 and Pro and banks nothing on Author while its chest is shut') : bad('38.2 no Author clear before its chest', JSON.stringify({ live: q2.live, proBar: q2.proBar, authorBar: q2.authorBar }));
+    (q2.author2 && q2.retro === 'quick-tap:two:5|author' && q2.rungs2 === 'clear,pro,author' && q2.strip2 === 'false,false,false' && q2.sets2 === 'key1,key2,key3')
+      ? ok('38.2 the Pro chest opens Author: its bars already beaten are credited silently (G.4), all three keys and rungs are open, and the Author set appears') : bad('38.2 after the Pro chest', JSON.stringify(q2));
+  }
+
+  /* ---- 3. #426: Pro and Author PLACEHOLDERS (A.2 amended) - the generator writes the file, and never a person's number ---- */
+  console.log('\nbuild 38 - #426 Pro and Author placeholders');
+  const P38 = await import(pathToFileURL(path.join(root38, 'scripts', 'placeholders.mjs')).href);
+  const { ROUND_AT: RA38 } = await import(pathToFileURL(path.join(root38, 'config', 'verdicts.js')).href);
+  const bars38 = read38('config', 'key-bars.js'), json38 = fs.readFileSync(path.join(root38, '..', '_review', 'key-bars.json'), 'utf8');
+  const rows38 = P38.rowsOf(bars38);
+  const spanOf = (src, key, name) => { const r = P38.rowsOf(src).find(x => x.key === key); const f = P38.fieldsOf(src, r.from, r.to).find(x => x.name === name); return f ? src.slice(f.from, f.to) : ''; };
+  {
+    const again = P38.generate(bars38, RA38).out, cleared = P38.generate(bars38, RA38, 'clear').out, refilled = P38.generate(cleared, RA38).out;
+    const empty = P38.rowsOf(cleared).every(r => r.obj.pro === null && r.obj.author === null && !('placeholder' in r.obj));
+    (again === bars38 && empty && refilled === bars38 && P38.reviewJson(json38, rows38) === json38)
+      ? ok(`#426 config/key-bars.js is exactly what npm run placeholders writes: regenerating changes nothing, --clear takes all ${rows38.length * 2} cells back to null with no marker left, filling that gives the file back byte for byte, and ../_review/key-bars.json matches`)
+      : bad('#426 the file is the generator\'s output', JSON.stringify({ again: again === bars38, empty, refilled: refilled === bars38, json: P38.reviewJson(json38, rows38) === json38 }));
+    // the scheme, cell by cell: the multiplier for the row's own direction, its own precision, harder tier over tier, the floors, the marker
+    const off = [];
+    for (const r of rows38) { const o = r.obj, st = P38.stepOf(o.unit), fl = P38.floorOf(r.key, o, RA38);
+      for (const [t, below] of [['pro', o.bar], ['author', o.pro]]) { const v = o[t], m = P38.MULT[o.dir][t], mk = (o.placeholder || {})[t] || {}, basis = mk.basis || '';
+        const prec = st === 10 ? v % 10 === 0 : st === 1 ? Number.isInteger(v) : Math.abs(v * 10 - Math.round(v * 10)) < 1e-9;
+        const expect = Math.max(fl ? fl.at : -Infinity, P38.roundTo(o.bar * m, st));
+        const good = prec && (o.dir === 'lower' ? v < below : v > below) && !(fl && v < fl.at) && (v === expect || /stepped to/.test(basis))
+          && mk.v === v && mk.conf === 'low' && /^PLACEHOLDER/.test(basis) && basis.includes('× ' + m.toFixed(2)) && /awaiting his/.test(basis);
+        if (!good) off.push(`${r.key} ${t}=${v}`); } }
+    const flash = rows38.find(r => r.key === 'reaction:flash:5').obj;
+    (!off.length && flash.author === 180 && /CLAMPED to 180/.test(flash.placeholder.author.basis))
+      ? ok(`#426 all ${rows38.length * 2} cells follow the scheme: × 1.15 / × 1.30 on a floor, × 0.80 / × 0.65 on a ceiling, the row's own precision, each tier strictly harder than the one below, none past its floor, each marked conf 'low' with a basis naming its multiplier - and Flash · Set's Author is CLAMPED to 180ms (255 × 0.65 = 165.75), saying so`)
+      : bad('#426 the scheme', JSON.stringify({ off, flash: [flash.pro, flash.author] }));
+    /* NEVER OVERWRITE A NUMBER A PERSON ENTERED. Two cells hand-set to odd values - one through --set, which drops its marker,
+       one typed over a placeholder with its now-stale marker left behind - then the generator runs over the table twice */
+    let hand = P38.setCell(bars38, 'qt-two-5', 'pro', 13.37);
+    { const r = P38.rowsOf(hand).find(x => x.key === 'dots:lead:30'), f = P38.fieldsOf(hand, r.from, r.to).find(x => x.name === 'author'); hand = hand.slice(0, f.from) + '101.5' + hand.slice(f.to); }
+    const g1 = P38.generate(hand, RA38), g2 = P38.generate(g1.out, RA38);
+    const barsText = src => P38.rowsOf(src).map(r => spanOf(src, r.key, 'bar')).join();
+    const handRows = P38.rowsOf(hand), qtRow = handRows.find(r => r.key === 'quick-tap:two:5').obj, dlRow = handRows.find(r => r.key === 'dots:lead:30').obj;
+    const kept = g1.report.filter(x => x.act === 'kept').map(x => x.key + ' ' + x.tier).sort().join();
+    let refused = false; try { P38.setCell(bars38, 'qt-two-5', 'bar', 1); } catch (e) { refused = /bar/.test(e.message); }
+    (g1.out === hand && g2.out === hand && spanOf(g2.out, 'quick-tap:two:5', 'pro') === '13.37' && spanOf(g2.out, 'dots:lead:30', 'author') === '101.5'
+      && spanOf(g2.out, 'dots:lead:30', 'placeholder') === spanOf(hand, 'dots:lead:30', 'placeholder') && !('pro' in (qtRow.placeholder || {})) && dlRow.placeholder.author.v !== 101.5
+      && kept === 'dots:lead:30 author,quick-tap:two:5 pro' && barsText(g2.out) === barsText(bars38) && refused)
+      ? ok('#426 NEVER OVERWRITE: 13.37 put in through --set (marker dropped) and 101.5 typed over a placeholder (stale marker left) survive two generator runs byte for byte, both reported kept, every other cell and every key-1 bar untouched - and --set refuses `bar`')
+      : bad('#426 a person\'s number survives the generator', JSON.stringify({ same1: g1.out === hand, same2: g2.out === hand, qt: spanOf(g2.out, 'quick-tap:two:5', 'pro'), dl: spanOf(g2.out, 'dots:lead:30', 'author'), kept, refused }));
+    // and the app reads the marker by the same test, and says so on the key screen per tier
+    await setStorage({ ne: { v: 4, prefs: { ...OPEN_PREFS, keySeen: 1 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    const ph = await page.evaluate(async () => { const K = await import('./progress/key.js'); const R = await import('./ui/router.js');
+      const wait = ms => new Promise(r => setTimeout(r, ms)); const warn = () => document.getElementById('key-warn').hidden ? '' : document.getElementById('key-warn').textContent.trim();
+      const out = { pro: K.placeholderCount('pro'), author: K.placeholderCount('author'), clear: K.placeholderCount('clear'), n: K.COMBOS.length };
+      const c = K.COMBOS.find(x => x.key === 'quick-tap:two:5'), was = c.bar.pro;
+      c.bar.pro = 13.37; out.edited = { is: K.isPlaceholder(c, 'pro'), count: K.placeholderCount('pro'), author: K.isPlaceholder(c, 'author') };
+      R.show('s-key', { tier: 1 }); await wait(350); out.edited.warn = warn();
+      c.bar.pro = was; R.show('s-menu'); await wait(80); R.show('s-key', { tier: 1 }); await wait(350); out.warnPro = warn();
+      R.show('s-menu'); await wait(80); R.show('s-key', { tier: 0 }); await wait(350); out.warnClear = warn();
+      return out; });
+    (ph.pro === ph.n && ph.author === ph.n && ph.clear === 0 && !ph.edited.is && ph.edited.count === ph.n - 1 && ph.edited.author
+      && ph.warnPro.startsWith(`${ph.n} of the ${ph.n} numbers on this key are PLACEHOLDERS`) && ph.edited.warn.startsWith(`${ph.n - 1} of the ${ph.n}`) && ph.warnClear === '')
+      ? ok(`#426 progress/key.js tells a generated number from a set one: ${ph.pro} Pro and ${ph.author} Author placeholders, none on key 1; one Pro number changed in place is a person's (${ph.edited.count} left) and Circuit says "${ph.edited.warn}"`)
+      : bad('#426 isPlaceholder and the key screen note', JSON.stringify(ph));
+  }
+
+  /* ---- 4. #426 A: Circuit and Thorn seen working - every animation Lantern gets, on all three, each in its own tint ---- */
+  {
+    const kfLines = css38.split('\n').filter(l => /@keyframes krootgrow\{/.test(l)), kfLast = kfLines[kfLines.length - 1] || '';
+    (/var\(--ktint\)/.test(kfLast) && !/--ok/.test(kfLast) && /\.khalo\{fill:none;stroke:var\(--ktint\)\}/.test(css38)
+      && /@keyframes kwholeglyph\{[^\n]*var\(--ktint\)/.test(css38) && !/\[data-style="(lantern|circuit|thorn)"\][^{]*\{[^}]*animation/.test(css38))
+      ? ok('#426 A statically: the krootgrow that wins reads --ktint, the halo strokes in --ktint, the whole-key glyph flares in it, and no [data-style] rule sets or cancels an animation')
+      : bad('#426 A the animation CSS is theme-driven');
+    await setStorage({ ne: { v: 4, prefs: { ...OPEN_PREFS, keySeen: 1 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    const par = await page.evaluate(async () => { const K = await import('./progress/key.js'); const S = await import('./core/store.js'); const R = await import('./ui/router.js'); const KY = await import('./config/keys.js');
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const trip = hex => { const n = parseInt(hex.slice(1), 16); return `${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}`; };
+      const names = el => [...new Set(el.getAnimations({ subtree: true }).map(a => a.animationName).filter(Boolean))].sort().join();
+      const key = document.getElementById('s-key'), out = [];
+      // most of every tier lit, never whole: Spot's first combination left dark for the advance to grow, and one Quick Tap one
+      const spot = K.COMBOS.find(c => c.g === 'spot'), spare = K.COMBOS.find(c => c.g === 'quick-tap');
+      for (const t of K.TIERS) for (const c of K.COMBOS) if (c !== spot && c !== spare) S.store.bars[K.skey(c.key, t)] = Date.now();
+      S.save();
+      for (let i = 0; i < K.TIERS.length; i++) { const t = K.TIERS[i], tint = trip(KY.KEYS[i].tint), row = { tier: t, tint: KY.KEYS[i].tint };
+        R.show('s-menu'); await wait(80); R.show('s-key', { tier: i }); await wait(400);
+        row.style = key.dataset.style;
+        const lit = document.querySelector('#key-ring .kroot.on'); row.lit = !!lit && getComputedStyle(lit).stroke.includes(tint);
+        // 9.5 / 5.1: the advance, handed over exactly the way the result screen hands a fresh clear over
+        S.store.bars[K.skey(spot.key, t)] = Date.now(); S.save(); const g = K.gameKey('spot', t);
+        R.show('s-menu'); await wait(80); R.show('s-key', { advance: { key: spot.key, tier: t, g: 'spot', d: spot.d, s: spot.s, was: g.done - 1, done: g.done, total: g.total } }); await wait(360);
+        const seg = document.querySelector(`#key-ring [data-seg="spot:${g.done - 1}"]`), halo = document.querySelector('#key-ring .kr[data-rg="spot"] .khalo');
+        row.advance = { grow: !!seg && seg.classList.contains('grow'), seg: seg ? names(seg) : '', halo: halo ? halo.getAnimations().map(a => a.animationName).join() : '', haloTint: !!halo && getComputedStyle(halo).stroke.includes(tint) };
+        delete S.store.bars[K.skey(spot.key, t)]; S.save(); await wait(900);
+        // B.20: the whole-key moment
+        R.show('s-menu'); await wait(80); R.show('s-key', { tier: i, whole: true }); await wait(520);
+        const glyph = document.querySelector('#key-ring .kglyph');
+        row.whole = { on: key.classList.contains('kwhole'), names: names(key), glyph: glyph ? glyph.getAnimations().map(a => a.animationName).join() : '', count: getComputedStyle(document.getElementById('key-count')).color.includes(tint) };
+        await wait(3000);
+        // 5.4 / B.21: the staged first open
+        R.show('s-menu'); await wait(80); R.show('s-key', { tier: i, arrive: true }); await wait(250);
+        const every = (sel, n) => { const els = [...document.querySelectorAll(sel)]; return els.length > 0 && els.every(x => x.getAnimations().some(a => a.animationName === n)); };
+        row.first = { on: key.classList.contains('first'), names: names(key), kr: every('#key-ring .kr', 'keyin'), node: every('#key-ring .knode', 'keyin') };
+        await wait(2700);
+        out.push(row); }
+      S.store.bars = {}; S.prefs.keySeen = 1; S.save(); return out; });
+    const L = par[0];
+    const sameAs = p => p.advance.seg === L.advance.seg && p.advance.halo === L.advance.halo && p.whole.names === L.whole.names && p.whole.glyph === L.whole.glyph && p.first.names === L.first.names;
+    (par.map(p => p.style).join() === 'lantern,circuit,thorn' && L.advance.seg === 'krootgrow' && L.advance.halo === 'khaloglow' && L.whole.glyph === 'kwholeglyph' && /khaloglow/.test(L.whole.names) && /keyin/.test(L.first.names)
+      && par.every(p => sameAs(p) && p.lit && p.advance.grow && p.advance.haloTint && p.whole.on && p.whole.count && p.first.on && p.first.kr && p.first.node))
+      ? ok(`#426 A: Circuit and Thorn run every animation Lantern does - the advance (${L.advance.seg} under ${L.advance.halo}), the whole-key moment (${L.whole.names}), the staged first open (${L.first.names}) - with lit segments, halos and the count line in each tier's own tint (${par.map(p => p.tint).join(' / ')})`)
+      : bad('#426 A animation parity across the three styles', JSON.stringify(par));
+  }
+
+  /* ---- 5. #426 B: retroactive banking has something to bank - both ways - and it runs when the numbers arrive ---- */
+  {
+    const keys = rows38.map(r => r.key);
+    const runs = keys.map((k, i) => { const [g, d, s] = k.split(':'), o = rows38[i].obj; return { t: NOW, g, d, s: +s, n: '', v: 4, hits: i % 2 ? o.bar : o.pro, misses: 0 }; });
+    const want = keys.filter((k, i) => !(i % 2)).map(k => k + '|pro').sort();
+    const open1 = async list => {
+      await setStorage({ ne: { v: 4, prefs: { story: 1, gridSeen: 1, played: 1, snd: 'space', musicG: { menu: false }, keySeen: 1 }, runs: list, ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+      await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+      return page.evaluate(async () => { const K = await import('./progress/key.js'); const S = await import('./core/store.js'); const R = await import('./ui/router.js'); const A = await import('./audio.js'); const U = await import('./config/unlocks.js');
+        const wait = ms => new Promise(r => setTimeout(r, ms));
+        const bootPro = Object.keys(S.store.bars).filter(k => k.endsWith('|pro')).length;
+        for (const x of U.UNLOCKS) S.store.unlock[x.key] = Date.now();
+        for (const c of K.COMBOS) S.store.bars[c.key] = Date.now(); S.save();
+        let fx = 0; const orig = A.Snd.unlockFx; A.Snd.unlockFx = function () { fx++; return orig.apply(this, arguments); };
+        const toasts = []; const mo = new MutationObserver(() => toasts.push(document.getElementById('toast').textContent.trim())); mo.observe(document.getElementById('toast'), { childList: true, characterData: true, subtree: true });
+        R.show('s-pick'); await wait(600);
+        const ready = document.querySelector('.chest[data-chest="1"]').classList.contains('ready');
+        document.querySelector('.chest[data-chest="1"]').click(); await wait(250); document.getElementById('ask-yes').click(); await wait(2300);
+        const out = { bootPro, ready, pro: Object.keys(S.store.bars).filter(k => k.endsWith('|pro')).sort(), author: Object.keys(S.store.bars).filter(k => k.endsWith('|author')).length,
+          retro: Object.keys(S.prefs.retro || {}).length, col: typeof (S.prefs.retroCol || {}).pro === 'string', fx, toasts: [...new Set(toasts.filter(Boolean))] };
+        mo.disconnect(); A.Snd.unlockFx = orig; if (document.getElementById('askwrap').classList.contains('on')) document.getElementById('ask-no').click();
+        return out; }); };
+    const good = await open1(runs), none = await open1([]);
+    (good.ready && !good.bootPro && good.pro.join() === want.join() && !good.author && good.retro === want.length && good.col && good.fx === 1 && good.toasts.length === 1 && /Chest 1 opened/.test(good.toasts[0]))
+      ? ok(`#426 B: a profile whose bests beat every other Pro bar opens chest 1 and banks exactly those ${good.pro.length}, SILENTLY - one chest sound, one toast ("${good.toasts[0]}"), nothing for the clears, nothing on Author behind its own chest`)
+      : bad('#426 B the retroactive clear with something to bank', JSON.stringify({ ...good, want: want.length }));
+    (none.ready && !none.pro.length && !none.author && !none.retro && none.col && none.fx === 1 && none.toasts.length === 1)
+      ? ok('#426 B: a profile with no runs opens chest 1 and banks nothing - still one chest sound and one toast')
+      : bad('#426 B the retroactive clear with nothing to bank', JSON.stringify(none));
+    // Aiden, "yes, silently, once": a column that ARRIVES for a tier already open is credited at boot, once per column
+    await setStorage({ ne: { v: 4, prefs: { story: 1, gridSeen: 1, played: 1, snd: 'space', musicG: { menu: false }, keySeen: 1, chest1: 1 }, runs, ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(600);
+    const readNe = () => page.evaluate(() => { const ne = JSON.parse(localStorage.getItem('ne')), t = document.getElementById('toast');
+      return { pro: Object.keys(ne.bars).filter(k => k.endsWith('|pro')).sort(), author: Object.keys(ne.bars).filter(k => k.endsWith('|author')).length, col: Object.keys(ne.prefs.retroCol || {}).join(), retro: Object.keys(ne.prefs.retro || {}).length, toast: t.classList.contains('on') ? t.textContent.trim() : '' }; });
+    const a1 = await readNe();
+    const gone = await page.evaluate(() => { const ne = JSON.parse(localStorage.getItem('ne')); const k = Object.keys(ne.bars).find(x => x.endsWith('|pro')); delete ne.bars[k]; localStorage.setItem('ne', JSON.stringify(ne)); return k; });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(500);
+    const a2 = await readNe();
+    await page.evaluate(() => { const ne = JSON.parse(localStorage.getItem('ne')); ne.prefs.retroCol = { pro: 'an older column' }; localStorage.setItem('ne', JSON.stringify(ne)); });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(500);
+    const a3 = await readNe();
+    (a1.pro.join() === want.join() && !a1.author && a1.col === 'pro' && a1.retro === want.length && a1.toast === '')
+      ? ok(`#426 on arrival: a profile with chest 1 already open boots on the new columns and banks the ${a1.pro.length} Pro bars its bests beat - no toast, no chest, Author untouched behind its own chest, the column recorded`)
+      : bad('#426 retro credit when the numbers arrive', JSON.stringify(a1));
+    (gone && !a2.pro.includes(gone) && a2.pro.length === want.length - 1 && a3.pro.includes(gone) && a3.pro.length === want.length)
+      ? ok('#426 once per column: a Pro bar removed by hand is NOT re-banked on the next boot, and a different column credits once more')
+      : bad('#426 retro on arrival runs once per column', JSON.stringify({ gone, a2: a2.pro.length, a3: a3.pro.length }));
   }
 }
 

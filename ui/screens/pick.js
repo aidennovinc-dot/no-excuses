@@ -53,7 +53,12 @@ const SHEET_OUT=340;   // the sheet's own .32s slide, and a frame
 let sheetT=0;
 function hideSheet(){ const sh=$('#sheet'); sh.hidden=true; sh.classList.remove('up','len','two');
   $('#diff-row').innerHTML=''; $('#time-row').innerHTML=''; $('#sheet-title').textContent=''; $('#vsart').innerHTML=''; $('#vsart').classList.remove('on','vs2'); }
+/* build 38 (Aiden, 2026-09-14, amending v22 §K): THE TILE KEEPS ITS AMBER UNTIL A MODE IS CHOSEN. `chosen` is on once a mode on
+   the sheet is actually selected — a game with more than one mode, and a `.choice.sel` present — and only then does the pressed
+   tile demote. With the mode row up and nothing tapped the tile is still what the player chose; a one-mode game (Sequence) has
+   no mode row to tap, so its tile keeps the amber on its length row. Exactly one amber thing on screen either way. */
 function setStage(st){ stage=st; clearTimeout(sheetT); const sh=$('#sheet'); $('#diff-row').classList.remove('picking'); $('#grid').classList.toggle('dim',st!=='grid');
+  $('#grid').classList.toggle('chosen',st!=='grid'&&GAMES[sel.game].modes.length>1&&!!$('#diff-row .choice.sel'));
   if(st==='grid'){ $$('.tile').forEach(t=>t.classList.remove('keep')); if(sh.hidden) return;
     if(!sh.classList.contains('up')){ hideSheet(); return; }
     sh.classList.remove('up','len'); sheetT=setTimeout(()=>{ if(stage==='grid') hideSheet(); },SHEET_OUT); return; }

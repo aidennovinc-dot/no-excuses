@@ -52,7 +52,7 @@ import { emit } from "../../core/events.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, lenFull, lenName } from "../../games/registry.js";
 import { isOpen, lenOpen } from "../../progress.js";
-import { barOf, barsFaked, barsMissing, gameKey, isCleared, keyPct, keyState, keyTiers, mapOpen, skey } from "../../progress/key.js";
+import { barOf, barsFaked, barsMissing, gameKey, isCleared, keyPct, keyState, keyTiers, mapOpen, placeholderCount, skey, tierOpen } from "../../progress/key.js";
 import { goWhere } from "../../run/run.js";
 import { scoreTxt } from "../format.js";
 import { define } from "../actions.js";
@@ -83,7 +83,8 @@ const glyph = (id, cls) => `<svg class="kgl ${cls}" viewBox="0 0 48 48" aria-hid
    hides is exactly that, and it still arrives with chest 1 through mapOpen(); the reveal rule itself did not move. G.4: a key
    holding clears banked retroactively when a chest opened wears L8's green until those rows have been seen. */
 const shown = () => keyTiers();
-const keyLocked = k => k.i > 0 && !mapOpen();
+// build 38: per tier — Pro with chest 1, Author with the Pro chest (Aiden). The criterion under a locked key is now exact for both
+const keyLocked = k => k.i > 0 && !tierOpen(k.id);
 function keys() {
   const list = shown(), retro = Object.keys(prefs.retro || {});
   $('#key-keys').classList.remove('one');
@@ -187,7 +188,7 @@ function panel() { const box = $('#key-list'); if (!openGame) { box.innerHTML = 
   if (spent.length) { for (const rk of spent) delete retro[rk]; prefs.retro = retro; save(); } }
 
 /* ---------- which key is on screen ---------- */
-function render() { if (!mapOpen()) openKey = 0; const t = keyTiers()[openKey]; keys();
+function render() { if (!tierOpen(keyTiers()[openKey].id)) openKey = 0; const t = keyTiers()[openKey]; keys();
   // B.31 / B.22: the tier's own tint, dim and ground dress the whole screen, out of config/keys.js. No colour is named here
   const el = $('#s-key'); el.style.setProperty('--ktint', t.tint); el.style.setProperty('--kdim', t.dim || 'var(--line)'); el.style.setProperty('--kground', t.ground); el.dataset.theme = t.id; el.dataset.style = t.style || '';
   $('#key-title').textContent = t.name.toLowerCase();
@@ -195,13 +196,15 @@ function render() { if (!mapOpen()) openKey = 0; const t = keyTiers()[openKey]; 
   if (t.shell) { $('#key-shell').innerHTML = `${glyph(t.id, 't' + (openKey + 1) + ' big')}<p>${esc(t.lede)}</p><p class="soon">${esc(KEY.soon)}</p>`; return; }
   const st = ring(); panel();
   $('#key-hint').textContent = st.whole ? KEY.completeSub : openGame ? KEY.rowGo : KEY.hint;
-  /* a real config mismatch outranks the placeholder note — one of them is a fault, the other is a choice Aiden just
-     made on the Testing screen. But the placeholder note is never silent while the fill is on (A.2): a derived number
-     on screen has to say it is derived, or it is indistinguishable from one he set. */
-  const miss = barsMissing(); const fake = barsFaked() && t.id !== 'clear';
-  $('#key-warn').hidden = !miss.length && !fake;
+  /* a real config mismatch outranks the placeholder notes — one is a fault, the others are choices. Testing's in-memory fill
+     first, then the generated placeholders in the file: A.2 as amended at build 38 (#426) lets a build generate a bar, but
+     never silently — a generated number on screen has to say it is generated, or it is indistinguishable from one Aiden set.
+     Key 1 carries none, so it says nothing. */
+  const miss = barsMissing(); const fake = barsFaked() && t.id !== 'clear'; const ph = placeholderCount(t.id);
+  $('#key-warn').hidden = !miss.length && !fake && !ph;
   if (miss.length) $('#key-warn').textContent = T(KEY.mismatch, { n: miss.length, keys: miss.join(', ') });
   else if (fake) $('#key-warn').textContent = KEY.faked;
+  else if (ph) $('#key-warn').textContent = T(KEY.placeholder, { n: ph, total: st.total });
   // B.20: a key that has just become whole gets its moment, once per tier per profile
   if (st.whole && !demo) { const seen = prefs.keyWhole || {}; if (!seen[t.id]) { seen[t.id] = 1; prefs.keyWhole = seen; save(); setTimeout(() => wholeMoment(), 260); } } }
 
@@ -248,7 +251,7 @@ register('s-key', { onShow({ advance: a, from, auto: to, tier, whole, arrive } =
 const keyTierIx = id => Math.max(0, keyTiers().findIndex(k => k.id === id));
 define({
   // v21 (G.2): a locked key says what opens it and stays where it is — its ring and its numbers are what A.1 still hides
-  'key-tier'(el) { const i = +el.dataset.kt; if (i > 0 && !mapOpen()) { toast(KEY.lockedToast); return 'pick'; }
+  'key-tier'(el) { const i = +el.dataset.kt; if (i > 0 && !tierOpen(keyTiers()[i].id)) { toast(KEY.lockedToast); return 'pick'; }
     openKey = i; openGame = null; render(); Music.menu(keyTiers()[openKey].track); return 'pick'; },
   'key-game'(el) { const g = el.dataset.kg; openGame = openGame === g ? null : g; render(); return 'pick'; },
   // B.23: a tap on the ring's own ground is nothing — not Back, not a sound

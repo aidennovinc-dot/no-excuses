@@ -5,8 +5,11 @@
    key 3 the author's own times. They are difficulty tiers over the SAME combinations, not three separate collections —
    so nothing here touches config/key-bars.js, which stays the one place a bar lives. B.27: that file now carries all
    three tiers per row (`bar`, `pro`, `author`), and A SHELL IS DERIVED FROM IT — a tier whose column has any empty row is
-   a shell, progress/key.js says so, and no flag lives here any more. Pro and Author start empty; A.2 says Aiden sets
-   every bar by hand, so no build may derive one. The day a column is full the tier simply starts counting.
+   a shell, progress/key.js says so, and no flag lives here any more. The day a column is full the tier simply starts counting.
+   A.2 AMENDED AT BUILD 38 (#426, Aiden asked for it directly): A.2 said Aiden sets every bar by hand, so no build may derive
+   one. A build MAY now generate a PLACEHOLDER, marked as one and replaceable a row at a time — both columns have been full of
+   them since build 38 (site/scripts/placeholders.mjs) — and still may NEVER set a real bar or silently correct one. A
+   placeholder Aiden replaces is manual data from then on. The rule and how to replace one are in config/key-bars.js's header.
 
    B.22 — ONE THEME PER TIER: LANTERN → CIRCUIT → THORN, from the proposal page Aiden reviewed 2026-09-10 ("the design for
    the keys looked fucking amazing"), extracted by Cowork into ../_review/2026-09-10_key-themes-art.js. Visual only: the

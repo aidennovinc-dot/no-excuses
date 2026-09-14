@@ -6,6 +6,7 @@ import { TOAST } from "./config/copy.js";
 import { T } from "./core.js";
 import { prefs, save } from "./core/store.js";
 import { seedSeen, seenAll } from "./progress.js";
+import { retroArrived } from "./progress/key.js";
 import { bindInput } from "./run/input.js";
 import { onClick } from "./ui/actions.js";
 import { startAtmosphere } from "./ui/atmosphere.js";
@@ -15,6 +16,9 @@ import { toast } from "./ui/toast.js";
 
 // v13 (2.1): everything already open on this profile counts as seen, so nothing flashes green on day one
 if(!seenAll()) seedSeen();
+// build 38 (#426 — Aiden: "yes, silently, once"): a Pro or Author column that ARRIVED for a tier this profile already had open
+// is credited against saved bests the way a chest opening credits it — no toast, no sound, once per column (G.4)
+retroArrived();
 // a new profile gets the title sequence (L1); a returning one lands on the menu the markup already shows. v14 (1.2): the
 // sequence is a state of the menu screen, so the title it lands on is the one the menu keeps — it never re-renders
 if(!prefs.story) show('s-menu',{story:true}); else enterMenu();

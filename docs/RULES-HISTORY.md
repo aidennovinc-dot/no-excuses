@@ -167,6 +167,24 @@ text here is the rule with its history.
 - **Not touched, on purpose: `config/unlocks.js`.** Aiden decided 2026-09-14 that modes are siblings, not a ladder (#424):
   Dots · Blind stays "any Quick Tap run" and Estimate · Grow "any Dots run".
 
+### Amended at build 38 (Aiden's answers to build 37's two open questions), 2026-09-14
+
+- **§K amended: the pressed tile keeps its amber until a mode is CHOSEN.** Build 37 demoted it the moment the sheet was up,
+  and since the sheet opens on the same tap the tile's amber was never on screen. It now demotes on `.grid.chosen` — set in
+  `setStage()` when the game has more than one mode and a mode is selected. A one-mode game (Sequence) has no mode row to tap,
+  so its tile keeps the amber on its length row. Still exactly one amber thing on screen.
+- **The reveal narrowed further: Author waits for the Pro chest.** Build 37 kept chest 1 opening both tiers. Each tier now
+  opens with its own chest — `tierOpen()` in `progress/key.js` — so Author's key, its clears, its retroactive credit, its
+  achievement set and its radar rung all wait for chest 2. Pro is unchanged.
+- **A.2 amended (#426 — Aiden asked for it directly): a build MAY generate a PLACEHOLDER bar, marked as one and replaceable a
+  row at a time; it may still never set a real bar or silently correct one.** Before: "no build may derive a bar; Aiden sets
+  every one by hand" — which kept Pro and Author shells from build 32 to build 37 and left Circuit and Thorn reviewable only
+  through Testing's in-memory fill. The amendment is written where the old absolute was — `config/key-bars.js`'s header,
+  `config/keys.js`'s header, `site/CLAUDE.md` — and enforced in `scripts/placeholders.mjs`, which only ever writes a cell that
+  is empty or still holds its own marker's `v`, and never `bar`. Mechanics in `docs/PROGRESSION.md` → Build 38 (#426).
+- **G.4 widened: retroactive credit also runs when a column ARRIVES for a tier that is already open** (Aiden: "yes, silently,
+  once") — `retroArrived()` at boot, once per column, keyed by `prefs.retroCol`.
+
 ## Structure — the full text as of build 30
 
 `CLAUDE.md` keeps the module map. This is the paragraph-by-paragraph description it carried at build 30: the DAG, the

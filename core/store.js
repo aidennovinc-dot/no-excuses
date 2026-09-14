@@ -63,6 +63,9 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
        switch, so it exists only while BUILD_FLAGS.dev is on (S5). */
     gateOff:p.gateOff?1:0,
     retro:isObj(p.retro)?Object.fromEntries(Object.keys(p.retro).filter(k=>/^[\w-]+:\w+:-?\d+\|(pro|author)$/.test(k)).map(k=>[k,1])):{},
+    /* build 38 (#426): `retroCol` is each of the Pro and Author columns as it stood the last time retroactive credit ran, as a
+       string — progress/key.js retroArrived() credits a column once, at boot, when it differs. Progress: Fresh game clears it. */
+    retroCol:isObj(p.retroCol)?Object.fromEntries(Object.entries(p.retroCol).filter(([k,v])=>['pro','author'].includes(k)&&typeof v==='string'&&v.length<4000)):{},
     pctSeen:isObj(p.pctSeen)?Object.fromEntries(Object.entries(p.pctSeen).filter(([k,v])=>['clear','pro','author'].includes(k)&&Number.isInteger(v)&&v>=0&&v<=100)):{},
     devKeys:dev&&isObj(p.devKeys)?Object.fromEntries(Object.entries(p.devKeys).filter(([k,v])=>['clear','pro','author'].includes(k)&&Array.isArray(v)).map(([k,v])=>[k,v.filter(x=>typeof x==='string')])):{},
     rate:RATES.includes(p.rate)?p.rate:'live' };   // v14 (6.7): which taps-per-second reading the rate bar shows
@@ -197,6 +200,6 @@ const musicOn=g=>prefs.musicG[g]!==false;
    profile showed all 27 of them open. Supporter is a dev switch today (S5 gates it out of a release build entirely) and
    Fresh game is the switch for seeing the app as a new player does, so it belongs in this list. When it becomes a real
    purchase at the native build it will be restored from the store rather than from prefs, and this line stays correct. */
-function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,chest1:0,chest2:0,chest3:0,pro:0,keyWhole:{},gateOff:0,retro:{},pctSeen:{},devKeys:{}}); delete prefs.mig11; delete prefs.mig31; delete prefs.mig32; delete prefs.mig35; save(); emit('store:reset'); }
+function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,chest1:0,chest2:0,chest3:0,pro:0,keyWhole:{},gateOff:0,retro:{},retroCol:{},pctSeen:{},devKeys:{}}); delete prefs.mig11; delete prefs.mig31; delete prefs.mig32; delete prefs.mig35; save(); emit('store:reset'); }
 
 export { RUNS_CAP, musicOn, prefs, reset, save, store, trimRuns };

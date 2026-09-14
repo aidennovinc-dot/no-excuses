@@ -61,10 +61,11 @@ const firstKey=()=>{ const g=Object.keys(GAMES)[0]; const d=GAMES[g].modes[0]; r
 define({
   'dev-open'(){ prefs.allOpen=!prefs.allOpen; save(); devState(); toast(prefs.allOpen?TOAST.devOpenOn:TOAST.devOpenOff); return 'pick'; },
   'dev-sup'(){ prefs.supporter=!prefs.supporter; save(); devState(); toast(prefs.supporter?TOAST.supOn:TOAST.supOff); return 'pick'; },
-  /* #371 is not built yet, so Pro and Author are shells and there is nothing to review. This fills them in memory only —
-     no save(), config/key-bars.js untouched, gone on reload — so the two rings can be played before the real numbers
-     exist. NOT a way to set bars (A.2): the key screen carries a line saying every number on it is derived. */
-  'dev-bars'(){ const on=fillBars(!barsFaked()); devState(); toast(on?TOAST.barsOn:TOAST.barsOff); return 'pick'; },
+  /* build 34 (#371): fill Pro and Author IN MEMORY so the two rings could be played before any numbers existed. BUILD 38
+     (#426) put marked placeholders in config/key-bars.js, so the shipped table has nothing empty left: this fills EMPTY cells
+     only — A.2 as amended forbids overwriting a number that is there, generated or not — and says so when there are none.
+     No save(), the file untouched, gone on reload; the key screen says every number it derived is derived. */
+  'dev-bars'(){ const was=barsFaked(), on=fillBars(!was); devState(); toast(on?TOAST.barsOn:was?TOAST.barsOff:TOAST.barsNone); return 'pick'; },
   // v21 (G.8, build 37): one key at a time — every bar on and back to what it held, or the key backed out entirely
   'dev-keyall'(b){ const i=+b.dataset.k, on=devKeyAll(TIERS[i],!devKeyOn(TIERS[i])); devState(); toast(T(on?TOAST.devKeyOn:TOAST.devKeyOff,{key:KEYS[i].name})); return 'pick'; },
   'dev-keyreset'(b){ const i=+b.dataset.k; devKeyReset(TIERS[i]); devState(); toast(T(TOAST.devKeyReset,{key:KEYS[i].name})); return 'pick'; },
