@@ -15,9 +15,12 @@ let toastT=0;
    toast has opened its row since build 18. It is passed only from the RESULT screen: mid-run a toast stays a toast,
    because the one thing a player is doing then is playing. The toast holds 3200ms when it leads somewhere, like the
    achievement one, so there is time to reach it. */
-function toast(msg,ach,cls,html,go){ const t=$('#toast'); clearTimeout(toastT); if(html) t.innerHTML=msg; else t.textContent=msg;
+/* v21 (G.4, build 37): `quiet` shows the toast and plays nothing. A chest opening had been playing the unlock sound TWICE since
+   build 29 — once with the lid (openChest) and again with its green toast 1.6s later — and G.4 asks for one chest-open sound.
+   The chest's toast keeps its green; the lid keeps the sound. */
+function toast(msg,ach,cls,html,go,quiet){ const t=$('#toast'); clearTimeout(toastT); if(html) t.innerHTML=msg; else t.textContent=msg;
   t.dataset.ach=ach||''; t.dataset.goto=go||''; t.classList.toggle('tap',!!ach||!!go); t.classList.toggle('ok',cls==='ok'); t.classList.add('on');
-  cls==='ok'?Snd.unlockFx():Snd.click(); toastT=setTimeout(()=>t.classList.remove('on'),(ach||go)?3200:cls==='ok'?2600:2000); }
+  if(!quiet) cls==='ok'?Snd.unlockFx():Snd.click(); toastT=setTimeout(()=>t.classList.remove('on'),(ach||go)?3200:cls==='ok'?2600:2000); }
 /* where an unlock key points. 'sequence:practice' is the one key that is not a mode — Practice from is a row on
    Sequence's own sheet — so it opens Sequence at the mode it belongs to rather than at a mode called "practice". */
 function unlockWhere(key){ const [g,d,s]=String(key).split(':');

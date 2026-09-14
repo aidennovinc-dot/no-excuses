@@ -124,8 +124,48 @@ text here is the rule with its history.
   (`clock +N.NNNs in N.Ns`, `STOPPED` when it has not moved) because `state` is the value that lied.
 - **The Verdict Desk export replaces the 2026-09-13 snapshot as the source of the verdict data.** Version 658, 269 entries:
   every line it carries for all eleven rows, Reaction's thresholds, and the per-round ceilings for Cut, Flash and Go /
-  No-go. **Timing's thresholds are still not built** — its `at`, its QUALITY scales and its ROUND_AT stay build 34's until
-  Aiden says they are re-entered (#414); its lines are built.
+  No-go. Timing's thresholds were held at build 36 while #414 was open (its lines were built); **#414 closed and they built
+  at build 37**, below.
+
+### Amended at build 37 (FEEDBACK-v21 §G.1–§G.4, §G.8; FEEDBACK-v20 §D.4, §D.7; FEEDBACK-v22 §K; Aiden's data fixes), 2026-09-14
+
+- **v17 §A.1 NARROWED (G.1, G.2, D.7 — all quoting it).** The 2026-09-10 decision was "nothing about pro or author is
+  visible before chest 1". It now covers only the per-game Pro and Author NUMBERS. Chests 2 and 3 sit on the map from the
+  start, stacked under chest 1, locked, each saying "open the previous chest"; all three keys sit on the keys screen, Pro
+  and Author crossed out (crossed, not greyed) with "To unlock: open the previous chest" underneath and no percentage, and
+  a tap on one says what opens it and opens nothing. **The reveal itself did not move** — both tiers still open with chest 1
+  through `mapOpen()`; a chest after chest 1 now also waits for the chest before it. **The Achievements tab's Pro and
+  Author sets and the radar's extra rungs stay hidden before chest 1** — G.1 and G.2 named the chests and the keys, not
+  those, and the handover said not to widen it.
+- **v18 B.19 / B.20 AMENDED (G.3, quoting both): chest 1 also waits for every game MODE to be unlocked.** A gate sits on
+  the connector into it; an early tap says "Unlock all games first" with the mode count underneath; once the last mode
+  opens the gate animates away once (`prefs.gateOff`) and the chest switches to key 1's bar progress. **This is the one
+  crossing between the two progression systems**, and it is one predicate — `modesOpen()` in `progress/key.js` beside
+  `mapOpen()`, reading `modeCount()` in `progress.js` without the challenge-link exception, honouring the dev escapes.
+  **Checked before it was built, and asserted:** every key-1 bar belongs to one of the thirteen modes, every one of them is
+  reached by the chain or open from the start, and nothing in the chain reads a chest — so the chest can always be opened,
+  and a Gauntlet (#382) put behind it can never be handed a key-1 bar without the gate going red.
+- **Retroactive credit is silent (G.4).** A chest opening judges the tiers it reveals against saved bests and banks every
+  bar already beaten — no toast, no unlock sound; the chest's own sound and opening are the one of each. `prefs.retro`
+  carries L8's green to those rows and the key button the first time they are on screen. A live clear still interrupts the
+  result screen as it always has.
+- **The front percentage counts up when it has risen (D.4).** One last-painted figure per key (`prefs.pctSeen`), written
+  when the menu paints it. The count-up is the runs' own — moved to `core/count.js` so a screen can use it without breaking
+  A4 — and the sound is its whoosh, which already existed (the v16 §1.5 check).
+- **Testing: a switch and a reset per key (G.8, S5).** The switch clears every bar of that key and snapshots what it held,
+  so switching off restores it; the reset backs the key out — bars, chest, the step into the next tier, retroactive marks,
+  last-seen %, and its key achievements.
+- **One colour for "this is what you chose" (v22 §K).** A selected mode takes `--press`; while the sheet is up the pressed
+  tile demotes to the line colour, so exactly one amber thing is on screen. `.grid.dim` is on for the mode sheet too
+  (checked, asserted); a first-seen or unplayed mode that is selected takes `--press`; `.picked` keeps `--ok` — it is the
+  tap's own 170ms confirmation; `--press` measures past 3:1 against the sheet's ground. **Consequence worth knowing:** the
+  tile's amber outline is now never on screen in practice, because the sheet opens on the same tap.
+- **Timing's thresholds (Aiden, #414 closed).** Stopwatch `at` 0.90 / 0.74 / 0.56 (0.50 / 1.30 / 2.20s over the Set; 0.90
+  is five of his 0.10s per-round ceilings, Claude's number on his instruction), `ROUND_AT` 0.1 / 0.3 / 0.55; Hidden `at`
+  0.9259 / 0.8796 / 0.8241 (400 / 650 / 950ms), `ROUND_AT` 40 / 70 / 95; scales unchanged. A round's ceiling is deliberately
+  more forgiving than a fifth of the Set's. Two Go / No-go lines corrected, both his typing.
+- **Not touched, on purpose: `config/unlocks.js`.** Aiden decided 2026-09-14 that modes are siblings, not a ladder (#424):
+  Dots · Blind stays "any Quick Tap run" and Estimate · Grow "any Dots run".
 
 ## Structure — the full text as of build 30
 

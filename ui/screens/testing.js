@@ -19,7 +19,8 @@ import { $, $$, T } from "../../core.js";
 import { prefs, reset, save } from "../../core/store.js";
 import { GAMES } from "../../games/registry.js";
 import { ACH, Scores, UNLOCKS, got, seedSeen, unlocked } from "../../progress.js";
-import { barsFaked, fillBars, keyAch } from "../../progress/key.js";
+import { KEYS } from "../../config/keys.js";
+import { TIERS, barsFaked, devKeyAll, devKeyOn, devKeyReset, fillBars, keyAch } from "../../progress/key.js";
 import { define } from "../actions.js";
 import { register, show } from "../router.js";
 import { toast } from "../toast.js";
@@ -45,6 +46,7 @@ function devState(){ if(!BUILD_FLAGS.dev) return; devAudio(); const u=Object.key
   $('#dev-state').textContent=(prefs.allOpen?ABOUT.devOpen:T(ABOUT.devProg,{u,nu:UNLOCKS.length,a,na}))+T(ABOUT.devRuns,{r})+(prefs.supporter?ABOUT.devSup:ABOUT.devFree);
   $('#dev-open').classList.toggle('sel',!!prefs.allOpen); $('#dev-sup').classList.toggle('sel',!!prefs.supporter);
   const b=$('#dev-bars'); if(b) b.classList.toggle('sel',barsFaked());
+  $$('#dev-keys [data-act="dev-keyall"]').forEach(x=>x.classList.toggle('sel',devKeyOn(TIERS[+x.dataset.k])));
   const h=$('#dev-anim-hint'); if(h) h.textContent=ABOUT.devAnim; }
 // Fresh game: progress goes, the look and the name stay, and the title sequence plays again (L1)
 function freshGame(){ reset(); seedSeen(); show('s-menu',{story:true}); }
@@ -63,6 +65,9 @@ define({
      no save(), config/key-bars.js untouched, gone on reload — so the two rings can be played before the real numbers
      exist. NOT a way to set bars (A.2): the key screen carries a line saying every number on it is derived. */
   'dev-bars'(){ const on=fillBars(!barsFaked()); devState(); toast(on?TOAST.barsOn:TOAST.barsOff); return 'pick'; },
+  // v21 (G.8, build 37): one key at a time — every bar on and back to what it held, or the key backed out entirely
+  'dev-keyall'(b){ const i=+b.dataset.k, on=devKeyAll(TIERS[i],!devKeyOn(TIERS[i])); devState(); toast(T(on?TOAST.devKeyOn:TOAST.devKeyOff,{key:KEYS[i].name})); return 'pick'; },
+  'dev-keyreset'(b){ const i=+b.dataset.k; devKeyReset(TIERS[i]); devState(); toast(T(TOAST.devKeyReset,{key:KEYS[i].name})); return 'pick'; },
   'dev-fresh'(){ freshGame(); devState(); toast(TOAST.fresh); return 'pick'; },
   'dev-story'(){ show('s-menu',{story:true}); return 'pick'; },
   // B.26: the animations, each on its own screen, nothing stored

@@ -640,8 +640,8 @@ console.log('\nside screens (v14 section 8)');
     inAbout: document.querySelectorAll('#s-about [data-dev]').length, inTesting: document.querySelectorAll('#s-testing [data-act^="dev-"]').length }));
   // AMENDED at build 32 (v18 B.26): six animation buttons joined the four switches
   // AMENDED at build 34 (#411 / #371): a fifth switch — fill pro + author · placeholder
-  (moved.item && moved.below === 's-testing' && moved.inAbout === 0 && moved.inTesting === 11)
-    ? ok('8.10 Testing is its own item directly below About, with all five switches and the six animation buttons, none left in About')
+  (moved.item && moved.below === 's-testing' && moved.inAbout === 0 && moved.inTesting === 17)   // AMENDED at build 37 (v21 G.8): a switch and a reset per key
+    ? ok('8.10 Testing is its own item directly below About, with all five switches, the six animation buttons and the six per-key buttons, none left in About')
     : bad('8.10 Testing moved out of About', JSON.stringify(moved));
 }
 
@@ -1790,12 +1790,14 @@ console.log('\nbuild 29 - v17 sections B.19 to B.26');
     // B.22 - the outline is the named colour, and it is neither L8's green nor L7's white
     await click('.tile[data-game="dots"]'); await sleep(400);
     const pr = await page.evaluate(() => { const t = document.querySelector('.tile[data-game="dots"]');
-      const cs = getComputedStyle(t.querySelector('.pic'));
-      return { keep: t.classList.contains('keep'), col: cs.outlineColor, width: cs.outlineWidth,
+      // AMENDED at build 37 (v22 §K): with the mode sheet up the pressed tile DEMOTES to the line colour - the mode is the live choice - so read it both ways
+      const grid = document.getElementById('grid'), wasDim = grid.classList.contains('dim'), dimCol = getComputedStyle(t.querySelector('.pic')).outlineColor; grid.classList.remove('dim');
+      const cs = getComputedStyle(t.querySelector('.pic')); const col0 = cs.outlineColor, w0 = cs.outlineWidth; if (wasDim) grid.classList.add('dim');
+      return { keep: t.classList.contains('keep'), col: col0, width: w0, dimCol, wasDim,
         press: getComputedStyle(document.documentElement).getPropertyValue('--press').trim(),
         ok: getComputedStyle(document.documentElement).getPropertyValue('--ok').trim() }; });
     const hex2rgb = h => { const n = parseInt(h.slice(1), 16); return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`; };
-    (pr.keep && pr.col === hex2rgb(TH29.PRESS.v) && pr.press === TH29.PRESS.v && pr.col !== hex2rgb(pr.ok) && !/255, 255, 255/.test(pr.col))
+    (pr.keep && pr.col === hex2rgb(TH29.PRESS.v) && pr.press === TH29.PRESS.v && pr.col !== hex2rgb(pr.ok) && !/255, 255, 255/.test(pr.col) && pr.wasDim && pr.dimCol !== pr.col)
       ? ok(`B.22 the pressed game wears an ${TH29.PRESS.name} outline (${pr.col}, ${pr.width}) - named in config/theme.js, not green (L8) and not white (L7)`)
       : bad('B.22 the pressed outline', JSON.stringify(pr));
     await click('#grid'); await sleep(400);
@@ -1837,13 +1839,14 @@ console.log('\nbuild 29 - v17 sections B.19 to B.26');
       const was = S.prefs.allOpen; S.prefs.allOpen = false; S.save();
       R.show('s-menu'); await new Promise(r => setTimeout(r, 120)); R.show('s-pick'); await new Promise(r => setTimeout(r, 350));
       out.shown = [1, 2, 3].map(n => !document.querySelector(`.chest[data-chest="${n}"]`).hidden);
+      out.needs = [2, 3].map(n => document.querySelector(`.chest[data-chest="${n}"] .pic`).dataset.need);
       out.text = (document.getElementById('s-pick').innerText || '') + ' ' + (el().querySelector('.pic').dataset.need || '');
       S.prefs.allOpen = was; S.save();
       return out; });
     (/locked/.test(ch.cls) && ch.need === `clear all ${ch.total} · ${ch.done} so far`)
       ? ok(`B.24 the chest is locked and says what key 1 asks for: "${ch.need}"`) : bad('B.24 the locked chest', JSON.stringify(ch));
-    (!/\bpro\b|author/i.test(ch.text) && ch.shown.join() === 'true,false,false')
-      ? ok('B.24 / A.1 with no dev flag the grid shows one chest and says nothing about the pro or author tiers')
+    (ch.shown.join() === 'true,true,true' && ch.needs.every(x => x === 'open the previous chest') && !/\d/.test(ch.needs.join('')))
+      ? ok('B.24 / A.1 AMENDED at build 37 (v21 G.1, narrowing A.1): with no dev flag all three chests are on the map, the second and third locked with "open the previous chest" and no number about what is inside')
       : bad('A.1 the grid mentions pro or author', JSON.stringify({ shown: ch.shown, text: ch.text.slice(0, 120) }));
   }
   // B.24: every bar cleared -> the chest is openable, opens once, stores it, and says Gauntlet is not built yet
@@ -2047,9 +2050,10 @@ console.log('\nbuild 30 - v17 sections B.27 to B.33');
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
     await click('[data-go="s-key"]'); await sleep(700);
     const before = await page.evaluate(() => ({ n: document.querySelectorAll('#key-keys .kkey').length,
-      txt: document.getElementById('s-key').textContent.toLowerCase(), theme: document.querySelector('#key-keys .kkey i')?.textContent }));
-    (before.n === 1 && before.theme === 'Lantern' && !/\bpro\b/.test(before.txt) && !/author/.test(before.txt))
-      ? ok('B.31 / A.1 one tier before chest 1 - "Lantern", and the screen says neither "pro" nor "author" anywhere')
+      txt: document.getElementById('s-key').textContent.toLowerCase(), theme: document.querySelector('#key-keys .kkey i')?.textContent,
+      locked: document.querySelectorAll('#key-keys .kkey.locked').length, lockedTxt: [...document.querySelectorAll('#key-keys .kkey.locked')].map(x => x.textContent).join(' | ') }));
+    (before.n === 3 && before.theme === 'Lantern' && before.locked === 2 && /open the previous chest/i.test(before.lockedTxt) && !/\d|%/.test(before.lockedTxt))
+      ? ok('B.31 / A.1 AMENDED at build 37 (v21 G.2 / v20 D.7): before chest 1 all three keys are on the strip, Lantern open, the other two crossed out with what opens them and no number')
       : bad('B.31 Frost and Thorn are hidden until chest 1', JSON.stringify(before).slice(0, 200));
     await setStorage({ ne: { v: 1, prefs: { ...OPEN_PREFS, chest1: 1 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
@@ -2068,7 +2072,7 @@ console.log('\nbuild 30 - v17 sections B.27 to B.33');
     const dev = await page.evaluate(async () => { const K = await import('./progress/key.js'); const S = await import('./core/store.js'); const R = await import('./ui/router.js');
       const read = () => ({ n: document.querySelectorAll('#key-keys .kkey').length,
         themes: [...document.querySelectorAll('#key-keys .kkey i')].map(i => i.textContent),
-        one: document.getElementById('key-keys').classList.contains('one'),
+        one: document.getElementById('key-keys').classList.contains('one'), locked: document.querySelectorAll('#key-keys .kkey.locked').length,
         pro: K.tierOpen('pro'), author: K.tierOpen('author'), rungs: K.radarRungs().length });
       const out = { open: read(), chest: S.prefs.chest1 };
       // the other half of the same escape, in memory rather than with a second reload
@@ -2082,8 +2086,8 @@ console.log('\nbuild 30 - v17 sections B.27 to B.33');
       : bad('#411 allOpen opens the key map', JSON.stringify(dev.open));
     (dev.sup.n === 3 && dev.sup.rungs === 3 && dev.sup.pro) ? ok('#411 a supporter takes the same escape, chest or no chest')
       : bad('#411 supporter opens the key map', JSON.stringify(dev.sup));
-    (dev.neither.n === 1 && dev.neither.rungs === 1 && !dev.neither.pro && dev.neither.one)
-      ? ok('#411 / A.1 with neither flag and no chest it is back to one tier - the escape is an escape, not a hole')
+    (dev.neither.n === 3 && dev.neither.locked === 2 && dev.neither.rungs === 1 && !dev.neither.pro)
+      ? ok('#411 / A.1 with neither flag and no chest the other two keys are crossed out again, no numbers (AMENDED at build 37, G.2) - the escape is an escape, not a hole')
       : bad('#411 the gate still holds with no flag set', JSON.stringify(dev.neither));
     /* #411 follow-up: the chest column takes the same escape. pick.js gated chests 2 and 3 on prefs.chest1 alone, the
        same shape of bug one screen over - so OPEN EVERYTHING revealed the key tiers and still hid the chests. */
@@ -2093,8 +2097,8 @@ console.log('\nbuild 30 - v17 sections B.27 to B.33');
       const open = see();
       S.prefs.allOpen = false; S.save(); R.show('s-menu'); await new Promise(r => setTimeout(r, 120)); R.show('s-pick'); await new Promise(r => setTimeout(r, 350));
       return { open, shut: see() }; });
-    (chests.open.join() === 'true,true,true' && chests.shut.join() === 'true,false,false')
-      ? ok('#411 the chest column takes the same escape - three chests with OPEN EVERYTHING, one without, chest 1 still shut either way')
+    (chests.open.join() === 'true,true,true' && chests.shut.join() === 'true,true,true')
+      ? ok('#411 AMENDED at build 37 (G.1): all three chests are on the map with OPEN EVERYTHING and without it, chest 1 still shut either way - the build 37 block checks what each one says')
       : bad('#411 the chests follow the key map', JSON.stringify(chests));
 
     /* #371 workaround: the placeholder fill. All sixty pro and author bars are null, so both tiers are shells and
@@ -2585,7 +2589,7 @@ console.log('\nbuild 32 - v19 section C and v18 sections B.15 to B.27');
       S.store.runs = []; S.store.bars = {}; S.prefs.pro = 0; S.prefs.chest1 = 0; S.prefs.played = 1; S.save();
       const out = {};
       for (const c of K.COMBOS) S.store.bars[c.key] = Date.now(); S.save();
-      out.whole = K.frontPct(); R.show('s-menu'); await new Promise(r => setTimeout(r, 250)); out.menuWhole = document.getElementById('menu-key').textContent.trim();
+      out.whole = K.frontPct(); R.show('s-menu'); await new Promise(r => setTimeout(r, 1150)); /* AMENDED at build 37 (D.4): the figure counts up from the last one painted - read it once it lands */ out.menuWhole = document.getElementById('menu-key').textContent.trim();
       S.prefs.pro = 1; S.prefs.chest1 = 1; S.save(); out.rebased = K.frontPct(); R.show('s-menu'); await new Promise(r => setTimeout(r, 250)); out.menuPro = document.getElementById('menu-key').textContent.trim();
       S.prefs.pro = 2; S.save(); out.author = K.frontPct();
       S.store.bars = {}; S.prefs.pro = 0; S.prefs.chest1 = 0; S.save(); out.zero = K.frontPct();
@@ -3088,7 +3092,7 @@ console.log('\nbuild 35 - batch 15, bugs and the runs');
     (/tapped\(p,i\)\{/.test(vs35) && /this\.tapped\(p,i\); this\.score\(p\);/.test(vs35) && /\.pad\.tapped\{animation:padtap/.test(css35))
       ? ok('F.3 a correct versus pad tap pulses that pad (versus.js tapped(), .pad.tapped)') : bad('F.3 the pad pulse, statically');
     (G35.TICK && G35.TICK.ms === 90 && /const score=t=>\{ const s=\$\('#score'\); if\(driving\) s\.textContent=t; else tick\(s,t\); \};/.test(hud35)
-      && /drive\(\(\)=>set\(fmt\(from\+\(to-from\)\*k\)\)\)/.test(hud35) && /drive\(\(\)=>onFrame\(tot\)\)/.test(hud35)
+      && /set:v=>drive\(\(\)=>set\(v\)\)/.test(hud35) && /drive\(\(\)=>onFrame\(tot\)\)/.test(hud35)
       && /hud\.tick\(el,this\.n\[p\],p\)/.test(vs35) && /hud\.tick\(\$\$\('\.vz b'\)\[w\?0:1\],this\.vsN\[w\],w\)/.test(rx35) && /hud\.pulse\(\$\('#hud-time \.spvs b\.'/.test(sp35))
       ? ok('G.7 every live score goes through hud.tick - TICK.ms 90 (guess); a running count writes straight through; the three versus scoreboards pass their player')
       : bad('G.7 the tick, statically');
@@ -3154,12 +3158,13 @@ console.log('\nbuild 35 - batch 15, bugs and the runs');
     (grid1.qt && !grid1.dots && /newplay/.test(row.four) && !/newplay/.test(row.two) && sameCol(row.fourB, '#3DD68C') && row.seen === 1)
       ? ok('D.1 Quick Tap · Four, unlocked and never played, is green on its tile and on its row; Two is not; markSeen still records it on sight (kept for D.5)')
       : bad('D.1 green until played', JSON.stringify({ grid1, row }));
-    sameCol(row.tileB, TH35.PRESS.v) ? ok(`D.2 the pressed tile wears its amber outline with no green border under it (${row.tileB})`) : bad('D.2 the pressed tile over green', row.tileB);
+    // AMENDED at build 37 (v22 §K): with the mode sheet up the pressed tile demotes - its border is the line colour, never green and never amber
+    (!sameCol(row.tileB, '#3DD68C') && !sameCol(row.tileB, TH35.PRESS.v)) ? ok(`D.2 / §K the pressed tile wears no green border under it, and with the sheet up it is not amber either (${row.tileB})`) : bad('D.2 the pressed tile over green', row.tileB);
     await page.evaluate(() => document.querySelector('#diff-row .choice[data-diff="four"]').click()); await sleep(600);
     const picked = await page.evaluate(() => { const b = document.querySelector('#diff-row .choice[data-diff="four"]'); return { cls: b.className, border: getComputedStyle(b).borderTopColor }; });
-    (/\bsel\b/.test(picked.cls) && /newplay/.test(picked.cls) && /newthing/.test(picked.cls) && sameCol(picked.border, '#E8E6E1'))
+    (/\bsel\b/.test(picked.cls) && /newplay/.test(picked.cls) && /newthing/.test(picked.cls) && sameCol(picked.border, TH35.PRESS.v))   // AMENDED at build 37 (§K): the selected line is --press
       ? ok('D.2 a selected mode wears the selected line even while it is first-seen AND unplayed - the rule lost, not the class order') : bad('D.2 selection beats green', JSON.stringify(picked));
-    /\.choice\.sel\.newthing,\.choice\.sel\.newplay\{border-color:var\(--ink\)!important\}/.test(css35) ? ok('D.2 the stylesheet rule that does it, against .newthing\'s !important') : bad('D.2 the CSS rule');
+    /\.choice\.sel\.newthing,\.choice\.sel\.newplay\{border-color:var\(--press\)!important\}/.test(css35) ? ok('D.2 the stylesheet rule that does it, against .newthing\'s !important') : bad('D.2 the CSS rule');
     const after = await page.evaluate(async () => { const S = await import('./core/store.js'); const R = await import('./ui/router.js');
       S.store.runs.unshift({ t: Date.now(), g: 'quick-tap', d: 'four', s: 5, n: '', v: 4, hits: 9, misses: 0 }); S.save();
       R.show('s-menu'); await new Promise(r => setTimeout(r, 200)); R.show('s-pick'); await new Promise(r => setTimeout(r, 400));
@@ -3227,8 +3232,8 @@ console.log('\nbuild 35 - batch 15, bugs and the runs');
     (!introBad.length && Object.keys(C35.INTRO).length === 13) ? ok('Verdict Desk: the twelve intro lines are Aiden\'s, and Quick Tap · Two keeps its own') : bad('Verdict Desk intro lines', introBad.join(', '));
     const split = ['timing:stopwatch', 'timing:hidden', 'reaction:flash', 'reaction:nogo'];
     const same = (a, b) => JSON.stringify(T35[a]) === JSON.stringify(T35[b]);
-    (split.every(k => T35[k]) && ['timing:stopwatch', 'timing:hidden'].every(k => T35[k].at.join() === '0.85,0.6,0.35') && !T35.timing && !T35.reaction && !same('reaction:flash', 'reaction:nogo'))
-      ? ok('D.10 Timing and Reaction are keyed per mode - four rows, no parent left, and Timing\'s numbers are still build 34\'s (#414) - AMENDED at build 36: the export wrote the rows apart, so they are no longer seeded copies') : bad('D.10 the split', JSON.stringify(Object.keys(T35)));
+    (split.every(k => T35[k]) && T35['timing:stopwatch'].at.join() === '0.9,0.74,0.56' && T35['timing:hidden'].at.join() === '0.9259,0.8796,0.8241' && !T35.timing && !T35.reaction && !same('reaction:flash', 'reaction:nogo'))
+      ? ok('D.10 Timing and Reaction are keyed per mode - four rows, no parent left, and Timing\'s numbers are Aiden\'s (AMENDED at build 37, #414 closed) - AMENDED at build 36: the export wrote the rows apart, so they are no longer seeded copies') : bad('D.10 the split', JSON.stringify(Object.keys(T35)));
     !/r\.d==='four'\?5/.test(rules35) ? ok('D.9 QUALITY[\'quick-tap\'] no longer divides Four by 5') : bad('D.9 the Four divisor is still there');
     await setStorage({ ne: { v: 4, prefs: { ...OPEN_PREFS }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
@@ -3340,7 +3345,7 @@ console.log('\nbuild 36 - the frozen clock and the verdict export');
   }
 
   /* ---- the Verdict Desk export (version 658): every line it carries, Reaction's thresholds, the per-round ceilings for Cut,
-     Flash and Go / No-go - and none of Timing's thresholds, because DO NOT BUILD Timing still stands ---- */
+     Flash and Go / No-go (AMENDED at build 37: Timing's thresholds are built too, #414 closed) ---- */
   {
     const V = await imp36('config', 'verdicts.js'), T = V.VERDICTS;
     const W = {
@@ -3352,7 +3357,7 @@ console.log('\nbuild 36 - the frozen clock and the verdict export');
       'timing:stopwatch': { bad: ['I’ll keep my watch.', 'Maybe try this one again.', 'Maybe tap in time?', 'Have another crack.', 'Appreciate the attempt.'], ok: ['Getting the rhythm.', 'In the ballpark!', 'Learn to trust your gut.', 'Not bad at all.', 'Close, but I think you could do better!'], good: ['Great intuition.', 'Tight.  Tight tight tight tight!', 'On a roll!', 'Very close timing.', 'Very very good.'], ace: ['The human-stopwatch hybrid!', 'Who needs clocks when we have you?', 'The stopwatch master!', 'More accurate than my Casio!', 'Uncanny performance!'] },
       'timing:hidden': { bad: ['Was there an accidental tap in there?', 'The wall won that one.', 'It really was hidden…', 'Maybe another attempt?', 'Have another go!'], ok: ['Feel the ball, be the ball.', 'In the ball park.', 'A touch early or late, but solid!', 'Decent read.', 'Getting there!'], good: ['Great tracking!', 'Very close!', 'Nice run!', 'Well judged.', 'You’re a natural!'], ace: ['You can see through walls!', 'Right on the marker.', 'How did you track that?', 'Perfect judgement.', 'X-ray vision!'] },
       'reaction:flash': { bad: ['Did you nod off?', 'Slow off the mark.', 'You blinked!', 'Late every time.', 'Do you need a coffee?'], ok: ['Consistent but not that quick', 'Decent but could be better', 'Bang on average!', 'Not the worst.', 'Try again but focus this time!'], good: ['Quick hands!', 'Great reflexes.', 'Very sharp.', 'Nicely quick.', 'Great reactions!'], ace: ['Lightning quick!', 'Faster than a blink.', 'Like a cat!', 'That is elite.', 'Reaction master!'] },
-      'reaction:nogo': { bad: ['Don’t let them trick you.', 'Make sure to focus.', 'You need to be own with the shapes.', 'Make a stronger coffee?', 'Have another go, try again.'], ok: ['Decent reactions.', 'You got it!.', 'Good run.', 'Decent discipline.', 'Keep at it!'], good: ['Great control!', 'We couldn’t fool you.', 'Quick and careful.', 'Very good run!', 'You know your shapes.'], ace: ['Perfect discipline!', 'Very very very quick.', 'Nothing fooled you.', 'Sharp and patient.', 'You nailed it!'] },
+      'reaction:nogo': { bad: ['Don’t let them trick you.', 'Make sure to focus.', 'You need to be one with the shapes.', 'Make a stronger coffee?', 'Have another go, try again.'], ok: ['Decent reactions.', 'You got it!', 'Good run.', 'Decent discipline.', 'Keep at it!'], good: ['Great control!', 'We couldn’t fool you.', 'Quick and careful.', 'Very good run!', 'You know your shapes.'], ace: ['Perfect discipline!', 'Very very very quick.', 'Nothing fooled you.', 'Sharp and patient.', 'You nailed it!'] },
       'spot:count': { bad: ['Blinked and you missed it.', 'Back to pre-school perhaps?', 'Counting the wrong shapes?', 'Don’t count them one by one.', 'Have another crack.'], ok: ['Decent guesses!', 'Good intuition.', 'Stop counting one by one.', 'Not bad, not bad at all', 'Good stuff.'], good: ['Great eye!', 'Nearly spot on.', 'Tight counting.', 'Very close!', 'You have the knack for counting.'], ace: ['Your subconscious mind is strong!', 'This game is too easy for you.', 'Brilliant performance!', 'The counting savant!', 'The shape detective!'] },
       'spot:find': { bad: ['It was there the whole time!', 'Too long on each one.', 'Lost in the crowd.', 'Scan, do not stare.', 'Look wider and go again.'], ok: ['Finding them.', 'Decent search.', 'Let the odd one come to you.', 'Mid pace.', 'Nearly quick!'], good: ['Quick eye!', 'Great scanning.', 'Straight to it, mostly.', 'Low times, nice.', 'Very good run!'], ace: ['You did not search, you saw!', 'Straight to it, every time.', 'Nothing wasted.', 'Very quick eye.', 'That will be hard to beat.'] } };
     const lineBad = []; for (const [k, tiers] of Object.entries(W)) for (const [t, want] of Object.entries(tiers)) if (((T[k] || {}).lines || {})[t]?.join('|') !== want.join('|')) lineBad.push(k + ':' + t);
@@ -3361,21 +3366,239 @@ console.log('\nbuild 36 - the frozen clock and the verdict export');
       ? ok('Verdict export (v658): every line it carries is in, across all eleven verdict rows; the lines it left blank keep theirs; the two half-typed lines are Aiden\'s fixes; no line carries stray whitespace')
       : bad('Verdict export lines', JSON.stringify({ lineBad, ws, keys: Object.keys(T) }));
     const AT = { 'quick-tap': [.4833, .3667, .25], dots: [.5556, .4444, .3111], hold: [.875, .75, .25], 'hold:cut': [.8875, .8, .625], sequence: [.6875, .5, .3125],
-      'reaction:flash': [.7714, .6714, .5857], 'reaction:nogo': [.5, .44, .33], 'timing:stopwatch': [.85, .6, .35], 'timing:hidden': [.85, .6, .35], 'spot:count': [.85, .6, .35], 'spot:find': [.85, .6, .35] };
-    const RA = { 'timing:stopwatch': [0.06, 0.10, 0.30], 'timing:hidden': [40, 70, 240], 'reaction:flash': [225, 255, 285], 'reaction:nogo': [299, 330, 400], 'hold:grow': [2, 5, 10], 'hold:cut': [3.5, 5.5, 9], 'spot:count': [0, 1, 2], 'spot:find': [1, 2, 4] };
+      'reaction:flash': [.7714, .6714, .5857], 'reaction:nogo': [.5, .44, .33], 'timing:stopwatch': [.9, .74, .56], 'timing:hidden': [.9259, .8796, .8241], 'spot:count': [.85, .6, .35], 'spot:find': [.85, .6, .35] };
+    const RA = { 'timing:stopwatch': [0.1, 0.3, 0.55], 'timing:hidden': [40, 70, 95], 'reaction:flash': [225, 255, 285], 'reaction:nogo': [299, 330, 400], 'hold:grow': [2, 5, 10], 'hold:cut': [3.5, 5.5, 9], 'spot:count': [0, 1, 2], 'spot:find': [1, 2, 4] };
     const atBad = Object.entries(AT).filter(([k, v]) => !T[k] || T[k].at.join() !== v.join()).map(([k]) => k);
     const raBad = Object.entries(RA).filter(([k, v]) => !V.ROUND_AT[k] || V.ROUND_AT[k].join() !== v.join()).map(([k]) => k);
     (!atBad.length && !raBad.length && Object.keys(V.ROUND_AT).length === 8)
-      ? ok('Verdict export: Reaction\'s two threshold triples and the per-round ceilings for Cut, Flash and Go / No-go are Aiden\'s; Timing keeps build 34\'s `at` AND its per-round ceilings (DO NOT BUILD Timing still stands); Spot keeps its own')
+      ? ok('Verdict export: Reaction\'s two threshold triples and the per-round ceilings for Cut, Flash and Go / No-go are Aiden\'s; Timing\'s `at` AND its per-round ceilings are Aiden\'s numbers from build 37 (#414 closed); Spot keeps its own')
       : bad('Verdict export thresholds', JSON.stringify({ atBad, raBad }));
     /timing':r=>1-Math\.min\(1,r\.hits\/5\), 'timing:hidden':r=>1-Math\.min\(1,r\.hits\/5400\)/.test(read36('progress', 'rules.js'))
-      ? ok('Verdict export: Timing\'s QUALITY scales are still 5 and 5400 - the export\'s thresholds were not built against anything') : bad('Timing\'s scale moved');
+      ? ok('Verdict export: Timing\'s QUALITY scales are still 5 and 5400 - build 37\'s Timing thresholds are written against those') : bad('Timing\'s scale moved');
     const q = await page.evaluate(async () => { const P = await import('./progress.js');
       const tier = r => (P.tierOf(Object.assign({ misses: 0, t: 1, v: 4 }, r)) || {}).tier;
       return { flash: [tier({ g: 'reaction', d: 'flash', s: 5, hits: 230 }), tier({ g: 'reaction', d: 'flash', s: 5, hits: 231 }), tier({ g: 'reaction', d: 'flash', s: 5, hits: 295 }), tier({ g: 'reaction', d: 'flash', s: 5, hits: 296 })],
         nogo: [tier({ g: 'reaction', d: 'nogo', s: 5, hits: 320 }), tier({ g: 'reaction', d: 'nogo', s: 5, hits: 321 })] }; });
     (q.flash.join() === 'ace,good,ok,bad' && q.nogo.join() === 'ace,good')
       ? ok('Verdict export played back through the tier: a Flash Set averaging 230ms is Amazing!, 231 Great!, 295 Good., 296 Meh.; Go / No-go 320 over the curve is Amazing!, 321 Great!') : bad('Verdict export, played back', JSON.stringify(q));
+  }
+}
+
+/* ---- 17. build 37 (batch 15: FEEDBACK-v21 §G.1–§G.4, §G.8; FEEDBACK-v20 §D.4, §D.7; FEEDBACK-v22 §K; Aiden's 2026-09-14 data fixes) ---- */
+console.log('\nbuild 37 - keys and chests');
+{
+  const root37 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const read37 = (...p) => fs.readFileSync(path.join(root37, ...p), 'utf8');
+  const imp37 = (...p) => import(pathToFileURL(path.join(root37, ...p)).href);
+  const strip37 = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
+  const css37 = read37('styles', 'app.css'), pick37 = read37('ui', 'screens', 'pick.js'), keyjs37 = read37('progress', 'key.js'), menu37 = read37('ui', 'screens', 'menu.js'), hud37 = read37('games', '_shared', 'hud.js'), prog37 = read37('progress.js');
+  const NOW37 = Date.now();
+  const rgb37 = hex => { const n = parseInt(hex.slice(1), 16); return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`; };
+
+  /* ---- a / b: the two typos and Timing's thresholds (Aiden, 2026-09-14; #414 closed) ---- */
+  {
+    const V = await imp37('config', 'verdicts.js'), T = V.VERDICTS;
+    const lines = Object.values(T).flatMap(r => Object.values(r.lines).flat());
+    (T['reaction:nogo'].lines.ok[1] === 'You got it!' && T['reaction:nogo'].lines.bad[2] === 'You need to be one with the shapes.' && !lines.some(l => /!\.$|be own with/.test(l)))
+      ? ok('a. the two Go / No-go typos are corrected - "You got it!" and "You need to be one with the shapes."') : bad('a. the typos', JSON.stringify([T['reaction:nogo'].lines.ok[1], T['reaction:nogo'].lines.bad[2]]));
+    const at = { sw: T['timing:stopwatch'].at.join(), hd: T['timing:hidden'].at.join(), rsw: V.ROUND_AT['timing:stopwatch'].join(), rhd: V.ROUND_AT['timing:hidden'].join() };
+    const rules = read37('progress', 'rules.js');
+    (at.sw === '0.9,0.74,0.56' && at.hd === '0.9259,0.8796,0.8241' && at.rsw === '0.1,0.3,0.55' && at.rhd === '40,70,95' && /'timing':r=>1-Math\.min\(1,r\.hits\/5\), 'timing:hidden':r=>1-Math\.min\(1,r\.hits\/5400\)/.test(rules))
+      ? ok('b. Timing\'s thresholds build (#414 closed) - Stopwatch 0.90 / 0.74 / 0.56 and per round 0.1 / 0.3 / 0.55, Hidden 0.9259 / 0.8796 / 0.8241 and 40 / 70 / 95 - and the scales did not move (5s, 5400ms)')
+      : bad('b. Timing thresholds', JSON.stringify(at));
+    const warn = [['site', 'config', 'verdicts.js'], ['site', 'progress', 'rules.js'], ['_review', '2026-09-13_personal_verdict-desk-edits.md'], ['_review', '2026-09-14_personal_verdict-desk-export.md']]
+      .filter(p => /DO NOT BUILD Timing|DO-NOT-BUILD-TIMING|DO NOT BUILD THE LINE TABLES BELOW[\s\S]*DO NOT BUILD Timing/i.test(fs.readFileSync(path.join(root37, '..', ...p), 'utf8'))).map(p => p.join('/'));
+    !warn.length ? ok('b. the DO NOT BUILD Timing warning is gone from the config, the rules and both Verdict Desk files') : bad('b. the Timing warning still stands somewhere', warn.join(', '));
+    const tq = await page.evaluate(async () => { const P = await import('./progress.js'); const tier = r => (P.tierOf(Object.assign({ misses: 0, t: 1, v: 4 }, r)) || {}).tier;
+      return { sw: [tier({ g: 'timing', d: 'stopwatch', s: 5, hits: 0.5 }), tier({ g: 'timing', d: 'stopwatch', s: 5, hits: 0.51 }), tier({ g: 'timing', d: 'stopwatch', s: 5, hits: 2.19 }), tier({ g: 'timing', d: 'stopwatch', s: 5, hits: 2.3 })],
+        hd: [tier({ g: 'timing', d: 'hidden', s: 10, hits: 400 }), tier({ g: 'timing', d: 'hidden', s: 10, hits: 401 }), tier({ g: 'timing', d: 'hidden', s: 10, hits: 949 }), tier({ g: 'timing', d: 'hidden', s: 10, hits: 951 })] }; });
+    (tq.sw.join() === 'ace,good,ok,bad' && tq.hd.join() === 'ace,good,ok,bad')
+      ? ok('b. played back through the tier: a Stopwatch Set 0.50s off is Amazing!, 0.51 Great!, 2.19 Good., 2.30 Meh.; Hidden 400ms Amazing!, 401 Great!, 949 Good. (0.8241 is 949.9ms on the curve), 951 Meh.') : bad('b. Timing played back', JSON.stringify(tq));
+  }
+
+  /* ---- c. §K: one colour for "this is what you chose" - and its three checks ---- */
+  {
+    (/\n  \.choice\.sel\{border-color:var\(--press\)\}/.test(css37) && /\.grid\.dim \.tile\.keep \.pic\{outline-color:var\(--line\)\}/.test(css37) && /\.grid\.dim \.tile\.keep \.name\{color:var\(--mute\)\}/.test(css37)
+      && /\.choice\.sel\.newthing,\.choice\.sel\.newplay\{border-color:var\(--press\)!important\}/.test(css37) && /\.choice\.sel\.picked\{border-color:var\(--ok\)!important\}/.test(css37))
+      ? ok('§K a selected mode takes --press, the pressed tile demotes while the sheet is up, first-seen and unplayed modes take --press when selected, and .picked keeps --ok (the tap\'s own 170ms confirmation)')
+      : bad('§K the rules');
+    await setStorage({ ne: { v: 4, prefs: { ...OPEN_PREFS }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await click('[data-go="s-pick"]'); await sleep(600);
+    const k = await page.evaluate(async () => { const wait = ms => new Promise(r => setTimeout(r, ms));
+      const P = getComputedStyle(document.documentElement).getPropertyValue('--press').trim(), OK = getComputedStyle(document.documentElement).getPropertyValue('--ok').trim();
+      const rgb = h => { const n = parseInt(h.slice(1), 16); return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`; };
+      const grid = document.getElementById('grid'), sheet = document.getElementById('sheet');
+      const amber = t => [getComputedStyle(t.querySelector('.pic')).outlineColor, getComputedStyle(t.querySelector('.name')).color, ...[...document.querySelectorAll('#diff-row .choice')].filter(c => c.offsetParent).map(c => getComputedStyle(c).borderTopColor)].filter(c => c === rgb(P)).length;
+      const qt = document.querySelector('.tile[data-game="quick-tap"]'); qt.click(); await wait(450);
+      const out = { P, mode: { dim: grid.classList.contains('dim'), stage: sheet.classList.contains('len') ? 'len' : 'mode', outline: getComputedStyle(qt.querySelector('.pic')).outlineColor, line: (() => { const p = document.createElement('i'); p.style.cssText = 'position:absolute;border-top:1px solid var(--line)'; document.body.appendChild(p); const c = getComputedStyle(p).borderTopColor; p.remove(); return c; })(), name: getComputedStyle(qt.querySelector('.name')).color, amber: amber(qt) } };
+      const two = document.querySelector('#diff-row .choice[data-diff="two"]'); two.click(); await wait(60);
+      out.picked = getComputedStyle(two).borderTopColor; await wait(500);
+      out.len = { stage: sheet.classList.contains('len') ? 'len' : 'mode', sel: getComputedStyle(document.querySelector('#diff-row .choice.sel')).borderTopColor, amber: amber(qt) };
+      // (3) the contrast of --press against the SHEET's own ground, plain and pass & play
+      const parse = s => { let m = /rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)/.exec(s); if (m) return [+m[1], +m[2], +m[3]]; m = /color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/.exec(s); return m ? [m[1] * 255, m[2] * 255, m[3] * 255] : null; };
+      const lum = c => { const f = v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }; return .2126 * f(c[0]) + .7152 * f(c[1]) + .0722 * f(c[2]); };
+      const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+      const pc = parse(rgb(P));
+      out.contrast = { plain: +ratio(pc, parse(getComputedStyle(sheet).backgroundColor)).toFixed(2) };
+      sheet.classList.add('two'); out.contrast.pass = +ratio(pc, parse(getComputedStyle(sheet).backgroundColor)).toFixed(2); sheet.classList.remove('two');
+      // (1) Sequence has one mode and goes straight to its length row - the grid is dimmed there too
+      document.querySelector('#s-pick .back').click(); await wait(500); document.querySelector('.tile[data-game="sequence"]').click(); await wait(500);
+      out.seq = { dim: grid.classList.contains('dim'), stage: sheet.classList.contains('len') ? 'len' : 'mode' };
+      out.okRgb = rgb(OK); return out; });
+    (k.mode.dim && k.mode.stage === 'mode' && k.seq.dim && k.seq.stage === 'len')
+      ? ok('§K check 1: .grid.dim is on for the MODE sheet (Quick Tap) as well as the length sheet (Sequence, one mode) - it is set for every stage but the grid') : bad('§K check 1', JSON.stringify({ mode: k.mode, seq: k.seq }));
+    (k.mode.outline === k.mode.line && k.mode.name === 'rgb(110, 108, 104)' && k.mode.amber === 0 && k.len.sel === rgb37(k.P) && k.len.amber === 1 && k.picked === k.okRgb)
+      ? ok(`§K one amber thing at a time: with the mode sheet up the pressed tile demotes to the line colour and nothing is amber; once a mode is chosen it is the one amber thing (${k.len.sel}); for the 170ms of the tap it flashes --ok first`)
+      : bad('§K one colour for what you chose', JSON.stringify({ mode: k.mode, len: k.len, picked: k.picked }));
+    (k.contrast.plain >= 3 && k.contrast.pass >= 3)
+      ? ok(`§K check 3: --press against the sheet's own ground is ${k.contrast.plain}:1, and ${k.contrast.pass}:1 on the pass & play sheet - past the 3:1 a UI line needs`) : bad('§K check 3 the contrast', JSON.stringify(k.contrast));
+  }
+
+  /* ---- G.8: a switch and a reset per key (S5) ---- */
+  {
+    await setStorage({ ne: { v: 4, prefs: { ...OPEN_PREFS, allOpen: false }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: { 'quick-tap:two:5': NOW37, 'dots:blind:5': NOW37 } } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await click('[data-go="s-testing"]'); await sleep(400);
+    const btns = await page.evaluate(() => [...document.querySelectorAll('#s-testing[data-dev] #dev-keys [data-act]')].map(b => b.dataset.act + b.dataset.k));
+    const readK = () => page.evaluate(() => { const ne = JSON.parse(localStorage.getItem('ne')); return { bars: Object.keys(ne.bars).filter(k => !k.includes('|')).sort(), snap: (ne.prefs.devKeys || {}).clear, sel: document.querySelector('#dev-keys [data-act="dev-keyall"][data-k="0"]').classList.contains('sel'), chest1: ne.prefs.chest1, pro: ne.prefs.pro, ach: Object.keys(ne.ach).filter(a => a.startsWith('key_clear_')) }; });
+    const sw = '#dev-keys [data-act="dev-keyall"][data-k="0"]';
+    await click(sw); await sleep(300); const on = await readK();
+    await click(sw); await sleep(300); const off = await readK();
+    await click(sw); await sleep(300);
+    await page.evaluate(async () => { const S = await import('./core/store.js'); S.prefs.chest1 = 1; S.prefs.pro = 1; S.store.ach.key_clear_all = Date.now(); S.save(); });
+    await click('#dev-keys [data-act="dev-keyreset"][data-k="0"]'); await sleep(300); const rs = await readK();
+    (btns.join() === 'dev-keyall0,dev-keyall1,dev-keyall2,dev-keyreset0,dev-keyreset1,dev-keyreset2')
+      ? ok('G.8 six Testing buttons under [data-dev] - a switch and a reset for each of the three keys (S5)') : bad('G.8 the buttons', btns.join());
+    (on.bars.length === 30 && on.snap && on.snap.length === 2 && on.sel && off.bars.join() === 'dots:blind:5,quick-tap:two:5' && !off.snap && !off.sel)
+      ? ok('G.8 key 1\'s switch clears all thirty bars and remembers the two it held; switching it off puts exactly those two back') : bad('G.8 the switch', JSON.stringify({ on, off }));
+    (!rs.bars.length && rs.chest1 === 0 && rs.pro === 0 && !rs.ach.length && !rs.snap)
+      ? ok('G.8 reset key 1 backs it out entirely - its bars, its chest, the step into Pro and its key achievements - without Fresh game') : bad('G.8 the reset', JSON.stringify(rs));
+  }
+
+  /* ---- G.1 / G.2 / D.7: every chest and every key on screen from the start, locked ones crossed out, no numbers (v17 A.1, narrowed) ---- */
+  {
+    await setStorage({ ne: { v: 4, prefs: { story: 1, gridSeen: 1, played: 1, snd: 'off', musicG: {}, keySeen: 1 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    const g12 = await page.evaluate(async () => { const S = await import('./core/store.js'); const R = await import('./ui/router.js'); const wait = ms => new Promise(r => setTimeout(r, ms));
+      const c = n => document.querySelector(`.chest[data-chest="${n}"]`);
+      const chests = () => [1, 2, 3].map(n => ({ shown: !c(n).hidden, locked: c(n).classList.contains('locked'), name: c(n).querySelector('.name').textContent.trim(), need: c(n).querySelector('.pic').dataset.need, r: +c(n).style.gridRow, col: +c(n).style.gridColumn }));
+      R.show('s-pick'); await wait(600);
+      const out = { fresh: chests() };
+      c(2).click(); await wait(200); out.tap = { toast: document.getElementById('toast').textContent.trim(), screen: document.querySelector('.screen.on').id, chest2: JSON.parse(localStorage.getItem('ne')).prefs.chest2 };
+      R.show('s-key'); await wait(700);
+      const kk = () => [...document.querySelectorAll('#key-keys .kkey')];
+      out.keys = { n: kk().length, locked: kk().map(b => b.classList.contains('locked')), x: kk().map(b => !!b.querySelector('b.x')), under: kk().map(b => b.querySelector('u').textContent.trim()), whole: kk().some(b => b.classList.contains('whole') && b.classList.contains('locked')), one: document.getElementById('key-keys').classList.contains('one') };
+      kk()[2].click(); await wait(300);
+      out.keyTap = { toast: document.getElementById('toast').textContent.trim(), title: document.getElementById('key-title').textContent.trim(), sel: kk().findIndex(b => b.classList.contains('sel')) };
+      S.prefs.chest1 = 1; S.save(); R.show('s-menu'); await wait(150); R.show('s-pick'); await wait(500);
+      out.after1 = chests(); R.show('s-key'); await wait(500); out.keysAfter = kk().map(b => b.classList.contains('locked'));
+      S.prefs.chest1 = 0; S.save(); return out; });
+    const f = g12.fresh;
+    (f.every(x => x.shown) && f[1].locked && f[2].locked && f[1].name === 'Pro chest' && f[2].name === 'Author chest' && f[1].need === 'open the previous chest' && f[2].need === 'open the previous chest'
+      && f[1].col === f[0].col && f[2].col === f[0].col && f[1].r === f[0].r + 1 && f[2].r === f[0].r + 2)
+      ? ok('G.1 (v17 A.1, narrowed) chests 2 and 3 are on the map from the start, stacked under chest 1, locked, each saying "open the previous chest" and nothing about what is inside') : bad('G.1 the chest column', JSON.stringify(f));
+    (g12.tap.toast === 'Open the previous chest first' && g12.tap.screen === 's-pick' && !g12.tap.chest2)
+      ? ok('G.1 tapping a chest whose previous chest is shut says so and stays put, storing nothing') : bad('G.1 the early tap', JSON.stringify(g12.tap));
+    (g12.after1[1].need === 'needs Pro' && g12.after1[2].need === 'open the previous chest')
+      ? ok('G.1 once chest 1 is open the Pro chest names its key and the Author chest still points at the chest before it') : bad('G.1 after chest 1', JSON.stringify(g12.after1));
+    const u = g12.keys.under;
+    (g12.keys.n === 3 && g12.keys.locked.join() === 'false,true,true' && g12.keys.x.join() === 'false,true,true' && u[1] === 'To unlock: open the previous chest' && u[2] === u[1] && /^\d+%$/.test(u[0]) && !g12.keys.whole && !g12.keys.one)
+      ? ok(`G.2 / D.7 all three keys on the strip; Pro and Author crossed out (crossed, not greyed) with "${u[1]}" underneath and no percentage; the first key still shows ${u[0]}`) : bad('G.2 / D.7 the key strip', JSON.stringify(g12.keys));
+    (/^Open the previous chest first/.test(g12.keyTap.toast) && g12.keyTap.title === 'the key' && g12.keyTap.sel === 0)
+      ? ok('G.2 / A.1 a locked key says what opens it and does not open - no ring, no numbers') : bad('G.2 the locked key tap', JSON.stringify(g12.keyTap));
+    (g12.keysAfter.join() === 'false,false,false') ? ok('G.2 with chest 1 open no key is crossed out - the reveal rule is the one it always was (mapOpen)') : bad('G.2 after chest 1', JSON.stringify(g12.keysAfter));
+  }
+
+  /* ---- G.3: chest 1 waits for every game mode - the one crossing between the chain and the key ---- */
+  {
+    const KB = await imp37('config', 'key-bars.js'), U = await imp37('config', 'unlocks.js');
+    const chain = new Set(U.UNLOCKS.map(x => x.key));
+    const modes = [...new Set(Object.keys(KB.KEY_BARS).map(key => key.split(':').slice(0, 2).join(':')))];
+    const stranded = modes.filter(m => !chain.has(m) && m !== 'quick-tap:two');
+    const chestInChain = [['config', 'unlocks.js'], ['progress', 'rules.js']].filter(p => /chest/i.test(strip37(read37(...p)))).map(p => p.join('/'));
+    const modeOpenLine = (/const modeOpen=\(g,d,noChal\)=>[^\n]*/.exec(prog37) || [''])[0];
+    (!stranded.length && !chestInChain.length && modeOpenLine && !/chest/.test(modeOpenLine))
+      ? ok(`G.3 VERIFIED: every key-1 bar belongs to a mode the chain reaches without chest 1 (${modes.length} modes, none stranded) and nothing in the chain reads a chest - the chest can always be opened`)
+      : bad('G.3 a key-1 bar sits behind chest 1', JSON.stringify({ stranded, chestInChain }));
+    (/const modesOpen = \(\) => [^\n]*modeCount\(\)/.test(keyjs37) && keyjs37.indexOf('const modesOpen') > keyjs37.indexOf('const mapOpen') && keyjs37.indexOf('const modesOpen') - keyjs37.indexOf('const mapOpen') < 1600
+      && !/store\.unlock/.test(strip37(keyjs37)) && !/store\.unlock/.test(strip37(pick37)))
+      ? ok('G.3 ONE exported predicate, modesOpen(), beside mapOpen() - reading the chain through progress.js modeCount(), and neither the key nor the grid reads store.unlock') : bad('G.3 the one crossing');
+    await setStorage({ ne: { v: 4, prefs: { story: 1, gridSeen: 1, played: 1, snd: 'off', musicG: {} }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    const g3 = await page.evaluate(async () => { const K = await import('./progress/key.js'); const S = await import('./core/store.js'); const R = await import('./ui/router.js'); const P = await import('./progress.js'); const U = await import('./config/unlocks.js');
+      const wait = ms => new Promise(r => setTimeout(r, ms)); const c1 = () => document.querySelector('.chest[data-chest="1"]');
+      const out = { m0: P.modeCount() };
+      R.show('s-pick'); await wait(600);
+      out.before = { need: c1().querySelector('.pic').dataset.need, gated: c1().classList.contains('gated'), gate: document.querySelectorAll('#gridlines .glgate:not(.off)').length, open: K.modesOpen() };
+      c1().click(); await wait(200); out.before.toast = document.getElementById('toast').innerHTML; out.before.screen = document.querySelector('.screen.on').id;
+      for (const x of U.UNLOCKS) S.store.unlock[x.key] = Date.now(); S.save();
+      R.show('s-menu'); await wait(150); R.show('s-pick'); await wait(600);
+      out.after = { need: c1().querySelector('.pic').dataset.need, gated: c1().classList.contains('gated'), off: document.querySelectorAll('#gridlines .glgate.off').length, stored: S.prefs.gateOff, open: K.modesOpen() };
+      R.show('s-menu'); await wait(150); R.show('s-pick'); await wait(600); out.after.again = document.querySelectorAll('#gridlines .glgate').length;
+      S.store.unlock = {}; S.prefs.allOpen = true; out.dev = K.modesOpen(); S.prefs.allOpen = false; S.save();
+      return out; });
+    const b = g3.before, a = g3.after;
+    (g3.m0.open === 1 && g3.m0.total === 13 && b.gated && b.gate === 1 && !b.open && b.need === 'unlock all games first · 1 of 13 modes' && /Unlock all games first/.test(b.toast) && /1 of 13 modes unlocked/.test(b.toast) && b.screen === 's-pick')
+      ? ok(`G.3 (v18 B.19 / B.20 amended) with 1 of 13 modes open chest 1 is gated: a gate on the connector, "${b.need}", and an early tap says "Unlock all games first" with the count underneath - it does not send you to the keys`)
+      : bad('G.3 the gated chest', JSON.stringify(b));
+    (a.open && !a.gated && a.need === 'clear all 30 · 0 so far' && a.off === 1 && a.stored === 1 && a.again === 0 && g3.dev)
+      ? ok('G.3 once every mode is open the gate animates away once (gateOff stored) and chest 1 switches to key 1\'s bar progress; OPEN EVERYTHING takes the same escape') : bad('G.3 the gate comes off', JSON.stringify({ a, dev: g3.dev }));
+  }
+
+  /* ---- G.4: retroactive credit when a chest opens - silent; a live clear still announces ---- */
+  {
+    await setStorage({ ne: { v: 4, prefs: { story: 1, gridSeen: 1, played: 1, snd: 'space', musicG: { menu: false }, keySeen: 1 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    const g4 = await page.evaluate(async () => { const K = await import('./progress/key.js'); const S = await import('./core/store.js'); const R = await import('./ui/router.js'); const A = await import('./audio.js'); const U = await import('./config/unlocks.js');
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      for (const x of U.UNLOCKS) S.store.unlock[x.key] = Date.now();
+      for (const c of K.COMBOS) S.store.bars[c.key] = Date.now();
+      S.store.runs = [{ t: Date.now(), g: 'quick-tap', d: 'two', s: 5, n: '', v: 4, hits: 40, misses: 0 }]; S.save();
+      K.fillBars(true);
+      let fx = 0; const orig = A.Snd.unlockFx; A.Snd.unlockFx = function () { fx++; return orig.apply(this, arguments); };
+      const toasts = []; const mo = new MutationObserver(() => toasts.push(document.getElementById('toast').textContent.trim())); mo.observe(document.getElementById('toast'), { childList: true, characterData: true, subtree: true });
+      R.show('s-pick'); await wait(600);
+      const out = { ready: document.querySelector('.chest[data-chest="1"]').classList.contains('ready') };
+      document.querySelector('.chest[data-chest="1"]').click(); await wait(250); document.getElementById('ask-yes').click(); await wait(2300);
+      out.pro = !!S.store.bars['quick-tap:two:5|pro']; out.author = !!S.store.bars['quick-tap:two:5|author']; out.retro = Object.keys(S.prefs.retro || {}).sort();
+      out.fx = fx; out.toasts = [...new Set(toasts.filter(Boolean))]; mo.disconnect(); A.Snd.unlockFx = orig;
+      if (document.getElementById('askwrap').classList.contains('on')) document.getElementById('ask-no').click();
+      const live = K.checkKey({ g: 'quick-tap', d: 'two', s: 15, hits: 999, misses: 0, t: Date.now(), v: 4 }, false); out.live = live && live.tier;
+      R.show('s-key'); await wait(700);
+      out.proGreen = document.querySelector('.kkey[data-kt="1"]').classList.contains('newthing');
+      document.querySelector('.kkey[data-kt="1"]').click(); await wait(350);
+      document.querySelector('.knode[data-kg="quick-tap"]').dispatchEvent(new MouseEvent('click', { bubbles: true })); await wait(350);
+      out.rows = [...document.querySelectorAll('#key-list .krow.done.newthing')].map(r => r.dataset.kk);
+      out.retroAfter = Object.keys(S.prefs.retro || {}).filter(x => x.endsWith('|pro'));
+      K.fillBars(false); return out; });
+    (g4.ready && g4.pro && g4.author && g4.retro.join() === 'quick-tap:two:5|author,quick-tap:two:5|pro' && g4.fx === 1 && g4.toasts.length === 1 && /Chest 1 opened/.test(g4.toasts[0]))
+      ? ok(`G.4 opening chest 1 banks the Pro and Author bars a saved best already beats, SILENTLY - one chest sound, one toast ("${g4.toasts[0]}"), no unlock toast and no unlock sound for the clears`)
+      : bad('G.4 the retroactive clear is silent', JSON.stringify(g4));
+    (g4.live === 'pro' && /if\(adv\) keyBreak\(adv,rest\)/.test(read37('ui', 'screens', 'result.js')))
+      ? ok('G.4 a LIVE clear still announces - checkKey hands back the fresh Pro clear and the result screen interrupts for it, exactly as before') : bad('G.4 the live clear', JSON.stringify({ live: g4.live }));
+    (g4.proGreen && g4.rows.join() === 'quick-tap:two:5' && !g4.retroAfter.length)
+      ? ok('G.4 the keys screen already wears L8\'s green on the Pro key and on the rows banked that way, the first time they are seen - and then the mark is spent') : bad('G.4 the green on first sight', JSON.stringify({ proGreen: g4.proGreen, rows: g4.rows, retroAfter: g4.retroAfter }));
+  }
+
+  /* ---- D.4: the front percentage counts up when it has gone up since it was last shown ---- */
+  {
+    (/import \{ countUp \} from "\.\.\/\.\.\/core\/count\.js";/.test(menu37) && /import \{ countUp as baseCountUp \} from "\.\.\/\.\.\/core\/count\.js";/.test(hud37) && !/requestAnimationFrame/.test(strip37(menu37)))
+      ? ok('D.4 the menu reuses the run\'s count-up - it lives in core/count.js now, hud.countUp wraps it, and the menu has no loop of its own (A4 kept)') : bad('D.4 one count-up');
+    const d4 = await page.evaluate(async () => { const S = await import('./core/store.js'); const R = await import('./ui/router.js'); const A = await import('./audio.js'); const K = await import('./progress/key.js');
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      S.store.runs = []; S.store.bars = {}; K.COMBOS.slice(0, 6).forEach(c => { S.store.bars[c.key] = Date.now(); }); S.prefs.played = 1; S.prefs.pro = 0; S.prefs.chest1 = 0; S.prefs.pctSeen = { clear: 0 }; S.save();
+      const pct = K.frontPct(); const wh = []; const ow = A.Snd.whoosh; A.Snd.whoosh = function (ms) { wh.push(ms); return ow.apply(this, arguments); };
+      R.show('s-pick'); await wait(120); R.show('s-menu');
+      const mk = document.getElementById('menu-key'); const first = { txt: mk.textContent, up: mk.classList.contains('up') };
+      await wait(1300); const end = { txt: mk.textContent, seen: JSON.parse(localStorage.getItem('ne')).prefs.pctSeen.clear, whoosh: wh.slice() };
+      R.show('s-pick'); await wait(120); R.show('s-menu'); const again = { up: mk.classList.contains('up'), txt: mk.textContent };
+      S.prefs.pctSeen = { clear: 90 }; S.save(); R.show('s-pick'); await wait(120); R.show('s-menu'); const down = { up: mk.classList.contains('up'), txt: mk.textContent, seen: S.prefs.pctSeen.clear };
+      A.Snd.whoosh = ow; return { pct, first, end, again, down }; });
+    (d4.pct === 20 && d4.first.txt === '0% complete' && d4.first.up && d4.end.txt === '20% complete' && d4.end.seen === 20 && d4.end.whoosh.includes(900))
+      ? ok('D.4 back at the menu with key 1 up from 0% to 20% since it was last shown, the figure pulses and counts up with the count-up\'s own whoosh, and 20 is written when it is painted') : bad('D.4 the count-up', JSON.stringify(d4));
+    (!d4.again.up && d4.again.txt === '20% complete' && !d4.down.up && d4.down.txt === '20% complete' && d4.down.seen === 20)
+      ? ok('D.4 painting the same figure again plays nothing, and a figure LOWER than the one last seen never counts down') : bad('D.4 once, and never down', JSON.stringify({ again: d4.again, down: d4.down }));
   }
 }
 

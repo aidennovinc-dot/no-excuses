@@ -147,8 +147,8 @@ const QUALITY = {
      not on the run record, so nothing migrates.
      The Verdict Desk (2026-09-13, build 35): Estimate's scale is 40% off, was 12 — a tier could not sit past the far edge
      of the curve, which is why 30% was impossible to enter. Grow and Cut read the same key, and both of Aiden's `at`
-     triples in config/verdicts.js are written against 40. Timing's 24000 is NOT this — it came from a widening rule in the
-     editing page, not a decision, and Timing keeps 5 and 5400 until he re-enters it (#414). */
+     triples in config/verdicts.js are written against 40. Timing's scales stay 5 and 5400 (build 37, #414 closed): its new
+     thresholds are written against those, not against a wider scale. */
   'quick-tap':r=>r.hits/r.s/6, 'dots':r=>r.hits/r.s/4.5, 'hold':r=>1-Math.min(1,r.hits/40), 'sequence':r=>r.hits/16,
   /* v18 (B.2 / B.4): both Timing Sets changed unit, so both curves are re-based rather than retuned. Stopwatch was an
      average against 1.00s; five rounds of that is 5.00s. Hidden was 800px, which is 5369ms at the ball's measured pace

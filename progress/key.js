@@ -38,7 +38,7 @@ import { KEY_ACH } from "../config/copy.js";
 import { T } from "../core.js";
 import { prefs, save, store } from "../core/store.js";
 import { GAMES, GC } from "../games/registry.js";
-import { Scores } from "../progress.js";
+import { Scores, modeCount } from "../progress.js";
 
 const keyOf = (g, d, s) => `${g}:${d}:${s}`;
 // the three tier ids, in order, from the one list of keys
@@ -69,6 +69,13 @@ const isShell = tier => tier !== 'clear' && !tierFull(tier);
    EVERY gate on this map goes through mapOpen(); a new one that reads prefs.chest1 directly is the bug this fixed. */
 const mapOpen = () => !!(prefs.chest1 || prefs.allOpen || prefs.supporter);
 const tierOpen = tier => tier === 'clear' || mapOpen();
+/* v21 (G.3, build 37 — amending v18 B.19 / B.20, where chest 1 needed key 1 whole and nothing else): CHEST 1 ALSO WAITS FOR
+   EVERY GAME MODE TO BE UNLOCKED. THIS IS THE ONE PLACE THE TWO PROGRESSION SYSTEMS TOUCH — the unlock chain (L6) and the
+   key — so it is one predicate, here beside mapOpen(), reading the chain through progress.js's modeCount() and never
+   store.unlock. It honours the two dev escapes like every other progression gate. The gate cannot strand the chest: every
+   key-1 bar belongs to a mode the chain reaches without it (checked 2026-09-14, asserted in the gate), so a Gauntlet or
+   anything else put behind chest 1 can never be given a key-1 bar without the gate going red. */
+const modesOpen = () => !!(prefs.allOpen || prefs.supporter) || (m => m.total > 0 && m.open === m.total)(modeCount());
 // the store key: key 1 is the bare combination, so nothing a build-31 profile banked moves
 const skey = (key, tier = 'clear') => tier === 'clear' ? key : `${key}|${tier}`;
 
@@ -213,4 +220,44 @@ function radarOf(g) { const list = BY_GAME[g] || []; const rungs = radarRungs();
     best = Math.max(best, v); }
   return { v: best, rungs, past: best > 1 }; }
 
-export { COMBOS, RADAR_PAST, TIERS, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, fillBars, checkKeyAch, cleared, combos, credit, frontPct, gameKey, isCleared, isShell, keyAch, keyOf, keyPct, keyState, keyTier, keyTiers, mapOpen, radarOf, radarRungs, skey, tierFull, tierOpen };
+/* ---------- v21 (G.4, build 37): retroactive credit when a chest opens ----------
+   A chest reveals tiers whose bars the player may already have beaten. Every newly revealed, non-shell bar is judged
+   against the SAVED BEST for its combination and banked on the spot, SILENTLY — no toast, no unlock sound, no interlude. The
+   one sound and the one animation are the chest's own (ui/screens/pick.js openChest). `prefs.retro` marks what was banked
+   this way so the keys screen can wear L8's green on those rows the first time they are on screen, and then drop the mark.
+   The key achievements a retroactive clear completes are banked the same quiet way. A run that clears a bar LIVE still
+   announces itself exactly as it always has: checkKey() hands the result screen its interlude. Idempotent — a second chest
+   opening, or a second call, banks nothing it has already banked. */
+function retroBank() { const fresh = [];
+  for (const tier of TIERS) { if (tier === 'clear' || !tierOpen(tier) || isShell(tier)) continue;
+    for (const c of COMBOS) { const bar = barOf(c, tier); if (bar === null || isCleared(c.key, tier)) continue;
+      const best = bestOf(c); if (best === null || !beats({ hits: best }, bar, c.bar.dir)) continue;
+      const k = skey(c.key, tier); store.bars[k] = Date.now(); fresh.push(k); } }
+  if (fresh.length) { prefs.retro = Object.assign({}, prefs.retro, Object.fromEntries(fresh.map(k => [k, 1]))); save(); checkKeyAch({}); }
+  return fresh; }
+
+/* ---------- v21 (G.8, build 37): Testing's per-key switches (S5, dev only) ----------
+   devKeyAll(tier, on) clears every bar of one key and REMEMBERS what that key held, so switching it off puts exactly that
+   back — the state a test started from, not an empty key. devKeyReset(tier) backs the key out entirely: its bars, its
+   whole-key moment, its chest, the step into the tier after it, its retroactive marks, its last-seen percentage and its
+   three key achievements. The buttons are [data-dev] and the snapshot is shape-checked only while BUILD_FLAGS.dev is on, so
+   none of this exists in a release build. */
+const devKeyOn = tier => !!(prefs.devKeys && prefs.devKeys[tier]);
+function devKeyAll(tier, on) { const dk = Object.assign({}, prefs.devKeys);
+  if (on && !dk[tier]) { dk[tier] = COMBOS.map(c => skey(c.key, tier)).filter(k => store.bars[k]);
+    for (const c of COMBOS) { const k = skey(c.key, tier); if (!store.bars[k]) store.bars[k] = Date.now(); } }
+  else if (!on && dk[tier]) { const keep = new Set(dk[tier]);
+    for (const c of COMBOS) { const k = skey(c.key, tier); if (!keep.has(k)) delete store.bars[k]; }
+    delete dk[tier]; }
+  prefs.devKeys = dk; save(); return devKeyOn(tier); }
+function devKeyReset(tier) { const n = tierIx(tier) + 1;
+  for (const c of COMBOS) delete store.bars[skey(c.key, tier)];
+  if (prefs.keyWhole) delete prefs.keyWhole[tier];
+  prefs['chest' + n] = 0; if ((prefs.pro | 0) >= n) prefs.pro = n - 1;
+  if (prefs.retro) for (const k of Object.keys(prefs.retro)) if (k.endsWith('|' + tier)) delete prefs.retro[k];
+  if (prefs.pctSeen) delete prefs.pctSeen[tier];
+  if (prefs.devKeys) delete prefs.devKeys[tier];
+  for (const id of Object.keys(store.ach)) if (id.startsWith(`key_${tier}_`)) delete store.ach[id];
+  save(); }
+
+export { COMBOS, RADAR_PAST, TIERS, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, fillBars, checkKeyAch, cleared, combos, credit, devKeyAll, devKeyOn, devKeyReset, frontPct, gameKey, isCleared, isShell, keyAch, keyOf, keyPct, keyState, keyTier, keyTiers, mapOpen, modesOpen, radarOf, radarRungs, retroBank, skey, tierFull, tierOpen };

@@ -1339,7 +1339,8 @@
      classes in fillSheet were ordered — the class list was never the problem, the cascade was. A selected mode wears its
      ordinary selected line; a pressed tile its amber outline with no green border under it. The 170ms green of a mode being
      PICKED (v14 4.6) is the tap's own confirmation and still wins for its 170ms, on every mode alike. */
-  .choice.sel.newthing,.choice.sel.newplay{border-color:var(--ink)!important}
+  /* AMENDED at build 37 (v22 §K): the selected line is --press now, the same amber as the pressed tile — see §K below */
+  .choice.sel.newthing,.choice.sel.newplay{border-color:var(--press)!important}
   .choice.sel.picked{border-color:var(--ok)!important}
   .tile.keep.newthing .pic,.tile.keep.newplay .pic{border-color:var(--press)}
   /* F.3: a versus pad answers the finger that hit it — the lit square often moves on to the SAME pad, which changed nothing
@@ -1347,3 +1348,34 @@
   .pad.tapped{animation:padtap .14s ease-out}
   @keyframes padtap{0%{scale:.93;filter:brightness(1.6)}100%{scale:1;filter:none}}
   @media (prefers-reduced-motion:reduce){.pad.tapped{animation:none}}
+
+  /* ---------- v22 §K (build 37): ONE colour for "this is what you chose" ----------
+     A pressed game tile wore --press (amber) and the mode chosen under it wore --ink (white) — two colours for one idea.
+     The rule: exactly one --press thing on screen at a time, and it is whatever the player is choosing right now. The
+     three checks §K asked for, answered: (1) `.grid.dim` IS on for the mode sheet as well as the length sheet —
+     setStage() in ui/screens/pick.js toggles it for every stage but the grid (the gate asserts it on a two-mode game and on
+     Sequence, which goes straight to its length row); (2) the two !important overrides were decided one by one — a
+     first-seen or unplayed mode that is selected takes --press like any other selected mode (above), and `.picked` KEEPS
+     --ok: it is the 170ms confirmation of the tap itself (v14 4.6), not a selected state; (3) --press is checked against
+     the SHEET's own ground (--panel, and the pass & play sheet's green-tinted one), not the grid's — the gate measures
+     the contrast. Everywhere else `.sel` appears is unchanged: this is the game-then-mode pick only. */
+  .choice.sel{border-color:var(--press)}
+  .grid.dim .tile.keep .pic{outline-color:var(--line)}
+  .grid.dim .tile.keep .name{color:var(--mute)}
+  .grid.dim .tile.keep.newthing .pic,.grid.dim .tile.keep.newplay .pic{border-color:var(--line)}
+
+  /* ---------- v21 §G / v20 §D (build 37): keys and chests ---------- */
+  /* G.2 / D.7: a locked key is CROSSED OUT, not greyed — the locked-mode pattern — with what opens it underneath and no number */
+  .kkey b.x{position:relative;color:var(--mute)}
+  .kkey u.need{color:var(--ok);opacity:1;text-transform:none;letter-spacing:.04em;max-width:13ch;text-align:center;line-height:1.35}
+  /* G.3: a gate on the connector into chest 1 while any mode is still locked, and the one time it animates away */
+  .gridlines .glgate rect{fill:var(--ground);stroke:none}
+  .gridlines .glgate path{fill:none;stroke:var(--cue);stroke-width:1.6;stroke-linecap:round}
+  .gridlines .glgate{transform-box:fill-box;transform-origin:center;animation:gatein .4s ease-out var(--gd,0s) both}
+  .gridlines .glgate.off{animation:gateoff .9s ease-in .5s both}
+  @keyframes gatein{from{opacity:0}to{opacity:1}}
+  @keyframes gateoff{0%{opacity:1;scale:1}40%{opacity:1;scale:1.25}100%{opacity:0;scale:.2}}
+  /* D.4: the front number went up since it was last shown — a pulse while it counts */
+  .menu-key.up{animation:pctup .9s ease-out}
+  @keyframes pctup{0%{scale:1}25%{scale:1.16;color:var(--ok)}100%{scale:1}}
+  @media (prefers-reduced-motion:reduce){.gridlines .glgate,.gridlines .glgate.off,.menu-key.up{animation:none}}

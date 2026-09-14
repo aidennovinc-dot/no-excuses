@@ -20,6 +20,8 @@ export const TOAST = {
   mig32:'Build 32 · {n} old Go / No-go run{s} retired — every tap scores over the 180ms gate now and a Streak counts targets',
   // unlock wording (v11): "Unlock game: Dots" for a game, "Unlock: Dash" for a mode or length
   unlock:'Unlock: {name}', unlockGame:'Unlock game: {name}', unlockPractice:'Unlock: Practice from',
+  // v21 (G.8, build 37): Testing's per-key switches (S5)
+  devKeyOn:'{key} · every bar cleared · switch off to go back', devKeyOff:'{key} · back to what it held', devKeyReset:'{key} · reset · bars, chest and its achievements',
 };
 // what an achievement opens, as a line under it
 export const UNLOCK_WORD = { wheel:'unlocks the colour wheel', bg:'unlocks {bg} background', snd:'unlocks {v} sounds', item:'unlocks {word}' };
@@ -109,7 +111,12 @@ export const GRID = { chest:'Chest', chestLocked:'clear all {n} · {done} so far
   // v18 (B.19, build 32): the second and third chests, seen only once chest 1 is open (A.1). A locked one names its key
   // and nothing else; an opened one says what it gave (A.3: the cosmetic set; A.4: the hard Gauntlet, not built)
   chest2:'Pro chest', chest3:'Author chest', chest2Done:'Cosmetics — every colour and track', chest3Done:'Hard Gauntlet — coming soon',
-  chest2Toast:'Pro chest opened · every colour, background and track is yours', chest3Toast:'Author chest opened · the hard Gauntlet is not built yet' };
+  chest2Toast:'Pro chest opened · every colour, background and track is yours', chest3Toast:'Author chest opened · the hard Gauntlet is not built yet',
+  /* v21 (G.1 / G.3, build 37): chests 2 and 3 are on the map from the start, locked, each saying what opens it — and never
+     a number about what is inside (v17 A.1, narrowed). Chest 1 also waits for every game MODE; the count is the chain's
+     own (progress.js modeCount). Placeholder wording, one line each to change. */
+  chestPrev:'open the previous chest', chestPrevToast:'Open the previous chest first',
+  chestGate:'unlock all games first · {open} of {total} modes', chestGateToast:'Unlock all games first<small>{open} of {total} modes unlocked</small>' };
 export const SHEET = { mode:'Mode', toUnlock:'To unlock: {need}', tileUnlock:'to unlock: {need}', locked:'locked', noRun:'no run yet', best:'best', closest:'closest',
   practiceFrom:'practice from', off:'off', pracLocked:'locked · 8 notes in 7 keys',
   // v15 (4.5): Sequence versus asks for two things — the keys (the length row) and how many notes it opens with. The second
@@ -206,7 +213,10 @@ export const KEY = { title:'the key', hint:'tap a game · solo runs only',
   openAsk:'Open the chest?', openYes:'Open it', openNo:'Not yet',
   proAsk:'Would you like to progress to {key}?', proWarn:'The front of the app will stop showing 100% — it counts {key} from here. This cannot be undone. Are you sure?', proYes:'Yes, on to {key}', proNo:'Not now', proToast:'{key} · the front of the app counts it now',
   // B.19: the locked chests say which key they need and nothing about what is inside
-  chestNeeds:'needs {key}', chestGetKey:'get the key to unlock', chestKeyLine:'{key} opens it' };
+  chestNeeds:'needs {key}', chestGetKey:'get the key to unlock', chestKeyLine:'{key} opens it',
+  // v21 (G.2 / v20 D.7, build 37): all three keys are on the strip from the start. A locked one is crossed out with what opens
+  // it underneath — the locked-mode pattern, SHEET.toUnlock around this — and nothing about its numbers (v17 A.1, narrowed)
+  prevChest:'open the previous chest', lockedToast:'Open the previous chest first — this key’s numbers stay hidden until then' };
 
 // the engines' own words
 export const SEQ = { copy:'copy the notes', yourTurn:'your turn', whoTurn:'{who} · your turn', watch:'round {n} · watch', round:'round {n}',

@@ -4,6 +4,7 @@
 import { CFG, RATE_MAX, RATE_RUN_FLOOR, TICK } from "../../config/games.js";
 import { P1C, P2C } from "../../config/theme.js";
 import { $ } from "../../core.js";
+import { countUp as baseCountUp } from "../../core/count.js";
 
 /* v21 (G.7, build 35): EVERY LIVE SCORE COUNTS UP AND PULSES — TICK.ms (90, guess) and interruptible, because anything longer
    smears once taps come faster than three a second. `tick` is the one writer: the number walks from what is on screen to what
@@ -58,9 +59,8 @@ function addUp({audio,from,err,ms,el,fmt,alive,onFrame,done,walk}){ const t0=per
   requestAnimationFrame(step); }
 // v14 (6.1): EVERY addition to a running total is animated, in a Set as well as a Streak — the figure walks from its old value
 // to its new one instead of jumping. set(text) writes it wherever it lives; alive() ends it early; done() runs at the end
-function countUp({audio,from,to,ms=650,fmt,set,alive,done,walk}){ const t0=performance.now(); if(audio) audio.whoosh(ms,140,700);
-  const step=now=>{ if(alive&&!alive()) return; const k=Math.min(1,(now-t0)/ms); drive(()=>set(fmt(from+(to-from)*k))); walkStep(walk,k); if(k<1) requestAnimationFrame(step); else { drive(()=>set(fmt(to))); walkStep(walk,1); done&&done(); } };
-  requestAnimationFrame(step); }
+// v20 (D.4, build 37): the walk itself is core/count.js, so the menu shares it (A4). This wraps it with G.7's `driving` and 3.7's `walk`
+function countUp(o){ const set=o.set; baseCountUp(Object.assign({},o,{ set:v=>drive(()=>set(v)), onK:k=>walkStep(o.walk,k) })); }
 // v14 (6.3): a round's result stays up until it is tapped — no auto-advance. The engines turn the cue on when the card is
 // drawn and off when the tap arrives; #game.tapon is the one thing the gate has to look for to drive any game to its result
 function hold(on){ $('#game').classList.toggle('tapon',!!on); $('#tapon').classList.toggle('on',!!on); }

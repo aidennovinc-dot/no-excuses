@@ -43,7 +43,7 @@
    exist is written here — the panel under the ring renders whatever combos() returned, so a mode added to config/games.js
    shows up on this screen the same day. A combination with no bar renders as "no bar set" rather than vanishing (C.6). */
 import { Music } from "../../audio.js";
-import { KEY } from "../../config/copy.js";
+import { KEY, SHEET } from "../../config/copy.js";
 import { KEY_NOTE } from "../../config/key-bars.js";
 import { KEY_ART } from "../../config/keys.js";
 import { MODE_NAME } from "../../config/games.js";
@@ -52,11 +52,12 @@ import { emit } from "../../core/events.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, lenFull, lenName } from "../../games/registry.js";
 import { isOpen, lenOpen } from "../../progress.js";
-import { barOf, barsFaked, barsMissing, gameKey, isCleared, keyPct, keyState, keyTiers, mapOpen } from "../../progress/key.js";
+import { barOf, barsFaked, barsMissing, gameKey, isCleared, keyPct, keyState, keyTiers, mapOpen, skey } from "../../progress/key.js";
 import { goWhere } from "../../run/run.js";
 import { scoreTxt } from "../format.js";
 import { define } from "../actions.js";
 import { register, show } from "../router.js";
+import { toast } from "../toast.js";
 
 const R_RING = 128, R_HUB = 34, CX = 150, CY = 150;
 let openGame = null, cameFrom = null, pending = null, openKey = 0, auto = null, demo = false;
@@ -76,16 +77,21 @@ const glyph = (id, cls) => `<svg class="kgl ${cls}" viewBox="0 0 48 48" aria-hid
    the gate that hands the map over (A.2). One line, here, because `keyTiers()` is the only list of them.
    #411: the gate is mapOpen(), not prefs.chest1 — Testing's OPEN EVERYTHING and Supporter open the map too, the same way
    they open every other gate. Reading the chest flag alone is what made this screen the one place the switch did nothing. */
-const shown = () => keyTiers().filter(k => k.i === 0 || mapOpen());
+/* v21 (G.2 + v20 D.7, build 37 — quoting v17 §A.1, which this NARROWS): ALL THREE KEYS ARE ON THE STRIP FROM THE START. A key
+   whose tier is not open yet is crossed out — crossed, not greyed, the locked-mode pattern — with what opens it underneath,
+   and nothing about its numbers: no %, no whole mark, no ring (a tap says what opens it and goes nowhere). What A.1 still
+   hides is exactly that, and it still arrives with chest 1 through mapOpen(); the reveal rule itself did not move. G.4: a key
+   holding clears banked retroactively when a chest opened wears L8's green until those rows have been seen. */
+const shown = () => keyTiers();
+const keyLocked = k => k.i > 0 && !mapOpen();
 function keys() {
-  const list = shown();
-  // one tier is not a row of choices — before chest 1 the strip is the theme's name and nothing to press
-  $('#key-keys').classList.toggle('one', list.length < 2);
-  $('#key-keys').innerHTML = list.map(k => {
+  const list = shown(), retro = Object.keys(prefs.retro || {});
+  $('#key-keys').classList.remove('one');
+  $('#key-keys').innerHTML = list.map(k => { const locked = keyLocked(k), fresh = !locked && retro.some(x => x.endsWith('|' + k.id));
     const pct = k.whole ? '' : T(KEY.pct, { n: k.shell ? 0 : k.pct });
-    return `<button class="kkey${k.i === openKey ? ' sel' : ''}${k.whole ? ' whole' : ''}${k.shell ? ' shell' : ''}" data-act="key-tier" data-kt="${k.i}" style="--ktint:${k.tint};--kground:${k.ground}">`
-      + glyph(k.id, 't' + (k.i + 1)) + `<b>${esc(k.name)}</b><i>${esc(k.theme)}</i>`
-      + `<u>${k.whole ? KEY.unlocked : pct}</u></button>`; }).join('');
+    const under = locked ? `<u class="need">${esc(T(SHEET.toUnlock, { need: KEY.prevChest }))}</u>` : `<u>${k.whole ? KEY.unlocked : pct}</u>`;
+    return `<button class="kkey${k.i === openKey ? ' sel' : ''}${k.whole && !locked ? ' whole' : ''}${k.shell ? ' shell' : ''}${locked ? ' locked' : ''}${fresh ? ' newthing' : ''}" data-act="key-tier" data-kt="${k.i}" style="--ktint:${k.tint};--kground:${k.ground}">`
+      + glyph(k.id, 't' + (k.i + 1)) + `<b class="${locked ? 'x' : ''}">${esc(k.name)}</b><i>${esc(k.theme)}</i>` + under + `</button>`; }).join('');
 }
 
 /* ---------- the ring, in the tier's style (B.22) ----------
@@ -169,12 +175,16 @@ function barTxt(c, bar) { const n = scoreTxt(c.g, bar, c.d, c.s); return /[^\d.]
 const wantTxt = c => { const bar = barOf(c, tierId()); return bar === null ? KEY.none : T(c.bar.dir === 'lower' ? KEY.ceil : KEY.floor, { bar: barTxt(c, bar) }); };
 function panel() { const box = $('#key-list'); if (!openGame) { box.innerHTML = ''; box.hidden = true; return; }
   const tier = tierId(); const st = gameKey(openGame, tier); box.hidden = false;
-  const rows = st.list.map(c => { const done = isCleared(c.key, tier);
+  // v21 (G.4, build 37): a row cleared RETROACTIVELY when a chest opened wears L8's green the first time it is on screen
+  const retro = prefs.retro || {}, spent = [];
+  const rows = st.list.map(c => { const done = isCleared(c.key, tier), rk = skey(c.key, tier), fresh = done && !!retro[rk]; if (fresh) spent.push(rk);
     const name = (MODE_NAME[c.d] ? MODE_NAME[c.d] + ' · ' : '') + lenFull(c.g, c.s, c.d);
     // 5.2: the row is a control now, so it carries an act like everything else does
-    return `<div class="krow${done ? ' done' : ''}${barOf(c, tier) === null ? ' nobar' : ''}" data-act="key-row" data-kk="${c.key}" id="krow-${c.key.replace(/[:.]/g, '_')}"><b>${esc(name)}</b><i>${esc(wantTxt(c))}</i><u>${done ? KEY.cleared : KEY.open}</u></div>`; }).join('');
+    return `<div class="krow${done ? ' done' : ''}${fresh ? ' newthing' : ''}${barOf(c, tier) === null ? ' nobar' : ''}" data-act="key-row" data-kk="${c.key}" id="krow-${c.key.replace(/[:.]/g, '_')}"><b>${esc(name)}</b><i>${esc(wantTxt(c))}</i><u>${done ? KEY.cleared : KEY.open}</u></div>`; }).join('');
   box.innerHTML = `<div class="keyblk"><h4>${esc(GAMES[openGame].name)} <span>${T(KEY.root, { done: st.done, total: st.total })}</span></h4>`
-    + `<p>${esc(KEY_NOTE[openGame] || '')}</p>${rows}</div>`; }
+    + `<p>${esc(KEY_NOTE[openGame] || '')}</p>${rows}</div>`;
+  // …and then the mark is spent, once each (L8)
+  if (spent.length) { for (const rk of spent) delete retro[rk]; prefs.retro = retro; save(); } }
 
 /* ---------- which key is on screen ---------- */
 function render() { if (!mapOpen()) openKey = 0; const t = keyTiers()[openKey]; keys();
@@ -237,7 +247,9 @@ register('s-key', { onShow({ advance: a, from, auto: to, tier, whole, arrive } =
   onBack() { if (auto) return true; if (!cameFrom) return false; const to = cameFrom; cameFrom = null; show(to); return true; } });
 const keyTierIx = id => Math.max(0, keyTiers().findIndex(k => k.id === id));
 define({
-  'key-tier'(el) { openKey = +el.dataset.kt; openGame = null; render(); Music.menu(keyTiers()[openKey].track); return 'pick'; },
+  // v21 (G.2): a locked key says what opens it and stays where it is — its ring and its numbers are what A.1 still hides
+  'key-tier'(el) { const i = +el.dataset.kt; if (i > 0 && !mapOpen()) { toast(KEY.lockedToast); return 'pick'; }
+    openKey = i; openGame = null; render(); Music.menu(keyTiers()[openKey].track); return 'pick'; },
   'key-game'(el) { const g = el.dataset.kg; openGame = openGame === g ? null : g; render(); return 'pick'; },
   // B.23: a tap on the ring's own ground is nothing — not Back, not a sound
   'key-ground'() { return undefined; },

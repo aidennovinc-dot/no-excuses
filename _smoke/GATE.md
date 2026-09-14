@@ -269,3 +269,39 @@ and it was the one failure on build 36's first gate run**; the 09-13 Verdict Des
 export moved the rest) and Sequence's first ace line is the export's; D.10's four rows are asserted per mode with Timing's
 numbers unmoved, no longer as identical seeded copies. The lesson worth keeping: **a check written to prove a fix exists can
 pin the fix's blind spot in place** — grep the gate for the condition a bug report says is wrong.
+
+**Build 37 (keys and chests · FEEDBACK-v21 §G.1–§G.4, §G.8; FEEDBACK-v20 §D.4, §D.7; FEEDBACK-v22 §K; Aiden's data
+fixes)** — **the data**: Go / No-go's two corrected lines and no `!.` or "be own with" anywhere; Timing's `at` and
+per-round ceilings are Aiden's and its QUALITY scales still 5 and 5400; no "DO NOT BUILD Timing" left in the config, the
+rules or either Verdict Desk file; Stopwatch 0.50 / 0.51 / 2.19 / 2.30s and Hidden 400 / 401 / 949 / 951ms played back
+through `tierOf` as the four tiers (Aiden's 0.8241 is 949.9ms on the curve, so "950" sits a hair past Good.). **§K**: the rules (`.choice.sel` on `--press`, the demoted tile, `.newthing` /
+`.newplay` on `--press`, `.picked` still `--ok`); driven — `.grid.dim` is on for Quick Tap's MODE sheet and for Sequence's
+length sheet (check 1), with the mode sheet up nothing is amber and the pressed tile's outline is the line colour, a chosen
+mode is the one amber thing and flashes `--ok` for the tap's 170ms, and `--press` measures past 3:1 on the plain and the pass
+& play sheet (check 3). **G.8**: six buttons under `[data-dev]`; key 1's switch clears all thirty and snapshots the two it
+held, off restores exactly those two; reset backs out bars, chest, the step into Pro and the key achievements. **G.1 / G.2 /
+D.7** on a profile with no flags: three chests stacked in one column, Pro and Author locked with "open the previous chest";
+an early tap says so and stores nothing; after chest 1 the Pro chest names its key and the Author chest still points back;
+three keys, the two locked ones crossed out with "To unlock: open the previous chest" and no percentage, a tap on one says
+what opens it and opens nothing, and with chest 1 open none is crossed. **G.3**: VERIFIED statically that every key-1 bar's
+mode is in the chain or open from the start and nothing in the chain reads a chest; `modesOpen()` sits beside `mapOpen()`
+and reads `modeCount()`, and neither the key nor the grid reads `store.unlock`; driven at 1 of 13 modes — gated chest, gate on
+the connector, the count on the chest and in the early-tap toast, no trip to the keys — then with every mode open the gate
+animates off once and chest 1 shows key 1's bar progress, and OPEN EVERYTHING takes the escape. **G.4**, with the Pro and
+Author columns filled in memory: opening chest 1 banks the Pro and Author bars a saved best beats, with exactly one unlock
+sound and one toast (the chest's); a live clear still hands `checkKey` a fresh Pro clear for the result screen's interlude;
+the keys screen wears green on the Pro key and on the retro rows the first time, then spends the mark. **D.4**: the menu and
+`hud.js` share `core/count.js` and the menu runs no loop of its own; 0% → 20% since last shown pulses and counts up with a
+900ms whoosh and stores 20 on paint; the same figure again plays nothing and a lower one never counts down.
+
+**The first gate run failed four checks and one was the app.** G.4's "one chest-open sound" found that opening a chest had
+played the unlock sound twice since build 29 — once with the lid and again with its green toast 1.6s later; the toast is
+`quiet` now. The other three measured the wrong thing: B.17 read the menu line while D.4's count-up was still walking it,
+Hidden's Good. edge is 949.9ms not 950, and §K's reference line colour was taken off a mode choice that was first-seen green.
+
+**Eighteen earlier assertions amended, both ways** (B.17's read now waits for the count-up to land). 8.10 counts seventeen Testing controls; B.22 reads the amber outline
+with the grid undimmed and the demoted colour beside it; B.24, B.31 and both #411 checks expect all three chests and all
+three keys before chest 1, the second and third locked with no number — **A.1 was narrowed, so a test that proved "nothing
+about pro or author is on screen" had to become one that proves "nothing about their numbers is"**; build 35's D.2 reads the
+selected line and the demoted tile as §K draws them; build 35's G.7 finds the walk through `core/count.js`; build 35's D.10
+and build 36's export checks carry Timing's new numbers, the two corrected lines and labels that no longer say DO NOT BUILD.

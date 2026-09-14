@@ -208,5 +208,9 @@ function verdict(r){
 function setPendingAim(v){ pendingAim=v; }
 function setPendingGoal(v){ pendingGoal=v; }
 
+/* v21 (G.3, build 37): how much of the unlock chain (L6) is open — every MODE, because chest 1 waits for "every game mode
+   being unlocked". Read without the challenge-link exception, so a link that opened one mode for one run cannot open a
+   chest. progress/key.js asks this through modesOpen(); nothing reads store.unlock for the chest itself. */
+function modeCount(){ let open=0, total=0; for(const g in GAMES) for(const d of GAMES[g].modes){ total++; if(modeOpen(g,d,true)) open++; } return { open, total }; }
 
-export { ACH, Scores, UNLOCKS, achAll, achById, bankLen, chalRun, checkAch, checkUnlocks, gameOpen, goalFor, got, isNew, isOpen, lenLock, lenNeed, lenNextLive, lenNextOf, lenOpen, lensOf, markSeen, needFor, newMark, newPlay, nextAch, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, tierMin, tierOf, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict, verdictKey };
+export { ACH, Scores, UNLOCKS, achAll, achById, bankLen, chalRun, checkAch, checkUnlocks, gameOpen, goalFor, got, isNew, isOpen, lenLock, lenNeed, lenNextLive, lenNextOf, lenOpen, lensOf, markSeen, modeCount, needFor, newMark, newPlay, nextAch, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, tierMin, tierOf, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict, verdictKey };

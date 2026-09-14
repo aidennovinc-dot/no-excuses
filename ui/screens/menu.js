@@ -8,7 +8,8 @@
    rendered before the sequence starts, so nothing about the layout can change while it plays. */
 import { KEY, MENU } from "../../config/copy.js";
 import { $, $$, T } from "../../core.js";
-import { frontPct, keyState } from "../../progress/key.js";
+import { TIERS, frontPct, keyState } from "../../progress/key.js";
+import { countUp } from "../../core/count.js";
 import { emit, on } from "../../core/events.js";
 import { CHAL } from "../../core/platform.js";
 import { prefs, save } from "../../core/store.js";
@@ -38,13 +39,28 @@ function renderMenu(){ const first=firstRun(); const opening=menuWasFirst&&!firs
      stays on the keys screen. frontPct() is key 1's own number until the player steps into Pro, and re-based after. A
      whole key 1 that has not been stepped past says so and points at the chest. */
   const mk=$('#menu-key'); const pct=frontPct();
-  mk.hidden=first; if(!first) mk.textContent=!prefs.pro&&keyState().whole?KEY.menuWhole:T(KEY.menu,{pct});
+  mk.hidden=first; if(!first) paintPct(mk,pct);
   /* v13 (1.3): the card sits above the title; the box holds the requirement and what it opens, nothing else.
      v15 (2.2): it does NOT appear on a fresh profile's first menu open — a player who has not run anything yet is being
      told to play, not handed a target — and it labels itself Next unlock or Next achievement depending on which of the
      two nextGoal() found. Unlocks outrank achievements: the chain is offered until there is none of it left. */
   const ng=first?null:nextGoal(); const nx=$('#nextup'); $('#menu-tag').hidden=!ng;
   if(ng){ nx.innerHTML=T(ng.ach?MENU.nextAch:MENU.next,{need:ng.need,name:ng.name}); nx.hidden=false; nextWhere=Object.assign({need:ng.need},ng.where); } else { nx.hidden=true; nextWhere=null; } }
+
+/* v20 (D.4, build 37): THE FRONT NUMBER SAYS WHEN IT WENT UP. One last-seen percentage per key in the store, written when the
+   menu PAINTS it — not when a bar clears — so coming back with the figure higher than it was last shown walks it up from
+   the old number with a pulse and a sound, through core/count.js, the same count-up the runs use. The sound is that
+   count-up's own whoosh: the v16 §1.5 lesson is to check whether an existing sound fits before writing another, and this
+   one was made for a figure counting up. The key measured is the one the front counts (prefs.pro), so stepping into Pro
+   starts that key's own number rather than animating the re-base. Never animates down, never with nothing seen before. */
+const PCT_UP_MS=900;   // (guess)
+function paintPct(mk,pct){ const tier=TIERS[Math.max(0,Math.min(TIERS.length-1,prefs.pro|0))];
+  const line=v=>Math.round(v)===pct&&!prefs.pro&&keyState().whole?KEY.menuWhole:T(KEY.menu,{pct:Math.round(v)});
+  const seen=(prefs.pctSeen||{})[tier]; prefs.pctSeen=Object.assign({},prefs.pctSeen,{[tier]:pct}); save();
+  const id=mk._up=(mk._up||0)+1; mk.classList.remove('up');
+  if(typeof seen!=='number'||pct<=seen){ mk.textContent=line(pct); return; }
+  mk.textContent=line(seen); void mk.offsetWidth; mk.classList.add('up');
+  countUp({ audio:Snd, from:seen, to:pct, ms:PCT_UP_MS, fmt:v=>v, set:v=>{ mk.textContent=line(v); }, alive:()=>mk._up===id&&$('#s-menu').classList.contains('on') }); }
 
 /* ---------- the title sequence (L1). Three beats: the first line at the top, the title in the middle, the second line under it.
    A tap anywhere ends it — that is the one capture in ui/actions.js — and the menu builds around the title that is already there ---------- */

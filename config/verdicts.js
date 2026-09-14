@@ -37,18 +37,19 @@ export const VERDICT_FAIL_TIER = 'bad';
    should be separated". The parent rows are gone rather than left as a second copy nothing reads; verdictKey() and GV()
    take 'g:d' first, so nothing that looks a verdict up changed.
 
-   BUILD 36 — THE VERDICT DESK EXPORT, version 658, 269 entries (`_review/2026-09-14_personal_verdict-desk-export.md`). It
-   supersedes the 2026-09-13 snapshot (version 425), which build 35 built from and which was short by ~157 edits. Built:
-   every line in the export, for all twelve keys — the two half-typed lines are Aiden's own fixes now ("Almost a Great!",
-   "Ooft, maybe try another round."); Reaction's two `at` triples; the per-round ceilings below for Cut, Flash and Go /
-   No-go. A line the export leaves blank keeps what it had. Trailing spaces trimmed; spelling and punctuation are his,
-   untouched. NOT BUILT — THE DO-NOT-BUILD-TIMING WARNING STILL STANDS: the export carries Timing thresholds (`at` for
-   Hidden and two of Stopwatch's three, and four per-round ceilings), and Timing keeps build 34's `at`, its scale in
-   progress/rules.js and its ROUND_AT until Aiden says his numbers are re-entered (#414). Timing's LINES are built — the
-   warning is about the scale that widened the thresholds, not about words.
+   BUILD 36 — THE VERDICT DESK EXPORT, version 658, 269 entries (`_review/2026-09-14_personal_verdict-desk-export.md`),
+   superseding the 2026-09-13 snapshot. Every line it carries, for all eleven rows, Reaction's two `at` triples and the
+   per-round ceilings below for Cut, Flash and Go / No-go. A line the export leaves blank keeps what it had. Trailing
+   spaces trimmed.
+
+   BUILD 37 — Aiden, 2026-09-14. #414 is closed and TIMING'S THRESHOLDS BUILD; its QUALITY scales do not move (Stopwatch 5s,
+   Hidden 5400ms). Stopwatch's `at` is 0.90 / 0.74 / 0.56 — a 0.50s / 1.30s / 2.20s total over five attempts — where 0.90 is
+   Claude's number on his instruction, five of his own 0.10s per-round ceilings; Hidden's is his 0.9259 / 0.8796 / 0.8241,
+   400 / 650 / 950ms. Two of Go / No-go's lines were his typing and are corrected ("You got it!", "one with the shapes").
    The `at` values are thresholds in each game's own unit against QUALITY's scale: Quick Tap 2.90 / 2.20 / 1.50 a second
    over 6, Dots 2.50 / 2.00 / 1.40 over 4.5, Grow 5 / 10 / 30% off over 40, Cut 4.5 / 8 / 15% off over 40, Sequence 11 /
-   8 / 5 notes over 16, Flash 230 / 265 / 295ms, Go / No-go 320 / 350 / 405 on its 70ms-offset curve. */
+   8 / 5 notes over 16, Stopwatch 0.50 / 1.30 / 2.20s over 5, Hidden 400 / 650 / 950ms over 5400, Flash 230 / 265 / 295ms,
+   Go / No-go 320 / 350 / 405 on its 70ms-offset curve. */
 export const VERDICTS = {
   'quick-tap': { at:[.4833,.3667,.25], lines:{
     bad: ['Warming up, try again!','A few mistakes?',"Alright let's go again.",'Could be quicker...','Do you need a coffee?'],
@@ -76,14 +77,14 @@ export const VERDICTS = {
     ok:  ['Decent performance.','Not half bad!','Can you get to 8?','Taxing the memory.','You’ve got more in you!'],
     good:['Great memory!','A long chain!','An ear for music!','Very good run!','Nicely done!'],
     ace: ['Photographic!','Far above average!','A modern day Mozart.','Sequence master!','Amazing!'] } },
-  // build 36: lines from the export; `at` is build 34's — DO NOT BUILD Timing (#414). ok/0 is not in the export and keeps its line
-  'timing:stopwatch': { at:[.85,.6,.35], lines:{
+  // build 37: Aiden's thresholds — 0.50 / 1.30 / 2.20s total error over the Set (0.90 is five of his 0.10s per-round ceilings). ok/0 kept from build 34
+  'timing:stopwatch': { at:[.9,.74,.56], lines:{
     bad: ['I’ll keep my watch.','Maybe try this one again.','Maybe tap in time?','Have another crack.','Appreciate the attempt.'],
     ok:  ['Getting the rhythm.','In the ballpark!','Learn to trust your gut.','Not bad at all.','Close, but I think you could do better!'],
     good:['Great intuition.','Tight.  Tight tight tight tight!','On a roll!','Very close timing.','Very very good.'],
     ace: ['The human-stopwatch hybrid!','Who needs clocks when we have you?','The stopwatch master!','More accurate than my Casio!','Uncanny performance!'] } },
-  // build 36: lines from the export; `at` is build 34's — DO NOT BUILD Timing (#414)
-  'timing:hidden': { at:[.85,.6,.35], lines:{
+  // build 37: Aiden's thresholds — 400 / 650 / 950ms total over the Set
+  'timing:hidden': { at:[.9259,.8796,.8241], lines:{
     bad: ['Was there an accidental tap in there?','The wall won that one.','It really was hidden…','Maybe another attempt?','Have another go!'],
     ok:  ['Feel the ball, be the ball.','In the ball park.','A touch early or late, but solid!','Decent read.','Getting there!'],
     good:['Great tracking!','Very close!','Nice run!','Well judged.','You’re a natural!'],
@@ -94,9 +95,10 @@ export const VERDICTS = {
     ok:  ['Consistent but not that quick','Decent but could be better','Bang on average!','Not the worst.','Try again but focus this time!'],
     good:['Quick hands!','Great reflexes.','Very sharp.','Nicely quick.','Great reactions!'],
     ace: ['Lightning quick!','Faster than a blink.','Like a cat!','That is elite.','Reaction master!'] } },
+  // build 37: ok/1 and bad/2 corrected — Aiden confirmed both were his typing
   'reaction:nogo': { at:[.5,.44,.33], lines:{
-    bad: ['Don’t let them trick you.','Make sure to focus.','You need to be own with the shapes.','Make a stronger coffee?','Have another go, try again.'],
-    ok:  ['Decent reactions.','You got it!.','Good run.','Decent discipline.','Keep at it!'],
+    bad: ['Don’t let them trick you.','Make sure to focus.','You need to be one with the shapes.','Make a stronger coffee?','Have another go, try again.'],
+    ok:  ['Decent reactions.','You got it!','Good run.','Decent discipline.','Keep at it!'],
     good:['Great control!','We couldn’t fool you.','Quick and careful.','Very good run!','You know your shapes.'],
     ace: ['Perfect discipline!','Very very very quick.','Nothing fooled you.','Sharp and patient.','You nailed it!'] } },
   // build 36: lines from the export; `at` was not in it and stays
@@ -127,11 +129,12 @@ export const VERDICTS = {
    10px and 35px converted to milliseconds by B.4, Reaction's quick/good at 200 and 300, Estimate's money/close), with a
    third step added under each so there are four tiers rather than three. Spot · Count is exact / one out / two out, which
    is the whole range that mode has. Judgement, marked (guess) in FEEDBACK-v18, and one line each to retune.
-   BUILD 36 (the Verdict Desk export): Cut, Flash and Go / No-go are Aiden's numbers. Timing's two rows are NOT — the
-   export carries Stopwatch 0.1 / 0.3 / 0.55 and Hidden's third step at 95, and DO NOT BUILD Timing still stands (#414). */
+   BUILD 36 (the Verdict Desk export): Cut, Flash and Go / No-go are Aiden's numbers. BUILD 37: so are Timing's. A round's
+   ceiling is DELIBERATELY MORE FORGIVING than a fifth of the Set's — Stopwatch 0.10s a round against a 0.50s Set, Hidden
+   95ms a round against 400ms over the Set — and that is the intent, not a slip to "correct". */
 export const ROUND_AT = {
-  'timing:stopwatch': [0.06, 0.10, 0.30],
-  'timing:hidden':    [40, 70, 240],
+  'timing:stopwatch': [0.1, 0.3, 0.55],
+  'timing:hidden':    [40, 70, 95],
   'reaction:flash':   [225, 255, 285],
   'reaction:nogo':    [299, 330, 400],
   'hold:grow':        [2, 5, 10],

@@ -93,3 +93,31 @@ of it, statically and by quitting a run mid-flight and reading storage back.
   chest 1 (hidden before chest 1, A.1), a ready chest asks before it opens, the opening is build 29's extended (the key
   drops into the lock, 1.6s), and the keys screen plays a whole-key moment once per tier (`prefs.keyWhole`). Each game
   tile's outline fills with its KEY-1 fraction (B.18, `gameKey(g).frac`, `KEYFILL` lilac).
+
+## Build 37 (v21 §G.1–§G.4, §G.8; v20 §D.4, §D.7; 2026-09-14): keys and chests
+
+- **What A.1 hides is NUMBERS, not existence (G.1 / G.2 / D.7, narrowing v17 §A.1).** Chests 2 and 3 are on the map from the
+  first visit, stacked under chest 1 and locked, each saying "open the previous chest" (`prevOpen(n)` in
+  `ui/screens/pick.js`, honouring the dev escapes). All three keys are on the keys screen; before `mapOpen()` Pro and Author
+  are crossed out with "To unlock: open the previous chest", carry no percentage and open nothing when tapped. Their rings,
+  their bars, the Achievements tab's Pro and Author sets and the radar's extra rungs still arrive with chest 1, exactly as
+  before. A chest after the first also waits for the chest before it.
+- **THE ONE CROSSING (G.3, amending B.19 / B.20).** Chest 1 waits for every game mode as well as key 1 whole.
+  `modesOpen()` beside `mapOpen()` is the whole of it — `modeCount()` from `progress.js`, no challenge-link exception, the dev
+  escapes honoured, never a read of `store.unlock`. The grid draws a gate on the connector into chest 1 while it holds,
+  the chest reads "unlock all games first · N of M modes", an early tap says so with the count and goes nowhere, and the
+  first draw after the last mode opens animates the gate away and stores `prefs.gateOff`. **The chest cannot be stranded:**
+  every key-1 bar belongs to a mode the chain reaches without it, and the gate asserts that — anything later put behind chest
+  1 (Gauntlet, #382) must never carry a key-1 bar.
+- **Retroactive credit (G.4).** `retroBank()` runs when a chest opens: every revealed, non-shell bar is judged against the
+  combination's saved best and banked with no toast and no unlock sound; key achievements it completes bank the same way.
+  `prefs.retro` marks those store keys so the keys screen wears L8's green on the key button and the rows the first time
+  they are on screen, then spends the mark. A live clear is untouched — `checkKey` still hands the result screen its
+  interlude. **Caveat:** while Testing's placeholder fill is on, a chest opening banks against derived Pro and Author bars,
+  exactly as a live run already does; Testing's per-key reset is the way back.
+- **The front percentage says when it rose (D.4).** `prefs.pctSeen[tier]` is the figure last painted for the key the front
+  counts; the menu writes it on paint and, when the new figure is higher, walks up from the old one (`core/count.js`, the
+  runs' count-up) with a pulse and the count-up's own whoosh. Never down, never with nothing seen before.
+- **Testing: a switch and a reset per key (G.8, S5).** `devKeyAll(tier, on)` clears every bar of one key and snapshots what it
+  held in `prefs.devKeys`, so off restores it; `devKeyReset(tier)` backs the key out — bars, whole-key moment, chest, the step
+  into the tier after it, retro marks, last-seen %, key achievements. Dev only.
