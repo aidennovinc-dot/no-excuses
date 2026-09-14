@@ -277,6 +277,52 @@ export const FLOW_AT = 2.7, FLOW_RISE = .8, FLOW_FALL = 1.6;
    Good is a clean rising third; alright is a step that does not quite land (440 → 466, a semitone, deliberately
    unresolved); bad falls. None of them is the unlock sound and none is the achievement click — those two are asserted
    held apart by the gate and are not to be touched. */
+/* ---------- v23 (§L.6 / §L.9c / §L.10d, build 41): THE CHESTS' SOUNDS ----------
+   Three things per chest, all presentation (L10), and none of them is the unlock sound (Snd.unlockFx, v16 1.6) or the achievement click
+   (Snd.click) — the gate holds all three apart, and the four chests apart from each other.
+   CHEST_FX is the opening's EFFECTS, one event per sound in the VERDICT_FX shape plus an optional lowpass: [at s, f0, f1, ms, wave, gain,
+   attackMs, lowpassHz]. They follow the ceremony's named steps in config/chests.js. Anything short is LOW — a click or a crack under
+   300 Hz — because a short high note reads as a tap (batch 12). CHEST_NOISE is the one noise the app makes: the Thorns chest's single hard
+   cut on the split, [at s, ms, gain, highpassHz]. It is an effect, not a music role — the tracks still have no noise (§1).
+   CHEST_STING is the MUSIC: a resolution phrase from that key's own theme, 3–6 s, long gradual notes, ending on the reveal (L.6). A note is
+   [at s, semitones over the theme's root × 2 (its pad octave), ms, wave, gain, attackMs, lowpassHz]. The Games chest borrows Roots, the
+   theme of the key it reveals; the Key chest is Roots, the key that opens it; Pro is Frost; Thorns is Thorn (guess). The gate holds every
+   note to 700 ms or longer and every note above C5 to 1200 ms or longer.
+   CHEST_READY_FX is L.9c's one quiet sound the first time the map paints a READY chest: a low two-note rise, the same for all four, under
+   the unlock sound's level (guess). HUSH is the full duck under a ceremony, as two setTarget time constants (L.6: "ducks fully").
+   NOBODY HAS HEARD ANY OF THIS — a Claude Code session has no audio device (UNVERIFIED.md). */
+export const CHEST_FX = {
+  games: [[0, 330, 262, 60, 'triangle', .04, 4], [.15, 330, 262, 60, 'triangle', .04, 4], [.3, 330, 262, 60, 'triangle', .04, 4], [.45, 330, 262, 60, 'triangle', .04, 4],
+    [.6, 330, 262, 60, 'triangle', .04, 4], [.75, 330, 262, 60, 'triangle', .04, 4], [.9, 330, 262, 60, 'triangle', .04, 4],
+    [1.1, 196, 392, 700, 'sine', .03, 220], [1.8, 110, 82, 320, 'sine', .07, 10],
+    [2.1, 392, 392, 1000, 'triangle', .045, 30], [2.1, 493.9, 493.9, 1000, 'triangle', .04, 30], [2.1, 587.3, 587.3, 1000, 'triangle', .035, 30]],
+  key: [[0, 196, 196, 420, 'sine', .035, 40], [.22, 220, 220, 420, 'sine', .035, 40], [.44, 246.9, 246.9, 420, 'sine', .035, 40], [.66, 261.6, 261.6, 420, 'sine', .035, 40],
+    [.88, 293.7, 293.7, 420, 'sine', .035, 40], [1.1, 329.6, 329.6, 420, 'sine', .035, 40], [1.32, 349.2, 349.2, 420, 'sine', .035, 40], [1.54, 392, 392, 520, 'sine', .035, 40],
+    [1.8, 150, 110, 45, 'square', .05, 2, 900], [1.86, 140, 70, 300, 'triangle', .06, 20], [2.4, 98, 196, 800, 'sine', .07, 350],
+    [2.7, 392, 392, 1300, 'sine', .025, 500], [2.7, 587.3, 587.3, 1300, 'sine', .018, 600]],
+  pro: [[0, 55, 70, 1700, 'sawtooth', .05, 1400, 300], [1.2, 240, 90, 90, 'square', .055, 2, 900], [1.6, 240, 90, 90, 'square', .055, 2, 900],
+    [2.0, 240, 90, 90, 'square', .055, 2, 900], [2.4, 240, 90, 90, 'square', .055, 2, 900],
+    [2.8, 90, 40, 700, 'sine', .11, 6], [2.8, 293.7, 293.7, 1000, 'triangle', .05, 20], [2.8, 440, 440, 1000, 'triangle', .04, 20],
+    [3.2, 587.3, 587.3, 700, 'sine', .025, 30], [3.35, 659.3, 659.3, 700, 'sine', .025, 30], [3.5, 740, 740, 700, 'sine', .022, 30], [3.65, 880, 880, 900, 'sine', .02, 40]],
+  thorns: [[.3, 41.2, 41.2, 2800, 'sine', .1, 2400], [3.1, 82.4, 164.8, 1600, 'sine', .06, 400]],
+};
+export const CHEST_NOISE = { thorns: [[2.7, 180, .14, 1200]] };
+export const CHEST_STING = {
+  games: { track: 'key:roots', notes: [[0, -2, 1600, 'triangle', .012, 400], [0, 5, 1600, 'triangle', .012, 400], [0, 10, 1600, 'triangle', .012, 400], [.2, 24, 1200, 'sine', .012, 300],
+    [1.4, 0, 1800, 'triangle', .013, 300], [1.4, 7, 1800, 'triangle', .013, 300], [1.4, 12, 1800, 'triangle', .013, 300], [1.4, 26, 1800, 'sine', .01, 500]] },
+  key: { track: 'key:roots', notes: [[0, -12, 3900, 'sine', .04, 800], [0, -4, 1500, 'triangle', .012, 500], [0, 3, 1500, 'triangle', .012, 500], [0, 8, 1500, 'triangle', .012, 500],
+    [1.3, -2, 1400, 'triangle', .012, 400], [1.3, 5, 1400, 'triangle', .012, 400], [1.3, 10, 1400, 'triangle', .012, 400], [1.0, 24, 1400, 'sine', .012, 400],
+    [2.5, 0, 1500, 'triangle', .013, 300], [2.5, 7, 1500, 'triangle', .013, 300], [2.5, 12, 1500, 'triangle', .013, 300], [2.5, 26, 1500, 'sine', .01, 500]] },
+  pro: { track: 'key:frost', notes: [[0, -14, 1800, 'sine', .014, 500], [0, -7, 1800, 'triangle', .01, 500], [0, 0, 1800, 'triangle', .01, 500],
+    [1.6, -19, 1800, 'sine', .016, 400], [1.6, -12, 1800, 'triangle', .01, 400], [1.6, -5, 1800, 'triangle', .01, 400],
+    [3.2, -12, 1800, 'sine', .016, 300], [3.2, -5, 1800, 'triangle', .011, 300], [3.2, 2, 1800, 'triangle', .011, 300],
+    [.6, 7, 1400, 'sine', .01, 500], [2.0, 5, 1400, 'sine', .01, 500], [3.4, 4, 1600, 'sine', .01, 600]] },
+  thorns: { track: 'key:thorn', notes: [[0, -12, 5900, 'sine', .045, 3000], [1.2, -6, 2000, 'sawtooth', .008, 900, 800], [1.2, 1, 2000, 'sawtooth', .008, 900, 800],
+    [3.1, 0, 2900, 'sawtooth', .009, 200, 1100], [3.1, 7, 2900, 'sawtooth', .009, 200, 1100], [3.1, 15, 2900, 'sawtooth', .007, 200, 1100], [3.2, 19, 2800, 'sine', .008, 600]] },
+};
+export const CHEST_READY_FX = [[0, 146.8, 146.8, 460, 'sine', .03, 50], [.24, 220, 220, 700, 'sine', .03, 80]];
+export const HUSH = { down: .08, up: .4 };
+
 export const VERDICT_FX = {
   ace:  [[0, 523.3, 523.3, 300, 'triangle', .075, 18], [.10, 784, 784, 300, 'triangle', .075, 18], [.20, 1046.5, 1046.5, 460, 'triangle', .08, 18],
          [.20, 2093, 2093, 320, 'sine', .022, 26], [0, 261.6, 392, 760, 'sine', .05, 90]],

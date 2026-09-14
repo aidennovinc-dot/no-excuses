@@ -73,3 +73,30 @@ VERDICT_FX) is in the `config/` paragraph of `RULES-HISTORY.md` → Structure, a
 - **An unlock has its own sound; the achievement sound is not to be changed.** `Snd.unlockFx()` on an `'ok'` toast,
   `Snd.click()` on an achievement — Aiden's line was that achievements already sound right. The gate asserts both, so
   "made the unlock bigger" and "moved the achievement" cannot look the same.
+- **A CHEST HAS ITS OWN SOUNDS, AND NONE OF THEM IS THE UNLOCK OR THE ACHIEVEMENT (v23 §L.6 / §L.9c / §L.10d, build 41).** All in
+  `config/audio.js`, all presentation (L10), **none heard by anyone yet** — no audio device (UNVERIFIED.md). `Snd.chest(id)` schedules a
+  chest's effects and its sting in one pass on the audio clock, so the sounds and the ceremony's named steps share one clock; the effects
+  follow the tap sound pack like every effect, the sting follows the menu music switch. The gate holds the four effect sets apart from each
+  other, from `unlockFx`'s rising triad and from every verdict. `Snd.chestPlan(id)` hands the review catalogue the same events flat.
+  **`CHEST_FX` — the effects**, following the steps. Anything short is under 300 Hz, because a short high note reads as a tap.
+  · **Games (3s):** seven low clicks 150ms apart as the tiles un-cross (triangle 330→262 Hz, 60ms); a glide as the path draws (sine 196→392 Hz,
+    700ms); a thump on the lid (110→82 Hz); a G major chord, 392 / 493.9 / 587.3 Hz, 1s.
+  · **Key (4s):** eight low chimes 220ms apart as the bars assemble (sine, G3 up to G4, 420ms each); a click (square 150→110 Hz, 45ms,
+    lowpassed) and the turn (triangle 140→70 Hz, 300ms); a swell on the lid (98→196 Hz, 800ms); a held fifth as the light spills (392 / 587 Hz, 1.3s).
+  · **Pro (5s):** a building rumble (sawtooth 55→70 Hz, 1.7s, lowpass 300); four cracks 400ms apart from 1.2s (square 240→90 Hz, 90ms); the
+    burst (a 90→40 Hz drop with D and A, 293.7 / 440 Hz, 1s); four rising notes as the cosmetics scatter (587→880 Hz, 700–900ms each).
+  · **Thorns (6s):** near-silence; a sub-bass that grows from 0.3s (sine 41.2 Hz, 2.8s, 2.4s attack); `CHEST_NOISE`, the ONE noise in the app —
+    a hard cut on the split at 2.7s (180ms, highpass 1.2 kHz), an effect and not a music role, so the tracks still have none; a swell as it
+    widens (82.4→164.8 Hz, 1.6s).
+  **`CHEST_STING` — the music**, a resolution phrase from that key's theme, ending on the reveal; a note is semitones over the theme's root × 2.
+  Every note is 700ms or longer with an attack of 40ms or more, and every note above C5 lasts 1200ms or more (gated).
+  · **Games — Roots, 3.2s** (guess: it borrows the theme of the key it reveals): the ch[3] chord for 1.6s, resolving to ch[0] at 1.4s, a lead
+    on 24 then 26 semitones (784 → 880 Hz, 1.2s and 1.8s).
+  · **Key — Roots, 4.0s:** a 98 Hz drone under ch[2] → ch[3] → ch[0], a lead on 24 then 26.
+  · **Pro — Frost, 5.0s:** three Frost chords an octave down, 1.8s each (ch[6] → ch[7] → ch[0]), a lead falling 440 → 392 → 370 Hz.
+  · **Thorns — Thorn, 6.0s:** an E2 drone growing over 3s, two lowpassed sawtooth chords — ch[7] at 1.2s, then the tonic landing on the split
+    at 3.1s — and one long B4 (494 Hz, 2.8s).
+  **`CHEST_READY_FX`** is the map's quiet two-note rise the first time a chest is painted ready — D3 then A3, gain .03 against the unlock's .085.
+  **`Music.hush(on)` ducks the bed FULLY under a ceremony** (`HUSH`: 0.08s down, 0.4s back on the tap) — a flag as well as a ramp, so a bed
+  built mid-ceremony starts silent. **The levels are not measured:** `_smoke/loudness.mjs` renders tracks, not effects, and these gains were set
+  beside `unlockFx` and the verdict sounds by eye. That is the first thing to re-tune on the phone.

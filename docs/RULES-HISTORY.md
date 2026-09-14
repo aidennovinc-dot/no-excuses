@@ -243,6 +243,40 @@ text here is the rule with its history.
 - **The store is v5** — `up5`: `chest1` → Key and Games, `chest2` → Pro, `chest3` → Thorns; `pro`, `gateOff`, `pctSeen` dropped. `RUN_SCHEMA`
   unchanged (4).
 
+### Amended at build 41 (batch 16, the moments: FEEDBACK-v23 §L.6, §L.8 d–e, §L.9 a–d, §L.10 d, §L.11 b d e), 2026-09-14
+
+**L10 quoted throughout: nothing in this build changes what clears a bar, opens a chest or banks anything.** The chest is stored and
+credited (`openChest`) before a frame of its ceremony plays, and `ui/ceremony.js` / `ui/chest.js` write nothing (gated).
+
+- **v23 L.8b amended (L.6 / L.10d): the plain lid-up open becomes a CEREMONY.** Was (build 40): a banner on the key screen — lid up, the
+  name, the meter counting up, the words — and `Snd.unlockFx`. Now four ceremonies as named steps (`CEREMONY`, `config/chests.js`), drawn by
+  step name in `ui/ceremony.js`, each with its own effects and sting (`CHEST_FX` / `CHEST_NOISE` / `CHEST_STING`, `config/audio.js`) through
+  `Snd.chest()`. Not skippable; the music hushed; the meter's D.4 count-up in the last beat; held on "tap to continue". The banner,
+  `CHEST_ART` and the `.keyopen` styles are gone.
+- **Where the ceremony ends (guess — the build-40 §M note left it to this build's prompt, which does not say).** L.8b opens the chest on the
+  key screen and L.11b ends it on the map: the tap goes to the map with the chest in view and the spill plays there; inside a result-screen
+  interlude it goes back to the result, and the spill waits for the next paint of the map (`prefs.spill`).
+- **The interlude's hand-back (v15 5.1 / v17 B.33) waits for a ceremony.** A ceremony started inside it releases the input lock at "tap to
+  continue" — the one tap it must let through — and owns the hand-back; the 3.9s timer stands down. Both drivers answer the tap
+  (`_smoke/smoke.mjs`, `_review/scripts/catalogue.mjs cereTap`). Build 40's gate line "nothing waits for a tap" is reversed.
+- **v18 B.26 amended: Testing's four chest buttons are "replay <chest> chest opening"** — the ceremony on the key screen with nothing
+  stored, then the spill replayed on the map (`spillDemo`, replacing build 32's lid swing `chestDemo`).
+- **v18 B.19 / v23 L.10c amended (L.9a / L.9b / L.10d): four sprites, not one.** One renderer, `ui/chest.js chestSvg()`, from `CHEST_LOOK`;
+  locked crossed out (was greyed to 40%), ready runs that chest's idle (was a green pulse and a key over the lock), open lid up and still.
+  The static SVGs are out of `index.html`.
+- **New (L.9c): one quiet sound the first time the map paints a chest ready** — `Snd.chestReady()`, `prefs.readySeen` (guess).
+- **v23 L.8a amended (L.8d / L.8e): the meter figure wears its band.** `meterBand()`, `meterLook()`, `METER_BANDS`; the D.4 pulse's colour
+  was `--ok` green and is the band's now (B.22). A band starts at its lower figure (100% is ink — guess). The map's locked key chest line
+  takes the band colour only; the menu card, the key screen's count line and the ceremony's figure take the whole look.
+- **v23 L.11c amended (L.11b / L.11d): the words spill once and are tap targets** (were a plain, untappable column). `CHEST_WORDS[].to`;
+  `CHEST_SOON` for a reward not built yet. `tba` moved under its word so nothing wraps at 390px (gated).
+- **The Pro colour is gold (L.8d / L.9a) while Circuit stays "not gold" (B.22).** B.22's recolour of the Pro KEY's art stands; the Pro
+  CHEST and the meter's third band are gold because L.8d and L.9a say so. Flagged in FEATURES.md.
+- **The store is unchanged at v5.** Two new `prefs` fields, `readySeen` and `spill`, per chest by name, progress (Fresh game and the
+  per-chest reset clear them); no ladder step — an absent field means every chest unseen. `RUN_SCHEMA` unchanged (4).
+- **`config/` inventory:** `chests.js` gained `METER_BANDS`, `CHEST_LOOK`, `CEREMONY`, `CEREMONY_FX`, `SPILL`; `audio.js` gained `CHEST_FX`,
+  `CHEST_NOISE`, `CHEST_STING`, `CHEST_READY_FX`, `HUSH`; `copy.js` gained `CHEST_WORDS[].to`, `CHEST_SOON` and `KEY.tapOn`.
+
 ## Structure — the full text as of build 30
 
 `CLAUDE.md` keeps the module map. This is the paragraph-by-paragraph description it carried at build 30: the DAG, the

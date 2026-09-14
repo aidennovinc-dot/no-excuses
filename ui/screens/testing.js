@@ -93,5 +93,6 @@ define({
   'dev-keyin'(){ show('s-key',{arrive:1,from:'s-testing'}); return 'pick'; },
   'dev-seg'(){ show('s-key',{advance:firstKey(),from:'s-testing'}); return 'pick'; },
   'dev-whole'(){ show('s-key',{whole:1,from:'s-testing'}); return 'pick'; },
-  'dev-chest'(b){ show('s-pick',{chestDemo:b.dataset.chest}); return 'pick'; },
+  // v23 (L.6, build 41, S5): "replay chest opening" — the chest's CEREMONY on the key screen, then its spill on the map, nothing stored
+  'dev-chest'(b){ show('s-key',{ceremony:b.dataset.chest,from:'s-testing'}); return 'pick'; },
 });

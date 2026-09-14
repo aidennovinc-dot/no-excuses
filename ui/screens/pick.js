@@ -2,7 +2,7 @@
    sheet for every game (L9): the player row, the mode row, the length row, Go. Three stages — grid, mode, len — and Back
    walks them before it leaves the screen. show('s-pick', {g, d, s}) opens a game's sheet straight at its mode or length row
    (the result screen's Back, an achievement row, a challenge link). Locked things ask the lock box through lock:ask. */
-import { CHEST_WORDS, GRID, SHEET } from "../../config/copy.js";
+import { CHEST_SOON, GRID, SHEET } from "../../config/copy.js";
 import { CHESTS } from "../../config/chests.js";
 import { MODE_NAME, PASS_LEN, SEQ_VS, VS_LEAD, VS_TARGET } from "../../config/games.js";
 import { VS_ART } from "../../config/theme.js";
@@ -17,6 +17,7 @@ import { chestAt, chestState, gameKey, meter, tierOpen } from "../../progress/ke
 import { Snd } from "../../audio.js";
 import { start } from "../../run/run.js";
 import { define } from "../actions.js";
+import { burstHtml, chestSvg, meterLook, spillVars, wordsHtml } from "../chest.js";
 import { goLabel, picOf, scoreTxt } from "../format.js";
 import { register, show } from "../router.js";
 import { applyPrefs, colOf } from "../theme.js";
@@ -136,18 +137,31 @@ function drawLines(reveal){ const grid=$('#grid'), svg=$('#gridlines'); if(!svg)
    · LOCKED — the Games chest says the chain's own count, "unlock every game · N of M" (L.10c); a key's chest reads THE METER and the
      figure it opens at (L.8a — the map chest is one of the three surfaces that read it)
    · READY — "tap to open", and it breathes; a tap goes to its key screen, which opens it there by itself (L.8b)
-   · OPEN — the lid is up, the line says "opened", and what it gave stands beside it as a column of words (L.11c) — plain in this
-     build; build 41 gives each chest its sprite, its ready animation, its ceremony and the spill (L.6, L.9, L.11b) */
-function renderChests(){ const m=modeCount(), pct=meter();
+   · OPEN — the lid is up, the line says "opened", and what it gave stands beside it as a column of words (L.11c)
+   v23 (L.9 / L.11b, build 41): EACH CHEST IN ITS OWN SPRITE (ui/chest.js, from config/chests.js) — locked crossed out, ready running its own
+   idle, open lid up and still. The first time the map paints a chest READY it plays one quiet sound (L.9c, `prefs.readySeen`); the first
+   time it paints one OPEN, its words shoot out one per line with a burst from the lid in its band colour (`prefs.spill`), and after that
+   the column simply stands. Every word is a tap target (`chestword`). A locked key chest's meter line wears its band's colour (L.8d). */
+// the spill's timings, as the custom properties ui/chest.js names — set on an element without touching its grid placement
+const setVars=(el,s)=>s.split(';').forEach(kv=>{ const i=kv.indexOf(':'); if(i>0) el.style.setProperty(kv.slice(0,i),kv.slice(i+1)); });
+function renderChests(){ const m=modeCount(), pct=meter(), rang=[];
   $$('#grid .chest').forEach(el=>{ const id=el.dataset.chest, st=chestState(id), c=CHESTS.find(x=>x.id===id); if(!st||!c) return;
     el.hidden=false;
     el.classList.toggle('locked',st==='locked'||st==='before'); el.classList.toggle('ready',st==='ready'); el.classList.toggle('open',st==='open');
     el.querySelector('.name').textContent=GRID.chest[id]||id;
+    const pic=el.querySelector('.pic'); if(!pic.querySelector('.chestart')) pic.insertAdjacentHTML('afterbegin',chestSvg(id));
+    const metered=st==='locked'&&c.needs!=='modes';
     const need=st==='open'?GRID.chestOpened:st==='ready'?GRID.chestOpen:st==='before'?GRID.chestPrev
       :c.needs==='modes'?T(GRID.chestModes,{open:m.open,total:m.total}):T(GRID.chestMeter,{pct,at:chestAt(id)});
-    el.querySelector('.pic').dataset.need=need;
-    const w=$(`#grid .chestwords[data-for="${id}"]`); if(w){ w.hidden=st!=='open';
-      w.innerHTML=st==='open'?(CHEST_WORDS[id]||[]).map(x=>`<span class="cw${x.tba?' tba':''}">${x.w}${x.tba?`<small>${GRID.tba}</small>`:''}</span>`).join(''):''; } }); }
+    pic.dataset.need=need; el.classList.toggle('metered',metered); if(metered) meterLook(el,pct,true);
+    if(st==='ready'&&!(prefs.readySeen||{})[id]) rang.push(id);
+    const spill=st==='open'&&!(prefs.spill||{})[id];
+    const old=pic.querySelector('.pburst'); if(old) old.remove(); if(spill) pic.insertAdjacentHTML('beforeend',burstHtml(id));
+    el.classList.toggle('spill',spill);
+    const w=$(`#grid .chestwords[data-for="${id}"]`); if(w){ w.hidden=st!=='open'; w.innerHTML=st==='open'?wordsHtml(id):''; setVars(w,spillVars()); w.classList.toggle('spill',spill); }
+    if(spill){ prefs.spill=Object.assign({},prefs.spill,{[id]:1}); save(); } });
+  // L.9c: one quiet sound the first time the map paints a chest READY — once, however many became ready together (guess)
+  if(rang.length){ prefs.readySeen=Object.assign({},prefs.readySeen,Object.fromEntries(rang.map(id=>[id,1]))); save(); Snd.chestReady(); } }
 /* v18 (B.18, build 32): each game tile's outline fills with its KEY-1 progress — 5 of 8 requirements met is the outline
    drawn five eighths of the way round, clockwise from the top, in the lilac named KEYFILL in config/theme.js. A game whose
    key-1 combinations are all cleared is COMPLETE: the outline closes and the picture takes a wash of the same colour, so
@@ -214,17 +228,18 @@ function showChallenge(c){ const el=$('#chal'); el.textContent=''; if(c.score!==
 function chestInView(id){ const b=$(`#grid .chest[data-chest="${id}"]`); if(!b) return;
   b.scrollIntoView({block:'center',behavior:'smooth'}); b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); setTimeout(()=>b.classList.remove('flash'),1800); }
 register('s-pick',{
-  onShow({g,d,s,chestDemo:cd,chest}){ if(g){ sel.game=g; prefs.lastGame=g; save(); applyPrefs(g); } renderTiles(); setStage('grid'); if(g) openSheet(g,d,s); if(cd) setTimeout(()=>chestDemo(cd),500); if(chest) setTimeout(()=>chestInView(chest),150); },
+  onShow({g,d,s,spillDemo:sd,chest}){ if(g){ sel.game=g; prefs.lastGame=g; save(); applyPrefs(g); } renderTiles(); setStage('grid'); if(g) openSheet(g,d,s); if(sd) setTimeout(()=>spillDemo(sd),350); if(chest) setTimeout(()=>chestInView(chest),150); },
   onBack(){ if(stage==='len'){ setStage(GAMES[sel.game].modes.length===1?'grid':'mode'); return true; } if(stage==='mode'){ setStage('grid'); return true; } return false; },
 });
-/* B.26: Testing plays a chest's opening with nothing stored — the lid swings and the box flares, as builds 29 and 32 drew it — and puts
-   the tile back afterwards. v23 (L.8b, build 40): the REAL open is no longer on this screen — it happens on the key screen, plainly — and
-   "Open the chest?" and "Would you like to progress to Pro?" are retired with the double confirmation, so this is the only opening left
-   here. Build 41 replaces it with the four ceremonies (L.6). */
-function chestDemo(id){ const b=$(`#grid .chest[data-chest="${id}"]`); if(!b) return; const was={hidden:b.hidden,cls:b.className};
-  b.hidden=false; b.classList.remove('locked','open','opening'); b.classList.add('ready'); layoutGrid();
-  setTimeout(()=>{ b.classList.remove('ready'); b.classList.add('open','opening'); Snd.unlockFx(); },400);
-  setTimeout(()=>{ b.hidden=was.hidden; b.className=was.cls; renderChests(); layoutGrid(); drawLines(false); },3600); }
+/* B.26 → v23 (L.6 / L.11b, build 41): Testing's "replay chest opening" plays the CEREMONY on the key screen, and its tap lands here, where
+   the SPILL replays over whatever state the chest is really in — lid up, the words shooting out, the burst from the lid — before the tile
+   is put back as its state leaves it. Nothing is stored: not the chest, not `prefs.spill`. Build 32's lid swing is retired with it. */
+const SPILL_DEMO_MS=3600;
+function spillDemo(id){ const b=$(`#grid .chest[data-chest="${id}"]`), w=$(`#grid .chestwords[data-for="${id}"]`); if(!b||!w) return;
+  b.hidden=false; b.classList.remove('locked','ready','metered'); b.classList.add('open','spill');
+  const pic=b.querySelector('.pic'); pic.dataset.need=GRID.chestOpened; const old=pic.querySelector('.pburst'); if(old) old.remove(); pic.insertAdjacentHTML('beforeend',burstHtml(id));
+  w.hidden=false; w.innerHTML=wordsHtml(id); setVars(w,spillVars()); w.classList.add('spill'); layoutGrid(); chestInView(id);
+  setTimeout(()=>{ b.classList.remove('spill'); w.classList.remove('spill'); renderChests(); layoutGrid(); drawLines(false); },SPILL_DEMO_MS); }
 on('challenge',c=>{ show('s-pick',{g:c.g,d:c.d,s:c.s}); showChallenge(c); });
 on('run:abort',()=>show('s-pick'));
 // the snake and its lines are measured, so a rotation has to re-measure them. Only while the grid is the screen on show
@@ -254,6 +269,12 @@ define({
     if(st==='before'){ toast(GRID.chestPrevToast); return 'pick'; }
     if(st==='locked'&&c.needs==='modes'){ const m=modeCount(); toast(T(GRID.chestModesToast,{open:m.open,total:m.total}),'','',true); return 'pick'; }
     show('s-key',{tier:c.screen}); return 'click'; },
+  /* v23 (L.11b, build 41): a chest's word goes to the thing it names — `to` in config/copy.js: a screen, a key's tab (`key:<n>`), or `soon`
+     for a reward not built yet (Gauntlet, and the Pro and Thorns placeholders), which says so where it is */
+  chestword(b){ const to=b.dataset.to||'soon';
+    if(to.startsWith('key:')){ show('s-key',{tier:+to.slice(4)}); return 'click'; }
+    if(to.startsWith('s-')){ show(to); return 'click'; }
+    toast(T(CHEST_SOON,{w:b.dataset.w||''}),'','',true); return 'pick'; },
   praclock(){ toast(TOAST.pracLocked); return 'pick'; },
   prac(b){ sel.practice=+b.dataset.prac; $$('[data-prac]').forEach(c=>c.classList.toggle('sel',c===b)); return 'pick'; },
   // v15 (4.5): how many notes a Sequence versus opens with

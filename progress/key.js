@@ -35,7 +35,7 @@
    UNTIL THEN), Pro with the Key chest, Author with the Pro chest. The meter is ONE function, meter(), 0–400, never reset; the menu
    card, the map's chests and the key screen all read it. B.15–B.17's frontPct() and its 30/70 re-base are RETIRED with the step
    into Pro (L.8b removed the "proceed to pro" confirmation), and v21 G.3's gate is retired into the Games chest itself. */
-import { CHESTS, METER } from "../config/chests.js";
+import { CHESTS, METER, METER_BANDS } from "../config/chests.js";
 import { KEY_BARS } from "../config/key-bars.js";
 import { KEYS } from "../config/keys.js";
 import { KEY_ACH } from "../config/copy.js";
@@ -189,6 +189,11 @@ function meterBands() { const m = modeCount(), free = METER.freeStart ? m.free :
 const meterReal = () => Math.floor(METER.band * meterBands().reduce((n, v) => n + v, 0) + 1e-9);
 const meter = () => typeof prefs.devMeter === 'number' ? prefs.devMeter : meterReal();
 const meterMax = () => METER.band * (TIERS.length + (METER.modes ? 1 : 0));
+/* v23 (§L.8d / §L.8e, build 41): WHICH BAND a meter figure is in, and how far through it — presentation only (L10). A band starts at its
+   lower figure (100% is band 1, guess) and the top of the meter is the top of the last band, so 400% is band 3 at full strength. ui/chest.js
+   turns this into the look; nothing here knows a colour. */
+function meterBand(v) { const w = METER.band, n = METER_BANDS.length, x = Math.max(0, +v || 0);
+  const i = Math.max(0, Math.min(n - 1, Math.floor(x / w))); return { i, k: Math.max(0, Math.min(1, (x - i * w) / w)) }; }
 // one key's own band as a whole percentage — the key strip's figure, the same share the meter adds for it
 const bandPct = tier => Math.floor(100 * bandOf(tier) + 1e-9);
 
@@ -333,11 +338,13 @@ function devKeyReset(tier) { const c = CHESTS.find(x => x.needs === tier);
   if (prefs.devKeys) delete prefs.devKeys[tier];
   for (const id of Object.keys(store.ach)) if (id.startsWith(`key_${tier}_`)) delete store.ach[id];
   seenDown(); save(); }
-function devChestReset(id) { const c = chestOf(id); if (!c) return;
+// build 41 (L.9c / L.11b): a reset chest gets its first ready sound and its spill back, so both can be reviewed again
+const unseen = id => { prefs.readySeen = Object.assign({}, prefs.readySeen, { [id]: 0 }); prefs.spill = Object.assign({}, prefs.spill, { [id]: 0 }); };
+function devChestReset(id) { const c = chestOf(id); if (!c) return; unseen(id);
   if (c.needs === 'modes') { prefs.chests = Object.assign({}, prefs.chests, { [id]: 0 }); prefs.cusSeen = 0; seenDown(); save(); return; }
   devKeyReset(c.needs); }
 function devSetMeter(n) { if (n === null || n === '' || !Number.isFinite(+n)) delete prefs.devMeter;
   else prefs.devMeter = Math.max(0, Math.min(meterMax(), Math.round(+n)));
   save(); return meter(); }
 
-export { COMBOS, RADAR_PAST, TIERS, bandPct, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, checkKeyAch, chestAt, chestOpen, chestState, cleared, combos, credit, devChestReset, devKeyAll, devKeyOn, devKeyReset, devSetMeter, fillBars, gameKey, isCleared, isPlaceholder, isShell, keyAch, keyChest, keyOf, keyPct, keyState, keyTier, keyTiers, meter, meterMax, modesOpen, openChest, placeholderCount, radarOf, radarRungs, readyChest, retroArrived, retroBank, retroTier, skey, tierFull, tierOpen };
+export { COMBOS, RADAR_PAST, TIERS, bandPct, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, checkKeyAch, chestAt, chestOpen, chestState, cleared, combos, credit, devChestReset, devKeyAll, devKeyOn, devKeyReset, devSetMeter, fillBars, gameKey, isCleared, isPlaceholder, isShell, keyAch, keyChest, keyOf, keyPct, keyState, keyTier, keyTiers, meter, meterBand, meterMax, modesOpen, openChest, placeholderCount, radarOf, radarRungs, readyChest, retroArrived, retroBank, retroTier, skey, tierFull, tierOpen };

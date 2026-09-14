@@ -7,7 +7,7 @@
    finish ramp that lands the last downbeat on the clock (B.28), an end cadence in the track's own key (B.30), a flow-state
    layer over the two tap games (B.27) and a duck for Sequence (B.30). Still no percussion. */
 
-import { DUCK, DUCK_TAIL, FLOW_STEM, SCALES, SET_SECS, STEMS, TRACKS, TRACK_PICK, VERDICT_FX } from "./config/audio.js";
+import { CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, DUCK, DUCK_TAIL, FLOW_STEM, HUSH, SCALES, SET_SECS, STEMS, TRACKS, TRACK_PICK, VERDICT_FX } from "./config/audio.js";
 import { STREAK } from "./config/games.js";
 import { emit, on } from "./core/events.js";
 import { sel } from "./core/state.js";
@@ -163,6 +163,27 @@ const Snd = (()=>{
        It plays when the result is READ, not when the run ends — Snd.end() already owns the finish. */
     verdict(id){ const a=AC(); if(!a) return; const ev=VERDICT_FX[id]; if(!ev) return; const t=a.currentTime;
       for(const [at,f0,f1,ms,w,g,am] of ev) tone(f0,f1,ms,w,g,t+at,am); },
+    /* v23 (§L.6 / §L.9c / §L.10d, build 41): THE CHESTS. `fx` plays an event list in the VERDICT_FX shape plus an optional lowpass; `noise` is
+       the one noise in the app — the Thorns chest's cut, an effect and not a music role; `chest(id)` schedules a ceremony's effects AND its
+       sting in one pass on the audio clock; `chestReady()` is the map's quiet two-note rise. None of them is unlockFx or click, and the gate
+       holds all of them apart. The effects follow the tap-sound pack like every effect; the sting is MUSIC, so it follows the menu music
+       switch and nothing else. `chestPlan(id)` is the same events flat — the review catalogue plays exactly what the app plays. */
+    fx(ev,t0){ const a=AC(); if(!a||!ev) return; const t=t0||a.currentTime; for(const [at,f0,f1,ms,w,g,am,lp] of ev) tone(f0,f1,ms,w,g,t+at,am,false,undefined,lp?{lp}:undefined); },
+    noise(at,ms,gain,hp){ const a=AC(); if(!a||look('snd')==='off') return; const t=at||a.currentTime, dur=Math.max(.02,ms/1000), n=Math.max(1,Math.ceil(a.sampleRate*dur));
+      const buf=a.createBuffer(1,n,a.sampleRate), d=buf.getChannelData(0); for(let i=0;i<n;i++) d[i]=Math.random()*2-1;
+      const src=a.createBufferSource(), f=a.createBiquadFilter(), g=a.createGain(); src.buffer=buf; f.type='highpass'; f.frequency.value=hp||800;
+      g.gain.setValueAtTime(gain,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); src.connect(f).connect(g).connect(a.destination); src.start(t); src.stop(t+dur+.02); },
+    chestPlan(id){ const out=[]; for(const e of CHEST_FX[id]||[]) out.push([e[0],e[1],e[2],e[3],e[4],e[5],e[6]||0,e[7]||0,'fx']);
+      for(const [at,ms,g,hp] of CHEST_NOISE[id]||[]) out.push([at,0,0,ms,'noise',g,0,hp,'fx']);
+      const s=CHEST_STING[id], tr=s&&TRACKS[s.track];
+      if(tr) for(const [at,semi,ms,w,g,am,lp] of s.notes){ const f=+(tr.root*2*Math.pow(2,semi/12)).toFixed(2); out.push([at,f,f,ms,w,g,am||0,lp||0,'sting']); }
+      return out.sort((x,y)=>x[0]-y[0]); },
+    chest(id){ const a=AC(); if(!a) return; const t=a.currentTime+.02, sting=musicOn('menu');
+      for(const [at,f0,f1,ms,w,g,am,lp,kind] of this.chestPlan(id)){
+        if(w==='noise') this.noise(t+at,ms,g,lp);
+        else if(kind==='sting'){ if(sting) tone(f0,f1,ms,w,g,t+at,am,true,undefined,{lp:lp||0,hold:.55}); }
+        else tone(f0,f1,ms,w,g,t+at,am,false,undefined,lp?{lp}:undefined); } },
+    chestReady(){ this.fx(CHEST_READY_FX); },
     // v13 (6.6): the counting whoosh — one voice sweeping low to high for the length of the count, so the pitch follows the fill
     whoosh(ms,f0,f1){ const a=AC(); if(!a||look('snd')==='off') return null; const t=a.currentTime, dur=Math.max(120,ms)/1000;
       const o=a.createOscillator(), n=a.createOscillator(), g=a.createGain(), f=a.createBiquadFilter();
@@ -237,7 +258,7 @@ const Music=(()=>{
   // '<game>' -> the option this profile plays; 'menu' / 'key:roots' / an explicit '<game>:tide' are taken as given
   const pick=id=>TR[id]||TR[id+':'+opt(id)]||TR['quick-tap:held'];
   let tr=null, timer=0, next=0, bar=0, hits=[], sHits=[[],[]], fHits=[], mode='', mg=null, sg=[null,null], fg=null;
-  let st=null, secs=0, stems=false, flow=false, shape=null, fin=null, duckT=0;
+  let st=null, secs=0, stems=false, flow=false, shape=null, fin=null, duckT=0, hushed=false;
   /* v21 (F.2 c): A REBUILT CONTEXT STRANDS EVERYTHING BUILT ON THE OLD ONE. The bed, the two stems and the flow layer are
      gain nodes of a context that is now closed, and `next` is a time on its clock — the loop would schedule nothing until
      the new clock caught up with where the old one had got to. Drop the nodes (nodes() builds all four again on the next
@@ -245,7 +266,7 @@ const Music=(()=>{
      its form carry on from where they were. */
   rebinds.push(c=>{ mg=null; sg=[null,null]; fg=null; duckT=0; if(tr){ next=c.currentTime+.05; fin=null; } });
   function nodes(){ const a=AC(); if(!a) return null;
-    if(!mg||mg.context!==a){ mg=a.createGain(); mg.gain.value=1; mg.connect(a.destination); }
+    if(!mg||mg.context!==a){ mg=a.createGain(); mg.gain.value=hushed?0:1; mg.connect(a.destination); }
     if(!sg[0]||sg[0].context!==a){ sg=[0,1].map(()=>{ const g=a.createGain(); g.gain.value=0; g.connect(a.destination); return g; });
       fg=a.createGain(); fg.gain.value=0; fg.connect(a.destination); } return a; }
   /* v18 (B.29) — SILENCE IS NOT THE SAME AS "STOP SCHEDULING", and that is the whole of the bug. `loop()` schedules a
@@ -344,6 +365,11 @@ const Music=(()=>{
     duck(sec,at){ const a=ac; if(!a||!mg||mode!=='sequence') return; const t0=Math.max(a.currentTime,at||a.currentTime), back=t0+sec+DUCK_TAIL;
       if(back<=duckT) return; duckT=back;
       try{ mg.gain.cancelScheduledValues(t0); mg.gain.setTargetAtTime(DUCK,t0,.06); mg.gain.setTargetAtTime(1,back,.25); }catch(e){} },
+    /* v23 (§L.6, build 41): a chest ceremony HUSHES the music fully and its tap brings it back. A flag as well as a ramp, because the key
+       screen can ask for a different loop mid-ceremony and a bed built while hushed has to start silent (nodes()). No stem or flow layer
+       plays on the key screen, so the bed is the whole of it. */
+    hush(on){ hushed=!!on; const a=ac; if(!a||!mg) return;
+      try{ mg.gain.cancelScheduledValues(a.currentTime); mg.gain.setTargetAtTime(hushed?0:1,a.currentTime,hushed?HUSH.down:HUSH.up); }catch(e){ mg.gain.value=hushed?0:1; } },
     /* the review catalogue's Play button (v16 §1.1). One pass of a track as a flat list of tone events —
        [t, freq, freqEnd, ms, wave, gain, attackMs, lowpassHz, q, hold] — so the page plays exactly what the app plays and
        there is no second copy of the arrangement engine to drift. `o` picks which version (B.29 / B.27):
@@ -360,7 +386,7 @@ const Music=(()=>{
       return { id, name:t.name||id, bpm:t.bpm, root:t.root, beats:t.beats||4, bars:n, form, loopSec:+(n*barSec).toFixed(3), longSec:longSec(t), plan:out }; },
     tracks(){ return Object.keys(TR); },
     // v21 (F.2): what the gate reads after a rebuild — is the bed on the live context, and is the clock anchored to it
-    probe(){ return { bed:!!mg&&mg.context===ac, playing:!!tr, next, now:ac?ac.currentTime:0 }; },
+    probe(){ return { bed:!!mg&&mg.context===ac, playing:!!tr, next, now:ac?ac.currentTime:0, hushed }; },
     // what B.29 asks to be reported: one row per track, the arc a known run gets and the long form's own length
     lengths(){ return Object.keys(TR).map(id=>({ id, name:TR[id].name, form:formOf(TR[id]), barSec:+barSecOf(TR[id]).toFixed(2), formSec:+(formOf(TR[id])*barSecOf(TR[id])).toFixed(1), phase:phaseOf(TR[id]), longSec:longSec(TR[id]) })); },
     // B.29: stopping cuts what is already in the air too — the bar that was scheduled a moment ago is the whole problem

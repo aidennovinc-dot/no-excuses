@@ -7,8 +7,9 @@
    positioned above and below the title (1.1 — line one at the top, NO EXCUSES in the middle, line two under it). The menu is
    rendered before the sequence starts, so nothing about the layout can change while it plays. */
 import { GRID, KEY, MENU, TOAST } from "../../config/copy.js";
-import { $, $$, T } from "../../core.js";
+import { $, $$, T, esc } from "../../core.js";
 import { chestOpen, meter, readyChest } from "../../progress/key.js";
+import { meterLook } from "../chest.js";
 import { countUp } from "../../core/count.js";
 import { emit, on } from "../../core/events.js";
 import { CHAL } from "../../core/platform.js";
@@ -67,13 +68,17 @@ function renderCustomise(first){ const b=$('[data-go="s-custom"]'), need=$('#cus
    lesson: check whether an existing sound fits before writing another). Never animates down, never with nothing seen before.
    v23 (L.8e, build 40): ONE figure now — `prefs.meterSeen`, the meter — not one per key, and it fires on every rise whatever the band. */
 const PCT_UP_MS=900;   // (guess)
+/* v23 (L.8d / L.8e, build 41): THE FIGURE WEARS ITS BAND — mute, ink, gold with a glow that strengthens across it, Thorns white on black with a
+   spiked edge, a cold glow and a whole-pixel shake — through ui/chest.js meterLook(), and the pulse on a rise is in the band's colour. The
+   words around the figure are untouched. Green is never a band colour (B.22). */
 function paintPct(mk,pct){ const rc=readyChest();
   const line=v=>Math.round(v)===pct&&rc?T(KEY.menuReady,{pct:Math.round(v),chest:GRID.chest[rc]}):T(KEY.menu,{pct:Math.round(v)});
+  const draw=v=>{ const n=Math.round(v); mk.innerHTML=esc(line(n)).replace(/(\d+%)/,'<b class="meterv">$1</b>'); meterLook(mk.querySelector('.meterv'),n); meterLook(mk,n,true); };
   const seen=prefs.meterSeen; prefs.meterSeen=pct; save();
   const id=mk._up=(mk._up||0)+1; mk.classList.remove('up');
-  if(typeof seen!=='number'||pct<=seen){ mk.textContent=line(pct); return; }
-  mk.textContent=line(seen); void mk.offsetWidth; mk.classList.add('up');
-  countUp({ audio:Snd, from:seen, to:pct, ms:PCT_UP_MS, fmt:v=>v, set:v=>{ mk.textContent=line(v); }, alive:()=>mk._up===id&&$('#s-menu').classList.contains('on') }); }
+  if(typeof seen!=='number'||pct<=seen){ draw(pct); return; }
+  draw(seen); void mk.offsetWidth; mk.classList.add('up');
+  countUp({ audio:Snd, from:seen, to:pct, ms:PCT_UP_MS, fmt:v=>v, set:v=>draw(v), alive:()=>mk._up===id&&$('#s-menu').classList.contains('on') }); }
 
 /* ---------- the title sequence (L1). Three beats: the first line at the top, the title in the middle, the second line under it.
    A tap anywhere ends it — that is the one capture in ui/actions.js — and the menu builds around the title that is already there ---------- */

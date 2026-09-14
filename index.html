@@ -62,11 +62,12 @@
     <!-- v23 (L.10, build 40): FOUR chests down the path, named by what opens them - Games, Key, Pro, Thorns - never numbered
          (config/chests.js). The Games chest is the snake's last stop and REPLACES v21 G.3's gate on the connector into it; the
          Key, Pro and Thorns chests stack under it, on the map from the start (G.1). ui/screens/pick.js places them and owns
-         their states. An opened chest shows what it gave as a column of words beside it (L.11c) - plain until build 41 -->
-    <button data-act="chest" class="tile chest" data-chest="games"><span class="name glow">Games chest</span><span class="pic"><svg class="chestart" viewBox="0 0 40 32"><rect class="box" x="5" y="14" width="30" height="14" rx="2"/><path class="lid" d="M5 14a15 9 0 0 1 30 0z"/><rect class="lock" x="17.5" y="15.5" width="5" height="7" rx="1"/><g class="ckey"><circle cx="20" cy="4" r="3"/><path d="M20 7v8M20 11h3"/></g></svg></span></button>
-    <button data-act="chest" class="tile chest" data-chest="key"><span class="name glow">Key chest</span><span class="pic"><svg class="chestart" viewBox="0 0 40 32"><rect class="box" x="5" y="14" width="30" height="14" rx="2"/><path class="lid" d="M5 14a15 9 0 0 1 30 0z"/><rect class="lock" x="17.5" y="15.5" width="5" height="7" rx="1"/><g class="ckey"><circle cx="20" cy="4" r="3"/><path d="M20 7v8M20 11h3"/></g></svg></span></button>
-    <button data-act="chest" class="tile chest" data-chest="pro"><span class="name glow">Pro chest</span><span class="pic"><svg class="chestart" viewBox="0 0 40 32"><rect class="box" x="5" y="14" width="30" height="14" rx="2"/><path class="lid" d="M5 14a15 9 0 0 1 30 0z"/><rect class="lock" x="17.5" y="15.5" width="5" height="7" rx="1"/><g class="ckey"><circle cx="20" cy="4" r="3"/><path d="M20 7v8M20 11h3"/></g></svg></span></button>
-    <button data-act="chest" class="tile chest" data-chest="thorns"><span class="name glow">Thorns chest</span><span class="pic"><svg class="chestart" viewBox="0 0 40 32"><rect class="box" x="5" y="14" width="30" height="14" rx="2"/><path class="lid" d="M5 14a15 9 0 0 1 30 0z"/><rect class="lock" x="17.5" y="15.5" width="5" height="7" rx="1"/><g class="ckey"><circle cx="20" cy="4" r="3"/><path d="M20 7v8M20 11h3"/></g></svg></span></button>
+         their states. An opened chest shows what it gave as a column of words beside it (L.11c). v23 (L.9a, build 41): each chest's
+         sprite is drawn into its .pic by ui/chest.js from config/chests.js - no art lives in this markup -->
+    <button data-act="chest" class="tile chest" data-chest="games"><span class="name glow">Games chest</span><span class="pic"></span></button>
+    <button data-act="chest" class="tile chest" data-chest="key"><span class="name glow">Key chest</span><span class="pic"></span></button>
+    <button data-act="chest" class="tile chest" data-chest="pro"><span class="name glow">Pro chest</span><span class="pic"></span></button>
+    <button data-act="chest" class="tile chest" data-chest="thorns"><span class="name glow">Thorns chest</span><span class="pic"></span></button>
     <!-- L.11c: what an opened chest gave, one word per line, in the grid cell beside it. Empty and hidden for a chest that is not open -->
     <div class="chestwords" data-for="games" hidden></div>
     <div class="chestwords" data-for="key" hidden></div>
@@ -177,8 +178,9 @@
   <button data-act="back" class="back">&larr; BACK</button>
   <div class="eyebrow" id="key-title">keys</div>
   <div class="keyrow" id="key-keys"></div>
-  <!-- v23 (L.8b, build 40): a chest that opened on this screen, plainly - lid up, its name, the meter counting up, its words. Build 41 makes it a ceremony -->
-  <div class="keyopen" id="key-open" hidden></div>
+  <!-- v23 (L.6 / L.10d, build 41): a chest that opens on this screen plays its CEREMONY here - ui/ceremony.js draws it, config/chests.js
+       times it. Not skippable; the one act is its own tap, which does nothing until "tap to continue" -->
+  <div class="cere" id="key-cere" data-act="cere-tap" hidden></div>
   <div id="key-main">
     <svg id="key-ring" viewBox="0 0 300 300" aria-hidden="true"></svg>
     <div class="keycount" id="key-count"></div>
@@ -199,7 +201,7 @@
        build, the device and the last run filled in. An <a>, so the link does its own work; data-act="none" is only the
        click sound — nothing here knows what a mail client is, and nothing is sent without the tester's own send button -->
   <a class="item sub" id="feedback" data-act="none" href="#">Send feedback</a>
-  <div class="hint">v0.40 · batch 16 · four chests · 14 sept 2026</div>
+  <div class="hint">v0.41 · batch 16 · the moments · 14 sept 2026</div>
 </section>
 
 <section class="screen" id="s-testing" data-back="s-menu" data-dev>
@@ -222,7 +224,7 @@
   <div class="chips" id="dev-keys"><button data-act="dev-chestall" data-chest="games" class="chip">games chest · every mode</button><button data-act="dev-chestall" data-chest="key" class="chip">key chest · key 1 cleared</button><button data-act="dev-chestall" data-chest="pro" class="chip">pro chest · pro cleared</button><button data-act="dev-chestall" data-chest="thorns" class="chip">thorns chest · author cleared</button><button data-act="dev-chestreset" data-chest="games" class="chip">reset games chest</button><button data-act="dev-chestreset" data-chest="key" class="chip">reset key chest</button><button data-act="dev-chestreset" data-chest="pro" class="chip">reset pro chest</button><button data-act="dev-chestreset" data-chest="thorns" class="chip">reset thorns chest</button></div>
   <div class="hint" id="dev-meter-now"></div>
   <div class="chips" id="dev-meter-row"><input id="dev-meter" type="number" min="0" max="400" step="1" inputmode="numeric" placeholder="0–400" aria-label="meter percentage"><button data-act="dev-meter" class="chip" id="dev-meterset">set meter to N%</button><button data-act="dev-meteroff" class="chip" id="dev-meteroff">meter · as earned</button></div>
-  <div class="chips" id="dev-anim"><button data-act="dev-keyin" class="chip">key arrival</button><button data-act="dev-seg" class="chip">segment advance</button><button data-act="dev-whole" class="chip">key complete</button><button data-act="dev-chest" data-chest="games" class="chip">games chest opening</button><button data-act="dev-chest" data-chest="key" class="chip">key chest opening</button><button data-act="dev-chest" data-chest="pro" class="chip">pro chest opening</button><button data-act="dev-chest" data-chest="thorns" class="chip">thorns chest opening</button></div>
+  <div class="chips" id="dev-anim"><button data-act="dev-keyin" class="chip">key arrival</button><button data-act="dev-seg" class="chip">segment advance</button><button data-act="dev-whole" class="chip">key complete</button><button data-act="dev-chest" data-chest="games" class="chip">replay games chest opening</button><button data-act="dev-chest" data-chest="key" class="chip">replay key chest opening</button><button data-act="dev-chest" data-chest="pro" class="chip">replay pro chest opening</button><button data-act="dev-chest" data-chest="thorns" class="chip">replay thorns chest opening</button></div>
 </section>
 
 <section class="screen" id="s-pass">
@@ -292,12 +294,12 @@
 
 <script type="module" src="./boot.js"></script>
 
-<div id="build">v0.40</div>
+<div id="build">v0.41</div>
 <button id="update">New build available — tap to reload</button>
 <script>
 // build check: version.json is fetched with no-store, so a stale cached page still learns a newer build exists
 (function(){
-  const BUILD="40";
+  const BUILD="41";
   async function check(){
     try{
       const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});

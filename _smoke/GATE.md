@@ -402,3 +402,32 @@ the demo resting as the chest's own state; G.8 per chest; G.1 / G.2 — four che
 reading the meter after it; G.3 reversed — no gate and no `gated`, the Games chest ready once every mode is open; G.4 and #426 B open the
 Key chest on its key screen, with no toast any more; D.4 counts the meter up from `meterSeen`; 38.2's tier, rung and set lines and its
 chests by name; L.4a's menu regex takes `data-act="custom"`; L.2 / L.4d's profile has the Games chest open.
+
+**Build 41 (batch 16, the moments — FEEDBACK-v23 §L.6, §L.8 d–e, §L.9 a–d, §L.10 d, §L.11 b d e)** — **L.9a / L.10d**: `CHEST_LOOK` has the
+four chests by name and four different sprites — Games a thin `--mute` outline, Key `--ink` with no fittings or spikes, Pro gold fittings and
+a heavier lid in its band colour, Thorns black with spikes — each in its own band; four idles rising in strength; `chestSvg(` is what the map,
+the key screen and the ceremony draw with; no chest art is left in `index.html`; `ui/ceremony.js` and `ui/chest.js` write nothing (L10).
+**L.9b**: on a map with Games and Key open, Pro ready and Thorns locked, each chest wears its own sprite, the Pro chest runs `idleglow` and
+`idleshim`, the opened and locked chests run no animation, the locked one is crossed and the opened one's lid sits at −118°. **L.9c**: the
+first paint of a ready Games chest calls `Snd.chestReady` once and the next visit does not; the ready sound is two low rising notes under
+.085. **L.6 / L.10d**: the step names are exactly L.6's, the lengths rise from ~3s to ~6s and every step sits inside its ceremony; every sting
+is 3–6s from its key's theme with no note under 700ms (or an attack under 40ms) and none above C5 under 1200ms; no chest effect is short and
+above 400 Hz; the four effect sets differ, none is the unlock's rising triad or a verdict; one noise cut, Thorns only; the ceremony plays
+`Snd.chest(id)` and neither it nor the key screen names `unlockFx`. **L.6 live**: a ready Games chest's tap opens the key screen, where the
+chest is already stored as the ceremony shows, the music is hushed, and a tap on it or Back does nothing; the steps land in order off the
+config's `--st-*` times and it holds on "tap to continue"; that tap goes to the map with the music back, one `Snd.chest('games')`, and the
+words spilled once with a burst of `SPILL.particles`, each a `chestword` carrying its `to`. **L.11d**: every chest keeps its grid cell with
+all chests open or all shut, nothing stands beside a shut chest, and every word fits its cell on one line at 390px. **L.11b**: CUSTOMISE
+opens Customise, PRO KEY the Pro key, GAUNTLET toasts "not built yet". **L.8d / L.8e**: through "set meter to N%", 0–99 is band 0 in
+`--mute` with no shadow or animation, 100–199 `--ink`, 200–299 gold with a glow that grows across the band, 300–400 white on black running
+`mshake` on `steps(1, end)` (computed as `steps(1)` — the first run failed on exactly that serialisation, the only failure) at 1px low in the band and 2px high; no band colour is green and `pctup` names `--mcol`, not `--ok`; a rise from
+210 to 260 pulses with `--mcol` gold. **L.6 / S5**: four "replay <chest> chest opening" buttons each play that ceremony on the key screen with
+nothing stored, and the Thorns one's tap lands on the map's replayed spill before the chest is put back locked. **L.11e**: the annotations
+carry exactly the 33 chest cards, the template has the Chests group, `REF.chestFx` and a noise-capable `playFx`, and `catalogue.mjs` uses
+`ceremonyFrame`, `chestPlan` and `cereTap`.
+
+**Amended back or on:** B.24 — the Key chest opens as its ceremony and its words are read off the map after "tap to continue"; B.26 —
+"replay key chest opening" is the ceremony, then the spill; B.33 — the interlude's wait is read off `handBack(); }, 3900 + arrive)`; G.4 and
+#426 B — the chest sound is `Snd.chest`, `unlockFx` is never called, and the banner is the ceremony; L.8b — the Games chest's open is read at
+the reveal with the meter counted up there, and its tap goes to the map; L.8b's interlude — the Key chest's ceremony hushes the music and the
+result WAITS for "tap to continue" and comes back on that tap.

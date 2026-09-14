@@ -134,11 +134,15 @@ export const GRID = { chest:{ games:'Games chest', key:'Key chest', pro:'Pro che
    is a tap target yet (L.11b). §M.3 went unanswered, so this is the recommended set (guess): Author has waited for the Pro chest since
    build 38, so the Key chest says PRO KEY rather than "PRO · AUTHOR REVEALED" and the Pro chest carries AUTHOR KEY; the Games chest
    also names THE KEY, because opening it is what reveals key 1 (L.10a). */
+/* v23 (L.11b, build 41): EACH WORD IS A TAP TARGET to the thing it names — `to` is where: a screen id, `key:<n>` for that key's tab, or
+   `soon` for a reward that is not built yet (Gauntlet, #382; the Pro and Thorns placeholders), which says so in a toast (guess). */
 export const CHEST_WORDS = {
-  games:[{ w:'CUSTOMISE' }, { w:'THE KEY' }],
-  key:[{ w:'GAUNTLET' }, { w:'PRO KEY' }],
-  pro:[{ w:'AUTHOR KEY' }, { w:'COSMETIC SET', tba:1 }],
-  thorns:[{ w:'HARD GAUNTLET', tba:1 }] };
+  games:[{ w:'CUSTOMISE', to:'s-custom' }, { w:'THE KEY', to:'key:0' }],
+  key:[{ w:'GAUNTLET', to:'soon' }, { w:'PRO KEY', to:'key:1' }],
+  pro:[{ w:'AUTHOR KEY', to:'key:2' }, { w:'COSMETIC SET', tba:1, to:'soon' }],
+  thorns:[{ w:'HARD GAUNTLET', tba:1, to:'soon' }] };
+// v23 (L.11b, build 41): what a word whose reward is not built yet says when tapped (guess)
+export const CHEST_SOON = '{w}<small>not built yet · a later build</small>';
 export const SHEET = { mode:'Mode', toUnlock:'To unlock: {need}', tileUnlock:'to unlock: {need}', locked:'locked', noRun:'no run yet', best:'best', closest:'closest',
   practiceFrom:'practice from', off:'off', pracLocked:'locked · 8 notes in 7 keys',
   // v15 (4.5): Sequence versus asks for two things — the keys (the length row) and how many notes it opens with. The second
@@ -241,6 +245,8 @@ export const KEY = { title:'the key', hint:'tap a game · solo runs only',
   /* v23 (L.8b, build 40): "Open the chest?" and "Would you like to progress to {key}?" are RETIRED with the double confirmation, and so
      are B.19's "needs {key}" lines — a chest reads the meter now. A chest opens on the key screen by itself; `opened` is what it says */
   opened:'{chest} opened',
+  // v23 (L.6, build 41): the ceremony holds on this until it is tapped — it is not skippable before it
+  tapOn:'tap to continue',
   /* v23 (L.10a, build 40): before the Games chest the key screen shows only the modes count, the meter and the four chests (guess on the words) */
   quiet:'Unlock every game mode and the Games chest opens the key.', quietCount:'{open} of {total} modes · {pct}%',
   gamesChest:'open the Games chest', gamesToast:'Open the Games chest first — every game mode unlocked opens it',

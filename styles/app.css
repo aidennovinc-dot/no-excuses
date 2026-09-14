@@ -344,28 +344,43 @@
   .gridlines .gl.open{stroke:var(--ok);opacity:.8}
   @keyframes gline{to{stroke-dashoffset:0}}
   .grid.dim .gridlines{opacity:.25;transition:opacity .35s}
-  /* B.24 — the chest. Locked it is grey and says what key 1 asks for; openable it breathes; opened the lid is up and it
-     says what it gave. The art is three shapes in one svg so the lid can hinge on its own left edge. */
+  /* B.24 → v23 (L.9a / L.9b / L.10d, build 41): THE FOUR CHEST SPRITES. ui/chest.js draws every chest from config/chests.js CHEST_LOOK and
+     puts its colours, weights and idle timing on the svg as custom properties, so nothing here names a chest's colour. LOCKED is crossed
+     out (crossed, not greyed — v17); READY runs that chest's own idle and it is the only thing on the map that does; OPENED is lid up and
+     still. The lid and its spikes are one group turning on the look's own hinge. */
   .tile.chest .pic{display:grid;place-items:center}
   .chestart{width:62%;height:62%;overflow:visible}
-  .chestart .box{fill:var(--panel);stroke:var(--ink);stroke-width:1.4}
-  .chestart .lid{fill:var(--panel);stroke:var(--ink);stroke-width:1.4;transform-origin:5px 14px;transition:rotate .5s ease-out}
-  .chestart .lock{fill:var(--cue)}
+  .chestart .box,.chestart .lid{fill:var(--cf);stroke:var(--cs);stroke-width:var(--csw);stroke-linejoin:round}
+  .chestart .lid{stroke-width:var(--clsw)}
+  .chestart .lid + .lid{fill:none}
+  .chestart .fit{fill:none;stroke:var(--cs);stroke-width:1.8;stroke-linecap:square}
+  .chestart .spk{fill:var(--cs);stroke:none}
+  .chestart .acc{fill:none;stroke:var(--cs);stroke-width:.8;stroke-dasharray:2 2}
+  .chestart .lock{fill:var(--cl);stroke:var(--cs);stroke-width:.8}
+  .chestart .lidg{transition:rotate .5s ease-out}
+  .chestart .xl{fill:none;stroke:var(--cue);stroke-width:1.6;stroke-linecap:round;opacity:0}
   .tile.chest.locked .name{color:var(--mute)}
-  .tile.chest.locked .chestart{opacity:.4}
+  .tile.chest.locked .chestart{opacity:.72}
+  .tile.chest.locked .chestart .xl{opacity:1}
   .tile.chest.locked .pic::after{content:attr(data-need);position:absolute;inset:auto 5px 5px 5px;font-family:var(--mono);font-size:8px;letter-spacing:.08em;color:var(--ink);text-transform:uppercase;line-height:1.4;text-align:left}
-  .tile.chest.ready .chestart .lock{fill:var(--ok)}
-  .tile.chest.ready .pic{border-color:var(--ok);animation:chestready 2.6s ease-in-out infinite}
+  /* L.8d: a locked key chest's line is the meter, so it wears the meter's band colour */
+  .tile.chest.locked.metered .pic::after{color:var(--mcol)}
   .tile.chest.ready .pic::after{content:attr(data-need);position:absolute;inset:auto 5px 5px 5px;font-family:var(--mono);font-size:8px;letter-spacing:.16em;color:var(--ok);text-transform:uppercase;text-align:left}
-  @keyframes chestready{50%{box-shadow:0 0 16px color-mix(in srgb,var(--ok) 40%,transparent)}}
-  .tile.chest.open .chestart .lid{rotate:-118deg}
-  .tile.chest.open .chestart .lock{fill:var(--ok)}
+  .tile.chest.open .chestart .lidg{rotate:-118deg}
   .tile.chest.open .pic::after{content:attr(data-need);position:absolute;inset:auto 5px 5px 5px;font-family:var(--mono);font-size:8px;letter-spacing:.08em;color:var(--mute);text-transform:uppercase;text-align:left;line-height:1.4}
-  /* the opening itself: the lid swings, the box glows once. .opening comes off after 900ms and the lid stays up */
-  .tile.chest.opening .pic{animation:chestpop .9s ease-out}
-  .tile.chest.opening .chestart .lid{animation:chestlid .9s cubic-bezier(.2,1.4,.4,1) both}
-  @keyframes chestlid{0%{rotate:0deg}55%{rotate:-132deg}100%{rotate:-118deg}}
-  @keyframes chestpop{0%{box-shadow:0 0 0 color-mix(in srgb,var(--ok) 0%,transparent)}40%{box-shadow:0 0 34px color-mix(in srgb,var(--ok) 70%,transparent)}100%{box-shadow:0 0 0 transparent}}
+  /* L.9b: the READY idle, one per chest and rising — Games a faint breath, Key a breathing glow, Pro the glow and a shimmer running along its
+     fittings, Thorns its spikes flexing in a cold glow. The period and the peak are the look's own (--idle-ms / --idle-px) */
+  .tile.chest.ready .chestart[data-idle="breath"]{animation:idlebreath var(--idle-ms) ease-in-out infinite}
+  .tile.chest.ready .chestart[data-idle="glow"],.tile.chest.ready .chestart[data-idle="shimmer"]{animation:idleglow var(--idle-ms) ease-in-out infinite}
+  .tile.chest.ready .chestart[data-idle="shimmer"] .fit{animation:idleshim var(--idle-ms) linear calc(var(--i) * 110ms) infinite}
+  .tile.chest.ready .chestart[data-idle="spikes"]{animation:idlecold var(--idle-ms) ease-in-out infinite}
+  .tile.chest.ready .chestart[data-idle="spikes"] .spk{transform-box:fill-box;transform-origin:center;animation:idlespk var(--idle-ms) ease-in-out calc(var(--i) * 90ms) infinite}
+  @keyframes idlebreath{50%{filter:drop-shadow(0 0 var(--idle-px) color-mix(in srgb,var(--bc) 60%,transparent))}}
+  @keyframes idleglow{50%{filter:drop-shadow(0 0 var(--idle-px) var(--bc))}}
+  @keyframes idleshim{0%,60%,100%{stroke:var(--cs)}75%{stroke:#FFF3C4}}
+  @keyframes idlecold{50%{filter:drop-shadow(0 0 var(--idle-px) rgba(206,232,255,.85))}}
+  @keyframes idlespk{50%{scale:1.4}}
+  @media (prefers-reduced-motion:reduce){.tile.chest.ready .chestart,.tile.chest.ready .chestart .fit,.tile.chest.ready .chestart .spk{animation:none}}
   /* ---------- v18 (B.18, build 32): the outline fills with key-1 progress ----------
      An svg rect over the picture, pathLength 1, dashed to the fraction progress/key.js hands over as --kf. Lilac, named
      KEYFILL in config/theme.js and published as --keyfill — not green (L8), not white (L7), not the pressed amber. A
@@ -376,19 +391,9 @@
   .tile.kdone .pic{box-shadow:inset 0 0 0 100vmax color-mix(in srgb,var(--keyfill) 16%,transparent)}
   .tile.kdone .kfill rect{stroke-width:3;opacity:1;filter:drop-shadow(0 0 4px color-mix(in srgb,var(--keyfill) 70%,transparent))}
   .tile.kdone .name{color:var(--keyfill)}
-  /* B.19 / B.20: three chests. A ready chest wears its key above the lock; the opening (build 29) is EXTENDED — the key
-     drops into the lock and the lid swings, 1.6s where it was .9s, then the box flares. Chests 2 and 3 are hidden tiles
-     until chest 1 is open and take no cell of the grid while hidden. */
+  /* B.19 / B.20: the chest column. A hidden chest tile takes no cell of the grid. Build 32's key-above-the-lock and lid swing are retired
+     at build 41 — the ready idle is the chest's own (L.9b) and the opening is a ceremony (L.6) */
   .tile.chest[hidden]{display:none}
-  .chestart .ckey{fill:none;stroke:var(--ok);stroke-width:1.4;stroke-linecap:round;opacity:0;transform-origin:20px 4px}
-  .tile.chest.ready .chestart .ckey{opacity:1;animation:chestkey 2.6s ease-in-out infinite}
-  @keyframes chestkey{50%{translate:0 -2px;filter:drop-shadow(0 0 4px var(--ok))}}
-  .tile.chest.opening .chestart .ckey{opacity:1;animation:chestkeyin 1.6s cubic-bezier(.4,0,.2,1) both}
-  @keyframes chestkeyin{0%{translate:0 -6px;opacity:1}45%{translate:0 10px;opacity:1;rotate:0deg}60%{translate:0 10px;rotate:90deg}100%{translate:0 10px;rotate:90deg;opacity:0}}
-  .tile.chest.opening .pic{animation:chestpop 1.6s ease-out}
-  .tile.chest.opening .chestart .lid{animation:chestlid 1.6s cubic-bezier(.2,1.4,.4,1) both}
-  @keyframes chestlid{0%{rotate:0deg}55%{rotate:0deg}80%{rotate:-132deg}100%{rotate:-118deg}}
-  @keyframes chestpop{0%{box-shadow:0 0 0 color-mix(in srgb,var(--ok) 0%,transparent)}70%{box-shadow:0 0 34px color-mix(in srgb,var(--ok) 70%,transparent)}100%{box-shadow:0 0 0 transparent}}
   /* the grid can be five rows once the chests exist, so the screen scrolls */
   #s-pick{overflow-y:auto;justify-content:flex-start;padding-top:max(24px,env(safe-area-inset-top))}
   /* v23 (L.8b, build 40): the ask box is gone — "Open the chest?" and "progress to Pro?" were the double confirmation L.8 removed */
@@ -1383,17 +1388,30 @@
   /* G.3's gate on the connector into chest 1 is RETIRED at build 40 (v23 L.10) — the all-modes condition is the Games chest itself */
   /* D.4: the front number went up since it was last shown — a pulse while it counts */
   .menu-key.up{animation:pctup .9s ease-out}
-  @keyframes pctup{0%{scale:1}25%{scale:1.16;color:var(--ok)}100%{scale:1}}
+  /* v23 (L.8e, build 41): the pulse is in the band's colour — never green, which means new (B.22) */
+  @keyframes pctup{0%{scale:1}25%{scale:1.16;color:var(--mcol,var(--ink))}100%{scale:1}}
   @media (prefers-reduced-motion:reduce){.menu-key.up{animation:none}}
 
   /* ---------- v23 §L (build 40): four chests, the meter, Customise locked — PLAIN: no sprites, glow or shake until build 41 ---------- */
-  /* L.11c: what an opened chest gave, a plain column of words in the grid cell beside it (L.11b animates the spill in build 41) */
-  .chestwords{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;padding:0 4px;min-width:0;z-index:2;pointer-events:none}
+  /* L.11c → v23 (L.11b / L.11d, build 41): what an opened chest gave, a column in the grid cell beside it, every word a TAP TARGET to the
+     thing it names. The first time, the words shoot out one per line and particles burst from the lid in the chest's band colour; after that
+     the column simply stands. One layout for every state — the cell is placed whatever the chest's state, so nothing jumps. A word never
+     wraps; a placeholder's "tba" sits under it rather than beside it, so the longest word still fits its cell at 390px */
+  .chestwords{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:2px;padding:0 2px;min-width:0;z-index:2;pointer-events:none}
   .chestwords[hidden],.chestwords.nocell{display:none}
   .chestwords.left{align-items:flex-end;text-align:right}
-  .chestwords .cw,.kowords .cw{font-style:normal;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);line-height:1.3;overflow-wrap:anywhere}
-  .chestwords .cw.tba,.kowords .cw.tba{color:var(--mute)}
-  .chestwords .cw small,.kowords .cw small{margin-left:5px;font-size:8px;letter-spacing:.14em;color:var(--mute)}
+  .chestwords .cw{pointer-events:auto;background:none;border:0;border-radius:0;padding:4px 0;margin:0;cursor:pointer;text-align:inherit;font-style:normal;font-family:var(--mono);font-size:10px;font-weight:400;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);line-height:1.3;white-space:nowrap}
+  .chestwords .cw.tba{color:var(--mute)}
+  .chestwords .cw small{display:block;font-size:8px;letter-spacing:.14em;color:var(--mute)}
+  .chestwords.spill .cw{animation:cwspill var(--sms) cubic-bezier(.2,1.3,.4,1) calc(var(--sd) + var(--i) * var(--sst)) both}
+  .chestwords.left.spill .cw{animation-name:cwspillL}
+  @keyframes cwspill{from{opacity:0;translate:-48px 0}55%{opacity:1}to{opacity:1;translate:0 0}}
+  @keyframes cwspillL{from{opacity:0;translate:48px 0}55%{opacity:1}to{opacity:1;translate:0 0}}
+  .pburst{position:absolute;left:50%;top:34%;width:0;height:0;pointer-events:none;z-index:3}
+  .pburst i{position:absolute;left:-2px;top:-2px;width:4px;height:4px;border-radius:50%;background:var(--pc);opacity:0}
+  .tile.chest.spill .pburst i{animation:pburst var(--pms) cubic-bezier(.1,.8,.3,1) calc(var(--sd) + var(--i) * 18ms) both}
+  @keyframes pburst{0%{opacity:1;translate:0 0;scale:1}100%{opacity:0;translate:calc(cos(var(--a)) * var(--r) * 2.2) calc(sin(var(--a)) * var(--r) * 2.2);scale:.4}}
+  @media (prefers-reduced-motion:reduce){.chestwords.spill .cw,.tile.chest.spill .pburst i{animation:none}}
   /* L.12: the map with a chest in view — picked out for a moment */
   .tile.chest.flash .pic{outline:2px solid var(--ink);outline-offset:2px}
   /* L.11a: Customise crossed out until the Games chest (crossed, not greyed), with what opens it under it; green until first opened (L8, D.5) */
@@ -1401,24 +1419,15 @@
   .item.cuslock::after{content:"";position:absolute;left:14px;right:14px;top:23px;height:2px;background:var(--cue);pointer-events:none}
   .item .cusneed{display:block;font-family:var(--mono);font-size:10px;font-weight:400;letter-spacing:.1em;text-transform:none;color:var(--ok);margin-top:3px}
   .item.newthing{color:var(--ok)}
-  /* L.8b: a chest opened on the key screen, plainly — lid up, its name, the meter counting up, its words */
-  .keyopen{display:flex;align-items:center;justify-content:center;gap:12px;margin:4px auto 0;max-width:36ch}
-  .keyopen[hidden]{display:none}
-  .kochest{width:44px;height:36px;display:grid;place-items:center}
-  .kochest .chestart{width:100%;height:100%}
-  .kochest .chestart .lid,.kch.open .chestart .lid{rotate:-118deg}
-  .kochest .chestart .lock,.kch.open .chestart .lock,.kch.ready .chestart .lock{fill:var(--ok)}
-  .kotxt{display:flex;flex-direction:column;gap:2px}
-  .kotxt b{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--ink)}
-  .kotxt u{text-decoration:none;font-family:var(--mono);font-size:18px;letter-spacing:.06em;color:var(--ink)}
-  .kotxt u.up{animation:pctup .9s ease-out}
-  .kowords{display:flex;flex-direction:column;gap:3px}
-  /* L.10a: before the Games chest the key screen shows the four chests in a row, each in its state */
+  /* L.8b's plain lid-up banner (build 40) is RETIRED at build 41 — the open is a ceremony (L.6), styled at the end of this file */
+  /* L.10a: before the Games chest the key screen shows the four chests in a row, each in its state — in its own sprite since build 41 */
   .kchests{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:4px}
   .kch{display:flex;flex-direction:column;align-items:center;gap:4px;width:66px}
   .kch .chestart{width:40px;height:32px}
   .kch b{font-family:var(--mono);font-size:9px;font-weight:400;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);text-align:center}
-  .kch.locked .chestart,.kch.before .chestart{opacity:.4}
+  .kch.locked .chestart,.kch.before .chestart{opacity:.72}
+  .kch.locked .chestart .xl,.kch.before .chestart .xl{opacity:1}
+  .kch.open .chestart .lidg{rotate:-118deg}
   .kch.ready b{color:var(--ok)}
   .kch.open b{color:var(--ink)}
   /* L.12: a whole key's hub is the way to its chest */
@@ -1426,4 +1435,97 @@
   /* L.8f: Testing grew a row of chests and a meter field, so it scrolls like About (and clears the build stamp, L.5) */
   #s-testing{overflow-y:auto;justify-content:flex-start;padding-top:max(18px,env(safe-area-inset-top))}
   #dev-meter{width:8ch;background:var(--panel);color:var(--ink);border:1px solid var(--line);font-family:var(--mono);font-size:12px;padding:6px 8px;border-radius:0}
-  @media (prefers-reduced-motion:reduce){.kotxt u.up{animation:none}}
+
+  /* ---------- v23 §L.8d / §L.8e (build 41): THE METER'S BANDS ----------
+     ui/chest.js meterLook() puts `mb0`–`mb3` on the figure and its strength inside the band (--mk); colour, glow and spike height come from
+     config/chests.js METER_BANDS. 0–100 --mute with no effects, 100–200 --ink, 200–300 gold with an outer glow that strengthens across the
+     band, 300–400 white on black with a spiked edge, a cold glow and a continuous shake. The shake steps between whole pixels, so the
+     number never blurs. Green is never used (B.22). Presentation only (L10). */
+  .meterv{font-weight:inherit;color:var(--mcol,var(--ink));display:inline-block;position:relative}
+  .meterv.mb2{text-shadow:0 0 var(--mglow) var(--mcol),0 0 calc(var(--mglow) * 2) color-mix(in srgb,var(--mcol) 40%,transparent)}
+  .meterv.mb3{background:var(--mground);padding:0 6px;margin-block:var(--mspk);box-shadow:0 0 var(--mglow) var(--mcold);animation:mshake .36s steps(1,end) infinite}
+  .meterv.mb3::before,.meterv.mb3::after{content:"";position:absolute;left:0;right:0;height:var(--mspk);background:conic-gradient(from 135deg at 50% 0,var(--mground) 90deg,transparent 0) 0 0/calc(var(--mspk) * 2) 100% repeat-x}
+  .meterv.mb3::before{bottom:100%}
+  .meterv.mb3::after{top:100%;rotate:180deg}
+  .meterv.up{animation:pctup .9s ease-out}
+  .meterv.mb3.up{animation:pctup .9s ease-out,mshake .36s steps(1,end) infinite}
+  @keyframes mshake{0%{translate:0 0}25%{translate:calc(var(--shp) * 1px) 0}50%{translate:0 calc(var(--shp) * -1px)}75%{translate:calc(var(--shp) * -1px) 0}}
+  .menu-key{width:fit-content;margin-inline:auto}
+  @media (prefers-reduced-motion:reduce){.meterv.mb3,.meterv.up{animation:none}}
+
+  /* ---------- v23 §L.6 / §L.10d (build 41): THE FOUR CEREMONIES ----------
+     ui/ceremony.js draws every layer of a chest's ceremony at once; each step's start and length are the custom properties it sets from
+     config/chests.js CEREMONY (--st-<step>-at / --st-<step>-ms), so nothing below is a literal duration a timing edit could miss. --cc is the
+     chest's own band colour. Not skippable; the reveal holds on "tap to continue". Presentation only (L10). */
+  .cere{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding-block:max(18px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-bottom));padding-inline:12px;background:var(--ground);cursor:default;overflow:hidden}
+  .cere[hidden]{display:none}
+  .cere .cstage{width:100%;max-width:420px;flex:1 1 auto;min-height:0;overflow:visible}
+  .cere .cbig{width:120px;height:98px}
+  .cere .ctxt{display:flex;flex-direction:column;align-items:center;gap:6px;min-height:86px;opacity:0}
+  .cere.play .ctxt{animation:cfade .5s ease-out var(--reveal-at) both}
+  .cere .ctxt b{font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--ink)}
+  .cere .ctxt u{text-decoration:none;font-family:var(--mono);font-size:22px;letter-spacing:.06em}
+  .cere .ctap{font-style:normal;font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);opacity:0}
+  .cere.tap .ctap{opacity:1;animation:ctap 2.4s ease-in-out infinite}
+  @keyframes cfade{from{opacity:0}to{opacity:1}}
+  @keyframes cout{to{opacity:0}}
+  @keyframes cdraw{to{stroke-dashoffset:0}}
+  @keyframes ctap{50%{opacity:.45}}
+  .cere.play .lidg{animation:clid .6s cubic-bezier(.2,1.4,.4,1) var(--lid-at) both}
+  @keyframes clid{from{rotate:0deg}to{rotate:-118deg}}
+  /* Games — uncross: the seven tiles' strikes wipe off one by one; path: the line draws down to the chest; chord: one flash with the chord */
+  .cere .ctile{fill:none;stroke:var(--mute);stroke-width:1.4}
+  .cere .cx{fill:none;stroke:var(--cue);stroke-width:2;stroke-linecap:round;stroke-dasharray:1 1;stroke-dashoffset:0}
+  .cere.play .cx{animation:cunx .32s ease-in calc(var(--st-uncross-at) + var(--i) * var(--ux-step)) both}
+  .cere.play .ctile{animation:clit .32s ease-out calc(var(--st-uncross-at) + var(--i) * var(--ux-step)) both}
+  @keyframes cunx{to{stroke-dashoffset:-1}}
+  @keyframes clit{to{stroke:var(--ink)}}
+  .cere .cpath{fill:none;stroke:var(--ink);stroke-width:1.6;stroke-dasharray:1;stroke-dashoffset:1}
+  .cere.play .cpath{animation:cdraw var(--st-path-ms) ease-out var(--st-path-at) both}
+  .cere .cglow{fill:var(--ink);opacity:0;transform-box:view-box;transform-origin:150px 300px}
+  .cere.play .cglow{animation:cflash var(--st-chord-ms) ease-out var(--st-chord-at) both}
+  @keyframes cflash{0%{opacity:0;scale:.4}25%{opacity:.3;scale:1}100%{opacity:0;scale:1.3}}
+  /* Key — assemble: a bar per combination flies in to ring the key's bow; turn: the key drops into the lock and turns; spill: light rises */
+  .cere .cbar{stroke:var(--cc);stroke-width:2;stroke-linecap:round;opacity:0}
+  .cere.play .cbar{animation:cbar calc(var(--st-assemble-ms) * .45) cubic-bezier(.3,0,.2,1) calc(var(--st-assemble-at) + var(--i) * var(--bar-step)) both}
+  @keyframes cbar{from{opacity:0;translate:var(--dx) var(--dy)}25%{opacity:1}to{opacity:1;translate:0 0}}
+  .cere.play .cbarsg{animation:cout .3s ease-in var(--st-turn-at) forwards}
+  .cere .ckeyg{opacity:0;transform-box:fill-box;transform-origin:center}
+  .cere .ckeyg path{fill:none;stroke:var(--cc);stroke-width:1.6;stroke-linecap:round}
+  .cere.play .ckeyg{animation:ckeyin .4s ease-out calc(var(--st-assemble-at) + var(--st-assemble-ms) - 400ms) both,cturn var(--st-turn-ms) cubic-bezier(.5,0,.3,1) var(--st-turn-at) forwards}
+  @keyframes ckeyin{from{opacity:0;scale:.6}to{opacity:1;scale:1}}
+  @keyframes cturn{0%{opacity:1;translate:0 0;rotate:0deg;scale:1}60%{opacity:1;translate:0 132px;rotate:0deg;scale:.5}100%{opacity:0;translate:0 132px;rotate:90deg;scale:.5}}
+  .cere .cbeam{fill:url(#cbeam);opacity:0;transform-box:view-box;transform-origin:150px 300px}
+  .cere.play .cbeam{animation:cbeam var(--st-spill-ms) ease-out var(--st-spill-at) both}
+  @keyframes cbeam{0%{opacity:0;scale:1 .1}40%{opacity:.9;scale:1 1}100%{opacity:.45;scale:1 1}}
+  /* Pro — shake (whole pixels, stepped); cracks: four lines of light; burst; scatter: the cosmetics fly out, settle, slide off toward Customise */
+  .cere.play[data-chest="pro"] .cchestg{animation:cshake var(--st-shake-ms) steps(20,end) var(--st-shake-at) both}
+  @keyframes cshake{0%{translate:0 0}10%{translate:1px 0}20%{translate:-1px 1px}30%{translate:2px -1px}40%{translate:-2px 1px}50%{translate:2px 0}60%{translate:-3px -1px}70%{translate:3px 1px}80%{translate:-3px 0}90%{translate:4px -1px}100%{translate:0 0}}
+  .cere .ccrack{fill:none;stroke:var(--cc);stroke-width:1.8;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 0 3px var(--cc))}
+  .cere.play .ccrack{animation:cdraw .4s ease-out calc(var(--st-cracks-at) + var(--i) * var(--crack-step)) both}
+  .cere .cburst{fill:var(--cc);opacity:0;transform-box:view-box;transform-origin:150px 300px}
+  .cere.play .cburst{animation:cburst var(--st-burst-ms) ease-out var(--st-burst-at) both}
+  @keyframes cburst{0%{opacity:0;scale:.2}15%{opacity:.95}100%{opacity:0;scale:9}}
+  .cere .cswatch{opacity:0}
+  .cere.play .cswatch{animation:cscatter var(--st-scatter-ms) cubic-bezier(.2,.9,.3,1) calc(var(--st-scatter-at) + var(--i) * 40ms) both}
+  @keyframes cscatter{0%{opacity:0;translate:0 0}12%{opacity:1}55%{opacity:1;translate:var(--tx) var(--ty)}75%{opacity:1;translate:var(--tx) var(--ty)}100%{opacity:0;translate:calc(var(--tx) + 150px) var(--ty)}}
+  /* Thorns — black; spikes grow in from both edges and later recede; split: one white line; widen: it opens into the reveal */
+  .cere.play[data-chest="thorns"]{animation:cblackbg var(--st-black-ms) ease-in var(--st-black-at) both}
+  @keyframes cblackbg{to{background:#000}}
+  .cere .cblack{fill:#000;opacity:0}
+  .cere.play .cblack{animation:cfade var(--st-black-ms) ease-in var(--st-black-at) both}
+  .cere .cspk{fill:var(--cc);transform-box:fill-box;scale:0 1}
+  .cere .cspk.l{transform-origin:left center}
+  .cere .cspk.r{transform-origin:right center}
+  .cere.play .cspk{animation:cspk var(--st-spikes-ms) cubic-bezier(.3,0,.2,1) calc(var(--st-spikes-at) + var(--i) * 80ms) both,crecede var(--st-recede-ms) ease-in var(--st-recede-at) forwards}
+  @keyframes cspk{from{scale:0 1}to{scale:1 1}}
+  @keyframes crecede{from{scale:1 1}to{scale:0 1}}
+  .cere .csplit{fill:var(--cc);transform-box:view-box;transform-origin:150px 260px;scale:1 0}
+  .cere.play .csplit{animation:csplit var(--st-split-ms) cubic-bezier(.7,0,.3,1) var(--st-split-at) both,cout .6s ease-in calc(var(--st-widen-at) + 600ms) forwards}
+  @keyframes csplit{from{scale:1 0}to{scale:1 1}}
+  .cere .cwide{fill:var(--cc);opacity:0;transform-box:view-box;transform-origin:150px 260px}
+  .cere.play .cwide{animation:cwiden var(--st-widen-ms) cubic-bezier(.3,0,.2,1) var(--st-widen-at) both}
+  @keyframes cwiden{0%{opacity:1;scale:.01 1}45%{opacity:.9;scale:1 1}100%{opacity:.1;scale:1 1}}
+  .cere[data-chest="thorns"] .cchestg{opacity:0}
+  .cere.play[data-chest="thorns"] .cchestg{animation:cfade .8s ease-out calc(var(--st-widen-at) + 500ms) both}
+  @media (prefers-reduced-motion:reduce){.cere.tap .ctap{animation:none}}
