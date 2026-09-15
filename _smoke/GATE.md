@@ -463,3 +463,44 @@ shots. The template links "its theme" and "its key screen" and marks `t.retired`
 `themeOf(keyTiers()[openKey])` and its `? t.track : 'menu'`. L.4a counts ten Customise groups, the Everywhere row being the tenth. Build 30's catalogue check reads
 `AU.KEY_THEMES`. L.6's stings point at `theme:key,theme:key,theme:pro,theme:thorns`. Every store-version check expects v6: the build-13
 layout, the v1 fixture, F.4's source and fixture, and L.10's `up5` source and migration.
+
+**Build 43 (batch 17, chests and keys — FEEDBACK-v24 §A, §B.1–§B.3, §B.5, §C)** — **C.2 / C.3**: `themeOf` reads `tierOpen(t.id)`, and on the
+screen a key's theme plays once its tier is open — key 1 with only the Games chest, Pro with the Pro chest shut, Author with the Thorns chest
+shut — while the quiet screen plays `menu`. **C.1**: no `OPEN_AT` / `autoOpen` left in `key.js`, and `askOpen(id)` exists. Arriving by the Keys
+row with the Key chest ready opens nothing and the hint reads "tap the key to open the Key chest". The hub asks "Open the Key chest?"; Not yet
+and Back leave it shut; Open plays the ceremony, whose tap goes to the map. On the quiet screen the key and the ready Games chest in the row
+both ask. **B.1 / B.2**: a ready chest's `.pic` runs `readyring` and a `before` chest runs nothing; the CSS rule names `--ok`. The map's click
+on the ready Games chest leaves the ceremony showing and the chest stored in the same task that shows the key screen, and its tap returns to
+the map. **B.3**: the Key chest tapped with key 1's earn unseen shows the earn at 700ms with nothing stored, and a Back still on the key screen
+at 2s. The ceremony and the store land only after the moment. **C.5**: `KEY_EARN` rises in ms with a bloom, rings and pulses, and spikes; each
+`KEY_EARN_FX` points at its own theme. On a whole key each tier draws its own elements — 1 bloom; 3 rings and 7 × 2 pulses; 14 spikes — and
+runs `kwholeglyph` / `kearnsnap` / `kearnslow` on a glyph group with no `transform` attribute, within 8px of the hub. `Snd.keyEarn` is called
+once per tier and never `unlockFx` or `chest`. The earn plans keep the theme rule, grow longer and fuller, and are not the unlock triad.
+**C.6 / C.4**: `LAYER` draws lantern / circuit / thorn in `atmosphere.js` off `TRACKS[k.track]`, with no image reference, and the key screen
+calls `setKeyLayer`. `ITEMS.bg` carries `lantern:clear, circuit:pro, thorn:author`. Thorn's ground is not black and no rule paints `#key-main`
+black. Sampled off the canvas, each key tab holds over twice the stars' lit pixels, and the menu drops back. `#key-main` is transparent on
+Thorn. In Customise all three are locked before their keys, and Circuit's line names "Pro · whole". Key 1 finished opens Lantern, green, and
+it applies. **C.7**: each `CHEST_STING` is `{track, cut, tail}` with no `notes`. Every body event of its `chestPlan` sting is an event of
+`Music.plan(track)`, the theme rule holds, and length and notes a second rise Games → Key → Pro → Thorns with voices non-decreasing.
+**A.1**: with no chest the Keys row carries `keylock` and "open the Games chest"; a tap, the meter line and Progress's key row all stay put with
+a toast. With the Games chest open and `keySeen` 0 the row is green, opens the key screen, and is not green after (`keysSeen` 1). Store: the
+default and `reset()` carry it, and the Games chest reset clears it. **A.2 / B.5**: a map scrolled to 254px comes back at 0 after `reset()`. The
+four chests take `reveal` at 840–1200ms after the seventh tile's 720ms, and a second visit reveals none. **A.3**: on a first-run menu Testing
+is not dimmed while Scores is. `TARGET` / `BUILD_FLAGS` and the `native` script are in place. `scripts/native.mjs` into a temp dir yields
+TARGET native and no `data-dev`, `s-testing` or `dev-` act, while the web tree keeps them. Served, that tree has `BUILD_FLAGS.dev` false, no
+Testing row or screen, and a planted `allOpen` + `supporter` refused. **Catalogue**: the six new cards are annotated and named in `catalogue.mjs`,
+which calls `keyEarnPlan`; the template reads `REF.earnFx`.
+
+**Amended at build 43:** 8.10 counts 24 Testing buttons. B.31 / A.1 opens the quiet key screen through the router — the Keys row is locked
+there. B.33's hand-back regex takes `+ earnWait`. B.20 names `earnMoment(tier)`. B.26 lists three `dev-whole` buttons. #426 A holds the
+advance and the first open equal across the tiers and the whole moment per tier (`kwholeglyph,kearnsnap,kearnslow`). L.7b expects `theme:key`
+with only the Games chest and `theme:thorns` on Author before the Thorns chest. L.8b's map open is B.2's. L.8b's interlude is **reversed**: no
+chest opens, key 1's earn plays, the Key chest stays ready, and the result comes back by itself. L.6's sting rule reads `Snd.chestPlan` and
+holds the theme rule — 700ms and a 40ms attack at 300 Hz or above, 1200ms above C5.
+
+Also amended at build 43, after the first run failed 9, every one an assertion still describing build 42:
+- B.24, G.4 and #426 B tap a ready Key chest on the map. They now mark key 1's earn moment seen, so the chest opens straight away — with it
+  unseen the moment plays first (B.3), and they read at 2.3s.
+- B.10 does not seed a `key`-locked cosmetic.
+- L.4a's menu regex takes `data-act="keys"`.
+- F.4's file walk skips `dist`: a local `npm run native` had put a second copy of every writer there.

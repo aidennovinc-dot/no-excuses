@@ -645,7 +645,8 @@
   .kthorn{fill:var(--kdim,var(--line));stroke:none;transition:fill .35s ease}
   .kthorn.on{fill:var(--ktint)}
   #s-key[data-style="thorn"] .khub{stroke:var(--ktint);opacity:.9;stroke-width:.8}
-  #s-key[data-style="thorn"] #key-main{background:#000}
+  /* v24 (C.4, build 43): Thorn's solid black #key-main is GONE — it blocked the live background that Lantern and Circuit let through. Its spikes
+     and white accents are drawn over the background instead (the ring's own thorns, and ui/atmosphere.js's Thorn layer, C.6) */
   .khalo{fill:none;stroke:var(--ktint)}
   @keyframes krootgrow{0%{opacity:0;stroke-width:6;filter:drop-shadow(0 0 7px var(--ktint))}45%{opacity:1;stroke-width:6}100%{opacity:1;stroke-width:3;filter:none}}
   .kglyph path{fill:none;stroke:inherit}
@@ -754,6 +755,10 @@
   .sw button.bg-grid{background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.18) 0 1px,transparent 1px 9px),repeating-linear-gradient(90deg,rgba(255,255,255,.18) 0 1px,transparent 1px 9px)}
   .sw button.bg-rain{background-image:repeating-linear-gradient(90deg,transparent 0 6px,rgba(255,255,255,.22) 6px 7px,transparent 7px 13px)}
   .sw button.bg-orbs{background-image:radial-gradient(circle at 30% 35%,rgba(255,255,255,.25),transparent 55%),radial-gradient(circle at 75% 70%,rgba(255,255,255,.18),transparent 50%)}
+  /* v24 (C.6, build 43): the three key backgrounds' swatches — a warm glow, a trace with a corner, white spikes on black */
+  .sw button.bg-lantern{background-image:radial-gradient(circle at 35% 40%,rgba(255,208,138,.5),transparent 45%),radial-gradient(circle at 72% 72%,rgba(255,208,138,.28),transparent 40%)}
+  .sw button.bg-circuit{background-image:linear-gradient(90deg,transparent 30%,rgba(191,230,255,.6) 30% 36%,transparent 36%),linear-gradient(0deg,transparent 58%,rgba(191,230,255,.6) 58% 64%,transparent 64%)}
+  .sw button.bg-thorn{background-image:conic-gradient(from 165deg at 50% 0,transparent 0 15deg,rgba(255,255,255,.75) 15deg 30deg,transparent 30deg),conic-gradient(from -15deg at 50% 100%,transparent 0 15deg,rgba(255,255,255,.75) 15deg 30deg,transparent 30deg)}
   .opt{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;padding:9px 13px;border:1px solid var(--line);color:var(--mute)}
   .opt.sel{color:var(--ink);border-color:var(--ink)}
   .opt.locked{opacity:.35;text-decoration:line-through}
@@ -1427,8 +1432,9 @@
   /* L.12: the map with a chest in view — picked out for a moment */
   .tile.chest.flash .pic{outline:2px solid var(--ink);outline-offset:2px}
   /* L.11a: Customise crossed out until the Games chest (crossed, not greyed), with what opens it under it; green until first opened (L8, D.5) */
-  .item.cuslock{position:relative}
-  .item.cuslock::after{content:"";position:absolute;left:14px;right:14px;top:23px;height:2px;background:var(--cue);pointer-events:none}
+  /* v24 (A.1, build 43): Keys waits for the Games chest the same way — `keylock`, the same strike */
+  .item.cuslock,.item.keylock{position:relative}
+  .item.cuslock::after,.item.keylock::after{content:"";position:absolute;left:14px;right:14px;top:23px;height:2px;background:var(--cue);pointer-events:none}
   .item .cusneed{display:block;font-family:var(--mono);font-size:10px;font-weight:400;letter-spacing:.1em;text-transform:none;color:var(--ok);margin-top:3px}
   .item.newthing{color:var(--ok)}
   /* L.8b's plain lid-up banner (build 40) is RETIRED at build 41 — the open is a ceremony (L.6), styled at the end of this file */
@@ -1444,6 +1450,53 @@
   .kch.open b{color:var(--ink)}
   /* L.12: a whole key's hub is the way to its chest */
   .khubhit{fill:transparent;cursor:pointer}
+
+  /* ---------- v24 §B / §C (build 43): chests and keys ---------- */
+  /* B.1: A CHEST THAT CAN BE OPENED WEARS A PULSING GREEN OUTLINE — all four, on the map and in the key screen's row, so there is one signal to
+     learn. Green because it is something new to do (L8); the chest's own ready idle (L.9b) still runs inside it. Held still for reduced motion */
+  @keyframes readyring{0%,100%{box-shadow:0 0 0 1.5px color-mix(in srgb,var(--ok) 60%,transparent),0 0 0 0 transparent}50%{box-shadow:0 0 0 2.5px var(--ok),0 0 14px 3px color-mix(in srgb,var(--ok) 45%,transparent)}}
+  .tile.chest.ready .pic,.kch.ready,.kquiet{box-shadow:0 0 0 2px var(--ok);animation:readyring 1.6s ease-in-out infinite}
+  @media (prefers-reduced-motion:reduce){.tile.chest.ready .pic,.kch.ready,.kquiet{animation:none}}
+  /* C.1: a ready chest in the key screen's row, and the quiet screen's key while the Games chest waits, are buttons to its ask */
+  button.kch{background:none;border:0;padding:4px 2px;margin:0;font:inherit;color:inherit;cursor:pointer;border-radius:0}
+  .kquiet{background:none;border:0;padding:6px;margin:0;cursor:pointer;border-radius:50%}
+  /* C.1: THE ASK — the lock box's shape, in green, over the key screen */
+  #key-ask{position:fixed;inset:0;z-index:55;display:grid;place-items:center;background:color-mix(in srgb,var(--ground) 84%,transparent);padding:24px}
+  #key-ask[hidden]{display:none}
+  .kask{display:flex;flex-direction:column;gap:14px;align-items:center;background:var(--panel);border:1px solid var(--ok);padding:22px 20px;max-width:34ch;text-align:center;cursor:default}
+  .kask .chestart{width:74px;height:60px}
+  .kask h3{font-family:var(--title);font-size:14px;letter-spacing:.2em;text-transform:uppercase;color:var(--ok)}
+  .kask .row{display:flex;gap:10px;justify-content:center}
+  /* C.5: EARNING A KEY, per tier. ui/screens/key.js earnMoment() puts `kwhole` and data-earn on the screen, draws the tier's elements from
+     config/keys.js KEY_EARN, and sets --earn-ms. Lantern keeps build 32's flare (above) with a warm bloom behind it; Circuit's squares run out
+     from the hub, a current runs down every trace, its corner dots blink and the glyph snaps; Thorn closes in dark, its thorns flex, a white
+     spiked burst opens round the hub and the glyph turns slowly. Every colour is the tier's tint (#426 A). Presentation only (L10) */
+  #s-key{--earn-ms:2900ms}
+  .kearn,.kearnbg{pointer-events:none}
+  .kebloom{fill:url(#kebloomg);opacity:0;transform-box:view-box;transform-origin:150px 150px}
+  #s-key.kwhole .kebloom{animation:kebloom var(--earn-ms) ease-out both}
+  @keyframes kebloom{0%{opacity:0;scale:.3}35%{opacity:1;scale:1}100%{opacity:0;scale:1.15}}
+  .kesq{fill:none;stroke:var(--ktint);stroke-width:1.4;opacity:0;transform-box:view-box;transform-origin:150px 150px}
+  #s-key.kwhole .kesq{animation:kesq calc(var(--earn-ms) * .42) cubic-bezier(.2,.7,.3,1) calc(var(--earn-ms) * .28 + var(--i) * 280ms) both}
+  @keyframes kesq{0%{opacity:.95;scale:.4}100%{opacity:0;scale:3.4}}
+  .kepulse{fill:none;stroke:var(--ktint);stroke-width:3.2;stroke-linecap:square;stroke-dasharray:.14 2;stroke-dashoffset:.14;opacity:0;filter:drop-shadow(0 0 4px var(--ktint))}
+  #s-key.kwhole .kepulse{animation:kepulse calc(var(--earn-ms) * .22) linear calc(var(--i) * 70ms + var(--k) * var(--earn-ms) * .24) both}
+  @keyframes kepulse{0%{opacity:1;stroke-dashoffset:.14}92%{opacity:1}100%{opacity:0;stroke-dashoffset:-1}}
+  #s-key.kwhole[data-earn="pro"] .kdot2{animation:kedot .24s steps(2,end) calc(var(--earn-ms) * .3) 6}
+  @keyframes kedot{50%{fill:#FFFFFF;stroke:#FFFFFF}}
+  #s-key.kwhole[data-earn="pro"] .kglyph{animation:kearnsnap calc(var(--earn-ms) * .6) steps(6,end) both;transform-box:fill-box;transform-origin:center}
+  @keyframes kearnsnap{0%{scale:1}20%{scale:1.4;filter:drop-shadow(0 0 12px var(--ktint))}100%{scale:1;filter:drop-shadow(0 0 8px color-mix(in srgb,var(--ktint) 60%,transparent))}}
+  .kevig{fill:url(#kevigg);opacity:0}
+  #s-key.kwhole .kevig{animation:kevig var(--earn-ms) ease-in-out both}
+  @keyframes kevig{0%{opacity:0}30%,72%{opacity:1}100%{opacity:0}}
+  .kespk{fill:var(--ktint);opacity:0;transform-box:view-box;transform-origin:150px 150px;rotate:var(--a)}
+  #s-key.kwhole .kespk{animation:kespk calc(var(--earn-ms) * .45) cubic-bezier(.3,0,.2,1) calc(var(--earn-ms) * .38 + var(--i) * 45ms) both}
+  @keyframes kespk{0%{opacity:0;scale:.3}45%{opacity:1;scale:1.05}100%{opacity:0;scale:1.6}}
+  #s-key.kwhole[data-earn="author"] .kthorn{animation:kthornflex calc(var(--earn-ms) * .55) ease-in-out calc(var(--earn-ms) * .18) both;transform-box:fill-box;transform-origin:center}
+  @keyframes kthornflex{0%,100%{scale:1}45%{scale:1.9}}
+  #s-key.kwhole[data-earn="author"] .kglyph{animation:kearnslow var(--earn-ms) cubic-bezier(.45,0,.2,1) both;transform-box:fill-box;transform-origin:center}
+  @keyframes kearnslow{0%{rotate:0deg;scale:1}42%{rotate:-34deg;scale:1.35;filter:drop-shadow(0 0 16px #FFFFFF)}100%{rotate:0deg;scale:1;filter:drop-shadow(0 0 8px color-mix(in srgb,var(--ktint) 60%,transparent))}}
+  @media (prefers-reduced-motion:reduce){#s-key.kwhole .kebloom,#s-key.kwhole .kesq,#s-key.kwhole .kepulse,#s-key.kwhole .kevig,#s-key.kwhole .kespk,#s-key.kwhole[data-earn] .kthorn,#s-key.kwhole[data-earn] .kglyph,#s-key.kwhole[data-earn] .kdot2{animation:none}}
   /* L.8f: Testing grew a row of chests and a meter field, so it scrolls like About (and clears the build stamp, L.5) */
   #s-testing{overflow-y:auto;justify-content:flex-start;padding-top:max(18px,env(safe-area-inset-top))}
   #dev-meter{width:8ch;background:var(--panel);color:var(--ink);border:1px solid var(--line);font-family:var(--mono);font-size:12px;padding:6px 8px;border-radius:0}

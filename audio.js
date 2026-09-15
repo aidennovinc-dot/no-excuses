@@ -7,7 +7,7 @@
    finish ramp that lands the last downbeat on the clock (B.28), an end cadence in the track's own key (B.30), a flow-state
    layer over the two tap games (B.27) and a duck for Sequence (B.30). Still no percussion. */
 
-import { CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, DUCK, DUCK_TAIL, FLOW_STEM, HUSH, KEY_THEMES, SCALES, SET_SECS, STEMS, TRACKS, TRACK_PICK, VERDICT_FX } from "./config/audio.js";
+import { CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, DUCK, DUCK_TAIL, FLOW_STEM, HUSH, KEY_EARN_FX, KEY_THEMES, SCALES, SET_SECS, STEMS, STING_RING, TRACKS, TRACK_PICK, VERDICT_FX } from "./config/audio.js";
 import { STREAK } from "./config/games.js";
 import { emit, on } from "./core/events.js";
 import { sel } from "./core/state.js";
@@ -175,9 +175,17 @@ const Snd = (()=>{
       g.gain.setValueAtTime(gain,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); src.connect(f).connect(g).connect(a.destination); src.start(t); src.stop(t+dur+.02); },
     chestPlan(id){ const out=[]; for(const e of CHEST_FX[id]||[]) out.push([e[0],e[1],e[2],e[3],e[4],e[5],e[6]||0,e[7]||0,'fx']);
       for(const [at,ms,g,hp] of CHEST_NOISE[id]||[]) out.push([at,0,0,ms,'noise',g,0,hp,'fx']);
+      // v24 (C.7, build 43): the sting is the theme itself, cut and resolved — stingOf() below, the key screen's own arrangement engine
       const s=CHEST_STING[id], tr=s&&TRACKS[s.track];
-      if(tr) for(const [at,semi,ms,w,g,am,lp] of s.notes){ const f=+(tr.root*2*Math.pow(2,semi/12)).toFixed(2); out.push([at,f,f,ms,w,g,am||0,lp||0,'sting']); }
+      if(tr) for(const e of stingOf(s,tr)) out.push(e.concat('sting'));
       return out.sort((x,y)=>x[0]-y[0]); },
+    /* v24 (C.5, build 43): EARNING A KEY. `keyEarnPlan(tier)` is KEY_EARN_FX flat, [at, f0, f1, ms, wave, gain, attackMs, lowpassHz], the shape the
+       review catalogue plays; `keyEarn(tier)` schedules it in one pass on the audio clock. An effect: it follows the tap-sound switch (tone()
+       with force false), like unlockFx — and it is not unlockFx, click or a chest's (gated). */
+    keyEarnPlan(tier){ const s=KEY_EARN_FX[tier], tr=s&&TRACKS[s.track]; if(!tr) return [];
+      return s.notes.map(([at,semi,ms,w,g,am,lp])=>{ const f=+(tr.root*2*Math.pow(2,semi/12)).toFixed(2); return [at,f,f,ms,w,g,am||0,lp||0]; }).sort((x,y)=>x[0]-y[0]); },
+    keyEarn(tier){ const a=AC(); if(!a) return; const t=a.currentTime+.02;
+      for(const [at,f0,f1,ms,w,g,am,lp] of this.keyEarnPlan(tier)) tone(f0,f1,ms,w,g,t+at,am,false,undefined,{lp:lp||0,hold:.45}); },
     chest(id){ const a=AC(); if(!a) return; const t=a.currentTime+.02, sting=musicOn('menu');
       for(const [at,f0,f1,ms,w,g,am,lp,kind] of this.chestPlan(id)){
         if(w==='noise') this.noise(t+at,ms,g,lp);
@@ -250,6 +258,20 @@ function phaseOf(t){ const bs=barSecOf(t); if(!strLens(t).length) return 0;
   return 11; }
 // the long form's own length in seconds — what B.29 asks to be reported, and what the gate holds to 180s
 const longSec = t => +(repeatBars(t,phaseOf(t))*barSecOf(t)).toFixed(1);
+
+/* v24 (C.7, build 43): A CHEST'S STING, CUT FROM ITS KEY'S THEME. The theme's own bars from the first, through bars() — the one arrangement
+   engine, so the sting cannot be a second copy of the track that drifts — up to `cut` seconds; `voices` narrows which of the theme's voices
+   play. A note still sounding at the cut rings on STING_RING seconds and stops, and a note that would then break the theme rule (under 700 ms
+   above 300 Hz, under 1200 ms above C5) is left out rather than clipped short. Then the `tail` lands the tonic on the reveal. Flat events,
+   [at, f0, f1, ms, wave, gain, attackMs, lowpassHz] — chestPlan's shape. */
+function stingOf(s,tr){ const barSec=barSecOf(tr), cut=s.cut||0, end=cut+STING_RING, out=[], hits=[];
+  const t=s.voices?Object.assign({},tr,{voices:tr.voices.filter((v,i)=>s.voices.includes(i))}):tr;
+  for(let b=0;b*barSec<cut;b++) bars(t,b,hits,{fb:b,lb:b}).forEach(e=>{ const at=b*barSec+e.p*barSec; if(at>=cut) return;
+    const ms=Math.round(Math.min(e.d*barSec*1000,(end-at)*1000));
+    if((e.f>=300&&ms<700)||(e.f>523.3&&ms<1200)) return;
+    out.push([+at.toFixed(4),+e.f.toFixed(2),+e.f1.toFixed(2),ms,e.w,+e.g.toFixed(5),Math.round(e.am||Math.max(4,(e.a||.06)*ms)),Math.round(e.lp||0)]); });
+  for(const [at,semi,ms,w,g,am,lp] of s.tail||[]){ const f=+(tr.root*2*Math.pow(2,semi/12)).toFixed(2); out.push([at,f,f,ms,w,g,am||0,lp||0]); }
+  return out; }
 
 const Music=(()=>{
   const TR=TRACKS;

@@ -57,6 +57,10 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
        L8's green on the Customise menu row, held until the screen is first opened after the Games chest (v20 D.5). Progress: Fresh
        game clears it. */
     cusSeen:p.cusSeen?1:0,
+    /* v24 (A.1, build 43): `keysSeen` is the same green for the Keys row, which now waits for the Games chest too — held until the key screen
+       is first seen after the chest. No ladder step: an absent field takes `keySeen` (the screen's once-per-profile arrival), so a profile
+       that has already been on the key screen is not handed a green row for a screen it knows. Progress: Fresh game clears it. */
+    keysSeen:p.keysSeen!==undefined?(p.keysSeen?1:0):(p.keySeen?1:0),
     /* v23 (L.9c / L.11b, build 41): per chest by name, like `chests`. `readySeen` — the map has painted this chest READY and played its one
        quiet sound; `spill` — its words have shot out once, so from then on the column simply stands. Progress: Fresh game clears both, and
        Testing's per-chest reset clears that chest's. No ladder step: an absent field is every chest unseen, which is what it means. */
@@ -255,6 +259,6 @@ const musicOn=g=>!opened('games')||prefs.musicG[g]!==false;
    profile showed all 27 of them open. Supporter is a dev switch today (S5 gates it out of a release build entirely) and
    Fresh game is the switch for seeing the app as a new player does, so it belongs in this list. When it becomes a real
    purchase at the native build it will be restored from the store rather than from prefs, and this line stays correct. */
-function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,chests:cleanChests(null),cusSeen:0,readySeen:cleanChests(null),spill:cleanChests(null),keyWhole:{},retro:{},retroCol:{},devKeys:{}}); delete prefs.mig11; delete prefs.mig31; delete prefs.mig32; delete prefs.mig35; delete prefs.meterSeen; delete prefs.devMeter; save(); emit('store:reset'); }
+function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,keysSeen:0,chests:cleanChests(null),cusSeen:0,readySeen:cleanChests(null),spill:cleanChests(null),keyWhole:{},retro:{},retroCol:{},devKeys:{}}); delete prefs.mig11; delete prefs.mig31; delete prefs.mig32; delete prefs.mig35; delete prefs.meterSeen; delete prefs.devMeter; save(); emit('store:reset'); }
 
 export { RUNS_CAP, everywhere, look, lookCol, musicOn, opened, prefs, reset, save, store, trimRuns };

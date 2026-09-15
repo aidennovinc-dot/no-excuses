@@ -45,7 +45,8 @@ function openKeys(){ const k=[]; for(const g in GAMES){ if(gameOpen(g)) k.push('
      every item that was open from the start in L8's "just unlocked" green — six of them, for something nothing had earned.
      An item WITH a `by` is deliberately not seeded: that one really is new the day its achievement lands. Measured on a
      fresh profile 2026-09-11: sq 1, lead 1, bg 1, snd 2, cut 1 green, all of them items with no requirement at all. */
-  for(const set in ITEMS) for(const it of ITEMS[set]) if(!it.by) k.push('cos:'+set+':'+it.v);
+  // v24 (C.6, build 43): an item locked by a KEY (`key`) is not open from the start either, so it is not seeded — it is new the day the key is finished
+  for(const set in ITEMS) for(const it of ITEMS[set]) if(!it.by&&!it.key) k.push('cos:'+set+':'+it.v);
   for(const v in SCALES) k.push('cos:scale:'+v);
   return k; }
 function seedSeen(){ const st={}; for(const k of openKeys()) st[k]=1; store.seen=st; save(); }

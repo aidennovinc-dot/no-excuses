@@ -155,7 +155,8 @@ register('s-prog',{ onShow(o){ const a=o.ach?findAch(o.ach):null; if(a&&achTab(a
 define({
   ptab(b){ setTab(b.dataset.tab); return 'pick'; },
   // a locked row asks the lock box, exactly as the pick sheet does (v15 2.1); an open one goes where it is played
-  unl(b){ if(b.dataset.key) { show('s-key'); return 'click'; }
+  // v24 (A.1, build 43): the key row goes where the Keys menu row goes, and waits for the Games chest the same way
+  unl(b){ if(b.dataset.key) { if(!chestOpen('games')){ toast(TOAST.keysLocked,'','',true); return 'pick'; } show('s-key'); return 'click'; }
     const {g,d,s}=b.dataset; const len=s===undefined?undefined:+s;
     if(b.classList.contains('lock')){ emit('lock:ask',{g,d,s:len}); return 'pick'; }
     show('s-pick',{g,d,s:len}); return 'click'; },

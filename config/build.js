@@ -1,8 +1,8 @@
 /* No Excuses — the build (build 19, batch 10 · surface). DATA ONLY (A2).
    BUILD is the one place the number lives (A6): `npm run bump -- N` rewrites it here, then writes index.html
    (hint line, #build, the update-check constant) and version.json from it. Hand-editing four places is over. */
-export const BUILD = 42;
-export const LABEL = 'batch 16 · the moments';             // the hint line under the title: `build N · LABEL · date`
+export const BUILD = 43;
+export const LABEL = 'batch 17 · chests and keys';         // the hint line under the title: `build N · LABEL · date`
 /* the run record's schema stamp (`v` on every run). 2 since build 18: the one-key store's legacy migration stamps every
    surviving build-13 run with this too, so the v10/v11 "retire runs with v < 11" rule can never fire again.
    3 since build 31 (v18 B.2 / B.4): TWO SCORING UNITS CHANGED. Timing · Stopwatch · Set is the SUM of its rounds' errors
@@ -17,5 +17,10 @@ export const LABEL = 'batch 16 · the moments';             // the hint line und
 export const RUN_SCHEMA = 4;
 // S5: the dev switches on the About screen (Everything open, Supporter, Fresh game, Replay the intro) exist only while
 // `dev` is true, and the store ignores a stored allOpen / supporter flag when it is false. The release build sets it false
-export const BUILD_FLAGS = { dev: true };
+/* v24 (A.3, build 43): Testing is on the menu from the FIRST load of the web build, so it needs a flag nobody has to remember to flip.
+   TARGET is which shell this tree is for. The web tree (GitHub Pages) is 'web'; `npm run native` (scripts/native.mjs) writes a copy
+   with TARGET = 'native', which zeroes `dev` below AND strips every [data-dev] node out of that copy's index.html, so the unlock-all
+   switches cannot reach the App Store build by a hand edit being forgotten. Nothing else here changes between the two. */
+export const TARGET = 'web';
+export const BUILD_FLAGS = { dev: TARGET !== 'native' };
 export const PUB_URL = 'https://aidennovinc-dot.github.io/no-excuses/';

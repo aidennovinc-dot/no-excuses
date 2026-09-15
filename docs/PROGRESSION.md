@@ -209,3 +209,39 @@ of it, statically and by quitting a run mid-flight and reading storage back.
   returns while it is set. The four chest-opening buttons still play build 32's lid swing on the map; build 41 replaces them.
 - **The radar keeps key 1's rung before the Games chest (guess)** — it is the Scores screen's picture of a player's best, and with no rung
   it would draw nothing.
+
+## Build 43 (v24 §A, §B.1–§B.3, §B.5, §C; 2026-09-15): chests and keys
+
+- **THE KEY SCREEN NEVER OPENS A CHEST BY ITSELF (C.1) — RETIRES build 40's "the open happens on the key screen, by itself" (L.8b) and its
+  interlude open.** A chest opens because the player asked for it. On the key screen that means the key — the hub glyph of a whole key
+  (`key-chest`, `keyChest()`), or the quiet screen's key while the Games chest waits — or a READY chest in the row: it asks ("Open the Key
+  chest?", Open / Not yet, `askOpen(id)`), and Open is `openNow(id)`: `openChest()` stores and credits silently (G.4), then the build-41
+  ceremony. Back and Not yet leave it shut. A result interlude whose clear tops a band no longer opens anything: the chest waits, READY. This is
+  a deliberate trigger; batch 16's removal of the mid-flow "proceed to Pro" step still stands (v24 C.1 says both stand).
+- **A READY CHEST TAPPED ON THE MAP OPENS AT ONCE, WITHOUT FLASHING THE KEY SCREEN (B.2), AND NEVER CUTS A KEY ANIMATION OFF (B.3).** The map's
+  `chest` act sends `show('s-key', {open: id})`. With nothing unseen, `onShow` calls `openNow` before the screen is drawn, so the ceremony's
+  opaque stage is on the first frame. With the arrival (5.4, on an open tier) or that key's earn moment (C.5) not yet seen, that animation
+  plays IN FULL with input held (`lock`), and the chest opens `OPEN_GAP` after it ends. The map's "tap to open" is the ask there (guess: no
+  second ask on the map).
+- **A CHEST THAT CAN BE OPENED WEARS A PULSING GREEN OUTLINE (B.1)** — `readyring` in `--ok` on the map's `.tile.chest.ready .pic` and on the key
+  screen's `.kch.ready` and `.kquiet`; the chest's own idle (L.9b) still runs inside it.
+- **EARNING A KEY IS ITS OWN MOMENT PER TIER (C.5)** — `earnMoment(tier)` replaces B.20's shared `wholeMoment()`. Still once per tier per profile
+  (`prefs.keyWhole`), never under a ceremony (it would spend it unseen). `KEY_EARN` in `config/keys.js` gives the length and what is drawn:
+  - Lantern 2.9s, a warm bloom behind build 32's flare;
+  - Circuit 3.8s, three square pulses out from the hub, a current twice down every trace, corner dots blinking, the glyph snapping;
+  - Thorn 4.8s, a closing dark, the thorns flexing, fourteen white spikes and a slow turn.
+  The glyph's animated group carries no `transform` attribute; a first draft that animated the translated group threw it off the hub.
+  Inside an interlude the moment starts after the segment and the hand-back waits for it (`earnWait`). Sound: `Snd.keyEarn`, from the
+  key's theme. Testing: one button per key.
+- **EACH KEY SCREEN HAS ITS OWN BACKGROUND OVER THE LIVE ONE (C.4 / C.6), and it opens as a Customise background when that key is FINISHED** —
+  `keyFinished(tier)` in `progress/key.js`: the tier open, not a shell, every bar cleared, or a dev escape. Read off the key, not the
+  `key_<tier>_all` achievement, so Testing's per-key switch opens it at once. `ITEMS.bg` rows carry `key` instead of `by`; Customise's lock line
+  names that key's whole-key row, and `openKeys()` does not seed them, so each is first-seen green the day it opens. Thorn's solid black
+  `#key-main` is gone.
+- **KEYS WAITS FOR THE GAMES CHEST (A.1)** — the menu row, the meter line under the menu and the Game unlocks tab's key row all refuse the tap
+  with `TOAST.keysLocked` until `chestOpen('games')`. The row is crossed out with "open the Games chest" under it and wipes its strike on the
+  first draw after. It stays green until the key screen is first seen after the chest (`prefs.keysSeen`; no ladder step, an absent field
+  takes `keySeen`; the Games chest's Testing reset clears it). The quiet key screen is still what Testing and the router reach.
+- **A BRAND NEW GAME OPENS THE MAP AT THE TOP, AND THE CHESTS JOIN THE LOADING SEQUENCE (A.2 / B.5).** `#s-pick` kept its scroll position while
+  hidden, so after Fresh game the map came back where it was last left — at the chests since build 40 (measured: 254px). The first-visit
+  reveal now zeroes it and `store:reset` does too. The four chests take `reveal` after the seventh tile on the same 120ms beat.

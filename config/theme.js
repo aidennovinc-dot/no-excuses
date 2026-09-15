@@ -11,12 +11,15 @@ export const PRESS = { name:'amber', v:'#FFB020' };
    new colour. ui/theme.js publishes it as --keyfill; the filled outline and the complete tile's wash both spend it. */
 export const KEYFILL = { name:'lilac', v:'#F3D9FF' };
 // the four backgrounds and the ground tint each one sits on
-export const DESIGNS = { stars:{tint:'#050506'}, grid:{tint:'#070A14'}, rain:{tint:'#0B1008'}, orbs:{tint:'#0E0608'} };
+/* v24 (C.6, build 43): three more, one per key — Lantern, Circuit, Thorn. Each is the stock stars with that key's own layer drawn over them
+   (ui/atmosphere.js, config/keys.js KEY_LAYER), the same layer its key screen shows */
+export const DESIGNS = { stars:{tint:'#050506'}, grid:{tint:'#070A14'}, rain:{tint:'#0B1008'}, orbs:{tint:'#0E0608'}, lantern:{tint:'#090705'}, circuit:{tint:'#04070B'}, thorn:{tint:'#020202'} };
 // Customise: every item, and the achievement id that earns it (`by`). No `by` = open from the start
+// v24 (C.6, build 43): `key` is the other kind of lock — the key tier that has to be FINISHED (every bar on it cleared) before the item opens
 export const ITEMS = {
   sq:  [{v:'#FFFFFF'},{v:'#FFE9C4',by:'first'},{v:'#9BE8FF',by:'qt_clean5'},{v:'#FFD1DC',by:'dt_pin'},{v:'#F3D9FF',by:'hd_steady'},{v:'#C6FF7A',by:'qt_clean30'},{v:'#FFF3A0',by:'sq_12'},{v:'wheel',by:'fullset'}],
   lead:[{v:'#C8322A'},{v:'#FFB020',by:'every'},{v:'#7CFFB2',by:'dt_sweep'},{v:'#4FD9FF',by:'qt_r5'},{v:'#FF4FD8',by:'qt_eyes'},{v:'#FFFFFF',by:'hd_est'},{v:'wheel',by:'fullset'}],
-  bg:  [{v:'stars'},{v:'grid',by:'named'},{v:'rain',by:'qt_clean15'},{v:'orbs',by:'dt_land'},{v:'wheel',by:'fullset'}],
+  bg:  [{v:'stars'},{v:'grid',by:'named'},{v:'rain',by:'qt_clean15'},{v:'orbs',by:'dt_land'},{v:'lantern',key:'clear'},{v:'circuit',key:'pro'},{v:'thorn',key:'author'},{v:'wheel',by:'fullset'}],
   snd: [{v:'space',label:'Space'},{v:'click',label:'Click',by:'qt_r4'},{v:'wood',label:'Wood',by:'hd_money'},{v:'sigh',label:'Sigh',by:'tour'},{v:'off',label:'Off'}],
   // v13 (12.1): music is per game — one track each, switched off or previewed on its own row
   music:[{v:true,label:'On'},{v:false,label:'Off'}],

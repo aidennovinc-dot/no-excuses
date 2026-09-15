@@ -362,22 +362,42 @@ export const CHEST_FX = {
   thorns: [[.3, 41.2, 41.2, 2800, 'sine', .1, 2400], [3.1, 82.4, 164.8, 1600, 'sine', .06, 400]],
 };
 export const CHEST_NOISE = { thorns: [[2.7, 180, .14, 1200]] };
+/* v24 (C.7, build 43): EVERY CHEST'S STING IS CUT FROM ITS OWN KEY'S THEME — not a phrase written beside it. Build 41's four were hand-written
+   chords on each theme's root; Aiden liked the Pro chest's animation and wanted its music closer to the Pro key's own track, so the rule is
+   now that the sting IS the theme: `track` played from its first bar through the same arrangement engine the key screen plays (audio.js
+   bars()), up to `cut` seconds. `voices` picks which of the theme's voices come in — all of them when absent. A theme note still sounding at
+   the cut rings on for STING_RING seconds and stops; one that would then break the theme rule (under 700 ms above 300 Hz, under 1200 ms above
+   C5) is left out rather than clipped. Then `tail` — [at s, semitones over the theme's root × 2, ms, wave, gain, attackMs, lowpassHz] — lands
+   the tonic on the reveal. ESCALATING Games → Key → Pro → Thorns in length, voices and notes a second (gated): the Games chest is key 1's
+   theme with its melody and chord only; the Key chest the whole of key 1's theme; Pro the whole of Pro's; Thorns the whole of Thorns'.
+   Built after C.2 / C.3, so the theme each is cut from is the one its key screen actually plays. Not heard (UNVERIFIED.md). */
+export const STING_RING = .45;
 export const CHEST_STING = {
-  // build 42 (L.7a): each sting points at the rewritten theme — same root and chords as the one it was cut from, so no note moved
-  games: { track: 'theme:key', notes: [[0, -2, 1600, 'triangle', .012, 400], [0, 5, 1600, 'triangle', .012, 400], [0, 10, 1600, 'triangle', .012, 400], [.2, 24, 1200, 'sine', .012, 300],
-    [1.4, 0, 1800, 'triangle', .013, 300], [1.4, 7, 1800, 'triangle', .013, 300], [1.4, 12, 1800, 'triangle', .013, 300], [1.4, 26, 1800, 'sine', .01, 500]] },
-  key: { track: 'theme:key', notes: [[0, -12, 3900, 'sine', .04, 800], [0, -4, 1500, 'triangle', .012, 500], [0, 3, 1500, 'triangle', .012, 500], [0, 8, 1500, 'triangle', .012, 500],
-    [1.3, -2, 1400, 'triangle', .012, 400], [1.3, 5, 1400, 'triangle', .012, 400], [1.3, 10, 1400, 'triangle', .012, 400], [1.0, 24, 1400, 'sine', .012, 400],
-    [2.5, 0, 1500, 'triangle', .013, 300], [2.5, 7, 1500, 'triangle', .013, 300], [2.5, 12, 1500, 'triangle', .013, 300], [2.5, 26, 1500, 'sine', .01, 500]] },
-  pro: { track: 'theme:pro', notes: [[0, -14, 1800, 'sine', .014, 500], [0, -7, 1800, 'triangle', .01, 500], [0, 0, 1800, 'triangle', .01, 500],
-    [1.6, -19, 1800, 'sine', .016, 400], [1.6, -12, 1800, 'triangle', .01, 400], [1.6, -5, 1800, 'triangle', .01, 400],
-    [3.2, -12, 1800, 'sine', .016, 300], [3.2, -5, 1800, 'triangle', .011, 300], [3.2, 2, 1800, 'triangle', .011, 300],
-    [.6, 7, 1400, 'sine', .01, 500], [2.0, 5, 1400, 'sine', .01, 500], [3.4, 4, 1600, 'sine', .01, 600]] },
-  thorns: { track: 'theme:thorns', notes: [[0, -12, 5900, 'sine', .045, 3000], [1.2, -6, 2000, 'sawtooth', .008, 900, 800], [1.2, 1, 2000, 'sawtooth', .008, 900, 800],
-    [3.1, 0, 2900, 'sawtooth', .009, 200, 1100], [3.1, 7, 2900, 'sawtooth', .009, 200, 1100], [3.1, 15, 2900, 'sawtooth', .007, 200, 1100], [3.2, 19, 2800, 'sine', .008, 600]] },
+  games: { track: 'theme:key', voices: [0, 1], cut: 2.2, tail: [[2.2, 0, 1100, 'triangle', .012, 160], [2.2, 7, 1100, 'triangle', .012, 160], [2.2, 12, 1100, 'triangle', .012, 160], [2.25, 24, 1250, 'sine', .011, 260]] },
+  key: { track: 'theme:key', cut: 3.0, tail: [[3.0, -12, 1400, 'sine', .03, 300], [3.0, 0, 1300, 'triangle', .013, 200], [3.0, 7, 1300, 'triangle', .013, 200], [3.0, 12, 1300, 'triangle', .013, 200], [3.05, 26, 1400, 'sine', .011, 300]] },
+  pro: { track: 'theme:pro', cut: 3.6, tail: [[3.6, -12, 1500, 'triangle', .014, 200], [3.6, -5, 1500, 'triangle', .011, 200], [3.6, 2, 1500, 'triangle', .011, 200], [3.65, 7, 1400, 'sine', .014, 260]] },
+  thorns: { track: 'theme:thorns', cut: 4.2, tail: [[4.2, -12, 1800, 'sine', .04, 400], [4.2, 0, 1800, 'sawtooth', .009, 220, 1100], [4.2, 7, 1800, 'sawtooth', .009, 220, 1100], [4.2, 15, 1800, 'sawtooth', .007, 220, 1100], [4.25, 19, 1750, 'sine', .012, 500]] },
 };
 export const CHEST_READY_FX = [[0, 146.8, 146.8, 460, 'sine', .03, 50], [.24, 220, 220, 700, 'sine', .03, 80]];
 export const HUSH = { down: .08, up: .4 };
+
+/* ---------- v24 (C.5, build 43): EARNING A KEY — its own sound per tier, from that key's theme ----------
+   The CHEST_STING note shape: [at s, semitones over the theme's root × 2, ms, wave, gain, attackMs, lowpassHz]. An EFFECT, so it follows the
+   tap-sound switch the way the unlock sound does; it is none of the unlock sound, the achievement click or a chest's (gated). Escalating Key
+   → Pro → Author in length and notes, each to the theme rule (nothing under 700 ms above 300 Hz, nothing above C5 under 1200 ms): key 1 a
+   warm rising chord over its drone; Pro a driving bass pulse under a climbing arp, the melody and its answer, then the chord; Author the E
+   drone, a sawtooth swell on the dark chord, a low figure circling under it, and the tonic landing with the melody over it. All (guess),
+   and not heard (UNVERIFIED.md). */
+export const KEY_EARN_FX = {
+  clear: { track: 'theme:key', notes: [[0, -12, 2600, 'sine', .045, 300], [0, 0, 1500, 'triangle', .022, 60], [.22, 7, 1400, 'triangle', .022, 60], [.44, 12, 1500, 'triangle', .022, 80], [.66, 14, 1800, 'sine', .022, 120], [1.1, 19, 1700, 'sine', .018, 300]] },
+  pro: { track: 'theme:pro', notes: [[0, -12, 700, 'triangle', .05, 20, 420], [.27, -12, 700, 'triangle', .045, 20, 420], [.54, -12, 700, 'triangle', .05, 20, 420], [.8, -12, 700, 'triangle', .045, 20, 420],
+    [0, -5, 800, 'triangle', .02, 60], [.27, 2, 900, 'triangle', .02, 70], [.54, 7, 1000, 'triangle', .02, 80], [.8, 14, 1300, 'sine', .018, 110],
+    [1.35, 19, 1500, 'sine', .018, 160], [1.62, 12, 1400, 'triangle', .016, 150, 1600],
+    [2.2, -7, 1600, 'triangle', .016, 120], [2.2, 0, 1600, 'triangle', .016, 120], [2.2, 7, 1600, 'triangle', .016, 120], [2.25, 14, 1500, 'sine', .014, 200]] },
+  author: { track: 'theme:thorns', notes: [[0, -12, 4600, 'sine', .07, 1500], [.6, -6, 2000, 'sawtooth', .012, 700, 800], [.6, 1, 2000, 'sawtooth', .012, 700, 800], [.6, 6, 2000, 'sawtooth', .01, 700, 800],
+    [1.0, -5, 320, 'triangle', .022, 20, 700], [1.25, 0, 320, 'triangle', .022, 20, 700], [1.5, 3, 320, 'triangle', .022, 20, 700], [1.75, 0, 320, 'triangle', .022, 20, 700], [2.0, -5, 320, 'triangle', .022, 20, 700], [2.25, -1, 320, 'triangle', .022, 20, 700],
+    [2.3, 0, 2400, 'sawtooth', .013, 200, 1100], [2.3, 7, 2400, 'sawtooth', .013, 200, 1100], [2.3, 15, 2400, 'sawtooth', .011, 200, 1100], [2.5, 19, 2200, 'sine', .016, 500], [3.2, 24, 1500, 'sine', .012, 400]] },
+};
 
 export const VERDICT_FX = {
   ace:  [[0, 523.3, 523.3, 300, 'triangle', .075, 18], [.10, 784, 784, 300, 'triangle', .075, 18], [.20, 1046.5, 1046.5, 460, 'triangle', .08, 18],

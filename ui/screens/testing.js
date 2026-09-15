@@ -92,7 +92,8 @@ define({
   // B.26: the animations, each on its own screen, nothing stored
   'dev-keyin'(){ show('s-key',{arrive:1,from:'s-testing'}); return 'pick'; },
   'dev-seg'(){ show('s-key',{advance:firstKey(),from:'s-testing'}); return 'pick'; },
-  'dev-whole'(){ show('s-key',{whole:1,from:'s-testing'}); return 'pick'; },
+  // v24 (C.5, build 43): one per key — each key's earn moment is its own now
+  'dev-whole'(b){ show('s-key',{whole:1,tier:+(b.dataset.tier||0),from:'s-testing'}); return 'pick'; },
   // v23 (L.6, build 41, S5): "replay chest opening" — the chest's CEREMONY on the key screen, then its spill on the map, nothing stored
   'dev-chest'(b){ show('s-key',{ceremony:b.dataset.chest,from:'s-testing'}); return 'pick'; },
 });

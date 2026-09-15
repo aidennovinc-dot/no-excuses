@@ -235,6 +235,10 @@ function keyTier(i) { const k = KEYS[i]; if (!k) return null;
   const st = keyState(k.id), p = keyPct(k.id);
   return Object.assign({ i, id: k.id, name: k.name, lede: k.lede, shell: false, done: st.done, total: st.total, frac: st.frac, pct: p.pct, whole: st.whole, locked: !st.whole }, skin(k)); }
 const keyTiers = () => KEYS.map((_, i) => keyTier(i));
+/* v24 (C.6, build 43): A KEY IS FINISHED when its tier is open, has numbers, and every bar on it is cleared — what opens that key's background
+   in Customise. Read here, not off the `key_<tier>_all` achievement, so a key filled by Testing's switch opens it the moment it is whole, as
+   the key screen already shows it; and like every progression gate it honours the two dev escapes (#411). */
+const keyFinished = tier => !!(prefs.allOpen || prefs.supporter) || (tierOpen(tier) && !isShell(tier) && keyState(tier).whole);
 
 /* ---------- B.25: the three achievement sets tied to the keys ----------
    One row per game per tier — clear every one of that game's bars at that tier — and one per tier for the whole key:
@@ -342,10 +346,11 @@ function devKeyReset(tier) { const c = CHESTS.find(x => x.needs === tier);
 // build 41 (L.9c / L.11b): a reset chest gets its first ready sound and its spill back, so both can be reviewed again
 const unseen = id => { prefs.readySeen = Object.assign({}, prefs.readySeen, { [id]: 0 }); prefs.spill = Object.assign({}, prefs.spill, { [id]: 0 }); };
 function devChestReset(id) { const c = chestOf(id); if (!c) return; unseen(id);
-  if (c.needs === 'modes') { prefs.chests = Object.assign({}, prefs.chests, { [id]: 0 }); prefs.cusSeen = 0; seenDown(); save(); return; }
+  // v24 (A.1, build 43): the Keys row waits for the Games chest too, so a reset gives its green back with Customise's
+  if (c.needs === 'modes') { prefs.chests = Object.assign({}, prefs.chests, { [id]: 0 }); prefs.cusSeen = 0; prefs.keysSeen = 0; seenDown(); save(); return; }
   devKeyReset(c.needs); }
 function devSetMeter(n) { if (n === null || n === '' || !Number.isFinite(+n)) delete prefs.devMeter;
   else prefs.devMeter = Math.max(0, Math.min(meterMax(), Math.round(+n)));
   save(); return meter(); }
 
-export { COMBOS, RADAR_PAST, TIERS, bandPct, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, checkKeyAch, chestAt, chestOpen, chestState, cleared, combos, credit, devChestReset, devKeyAll, devKeyOn, devKeyReset, devSetMeter, fillBars, gameKey, isCleared, isPlaceholder, isShell, keyAch, keyChest, keyOf, keyPct, keyState, keyTier, keyTiers, meter, meterBand, meterMax, modesOpen, openChest, placeholderCount, radarOf, radarRungs, readyChest, retroArrived, retroBank, retroTier, skey, tierFull, tierOpen };
+export { COMBOS, RADAR_PAST, TIERS, bandPct, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, checkKeyAch, chestAt, chestOpen, chestState, cleared, combos, credit, devChestReset, devKeyAll, devKeyOn, devKeyReset, devSetMeter, fillBars, gameKey, isCleared, isPlaceholder, isShell, keyAch, keyChest, keyFinished, keyOf, keyPct, keyState, keyTier, keyTiers, meter, meterBand, meterMax, modesOpen, openChest, placeholderCount, radarOf, radarRungs, readyChest, retroArrived, retroBank, retroTier, skey, tierFull, tierOpen };

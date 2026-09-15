@@ -33,9 +33,12 @@ function renderMenu(){ const first=firstRun(); const opening=menuWasFirst&&!firs
      un-crossed itself on the same frame, so what was actually a list opening read as a single flicker and there was
      nothing to follow. `--ud` carries each item's delay to both animations — the brighten on the element and the
      unstrike on its ::after — because a bare animation-delay reaches the element only. */
-  $$('#s-menu .item').forEach((b,i)=>{ const x=first&&b.dataset.go!=='s-pick'; b.classList.toggle('dim',x); b.classList.remove('unx'); b.style.removeProperty('--ud');
-    if(opening&&b.dataset.go!=='s-pick'){ const d=i*90; b.style.setProperty('--ud',d+'ms'); b.classList.add('unx'); b.style.pointerEvents='none'; setTimeout(()=>{ b.classList.remove('unx'); b.style.removeProperty('--ud'); b.style.pointerEvents=''; },700+d); } });
-  renderCustomise(first);
+  /* v24 (A.3, build 43): TESTING IS LIVE FROM THE FIRST LOAD. It sat under the first-run dimming with every other row, so Aiden had to play a
+     Quick Tap run before he could reach it. A [data-dev] row is never dimmed and never un-struck; a native build has no such row at all
+     (config/build.js TARGET, scripts/native.mjs) */
+  $$('#s-menu .item').forEach((b,i)=>{ const dev=b.dataset.dev!==undefined, x=first&&b.dataset.go!=='s-pick'&&!dev; b.classList.toggle('dim',x); b.classList.remove('unx'); b.style.removeProperty('--ud');
+    if(opening&&b.dataset.go!=='s-pick'&&!dev){ const d=i*90; b.style.setProperty('--ud',d+'ms'); b.classList.add('unx'); b.style.pointerEvents='none'; setTimeout(()=>{ b.classList.remove('unx'); b.style.removeProperty('--ud'); b.style.pointerEvents=''; },700+d); } });
+  renderCustomise(first); renderKeys(first);
   // v17 (B.20, build 29): the "play one run · the rest opens" line is gone — the struck-through items say it
   /* v17 (§A.6.7): percentage complete on the front of the app. It is hidden on a profile that has not run anything — A.6.2
      makes a new profile 0%, and handing a first-timer a number that says nothing has happened is the opposite of what §A.6.6
@@ -60,6 +63,16 @@ function renderCustomise(first){ const b=$('[data-go="s-custom"]'), need=$('#cus
   const locked=!chestOpen('games'), wiped=cusWasLocked&&!locked; cusWasLocked=locked;
   b.classList.toggle('cuslock',locked&&!first); need.hidden=!locked||first; need.textContent=locked?MENU.cusNeed:'';
   b.classList.toggle('newthing',!locked&&!first&&!prefs.cusSeen);
+  if(wiped&&!first){ b.classList.add('unx'); setTimeout(()=>b.classList.remove('unx'),700); } }
+/* v24 (A.1, build 43): KEYS IS LOCKED UNTIL THE GAMES CHEST OPENS, the same treatment as Customise and as a locked chest on the map: visible,
+   crossed out, "open the Games chest" under it, and a tap says so and goes nowhere — so a new player can see the keys exist. The meter line
+   under the menu goes to the same screen and is refused the same way. The first draw after the chest wipes the strike off, and the row is
+   green until the key screen is first seen (L8 — `prefs.keysSeen`, set by ui/screens/key.js). */
+let keysWasLocked=!chestOpen('games');
+function renderKeys(first){ const b=$('#s-menu .item[data-go="s-key"]'), need=$('#keys-need'); if(!b||!need) return;
+  const locked=!chestOpen('games'), wiped=keysWasLocked&&!locked; keysWasLocked=locked;
+  b.classList.toggle('keylock',locked&&!first); need.hidden=!locked||first; need.textContent=locked?MENU.keysNeed:'';
+  b.classList.toggle('newthing',!locked&&!first&&!prefs.keysSeen);
   if(wiped&&!first){ b.classList.add('unx'); setTimeout(()=>b.classList.remove('unx'),700); } }
 
 /* v20 (D.4, build 37): THE FRONT NUMBER SAYS WHEN IT WENT UP. The last-painted figure is in the store, written when the menu PAINTS
@@ -96,7 +109,9 @@ register('s-menu',{ onShow({intro,story}){ setPendingAim(''); storyOn=false; $('
   renderMenu(); if(story) storyStart(); else if(intro) menuIn(); } });
 define({ nextup(){ if(nextWhere) goWhere(nextWhere); return 'click'; },
   // L.11a: the Customise row. Locked, it says what opens it and stays put; open, it is an ordinary menu row
-  custom(b){ if(!chestOpen('games')){ toast(TOAST.cusLocked,'','',true); return 'pick'; } show(b.dataset.go); return 'click'; } });
-on('store:reset',()=>{ menuWasFirst=true; cusWasLocked=true; });
+  custom(b){ if(!chestOpen('games')){ toast(TOAST.cusLocked,'','',true); return 'pick'; } show(b.dataset.go); return 'click'; },
+  // v24 (A.1, build 43): the Keys row and the meter line. Locked, they say what opens them and stay put
+  keys(){ if(!chestOpen('games')){ toast(TOAST.keysLocked,'','',true); return 'pick'; } show('s-key'); return 'click'; } });
+on('store:reset',()=>{ menuWasFirst=true; cusWasLocked=true; keysWasLocked=true; });
 
 export { enterMenu, firstRun };

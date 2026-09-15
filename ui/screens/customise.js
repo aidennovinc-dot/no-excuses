@@ -23,7 +23,7 @@ import { sel } from "../../core/state.js";
 import { everywhere, musicOn, prefs, save } from "../../core/store.js";
 import { GAMES } from "../../games/registry.js";
 import { ACH, achById, got, markSeen, newMark } from "../../progress.js";
-import { chestOpen } from "../../progress/key.js";
+import { chestOpen, keyAch, keyFinished } from "../../progress/key.js";
 import { define } from "../actions.js";
 import { chips } from "../chips.js";
 import { register, show } from "../router.js";
@@ -35,7 +35,11 @@ import { applyPrefs, colOf } from "../theme.js";
 const F={ g:prefs.lastGame };   // the game being previewed
 const itemsOf=set=>set==='scale'?Object.entries(SCALES).map(([k,v])=>({v:k,label:v.name})):ITEMS[set];
 // supporters (v10) have every cosmetic open; "open everything" is the testing switch for the same thing
-const lockedBy=it=> it.by && !got()[it.by] && !prefs.allOpen && !prefs.supporter ? ACH.find(a=>a.id===it.by) : null;
+/* v24 (C.6, build 43): an item can also wait for a KEY to be finished (`key` in config/theme.js) — the three key backgrounds. Its lock is that key's
+   whole-key row, so the line under the row names it and "show me" finds it on Progress; keyFinished() honours both dev escapes */
+const keyRow=tier=>keyAch().find(a=>a.id===`key_${tier}_all`)||null;
+const lockedBy=it=> it.key ? (keyFinished(it.key)?null:keyRow(it.key)) : it.by && !got()[it.by] && !prefs.allOpen && !prefs.supporter ? ACH.find(a=>a.id===it.by) : null;
+const lockById=id=>achById(id)||keyAch().find(a=>a.id===id)||null;
 const pvTry={};   // a locked item being previewed: {set, v, by}
 const pvSeen={};  // the last unlocked item tapped, so what earned it shows on touch (v5)
 /* v18 (B.30) — WHERE THE LOCKED LINE GOES. It used to be one line under the preview plus a toast, and the toast is an
@@ -91,7 +95,7 @@ function renderCustom(){
   const pv=$('#pv').style; pv.setProperty('--sq-live',colOf(F.g).sq); pv.setProperty('--cue',colOf(F.g).lead); pv.setProperty('--cutp',colOf(F.g).cut||colOf(F.g).sq); pv.removeProperty('background');
   // B.30: at most one group says anything, and it says it under its own row
   for(const s of LOCK_SETS) lockLine(s,null);
-  if(pvTry.set){ const L=ACH.find(a=>a.id===pvTry.by); const map={sq:'--sq-live',lead:'--cue',cut:'--cutp'}; if(map[pvTry.set]&&pvTry.v!=='wheel') pv.setProperty(map[pvTry.set],pvTry.v); if(pvTry.set==='bg'&&DESIGNS[pvTry.v]) pv.background=DESIGNS[pvTry.v].tint; lockLine(pvTry.set,L); }
+  if(pvTry.set){ const L=lockById(pvTry.by); const map={sq:'--sq-live',lead:'--cue',cut:'--cutp'}; if(map[pvTry.set]&&pvTry.v!=='wheel') pv.setProperty(map[pvTry.set],pvTry.v); if(pvTry.set==='bg'&&DESIGNS[pvTry.v]) pv.background=DESIGNS[pvTry.v].tint; lockLine(pvTry.set,L); }
   // v11: an unlocked colour says nothing when tapped — the requirement line is for locked ones only
   else if(pvSeen.by&&!got()[pvSeen.by]&&!prefs.allOpen&&!prefs.supporter) lockLine(pvSeen.set,ACH.find(a=>a.id===pvSeen.by));
   markSeen(fresh);
@@ -172,7 +176,7 @@ define({
       prefs.everywhere=v; pvTry.set=null; save(); renderCustom(); if(v==='game') Music.preview(F.g,4200); else Music.preview(F.g,4200,KEY_THEMES[v]); return 'pick'; }
     /* B.30: a locked item previews itself and says what opens it UNDER ITS OWN ROW. The toast that used to carry this is
        gone from here — it is an overlay, and an overlay is the one place a requirement about a row must not be drawn */
-    if(b.classList.contains('locked')&&k!=='track'){ const L=achById(b.dataset.lock); Object.assign(pvTry,{set:k,v:b.dataset.v,by:L.id}); renderCustom(); return 'pick'; }
+    if(b.classList.contains('locked')&&k!=='track'){ const L=lockById(b.dataset.lock); if(!L) return 'pick'; Object.assign(pvTry,{set:k,v:b.dataset.v,by:L.id}); renderCustom(); return 'pick'; }
     pvTry.set=null; const it=(itemsOf(k)||[]).find(i=>String(i.v)===b.dataset.v); pvSeen.set=k; pvSeen.by=it&&it.by||null; if(b.dataset.v==='wheel'){ Wheel.open(k); return 'pick'; }
     if(k==='bg'){ prefs.bg=b.dataset.v; prefs.tint=''; }
     else if(k==='sq'||k==='lead'||k==='cut') prefs.col[F.g][k]=b.dataset.v;

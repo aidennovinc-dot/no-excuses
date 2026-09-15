@@ -88,14 +88,24 @@ VERDICT_FX) is in the `config/` paragraph of `RULES-HISTORY.md` → Structure, a
   · **Thorns (6s):** near-silence; a sub-bass that grows from 0.3s (sine 41.2 Hz, 2.8s, 2.4s attack); `CHEST_NOISE`, the ONE noise in the app —
     a hard cut on the split at 2.7s (180ms, highpass 1.2 kHz), an effect and not a music role, so the tracks still have none; a swell as it
     widens (82.4→164.8 Hz, 1.6s).
-  **`CHEST_STING` — the music**, a resolution phrase from that key's theme, ending on the reveal; a note is semitones over the theme's root × 2.
-  Every note is 700ms or longer with an attack of 40ms or more, and every note above C5 lasts 1200ms or more (gated).
-  · **Games — Roots, 3.2s** (guess: it borrows the theme of the key it reveals): the ch[3] chord for 1.6s, resolving to ch[0] at 1.4s, a lead
-    on 24 then 26 semitones (784 → 880 Hz, 1.2s and 1.8s).
-  · **Key — Roots, 4.0s:** a 98 Hz drone under ch[2] → ch[3] → ch[0], a lead on 24 then 26.
-  · **Pro — Frost, 5.0s:** three Frost chords an octave down, 1.8s each (ch[6] → ch[7] → ch[0]), a lead falling 440 → 392 → 370 Hz.
-  · **Thorns — Thorn, 6.0s:** an E2 drone growing over 3s, two lowpassed sawtooth chords — ch[7] at 1.2s, then the tonic landing on the split
-    at 3.1s — and one long B4 (494 Hz, 2.8s).
+  **`CHEST_STING` — the music. SINCE BUILD 43 (v24 C.7) IT IS THE KEY'S THEME ITSELF, not a phrase written beside it.** Build 41's four were
+  hand-written chords on each theme's root; Aiden liked the Pro chest and wanted its music closer to the Pro key's own track, so the rule is now
+  that a sting is `{track, voices?, cut, tail}`: `stingOf()` in `audio.js` plays the theme from its first bar through `bars()` — the key screen's
+  own arrangement engine, so no second copy exists to drift — up to `cut` seconds, `voices` narrowing which of its voices come in. A note still
+  sounding at the cut rings on `STING_RING` (0.45s) and stops; one that would then break the theme rule is left out, never clipped short. Then
+  `tail` lands the tonic on the reveal (a tail note is semitones over the theme's root × 2). Held to the THEME's rule (gated): nothing under
+  700ms or attacked under 40ms at 300 Hz or above, nothing above C5 under 1200ms — a theme's bass pulse and low arp are short by design and sit
+  under 300 Hz. Escalating Games → Key → Pro → Thorns in length, notes a second and voices (gated):
+  · **Games — key 1's theme, melody and chord only, cut at 2.2s**, tonic and a high G: 10 notes over 3.5s.
+  · **Key — the whole of key 1's theme, cut at 3.0s**, the drone and the tonic with an A over it: 26 notes over 4.45s.
+  · **Pro — the whole Pro theme, cut at 3.6s** — its melody, answer, bass pulse and arp — then the D chord an octave down: 42 notes over 5.1s.
+  · **Thorns — the whole Thorns theme, cut at 4.2s**, then the E drone, a sawtooth tonic and the B over it: 59 notes over 6.0s.
+- **EARNING A KEY HAS ITS OWN SOUND (v24 C.5, build 43).** `KEY_EARN_FX` in `config/audio.js`, the sting note shape, one per tier from that key's
+  theme; `Snd.keyEarn(tier)` plays it on the key screen's earn moment and `Snd.keyEarnPlan(tier)` hands the board the same events. An EFFECT: it
+  follows the tap-sound switch like `unlockFx`, and it is not `unlockFx`, `click` or a chest's (gated). Key 1 a warm rising chord over its drone
+  (6 notes, 2.8s); Pro a driving bass pulse under a climbing arp, the melody and its answer, then the chord (14, 3.8s); Author the E drone, a
+  sawtooth swell on the dark chord, a low figure circling under it, then the tonic with the melody over it (15, 4.7s). Theme rule, gated. Not
+  heard (UNVERIFIED.md), and the levels are set beside the chest effects by eye, not measured.
   **`CHEST_READY_FX`** is the map's quiet two-note rise the first time a chest is painted ready — D3 then A3, gain .03 against the unlock's .085.
   **`Music.hush(on)` ducks the bed FULLY under a ceremony** (`HUSH`: 0.08s down, 0.4s back on the tap) — a flag as well as a ramp, so a bed
   built mid-ceremony starts silent. **The levels are not measured:** `_smoke/loudness.mjs` renders tracks, not effects, and these gains were set
@@ -127,8 +137,10 @@ VERDICT_FX) is in the `config/` paragraph of `RULES-HISTORY.md` → Structure, a
   (1.4), the flow hum on solo Quick Tap and Dots (B.27), Sequence's duck (keyed on the game, not the track) and the end cadence in the
   theme's key. **The menu loop does not read the setting (guess, L.7d).** **`FLOW_AT` stays 2.7:** L.7d says "above 3.0 taps/s", but 2.7 is
   Aiden's own number (v18 B.9) and the note does not quote it.
-  **A key's screen plays its theme only once that key's chest is open.** Until then the menu loop plays (guess: "a locked key has no theme
-  to hear"). **`audio.js`'s screen-change timer no longer touches the key screen.** The router emits `screen:change` before `onShow`, so
+  **A key's screen plays its theme once its TIER is open — AMENDED at build 43 (v24 C.2 / C.3).** Build 42 waited for the chest the key OPENS
+  (guess: "a locked key has no theme to hear"), which put the menu loop on the Pro tab until Pro was finished and on the Author tab until Author
+  was — the two themes Aiden reported as lost. Key 1 kept its theme only because its Key chest was already open. The themes themselves were
+  never broken. Only the quiet screen before the Games chest plays the menu loop now; SET THIS MUSIC still waits for the chest, as a reward. **`audio.js`'s screen-change timer no longer touches the key screen.** The router emits `screen:change` before `onShow`, so
   since build 30 the timer asked for Roots 900ms after `key.js` had asked for the tab's own loop, and arriving on the Pro or Author tab
   heard Roots within a second. **`Music.probe()` reports `track`, `arc`, `arcBars`, `stems`, `flow` and `fin`**, which is what the gate
   reads to prove a theme is under the run rules.

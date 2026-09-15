@@ -189,7 +189,16 @@ function renderTiles(){ const reveal=!prefs.gridSeen; if(reveal){ prefs.gridSeen
     if(open&&!reveal){ const nw=newMark('game:'+g,fresh); if(nw){ t.classList.add('newthing'); t.classList.add('arrive'); } } });
   markSeen(fresh);
   // v17 (B.23 / B.24): the snake placement, the chest's state, then the lines over the top of both
-  renderChests(); renderFill(); layoutGrid(); drawLines(reveal); }
+  renderChests(); renderFill(); layoutGrid(); drawLines(reveal);
+  /* v24 (B.5, build 43): THE CHESTS JOIN THE LOADING SEQUENCE. They were already there while the tiles arrived one by one with their padlocks;
+     now each chest pops in after the last game, on the same 120ms beat, in the order they open */
+  $$('#grid .chest').forEach(b=>{ const i=GRID_ORDER.length+Math.max(0,CHEST_ORDER.indexOf(b.dataset.chest)); b.classList.remove('reveal'); b.style.animationDelay='';
+    if(reveal){ b.classList.add('reveal'); b.style.animationDelay=(i*120)+'ms'; } });
+  /* v24 (A.2, build 43): A BRAND NEW GAME OPENS THE MAP AT THE TOP. #s-pick scrolls, and a scroller keeps its position while the screen is
+     display:none — so after Fresh game the map came back wherever it was last left, which since build 40 was down at the chests. The loading
+     sequence plays on a new profile's first visit, so that is when it starts from the top (measured headless: 0 on a clean install, 254 after
+     scrolling down and taking Fresh game) */
+  if(reveal) $('#s-pick').scrollTop=0; }
 // a locked mode (v11) is crossed out, not just greyed; tapping it says what it takes
 function fillSheet(){ const g=GAMES[sel.game]; const fresh=[]; $('#diff-row').innerHTML=g.modes.map(d=>{ const open=isOpen(sel.game,d); const nw=open?newMark('mode:'+sel.game+':'+d,fresh):''; const np=open&&newPlay(sel.game,d)?' newplay':''; return `<button data-act="diff" class="choice ${open?'':'locked'}${nw}${np}" data-diff="${d}"><span class="pic">${picOf(sel.game,d)}</span><span class="txt"><b class="${open?'':'x'}">${MODE_NAME[d]}</b><small class="${open?'':'need'}">${open?g[d]:T(SHEET.toUnlock,{need:needFor(sel.game,d)})}</small></span></button>`; }).join(''); markSeen(fresh); }
 // the length face (v11): the name with its seconds beside it on the pick sheet, the best underneath; a locked length is crossed out
@@ -242,6 +251,8 @@ function spillDemo(id){ const b=$(`#grid .chest[data-chest="${id}"]`), w=$(`#gri
   setTimeout(()=>{ b.classList.remove('spill'); w.classList.remove('spill'); renderChests(); layoutGrid(); drawLines(false); },SPILL_DEMO_MS); }
 on('challenge',c=>{ show('s-pick',{g:c.g,d:c.d,s:c.s}); showChallenge(c); });
 on('run:abort',()=>show('s-pick'));
+// v24 (A.2, build 43): Fresh game starts the map at the top, whatever the last profile left it scrolled to
+on('store:reset',()=>{ const p=$('#s-pick'); if(p) p.scrollTop=0; });
 // the snake and its lines are measured, so a rotation has to re-measure them. Only while the grid is the screen on show
 addEventListener('resize',()=>{ if($('#s-pick').classList.contains('on')){ layoutGrid(); drawLines(false); } });
 define({
@@ -268,6 +279,9 @@ define({
   chest(b){ const id=b.dataset.chest, st=chestState(id), c=CHESTS.find(x=>x.id===id); if(!c) return 'pick';
     if(st==='before'){ toast(GRID.chestPrevToast); return 'pick'; }
     if(st==='locked'&&c.needs==='modes'){ const m=modeCount(); toast(T(GRID.chestModesToast,{open:m.open,total:m.total}),'','',true); return 'pick'; }
+    /* v24 (B.2 / B.3, build 43): a READY chest's tap IS the ask — "tap to open" says so — and it opens without flashing the key screen: the key
+       screen opens it on the frame it is shown, or after a key animation not yet seen has played through (ui/screens/key.js `open`) */
+    if(st==='ready'){ show('s-key',{open:id,tier:c.screen}); return 'click'; }
     show('s-key',{tier:c.screen}); return 'click'; },
   /* v23 (L.11b, build 41): a chest's word goes to the thing it names — `to` in config/copy.js: a screen, a key's tab (`key:<n>`), or `soon`
      for a reward not built yet (Gauntlet, and the Pro and Thorns placeholders), which says so where it is */

@@ -35,7 +35,9 @@
        system and nothing about it is a picture of the first -->
   <button data-act="go" class="item glow" data-go="s-prog">Progress</button>
   <!-- v15 (5.3): "Keys", plural — three tiers over the same combinations (A.1), the shell for #372 -->
-  <button data-act="go" class="item glow" data-go="s-key">Keys</button>
+  <!-- v24 (A.1, build 43): LOCKED until the Games chest opens, the Customise treatment - crossed out with "open the Games chest" under it,
+       green until the key screen is first seen. data-act="keys" so ui/screens/menu.js can refuse the tap -->
+  <button data-act="keys" class="item glow" data-go="s-key">Keys<small class="cusneed" id="keys-need" hidden></small></button>
   <!-- v23 (L.4a, build 39): Customise is its own menu item again, where it was at build 32 — the ability to customise is
        "its own menu option in itself" (Aiden). ui/screens/customise.js -->
   <!-- v23 (L.11a, build 40): LOCKED until the Games chest opens - crossed out (v17: crossed, not greyed) with what opens it under
@@ -45,7 +47,7 @@
   <button data-act="go" class="item glow" data-go="s-testing" data-dev>Testing</button>
   <!-- v17 (§A.6.7): percentage complete, key 1 only. The same line the keys screen carries, on the front of the app, so
        the number that moves on nearly every run is visible without opening anything. Hidden on a profile with no runs -->
-  <div class="menu-key" id="menu-key" data-act="go" data-go="s-key" hidden></div>
+  <div class="menu-key" id="menu-key" data-act="keys" data-go="s-key" hidden></div>
   <div class="hint" id="storyhint">tap to begin</div>
 </section>
 
@@ -185,6 +187,8 @@
   <!-- v23 (L.6 / L.10d, build 41): a chest that opens on this screen plays its CEREMONY here - ui/ceremony.js draws it, config/chests.js
        times it. Not skippable; the one act is its own tap, which does nothing until "tap to continue" -->
   <div class="cere" id="key-cere" data-act="cere-tap" hidden></div>
+  <!-- v24 (C.1, build 43): THE ASK - a ready chest opens because its key was tapped and the player said Open. ui/screens/key.js askOpen() -->
+  <div id="key-ask" hidden></div>
   <div id="key-main">
     <svg id="key-ring" viewBox="0 0 300 300" aria-hidden="true"></svg>
     <div class="keycount" id="key-count"></div>
@@ -208,7 +212,7 @@
        build, the device and the last run filled in. An <a>, so the link does its own work; data-act="none" is only the
        click sound — nothing here knows what a mail client is, and nothing is sent without the tester's own send button -->
   <a class="item sub" id="feedback" data-act="none" href="#">Send feedback</a>
-  <div class="hint">v0.42 · batch 16 · the moments · 15 sept 2026</div>
+  <div class="hint">v0.43 · batch 17 · chests and keys · 15 sept 2026</div>
 </section>
 
 <section class="screen" id="s-testing" data-back="s-menu" data-dev>
@@ -231,7 +235,7 @@
   <div class="chips" id="dev-keys"><button data-act="dev-chestall" data-chest="games" class="chip">games chest · every mode</button><button data-act="dev-chestall" data-chest="key" class="chip">key chest · key 1 cleared</button><button data-act="dev-chestall" data-chest="pro" class="chip">pro chest · pro cleared</button><button data-act="dev-chestall" data-chest="thorns" class="chip">thorns chest · author cleared</button><button data-act="dev-chestreset" data-chest="games" class="chip">reset games chest</button><button data-act="dev-chestreset" data-chest="key" class="chip">reset key chest</button><button data-act="dev-chestreset" data-chest="pro" class="chip">reset pro chest</button><button data-act="dev-chestreset" data-chest="thorns" class="chip">reset thorns chest</button></div>
   <div class="hint" id="dev-meter-now"></div>
   <div class="chips" id="dev-meter-row"><input id="dev-meter" type="number" min="0" max="400" step="1" inputmode="numeric" placeholder="0–400" aria-label="meter percentage"><button data-act="dev-meter" class="chip" id="dev-meterset">set meter to N%</button><button data-act="dev-meteroff" class="chip" id="dev-meteroff">meter · as earned</button></div>
-  <div class="chips" id="dev-anim"><button data-act="dev-keyin" class="chip">key arrival</button><button data-act="dev-seg" class="chip">segment advance</button><button data-act="dev-whole" class="chip">key complete</button><button data-act="dev-chest" data-chest="games" class="chip">replay games chest opening</button><button data-act="dev-chest" data-chest="key" class="chip">replay key chest opening</button><button data-act="dev-chest" data-chest="pro" class="chip">replay pro chest opening</button><button data-act="dev-chest" data-chest="thorns" class="chip">replay thorns chest opening</button></div>
+  <div class="chips" id="dev-anim"><button data-act="dev-keyin" class="chip">key arrival</button><button data-act="dev-seg" class="chip">segment advance</button><button data-act="dev-whole" data-tier="0" class="chip">key 1 earned</button><button data-act="dev-whole" data-tier="1" class="chip">pro key earned</button><button data-act="dev-whole" data-tier="2" class="chip">author key earned</button><button data-act="dev-chest" data-chest="games" class="chip">replay games chest opening</button><button data-act="dev-chest" data-chest="key" class="chip">replay key chest opening</button><button data-act="dev-chest" data-chest="pro" class="chip">replay pro chest opening</button><button data-act="dev-chest" data-chest="thorns" class="chip">replay thorns chest opening</button></div>
 </section>
 
 <section class="screen" id="s-pass">
@@ -301,12 +305,12 @@
 
 <script type="module" src="./boot.js"></script>
 
-<div id="build">v0.42</div>
+<div id="build">v0.43</div>
 <button id="update">New build available — tap to reload</button>
 <script>
 // build check: version.json is fetched with no-store, so a stale cached page still learns a newer build exists
 (function(){
-  const BUILD="42";
+  const BUILD="43";
   async function check(){
     try{
       const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});

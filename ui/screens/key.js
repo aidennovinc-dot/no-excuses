@@ -44,28 +44,45 @@
      and the four chests, and nothing about key 1's numbers.
    · L.8a the count line carries THE METER — "19 of 30 · 142%" — the same meter() the menu and the map read; a key's strip % is its own
      band's share of it.
-   · L.8b A READY CHEST OPENS HERE, BY ITSELF. No question asked; the chest is stored, its tier credited silently, and the meter counts
-     up. Plain in this build: a lid-up chest and its words. Build 41 makes it a ceremony.
+   · L.8b A READY CHEST OPENS HERE, BY ITSELF. (RETIRED at build 43 — C.1, below.)
    · L.12 a WHOLE key is a tap target — the hub glyph — that goes to its chest on the map. keyChest() on progress/key.js is the one read.
+
+   BUILD 43 (v24 §B.2, §B.3, §C.1, §C.2, §C.3, §C.5, §C.6):
+   · C.2 / C.3 THE PRO AND AUTHOR KEYS HAD LOST THEIR MUSIC, and it was one line, not the build-42 rewrite of the themes. Build 42 (L.7b,
+     guess) played a key's theme on its screen only once the chest THAT KEY OPENS was open — the Pro chest for Pro, the Thorns chest for
+     Author — so a player on the Pro tab heard the menu loop until Pro was finished. Key 1 kept its theme because its Key chest was already
+     open. A key's theme now plays on its screen the moment its TIER is open; SET THIS MUSIC still waits for the chest it opens (a reward).
+   · C.1 THIS SCREEN NEVER OPENS A CHEST BY ITSELF. L.8b's open-on-arrival and the interlude's open are gone. A READY chest is opened by a
+     deliberate tap: the key (the hub glyph of a whole key, or the quiet screen's key while the Games chest waits), or the chest itself in
+     the row — it ASKS ("Open the Key chest?"), then it opens. Batch 16's removal of the mid-flow "proceed to Pro" step stands; this is a
+     trigger the player asks for.
+   · B.2 / B.3 A READY CHEST TAPPED ON THE MAP never flashes this screen and never cuts a key animation short. With nothing unseen it opens on
+     the frame the screen is shown — the ceremony covers the screen before it is ever painted. With the arrival (5.4) or the key's earn
+     moment (C.5) not yet seen, that animation plays IN FULL, input held, and the chest opens after it. Never started and interrupted.
+   · C.5 EARNING A KEY is its own moment per tier, apart from opening a chest: earnMoment(tier), drawn from config/keys.js KEY_EARN, with
+     its sound from that key's theme (Snd.keyEarn). Inside a result interlude it follows the segment and the hand-back waits for it.
+   · C.6 each key's screen draws its own background over the live one — ui/atmosphere.js setKeyLayer(), the tier's `style` — once its tier
+     is open.
 
    The rules and the numbers are progress/key.js, config/key-bars.js and config/keys.js. Nothing about which combinations
    exist is written here — the panel under the ring renders whatever combos() returned, so a mode added to config/games.js
    shows up on this screen the same day. A combination with no bar renders as "no bar set" rather than vanishing (C.6). */
-import { Music } from "../../audio.js";
+import { Music, Snd } from "../../audio.js";
 import { CHESTS } from "../../config/chests.js";
 import { GRID, KEY, SHEET } from "../../config/copy.js";
 import { KEY_NOTE } from "../../config/key-bars.js";
-import { KEY_ART } from "../../config/keys.js";
+import { KEY_ART, KEY_EARN } from "../../config/keys.js";
 import { MODE_NAME } from "../../config/games.js";
-import { $, T, esc } from "../../core.js";
+import { $, $$, T, esc } from "../../core.js";
 import { emit, on } from "../../core/events.js";
 import { everywhere, prefs, save } from "../../core/store.js";
 import { GAMES, lenFull, lenName } from "../../games/registry.js";
 import { isOpen, lenOpen, modeCount } from "../../progress.js";
-import { bandPct, barOf, barsFaked, barsMissing, chestOpen, chestState, gameKey, isCleared, keyChest, keyState, keyTiers, meter, openChest, placeholderCount, readyChest, retroTier, skey, tierOpen } from "../../progress/key.js";
+import { bandPct, barOf, barsFaked, barsMissing, chestOpen, chestState, gameKey, isCleared, keyChest, keyState, keyTiers, meter, openChest, placeholderCount, retroTier, skey, tierOpen } from "../../progress/key.js";
 import { goWhere } from "../../run/run.js";
 import { scoreTxt } from "../format.js";
 import { define, lock } from "../actions.js";
+import { setKeyLayer } from "../atmosphere.js";
 import { ceremonyOn, ceremonyTap, playCeremony, stopCeremony } from "../ceremony.js";
 import { chestSvg, meterLook } from "../chest.js";
 import { register, show } from "../router.js";
@@ -159,7 +176,7 @@ function node(i, g, style) { const [nx, ny] = at(i, R_RING); const cls = `knode$
     + `<text class="knum" y="${ny < CY ? 26 : -14}">${g.done}/${g.total}</text></g>`; }
 function arcAt(i) { const a = angleOf(i), w = Math.PI / 7; const p = t => [CX + Math.cos(t) * R_RING, CY + Math.sin(t) * R_RING]; const [x0, y0] = p(a - w), [x1, y1] = p(a + w);
   return `M${f1(x0)} ${f1(y0)}A${R_RING} ${R_RING} 0 0 1 ${f1(x1)} ${f1(y1)}`; }
-// the ground behind the ring, by style: a warm radial for Lantern, a dot grid for Circuit, nothing for Thorn (black is the ground)
+// the ground behind the ring, by style: a warm radial for Lantern, a dot grid for Circuit, nothing for Thorn (C.4: the live background is its ground)
 function groundOf(style) {
   if (style === 'lantern') return `<defs><radialGradient id="kglow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="var(--ktint)" stop-opacity=".28"/><stop offset=".45" stop-color="var(--ktint)" stop-opacity=".08"/><stop offset="1" stop-color="var(--ktint)" stop-opacity="0"/></radialGradient></defs><circle class="kground" data-act="key-ground" cx="${CX}" cy="${CY}" r="${R_RING + 18}" fill="url(#kglow)"></circle>`;
   if (style === 'circuit') return `<defs><pattern id="kdots" width="12" height="12" patternUnits="userSpaceOnUse"><rect x="5.4" y="5.4" width="1.2" height="1.2" fill="var(--kdim)"/></pattern></defs><circle class="kground" data-act="key-ground" cx="${CX}" cy="${CY}" r="${R_RING + 18}" fill="url(#kdots)"></circle>`;
@@ -167,9 +184,12 @@ function groundOf(style) {
 function ring() { const tier = keyTiers()[openKey]; const st = keyState(tier.id); const style = tier.style || 'lantern';
   const parts = st.games.map((g, i) => root(i, g, style) + node(i, g, style)).join('');
   /* the hub glyph is the tier's own art, scaled into the hub. v23 (L.12, build 40): a WHOLE key whose chest is ready or open is a tap
-     target — a hit disc over the hub carries `key-chest` and the chest's name, and the hint under the ring says what the tap does */
+     target — a hit disc over the hub carries `key-chest` and the chest's name, and the hint under the ring says what the tap does.
+     v24 (C.1, build 43): a READY chest's tap asks first; an open one still goes to the map */
   const kc = keyChest(tier.id);
-  const hub = `<g class="kglyph${st.whole ? ' whole' : ''}${kc ? ' tochest' : ''}" transform="translate(${CX - 24} ${CY - 24})">${KEY_ART[tier.id].map(d => `<path d="${d}"></path>`).join('')}</g>`
+  /* v24 (C.5, build 43): the animated group carries NO transform attribute — the translate sits on a group inside it. A CSS scale or rotate on
+     an SVG element that has a transform attribute composes inside it (the build-41 lesson), and the earn moments threw the glyph off the hub */
+  const hub = `<g class="kglyph${st.whole ? ' whole' : ''}${kc ? ' tochest' : ''}"><g transform="translate(${CX - 24} ${CY - 24})">${KEY_ART[tier.id].map(d => `<path d="${d}"></path>`).join('')}</g></g>`
     + (kc ? `<circle class="khubhit" data-act="key-chest" data-chest="${kc.id}" cx="${CX}" cy="${CY}" r="${R_HUB}"></circle>` : '');
   $('#key-ring').innerHTML = groundOf(style) + `<circle class="khub" cx="${CX}" cy="${CY}" r="${R_HUB}"></circle>` + hub + parts;
   $('#key-ring').classList.toggle('whole', st.whole);
@@ -202,19 +222,22 @@ function panel() { const box = $('#key-list'); if (!openGame) { box.innerHTML = 
   if (spent.length) { for (const rk of spent) delete retro[rk]; prefs.retro = retro; save(); } }
 
 /* ---------- v23 (L.7b, build 42): what plays on a key's screen, and SET THIS MUSIC at its foot ----------
-   A key's theme is heard here only once the chest it opens is open (`music` in config/keys.js). Before that the front of the app's own loop
-   carries on (guess: "a locked key has no theme to hear" — the menu loop rather than silence), and the button is not there either. A tap
-   stores that chest in prefs.everywhere — every run's music from then on — and the button reads PLAYING EVERYWHERE in green. There is one
+   v24 (C.2 / C.3, build 43): A KEY'S THEME PLAYS ON ITS SCREEN ONCE ITS TIER IS OPEN. Build 42 waited for the chest the key OPENS, which put the
+   menu loop on the Pro and Author tabs until those keys were finished — the two "lost" themes. The quiet screen (key 1 before the Games chest)
+   still plays the menu loop: no tier is open there. SET THIS MUSIC is still a reward and still waits for that chest (`music` in config/keys.js).
+   A tap stores that chest in prefs.everywhere — every run's music from then on — and the button reads PLAYING EVERYWHERE in green. There is one
    button and one field, so the other two keys read SET THIS MUSIC again the moment they are on screen. Customise's Everywhere row writes the
    same field through the same store, and neither screen imports the other (A4). */
-const themeOf = t => t.music && chestOpen(t.music) ? t.track : 'menu';
+const themeOf = t => tierOpen(t.id) ? t.track : 'menu';
 function musicBtn(t) { const b = $('#key-music'), open = !!t.music && chestOpen(t.music), on = open && everywhere() === t.music;
   b.hidden = !open; b.classList.toggle('on', on); b.textContent = on ? KEY.musicOn : KEY.setMusic; }
 
 /* ---------- which key is on screen ---------- */
 /* L.10a: the four chests in a row, each in its state, with its name — the only chest reads on this screen go through chestState(). v23 (L.9a,
-   build 41): each in its OWN sprite, from ui/chest.js — the same four the map and the ceremony draw */
-const chestRow = () => `<div class="kchests">${CHESTS.map(c => `<span class="kch ${chestState(c.id)}">${chestSvg(c.id)}<b>${esc(GRID.chest[c.id])}</b></span>`).join('')}</div>`;
+   build 41): each in its OWN sprite, from ui/chest.js — the same four the map and the ceremony draw. v24 (C.1 / B.1, build 43): a READY one is a
+   button, with the pulsing green outline every openable chest wears, and its tap asks */
+const chestRow = () => `<div class="kchests">${CHESTS.map(c => { const st = chestState(c.id), inner = `${chestSvg(c.id)}<b>${esc(GRID.chest[c.id])}</b>`;
+  return st === 'ready' ? `<button class="kch ready" data-act="key-chest" data-chest="${c.id}">${inner}</button>` : `<span class="kch ${st}">${inner}</span>`; }).join('')}</div>`;
 function render() { const tiers = keyTiers();
   // a tier that is not open cannot be the one on screen: fall to the first open one, or to key 1 on the quiet screen (L.10a)
   if (!tierOpen(tiers[openKey].id)) { const i = tiers.findIndex(k => tierOpen(k.id)); openKey = i < 0 ? 0 : i; }
@@ -225,14 +248,18 @@ function render() { const tiers = keyTiers();
   /* v23 (L.10a / §M.2, build 40): BEFORE THE GAMES CHEST NO TIER IS OPEN, and the screen says only what opens it — the modes count, the
      meter and the four chests. No ring, no bars, no key-1 numbers: they arrive when the chest opens, credited silently (G.4) */
   const quiet = !tierOpen(t.id);
+  // v24 (C.6, build 43): this key's own background over the live one — once its tier is open; the quiet screen has no key to dress it
+  setKeyLayer(quiet || t.shell ? null : t.style);
   $('#key-main').hidden = !!t.shell || quiet; $('#key-shell').hidden = !t.shell && !quiet;
-  if (quiet) { const m = modeCount(); $('#key-shell').innerHTML = `${glyph(t.id, 't1 big')}<p>${esc(KEY.quiet)}</p><p class="soon" id="key-quiet-count"></p>${chestRow()}`;
+  if (quiet) { const m = modeCount(), ready = chestState('games') === 'ready', big = glyph(t.id, 't1 big');
+    // C.1: while the Games chest waits, the quiet screen's key is the way to its ask
+    $('#key-shell').innerHTML = `${ready ? `<button class="kquiet" data-act="key-chest" data-chest="games">${big}</button>` : big}<p>${esc(ready ? KEY.quietReady : KEY.quiet)}</p><p class="soon" id="key-quiet-count"></p>${chestRow()}`;
     meterLine($('#key-quiet-count'), T(KEY.quietCount, { open: m.open, total: m.total, pct: meter() })); return; }
   if (t.shell) { $('#key-shell').innerHTML = `${glyph(t.id, 't' + (openKey + 1) + ' big')}<p>${esc(t.lede)}</p><p class="soon">${esc(KEY.soon)}</p>`; return; }
   const st = ring(); panel();
-  // L.12: a whole key says what a tap on it does — go to its chest, or see what its chest gave
+  // L.12: a whole key says what a tap on it does — open its waiting chest (C.1: it asks first), or see what its chest gave
   const kc = keyChest(t.id);
-  $('#key-hint').textContent = st.whole ? (kc && kc.state === 'open' ? KEY.completeOpen : KEY.completeSub) : openGame ? KEY.rowGo : KEY.hint;
+  $('#key-hint').textContent = st.whole ? (kc && kc.state === 'open' ? KEY.completeOpen : kc && kc.state === 'ready' ? T(KEY.completeReady, { chest: GRID.chest[kc.id] }) : KEY.completeSub) : openGame ? KEY.rowGo : KEY.hint;
   /* a real config mismatch outranks the placeholder notes — one is a fault, the others are choices. Testing's in-memory fill
      first, then the generated placeholders in the file: A.2 as amended at build 38 (#426) lets a build generate a bar, but
      never silently — a generated number on screen has to say it is generated, or it is indistinguishable from one Aiden set.
@@ -242,8 +269,10 @@ function render() { const tiers = keyTiers();
   if (miss.length) $('#key-warn').textContent = T(KEY.mismatch, { n: miss.length, keys: miss.join(', ') });
   else if (fake) $('#key-warn').textContent = KEY.faked;
   else if (ph) $('#key-warn').textContent = T(KEY.placeholder, { n: ph, total: st.total });
-  // B.20: a key that has just become whole gets its moment, once per tier per profile
-  if (st.whole && !demo) { const seen = prefs.keyWhole || {}; if (!seen[t.id]) { seen[t.id] = 1; prefs.keyWhole = seen; save(); setTimeout(() => wholeMoment(), 260); } } }
+  /* B.20 → v24 (C.5, build 43): a key that has just become whole gets its EARN moment, once per tier per profile — never under a chest
+     ceremony, which would hide it and spend it. `earnAt` is when it starts: 260ms after the screen draws, or after the segment inside an
+     interlude (onShow sets it); `earnPlan` tells the interlude and the map's open path how long to wait for it */
+  if (st.whole && !demo && !ceremonyOn()) { const seen = prefs.keyWhole || {}; if (!seen[t.id]) { seen[t.id] = 1; prefs.keyWhole = seen; save(); earnPlan = t.id; clearTimeout(earnT); earnT = setTimeout(() => earnMoment(t.id), earnAt); } } }
 
 /* ---------- 9.5: the short advance. The segment that just lit walks in, and its row flashes ----------
    5.1 adds the background glow: the whole root of the game that earned it lights behind the segment for the length of
@@ -251,83 +280,120 @@ function render() { const tiers = keyTiers();
 function advance(a) { if (!a) return; const el = $(`[data-seg="${a.g}:${a.was}"]`); if (el) { el.classList.remove('grow'); void el.getBoundingClientRect(); el.classList.add('grow'); }
   const rt = $(`.kr[data-rg="${a.g}"]`); if (rt) { rt.classList.remove('glow'); void rt.getBoundingClientRect(); rt.classList.add('glow'); }
   const row = $('#krow-' + a.key.replace(/[:.]/g, '_')); if (row) row.classList.add('newthing'); }
-/* B.20: the whole-key moment. The hub glyph turns and flares, every root glows once, the count line lands. It plays over
-   the ring that is already drawn — nothing is redrawn — and comes off by itself. Also what Testing's "key complete" plays. */
-function wholeMoment() { const el = $('#s-key'); el.classList.remove('kwhole'); void el.getBoundingClientRect(); el.classList.add('kwhole');
-  setTimeout(() => el.classList.remove('kwhole'), 3400); }
 
-/* ---------- v23 (L.8b, build 40): A READY CHEST OPENS HERE, BY ITSELF ----------
-   When this screen opens with a chest READY — its band at the top, the chest ahead of it open — the chest opens on this screen with no
-   question asked. The screen turns to that chest's own tab, the chest is stored for good, the tier it reveals is credited against saved
-   bests SILENTLY (G.4), and the meter counts up from where it stood to where the credit put it (D.4), with the count-up's own whoosh
-   and the chest's one sound. PLAIN in this build: the chest drawn lid-up, its name, its words and the meter — no ceremony, no glow, no
-   shake (build 41). Opened is opened: the next open of this screen finds nothing ready and plays nothing (Testing's replay is build 41's).
-   A result-screen interlude that lands here with a chest newly ready opens it once the segment has drawn (§M default).
-   BUILD 41 (§L.6 / §L.10d): THE OPEN IS A CEREMONY — PRESENTATION ONLY (L10): the chest is stored and credited above, before a frame of it
-   plays. ui/ceremony.js plays that chest's own — Games ~3s, Key ~4s, Pro ~5s, Thorns ~6s — over this screen with the music hushed, the
-   meter counting up in its last beat (D.4), and holds on "tap to continue"; it is not skippable. That tap goes to the MAP with the chest in
-   view, where its words spill out (L.11b, ui/screens/pick.js) — or, inside an interlude, back to the result screen, and the spill waits for
-   the next time the map is painted (guess: L.8b opens the chest here and L.11b ends it on the map, and this is how one reaches the other).
-   The chest's sound is Snd.chest() — its effects and its sting — and never unlockFx. */
-const OPEN_AT = 600, OPEN_AFTER_ARRIVAL = 2700, OPEN_IN_INTERLUDE = 2500;   // (guess)
-let autoBack = null;
-function autoOpen() { const id = readyChest(); if (!id) return false;
+/* ---------- B.20 → v24 (C.5, build 43): EARNING A KEY, per tier ----------
+   Build 32's whole-key moment — the hub glyph turns and flares, every root glows once, the count line lands — was the same for all three keys,
+   and it had no sound. Earning a key is its own moment, apart from opening a chest, and it escalates in the key's own theme: config/keys.js
+   KEY_EARN says how long and how much is drawn, the stylesheet animates it on `kwhole` + data-earn, and Snd.keyEarn(tier) plays its sound
+   from that key's theme. Lantern keeps the flare with a warm bloom behind it; Circuit's squares run out from the hub, a current runs down
+   every trace and its corner dots blink; Thorn closes in dark, its thorns flex and a white spiked burst opens round the hub while the glyph
+   turns slowly. It plays over the ring already drawn, nothing is redrawn, and it comes off by itself. Testing plays each on demand (S5). */
+const ARRIVE_MS = 2600, EARN_AT = 260, OPEN_GAP = 250;   // the arrival's own length; when a due earn starts after the screen draws; the beat between an animation ending and a chest opening (guess)
+let earnAt = EARN_AT, earnT = 0, earnPlan = null;
+const earnOf = tier => KEY_EARN[tier] || KEY_EARN.clear;
+function earnLayers(tier) { const E = earnOf(tier), back = [], front = [];
+  if (E.bloom) back.push(`<defs><radialGradient id="kebloomg"><stop offset="0" stop-color="var(--ktint)" stop-opacity=".5"/><stop offset="1" stop-color="var(--ktint)" stop-opacity="0"/></radialGradient></defs><circle class="kebloom" cx="${CX}" cy="${CY}" r="${R_RING}"></circle>`);
+  if (E.spikes) back.push(`<defs><radialGradient id="kevigg"><stop offset=".3" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".85"/></radialGradient></defs><circle class="kevig" cx="${CX}" cy="${CY}" r="${R_RING + 70}"></circle>`);
+  for (let i = 0; i < (E.rings || 0); i++) front.push(`<rect class="kesq" x="${CX - R_HUB}" y="${CY - R_HUB}" width="${R_HUB * 2}" height="${R_HUB * 2}" style="--i:${i}"></rect>`);
+  if (E.pulses) $$('#key-ring .khalo').forEach((h, i) => { for (let k = 0; k < E.pulses; k++) front.push(`<path class="kepulse" pathLength="1" d="${h.getAttribute('d')}" style="--i:${i};--k:${k}"></path>`); });
+  for (let i = 0; i < (E.spikes || 0); i++) front.push(`<path class="kespk" d="M${CX - 3} ${CY - R_HUB - 4}L${CX} ${CY - R_HUB - 30 - (i % 2) * 16}L${CX + 3} ${CY - R_HUB - 4}z" style="--i:${i};--a:${Math.round(i * 360 / E.spikes)}deg"></path>`);
+  return { back: back.length ? `<g class="kearnbg">${back.join('')}</g>` : '', front: front.length ? `<g class="kearn">${front.join('')}</g>` : '' }; }
+const earnClear = () => { const r = $('#key-ring'); if (r) r.querySelectorAll('.kearn,.kearnbg').forEach(n => n.remove()); };
+function earnMoment(tier) { const el = $('#s-key'), ringEl = $('#key-ring'), E = earnOf(tier); clearTimeout(earnT); earnPlan = null; earnClear();
+  if (!ringEl || !el.classList.contains('on') || $('#key-main').hidden) return;
+  const L = earnLayers(tier); const ground = ringEl.querySelector('.kground');
+  if (L.back) { if (ground) ground.insertAdjacentHTML('afterend', L.back); else ringEl.insertAdjacentHTML('afterbegin', L.back); }
+  if (L.front) ringEl.insertAdjacentHTML('beforeend', L.front);
+  el.classList.remove('kwhole'); el.dataset.earn = tier; el.style.setProperty('--earn-ms', E.ms + 'ms'); void el.getBoundingClientRect(); el.classList.add('kwhole');
+  Snd.keyEarn(tier);
+  earnT = setTimeout(() => { el.classList.remove('kwhole'); delete el.dataset.earn; earnClear(); }, E.ms + 150); }
+
+/* ---------- v24 (C.1 / B.2 / B.3, build 43): OPENING A CHEST ----------
+   Nothing on this screen opens a chest by itself any more. A chest opens because the player asked: the map's tap on a READY chest (B.2 — it
+   arrives with `open`), or the ask here (C.1 — the key, or the chest in the row, then Open). Either way it is the build-41 CEREMONY, presentation
+   only (L10): the chest is stored and its tier credited silently (G.4) before a frame plays, the music hushed, not skippable, and "tap to
+   continue" goes to the MAP with the chest in view, where its words spill out (L.11b). The ceremony is started BEFORE the ring behind it is
+   redrawn, so its opaque stage is what the frame shows. The chest's sound is Snd.chest() — its effects and its sting — and never unlockFx. */
+let openT = 0;
+function openNow(id) { if (chestState(id) !== 'ready') return false; askClose();
   const c = CHESTS.find(x => x.id === id), r = openChest(id); if (!r) return false;
-  if (c && typeof c.screen === 'number' && !auto) openKey = c.screen;
-  render();
   // D.4 / L.8e: the credit lands as the ceremony's count-up, and the figure it lands on is the meter as painted
   prefs.meterSeen = r.now; save();
-  playCeremony($('#key-cere'), id, { was: r.was, now: r.now,
-    // an interlude holds input locked (ui/actions.js — the result screen took it); "tap to continue" is the one tap it must let through
-    onReady: () => { if (auto) lock(false); },
-    onDone: () => { if (auto) handBack(); else show('s-pick', { chest: id }); } });
+  playCeremony($('#key-cere'), id, { was: r.was, now: r.now, onDone: () => show('s-pick', { chest: id }) });
+  if (c && typeof c.screen === 'number') openKey = c.screen;
+  render(); Music.menu(themeOf(keyTiers()[openKey]));
   return true; }
+/* C.1: THE ASK. The lock box's own shape, in green: the chest, "Open the Key chest?", Open / Not yet. Bare ground behind it is Back, which closes
+   it; the panel itself swallows a stray tap */
+function askOpen(id) { if (chestState(id) !== 'ready') return false; const box = $('#key-ask');
+  box.innerHTML = `<div class="kask" data-act="key-ground">${chestSvg(id)}<h3>${esc(T(KEY.ask, { chest: GRID.chest[id] }))}</h3><div class="row"><button class="item" data-act="key-ask-yes" data-chest="${id}">${esc(KEY.askYes)}</button><button class="item sub" data-act="key-ask-no">${esc(KEY.askNo)}</button></div></div>`;
+  box.hidden = false; return true; }
+function askClose() { const box = $('#key-ask'); if (!box || box.hidden) return false; box.hidden = true; box.innerHTML = ''; return true; }
 
 /* 5.1: the interlude. The result screen has already faded and locked input; this plays the clear and hands itself back.
    It is one path for every game — the result screen never decides what the animation is, and this screen never decides
    what happens after it, which is why neither had to learn about the other (A4).
    B.21: if this is the first time the screen has ever been seen, the ARRIVAL plays first and the segment waits for it.
-   Build 40 (L.8b): a clear that tops a band opens its chest here, after the segment, inside the same hand-back time. */
+   v24 (C.1, build 43): a clear that tops a band NO LONGER OPENS ITS CHEST HERE — the chest waits, ready, for its key to be tapped.
+   C.5: a clear that makes the key WHOLE plays its earn moment after the segment has landed, and the hand-back waits for it to finish. */
 // the interlude hands itself back — to the result screen, which releases the lock on key:done. Once, whichever path gets there first
 function handBack() { const back = autoBack; autoBack = null; $('#s-key').classList.remove('auto'); auto = null; if (back) show(back); emit('key:done'); }
+let autoBack = null;
 function interlude(a, back) { const el = $('#s-key'); el.classList.add('auto'); autoBack = back;
-  const arrive = firstIn() ? 2600 : 0;
+  const arrive = firstIn() ? ARRIVE_MS : 0;
   setTimeout(() => advance(a), arrive);
-  setTimeout(() => { if (auto && readyChest()) autoOpen(); }, arrive + OPEN_IN_INTERLUDE);
+  // an earn moment render() scheduled runs from the screen's draw, 320ms before this; the hand-back waits past its end
+  const earnWait = earnPlan ? Math.max(0, earnAt - 320 + earnOf(earnPlan).ms + OPEN_GAP - 3900 - arrive) : 0;
   // v17 (B.33): the animations run at 1.5x their old length, so the interlude has to wait 1.5x as long or it would hand
   // itself back over the top of the halo it just lit. One number, and it is the only place either length is written.
-  // BUILD 41 (L.6): a ceremony that started inside the interlude OWNS the hand-back — it waits for "tap to continue", so this one stands down
-  setTimeout(() => { if (ceremonyOn() || autoBack !== back) return; handBack(); }, 3900 + arrive); }
+  setTimeout(() => { if (ceremonyOn() || autoBack !== back) return; handBack(); }, 3900 + arrive + earnWait); }
 
 // 5.4: once per profile, the whole screen arrives rather than simply being there. Answers whether it played
 function firstIn() { if (prefs.keySeen) return false; prefs.keySeen = 1; save();
-  const el = $('#s-key'); el.classList.add('first'); setTimeout(() => el.classList.remove('first'), 2600); return true; }
+  const el = $('#s-key'); el.classList.add('first'); setTimeout(() => el.classList.remove('first'), ARRIVE_MS); return true; }
 
-register('s-key', { onShow({ advance: a, from, auto: to, tier, whole, arrive, ceremony: cer } = {}) { stopCeremony();
+register('s-key', { onShow({ advance: a, from, auto: to, tier, whole, arrive, ceremony: cer, open } = {}) { stopCeremony(); askClose();
+    if (openT) { clearTimeout(openT); openT = 0; lock(false); }
     cameFrom = from || null; pending = a || null; auto = to || null; demo = !!(whole || arrive || cer);
     if (a) { openKey = keyTierIx(a.tier); openGame = a.g; }
     if (tier !== undefined) openKey = tier;
     // B.26: Testing asks for the arrival again by clearing the flag first; it asks for the whole-key moment by name
     if (arrive) { prefs.keySeen = 0; }
+    /* B.2 / B.3 (build 43): a READY chest tapped on the map. Its tab, and what of this screen has not been seen yet: the arrival (5.4, only on a
+       tier that is open — the quiet screen has nothing to arrive) and the key's earn moment (C.5) */
+    const oc = open && chestState(open) === 'ready' ? CHESTS.find(c => c.id === open) : null;
+    if (oc) { openKey = oc.screen; openGame = null; }
+    const t0 = keyTiers()[openKey], open0 = tierOpen(t0.id);
+    const arrivalDue = !prefs.keySeen && open0, earnDue = open0 && !t0.shell && t0.whole && !(prefs.keyWhole || {})[t0.id];
+    earnAt = auto ? 320 + (prefs.keySeen ? 0 : ARRIVE_MS) + 1000 : EARN_AT; earnPlan = null;
+    // B.2: nothing unseen — the chest opens on the frame this screen is shown, so the screen itself is never painted first
+    if (oc && !arrivalDue && !earnDue) { openNow(oc.id); return; }
     render();
+    // v24 (A.1, build 43): the Keys row on the menu is green until this screen is first seen after the Games chest (L8)
+    if (tierOpen('clear') && !prefs.keysSeen) { prefs.keysSeen = 1; save(); }
     // v16 (1.3): each key tier has its own loop, rising in intensity the way the glyphs do. This and the tier button keep it in step with
-    // whichever tier is open. Build 42 (L.7b): only once that key's chest is open — the menu loop until then — and audio.js no longer
-    // starts one of its own when the screen changes
+    // whichever tier is open. Build 43 (C.2 / C.3): once the TIER is open — the menu loop only on the quiet screen — and audio.js does not
+    // start one of its own when the screen changes
     Music.menu(themeOf(keyTiers()[openKey]));
     const arrived = !auto && firstIn();
-    if (whole) setTimeout(() => wholeMoment(), 300);
+    /* B.3: a key animation not yet seen is never cut off — it plays IN FULL, nothing tappable meanwhile, and then the chest opens */
+    if (oc) { const wait = Math.max(arrived ? ARRIVE_MS : 0, earnPlan ? earnAt + earnOf(earnPlan).ms : 0) + OPEN_GAP;
+      lock(true); openT = setTimeout(() => { openT = 0; lock(false); if ($('#s-key').classList.contains('on')) openNow(oc.id); }, wait); return; }
+    if (whole) { clearTimeout(earnT); earnT = setTimeout(() => earnMoment(tierId()), 300); }
     /* B.26 → v23 (L.6, build 41): Testing replays a chest's CEREMONY here with nothing stored — the meter holds where it is, and the tap
        goes to the map, where the spill replays the same way (ui/screens/pick.js spillDemo) */
     if (cer) setTimeout(() => { if (!$('#s-key').classList.contains('on')) return; const m = meter();
       playCeremony($('#key-cere'), cer, { was: m, now: m, onDone: () => show('s-pick', { spillDemo: cer }) }); }, 300);
     if (pending) { const p = pending; pending = null; if (auto) setTimeout(() => interlude(p, auto), 320); else setTimeout(() => advance(p), 260); }
-    // L.8b: a chest ready as the screen opens is opened on it — after the first-ever arrival, if that is playing
-    else if (!demo && readyChest()) setTimeout(() => { if ($('#s-key').classList.contains('on') && !auto && autoOpen()) Music.menu(themeOf(keyTiers()[openKey])); }, arrived ? OPEN_AFTER_ARRIVAL : OPEN_AT); },
+    // C.1 (build 43): a chest that is ready as this screen opens is NOT opened here — the key is tapped, it asks, then it opens
+  },
   // a fresh clear arrived from a result screen: Back belongs to the run, not to the menu
-  // L.6 (build 41): a ceremony is not skippable, so nothing goes Back while one is on
-  onBack() { if (ceremonyOn() || auto) return true; if (!cameFrom) return false; const to = cameFrom; cameFrom = null; show(to); return true; } });
-// a ceremony belongs to this screen: leaving it any other way ends it and gives the music back
-on('screen:change', ({ id }) => { if (id !== 's-key') stopCeremony(); });
+  // L.6 (build 41): a ceremony is not skippable, so nothing goes Back while one is on. C.1: Back closes the ask first
+  onBack() { if (ceremonyOn() || auto || openT) return true; if (askClose()) return true; if (!cameFrom) return false; const to = cameFrom; cameFrom = null; show(to); return true; } });
+// a ceremony, the ask, a waiting open and this key's background belong to this screen: leaving it any other way ends them and gives the music back
+on('screen:change', ({ id }) => { if (id === 's-key') return; stopCeremony(); askClose(); setKeyLayer(null);
+  clearTimeout(earnT); earnPlan = null; const el = $('#s-key'); el.classList.remove('kwhole'); delete el.dataset.earn; earnClear();
+  if (openT) { clearTimeout(openT); openT = 0; lock(false); } });
 const keyTierIx = id => Math.max(0, keyTiers().findIndex(k => k.id === id));
 define({
   // v21 (G.2): a locked key says what opens it and stays where it is — its ring and its numbers are what A.1 still hides
@@ -342,8 +408,11 @@ define({
   'key-ground'() { return undefined; },
   // v23 (L.6, build 41): the ceremony's own tap — nothing at all until "tap to continue", then it ends and hands over
   'cere-tap'() { return ceremonyTap() ? 'click' : undefined; },
-  // v23 (L.12, build 40): a whole key goes to its chest on the map — ready, or open with its words beside it
-  'key-chest'(el) { show('s-pick', { chest: el.dataset.chest }); return 'click'; },
+  /* v23 (L.12, build 40): a whole key goes to its chest on the map when that chest is open, with its words beside it.
+     v24 (C.1, build 43): when that chest is READY the tap ASKS — and so does a ready chest in the row, and the quiet screen's key */
+  'key-chest'(el) { const id = el.dataset.chest; if (chestState(id) === 'ready') { askOpen(id); return 'pick'; } show('s-pick', { chest: id }); return 'click'; },
+  'key-ask-yes'(el) { return openNow(el.dataset.chest) ? 'click' : (askClose(), undefined); },
+  'key-ask-no'() { askClose(); return 'click'; },
   /* 5.2: go and try this one. A locked mode or length hands over to the lock box — the same event the pick sheet and the
      Unlocks screen raise — and everything else starts the run with the bar as the goal line. `aim` names the game so the
      run's own here() can take it back out again while you are inside that game (v14 3.3). */

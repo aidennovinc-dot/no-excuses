@@ -6,6 +6,7 @@
     "test": "node _smoke/smoke.mjs",
     "bump": "node scripts/bump.mjs",
     "placeholders": "node scripts/placeholders.mjs",
+    "native": "node scripts/native.mjs",
     "review": "node ../_review/scripts/catalogue.mjs && node ../_review/scripts/build-catalogue.mjs"
   },
   "dependencies": {

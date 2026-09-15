@@ -307,6 +307,37 @@ Customise write one field through `core/store.js` and neither imports the other.
   three tracks; `keys.js` gained `music` per key and its `track`s moved; `copy.js` gained `CUSTOM.perGame` / `openChest` / `themeOn` and
   `KEY.setMusic` / `musicOn`. `Music.probe()` reports `track`, `arc`, `arcBars`, `stems`, `flow`, `fin`.
 
+### Amended at build 43 (batch 17, chests and keys: FEEDBACK-v24 §A, §B.1–§B.3, §B.5, §C), 2026-09-15
+
+**L10 quoted: presentation, one menu lock and one build flag — no bar clears, no chest opens by itself, nothing new banks. A4: the map asks
+the key screen to open a chest with `show('s-key', {open})` and neither imports the other. S5: the dev switches reach the first load of the
+web build and no native build.**
+
+- **v23 L.8b RETIRED (v24 C.1): a chest no longer opens on the key screen by itself**, on arrival or inside a result interlude. The key screen's
+  key — a whole key's hub, or the quiet screen's key while the Games chest waits — or a ready chest in its row ASKS ("Open the Key chest?",
+  Open / Not yet), then opens. Batch 16's retired "proceed to Pro" stays retired: that was a step in the middle of a flow; this is a trigger.
+- **New (B.2 / B.3): a READY chest tapped on the map opens straight away** — its ceremony covers the key screen from the frame it is shown —
+  unless the key screen's arrival or that key's earn moment has not been seen, in which case that plays in full, input held, and then the chest
+  opens. The map's "tap to open" is the ask there (guess).
+- **New (B.1): a chest that can be opened wears a pulsing green outline**, map and key screen, all four.
+- **v18 B.20 amended (C.5): the whole-key moment is each key's own earn moment** — Lantern, Circuit, Thorn — escalating, with a sound from its
+  key's theme; `KEY_EARN` / `KEY_EARN_FX`. A result interlude waits for it.
+- **v23 L.7b amended (C.2 / C.3): a key's screen plays its theme once its TIER is open**, not once the chest the key opens is. The build-42 rule
+  was the whole of "the Pro and Thorns keys lost their music".
+- **v23 L.6's sting amended (C.7): `CHEST_STING` is cut from its key's theme** by `stingOf()` through `bars()`, held to the theme rule rather than
+  "every note 700ms", escalating Games → Key → Pro → Thorns.
+- **New (C.4 / C.6): each key screen draws its own background over the live one**, and each is a Customise background (`ITEMS.bg` `key`) once
+  that key is finished (`keyFinished`). Thorn's solid black is gone.
+- **v23 L.11a extended (A.1): Keys is locked until the Games chest** exactly as Customise is — the menu row, the meter line and Progress's key
+  row. `prefs.keysSeen`, no ladder step (an absent field takes `keySeen`).
+- **v10 first-run dimming narrowed (A.3): a `[data-dev]` row is never dimmed**; `TARGET` in `config/build.js` sets `BUILD_FLAGS.dev`, and `npm run
+  native` writes a tree with TARGET native and no `[data-dev]` element.
+- **New (A.2 / B.5): a brand new game opens the map at the top; the chests join the first-visit reveal.**
+- **`config/` inventory:** `build.js` gained `TARGET`; `keys.js` gained `KEY_EARN` and `KEY_LAYER`, and Thorn's `ground` is a faint white; `theme.js`
+  gained `lantern` / `circuit` / `thorn` in `DESIGNS` and `ITEMS.bg` with a `key` field; `audio.js` gained `STING_RING` and `KEY_EARN_FX`, and
+  `CHEST_STING` is `{track, voices?, cut, tail}`; `copy.js` gained `MENU.keysNeed`, `TOAST.keysLocked`, `KEY.ask` / `askYes` / `askNo` /
+  `completeReady` / `quietReady`, three `BG_NAME`s, and `TOAST.cusLocked` now points at the map.
+
 ## Structure — the full text as of build 30
 
 `CLAUDE.md` keeps the module map. This is the paragraph-by-paragraph description it carried at build 30: the DAG, the

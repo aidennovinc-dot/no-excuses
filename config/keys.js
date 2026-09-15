@@ -38,9 +38,37 @@ export const KEYS = [
     lede: 'Every clearance bar, once each. Beat one in a solo run and that combination is cleared for good.' },
   { id: 'pro', name: 'Pro', theme: 'Circuit', style: 'circuit', track: 'theme:pro', music: 'pro', tint: '#BFE6FF', dim: '#35506A', ground: 'rgba(191,230,255,.08)',
     lede: 'A harder bar on every combination, for a second pass at a game you already know.' },
-  { id: 'author', name: 'Author', theme: 'Thorn', style: 'thorn', track: 'theme:thorns', music: 'thorns', tint: '#FFFFFF', dim: '#4D4D4D', ground: 'rgba(0,0,0,.55)',
+  /* v24 (C.4, build 43): Thorn's ground was rgba(0,0,0,.55) under a solid black #key-main, so the live background never showed. Keys 1 and 2
+     let it through and keep their own elements; Thorn does now too — a faint white wash, the spikes and white accents drawn over it */
+  { id: 'author', name: 'Author', theme: 'Thorn', style: 'thorn', track: 'theme:thorns', music: 'thorns', tint: '#FFFFFF', dim: '#4D4D4D', ground: 'rgba(255,255,255,.04)',
     lede: "The author's own times. The last thing left to beat." },
 ];
+
+/* ---------- v24 (C.5, build 43): EARNING A KEY — its own moment per tier, apart from opening a chest ----------
+   Build 32's whole-key moment was one glyph flare for all three. Earning a key and opening a chest are two different moments (C.5), so each
+   tier's earn is its own: Lantern a warm bloom behind the flare; Circuit square pulses running out from the hub, a current down every trace
+   and the corner dots blinking; Thorn a dark closing-in, the thorns flexing and a white spiked burst while the glyph turns slowly. `ms` is
+   the whole moment; the counts are how many of each drawn element (ui/screens/key.js earnHtml). The sound is KEY_EARN_FX in
+   config/audio.js, from the key's own theme. Escalating in length and in what is drawn (gated). All (guess). */
+export const KEY_EARN = {
+  clear: { ms: 2900, bloom: 1, rings: 0, pulses: 0, spikes: 0 },
+  pro: { ms: 3800, bloom: 0, rings: 3, pulses: 2, spikes: 0 },
+  author: { ms: 4800, bloom: 0, rings: 0, pulses: 0, spikes: 14 },
+};
+
+/* ---------- v24 (C.6, build 43): THE THREE KEY-SCREEN BACKGROUNDS, drawn in code ----------
+   One per key, drawn by ui/atmosphere.js OVER the live background (C.4) while that key's screen is up, and a Customise background once that
+   key is finished (config/theme.js ITEMS.bg, `key`). No image assets. Each moves gently and keeps its key's tempo — the drawer reads the bpm
+   of the key's own theme (`track` above), so the motion and the music cannot drift apart.
+     lantern  slow-drifting light, soft and warm, low contrast — `blobs` warm glows swaying over `drift` bars, `motes` rising sparks
+     circuit  sharper, cooler, geometric, moving with intent — `traces` right-angled lines on a `cell` grid, a pulse `pulse` cells a beat
+     thorn    black at the edges with white spiked branches, high contrast, slow and menacing — `branches` creep in and back over `breathe` bars
+   `alpha` is the strongest any element gets, so each stays under the screen's own content. All (guess). */
+export const KEY_LAYER = {
+  lantern: { blobs: 6, motes: 16, alpha: .085, drift: 4, col: '255,208,138' },
+  circuit: { cell: 44, traces: 9, pulse: 1, alpha: .1, head: .45, col: '191,230,255' },
+  thorn: { branches: 8, thorns: 7, edge: .6, breathe: 4, alpha: .5, col: '255,255,255' },
+};
 
 // stroke paths, drawn in a 48x48 box. The bow first, then the shaft, then the teeth, then the theme's own flourish
 export const KEY_ART = {

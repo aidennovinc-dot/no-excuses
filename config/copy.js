@@ -27,12 +27,14 @@ export const TOAST = {
   devModesOn:'Games chest · every mode unlocked · switch off to go back', devModesOff:'Games chest · the modes back to what they were', devModesReset:'Games chest · reset · every mode locked again, the chest shut',
   devMeterSet:'Meter shows {n}% · nothing earned, only the override stored', devMeterOff:'Meter override off · it reads what the profile earned',
   // v23 (L.11a, build 40): Customise waits for the Games chest
-  cusLocked:'Open the Games chest first<small>unlock every game mode, then open it from Keys</small>',
+  // v24 (A.1 / B.2, build 43): the Games chest opens from the MAP now (Keys waits for it too), so both locked lines say where to go
+  cusLocked:'Open the Games chest first<small>unlock every game mode, then tap the chest on the map</small>',
+  keysLocked:'Open the Games chest first<small>unlock every game mode, then tap the chest on the map</small>',
 };
 // what an achievement opens, as a line under it
 export const UNLOCK_WORD = { wheel:'unlocks the colour wheel', bg:'unlocks {bg} background', snd:'unlocks {v} sounds', item:'unlocks {word}' };
 export const ITEM_WORD = { sq:'target colour', lead:'lead colour', cut:'cut piece colour', bg:'background', snd:'sound pack', scale:'scale', wheel:'colour wheel' };
-export const BG_NAME = { stars:'stars', grid:'grid', rain:'rain', orbs:'orbs' };
+export const BG_NAME = { stars:'stars', grid:'grid', rain:'rain', orbs:'orbs', lantern:'lantern', circuit:'circuit', thorn:'thorn' };
 // v13: Stretch is Pro (11.1); the Unlocks line says what the tier is for (11.2); Author (11.3) is Aiden's own records, placeholders until the final build
 /* v17 (B.11): the first tier was called UNLOCKS and its line promised "every one opens something new". Six of its
    seventeen rows opened nothing at all — Clean · Sprint · Two, Pinpoint · Blind, Dead on, Under 200, Eight, Spotter — and
@@ -90,7 +92,8 @@ export const VERDICT = { fail:'Run over — go again.', nothing:'Nothing landed.
 /* v17 (B.20, build 29): `note` is gone. "play one run · the rest opens" sat under a menu whose every other item was
    already struck through — the strikes say it, and the first run un-strikes them one at a time (v15 6.2). */
 // v23 (L.11a, build 40): `cusNeed` sits under the crossed-out Customise row until the Games chest opens
-export const MENU = { next:'<em>Next unlock</em><span>{need} → {name}</span>', nextAch:'<em>Next achievement</em><span>{need} → {name}</span>', cusNeed:'open the Games chest' };
+// v24 (A.1, build 43): `keysNeed` sits under the crossed-out Keys row until the Games chest opens — the Customise treatment
+export const MENU = { next:'<em>Next unlock</em><span>{need} → {name}</span>', nextAch:'<em>Next achievement</em><span>{need} → {name}</span>', cusNeed:'open the Games chest', keysNeed:'open the Games chest' };
 /* v15 (2.4): the Unlocks screen — the chain on its own page, split off from Achievements. Everything that OPENS something
    lives here; Achievements keeps the rest. What sits behind keys 2 and 3 is register #372 and is not decided, so the key
    line below says only what is true today. */
@@ -250,6 +253,11 @@ export const KEY = { title:'the key', hint:'tap a game · solo runs only',
   /* v23 (L.8b, build 40): "Open the chest?" and "Would you like to progress to {key}?" are RETIRED with the double confirmation, and so
      are B.19's "needs {key}" lines — a chest reads the meter now. A chest opens on the key screen by itself; `opened` is what it says */
   opened:'{chest} opened',
+  /* v24 (C.1, build 43): the key screen never opens a chest by itself any more — the key is tapped, it ASKS, then it opens. A deliberate
+     trigger, not batch 16's retired mid-flow step (both stand). `completeReady` is the hint under a whole key whose chest is waiting;
+     `quietReady` is the quiet screen's line once every mode is unlocked (guess on the words) */
+  ask:'Open the {chest}?', askYes:'Open', askNo:'Not yet', completeReady:'tap the key to open the {chest}',
+  quietReady:'Every game mode is unlocked. Tap the key to open the Games chest.',
   // v23 (L.6, build 41): the ceremony holds on this until it is tapped — it is not skippable before it
   tapOn:'tap to continue',
   /* v23 (L.10a, build 40): before the Games chest the key screen shows only the modes count, the meter and the four chests (guess on the words) */
