@@ -3,7 +3,7 @@
    Build 17 (refactor stage 3): the engine contract, on the round base. */
 
 import { SPOT as CP } from "../../config/copy.js";
-import { SHAPE_WORD, SPOT_FIND, SPOT_RAMP, VS_TARGET } from "../../config/games.js";
+import { CFG, COUNT_ADD, COUNT_BUDGET, SHAPE_WORD, SPOT_FIND, SPOT_RAMP, VS_TARGET } from "../../config/games.js";
 import { $, $$, T, f2, minMax, pWho, shapeI, winner } from "../../core.js";
 import * as hud from "../_shared/hud.js";
 import { roundTier } from "../_shared/tier.js";
@@ -24,7 +24,7 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
   begin(){ this.round=0; this.right=0; this.wrong=0; this.times=[]; this.bestFlash=0; this.off=0; this.tot=0; this.two=this.ctx.players===1&&this.ctx.mode==='count'; this.vs=this.ctx.players===2&&this.find(); this.vsN=[0,0]; this.topF=.08; hud.score(this.find()?'0.00':'0'); hud.scoreVisible(!(this.two||this.vs)); if(this.vs) return this.vsDeal(); this.next(); },
   // v16 (1.5): a Set ramps over its last round, a Streak once its budget is 80% spent — 5 miscounts on Count, 10s on
   // Find (L5). Music only (A.1); a two-player run ramps on nothing, it has no budget of its own
-  fin(){ if(this.two||this.vs) return 0; return this.streak()?this.finBud(this.find()?this.tot:this.off,this.find()?10:5):this.finSet(); },
+  fin(){ if(this.two||this.vs) return 0; return this.streak()?this.finBud(this.find()?this.tot:this.off,this.find()?10:COUNT_BUDGET):this.finSet(); },
   // Find's crowd still grows across ten rounds; a Streak holds at the round-10 crowd
   p(){ return Math.min(1,(this.round-1)/9); },
   /* v17 (B.15) — the difficulty is the CROWD, not the clock. The target count is dealt from a band whose two edges rise
@@ -35,9 +35,10 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
     const lo=Math.min(R.nCap,Math.round(R.loBase+R.loPer*(r-1)));
     const hi=Math.min(R.nCap,Math.max(lo,Math.round(R.hiBase+R.hiPer*(r-1))));
     const dip=r>=R.dipFrom&&(r-R.dipFrom)%R.dipEvery===0;
-    return { lo, hi, dip, n:dip?lo:lo+rnd(hi-lo+1),
-      decoys:Math.min(R.decoyCap,Math.round((R.decoyBase+R.decoyPer*(r-1))*(dip?R.dipDecoy:1))),
-      flash:Math.max(R.flashMin,R.flashMax-R.flashPer*(r-1)),
+    const n=dip?lo:lo+rnd(hi-lo+1), decoys=Math.min(R.decoyCap,Math.round((R.decoyBase+R.decoyPer*(r-1))*(dip?R.dipDecoy:1)));
+    // v24 (F.4, build 44): the flash is read off the crowd this round actually deals — more shapes, more time (config/games.js)
+    return { lo, hi, dip, n, decoys,
+      flash:Math.min(R.flashCap,R.flashBase+R.flashShape*Math.max(0,n+decoys-R.flashFree)),
       drift:r>=R.driftFrom?R.driftBase+(r-R.driftFrom)*R.driftPer:0,
       spin:r>=R.spinFrom?R.spinBase+(r-R.spinFrom)*R.spinPer:0,
       sizeVar:r>=R.sizeFrom?Math.min(R.sizeCap,R.sizeBase+(r-R.sizeFrom)*R.sizePer):0 }; },
@@ -54,13 +55,13 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
   result(){ const x=this.bestFlash, [best,worst]=minMax(this.times);
     if(this.find()) return this.streak()?{hits:this.times.length,misses:this.wrong,x:best,y:worst,lim:'10s'}:{hits:Math.round(this.tot*100)/100,misses:this.wrong,x:best,y:worst};
     const rounds=Math.max(0,this.round-1);
-    return this.streak()?{hits:rounds,misses:this.wrong,x,y:this.worstOff||0,rounds,lim:'5 miscounts'}:{hits:this.off,misses:this.wrong,x,y:this.worstOff||0,rounds}; },
+    return this.streak()?{hits:rounds,misses:this.wrong,x,y:this.worstOff||0,rounds,lim:COUNT_BUDGET+' miscounts'}:{hits:this.off,misses:this.wrong,x,y:this.worstOff||0,rounds}; },
   next(){ this.clearT(); this.round++;
     if(this.find()){ if(this.streak()){ if(this.tot>=10) return this.ctx.emit('finish',this.result()); hud.time(T(CP.hudFindStreak,{n:this.round,tot:f2(this.tot)})); }
       else { if(this.round>this.ctx.len) return this.ctx.emit('finish',this.result()); hud.time(T(CP.hudFind,{n:this.round,s:this.ctx.len,tot:f2(this.tot)})); }
       return this.findRound(); }
     if(this.two){ if(this.round>this.twoLen()) return this.twoEnd(); hud.time(T(CP.hudTwo,{n:this.round,s:this.twoLen()})); return this.countRound(); }
-    if(this.streak()){ if(this.off>=5) return this.ctx.emit('finish',this.result()); hud.time(T(CP.hudCountStreak,{n:this.round,off:this.off})); }
+    if(this.streak()){ if(this.off>=COUNT_BUDGET) return this.ctx.emit('finish',this.result()); hud.time(T(CP.hudCountStreak,{n:this.round,off:this.off,bud:COUNT_BUDGET})); }
     else { if(this.round>this.ctx.len) return this.ctx.emit('finish',this.result()); hud.time(T(CP.hudCount,{n:this.round,s:this.ctx.len,off:this.off})); }
     this.countRound(); },
   countRound(){ const r=genRect(), R=this.ramp(this.round); const all=['circle','square','tri']; this.target=all[rnd(3)]; const rest=all.filter(s=>s!==this.target);
@@ -92,10 +93,28 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
     // v17 (B.15): Find's crowd varies in size too, arriving with the motion. v17 (B.16): and every shape is clamped inside
     // the field from the moment it is dealt, not only once it has drifted out of it
     const sv=p*SPOT_FIND.sizeVar;
-    this.pts=scatter(n,rest,Math.round(this.size*(1+sv)),this.odd); this.pts.forEach(q=>{ q.sz=this.vary(this.size,sv,SPOT_FIND.sizeMin); q.vx=(Math.random()-.5)*drift; q.vy=(Math.random()-.5)*drift; q.va=0; this.clamp(q,r); });
+    this.pts=scatter(n,rest,Math.round(this.size*(1+sv)),this.odd); this.pts.forEach(q=>{ q.sz=this.vary(this.size,sv,SPOT_FIND.sizeMin); q.vx=(Math.random()-.5)*drift; q.vy=(Math.random()-.5)*drift; q.va=0; });
+    // v24 (F.7, build 44): some of the crowd starts ON a neighbour — the target included — and only then is everything clamped in
+    this.pile(this.pts,SPOT_FIND.overlap+p*SPOT_FIND.overlapPer); this.pts.forEach(q=>this.clamp(q,r));
     this.st='wait'; $('#gen').innerHTML=''; rxBar([...CP.find,shapeI(this.odd),`<b>${SHAPE_WORD[this.odd]}</b>`]);
     // v14 (6.31): the round's own clock runs in large grey type behind the crowd, so the cost of staring is visible while you stare
     this.later(()=>{ this.st='find'; this.t0=performance.now(); $('#gen').innerHTML=`<div class="spclock" id="spclock">0.00</div>`+this.pts.map(q=>shapeHtml(q,this.size)).join(''); this.move('find'); },1400); },
+  /* v24 (F.7, build 44): SHAPES MAY START OVERLAPPED. scatter() deals one shape to a grid cell so nothing touches, and only drift ever pushed
+     two together, so Aiden found the opening frame too easy to read. `share` of the crowd is dealt on a random neighbour instead, a third to
+     two thirds of that shape's own size off its corner, in any direction — the target can land under a decoy as easily as over one. */
+  pile(pts,share){ const k=Math.round(pts.length*share); if(pts.length<2||k<1) return;
+    const idx=pts.map((_,i)=>i); for(let i=idx.length-1;i>0;i--){ const j=rnd(i+1); [idx[i],idx[j]]=[idx[j],idx[i]]; }
+    for(const i of idx.slice(0,k)){ let j=rnd(pts.length); if(j===i) j=(j+1)%pts.length; const o=pts[j], sz=o.sz||this.size, ang=Math.random()*Math.PI*2, far=sz*(.33+Math.random()*.33);
+      pts[i].x=o.x+Math.cos(ang)*far; pts[i].y=o.y+Math.sin(ang)*far; } },
+  /* v24 (F.7, build 44): A TAP ON THE SHAPE YOU ARE LOOKING FOR ALWAYS COUNTS. The hit test took the NEAREST centre, so with two shapes
+     overlapping, a tap squarely on the target could sit nearer a decoy's centre and be charged as a wrong tap — which reads as the game
+     cheating. Now a tap inside a wanted shape's own box (`want`, with a 10% margin) wins outright, the nearest such shape first; only when
+     the tap is on no wanted shape does the nearest centre decide, exactly as before. Find solo wants the odd shape; Find versus both players'. */
+  hitAt(ev,want){ const r=genRect(); const x=ev.x-r.left, y=ev.y-r.top; let best=null, bd=1e9, own=null, od=1e9;
+    this.pts.forEach((q,i)=>{ const sz=q.sz||this.size, dx=x-(q.x+sz/2), dy=y-(q.y+sz/2), d=Math.hypot(dx,dy)/sz;
+      if(want(q)&&Math.abs(dx)<=sz*.6&&Math.abs(dy)<=sz*.6&&d<od){ od=d; own=i; }
+      if(d<bd){ bd=d; best=i; } });
+    return own!==null?own:(best===null||bd>.95?null:best); },
   // Count with a friend (v11): both see the same flash and each picks a count on their own keypad. A right pick scores by speed — but the second player has 0.35s of leeway: a right answer within 0.35s of the first right answer is a tie and both score. 10 rounds
   twoPick(ev){ const b=ev.el.closest('[data-num]'); if(!b) return; const z=b.closest('.vz'); const p=z&&z.id==='vz1'?1:0; if(this.picks[p]!==null) return; this.picks[p]=+b.dataset.num; this.pickT[p]=performance.now()-this.t0; b.classList.add('sel'); z.classList.add('done'); this.ctx.audio.select(); if(this.picks[0]!==null&&this.picks[1]!==null){ this.clearT(); this.twoJudge(); } },
   twoJudge(){ this.st='show'; const ok=[this.picks[0]===this.answer,this.picks[1]===this.answer]; let pts=[0,0], line;
@@ -149,9 +168,8 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
       $('#gen').innerHTML=this.pts.map(q=>shapeHtml(q,this.size,puls?'puls':'')).join('');
       if(drift||spin) this.move('vsfind'); },3000); },
   // v17 (B.15): the hit test measures against the shape's OWN size now that a crowd is not all one size
-  vsTap(ev){ const r=genRect(); const x=ev.x-r.left, y=ev.y-r.top; let best=null, bd=1e9;
-    this.pts.forEach((q,i)=>{ const sz=q.sz||this.size; const d=Math.hypot(x-(q.x+sz/2),y-(q.y+sz/2))/sz; if(d<bd){ bd=d; best=i; } });
-    if(best===null||bd>.95) return; const els=$$('#gen .fs'); const sh=this.pts[best].shape;
+  vsTap(ev){ const best=this.hitAt(ev,q=>q.shape===this.o1||q.shape===this.o2);
+    if(best===null) return; const els=$$('#gen .fs'); const sh=this.pts[best].shape;
     // neither player's shape: a wrong tap, and the round carries on
     if(sh!==this.o1&&sh!==this.o2){ els[best].classList.add('bad'); this.ctx.audio.miss(); if(navigator.vibrate) navigator.vibrate(30); return; }
     const w=sh===this.o1?0:1; this.st='show'; cancelAnimationFrame(this.raf); this.vsN[w]++;
@@ -169,21 +187,26 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
       // v13 (10.2): the score is total miscount — 2 for 4 costs 2, 6 for 4 costs 2. Lower is better
       const off=Math.abs(k-this.answer); this.st='show'; this.off+=off; this.worstOff=Math.max(this.worstOff||0,off); if(ok) this.right++; else this.wrong++;
       if(ok) this.bestFlash=this.bestFlash?Math.min(this.bestFlash,this.flash):this.flash;
-      hud.score(this.streak()?String(Math.max(0,this.round-1)):String(this.off));
-      const done=this.streak()?this.off>=5:this.round>=this.ctx.len;
+      // v24 (F.5, build 44): a Set's number stays on the OLD total until the walk below carries the miscount into it
+      hud.score(this.streak()?String(Math.max(0,this.round-1)):String(this.off-off));
+      const done=this.streak()?this.off>=COUNT_BUDGET:this.round>=this.ctx.len;
       // v15 (3.9 answer, build 25): Count does not hold its result — one number is not a complicated result. The correct
       // count is FLASHED so it registers and the round moves on by itself 600ms after the walk, instead of the 900ms
       // every other dropped cue got. `cflash` is the flash; the number is the only thing on the card that has to land
       // v18 (B.10): the round's own answer wears its tier colour — how far out this count was, not how the run is going
-      $('#gen').innerHTML=this.pts.map(q=>shapeHtml(q,this.size,q.shape!==this.target?'dim':'')).join('')+`<div class="glbl bot"><b class="cflash ${ok?'g':'r'}"${this.rcol('spot:count',off)}>${this.answer}</b>${ok?CP.right:T(CP.said,{k,off})}${this.streak()?T(CP.of5,{off:this.off}):''}${done&&this.streak()?CP.over:''}</div>`;
+      $('#gen').innerHTML=this.pts.map(q=>shapeHtml(q,this.size,q.shape!==this.target?'dim':'')).join('')+`<div class="glbl bot"><b class="cflash ${ok?'g':'r'}"${this.rcol('spot:count',off)}>${this.answer}</b>${ok?CP.right:T(CP.said,{k,off})}${this.streak()?T(CP.of5,{off:this.off,bud:COUNT_BUDGET}):''}${done&&this.streak()?CP.over:''}</div>`;
       ok?this.ctx.audio.hit():this.ctx.audio.miss(); if(!ok&&navigator.vibrate) navigator.vibrate(30);
       // v14 (6.1 / 6.3): the round's miscount walks into the running total — the Set's score, the Streak's budget — and the
       // reveal then stays up until it is tapped
-      hud.countUp({ audio:off?this.ctx.audio:null, from:this.off-off, to:this.off, ms:480, fmt:v=>String(Math.round(v)), alive:()=>this.st==='show',
-        set:t=>{ if(this.streak()) hud.time(T(CP.hudCountStreak,{n:this.round,off:t})); else hud.score(t); },
-        done:()=>{ hud.scorePop(); this.ctx.emit('live',this.result()); this.after(()=>this.next(),600); } }); return; }
+      /* v24 (F.5, build 44): "the score is added far too quickly". It was a 480ms walk straight after the answer, then the round moved on —
+         about a second in all, measured. The miscount now HOLDS on the card for CFG.hold, the beat Timing and Reaction already use before a
+         figure drains, and then walks into the total over COUNT_ADD.ms. A right answer adds nothing and does not wait. */
+      this.later(()=>{ if(this.st!=='show') return;
+        hud.countUp({ audio:off?this.ctx.audio:null, from:this.off-off, to:this.off, ms:off?COUNT_ADD.ms:0, fmt:v=>String(Math.round(v)), alive:()=>this.st==='show',
+          set:t=>{ if(this.streak()) hud.time(T(CP.hudCountStreak,{n:this.round,off:t,bud:COUNT_BUDGET})); else hud.score(t); },
+          done:()=>{ hud.scorePop(); this.ctx.emit('live',this.result()); this.after(()=>this.next(),600); } }); },off?CFG.hold:0); return; }
     if(this.st==='vsfind') return this.vsTap(ev);
-    if(this.st!=='find') return; const r=genRect(); const x=ev.x-r.left, y=ev.y-r.top; let best=null, bd=1e9; this.pts.forEach((q,i)=>{ const sz=q.sz||this.size; const d=Math.hypot(x-(q.x+sz/2),y-(q.y+sz/2))/sz; if(d<bd){ bd=d; best=i; } }); if(best===null||bd>.95) return;
+    if(this.st!=='find') return; const best=this.hitAt(ev,q=>q.shape===this.odd); if(best===null) return;
     const els=$$('#gen .fs'); if(this.pts[best].shape===this.odd){ this.st='show'; cancelAnimationFrame(this.raf); const t=Math.round(((performance.now()-this.t0)/1000+this.pen)*100)/100; this.times.push(t);
       // v13 (10.3): Set totals the seconds over ten rounds; a Streak spends a 10-second budget and scores the rounds it bought
       // v14 (6.30): the first half-second is free, and anything under it comes OFF the total — a fast find pays you back

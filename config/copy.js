@@ -45,8 +45,9 @@ export const BG_NAME = { stars:'stars', grid:'grid', rain:'rain', orbs:'orbs', l
 export const TIERS = { earned:['Earned','Picked up as you play. Some come with a colour, a background or a sound pack.'], pro:['Pro','harder. bragging rights, a few unlock things'], secret:['Secret','they exist. what earns them is not written down'],
   // v18 (B.25, build 32): three sets tied to the keys — one row per game per key and one for the whole key. The second
   // and third sets are not shown before chest 1 (A.1); ui/screens/progress.js filters them on tierOpen
-  key1:['The key','clear every clearance bar of a game, then all of them'], key2:['Pro key','the same, at the Pro bars'], key3:['Author key','the same, against the author'] };
-export const KEY_ACH = { game:'{game} · {key}', gameHow:'Clear every {game} bar on {key}', whole:'{key} · whole', wholeHow:'Clear every bar on {key}' };
+  // v24 (D.2, build 44): each key set now opens with one row on every clearance bar — 30 of them — before a game's set and the whole key
+  key1:['The key','one on every clearance bar, then a game, then all of them'], key2:['Pro key','the same, at the Pro bars'], key3:['Author key','the same, against the author'] };
+export const KEY_ACH = { game:'{game} · {key}', gameHow:'Clear every {game} bar on {key}', whole:'{key} · whole', wholeHow:'Clear every bar on {key}', shut:'on {key} · revealed by an earlier chest' };
 // the progress rules' own wording: length locks without a rule, the practice row, the Author rows
 export const PROGRESS = { finishOne:'finish one {game} {prev}', finishA:'finish a {game} {prev}', streak:'Streak', practiceFrom:'Practice from', beat:'Beat Aiden — {rec}', none:'—' };
 
@@ -163,7 +164,8 @@ export const LOCK = { text:'{name}<b>To unlock: {need}</b>' };
 export const VS_LINE = { sequence:'{n} lives each · the pattern grows a note a round · last one playing wins', reaction:'first to tap after the flash wins the round · early tap loses it', spot:'two shapes, one each · first to find theirs takes the round', lead:'first to {t} · or lead by {n}' };
 
 // the run's HUD and the versus / pass & play screens
-export const HUD = { goal:'<i>goal · <b>{need}</b></i><u>unlocks {name}</u>', aim:'<i>goal · <b>{aim}</b></i>', goalHit:'✓ ', best:'best {score}', versus:'versus', pass:'pass & play',
+// v24 (D.1, build 44): `keyGoal` is the goal line when the chain has nothing for this run — the combination's nearest key requirement
+export const HUD = { goal:'<i>goal · <b>{need}</b></i><u>unlocks {name}</u>', aim:'<i>goal · <b>{aim}</b></i>', keyGoal:'<i>goal · <b>{need}</b></i><u>{name} · {key}</u>', goalHit:'✓ ', best:'best {score}', versus:'versus', pass:'pass & play',
   vsLead:'first to {t} · or lead by {n}', vsQt:'tap your white square', vsDots:'squares vs circles · wrong shape gives them the point', level:'level', lead:'{who} +{n}',
   draw:'draw', wins:'Player {n} wins', byLead:'by {n}', onClock:'on the clock', skipIn:'skip in {n}', skip:'skip' };
 // v14 (4.7 / 4.9): the game name sits in its usual place at the top, whose turn it is is the biggest thing on the screen, and
@@ -233,7 +235,8 @@ export const KEY = { title:'the key', hint:'tap a game · solo runs only',
   cleared:'cleared', open:'not yet', floor:'{bar} or more', ceil:'{bar} or less',
   advance:'{game} · {name} cleared', toast:'Key · {game} · {name} cleared',
   none:'no bar set', mismatch:'{n} combination(s) have no clearance bar: {keys}',
-  conf:{ high:'anchored', med:'reasoned', low:'judgement' },
+  // v24 (E, build 44): `set` is a number Aiden set by hand — every key 1 bar and the twelve Quick Tap and Dots Pro bars
+  conf:{ set:'set by Aiden', high:'anchored', med:'reasoned', low:'judgement' },
   /* v15 (§5, build 26). The menu item is Keys, plural (5.3): three tiers over the same thirty-one combinations (A.1),
      each with its own symbol, its locked state and a % while it is under 100. Tiers 2 and 3 are a shell — #372 — and
      `soon` is what they say instead of a target nobody has set (A.2 forbids a build deriving one). */
@@ -313,10 +316,13 @@ export const REACTION = { wait:'wait for it', tap:'TAP', early:'too early', noTa
   ruleTap:['tap','only','the'], ruleNow:['now','only','the'], wrongS:'wrong tap', over:'run over',
   hudVs:'round {n} · best of {s}', hudNogoStreak:'round {n} · {over} of {bud}ms', hudNogo:'round {n} of {s} · {h} of {p}', hudStreak:'attempt {n} · {over} of {bud}ms', hudSet:'{n} / {s}',
   // v15 (3.5 / 3.6): the result reads down — what you did, what it is measured against, the difference, then where the run stands
-  baseline:'baseline {n} ms', runTotal:'total {n} of {bud} ms', runAvg:'average {n} ms', earlyTap:'tapped early', earlyCost:'the attempt is spent' };
-export const SPOT = { count:['count','the'], find:['find','the'], howMany:'how many?', right:'right · 0 off', said:'you said {k} · {off} off', of5:' · {off} of 5', over:' · run over',
+  baseline:'baseline {n} ms', runTotal:'total {n} of {bud} ms', runAvg:'average {n} ms', earlyTap:'tapped early', earlyCost:'the attempt is spent',
+  // v24 (F.3, build 44): Go / No-go's running counter in a Set — targets answered of the Set's fifteen (NOGO_COUNTER)
+  nogoCount:'{h}/{t}' };
+// v24 (F.6, build 44): the Count Streak's budget is COUNT_BUDGET in config/games.js, so the two lines that name it take {bud}
+export const SPOT = { count:['count','the'], find:['find','the'], howMany:'how many?', right:'right · 0 off', said:'you said {k} · {off} off', of5:' · {off} of {bud}', over:' · run over',
   of10:'{t}s of 10s', total:'total {t}s', pen:' · incl. +{pen}s for wrong taps', fast:' · under the 0.5s leeway · −{n}s', tie:'both right · a tie', faster:'both right · Player {n} was faster', had:'Player {n} had it', nobody:'nobody had it',
   // v15 (4.6): Find versus. Each player hunts their OWN shape in the same crowd — the shapes on the field are all one colour,
   // as they have to be, so the rule bar is where the colours say whose is whose
   vsBar:'find yours', vsRound:'round {n} · first to {t}', vsTook:'Player {n} found theirs', vsMiss:'not either one', vsHow:'first to {t} rounds',
-  draw:'draw', wins:'Player {n} wins', hudFindStreak:'Round {n} · {tot}s of 10s', hudFind:'Round {n} of {s} · {tot}s', hudTwo:'round {n} / {s}', hudCountStreak:'Round {n} · {off} of 5 off', hudCount:'Round {n} of {s} · {off} off', over10:'{a}–{b} over {s} rounds' };
+  draw:'draw', wins:'Player {n} wins', hudFindStreak:'Round {n} · {tot}s of 10s', hudFind:'Round {n} of {s} · {tot}s', hudTwo:'round {n} / {s}', hudCountStreak:'Round {n} · {off} of {bud} off', hudCount:'Round {n} of {s} · {off} off', over10:'{a}–{b} over {s} rounds' };

@@ -98,8 +98,18 @@ function lenNextLive(g,d,s){ const n=lenNextOf(g,d,s); if(!n) return null;
   if(!test||!((LEN_LIVE[g+':'+d]||[])[i+1])) return null;
   return Object.assign({},n,{test}); }
 // the next mode this run could open, if the game, mode and length line up — shown while you play (v8). v11: a length unlock counts too
-function goalFor(g,d,s){ if(prefs.allOpen) return null; const u=unlocked(); const x=UNLOCKS.find(x=>!u[x.key]&&x.where.g===g&&(!x.where.d||x.where.d===d)&&(!x.where.s||x.where.s===s)); if(x) return x;
-  const c=GC(g,d), i=c.lens.indexOf(s); if(i>=0&&i<c.lens.length-1){ const nxt=c.lens[i+1], L=lenLock(g,d,nxt); if(L){ const test=(LEN_TEST[g+':'+d]||[])[i+1]; return { key:g+':'+d+':'+nxt, need:L.need, where:{g,d,s}, live:1, len:L, test:r=>r.g===g&&r.d===d&&r.s===s&&(test?test(r):true) }; } } return null; }
+/* v24 (D.1, build 44): THE GOAL IS THE NEXT UNLOCK THIS RUN CAN FAIRLY EARN, not the first chain row that happens to name this game. Build 43
+   offered rows in table order, so a first Sprint was asked for fifteen in a row before the seven that open Dash, and once Four opened every
+   Quick Tap length — Sprint included — was handed "35 hits in any run": seven taps a second. Measured headless before the change. The order:
+   (1) a chain row that names THIS length; (2) the rung above this length; (3) a chain row that names no length, and only on the longest
+   length open in this mode — where Try to unlock already lands one (D.8). Nothing here and run/run.js falls back to the key (keyGoal). */
+function goalFor(g,d,s){ if(prefs.allOpen) return null; const u=unlocked(), lens=GC(g,d).lens;
+  const fits=x=>!u[x.key]&&x.where.g===g&&(!x.where.d||x.where.d===d);
+  const named=UNLOCKS.find(x=>fits(x)&&x.where.s===s); if(named) return named;
+  const i=lens.indexOf(s); if(i>=0&&i<lens.length-1){ const nxt=lens[i+1], L=lenLock(g,d,nxt); if(L){ const test=(LEN_TEST[g+':'+d]||[])[i+1]; return { key:g+':'+d+':'+nxt, need:L.need, where:{g,d,s}, live:1, len:L, test:r=>r.g===g&&r.d===d&&r.s===s&&(test?test(r):true) }; } }
+  let top; for(let j=lens.length-1;j>=0;j--) if(lenOpen(g,d,lens[j])){ top=lens[j]; break; }
+  if(s===top){ const any=UNLOCKS.find(x=>fits(x)&&(x.where.s===undefined||x.where.s===null)); if(any) return any; }
+  return null; }
 const chalAt=(g,d)=>!!CHAL&&CHAL.g===g&&CHAL.d===d;
 // v23 (§M.4, build 40): a mode open on a brand-new profile — Quick Tap · Two, and any mode the chain has no row for. The meter's
 // modes band leaves these out (METER.freeStart), so a new profile reads 0% rather than 1 of 13

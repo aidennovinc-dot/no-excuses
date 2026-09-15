@@ -135,12 +135,15 @@ export function generate(src, ROUND_AT, mode = 'fill') { const NL = src.includes
   for (const r of rowsOf(src)) { const row = r.obj, list = fieldsOf(src, r.from, r.to), F = byName(list);
     for (const t of TIERS) if (!F[t]) throw new Error(`${r.key}: no \`${t}\` field — every row carries pro and author (B.27)`);
     const P = F.placeholder ? byName(fieldsOf(src, F.placeholder.from, F.placeholder.to)) : {};
-    const ours = t => row[t] === null || markerHolds(row, t);
+    /* build 44 (FEEDBACK-v24 §E): a marker with `by` came from somewhere else — the Key Unlocks Desk's proposals — and is a
+       placeholder (isPlaceholder() still reads it as not Aiden's) but NOT this tool's to rewrite or clear: kept byte for byte.
+       derive() only runs when a cell is actually ours, so a row with nothing to write is never refused for a floor it does not need */
+    const ours = t => row[t] === null || (markerHolds(row, t) && !row.placeholder[t].by);
     const real = Object.fromEntries(TIERS.filter(t => !ours(t)).map(t => [t, row[t]]));
-    const d = mode === 'clear' ? null : derive(r.key, row, ROUND_AT, real);
+    const d = mode === 'clear' || !TIERS.some(ours) ? null : derive(r.key, row, ROUND_AT, real);
     const marks = {};
     for (const t of TIERS) { const line = { key: r.key, id: row.id, tier: t, dir: row.dir, unit: row.unit, bar: row.bar };
-      if (!ours(t)) { if (P[t]) marks[t] = src.slice(P[t].from, P[t].to); report.push({ ...line, act: 'kept', v: row[t] }); continue; }
+      if (!ours(t)) { if (P[t]) marks[t] = src.slice(P[t].from, P[t].to); report.push({ ...line, act: 'kept', v: row[t], by: markerHolds(row, t) ? row.placeholder[t].by : '' }); continue; }
       const cellWas = src.slice(F[t].from, F[t].to), cell = mode === 'clear' ? 'null' : String(d[t].v);
       if (cell !== cellWas) edits.push([F[t].from, F[t].to, cell]);
       if (mode === 'clear') { report.push({ ...line, act: row[t] === null ? 'empty' : 'cleared', v: null }); continue; }
@@ -197,8 +200,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const n = a => report.filter(x => x.act === a).length;
   if (flag === '--dry') for (const x of report) console.log(`  ${x.act.padEnd(9)} ${x.key.padEnd(22)} ${x.tier.padEnd(6)} ${x.dir.padEnd(6)} bar ${String(x.bar).padEnd(6)} → ${x.v}${x.clamped ? '  CLAMPED' : ''}`);
   for (const x of report.filter(x => x.clamped)) console.log(`  clamped  ${x.key} · ${x.tier} → ${x.v}`);
-  for (const x of report.filter(x => x.act === 'kept')) console.log(`  kept     ${x.key} · ${x.tier} = ${x.v} (a person's number)`);
-  console.log(`placeholders: ${n('filled')} filled · ${n('refreshed')} refreshed · ${n('unchanged')} unchanged · ${n('kept')} kept as set by hand` + (flag === '--clear' ? ` · ${n('cleared')} cleared` : ''));
+  for (const x of report.filter(x => x.act === 'kept')) console.log(`  kept     ${x.key} · ${x.tier} = ${x.v} (${x.by ? `a ${x.by} proposal, still a placeholder` : "a person's number"})`);
+  console.log(`placeholders: ${n('filled')} filled · ${n('refreshed')} refreshed · ${n('unchanged')} unchanged · ${report.filter(x => x.act === 'kept' && !x.by).length} kept as set by hand · ${report.filter(x => x.act === 'kept' && x.by).length} kept as marked proposals` + (flag === '--clear' ? ` · ${n('cleared')} cleared` : ''));
   if (flag === '--dry') { console.log(jsonOut === json ? 'review json: unchanged' : 'review json: would change'); process.exit(0); }
   fs.writeFileSync(BARS_JS, out); fs.writeFileSync(REVIEW_JSON, jsonOut);
   console.log('wrote config/key-bars.js and ../_review/key-bars.json');

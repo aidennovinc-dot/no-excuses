@@ -112,7 +112,8 @@ function achRow(a,tab,{g,all,fsGame,fresh,c}){
 const CUL_ORDER=['sq','lead','cut','bg','snd','scale','rate','wheel'];
 function renderCul(){
   const g=got(), all=Scores.runs(); const fresh=[]; const ctx={g,all,fsGame:sel.game,fresh,c:{k:0}};
-  const list=achAll().filter(a=>achTab(a)==='cul');
+  // v24 (D.2, build 44): key roster rows that pay out a cosmetic are here too — the tier's rows only once its chest has revealed it (A.1)
+  const list=allAch().filter(a=>achTab(a)==='cul'&&groupShown(a.tier));
   const at=s=>{ const i=CUL_ORDER.indexOf(s); return i<0?99:i; };
   const sets=[...new Set(list.map(a=>a.unlocks[0]))].sort((x,y)=>at(x)-at(y));
   $('#cul-list').innerHTML=sets.map(set=>{ const items=list.filter(a=>a.unlocks[0]===set), done=items.filter(a=>g[a.id]).length;

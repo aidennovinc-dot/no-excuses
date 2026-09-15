@@ -161,9 +161,13 @@ export const ESTIMATE = {
      1130ms to 500ms. Time is no longer the lever.
    · size variation is new (`sizeFrom` on): every shape is drawn at ± that fraction of the base size, so a crowd is not a
      grid of identical marks any more. Find gets its own below. */
+/* v24 (F.4, build 44): THE FLASH GROWS WITH THE CROWD. B.15 slowed the flash's fall; it still fell — 1100ms, 1078, 1056 over the first
+   three rounds while the shapes went 10, 13, 15 (measured headless) — and Aiden asked for more time as more shapes are shown. A round
+   now flashes for `flashBase` plus `flashShape` for every shape on screen past the first `flashFree`, up to `flashCap`: round 1 still
+   1100ms, a thirty-five-shape round 10 about 1475ms (all guesses). The crowd stays the difficulty; the clock stops working against it. */
 export const SPOT_RAMP = { loBase:5, loPer:0.45, hiBase:7, hiPer:1.0, nCap:14,
   decoyBase:3, decoyPer:2.2, decoyCap:34,
-  flashMax:1100, flashPer:22, flashMin:820,
+  flashBase:1100, flashShape:15, flashFree:10, flashCap:1800,
   dipFrom:5, dipEvery:3, dipDecoy:1.5,
   driftFrom:2, driftBase:8, driftPer:6, spinFrom:4, spinBase:14, spinPer:6,
   sizeFrom:3, sizeBase:0.12, sizePer:0.045, sizeCap:0.5, sizeMin:16 };
@@ -172,4 +176,15 @@ export const SPOT_RAMP = { loBase:5, loPer:0.45, hiBase:7, hiPer:1.0, nCap:14,
 // could not end. v14 (6.29): the crowd and the movement both ramp harder than they did; the opening is unchanged
 // v17 (B.15): `sizeVar` — Find gets the same size variation Count gained, because a crowd of identical marks is the thing
 // the eye scans fastest and that is exactly what Find is testing
-export const SPOT_FIND = { leeway:0.5, nBase:16, nSpan:54, drift:34, sizeVar:0.3, sizeMin:14 };
+// v24 (F.7, build 44): `overlap` is the share of the crowd dealt ON a neighbour in round 1 and `overlapPer` what it gains by round 10
+// (20% → 40%, guesses) — shapes may START overlapped now, where only drift used to push two together
+export const SPOT_FIND = { leeway:0.5, nBase:16, nSpan:54, drift:34, sizeVar:0.3, sizeMin:14, overlap:0.2, overlapPer:0.2 };
+/* v24 (F.6, build 44, L5 amended at Aiden's direct request): a Spot · Count Streak's miscount budget. 5 → 8 — Aiden asked for more room
+   and named no figure, so 8 is a PLACEHOLDER (guess), logged in UNVERIFIED.md. games/spot/index.js and the copy read this one number. */
+export const COUNT_BUDGET = 8;
+// v24 (F.5, build 44): a Count round's miscount HOLDS for CFG.hold, then walks into the total over `ms` — was 480ms and no hold ("far too quick")
+export const COUNT_ADD = { ms: 1400 };
+/* v24 (F.3, build 44): what Go / No-go's big number counts while a run is played. 'targets' — the correct taps, "7/15" in a Set and "7" in
+   a Streak (guess: Aiden asked for "a running counter" and went to bed before choosing). 'score' is build 43: the live average in a Set,
+   which reads 0 whenever the taps are quick and looked stuck. Presentation only (L10); the result still scores the average. */
+export const NOGO_COUNTER = 'targets';

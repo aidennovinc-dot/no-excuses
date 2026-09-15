@@ -504,3 +504,40 @@ Also amended at build 43, after the first run failed 9, every one an assertion s
 - B.10 does not seed a `key`-locked cosmetic.
 - L.4a's menu regex takes `data-act="keys"`.
 - F.4's file walk skips `dist`: a local `npm run native` had put a second copy of every writer there.
+
+**Build 44 (batch 17, FEEDBACK-v24 §D, §E, §F.1, §F.3–§F.7).** **§E**: all 42 of Aiden's numbers sit in `config/key-bars.js` exactly as
+he set them (30 key 1, 12 Pro), `conf:'set'`, no marker on his Pro. Quick Tap and Dots lengths are the Sprint figure × 1 / 3 / 6 at Pro, and Dots
+at key 1 (Quick Tap's key 1 is 9 / 26 / 51, as Aiden set it). Two and Four share key 1 and split at Pro, 13 against 12. A key 1 column that changed since it was last credited credits a saved best at
+boot, marked green once; a reload credits nothing more, and with the Games chest shut key 1 stays quiet. **D.2**: `keyAch()` holds 90
+combination rows, one per combination per tier, every name off `KEY_ROSTER`, beside the 24 sets. The 23 that replaced an ACH row keep its id
+and are gone from ACH (28 left); the 9 with a reward keep it; every `ITEMS` `by` still resolves; none is `live:1`. Clearing Quick Tap · Four ·
+Sprint's key 1 bar banks Warm hands (`qt_clean5`, Customise unlocks) and nothing else. A Pro row before the Key chest prints no number.
+Customise unlocks lists Warm hands with the Games chest open and not Quicker before the Key chest, and Warm hands' colour is still locked in
+Customise. **D.1**: a first Sprint's goal is seven in a row, not fifteen. "35 hits in any run" appears only on the longest open length. With
+the chain done the goal is the nearest key requirement ("26 hits or more · Two steady"), none before the Games chest, and a pinned aim still
+shows. **F.1**: the L5 check reads Flash's Streak budget as 1000. **F.3**: a Go / No-go Set's big number reads "0/15" at the first rule and
+"1/15" after one correct tap. **F.4** (in B.15's block): every round's flash is exactly its crowd's (`flashBase` + `flashShape` a shape past
+`flashFree`, capped), round 10's longer than round 1's, the old fall fields gone. **F.5 / F.6**: a miscount holds `CFG.hold` and walks over
+`COUNT_ADD.ms` while a Set's number waits on the old total; `COUNT_BUDGET` (8) is the one Streak budget, read and printed everywhere.
+**F.7**: `hitAt` gives a tap inside the target's box to the target even when a decoy's centre is nearer. A tap off the target still goes to
+the nearest shape. `pile` overlaps a clean grid. Solo and versus both hit through `hitAt`.
+
+**Amended at build 44:** the L5 Reaction budgets expect `FLASH_BUD` 1000. B.15's "the flash falls far slower" is replaced by F.4's grows-with-the-crowd
+check. B.2 / B.4 expects Aiden's 1500ms and 2.5s. B.27's data shape: 12 unmarked Pro figures, 48 `by:'desk'` markers, key 1 `conf:'set'`.
+#426: the generator and `--clear` both leave the file exactly as it is. The scheme is proved on a copy with the desk cells emptied, and
+every desk cell is checked for its marker. NEVER OVERWRITE expects all 60 cells kept. The key screen note counts 18 Pro placeholders, with
+the in-place edit on Estimate · Grow · Set.
+
+Also amended at build 44, after the first full run passed 555 and failed 10. Nine were older assertions still describing build 43; the tenth
+was build 44's own §E check, which was wrong about the data. All ten were re-run on their own afterwards and passed.
+- **Flash:** 3.5 expects Flash's Streak budget of 1000.
+- **The demo:** B.4 proves "the same record earns once the demo hands over" with the live Cut unlock. On the money is a roster row now,
+  never live.
+- **Go / No-go bars:** C.5 / C.6 expect Aiden's 400 and 10.
+- **Key 1 credit at boot:** it now reaches the Go / No-go migration fixture, whose Flash run beats Aiden's 295ms bar, and #426's
+  on-arrival fixture, which records `clear,pro` and counts key 1's green marks.
+- **The radar:** B.24's single rung reads 67 (6 hits against a bar of 9).
+- **Key sets:** B.25 counts 114 rows (38 a key), and clearing every Quick Tap bar earns its six roster rows plus the set.
+- **The middle tab:** L.4c's "what it holds" reads ACH + `keyAch()` for rows with a reward — nine are roster rows.
+- **§E:** the brief said every Quick Tap and Dots length is Sprint × 1 / 3 / 6. That holds at Pro and at Dots' key 1, not at Quick Tap's
+  key 1 (9 / 26 / 51). The check now asserts the data as Aiden set it.

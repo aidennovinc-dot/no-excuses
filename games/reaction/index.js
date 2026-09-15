@@ -2,7 +2,7 @@
    Split out of index.html at build 12. Build 17 (refactor stage 3): the engine contract, on the round base. Behaviour is identical to build 11. */
 
 import { REACTION as CP } from "../../config/copy.js";
-import { CFG, SHAPE_WORD } from "../../config/games.js";
+import { CFG, NOGO_COUNTER, SHAPE_WORD } from "../../config/games.js";
 import { $, $$, T, mean, minMax, pWho, shapeI, vmin, winner } from "../../core.js";
 import * as hud from "../_shared/hud.js";
 import { genRect, rnd, roundEngine, rxBar } from "../_shared/round.js";
@@ -54,7 +54,10 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
      Cowork's (guess) of 620 ± 180 sits BELOW both, which contradicts the note it carries ("stay on screen longer"), so
      the bases here are the old beats + 180: never quicker than build 31, up to 360ms longer, and variable. FEATURES.md
      prints both and Aiden picks. */
-  FLASH_FREE:150, FLASH_BUD:500, FLASH_EARLY:400, FLASH_MAX:1000, NOGO_FREE:180, NOGO_BUD:3000, NOGO_WRONG_SET:150, NOGO_WRONG_STREAK:200,
+  /* v24 (F.1, build 44, L5 amended at Aiden's direct request): FLASH_BUD 500 → 1000. "Adjust the total max to 1000ms", typed on the Flash
+     Streak's row — the Streak's cumulative budget, the one "total" a Flash run has (FLASH_MAX already caps a Set attempt at 1000). A run
+     at a good phone pace lasts about twice as long. */
+  FLASH_FREE:150, FLASH_BUD:1000, FLASH_EARLY:400, FLASH_MAX:1000, NOGO_FREE:180, NOGO_BUD:3000, NOGO_WRONG_SET:150, NOGO_WRONG_STREAK:200,
   GO_PER:3, GO_GAP_MIN:1, GO_GAP_MAX:5, NOGO_DWELL:{ set:980, streak:1330, spread:180 },
   // v15 (3.6): every Flash result reads down the same four lines — the time, the baseline it is measured against, the
   // difference between them, then where the run stands. The running total is BELOW as well as in the HUD above
@@ -168,7 +171,9 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
      build 22; B.1c retires it for the Set and for a pass & play turn, and the mode line no longer promises one. */
   /* v18 (B.1b): a ROUND is one target shape. Every mode deals its round as a block up front — pass & play always did
      (#375b), and solo rolling shape by shape is what made the target's position guessable and the run three seconds long. */
-  nogoBegin(){ this.round=0; this.rule=''; this.bi=0; this.block=null; this.blockGo=0; this.pool=[]; this.gotAll=0; this.skipped=[]; this.nextRule(); },
+  nogoBegin(){ this.round=0; this.rule=''; this.bi=0; this.block=null; this.blockGo=0; this.pool=[]; this.gotAll=0; this.skipped=[];
+    if(!this.two.on&&NOGO_COUNTER==='targets') hud.score(String(this.liveNum()));   // v24 (F.3): "0/15" from the first shape, not a bare 0
+    this.nextRule(); },
   /* v19 (C.3): the five shapes, and the order the rounds draw on them. SHAPE_WORD in config/games.js is the pool — five
      since build 32 — and a Set's five rounds are one shuffle of it, so every round of a Set has a different target and the
      five together cover the pool. A Streak keeps drawing the same way: a fresh shuffle each time the pool runs out, with
@@ -260,7 +265,13 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
   blockScore(){ const all=this.gatedAll();
     return (all.length?mean(all):this.gated(this.NOGO_DWELL.set))+this.NOGO_WRONG_SET*this.wrong; },
   // the number under the HUD while a block is being played — the same one it will bank, so it can only improve
-  liveNum(){ return this.streak()?this.nogoScore().hits:Math.round(this.two.on?this.blockScore():this.nogoScore().hits); },
+  /* v24 (F.3, build 44): THE RUNNING COUNTER. With NOGO_COUNTER 'targets' the big number counts the correct taps as the run goes — "7/15"
+     in a Set, "7" in a Streak — where a Set used to show its live average, which sits at 0 whenever the taps are under the 180ms gate and
+     so looked stuck. The average is still what the Set scores and what the result shows; a wrong tap still costs and still says so on its
+     card with the shake (B.1c), it simply no longer moves this number. Pass & play keeps its block score. */
+  liveNum(){ if(this.two.on) return Math.round(this.blockScore());
+    if(NOGO_COUNTER==='targets') return this.streak()?this.gotAll:T(CP.nogoCount,{h:this.gotAll,t:this.ctx.len*this.GO_PER});
+    return this.streak()?this.nogoScore().hits:Math.round(this.nogoScore().hits); },
   /* v18 (B.1a): the instruction ARRIVES WHOLE. It was revealed a word at a time — "tap … only … the … ▲ … triangle" —
      with the last word landing about 880ms into a 2200ms window, so most of the time you had to read it was spent
      watching it appear. `atOnce` on rxBar already existed for Spot (B.14, build 28); Reaction uses it now too. */

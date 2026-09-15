@@ -38,7 +38,8 @@ const itemsOf=set=>set==='scale'?Object.entries(SCALES).map(([k,v])=>({v:k,label
 /* v24 (C.6, build 43): an item can also wait for a KEY to be finished (`key` in config/theme.js) — the three key backgrounds. Its lock is that key's
    whole-key row, so the line under the row names it and "show me" finds it on Progress; keyFinished() honours both dev escapes */
 const keyRow=tier=>keyAch().find(a=>a.id===`key_${tier}_all`)||null;
-const lockedBy=it=> it.key ? (keyFinished(it.key)?null:keyRow(it.key)) : it.by && !got()[it.by] && !prefs.allOpen && !prefs.supporter ? ACH.find(a=>a.id===it.by) : null;
+// v24 (D.2, build 44): an item's `by` can name a key roster row now (qt_clean5, dt_pin …), so the lookup reads both lists
+const lockedBy=it=> it.key ? (keyFinished(it.key)?null:keyRow(it.key)) : it.by && !got()[it.by] && !prefs.allOpen && !prefs.supporter ? lockById(it.by) : null;
 const lockById=id=>achById(id)||keyAch().find(a=>a.id===id)||null;
 const pvTry={};   // a locked item being previewed: {set, v, by}
 const pvSeen={};  // the last unlocked item tapped, so what earned it shows on touch (v5)
@@ -97,7 +98,7 @@ function renderCustom(){
   for(const s of LOCK_SETS) lockLine(s,null);
   if(pvTry.set){ const L=lockById(pvTry.by); const map={sq:'--sq-live',lead:'--cue',cut:'--cutp'}; if(map[pvTry.set]&&pvTry.v!=='wheel') pv.setProperty(map[pvTry.set],pvTry.v); if(pvTry.set==='bg'&&DESIGNS[pvTry.v]) pv.background=DESIGNS[pvTry.v].tint; lockLine(pvTry.set,L); }
   // v11: an unlocked colour says nothing when tapped — the requirement line is for locked ones only
-  else if(pvSeen.by&&!got()[pvSeen.by]&&!prefs.allOpen&&!prefs.supporter) lockLine(pvSeen.set,ACH.find(a=>a.id===pvSeen.by));
+  else if(pvSeen.by&&!got()[pvSeen.by]&&!prefs.allOpen&&!prefs.supporter) lockLine(pvSeen.set,lockById(pvSeen.by));
   markSeen(fresh);
 }
 /* previews (v9): every game's preview is played by the same finger as the pre-game demo — it shows the tap and what comes of it, on a loop */

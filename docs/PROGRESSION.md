@@ -245,3 +245,29 @@ of it, statically and by quitting a run mid-flight and reading storage back.
 - **A BRAND NEW GAME OPENS THE MAP AT THE TOP, AND THE CHESTS JOIN THE LOADING SEQUENCE (A.2 / B.5).** `#s-pick` kept its scroll position while
   hidden, so after Fresh game the map came back where it was last left — at the chests since build 40 (measured: 254px). The first-visit
   reveal now zeroes it and `store:reset` does too. The four chests take `reveal` after the seventh tile on the same 120ms beat.
+
+## Build 44 (v24 §D, §E, §F.1 / F.3–F.7; 2026-09-15): the key roster, Aiden's bars, the goal
+
+- **#371 PORTED — THE BARS ARE AIDEN'S (§E).** He set 42 of the 90 on the Key Unlocks Desk: every key 1 bar and the twelve Quick Tap and Dots
+  Pro bars, ported exactly, `conf:'set'`. The other 48 are the desk's proposals and carry `placeholder:{ <tier>:{ v, conf:'low', by:'desk',
+  basis } }`. **A marker with `by` is still a placeholder but not the generator's** — `scripts/placeholders.mjs` writes only an EMPTY cell or
+  a marker of its own, so a later `npm run placeholders` can see those 48 are not Aiden's without regenerating the Pro figures he accepted
+  for play-testing. `--set` replaces one; `--clear` no longer empties them. Two shapes any retune must keep: at Pro every Quick Tap and Dots
+  length is the Sprint figure × 1 / 3 / 6, and so is Dots at key 1; Quick Tap Two and Four share key 1's 9 / 26 / 51 (just under × 3 / × 6)
+  and split at Pro, 13 against 12. The build 44 prompt claimed × 1 / 3 / 6 everywhere — Quick Tap's key 1 is the exception, kept as set.
+- **KEY 1 IS CREDITED WHEN ITS NUMBERS CHANGE.** `retroArrived()` left key 1 alone because its column was "never a placeholder that
+  arrives"; build 44 is the day Aiden's arrive, replacing Cowork's proposals. So any open tier whose column differs from
+  `prefs.retroCol[tier]` credits saved bests silently at boot, key 1 included (guess — Aiden's #426 "yes, silently, once" applied to it).
+- **ONE ACHIEVEMENT ON EVERY KEY REQUIREMENT, AT EVERY TIER (D.2, narrowing #435).** `keyAch()` now opens each tier with a row per
+  combination — 90 in all — before that tier's per-game and whole-key sets (114 rows). A row is earned when its bar is cleared at its tier,
+  so the achievement and the requirement cannot disagree; its bar is `credit()`. Names are `KEY_ROSTER` in `config/achievements.js`, read
+  off the desk page (FEEDBACK-v24 §D.3). **Twenty-three older ACH rows became roster rows and kept their ids** — what a profile earned stays
+  earned, and a cosmetic whose `by` names one stays open — and their rewards; their predicates left `progress/rules.js`. The Customise
+  unlocks tab lists a tier's reward rows only once the tier is revealed, and a hidden tier's row prints "revealed by an earlier chest"
+  instead of its number (A.1). `devKeyReset(tier)` clears the tier's roster rows, kept ids included.
+- **THE GOAL AT THE TOP (D.1).** `goalFor` offered chain rows in table order, so once Four opened every Quick Tap length — Sprint included —
+  was asked for "35 hits in any run", and a first Sprint was asked for fifteen in a row before the seven that open Dash. The order is now:
+  a chain row naming THIS length; the rung above; a row naming no length only on the longest open length (where Try to unlock lands one,
+  D.8). Failing all three, `run/run.js` asks `keyGoal(g,d,s)` — the lowest open, non-shell, uncleared tier of this combination, drawn with
+  `HUD.keyGoal` ("goal · 26 hits or more / Two steady · The key"), its green tick only offered for a floor. An aim the player arrived with
+  (`pendingAim`, `pendingGoal`) still outranks all of it.

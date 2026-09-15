@@ -35,14 +35,17 @@
    UNTIL THEN), Pro with the Key chest, Author with the Pro chest. The meter is ONE function, meter(), 0–400, never reset; the menu
    card, the map's chests and the key screen all read it. B.15–B.17's frontPct() and its 30/70 re-base are RETIRED with the step
    into Pro (L.8b removed the "proceed to pro" confirmation), and v21 G.3's gate is retired into the Games chest itself. */
+import { KEY_ROSTER } from "../config/achievements.js";
 import { CHESTS, METER, METER_BANDS } from "../config/chests.js";
+import { MODE_NAME } from "../config/games.js";
 import { KEY_BARS } from "../config/key-bars.js";
 import { KEYS } from "../config/keys.js";
-import { KEY_ACH } from "../config/copy.js";
+import { KEY, KEY_ACH } from "../config/copy.js";
 import { T } from "../core.js";
 import { opened, prefs, save, store } from "../core/store.js";
 import { GAMES, GC } from "../games/registry.js";
 import { Scores, modeCount } from "../progress.js";
+import { scoreTxt } from "../ui/format.js";
 
 const keyOf = (g, d, s) => `${g}:${d}:${s}`;
 // the three tier ids, in order, from the one list of keys
@@ -246,8 +249,23 @@ const keyFinished = tier => !!(prefs.allOpen || prefs.supporter) || (tierOpen(ti
    so none carries live:1; run/run.js banks the key BEFORE it asks these, so a clear and the row it completes land on the
    same run. Each set waits for its own tier's chest — key 1's for the Games chest since build 40 — and the Achievements tab
    filters on tierOpen. */
+/* v24 (D.2, build 44, narrowing #435): AND ONE ACHIEVEMENT ON EVERY KEY REQUIREMENT, AT EVERY TIER — 30 combinations × 3 = 90 rows,
+   from the same walk, ahead of each tier's sets. A row is earned when its combination's bar is cleared at its tier, so the achievement
+   and the requirement can never disagree, and its bar is credit(). Names are config/achievements.js KEY_ROSTER, keyed by the row id in
+   config/key-bars.js — 39 carried over from the Achievement Desk, 51 proposed on the Key Unlocks Desk. The 23 that replace an older
+   row keep that row's id, so what a profile earned stays earned and a cosmetic it opened stays open, and they keep its reward. A tier not
+   yet revealed prints no number (A.1): its rows say which key they belong to instead. */
+function rosterRow(c, tier) { const id = c.bar ? c.bar.id : c.key, r = (KEY_ROSTER[id] || {})[tier] || {};
+  return { id: r.id || `key_${tier}_${id}`, name: r.name || id, unlocks: r.unlocks || null }; }
+// the bar in the game's own units — the same sentence ui/screens/key.js prints beside it
+function barText(c, bar) { const n = scoreTxt(c.g, bar, c.d, c.s); return /[^\d.]$/.test(n) || !c.bar.unit ? n : n + ' ' + c.bar.unit; }
+const wantOf = (c, tier) => { const bar = barOf(c, tier); return bar === null ? KEY.none : T(c.bar.dir === 'lower' ? KEY.ceil : KEY.floor, { bar: barText(c, bar) }); };
 function keyAch() { const out = [];
   KEYS.forEach((k, i) => { const tier = k.id;
+    for (const c of COMBOS) { if (!c.bar) continue; const r = rosterRow(c, tier);
+      out.push(Object.assign({ id: r.id, g: c.g, tier: `key${i + 1}`, kt: tier, combo: c.key, name: r.name,
+        how: tierOpen(tier) ? wantOf(c, tier) : T(KEY_ACH.shut, { key: k.name }), at: MODE_NAME[c.d] ? { d: c.d, s: c.s } : { s: c.s },
+        test: () => tierOpen(tier) && !isShell(tier) && isCleared(c.key, tier), progress: () => credit(c, tier) }, r.unlocks ? { unlocks: r.unlocks } : {})); }
     for (const g in GAMES) out.push({ id: `key_${tier}_${g}`, g, tier: `key${i + 1}`, kt: tier, name: T(KEY_ACH.game, { game: GAMES[g].name, key: k.name }), how: T(KEY_ACH.gameHow, { game: GAMES[g].name, key: k.name }), at: {},
       test: () => { const k = gameKey(g, tier); return tierOpen(tier) && !isShell(tier) && k.total > 0 && k.done === k.total; } });
     out.push({ id: `key_${tier}_all`, g: 'all', tier: `key${i + 1}`, kt: tier, name: T(KEY_ACH.whole, { key: k.name }), how: T(KEY_ACH.wholeHow, { key: k.name }),
@@ -314,8 +332,21 @@ function retroBank(only) { const fresh = [], sig = Object.assign({}, prefs.retro
   if (fresh.length) prefs.retro = Object.assign({}, prefs.retro, Object.fromEntries(fresh.map(k => [k, 1])));
   save(); if (fresh.length) checkKeyAch({});
   return fresh; }
-const retroArrived = () => { const due = TIERS.filter(t => t !== 'clear' && tierOpen(t) && !isShell(t) && (prefs.retroCol || {})[t] !== colSig(t));
+/* v24 (E, build 44): KEY 1 IS CREDITED THE SAME WAY NOW. Build 40 left it out because its column was "Aiden's own numbers, never a
+   placeholder that arrives" — and build 44 is exactly the day his numbers arrive, replacing Cowork's proposals. So a profile whose key 1
+   is open credits every bar its saved best already beats, silently, once — Aiden's #426 answer applied to the column it now covers (guess). */
+const retroArrived = () => { const due = TIERS.filter(t => tierOpen(t) && !isShell(t) && (prefs.retroCol || {})[t] !== colSig(t));
   return due.length ? retroBank(due) : []; };
+
+/* v24 (D.1, build 44): THE GOAL AT THE TOP, WHEN THE CHAIN HAS NOTHING FOR THIS RUN — this combination's nearest unearned key requirement:
+   the lowest tier that is open, has numbers and is not cleared, named by its roster row. A key the player cannot see yet offers nothing
+   (A.1), so before the Games chest there is no key goal at all. `key` is prefixed so it can never be mistaken for a store.unlock key, and
+   the tick-green test is only offered where the score can only grow — a floor; a ceiling is a whole-run claim (v18 B.8). */
+function keyGoal(g, d, s) { const c = COMBOS.find(x => x.key === keyOf(g, d, s)); if (!c || !c.bar) return null;
+  const tier = TIERS.find(t => tierOpen(t) && !isShell(t) && barOf(c, t) !== null && !isCleared(c.key, t)); if (!tier) return null;
+  const bar = barOf(c, tier), floor = c.bar.dir !== 'lower', k = KEYS.find(x => x.id === tier);
+  return { key: 'bar:' + skey(c.key, tier), kt: tier, need: wantOf(c, tier), name: rosterRow(c, tier).name, keyName: k ? k.name : '',
+    test: r => floor && r.g === g && r.d === d && r.s === s && r.hits >= bar }; }
 
 /* ---------- v21 (G.8, build 37): Testing's per-key switches (S5, dev only) ----------
    devKeyAll(tier, on) clears every bar of one key and REMEMBERS what that key held, so switching it off puts exactly that
@@ -342,6 +373,8 @@ function devKeyReset(tier) { const c = CHESTS.find(x => x.needs === tier);
   if (prefs.retro) for (const k of Object.keys(prefs.retro)) if (retroTier(k) === tier) delete prefs.retro[k];
   if (prefs.devKeys) delete prefs.devKeys[tier];
   for (const id of Object.keys(store.ach)) if (id.startsWith(`key_${tier}_`)) delete store.ach[id];
+  // v24 (D.2, build 44): and the tier's roster rows, including the 23 that kept an older id
+  for (const a of keyAch()) if (a.kt === tier) delete store.ach[a.id];
   seenDown(); save(); }
 // build 41 (L.9c / L.11b): a reset chest gets its first ready sound and its spill back, so both can be reviewed again
 const unseen = id => { prefs.readySeen = Object.assign({}, prefs.readySeen, { [id]: 0 }); prefs.spill = Object.assign({}, prefs.spill, { [id]: 0 }); };
@@ -353,4 +386,4 @@ function devSetMeter(n) { if (n === null || n === '' || !Number.isFinite(+n)) de
   else prefs.devMeter = Math.max(0, Math.min(meterMax(), Math.round(+n)));
   save(); return meter(); }
 
-export { COMBOS, RADAR_PAST, TIERS, bandPct, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, checkKeyAch, chestAt, chestOpen, chestState, cleared, combos, credit, devChestReset, devKeyAll, devKeyOn, devKeyReset, devSetMeter, fillBars, gameKey, isCleared, isPlaceholder, isShell, keyAch, keyChest, keyFinished, keyOf, keyPct, keyState, keyTier, keyTiers, meter, meterBand, meterMax, modesOpen, openChest, placeholderCount, radarOf, radarRungs, readyChest, retroArrived, retroBank, retroTier, skey, tierFull, tierOpen };
+export { COMBOS, RADAR_PAST, TIERS, bandPct, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, checkKeyAch, chestAt, chestOpen, chestState, cleared, combos, credit, devChestReset, devKeyAll, devKeyOn, devKeyReset, devSetMeter, fillBars, gameKey, isCleared, isPlaceholder, isShell, keyAch, keyChest, keyFinished, keyGoal, keyOf, keyPct, keyState, keyTier, keyTiers, meter, meterBand, meterMax, modesOpen, openChest, placeholderCount, radarOf, radarRungs, readyChest, retroArrived, retroBank, retroTier, skey, tierFull, tierOpen };
