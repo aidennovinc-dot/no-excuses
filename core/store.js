@@ -31,7 +31,8 @@ const parse=s=>{ if(s==null) return undefined; try{ return JSON.parse(s); }catch
 const isObj=x=>!!x&&typeof x==='object'&&!Array.isArray(x);
 const HEX=/^#[0-9a-f]{6}$/i;
 const hex=(v,d)=>typeof v==='string'&&HEX.test(v)?v:d;
-const SND=ITEMS.snd.map(i=>i.v), RATES=ITEMS.rate.map(i=>i.v);
+// v26 (§B1, build 49): a HELD sound pack (Sigh) cannot stay chosen — a profile that had it plays the default until it is unlockable again
+const SND=ITEMS.snd.filter(i=>!i.held).map(i=>i.v), RATES=ITEMS.rate.map(i=>i.v);
 const SQ='#FFFFFF', LEAD='#C8322A';
 // v23 (L.10, build 40): the four chests by name (config/chests.js), each opened (1) or not (0). Anything else in the map is dropped
 const cleanChests=raw=>Object.fromEntries(CHESTS.map(c=>[c.id,isObj(raw)&&raw[c.id]?1:0]));

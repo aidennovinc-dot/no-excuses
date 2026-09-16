@@ -2,8 +2,8 @@
    sheet for every game (L9): the player row, the mode row, the length row, Go. Three stages — grid, mode, len — and Back
    walks them before it leaves the screen. show('s-pick', {g, d, s}) opens a game's sheet straight at its mode or length row
    (the result screen's Back, an achievement row, a challenge link). Locked things ask the lock box through lock:ask. */
-import { CHEST_SOON, GRID, SHEET } from "../../config/copy.js";
-import { CHESTS } from "../../config/chests.js";
+import { CHEST_SOON, GAUNTLET, GRID, SHEET } from "../../config/copy.js";
+import { CHESTS, GAUNTLETS, MAP_INTRO } from "../../config/chests.js";
 import { MODE_NAME, PASS_LEN, SEQ_VS, VS_LEAD, VS_TARGET } from "../../config/games.js";
 import { VS_ART } from "../../config/theme.js";
 import { VS_LINE } from "../../config/copy.js";
@@ -13,11 +13,11 @@ import { VS, sel } from "../../core/state.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, SHARED2, lenName, lenSub, versusAny, versusOf } from "../../games/registry.js";
 import { Scores, gameOpen, isOpen, lenLock, lenOpen, lensOf, markSeen, modeCount, needFor, newMark, newPlay, practiceOpen } from "../../progress.js";
-import { chestState, gameKey, tierOpen } from "../../progress/key.js";
+import { chestOpen, chestState, gameKey, tierOpen } from "../../progress/key.js";
 import { Snd } from "../../audio.js";
 import { start } from "../../run/run.js";
 import { define } from "../actions.js";
-import { burstHtml, chestSvg, spillVars, wordsHtml } from "../chest.js";
+import { burstHtml, chestSvg, spillVars, symSvg, wordsHtml } from "../chest.js";
 import { goLabel, picOf, scoreTxt } from "../format.js";
 import { register, show } from "../router.js";
 import { applyPrefs, colOf } from "../theme.js";
@@ -87,9 +87,20 @@ function setStage(st){ stage=st; clearTimeout(sheetT); const sh=$('#sheet'); $('
 const GRID_ORDER=Object.keys(GAMES);
 // v23 (L.10, build 40): the chests in the order they open — config/chests.js, by name, never by number
 const CHEST_ORDER=CHESTS.map(c=>c.id);
+// v26 (item 13, build 49): the two Gauntlets, in the order their chests open (config/chests.js)
+const GAUNT_ORDER=GAUNTLETS.map(g=>g.id);
+const gauntletOf=id=>GAUNTLETS.find(g=>g.id===id)||null;
+/* v26 (item 2, build 49): WHEN EACH TILE ARRIVES ON THE MAP'S FIRST OPEN — the seven games top to bottom, the two Gauntlets, then the four chests
+   last, one at a time, drawn out to about 7 seconds (MAP_INTRO). The tile's animation-delay is this and nothing else, and its sound is read back off
+   that animation (mapSounds below), so a re-time is one number in config/chests.js */
+function introAt(t){ const I=MAP_INTRO, g=t.dataset.game, gt=t.dataset.gauntlet;
+  if(g) return I.at+Math.max(0,GRID_ORDER.indexOf(g))*I.gap;
+  if(gt) return I.at+(GRID_ORDER.length+Math.max(0,GAUNT_ORDER.indexOf(gt)))*I.gap;
+  return I.at+(GRID_ORDER.length+GAUNT_ORDER.length)*I.gap+I.chestAt+Math.max(0,CHEST_ORDER.indexOf(t.dataset.chest))*I.chestGap; }
 /* the tiles in CHAIN order, whatever order the markup is in, with the chests last. Sorting here rather than trusting the
-   DOM means the order can only ever be wrong in config/games.js, which is the one place L6 allows it to be stated. */
-const orderedTiles=()=>$$('#grid .tile').filter(t=>!t.hidden).sort((a,b)=>{ const i=t=>t.dataset.game?GRID_ORDER.indexOf(t.dataset.game):GRID_ORDER.length+Math.max(0,CHEST_ORDER.indexOf(t.dataset.chest)); return i(a)-i(b); });
+   DOM means the order can only ever be wrong in config/games.js, which is the one place L6 allows it to be stated.
+   v26 (item 13): a Gauntlet is not on the chain — it hangs off the side of its chest on a connector of its own, so it is not in this list */
+const orderedTiles=()=>$$('#grid .tile').filter(t=>!t.hidden&&!t.dataset.gauntlet).sort((a,b)=>{ const i=t=>t.dataset.game?GRID_ORDER.indexOf(t.dataset.game):GRID_ORDER.length+Math.max(0,CHEST_ORDER.indexOf(t.dataset.chest)); return i(a)-i(b); });
 // where tile i sits: row by row, alternating direction, so the path from one to the next is always one step
 function cellOf(i,cols){ const r=Math.floor(i/cols), c=i%cols; return { r:r+1, c:(r%2?cols-c:c+1) }; }
 function colCount(){ const g=$('#grid'); const t=getComputedStyle(g).gridTemplateColumns; const n=t?t.trim().split(/\s+/).length:3; return n>0?n:3; }
@@ -106,6 +117,12 @@ function layoutGrid(){ const cols=colCount(); let below=null; const taken=new Se
   orderedTiles().forEach((t,i)=>{ const ci=t.dataset.chest?CHEST_ORDER.indexOf(t.dataset.chest):-1;
     if(ci>0){ if(!below) return; t.style.gridRow=below.r+ci; t.style.gridColumn=below.c; taken.add((below.r+ci)+':'+below.c); return; }
     const {r,c}=cellOf(i,cols); t.style.gridRow=r; t.style.gridColumn=c; taken.add(r+':'+c); if(ci===0) below={r,c}; });
+  /* v26 (item 13, build 49): EACH GAUNTLET SITS TO THE LEFT OF THE CHEST THAT OPENS IT, and the chest's words keep the cell on its right. Where there
+     is no cell on the left (the 4-column layout puts the chests in the first column) it takes the one past the words */
+  $$('#grid .tile[data-gauntlet]').forEach(t=>{ const G=gauntletOf(t.dataset.gauntlet), ci=G?CHEST_ORDER.indexOf(G.chest):-1;
+    if(!below||ci<0){ t.hidden=true; return; } const r=below.r+ci, free=c=>c>=1&&c<=cols&&!taken.has(r+':'+c);
+    const c=free(below.c-1)?below.c-1:free(below.c+2)?below.c+2:0; t.hidden=!c; if(!c) return;
+    t.style.gridRow=r; t.style.gridColumn=c; taken.add(r+':'+c); });
   $$('#grid .chestwords').forEach(w=>{ const ci=CHEST_ORDER.indexOf(w.dataset.for); if(!below||ci<0){ w.classList.add('nocell'); return; }
     const r=below.r+ci, free=c=>c>=1&&c<=cols&&!taken.has(r+':'+c), c=free(below.c+1)?below.c+1:free(below.c-1)?below.c-1:0;
     w.classList.toggle('nocell',!c); w.classList.toggle('left',c===below.c-1); if(c){ w.style.gridRow=r; w.style.gridColumn=c; } });
@@ -126,10 +143,31 @@ function drawLines(reveal){ const grid=$('#grid'), svg=$('#gridlines'); if(!svg)
     const pad=Math.min(len/2-1,half+1);
     const ux=(b.x-a.x)/len, uy=(b.y-a.y)/len;
     const x1=a.x+ux*pad, y1=a.y+uy*pad, x2=b.x-ux*pad, y2=b.y-uy*pad;
-    const l=Math.hypot(x2-x1,y2-y1); const d=reveal?(i+1)*120+260:i*40;
+    // v26 (item 2): on the first open a segment draws once the tile it leads to has landed
+    const l=Math.hypot(x2-x1,y2-y1); const d=reveal?introAt(tiles[i+1])+Math.round(MAP_INTRO.ms*.6)+MAP_INTRO.lineLag:i*40;
     // v23 (L.10, build 40): no gate on the connector into the first chest any more — v21 G.3's gate IS the Games chest now
     out+=`<path class="gl${open[i+1]?' open':''}" d="M${x1.toFixed(1)} ${y1.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}" style="--len:${l.toFixed(1)};--gd:${d}ms"></path>`; }
+  /* v26 (item 13, build 49): a Gauntlet's own connector, from its tile to the chest that opens it — green once it is open, like every other line. On the
+     first open it draws when the later of the two has landed */
+  $$('#grid .tile[data-gauntlet]').forEach(t=>{ const G=gauntletOf(t.dataset.gauntlet), ch=G&&$(`#grid .chest[data-chest="${G.chest}"]`); if(t.hidden||!ch) return;
+    const a=centreIn(t.querySelector('.pic'),grid), b=centreIn(ch.querySelector('.pic'),grid), len=Math.hypot(b.x-a.x,b.y-a.y); if(!len) return;
+    const pad=Math.min(len/2-1,t.querySelector('.pic').offsetWidth/2+1), ux=(b.x-a.x)/len, uy=(b.y-a.y)/len;
+    const x1=a.x+ux*pad, y1=a.y+uy*pad, x2=b.x-ux*pad, y2=b.y-uy*pad, l=Math.hypot(x2-x1,y2-y1);
+    const d=reveal?Math.max(introAt(t),introAt(ch))+Math.round(MAP_INTRO.ms*.6)+MAP_INTRO.lineLag:0;
+    out+=`<path class="gl gt${t.classList.contains('locked')?'':' open'}" data-gauntlet="${G.id}" d="M${x1.toFixed(1)} ${y1.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}" style="--len:${l.toFixed(1)};--gd:${d}ms"></path>`; });
   svg.innerHTML=out; }
+/* v26 (item 13, build 49): THE TWO GAUNTLET TILES. Open once the chest that opens each is open — chestOpen(), the one read every gate uses — and until then
+   crossed out with a padlock and what opens it, the way a locked chest is. The drawing is its symbol (config/chests.js SYMBOLS), in colour. A Gauntlet
+   newly open gets L8's green and arrives, with its own sound, the first time it is seen. Answers the tiles that are arriving */
+function renderGauntlets(reveal,fresh){ const arriving=[];
+  $$('#grid .tile[data-gauntlet]').forEach(t=>{ const G=gauntletOf(t.dataset.gauntlet); if(!G) return; const open=chestOpen(G.chest);
+    t.classList.toggle('locked',!open); t.querySelector('.name').textContent=GAUNTLET.name[G.id]||G.id;
+    const pic=t.querySelector('.pic'); if(!pic.querySelector('.sym')) pic.insertAdjacentHTML('afterbegin',symSvg(G.sym,'gsym',G.chest)+'<i class="gx"></i>');
+    pic.dataset.need=open?'':(GAUNTLET.need[G.id]||'');
+    t.classList.remove('reveal','newthing','arrive'); t.style.animationDelay='';
+    if(reveal){ t.classList.add('reveal'); t.style.animationDelay=introAt(t)+'ms'; }
+    else if(open&&newMark('gauntlet:'+G.id,fresh)){ t.classList.add('newthing','arrive'); arriving.push(t); } });
+  return arriving; }
 /* THE CHESTS (B.24, build 29 → B.19 / B.20, build 32 → v21 G.1 / G.3, build 37 → v23 L.10, build 40). FOUR, named by what opens them
    (config/chests.js), every one on the map from the first visit. Each is in one of four states and progress/key.js decides which —
    chestState(), strictly sequential (L.10e) — so nothing here counts anything or reads a chest flag:
@@ -177,31 +215,33 @@ function renderFill(){ const shown=tierOpen('clear');
     let svg=pic.querySelector('.kfill'); if(!svg){ pic.insertAdjacentHTML('beforeend','<svg class="kfill" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><rect x="1" y="1" width="98" height="98" pathLength="1"></rect></svg>'); svg=pic.querySelector('.kfill'); }
     svg.style.setProperty('--kf',k.frac.toFixed(3)); t.classList.toggle('kdone',k.total>0&&k.done===k.total); t.classList.toggle('kpart',k.done>0&&k.done<k.total); }); }
 // locked games are greyed with the condition on the tile (v6). Each tile wears its own game's colours (v10). v11: a padlock badge; the first visit reveals the grid tile by tile; a padlock wipes off when its game opens
-function renderTiles(){ const reveal=!prefs.gridSeen; if(reveal){ prefs.gridSeen=1; save(); } const runs=Scores.runs(); const fresh=[];
+function renderTiles(){ const reveal=!prefs.gridSeen; if(reveal){ prefs.gridSeen=1; save(); } const runs=Scores.runs(); const fresh=[], arriving=[];
+  $('#grid').style.setProperty('--tin',MAP_INTRO.ms+'ms');
   $$('.tile[data-game]').forEach((t,i)=>{ const g=t.dataset.game, open=gameOpen(g); t.classList.toggle('locked',!open); t.querySelector('.pic').dataset.need=open?'':T(SHEET.tileUnlock,{need:needFor(g,GAMES[g].modes[0])});
     // v13 (1.2 / L7): white until the game has been played once — colour arrives with the first recorded run
     const played=runs.some(r=>r.g===g), c=colOf(g); t.classList.toggle('unplayed',!played);
     // v20 (D.1): a game holding a newly unlocked mode that has not been played wears the green line until it has
     t.classList.toggle('newplay',open&&GAMES[g].modes.some(d=>newPlay(g,d)));
     t.style.setProperty('--sq-live',played?c.sq:'#FFFFFF'); t.style.setProperty('--cue',played?c.lead:'#8A8883');
-    t.classList.remove('reveal','newthing','arrive'); t.style.animationDelay=''; if(reveal){ t.classList.add('reveal'); t.style.animationDelay=(i*120)+'ms'; }
+    t.classList.remove('reveal','newthing','arrive'); t.style.animationDelay=''; if(reveal){ t.classList.add('reveal'); t.style.animationDelay=introAt(t)+'ms'; }
     /* v15 (6.3, build 26): a game unlocked since you were last here ARRIVES the first time it is seen, on top of L8's
        green first-seen marker. The two say different things and both are wanted: the animation is the game turning up,
        the green border is the mark that says which one is new. The first visit of all keeps its own reveal (v11) and
        does not get this as well — everything is new on that screen, so nothing would be. */
-    if(open&&!reveal){ const nw=newMark('game:'+g,fresh); if(nw){ t.classList.add('newthing'); t.classList.add('arrive'); } } });
+    if(open&&!reveal){ const nw=newMark('game:'+g,fresh); if(nw){ t.classList.add('newthing'); t.classList.add('arrive'); arriving.push(t); } } });
+  arriving.push(...renderGauntlets(reveal,fresh));
   markSeen(fresh);
   // v17 (B.23 / B.24): the snake placement, the chest's state, then the lines over the top of both
   renderChests(); renderFill(); layoutGrid(); drawLines(reveal);
   /* v24 (B.5, build 43): THE CHESTS JOIN THE LOADING SEQUENCE. They were already there while the tiles arrived one by one with their padlocks;
      now each chest pops in after the last game, on the same 120ms beat, in the order they open */
-  $$('#grid .chest').forEach(b=>{ const i=GRID_ORDER.length+Math.max(0,CHEST_ORDER.indexOf(b.dataset.chest)); b.classList.remove('reveal'); b.style.animationDelay='';
-    if(reveal){ b.classList.add('reveal'); b.style.animationDelay=(i*120)+'ms'; } });
+  $$('#grid .chest').forEach(b=>{ b.classList.remove('reveal'); b.style.animationDelay='';
+    if(reveal){ b.classList.add('reveal'); b.style.animationDelay=introAt(b)+'ms'; } });
   /* v24 (A.2, build 43): A BRAND NEW GAME OPENS THE MAP AT THE TOP. #s-pick scrolls, and a scroller keeps its position while the screen is
      display:none — so after Fresh game the map came back wherever it was last left, which since build 40 was down at the chests. The loading
      sequence plays on a new profile's first visit, so that is when it starts from the top (measured headless: 0 on a clean install, 254 after
      scrolling down and taking Fresh game) */
-  if(reveal){ $('#s-pick').scrollTop=0; mapSounds(); } }
+  if(reveal){ $('#s-pick').scrollTop=0; mapSounds(); } else if(arriving.length) arrivalSounds(arriving); }
 /* ---------- v25 (item 2, build 46): THE MAP'S FIRST OPEN HAS A SOUND PER TILE ----------
    As each tile lands, that game's own sound plays — softly, at the level config/audio.js MAP_FX sets — so the first look at the map previews
    what the seven games sound like, and the four chests arrive on their own note at the end of the sequence. A LOCKED tile plays the same
@@ -214,7 +254,12 @@ function mapSounds(){ mapT.forEach(clearTimeout); mapT=[];
   $$('#grid .tile').forEach(t=>{ const an=(t.getAnimations?t.getAnimations():[])[0]; if(!an||!an.effect) return;
     const d=an.effect.getComputedTiming().delay||0, g=t.dataset.game, chest=t.dataset.chest;
     mapT.push(setTimeout(()=>{ if(!$('#s-pick').classList.contains('on')) return;
-      if(chest) Snd.mapFx('chest'); else if(g) Snd.mapFx(g,!gameOpen(g)); },d)); }); }
+      if(chest) Snd.mapFx('chest'); else if(g) Snd.mapFx(g,!gameOpen(g)); else if(t.dataset.gauntlet) Snd.mapFx('gauntlet',t.classList.contains('locked')); },d)); }); }
+/* v26 (§B1, build 49): AND THE SAME SOUND WHEN A GAME UNLOCKS. A game (or a Gauntlet) newly open ARRIVES on the map the first time it is seen (v15 6.3),
+   and it lands with its own sound, read off its own arrival animation like the first open's */
+function arrivalSounds(tiles){ for(const t of tiles){ const an=(t.getAnimations?t.getAnimations():[]).find(a=>a.animationName==='tilearrive'); if(!an||!an.effect) continue;
+    const d=an.effect.getComputedTiming().delay||0, g=t.dataset.game;
+    mapT.push(setTimeout(()=>{ if(!$('#s-pick').classList.contains('on')) return; if(g) Snd.mapFx(g); else Snd.mapFx('gauntlet'); },d)); } }
 on('screen:change',({id})=>{ if(id!=='s-pick'){ mapT.forEach(clearTimeout); mapT=[]; } });
 // a locked mode (v11) is crossed out, not just greyed; tapping it says what it takes
 function fillSheet(){ const g=GAMES[sel.game]; const fresh=[]; $('#diff-row').innerHTML=g.modes.map(d=>{ const open=isOpen(sel.game,d); const nw=open?newMark('mode:'+sel.game+':'+d,fresh):''; const np=open&&newPlay(sel.game,d)?' newplay':''; return `<button data-act="diff" class="choice ${open?'':'locked'}${nw}${np}" data-diff="${d}"><span class="pic">${picOf(sel.game,d)}</span><span class="txt"><b class="${open?'':'x'}">${MODE_NAME[d]}</b><small class="${open?'':'need'}">${open?g[d]:T(SHEET.toUnlock,{need:needFor(sel.game,d)})}</small></span></button>`; }).join(''); markSeen(fresh); }
@@ -251,6 +296,9 @@ function showChallenge(c){ const el=$('#chal'); el.textContent=''; if(c.score!==
 /* v23 (L.12, build 40): a whole key on the key screen taps through to HERE, with its chest in view — scrolled to and picked out for a
    moment, in whatever state it is in: ready (and breathing) or opened (lid up, words beside it). The next tap on it goes back to the key
    screen, which opens a ready one (L.8b). */
+// v26 (item 13, build 49): a chest's GAUNTLET word goes to its tile, picked out the same way
+function tileInView(id){ const b=$(`#grid .tile[data-gauntlet="${id}"]`); if(!b||b.hidden) return;
+  b.scrollIntoView({block:'center',behavior:'smooth'}); b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); setTimeout(()=>b.classList.remove('flash'),1800); }
 function chestInView(id){ const b=$(`#grid .chest[data-chest="${id}"]`); if(!b) return;
   b.scrollIntoView({block:'center',behavior:'smooth'}); b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); setTimeout(()=>b.classList.remove('flash'),1800); }
 register('s-pick',{
@@ -306,8 +354,16 @@ define({
      for a reward not built yet (Gauntlet, and the Pro and Thorns placeholders), which says so where it is */
   chestword(b){ const to=b.dataset.to||'soon';
     if(to.startsWith('key:')){ show('s-key',{tier:+to.slice(4)}); return 'click'; }
+    // v26 (items 5 / 13, build 49): a Gauntlet goes to its tile, a video straight to its slot on the About screen
+    if(to.startsWith('tile:')){ tileInView(to.slice(5)); return 'click'; }
+    if(to.startsWith('msg:')){ show('s-about',{msg:to.slice(4)}); return 'click'; }
     if(to.startsWith('s-')){ show(to); return 'click'; }
     toast(T(CHEST_SOON,{w:b.dataset.w||''}),'','',true); return 'pick'; },
+  /* v26 (item 13, build 49): a Gauntlet tile. Locked, it says what opens it and stays put; open, its placeholder screen — what a Gauntlet is gets
+     designed separately */
+  gauntlet(b){ const id=b.dataset.gauntlet, G=gauntletOf(id); if(!G) return 'pick';
+    if(!chestOpen(G.chest)){ toast(T(GAUNTLET.toast,{need:GAUNTLET.need[id]||''}),'','',true); return 'pick'; }
+    show('s-gauntlet',{id}); return 'click'; },
   praclock(){ toast(TOAST.pracLocked); return 'pick'; },
   prac(b){ sel.practice=+b.dataset.prac; $$('[data-prac]').forEach(c=>c.classList.toggle('sel',c===b)); return 'pick'; },
   // v15 (4.5): how many notes a Sequence versus opens with

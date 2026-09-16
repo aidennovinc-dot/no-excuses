@@ -33,7 +33,8 @@ import { applyPrefs, colOf } from "../theme.js";
    wheel. Every item is a data-act="item" button inside a [data-set] group. Arriving with {unlocks} scrolls to and rings
    the item an achievement just opened. */
 const F={ g:prefs.lastGame };   // the game being previewed
-const itemsOf=set=>set==='scale'?Object.entries(SCALES).map(([k,v])=>({v:k,label:v.name})):ITEMS[set];
+// v26 (§B1, build 49): a HELD item (the Sigh sound pack) is not offered at all until something unlocks it
+const itemsOf=set=>set==='scale'?Object.entries(SCALES).map(([k,v])=>({v:k,label:v.name})):ITEMS[set]&&ITEMS[set].filter(i=>!i.held);
 // supporters (v10) have every cosmetic open; "open everything" is the testing switch for the same thing
 /* v24 (C.6, build 43): an item can also wait for a KEY to be finished (`key` in config/theme.js) — the three key backgrounds. Its lock is that key's
    whole-key row, so the line under the row names it and "show me" finds it on Progress; keyFinished() honours both dev escapes */

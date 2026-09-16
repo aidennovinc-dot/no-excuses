@@ -27,7 +27,8 @@ export const ACH = [
   { id:'every',   g:'all', tier:'earned', name:'Every game',  how:'Finish a run in every game', unlocks:['lead','#FFB020'] },
   { id:'fullset', g:'all', tier:'pro',    name:'Full set',    how:'In one game, every mode at every length', unlocks:['wheel'] },
   // v8: the first "big" unlock — a sound pack that is mostly a joke
-  { id:'tour',    g:'all', tier:'pro',    name:'Grand tour',  how:'Finish a run in every mode of every game', unlocks:['snd','sigh'] },
+  // v26 (§B1, build 49): Grand tour no longer unlocks the Sigh sounds — Sigh is held for an achievement still to be chosen (config/theme.js ITEMS.snd)
+  { id:'tour',    g:'all', tier:'pro',    name:'Grand tour',  how:'Finish a run in every mode of every game' },
   // v11: the easter egg. Three taps on the full stop under the top 10. Never earned by a run
   { id:'egg',     g:'all', tier:'secret', name:'Excuses',     how:'Found the full stop', hint:"Not something you can play for. Something on the result screen is punctuation and something is not.", unlocks:['sq','#FF7A59'] },
   // quick tap — every one is Two or Four, never "any mode" (v6)

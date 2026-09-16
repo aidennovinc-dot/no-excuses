@@ -3,6 +3,7 @@
    two players, L10), then — after the ad break every fourth result — the unlock and achievement toasts. Go plays again with
    whatever the chips say; Back reopens the sheet; Challenge a friend shares a link that carries the score. */
 import { RESULT, SHARE, SHEET, TOAST, VERDICT } from "../../config/copy.js";
+import { MAP_ON_UNLOCK_MS } from "../../config/audio.js";
 import { PUB_URL } from "../../config/build.js";
 import { MODE_NAME, PASS_LEN } from "../../config/games.js";
 import { $, T, esc, pWho } from "../../core.js";
@@ -105,13 +106,18 @@ on('run:finish',({run,isBest,two,fresh,ach,adv})=>{ const g=GC(run.g,run.d,run.s
      comes straight back here — the run is not finished with. Two-player and practice never get this far. */
   setTimeout(()=>Ads.after(()=>{ show('s-over'); if(run.practice||two) return;
     // v18 (B.12): the fifth field is where an unlock toast LEADS — tap it and the pick sheet opens at that mode or length
-    const msgs=(fresh||[]).map(u=>[unlockToast(u.key),'','ok',false,u.key])
+    /* v26 (§B1, build 49): a toast that unlocks a whole GAME is followed by that game's own map sound (config/audio.js MAP_FX, MAP_ON_UNLOCK_MS after the
+       unlock sound, which is untouched) — the sound its tile lands with on the map, so a new game is introduced by its own voice the moment it opens */
+    const gameOf=k=>{ const g=String(k).split(':')[0]; return GAMES[g]&&unlockToast(k)===T(TOAST.unlockGame,{name:GAMES[g].name})?g:''; };
+    const msgs=(fresh||[]).map(u=>[unlockToast(u.key),'','ok',false,u.key,gameOf(u.key)])
       .concat((ach||[]).map(a=>[T(TOAST.achievement,{name:a.name})+(a.unlocks?' · '+unlockHtml(a):''),a.id,'']));
     /* the tier's sound plays HERE, not at the finish: Snd.end() already owns the moment the run stops, and the ad break
        can stand between the two. A run that earned something pushes its toasts back by the length of the sound, so the
        verdict and an unlock never land on top of each other — the unlock is the bigger sound and it gets clear air. */
-    const rest=()=>{ const d=lastTier?600:0; if(lastTier) Snd.verdict(lastTier);
-      msgs.forEach(([m,id,cls,html,go],i)=>setTimeout(()=>toast(m,id,cls,!!id,go),d+i*((id||go)?3400:2600))); renderOverChips(); };
+    /* v26 (§B1, build 49): AND NOT ON TOP OF "END OF RUN" EITHER. Aiden asked whether the two overlap, and they did — this screen comes up 250ms after the
+       finish and the tier played at once, over the last three notes of Snd.end(). The tier now waits until End of run has landed (Snd.endLeft()) */
+    const rest=()=>{ const gap=lastTier?Snd.endLeft():0, d=(lastTier?600:0)+gap; if(lastTier){ const t=lastTier; if(gap) setTimeout(()=>Snd.verdict(t),gap); else Snd.verdict(t); }
+      msgs.forEach(([m,id,cls,html,go,g],i)=>setTimeout(()=>{ toast(m,id,cls,!!id,go); if(g) setTimeout(()=>Snd.mapFx(g),MAP_ON_UNLOCK_MS); },d+i*((id||go)?3400:2600))); renderOverChips(); };
     if(adv) keyBreak(adv,rest); else rest(); }),250); });
 /* v15 (5.1, build 26): a key unlock INTERRUPTS this screen. It was a green toast the player tapped, sitting behind
    however many unlock and achievement toasts came first, and only then did it offer the key — so the one thing the key

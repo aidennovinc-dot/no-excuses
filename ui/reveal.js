@@ -26,8 +26,16 @@
    end is still swallowed, so no tap is accepted before the animation's last frame.
 
    The host is the same full-screen element a chest ceremony already used (#key-cere). A chest's stage is opaque and covers the screen; a
-   key's is transparent, because the ring being revealed is the screen underneath — `kind` is the only thing that decides which. */
-import { REVEAL } from "../config/chests.js";
+   key's is transparent, because the ring being revealed is the screen underneath — `kind` is the only thing that decides which.
+
+   v26 (items 6 / 8, build 49): THE REWARDS COME OUT OF THE CHEST, AND THE CARD SITS UNDER THEM. A stage that has a chest answers `anchor()` — where its
+   lid and its foot are on the host — and the row of rewards is laid out once, close under the chest, where they end up. Each reward's FLIGHT is drawn
+   backwards from there: out of the lid, down to the right, round and home, a cubic curve sampled into eleven custom properties the stylesheet's one
+   keyframe list walks (GIFT_LOOK in config/chests.js sets how far it swings and how grand it is, per chest). They leave REVEAL.giftGap apart, each
+   with a small pop as it leaves and the "an unlock lands" sound as it lands — both read off that reward's own animation, never a second list of
+   times. The chest's name and a key chest's count-up wait for the last one to land, and "tap to continue" waits for both. The card is placed BELOW
+   the row, clear of the chest; if the phone is too short for it, the chest and its rewards lift up by exactly what the card needs. */
+import { GIFT_LOOK, REVEAL } from "../config/chests.js";
 import { CARD, KEY } from "../config/copy.js";
 import { Music, Snd } from "../audio.js";
 import { esc } from "../core.js";
@@ -36,19 +44,39 @@ import { symSvg } from "./chest.js";
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---------- the markup. Three layers on one host: the stage, the gifts, and the card over both ---------- */
-const giftHtml = gifts => `<div class="rgifts">${(gifts || []).map((g, i) =>
-  `<span class="rgift${g.tba ? ' tba' : ''}" style="--i:${i}">${symSvg(g.sym, 'rsym')}<b>${esc(g.w)}</b></span>`).join('')}</div>`;
-/* item 22's card: a title in this chest's or key's own colour, up to three lines of what you did, a row of what you got, one line of
-   what's next, and Continue. `msg` is item 23's button, and it is there only when this unlock opened a message that has a clip. */
+// a reward: its symbol in a box of its own (so the flight can be measured off layout, not a moving rect), the rings and sparks it lands with, its title
+const giftHtml = (gifts, chest) => { const L = GIFT_LOOK[chest] || GIFT_LOOK.games;
+  const extras = '<i class="rring"></i>'.repeat(L.ring) + Array.from({ length: L.sparks }, (_, k) => `<i class="rspark" style="--a:${Math.round(k * 360 / Math.max(1, L.sparks))}deg"></i>`).join('');
+  return `<div class="rgifts">${(gifts || []).map((g, i) =>
+    `<span class="rgift${g.tba ? ' tba' : ''}" style="--i:${i}"><span class="rfly">${symSvg(g.sym, 'rsym', chest)}${extras}</span><b>${esc(g.w)}</b></span>`).join('')}</div>`; };
+/* v26 (item 8, build 49): the card. A big "Congratulations" in the chest's own colour, one "You …" line, one "Next: can you …?" line, the video this
+   chest opened as "A message from Aiden" (item 5), and Continue. No "what you got", no headings, no percentage. */
 function cardHtml(c) { if (!c) return '';
-  const did = (c.did || []).slice(0, 3);
   return `<div class="rcard" style="${c.col ? `--rc:${c.col}` : ''}">`
     + `<h3>${esc(c.title || '')}</h3>`
-    + (did.length ? `<u>${esc(CARD.did)}</u><ul>${did.map(l => `<li>${esc(l)}</li>`).join('')}</ul>` : '')
-    + ((c.got || []).length ? `<u>${esc(CARD.got)}</u>${giftHtml(c.got).replace('rgifts', 'rgifts row')}` : '')
-    + (c.next ? `<u>${esc(CARD.next)}</u><p>${esc(c.next)}</p>` : '')
-    + (c.msg ? `<button class="item sub rmsg" data-act="reveal-msg" data-msg="${esc(c.msg)}">${esc(CARD.msg)}</button>` : '')
+    + (c.you ? `<p class="ryou">${esc(c.you)}</p>` : '')
+    + (c.next ? `<p class="rnext">${esc(c.next)}</p>` : '')
+    + (c.msg ? `<button class="item sub rmsg" data-act="reveal-msg" data-msg="${esc(c.msg)}">${symSvg('video', 'rmsgsym')}<span>${esc(CARD.msg)}</span></button>` : '')
     + `<button class="item rgo" data-act="reveal-go" disabled>${esc(CARD.go)}</button></div>`; }
+
+/* v26 (item 6, build 49): lay the rewards out under the chest and draw each one's flight backwards from where it rests. Offsets, not rects — the
+   rewards are about to animate, and a rect taken now would include wherever the first keyframe puts them. Answers the chest's anchor, or null. */
+const offIn = (el, root) => { let x = 0, y = 0, n = el; while (n && n !== root) { x += n.offsetLeft; y += n.offsetTop; n = n.offsetParent; } return { x, y }; };
+function placeGifts(host, st, chest) { const row = host.querySelector('.rgifts'); if (!row || !row.children.length || !st.anchor) return null;
+  // out of the flow FIRST: in it, the row takes height from the stage and the chest is measured somewhere it will not be
+  row.classList.add('placed');
+  let a = null; try { a = st.anchor(); } catch (e) { } if (!a) { row.classList.remove('placed'); return null; }
+  const L = GIFT_LOOK[chest] || GIFT_LOOK.games;
+  row.style.top = Math.round(a.bottom + REVEAL.under) + 'px'; void row.offsetHeight;
+  host.style.setProperty('--gpop', L.pop); host.style.setProperty('--gspin', L.spin + 'deg'); host.style.setProperty('--gglow', L.glow + 'px');
+  [...row.querySelectorAll('.rgift')].forEach(g => { const b = g.querySelector('.rfly'), o = offIn(b, host);
+    const fx = o.x + b.offsetWidth / 2, fy = o.y + b.offsetHeight / 2;
+    // out of the lid and up, swinging right; down past the resting place to the right; round and home
+    const p0 = [a.cx - fx, a.lid - fy], p1 = [p0[0] + L.arc[0] * .6, p0[1] - L.arc[1] * .95], p2 = [L.arc[0] * 1.2, L.arc[1] * 1.15];
+    for (let k = 0; k <= 10; k++) { const t = 1 - Math.pow(1 - k / 10, 1.35), u = 1 - t;
+      const x = u * u * u * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0], y = u * u * u * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1];
+      g.style.setProperty('--x' + k, x.toFixed(1) + 'px'); g.style.setProperty('--y' + k, y.toFixed(1) + 'px'); } });
+  return a; }
 
 /* ---------- the one that is playing ---------- */
 let cur = null;
@@ -65,27 +93,33 @@ function stop() { if (!cur) return; const c = cur; cur = null; c.timers.forEach(
 function play(host, o = {}) { stop(); if (!host) return false;
   const st = o.stage || { ms: 0 }, quick = reduced(), ms = quick ? REVEAL.fadeMs : (st.ms || 0);
   const gifts = o.gifts || [], giftAt = ms + (quick ? 0 : REVEAL.giftAt), giftGap = quick ? 0 : REVEAL.giftGap;
-  const ready = giftAt + (gifts.length ? (gifts.length - 1) * giftGap + (quick ? 0 : REVEAL.giftMs) + REVEAL.hold : 0);
+  // v26 (item 6): the last reward lands at `landAt`; the chest's name and its count-up come then, and "tap to continue" after both
+  const landAt = giftAt + (gifts.length ? (gifts.length - 1) * giftGap + (quick ? 0 : REVEAL.giftMs) : 0);
+  const ready = gifts.length ? landAt + Math.max(REVEAL.hold, quick ? 0 : (st.textMs || 0)) : giftAt;
   const c = cur = { host, stage: st, timers: [], ready: false, card: o.card || null, onReady: o.onReady, onDone: o.onDone };
   host.className = 'cere rev' + (o.kind === 'key' ? ' clear' : '') + (quick ? ' quick' : '');
   host.dataset.kind = o.kind || 'chest'; host.dataset.rev = o.id || ''; host.dataset.step = '';
   host.style.setProperty('--rev-ms', ms + 'ms'); host.style.setProperty('--gift-ms', (quick ? 0 : REVEAL.giftMs) + 'ms');
   host.style.setProperty('--gift-at', giftAt + 'ms'); host.style.setProperty('--gift-gap', giftGap + 'ms');
   host.style.setProperty('--card-ms', REVEAL.cardAt + 'ms'); if (o.col) host.style.setProperty('--rc', o.col);
-  host.innerHTML = `<div class="rstage"></div>${giftHtml(gifts)}<i class="ctap">${esc(KEY.tapOn)}</i><div class="rcardwrap"></div>`;
-  host.hidden = false; void host.offsetWidth; host.classList.add('play');
+  host.innerHTML = `<div class="rstage"></div>${giftHtml(gifts, o.id)}<i class="ctap">${esc(KEY.tapOn)}</i><div class="rcardwrap"></div>`;
+  host.hidden = false; void host.offsetWidth;
   Music.hush(true);
   const at = (t, fn) => c.timers.push(setTimeout(() => { if (cur === c) fn(); }, Math.max(0, t)));
-  // 1. the stage. Under Reduce Motion it is drawn and settled at once — the short fade is the whole of it
-  if (st.start) { try { st.start(host.querySelector('.rstage'), { quick, silent: !!o.silent }); } catch (e) { } }
-  /* item 6 asks for the symbols to come OUT OF THE CHEST, so once the stage has drawn itself the gift row moves inside it, directly under
-     the chest and above the chest's own line of text — otherwise they rise at the foot of the screen, a long way from what they came from.
-     A stage with no text of its own (a key's — its drawing is the ring behind this host) leaves the row where it is. */
-  const txt = host.querySelector('.rstage .ctxt'), row = host.querySelector('.rgifts');
-  if (txt && row && gifts.length) txt.parentNode.insertBefore(row, txt);
+  // 1. the stage. Under Reduce Motion it is drawn and settled at once — the short fade is the whole of it. v26 (item 6): its text waits for the rewards
+  if (st.start) { try { st.start(host.querySelector('.rstage'), { quick, silent: !!o.silent, textAt: gifts.length ? landAt : undefined }); } catch (e) { } }
+  if (gifts.length) host.style.setProperty('--reveal-at', landAt + 'ms');
+  /* v26 (item 6): the rewards are laid out close under the chest, where they will rest, before anything moves — then the host starts playing and each
+     one flies there out of the lid. A stage with no chest (a key's) has no anchor and hands over no rewards, and nothing here happens */
+  c.anchor = gifts.length ? placeGifts(host, st, o.id) : null;
+  host.classList.add('play');
   if (!quick && st.step) for (const s of (st.steps || [])) at(s.at, () => { host.dataset.step = s.name; try { st.step(s.name, s); } catch (e) { } });
-  // 2. the gifts, each with its own small sound a step above the one before (item 6 — the reward moment is not silent)
-  gifts.forEach((g, i) => at(giftAt + i * giftGap, () => { if (!o.silent) Snd.gift(i); }));
+  /* 2. the gifts. Each leaves with a small pop and lands with its own sound a step above the one before (item 6) — both READ OFF THAT REWARD'S OWN
+     ANIMATION, so re-timing the flight in config/chests.js moves the sounds with it. Under Reduce Motion there is no flight: each lands on the fade */
+  if (!o.silent) [...host.querySelectorAll('.rgift')].forEach((g, i) => { const an = (g.getAnimations ? g.getAnimations() : []).find(x => x.animationName === 'rgiftfly');
+    const tm = an && an.effect ? an.effect.getComputedTiming() : null;
+    if (tm && !quick) { at(tm.delay || 0, () => Snd.pop(i)); at((tm.delay || 0) + (+tm.duration || 0), () => Snd.gift(i)); }
+    else at(giftAt + i * giftGap, () => Snd.gift(i)); });
   /* 3. tap to continue, held until the last one has landed — or, for an `auto` reveal, the end. It comes the same beat after the SETTLE that it
      always did, and the settle waits for the stage's hold (v26 item 10): nothing after the stage can start while the stage is still drawing */
   const settleAt = quick ? 0 : (typeof st.settleAt === 'number' ? st.settleAt : ms), after = Math.max(0, ready - settleAt);
@@ -102,7 +136,14 @@ function play(host, o = {}) { stop(); if (!host) return false;
 function tap() { if (!cur || !cur.ready || cur.carded) return false; const c = cur;
   if (!c.card) { stop(); if (c.onDone) c.onDone(); return true; }
   c.carded = true; c.host.classList.remove('tap'); c.host.dataset.step = 'card';
-  c.host.querySelector('.rcardwrap').innerHTML = cardHtml(c.card);
+  const wrap = c.host.querySelector('.rcardwrap'), row = c.host.querySelector('.rgifts.placed');
+  wrap.innerHTML = cardHtml(c.card);
+  /* v26 (item 8): LOWER, CLEAR OF THE CHEST. The card starts under the row of rewards; on a phone too short to hold it there, the chest and its rewards
+     lift by exactly what the card needs, and never past the top of the chest */
+  if (row && c.anchor) { const pad = parseFloat(getComputedStyle(c.host).paddingBottom) || 18, top = row.offsetTop + row.offsetHeight + REVEAL.cardGap;
+    const need = (wrap.firstElementChild || wrap).offsetHeight, room = c.host.clientHeight - pad - top;
+    const lift = Math.round(Math.max(0, Math.min(c.anchor.top - pad, need - room)));
+    c.host.style.setProperty('--lift', lift + 'px'); wrap.classList.add('below'); wrap.style.top = (top - lift) + 'px'; }
   c.host.classList.add('card');
   // item 22: Continue is dead for about a second, so a tap left over from the animation cannot close the card unseen
   c.timers.push(setTimeout(() => { if (cur !== c) return; const b = c.host.querySelector('.rgo'); if (b) { b.disabled = false; b.classList.add('on'); } }, REVEAL.cardAt + REVEAL.cardGo));

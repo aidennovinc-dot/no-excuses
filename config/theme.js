@@ -20,7 +20,10 @@ export const ITEMS = {
   sq:  [{v:'#FFFFFF'},{v:'#FFE9C4',by:'first'},{v:'#9BE8FF',by:'qt_clean5'},{v:'#FFD1DC',by:'dt_pin'},{v:'#F3D9FF',by:'hd_steady'},{v:'#C6FF7A',by:'qt_clean30'},{v:'#FFF3A0',by:'sq_12'},{v:'wheel',by:'fullset'}],
   lead:[{v:'#C8322A'},{v:'#FFB020',by:'every'},{v:'#7CFFB2',by:'dt_sweep'},{v:'#4FD9FF',by:'qt_r5'},{v:'#FF4FD8',by:'qt_eyes'},{v:'#FFFFFF',by:'hd_est'},{v:'wheel',by:'fullset'}],
   bg:  [{v:'stars'},{v:'grid',by:'named'},{v:'rain',by:'qt_clean15'},{v:'orbs',by:'dt_land'},{v:'lantern',key:'clear'},{v:'circuit',key:'pro'},{v:'thorn',key:'author'},{v:'wheel',by:'fullset'}],
-  snd: [{v:'space',label:'Space'},{v:'click',label:'Click',by:'qt_r4'},{v:'wood',label:'Wood',by:'hd_money'},{v:'sigh',label:'Sigh',by:'tour'},{v:'off',label:'Off'}],
+  /* v26 (§B1, build 49): SIGH IS HELD. It was made to sound like a person sighing, and Aiden wants it as a fun unlockable for one particular achievement,
+     which is still to be decided — so it is off the sound pack row (`held`: Customise does not show it, the store will not keep it chosen) and no longer
+     earned by Grand tour. Its sounds stay in audio.js. When the achievement is chosen, it takes `unlocks:['snd','sigh']` and this row takes its `by` */
+  snd: [{v:'space',label:'Space'},{v:'click',label:'Click',by:'qt_r4'},{v:'wood',label:'Wood',by:'hd_money'},{v:'sigh',label:'Sigh',held:1},{v:'off',label:'Off'}],
   // v13 (12.1): music is per game — one track each, switched off or previewed on its own row
   music:[{v:true,label:'On'},{v:false,label:'Off'}],
   // v14 (6.7): the rate bar's two readings. Live is the rolling average over the last few taps; Whole run averages every tap

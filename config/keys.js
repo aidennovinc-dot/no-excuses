@@ -34,7 +34,7 @@
    (L.12), so a key's theme is its own reward — and the value prefs.everywhere takes when SET THIS MUSIC is tapped on this key's screen.
    Before that chest opens, the button is not there and the theme does not play on the screen (guess, L.7b). */
 export const KEYS = [
-  { id: 'clear', name: 'The key', theme: 'Lantern', style: 'lantern', track: 'theme:key', music: 'key', tint: '#FFD08A', dim: '#57442C', ground: 'rgba(255,208,138,.12)',
+  { id: 'clear', name: 'Skill key', theme: 'Lantern', style: 'lantern', track: 'theme:key', music: 'key', tint: '#FFD08A', dim: '#57442C', ground: 'rgba(255,208,138,.12)',
     lede: 'Every clearance bar, once each. Beat one in a solo run and that combination is cleared for good.' },
   { id: 'pro', name: 'Pro', theme: 'Circuit', style: 'circuit', track: 'theme:pro', music: 'pro', tint: '#BFE6FF', dim: '#35506A', ground: 'rgba(191,230,255,.08)',
     lede: 'A harder bar on every combination, for a second pass at a game you already know.' },

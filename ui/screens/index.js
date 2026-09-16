@@ -2,6 +2,7 @@
    and defines its buttons; nothing here runs until boot.js shows the first screen. */
 import "./menu.js";
 import "./pick.js";
+import "./gauntlet.js";
 import "./board.js";
 import "./progress.js";
 import "./customise.js";

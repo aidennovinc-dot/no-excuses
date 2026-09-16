@@ -110,6 +110,31 @@ VERDICT_FX) is in the `config/` paragraph of `RULES-HISTORY.md` → Structure, a
   **`Music.hush(on)` ducks the bed FULLY under a ceremony** (`HUSH`: 0.08s down, 0.4s back on the tap) — a flag as well as a ramp, so a bed
   built mid-ceremony starts silent. **The levels are not measured:** `_smoke/loudness.mjs` renders tracks, not effects, and these gains were set
   beside `unlockFx` and the verdict sounds by eye. That is the first thing to re-tune on the phone.
+- **BUILD 49 — THE SOUND NOTES FROM THE BUILD 46 BOARD (v26 §B1) AND THE UNLOCK EXPERIENCE (items 2, 6).** All in `config/audio.js`; nobody has heard any of
+  it (UNVERIFIED.md). Aiden's words are the brief; what was built:
+  · **Title (`TITLE_FX`)** "more spacey and wooshy and slightly longer": each ~40% longer with a slower swell, and a pair of quiet sines a few hertz apart
+    gliding up over the low sweep — the beating between them is the space.
+  · **Count-up whoosh** "about 7 very similar versions played at random": `WHOOSH_VARIANTS`, [pitch ×, length ×], none more than 6% / 8% off;
+    `Snd.whoosh(ms, f0, f1, v)` draws one at random, or version `v` when asked (the catalogue plays each).
+  · **Sigh** is held — off the sound pack row, Grand tour no longer earns it, the achievement is still to be chosen — and its miss starts at 520 Hz
+    (it was 240 → 50 Hz, "too low-pitched to hear").
+  · **Key chest opening** "much closer to the first key's theme": the assemble chimes are the theme's first two chords arpeggiated (G · D · G · A,
+    F · C · F · G over its root × 2), the spill is its opening chord held, and the sting runs to 3.3s of the theme before it lands.
+  · **Pro chest opening** "far more epic": a doubled detuned rumble over a sub, a low hit under each crack, a riser into the burst, the burst a deeper
+    boom under a five-note sawtooth D major with the octave, a five-note climb to D6 and a long shimmer; the sting runs to 3.9s and lands on seven notes.
+  · **Thorn earned** "better, with more sounds": build 43's five layers plus a sub pulse on every second, a filtered sawtooth rising out of the dark chord,
+    the low figure answered again, three high bells held to the theme rule, and the dark chord's answer to close — 29 notes.
+  · **The result sounds** climb: Meh. unchanged (Aiden: good); Good. a rising major third G4 → B4 (it was a semitone that never landed, "too sad");
+    Great! is build 45's Amazing! note for note; Amazing! is four notes, E5 G5 C6 E6 with an E7 shimmer, ending highest. Every one has bass under it.
+  · **A round's sound** is `ROUND_FX`, its own list: one note shorter than the result's, with bass under it (Aiden: "all end-of-run sounds should be one
+    note more than their end-of-round sound"), still played × `ROUND_VERDICT` shorter and quieter.
+  · **End of run** did play on top of the tier: the result screen came up 250ms after the finish and played its tier at once, over the last three of
+    End of run's four notes. `Snd.endLeft()` answers how long until it has landed (1.06s after it starts) and `ui/screens/result.js` waits that long.
+  · **The map (`MAP_FX`)**: a Gauntlet tile's own sound (a thud and two inharmonic rings); a game or Gauntlet newly open arriving on the map plays its
+    sound off its arrival animation; a result toast that unlocks a whole game is followed `MAP_ON_UNLOCK_MS` later by that game's sound.
+  · **A reward leaving a chest** (`POP_FX`, `Snd.pop(i)`): a short low bubble with a quiet click, a step higher each time; it lands with `Snd.gift(i)`.
+    Both are scheduled off that reward's own flight animation.
+  Left alone, as asked: every sound Aiden marked good, great, amazing, nice or perfect.
 - **THE KEY THEMES ARE REWRITTEN, AND ANY ONE OF THEM CAN BE EVERY RUN'S MUSIC (v23 §L.7, build 42).** `theme:key` / `theme:pro` /
   `theme:thorns` in `config/audio.js`. The build-30 `key:roots` / `key:frost` / `key:thorn` stay ONE build as `retired:42` so the review board
   can A/B them; nothing in the app plays them, and the next build drops them. None of this has been heard (UNVERIFIED.md).

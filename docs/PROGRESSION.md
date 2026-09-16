@@ -218,13 +218,15 @@ of it, statically and by quitting a run mid-flight and reading storage back.
   chest?", Open / Not yet, `askOpen(id)`), and Open is `openNow(id)`: `openChest()` stores and credits silently (G.4), then the build-41
   ceremony. Back and Not yet leave it shut. A result interlude whose clear tops a band no longer opens anything: the chest waits, READY. This is
   a deliberate trigger; batch 16's removal of the mid-flow "proceed to Pro" step still stands (v24 C.1 says both stand).
+  **After build 48 (Aiden's answers, built for build 49):** the key still asks — build 48's open-at-once is reversed — and the quiet screen's row of
+  chests is gone, so the key (the whole key's hub, or the quiet screen's key) is the one way to the ask on this screen.
 - **A READY CHEST TAPPED ON THE MAP OPENS AT ONCE, WITHOUT FLASHING THE KEY SCREEN (B.2), AND NEVER CUTS A KEY ANIMATION OFF (B.3).** The map's
   `chest` act sends `show('s-key', {open: id})`. With nothing unseen, `onShow` calls `openNow` before the screen is drawn, so the ceremony's
   opaque stage is on the first frame. With the arrival (5.4, on an open tier) or that key's earn moment (C.5) not yet seen, that animation
   plays IN FULL with input held (`lock`), and the chest opens `OPEN_GAP` after it ends. The map's "tap to open" is the ask there (guess: no
   second ask on the map).
 - **A CHEST THAT CAN BE OPENED WEARS A PULSING GREEN OUTLINE (B.1)** — `readyring` in `--ok` on the map's `.tile.chest.ready .pic` and on the key
-  screen's `.kch.ready` and `.kquiet`; the chest's own idle (L.9b) still runs inside it.
+  screen's `.kquiet` (the row's `.kch.ready` went with the row after build 48); the chest's own idle (L.9b) still runs inside it.
 - **EARNING A KEY IS ITS OWN MOMENT PER TIER (C.5)** — `earnMoment(tier)` replaces B.20's shared `wholeMoment()`. Still once per tier per profile
   (`prefs.keyWhole`), never under a ceremony (it would spend it unseen). `KEY_EARN` in `config/keys.js` gives the length and what is drawn:
   - Lantern 2.9s, a warm bloom behind build 32's flare;
@@ -288,6 +290,6 @@ of it, statically and by quitting a run mid-flight and reading storage back.
   chest). `devMeterTo(n, modes)` = `devBack('key')`, then forward to n in play's order; a whole key at exactly n leaves its chest READY.
   `devChestReset` is `devBack`. `retroCol` is never cleared, so a boot does not credit backed-out bars straight back.
 - **The key reveal.** `keyStage` settles no earlier than `hubAt + KEY_EARN[tier].ms` and hands `ui/reveal.js` a `hold()` on the finished promise
-  of every animation `kwhole` started. The reveal is `auto`: it ends itself, no tap line, no card. Tapping the whole key (`data-direct`) calls
-  `openNow` with no ask.
+  of every animation `kwhole` started. The reveal is `auto`: it ends itself, no tap line, no card. Tapping the whole key asks (`askOpen`) and
+  Open calls `openNow` — build 48's `data-direct` open with no ask is gone (Aiden, after build 48; built for build 49).
 - **The menu's green.** `prefs.menuOpened[screen]`, written by `ui/screens/menu.js` on a screen change whose previous screen was the menu.

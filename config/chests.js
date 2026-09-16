@@ -102,15 +102,25 @@ export const SPILL = { stagger: 120, ms: 520, delay: 450, particles: 10, burstMs
    symSvg() draws one and nothing else knows a path: the SAME symbol pops out of the chest (item 6), stands beside that word on the map
    (item 7) and sits in the congratulations card's row (item 22), which is the whole point of the item — the player connects the three.
    Each word in CHEST_WORDS (config/copy.js) names its symbol by id. All (guess): Aiden re-draws one by editing its paths here. */
+/* v26 (items 12 / 13, build 49): A KEY REWARD IS THAT KEY'S REAL DRAWING, AND EVERY SYMBOL IS IN COLOUR. `key` names a tier: ui/chest.js draws
+   that key's own KEY_ART glyph (config/keys.js, the same paths the Keys screen draws) in that key's own tint, so the key that pops out of the chest is
+   the key on the Keys screen. `col` is a symbol's own colour; with neither, a symbol takes the colour of the chest it came from (CHEST_LOOK `gift`,
+   or its band colour). `video` is item 5's play symbol, `gauntlet2` item 13's spiked glove in the Pro key's theme colour (drafts, guess). */
 export const SYMBOLS = {
-  // a key — the three tiers, each the plainer half of its own KEY_ART glyph so the pop-out and the key screen read as one thing
-  key: { p: ['M12 4a4 4 0 1 0 0 8 4 4 0 1 0 0-8', 'M12 12v8', 'M12 15h3', 'M12 18h2.5'] },
-  keypro: { p: ['M12 3a5 5 0 1 0 0 10 5 5 0 1 0 0-10', 'M12 6a2 2 0 1 0 0 4 2 2 0 1 0 0-4', 'M12 13v8', 'M12 16h3.5', 'M12 19h2.5', 'M7 6L5 4', 'M17 6l2-2'] },
-  keyauthor: { p: ['M12 2l1.5 2.6 3 .6-2.1 2.2.4 3-2.8-1.3-2.8 1.3.4-3L7.5 5.2l3-.6z', 'M12 11a3 3 0 1 0 0 6 3 3 0 1 0 0-6', 'M12 17v5', 'M12 19h4', 'M8 14H5', 'M16 14h3'] },
+  key: { key: 'clear' },
+  keypro: { key: 'pro' },
+  keyauthor: { key: 'author' },
   // customisation — a palette with three wells
   palette: { p: ['M12 3a9 9 0 1 0 2 17.8c1.2-.2 1.6-1.6.8-2.5-.9-1-.2-2.5 1.1-2.5H18a3.9 3.9 0 0 0 3.9-4.4A9 9 0 0 0 12 3z'], f: ['M8 8.6a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 1 0 0-2.6', 'M12.4 6.2a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 1 0 0-2.6', 'M16.6 9.2a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 1 0 0-2.6'] },
-  // a gauntlet — a cuffed glove, the harder run
-  gauntlet: { p: ['M7 21v-6.5a2 2 0 0 1 4 0V9a1.6 1.6 0 0 1 3.2 0v4', 'M14.2 12.4a1.5 1.5 0 0 1 3 0V16', 'M17.2 14.6a1.4 1.4 0 0 1 2.8 0v3.2A4 4 0 0 1 16 21H7', 'M5.4 6.4l3-1.6', 'M18.6 6.4l-3-1.6'] },
+  // Gauntlet — a plain armoured glove: four plated fingers, the back plate, the thumb out to the left and a flared cuff (item 13, draft)
+  gauntlet: { p: ['M7.5 10V5.6a1.25 1.25 0 0 1 2.5 0V10', 'M10 10V4.3a1.25 1.25 0 0 1 2.5 0V10', 'M12.5 10V4.9a1.25 1.25 0 0 1 2.5 0V10', 'M15 10V6.6a1.25 1.25 0 0 1 2.5 0v4.4',
+    'M6.5 17v-5.5A1.5 1.5 0 0 1 8 10h8a1.5 1.5 0 0 1 1.5 1.5V17', 'M6.5 13.2h11', 'M6.5 14.2L4 11.7a1.3 1.3 0 0 1 1.8-1.8l.7.7', 'M6 17h12l-1.2 5H7.2z', 'M7.5 7.8H10', 'M10 6.8h2.5', 'M12.5 7.2H15', 'M15 8.6h2.5'] },
+  // Gauntlet II — the same glove with spikes on the back plate, the knuckles and the cuff, in the Pro key's theme colour (item 13, draft)
+  gauntlet2: { col: '#BFE6FF', p: ['M7.5 10V5.6a1.25 1.25 0 0 1 2.5 0V10', 'M10 10V4.3a1.25 1.25 0 0 1 2.5 0V10', 'M12.5 10V4.9a1.25 1.25 0 0 1 2.5 0V10', 'M15 10V6.6a1.25 1.25 0 0 1 2.5 0v4.4',
+    'M6.5 17v-5.5A1.5 1.5 0 0 1 8 10h8a1.5 1.5 0 0 1 1.5 1.5V17', 'M6.5 13.2h11', 'M6.5 14.2L4 11.7a1.3 1.3 0 0 1 1.8-1.8l.7.7', 'M6 17h12l-1.2 5H7.2z'],
+    f: ['M8.2 16.4l1-2.7 1 2.7z', 'M11 16.4l1-2.7 1 2.7z', 'M13.8 16.4l1-2.7 1 2.7z', 'M17.5 11.2l3.4-1.9-1.3 3.4z', 'M17.5 15l3.6-.3-2.6 2.4z', 'M6 19.5l-3.3-.4 2.7 2.4z', 'M18 19.5l3.3-.4-2.7 2.4z', 'M8.4 4.6l.5-2.8 1.1 2.6z', 'M13.4 3.9l.5-2.8 1.1 2.6z'] },
+  // a message from Aiden (item 5) — a frame with a play mark in it
+  video: { p: ['M4 6.5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z'], f: ['M10 9.2v5.6l4.8-2.8z'] },
   // a cosmetic set — three swatches stacked
   cosmetic: { p: ['M4 6h10v5H4z', 'M7 11h10v5H7z', 'M10 16h10v5H10z'] },
   // the three key backgrounds (item 15), each a shorthand of the layer ui/atmosphere.js draws
@@ -126,4 +136,35 @@ export const SYMBOLS = {
    `cardAt` is how long after the tap the card fades in, `cardGo` how long before its Continue button becomes tappable (item 22: "about a
    second", so a tap left over from the animation cannot close it unseen). `fadeMs` is the WHOLE reveal under Reduce Motion — the stage, the
    gifts and the settle collapse into one short fade and the card follows (item 11, and Apple expects it). All (guess). */
-export const REVEAL = { giftAt: 260, giftGap: 520, giftMs: 900, hold: 420, cardAt: 240, cardGo: 1000, fadeMs: 700 };
+/* v26 (items 6 / 8, build 49): `giftGap` is 400 — "about 0.4s between each reward leaving the chest" — and `giftMs` is the whole flight, out of the lid,
+   down to the right, round and home. `under` is the gap between the chest's foot and the row the rewards settle in, `cardGap` the gap between that
+   row and the congratulations card below it. The chest's name (and a key chest's count-up) waits for the last reward to land. */
+export const REVEAL = { giftAt: 260, giftGap: 400, giftMs: 1150, hold: 420, cardAt: 240, cardGo: 1000, fadeMs: 700, under: 10, cardGap: 18 };
+
+/* v26 (item 6, build 49): HOW EACH CHEST'S REWARDS FLY — the same motion for all four, each in its chest's own colour and each grander than the one
+   before. `arc` is how far the flight swings out to the right and down past its resting place, in px; `pop` how big a reward swells mid-flight;
+   `spin` a turn in degrees on the way (0 none); `glow` its halo in px; `ring` how many rings run out as it lands; `sparks` the dots it throws off
+   as it lands. All (guess) — every one is a number edit. */
+export const GIFT_LOOK = {
+  games: { arc: [64, 58], pop: 1.1, spin: 0, glow: 0, ring: 0, sparks: 0 },
+  key: { arc: [84, 72], pop: 1.16, spin: 0, glow: 6, ring: 1, sparks: 0 },
+  pro: { arc: [104, 88], pop: 1.22, spin: 360, glow: 10, ring: 1, sparks: 6 },
+  thorns: { arc: [124, 104], pop: 1.3, spin: 360, glow: 14, ring: 2, sparks: 10 },
+};
+
+/* ---------- v26 (item 13, build 49): THE TWO GAUNTLETS ----------
+   Game tiles on the map, each to the LEFT of the chest that opens it, joined to it by a connector: Gauntlet (a fair challenge) with the Key chest,
+   Gauntlet II (a lot harder) with the Pro chest. Until then the tile is crossed out with a padlock and what opens it. What a Gauntlet IS is designed
+   separately — each tile opens a placeholder screen and nothing else. This replaces the 2026-09-10 plan (a Gauntlet from chest 1 and a hard author
+   Gauntlet from chest 3). Names and words are GAUNTLET in config/copy.js; the drawings are SYMBOLS above. */
+export const GAUNTLETS = [
+  { id: 'g1', chest: 'key', sym: 'gauntlet' },
+  { id: 'g2', chest: 'pro', sym: 'gauntlet2' },
+];
+
+/* ---------- v26 (item 2, build 49): THE MAP'S FIRST OPEN, EVER ----------
+   Drawn out to about 7 seconds, one tile at a time: the seven games top to bottom, then the two Gauntlets, then the four chests last. Each tile's own
+   sound is read off its own animation (ui/screens/pick.js), so re-timing here moves the sound with it. `at` is the first tile, `gap` the beat between
+   game tiles, `chestAt` the extra pause before the chests and `chestGap` the beat between them, `ms` one tile's arrival and `lineLag` how long after
+   its tile lands a connector starts drawing. Plays once (`prefs.gridSeen`); Fresh game replays it. No skip. All (guess). */
+export const MAP_INTRO = { at: 350, gap: 520, chestAt: 250, chestGap: 380, ms: 620, lineLag: 120 };

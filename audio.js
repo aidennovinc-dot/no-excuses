@@ -7,7 +7,7 @@
    finish ramp that lands the last downbeat on the clock (B.28), an end cadence in the track's own key (B.30), a flow-state
    layer over the two tap games (B.27) and a duck for Sequence (B.30). Still no percussion. */
 
-import { CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, DUCK, DUCK_TAIL, FLOW_STEM, GIFT_FX, HUSH, KEY_EARN_FX, KEY_THEMES, MAP_FX, MAP_LOCKED, ROUND_VERDICT, SCALES, SET_SECS, STEMS, STING_RING, TITLE_FX, TRACKS, TRACK_PICK, VERDICT_FX } from "./config/audio.js";
+import { CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, DUCK, DUCK_TAIL, FLOW_STEM, GIFT_FX, HUSH, KEY_EARN_FX, KEY_THEMES, MAP_FX, MAP_LOCKED, POP_FX, ROUND_FX, ROUND_VERDICT, SCALES, SET_SECS, STEMS, STING_RING, TITLE_FX, TRACKS, TRACK_PICK, VERDICT_FX, WHOOSH_VARIANTS } from "./config/audio.js";
 import { STREAK } from "./config/games.js";
 import { emit, on } from "./core/events.js";
 import { sel } from "./core/state.js";
@@ -103,6 +103,7 @@ function revive(why,tap){ const c=ac; if(!c||c.state==='closed'||document.hidden
 let endTune=null, duckHook=null;
 const Snd = (()=>{
   let lastEnd=0;
+  const END_LANDS=1.06;   // Snd.end()'s last note: starts .44s in, 620ms long
   // v21 (F.2 c): the end sound's de-duplication is a time on the OLD clock; a rebuilt clock starts at zero and would mute it for as long as the old one had run
   rebinds.push(()=>{ lastEnd=-9; });
   /* build 27: `dest` is a gain node to run through instead of the destination — the music's master bus, the two versus
@@ -128,7 +129,7 @@ const Snd = (()=>{
     // 'sigh' (v8): a breathy fall on every tap. Earned by the Grand tour. It is a joke, and it is meant to be
     // v11 loudness pass: hit ≈ .07, miss ≈ .08 in every pack, nothing above the game-end sound (.10)
     hit(){ look('snd')==='click' ? tone(1800,1200,25,'square',.06) : look('snd')==='wood' ? tone(900,500,45,'triangle',.08) : look('snd')==='sigh' ? (tone(560,190,300,'sine',.07,0,40),tone(2200,900,220,'sawtooth',.012,0,30)) : tone(700,1500,70,'sine',.07); },
-    miss(){ look('snd')==='click' ? tone(300,120,60,'square',.08) : look('snd')==='wood' ? tone(180,90,140,'triangle',.08) : look('snd')==='sigh' ? tone(240,50,520,'sine',.08,0,60) : tone(220,70,180,'triangle',.08); },
+    miss(){ look('snd')==='click' ? tone(300,120,60,'square',.08) : look('snd')==='wood' ? tone(180,90,140,'triangle',.08) : look('snd')==='sigh' ? (tone(520,200,520,'sine',.08,0,60),tone(1040,420,380,'sine',.012,0,50)) : tone(220,70,180,'triangle',.08); },
     /* a key rings out on its own (v5): the tone decays over `ms`, it is never cut by the key being let go.
        v17 (B.30): a ringing key DUCKS the Sequence bed. It is both halves of the complaint in one line — the game
        playing the pattern and the player copying it both come through here — and audio ducks only while a Sequence
@@ -155,6 +156,10 @@ const Snd = (()=>{
        minor third where the track's first chord is minor, and lands the tonic chord under the last note. With no track
        (`endTune` null — a run with music off, or the very first sound of a session) it is exactly the sound it was. */
     // v25 (item 20): a RECORDING is never turned away by the de-duplication — a fresh context's clock starts near zero, which reads as "played just now"
+    /* v26 (§B1, build 49): HOW LONG UNTIL "END OF RUN" HAS LANDED, in ms — its four notes end 1.06s after it starts. Aiden asked whether it overlaps the
+       result's own sound, and it did: the result screen comes up 250ms after the finish and played its tier straight away, over the last three notes.
+       ui/screens/result.js waits this long before it plays the tier. 0 once it has landed, or if nothing has played */
+    endLeft(){ const a=AC(); if(!a||lastEnd<=0) return 0; return Math.max(0,Math.round((lastEnd+END_LANDS-a.currentTime)*1000)); },
     end(){ const a=AC(); if(!a) return; const t=a.currentTime; if(!rec){ if(t-lastEnd<2) return; lastEnd=t; } const k=endTune;
       const r=k?k.r:1, third=440*(k&&k.minor?Math.pow(2,3/12):Math.pow(2,4/12));
       [[880,0,220],[660,.14,240],[third,.28,260],[440,.44,620]].forEach(([f,d,ms])=>{ tone(f*r,f*r,ms,'triangle',.10,t+d,18); });
@@ -173,7 +178,8 @@ const Snd = (()=>{
       for(const [at,f0,f1,ms,w,g,am] of ev) tone(f0,f1,ms,w,g,t+at,am); },
     /* v25 (item 17, build 45): the same tier's sound on a ROUND — shorter and quieter (ROUND_VERDICT), played by games/_shared/tier.js roundShow()
        whenever a round's figure wears a tier. Solo only, like the tier (L4). An effect: it follows the tap-sound switch */
-    roundVerdictPlan(id){ const k=ROUND_VERDICT; return (VERDICT_FX[id]||[]).map(([at,f0,f1,ms,w,g,am])=>[+(at*k.time).toFixed(3),f0,f1,Math.round(ms*k.time),w,+(g*k.gain).toFixed(4),Math.round((am||0)*k.time)]); },
+    /* v26 (§B1, build 49): AND ITS OWN NOTES — ROUND_FX, one note fewer than the result's, with bass under it — still played shorter and quieter */
+    roundVerdictPlan(id){ const k=ROUND_VERDICT; return (ROUND_FX[id]||[]).map(([at,f0,f1,ms,w,g,am])=>[+(at*k.time).toFixed(3),f0,f1,Math.round(ms*k.time),w,+(g*k.gain).toFixed(4),Math.round((am||0)*k.time)]); },
     roundVerdict(id){ const a=AC(); if(!a) return; const t=a.currentTime;
       for(const [at,f0,f1,ms,w,g,am] of this.roundVerdictPlan(id)) tone(f0,f1,ms,w,g,t+at,am); },
     plan(fn){ const a=AC(); if(!a) return []; const was=rec; rec=[]; rec.t0=a.currentTime; try{ fn(); }catch(e){} const out=rec; rec=was; return out.sort((x,y)=>x[0]-y[0]); },
@@ -220,9 +226,18 @@ const Snd = (()=>{
     giftPlan(i){ const r=Math.pow(2,(GIFT_FX.step*(i||0))/12);
       return GIFT_FX.notes.map(([at,f0,f1,ms,w,g,am,lp])=>[at,+(f0*r).toFixed(2),+(f1*r).toFixed(2),ms,w,g,am||0,lp||0]); },
     gift(i){ this.fx(this.giftPlan(i)); },
+    /* v26 (item 6, build 49): the small pop as a reward LEAVES the chest — POP_FX, a step higher for each one after the first. ui/reveal.js plays it at the
+       start of that reward's own flight, and gift(i) at its end */
+    popPlan(i){ const r=Math.pow(2,(POP_FX.step*(i||0))/12);
+      return POP_FX.notes.map(([at,f0,f1,ms,w,g,am,lp])=>[at,+(f0*r).toFixed(2),+(f1*r).toFixed(2),ms,w,g,am||0,lp||0]); },
+    pop(i){ this.fx(this.popPlan(i)); },
     // v13 (6.6): the counting whoosh — one voice sweeping low to high for the length of the count, so the pitch follows the fill
     // v25 (item 20): recorded as its two voices through one fixed lowpass — the page cannot sweep a filter, so the catalogue says it is approximate
-    whoosh(ms,f0,f1){ const a=AC(); if(!a) return null; if(rec){ const d=Math.max(120,ms); rec.push([0,f0||110,f1||660,d,'sawtooth',.045,80,2400],[0,(f0||110)*2,(f1||660)*2,d,'sine',.045,80,2400]); return null; }
+    /* v26 (§B1, build 49): SEVEN VERY SIMILAR WHOOSHES, ONE AT RANDOM. `v` picks a WHOOSH_VARIANTS row — pitch × and length × — and without it one is drawn
+       at random each time (the catalogue passes it, so each version can be heard). Presentation only: nothing a player does depends on it */
+    whoosh(ms,f0,f1,v){ const a=AC(); if(!a) return null; const V=WHOOSH_VARIANTS[typeof v==='number'?v:Math.floor(Math.random()*WHOOSH_VARIANTS.length)]||[1,1];
+      f0=(f0||110)*V[0]; f1=(f1||660)*V[0]; ms=Math.round(Math.max(120,ms)*V[1]);
+      if(rec){ const d=Math.max(120,ms); rec.push([0,+f0.toFixed(1),+f1.toFixed(1),d,'sawtooth',.045,80,2400],[0,+(f0*2).toFixed(1),+(f1*2).toFixed(1),d,'sine',.045,80,2400]); return null; }
       if(look('snd')==='off') return null; const t=a.currentTime, dur=Math.max(120,ms)/1000;
       const o=a.createOscillator(), n=a.createOscillator(), g=a.createGain(), f=a.createBiquadFilter();
       o.type='sawtooth'; n.type='sine'; f.type='lowpass';

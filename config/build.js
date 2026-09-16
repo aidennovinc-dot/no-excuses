@@ -1,8 +1,8 @@
 /* No Excuses — the build (build 19, batch 10 · surface). DATA ONLY (A2).
    BUILD is the one place the number lives (A6): `npm run bump -- N` rewrites it here, then writes index.html
    (hint line, #build, the update-check constant) and version.json from it. Hand-editing four places is over. */
-export const BUILD = 48;
-export const LABEL = 'one saved value';         // the hint line under the title: `build N · LABEL · date`
+export const BUILD = 49;
+export const LABEL = 'the unlock experience';         // the hint line under the title: `build N · LABEL · date`
 /* the run record's schema stamp (`v` on every run). 2 since build 18: the one-key store's legacy migration stamps every
    surviving build-13 run with this too, so the v10/v11 "retire runs with v < 11" rule can never fire again.
    3 since build 31 (v18 B.2 / B.4): TWO SCORING UNITS CHANGED. Timing · Stopwatch · Set is the SUM of its rounds' errors
@@ -23,4 +23,8 @@ export const RUN_SCHEMA = 4;
    switches cannot reach the App Store build by a hand edit being forgotten. Nothing else here changes between the two. */
 export const TARGET = 'web';
 export const BUILD_FLAGS = { dev: TARGET !== 'native' };
+/* v26 (item 5, build 49): BEFORE RELEASE, set this true. Every chest's rewards name the About video it opens (config/messages.js), and while Aiden is
+   still recording, a slot with no clip is shown anyway so the wording can be reviewed. True hides a video reward — in the pop-out, beside the chest on
+   the map and the card's "A message from Aiden" button — whenever its slot has no clip yet. */
+export const HIDE_UNRECORDED = false;
 export const PUB_URL = 'https://aidennovinc-dot.github.io/no-excuses/';

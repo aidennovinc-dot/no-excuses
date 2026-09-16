@@ -48,7 +48,7 @@ export const TIERS = { earned:['Earned','Picked up as you play. Some come with a
   // v18 (B.25, build 32): three sets tied to the keys — one row per game per key and one for the whole key. The second
   // and third sets are not shown before chest 1 (A.1); ui/screens/progress.js filters them on tierOpen
   // v24 (D.2, build 44): each key set now opens with one row on every clearance bar — 30 of them — before a game's set and the whole key
-  key1:['The key','one on every clearance bar, then a game, then all of them'], key2:['Pro key','the same, at the Pro bars'], key3:['Author key','the same, against the author'] };
+  key1:['Skill key','one on every clearance bar, then a game, then all of them'], key2:['Pro key','the same, at the Pro bars'], key3:['Author key','the same, against the author'] };
 export const KEY_ACH = { game:'{game} · {key}', gameHow:'Clear every {game} bar on {key}', whole:'{key} · whole', wholeHow:'Clear every bar on {key}', shut:'on {key} · revealed by an earlier chest' };
 // the progress rules' own wording: length locks without a rule, the practice row, the Author rows
 export const PROGRESS = { finishOne:'finish one {game} {prev}', finishA:'finish a {game} {prev}', streak:'Streak', practiceFrom:'Practice from', beat:'Beat Aiden — {rec}', none:'—' };
@@ -102,7 +102,7 @@ export const MENU = { next:'<em>Next unlock</em><span>{need} → {name}</span>',
    line below says only what is true today. */
 export const UNLOCKS_SCREEN = { title:'unlocks', hint:'tap a locked row to see what it takes',
   lede:'Everything that opens something. The chain first — each game and mode earned in the one before it — then every length of every mode.',
-  games:'Games and modes', lens:'Lengths', keys:'The key', done:'open', locked:'locked',
+  games:'Games and modes', lens:'Lengths', keys:'Skill key', done:'open', locked:'locked',
   // v17 (B.9): the number is a placeholder now. The count moved when Sequence lost 5 keys and it will move again the next
   // time a mode is added, and a written-out "thirty-one" is exactly the second copy of a fact L6 forbids everywhere else
   keyLine:'The first key is earned here. Beat a clearance bar once in a solo run and it is cleared for good — the key screen has all {n}.' };
@@ -132,10 +132,12 @@ export const PROGRESS_SCREEN = { title:'progress', unl:'Game unlocks', cul:'Cust
    GAVE is CHEST_WORDS below, the column beside it. Placeholder wording, one line each to change.
    v26 (item 12, build 48): a key chest that is not ready says WHAT OPENS IT, IN WORDS, with no percentage — whether the chest ahead of it is
    shut or not — so `chestMeter` ("203% · opens at 300%") is retired. `chestEarn` is one line per chest (Aiden: "Earn the Pro key", "Earn the
-   Author key"). The Games chest keeps its count of modes. */
+   Author key"). The Games chest keeps its count of modes.
+   v26 (Aiden's answers after build 48, built for build 49): not "Earn the key" — THE FIRST KEY IS THE SKILL KEY, beside the Pro key and the Author
+   key, whose wording stays as it is. The name is `name` in config/keys.js; this line, the Games chest's word and the two headers above follow it. */
 export const GRID = { chest:{ games:'Games chest', key:'Key chest', pro:'Pro chest', thorns:'Thorns chest' },
   chestModes:'unlock every game · {open} of {total}', chestModesToast:'Unlock every game first<small>{open} of {total} modes unlocked</small>',
-  chestEarn:{ key:'Earn the key', pro:'Earn the Pro key', thorns:'Earn the Author key' }, chestOpen:'tap to open', chestOpened:'opened', tba:'tba',
+  chestEarn:{ key:'Earn the Skill key', pro:'Earn the Pro key', thorns:'Earn the Author key' }, chestOpen:'tap to open', chestOpened:'opened', tba:'tba',
   chestPrev:'open the previous chest', chestPrevToast:'Open the previous chest first' };
 /* v23 (L.11c, build 40): WHAT EACH CHEST GIVES, one entry per chest and a line per word, so Aiden can rewrite them on the next Desk.
    An opened chest shows them as a plain column to its right (L.11b animates them in build 41); nothing shows beside a chest that is
@@ -151,11 +153,18 @@ export const GRID = { chest:{ games:'Games chest', key:'Key chest', pro:'Pro che
    key opens is the one that gives its background away — the Key chest the Lantern's, the Pro chest the Circuit's, the Thorns chest the
    Thorn's, each landing in Customise (`ITEMS.bg` in config/theme.js, locked on keyFinished since build 43). SKY is a placeholder word like
    every other on this list — one line each to change. */
+/* v26 (items 5 / 13, build 49): THE GAUNTLETS ARE TILES NOW. The Key chest gives GAUNTLET and the Pro chest GAUNTLET II, and each word goes to its tile
+   on the map (`tile:<id>`, config/chests.js GAUNTLETS). The Thorns chest's "hard Gauntlet" is gone with the 2026-09-10 plan it came from, so its reward
+   is open again. Every chest ALSO gives the About video it opens — that word is not listed here: ui/chest.js reads its title off config/messages.js, so
+   renaming a slot renames it in the pop-out, on the map and on the card at once. */
 export const CHEST_WORDS = {
-  games:[{ w:'CUSTOMISE', sym:'palette', to:'s-custom' }, { w:'THE KEY', sym:'key', to:'key:0' }],
-  key:[{ w:'GAUNTLET', sym:'gauntlet', to:'soon' }, { w:'PRO KEY', sym:'keypro', to:'key:1' }, { w:'LANTERN SKY', sym:'bg-lantern', to:'s-custom' }],
-  pro:[{ w:'AUTHOR KEY', sym:'keyauthor', to:'key:2' }, { w:'COSMETIC SET', sym:'cosmetic', tba:1, to:'soon' }, { w:'CIRCUIT SKY', sym:'bg-circuit', to:'s-custom' }],
-  thorns:[{ w:'HARD GAUNTLET', sym:'gauntlet', tba:1, to:'soon' }, { w:'THORN SKY', sym:'bg-thorn', to:'s-custom' }] };
+  games:[{ w:'CUSTOMISE', sym:'palette', to:'s-custom' }, { w:'SKILL KEY', sym:'key', to:'key:0' }],
+  key:[{ w:'GAUNTLET', sym:'gauntlet', to:'tile:g1' }, { w:'PRO KEY', sym:'keypro', to:'key:1' }, { w:'LANTERN SKY', sym:'bg-lantern', to:'s-custom' }],
+  pro:[{ w:'AUTHOR KEY', sym:'keyauthor', to:'key:2' }, { w:'GAUNTLET II', sym:'gauntlet2', to:'tile:g2' }, { w:'COSMETIC SET', sym:'cosmetic', tba:1, to:'soon' }, { w:'CIRCUIT SKY', sym:'bg-circuit', to:'s-custom' }],
+  thorns:[{ w:'THORN SKY', sym:'bg-thorn', to:'s-custom' }] };
+/* v26 (item 13, build 49): the two Gauntlet tiles and their placeholder screen — a title, "Coming soon" and Back, nothing else, because what a Gauntlet
+   is gets designed separately. `need` is what a locked tile says, and its tap (guess on the words) */
+export const GAUNTLET = { name:{ g1:'Gauntlet', g2:'Gauntlet II' }, need:{ g1:'Open the Key chest', g2:'Open the Pro chest' }, toast:'{need} first', soon:'Coming soon' };
 // v23 (L.11b, build 41): what a word whose reward is not built yet says when tapped (guess)
 export const CHEST_SOON = '{w}<small>not built yet · a later build</small>';
 export const SHEET = { mode:'Mode', toUnlock:'To unlock: {need}', tileUnlock:'to unlock: {need}', locked:'locked', noRun:'no run yet', best:'best', closest:'closest',
@@ -347,15 +356,16 @@ export const SPOT = { count:['count','the'], find:['find','the'], howMany:'how m
    that only becomes tappable after about a second (REVEAL.cardGo in config/chests.js) so a tap left over from the animation cannot close it
    unseen. No sound of its own — the reveal's last chord is still ringing. Item 23 adds `msg` when the unlock opens a message from Aiden.
    Placeholder wording, one line each to change (guess). */
+/* v26 (item 8, build 49): SHORTER AND CELEBRATORY. A big "Congratulations" in the chest's own colour, ONE "You …" line saying what the player did —
+   one per chest, here, so Aiden can rewrite each on the board — and ONE line of what's next, phrased as a challenge. No "what you got" (the rewards
+   have just flown out of the chest), no "what's next" heading, no percentage. `{total}` is the number of game modes. Then item 5's video button and
+   Continue. The chest names stay Games, Key, Pro and Thorns (GRID.chest). */
 export const CARD = {
-  chest:'{chest} opened', key:'{key} unlocked',
-  did:'what you did', got:'what you got', next:'what’s next', go:'Continue',
-  // WHAT YOU DID — a chest counts modes and the meter; a key counts its own bars, the runs it took and the days since the first one
-  cModes:'{open} of {total} game modes unlocked', cMeter:'{pct}% complete', cSince:'{n} mode(s) earned since the last chest',
-  kGames:'all {n} games · {done} of {total} bars', kRuns:'{n} solo runs to get here', kDays:'{n} days since your first run', kDay:'all in one day',
-  // WHAT'S NEXT — the next chest by name, or the next key, or nothing left
-  nChest:'Next: open the {chest}', nKey:'Next: {key} — {need}', nDone:'That is all of it. Every chest open.', nNone:'Keep playing — the rest opens as you go.',
-  // item 23: the button that appears when this unlock opened a message
+  title:'Congratulations',
+  you:{ games:'You unlocked all {total} game modes!', key:'You cleared every bar on the Skill key!', pro:'You cleared every bar on the Pro key!', thorns:'You cleared every bar on the Author key!' },
+  next:'Next: can you open the {chest}?', nDone:'Every chest is open. That is all of it.',
+  go:'Continue',
+  // item 5: the video this chest opened in About, as a button
   msg:'A message from Aiden' };
 
 /* ---------- v25 (item 23, build 46): THE ABOUT SCREEN'S MESSAGES ----------
@@ -364,4 +374,6 @@ export const CARD = {
    Aiden records the clips and they drop in by filling a file name in — no code change (his decision, 2026-09-16). */
 export const MSG = { title:'messages', lede:'Short messages from Aiden, as you go.',
   locked:'opens with {need}', soon:'video coming soon', play:'play', watched:'watched', count:'{done} of {total}',
-  noFile:'Not recorded yet — this slot is waiting for its clip.', capOff:'captions', capOn:'captions on' };
+  noFile:'Not recorded yet — this slot is waiting for its clip.', capOff:'captions', capOn:'captions on',
+  // v26 (item 5, build 49): how a video reads among a chest's rewards — its slot's own title. Add a word here ("Video: {title}") and every chest says it
+  reward:'{title}' };

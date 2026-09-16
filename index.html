@@ -20,7 +20,7 @@
 </head><body>
 <canvas id="stars"></canvas>
 <!-- v25 (items 4 / 8, build 45): the build stamp comes BEFORE every screen, so each paints over it (styles/app.css #build) -->
-<div id="build">v0.48</div>
+<div id="build">v0.49</div>
 
 <section class="screen on" id="s-menu">
   <div class="nextup" id="nextup" data-act="nextup" hidden></div>
@@ -72,6 +72,10 @@
     <button data-act="chest" class="tile chest" data-chest="key"><span class="name glow">Key chest</span><span class="pic"></span></button>
     <button data-act="chest" class="tile chest" data-chest="pro"><span class="name glow">Pro chest</span><span class="pic"></span></button>
     <button data-act="chest" class="tile chest" data-chest="thorns"><span class="name glow">Thorns chest</span><span class="pic"></span></button>
+    <!-- v26 (item 13, build 49): the two Gauntlets, game tiles to the LEFT of the chest that opens each, on a connector of their own. ui/screens/pick.js
+         places them, names them and draws their symbols (config/chests.js GAUNTLETS); crossed out with a padlock until that chest is open -->
+    <button data-act="gauntlet" class="tile gauntlet" data-gauntlet="g1"><span class="name glow">Gauntlet</span><span class="pic"></span></button>
+    <button data-act="gauntlet" class="tile gauntlet" data-gauntlet="g2"><span class="name glow">Gauntlet II</span><span class="pic"></span></button>
     <!-- L.11c: what an opened chest gave, one word per line, in the grid cell beside it. Empty and hidden for a chest that is not open -->
     <div class="chestwords" data-for="games" hidden></div>
     <div class="chestwords" data-for="key" hidden></div>
@@ -204,6 +208,14 @@
   <button class="keymusic" id="key-music" data-act="key-music" hidden></button>
 </section>
 
+<!-- v26 (item 13, build 49): a Gauntlet's placeholder screen - its title, "Coming soon" and Back, and nothing else. What a Gauntlet is gets designed
+     separately. ui/screens/gauntlet.js fills the title in -->
+<section class="screen" id="s-gauntlet" data-back="s-pick">
+  <button data-act="back" class="back">&larr; BACK</button>
+  <div class="eyebrow gttitle" id="gt-title">Gauntlet</div>
+  <div class="explain gtsoon" id="gt-soon">Coming soon</div>
+</section>
+
 <section class="screen" id="s-about" data-back="s-menu">
   <button data-act="back" class="back">&larr; BACK</button>
   <div class="wordmark" style="font-size:18px">No Excuses</div>
@@ -221,7 +233,7 @@
   <div class="eyebrow msgtitle" id="msg-title">messages</div>
   <div class="hint" id="msg-lede"></div>
   <div class="msglist" id="msglist"></div>
-  <div class="hint">v0.48 · one saved value · 16 sept 2026</div>
+  <div class="hint">v0.49 · the unlock experience · 17 sept 2026</div>
 </section>
 
 <section class="screen" id="s-testing" data-back="s-menu" data-dev>
@@ -321,7 +333,7 @@
 <script>
 // build check: version.json is fetched with no-store, so a stale cached page still learns a newer build exists
 (function(){
-  const BUILD="48";
+  const BUILD="49";
   async function check(){
     try{
       const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});

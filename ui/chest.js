@@ -6,20 +6,34 @@
    Also here, because two screens need each and they are the same kind of thing: the spill's words and particles (L.11b), and the meter's
    band look (L.8d / L.8e) — the class and custom properties a figure wears for the band it is in. This is a module under ui/, not a
    screen, so the key screen and the map may both import it (A4). Presentation only (L10). */
+import { HIDE_UNRECORDED } from "../config/build.js";
 import { CHEST_LOOK, METER_BANDS, SPILL, SYMBOLS } from "../config/chests.js";
-import { CHEST_WORDS, GRID } from "../config/copy.js";
-import { esc } from "../core.js";
+import { CHEST_WORDS, GRID, MSG } from "../config/copy.js";
+import { KEYS, KEY_ART } from "../config/keys.js";
+import { MESSAGES } from "../config/messages.js";
+import { T, esc } from "../core.js";
 import { meterBand } from "../progress/key.js";
 
 /* v25 (items 6 / 7 / 22, build 46): ONE SYMBOL DRAWER. A symbol is paths in a 24 × 24 box (SYMBOLS in config/chests.js) — `p` stroked,
    `f` filled — and this is the only thing in the app that turns one into markup, so the drawing that pops out of a chest, the one beside
    that word on the map and the one in the congratulations card are the same drawing by construction. An id with no row draws nothing
    rather than throwing: a word may name a symbol before it is drawn. */
-function symSvg(id, cls = '') { const S = SYMBOLS[id]; if (!S) return '';
-  return `<svg class="sym${cls ? ' ' + cls : ''}" data-sym="${esc(id)}" viewBox="0 0 24 24" aria-hidden="true">`
-    + (S.p || []).map(d => `<path class="sp" d="${d}"></path>`).join('') + (S.f || []).map(d => `<path class="sf" d="${d}"></path>`).join('') + '</svg>'; }
-// what one chest gives, as the reveal and the card want it: the word, its symbol and whether it is a placeholder reward
-const giftsOf = id => (CHEST_WORDS[id] || []).map(x => ({ w: x.w, sym: x.sym || '', tba: !!x.tba, to: x.to || 'soon' }));
+/* v26 (items 12 / 13, build 49): IN COLOUR, AND A KEY IS ITS REAL SHAPE. A key symbol (`key` on its SYMBOLS row) is that key's own KEY_ART glyph in
+   that key's own tint — the drawing on the Keys screen, in its 48 × 48 box. Any other symbol takes its own `col`, or else the colour of the chest it
+   came from, when the caller names one. The colour rides on the svg as `color`, which every stroke and fill reads (currentColor). */
+const symCol = (id, chest) => { const S = SYMBOLS[id] || {}; if (S.key) return (KEYS.find(k => k.id === S.key) || {}).tint || '';
+  if (S.col) return S.col; const L = CHEST_LOOK[chest]; return L ? L.gift || (METER_BANDS[L.band] || {}).col || '' : ''; };
+function symSvg(id, cls = '', chest = '') { const S = SYMBOLS[id]; if (!S) return ''; const col = symCol(id, chest), art = S.key ? KEY_ART[S.key] || [] : null;
+  return `<svg class="sym${art ? ' symkey' : ''}${cls ? ' ' + cls : ''}" data-sym="${esc(id)}" viewBox="${art ? '0 0 48 48' : '0 0 24 24'}" aria-hidden="true"${col ? ` style="color:${col}"` : ''}>`
+    + (art || S.p || []).map(d => `<path class="sp" d="${d}"></path>`).join('') + (art ? '' : (S.f || []).map(d => `<path class="sf" d="${d}"></path>`).join('')) + '</svg>'; }
+/* v26 (item 5, build 49): EVERY CHEST ALSO GIVES THE ABOUT VIDEO IT OPENS. The slot is the one in config/messages.js opened by this chest, and its
+   title is read from there, so a renamed slot renames the reward everywhere. It stands while the slot is a placeholder, so the wording can be
+   reviewed; config/build.js HIDE_UNRECORDED is the before-release switch that drops it while the slot has no clip. `to` is `msg:<slot>`. */
+const msgOfChest = id => MESSAGES.find(m => m.by && m.by.chest === id) || null;
+const videoWord = id => { const m = msgOfChest(id); return !m || (HIDE_UNRECORDED && !m.file) ? [] : [{ w: T(MSG.reward, { title: m.title }), sym: 'video', to: 'msg:' + m.id, msg: m.id }]; };
+const wordsOf = id => (CHEST_WORDS[id] || []).concat(videoWord(id));
+// what one chest gives, as the reveal and the map want it: the word, its symbol, where it goes and whether it is a placeholder reward
+const giftsOf = id => wordsOf(id).map(x => ({ w: x.w, sym: x.sym || '', tba: !!x.tba, to: x.to || 'soon', msg: x.msg || '' }));
 
 const paths = (list, cls) => (list || []).map((d, i) => `<path class="${cls}" d="${d}" style="--i:${i}"></path>`).join('');
 /* the sprite. The lid and its spikes are one group turning on the look's own hinge; the cross is always drawn and only a locked chest
@@ -36,9 +50,10 @@ const spillVars = () => `--sd:${SPILL.delay}ms;--sms:${SPILL.ms}ms;--sst:${SPILL
 /* v25 (item 7, build 46): AND ITS SYMBOL BESIDE IT. "Customise the key" was text alone, so nothing said what you got — the word now
    carries the same drawing that popped out of the chest, ahead of it on the line. The word itself keeps its own element so the fit
    check still measures the text and not the drawing. */
-function wordsHtml(id) { return (CHEST_WORDS[id] || []).map((x, i) =>
-  `<button class="cw${x.tba ? ' tba' : ''}" data-act="chestword" data-for="${id}" data-to="${esc(x.to || 'soon')}" data-w="${esc(x.w)}" style="--i:${i}">`
-  + symSvg(x.sym, 'cwsym') + `<span class="cwt">${esc(x.w)}${x.tba ? `<small>${esc(GRID.tba)}</small>` : ''}</span></button>`).join(''); }
+// v26 (item 12, build 49): the symbols take colour — a key's own, or the chest's — and the video (item 5) stands in the list with the rest
+function wordsHtml(id) { return wordsOf(id).map((x, i) =>
+  `<button class="cw${x.tba ? ' tba' : ''}${x.msg ? ' msg' : ''}" data-act="chestword" data-for="${id}" data-to="${esc(x.to || 'soon')}" data-w="${esc(x.w)}" style="--i:${i}">`
+  + symSvg(x.sym, 'cwsym', id) + `<span class="cwt">${esc(x.w)}${x.tba ? `<small>${esc(GRID.tba)}</small>` : ''}</span></button>`).join(''); }
 // the particles that burst from the lid, in the chest's band colour, fanned up and to the right of the lid
 function burstHtml(id) { const L = CHEST_LOOK[id] || {}, B = METER_BANDS[L.band] || METER_BANDS[0], n = SPILL.particles;
   return `<span class="pburst" aria-hidden="true" style="--pc:${B.col};${spillVars()}">` + Array.from({ length: n }, (_, i) =>
@@ -56,4 +71,4 @@ function meterLook(el, v, vars) { if (!el) return; const { i, k } = meterBand(v)
   el.style.setProperty('--mground', B.ground || 'transparent'); el.style.setProperty('--mcold', B.cold || 'transparent');
   el.style.setProperty('--shp', String(B.shake && B.shake[1] ? (k < .5 ? B.shake[0] : B.shake[1]) : 0)); }
 
-export { burstHtml, chestSvg, giftsOf, meterLook, spillVars, symSvg, wordsHtml };
+export { burstHtml, chestSvg, giftsOf, meterLook, msgOfChest, spillVars, symSvg, wordsHtml };

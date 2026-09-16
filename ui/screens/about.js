@@ -48,7 +48,11 @@ function renderFeedback(){ const a=$('#feedback'); if(!a) return; const build='v
    `playsinline` so it never jumps to full screen. CAPTIONS ARE ON EVERY CLIP — many people play on silent and Apple checks for it — so the
    track is written the moment a `cc` exists and a clip without one is a clip that is not finished. An OPEN row with no clip yet shows the
    "video coming soon" frame, which is what all eight show today: Aiden records them and they drop in (his decision, 2026-09-16).
-   `prefs.msgSeen` marks a clip as watched, which is what takes the dot off the About row on the menu. */
+   `prefs.msgSeen` marks a clip as watched, which is what takes the dot off the About row on the menu.
+   v26 (item 4, build 49): AN UNWATCHED CLIP PULSES AND GLOWS UNTIL IT IS PLAYED — `unwatched` on a row that is unlocked AND has a real clip AND is not in
+   `prefs.msgSeen`, in the same green every other "not seen yet" wears. Tapping play is watched, and the row goes back to exactly how it looked. A
+   placeholder ("video coming soon") and a locked slot never pulse — there is nothing to watch. The About menu row stays green while any such clip is
+   waiting (ui/screens/menu.js, msgDot), which is the one signal for it; there is no separate dot. */
 // the player, built in place. One at a time: opening a second closes the first, so nothing plays behind anything
 function playMsg(id){ const m=MESSAGES.find(x=>x.id===id); if(!m||!msgOpen(m)||!m.file) return false;
   $$('#msglist .msgrow').forEach(r=>{ if(r.dataset.msg!==id) r.classList.remove('playing'); const v=r.querySelector('video'); if(v&&r.dataset.msg!==id){ v.pause(); v.remove(); } });
@@ -60,21 +64,24 @@ function playMsg(id){ const m=MESSAGES.find(x=>x.id===id); if(!m||!msgOpen(m)||!
   const v=row.querySelector('video'); if(v){ const p=v.play(); if(p&&p.catch) p.catch(()=>{}); }
   // watched, without rebuilding the list under the player that is now running: the row says so and the dot on the menu comes off
   if(!prefs.msgSeen||!prefs.msgSeen[id]){ prefs.msgSeen=Object.assign({},prefs.msgSeen,{[id]:1}); save();
-    row.classList.add('seen'); const t=row.querySelector('.msgtxt small'); if(t) t.textContent=MSG.watched; }
+    row.classList.add('seen'); row.classList.remove('unwatched'); const t=row.querySelector('.msgtxt small'); if(t) t.textContent=MSG.watched; }
   return true; }
 function renderMessages(){ const box=$('#msglist'); if(!box) return; const seen=prefs.msgSeen||{};
   const open=MESSAGES.filter(msgOpen).length;
   $('#msg-lede').textContent=MSG.lede+' · '+T(MSG.count,{done:open,total:MESSAGES.length});
   box.innerHTML=MESSAGES.map(m=>{ const o=msgOpen(m), has=o&&!!m.file, w=!!seen[m.id];
     const state=!o?T(MSG.locked,{need:m.need}):has?(w?MSG.watched:MSG.play):MSG.soon;
-    return `<button class="msgrow${o?'':' locked'}${has?' has':''}${w?' seen':''}" data-act="msg" data-msg="${esc(m.id)}">`
+    return `<button class="msgrow${o?'':' locked'}${has?' has':''}${w?' seen':''}${has&&!w?' unwatched':''}" data-act="msg" data-msg="${esc(m.id)}">`
       +`<span class="msgframe">${has?'':`<i>${esc(o?MSG.soon:'')}</i>`}</span>`
       +`<span class="msgtxt"><b class="${o?'':'x'}">${esc(m.title)}</b><small class="${o?'':'need'}">${esc(state)}</small></span></button>`; }).join(''); }
 
 /* `msg` is the congratulations card's "A message from Aiden" button arriving here (item 22 × item 23): the screen opens with that row
    scrolled to and, if it has a clip, playing. A row that is still locked is never opened this way — the card only offers one that is open. */
+/* v26 (item 5, build 49): a chest's video reward — on the map, or the card's button — arrives here too, and it arrives while every slot is still a
+   placeholder, so a row with no clip is scrolled to and picked out for a moment rather than played */
 register('s-about',{ onShow({msg}={}){ renderTier(); renderFeedback(); renderMessages();
-  if(msg) setTimeout(()=>{ const row=$(`#msglist .msgrow[data-msg="${msg}"]`); if(!row) return; row.scrollIntoView({block:'center'}); playMsg(msg); },120); } });
+  if(msg) setTimeout(()=>{ const row=$(`#msglist .msgrow[data-msg="${msg}"]`); if(!row) return; row.scrollIntoView({block:'center'});
+    if(!playMsg(msg)){ row.classList.remove('flash'); void row.offsetWidth; row.classList.add('flash'); setTimeout(()=>row.classList.remove('flash'),1800); } },120); } });
 define({ support(){ toast(prefs.supporter?TOAST.supAlready:TOAST.supLater); return 'click'; },
   // item 23: a locked row says what opens it where it stands; an open one with no clip yet says so; an open one with a clip plays in place
   msg(b){ const id=b.dataset.msg, m=MESSAGES.find(x=>x.id===id); if(!m) return 'click';

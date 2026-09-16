@@ -508,6 +508,63 @@ anything new.**
 - **AMENDED: Go / No-go · Set's HUD (item 1).** A solo Set shows the big counter and the goal box only: no "round 1 of 5 · 0 of 3", no mode label.
   A Streak keeps its budget line; pass & play keeps whose turn it is.
 
+### Aiden's answers to build 48's questions — 2026-09-17, held uncommitted and shipped with build 49
+
+- **REVERSED: tapping a finished key asks again (amends build 48's item 11 amendment; v24 C.1 as it was).** Aiden: "Tapping a completed key must ask
+  whether to open its chest." The whole key's hub and the quiet screen's key both call `askOpen`; `data-direct` is gone. The reveal still ends by
+  itself on "tap the key to open the Key chest", and that tap now leads to the ask.
+- **REMOVED: the quiet key screen's row of four chests (L.10a's row).** Aiden: it "can go if it's now redundant". It was: its one button was the
+  ready Games chest, which the key asks for, and the map shows all four chests. `chestRow()` and the `.kch` rules are deleted.
+- **RENAMED: the first key is the Skill key (item 12's wording, then its card).** Aiden: not "Earn the key" — "Starter key" first, then "Let's
+  make it the skill key" when asked whether the card should match. `name` in `config/keys.js` ("The key" → "Skill key") carries the card, the key
+  screen title and the key achievement names; `GRID.chestEarn.key` is "Earn the Skill key", the Games chest's word SKILL KEY, and the Progress
+  headers `TIERS.key1` / `UNLOCKS_SCREEN.keys` "Skill key". Pro and Author wording unchanged; the Key chest keeps its name.
+
+### Build 49 — v26 items 2, 4, 5, 6, 8, 12 (the reward symbols), 13 and §B1 (the unlock experience, and the sound notes)
+
+- **AMENDED: the gifts come OUT of the chest (item 6, amending v25 item 6).** `ui/reveal.js` lays the row of rewards out once, close under the chest
+  (`REVEAL.under`), off the stage's `anchor()` — where `chestStage()` in `ui/ceremony.js` says the chest's middle, lid, top and foot are on the host — and
+  draws each reward's flight backwards from where it rests: out of the lid, up and to the right, down past its place and round into it, a cubic curve
+  sampled into eleven custom properties (`--x0`–`--x10`, `--y0`–`--y10`) that one keyframe list, `rgiftfly`, walks. They leave `REVEAL.giftGap` (400ms)
+  apart, at 64px (twice build 46's 34). `GIFT_LOOK` in `config/chests.js` makes each chest grander than the one before: how far the flight swings,
+  how big it swells, a turn on the way, its glow, and the rings and sparks it lands with in the chest's colour. The chest's own line ("Key chest opened",
+  and a key chest's count-up) waits for the last reward to land (`textAt`), and "tap to continue" waits for both (`textMs`). A small pop leaves with each
+  reward (`Snd.pop(i)`, `POP_FX`) and "an unlock lands" lands it (`Snd.gift(i)`, unchanged) — both read off that reward's own animation.
+- **AMENDED: the congratulations card (item 8, amending v25 item 22).** `CARD` in `config/copy.js`: `title` "Congratulations" in the chest's own colour,
+  one `you` line per chest ("You unlocked all {total} game modes!"), one `next` line ("Next: can you open the {chest}?", or `nDone`), the video
+  button and Continue. No what you did, no what you got, no headings, no percentage. It sits BELOW the rewards; on a phone too short for it the chest
+  and its rewards lift by exactly what the card needs (`--lift`), never past the top of the chest.
+- **ADDED: every chest gives the About video it opens (item 5).** Not listed in `CHEST_WORDS`: `ui/chest.js` reads the slot whose `by.chest` is that
+  chest out of `config/messages.js` and adds it last, `MSG.reward` over its title, symbol `video`, `to` `msg:<slot>`. It flies out of the chest,
+  stands in the map's list and is the card's "A message from Aiden"; each goes to that slot on About, which plays it or, while it is a placeholder,
+  picks the row out. `HIDE_UNRECORDED` in `config/build.js` is the before-release switch that drops all three while a slot has no clip. Keys that open
+  a slot do not show it: a key's reveal has had no card or gifts since build 48 (item 11).
+- **AMENDED: the symbols take colour, and a key is its real shape (item 12).** `SYMBOLS.key` / `keypro` / `keyauthor` name a tier (`key`) and `symSvg()`
+  draws that key's own `KEY_ART` glyph in its tint; a symbol with `col` wears it; every other symbol wears the colour of the chest it came from (its
+  band's). The map's list draws them at 18px, and a long video title may take two lines.
+- **ADDED: two Gauntlet tiles (item 13, replacing the 2026-09-10 plan).** `GAUNTLETS` in `config/chests.js`: Gauntlet with the Key chest, Gauntlet II
+  with the Pro chest. Each is a game tile in its chest's row, to the LEFT of it (the 4-column layout, with no cell on the left, takes the one past the
+  chest's words), joined to it by a connector of its own; not on the chain's snake. Locked it is crossed out (`.gx`) with the padlock and `GAUNTLET.need`,
+  and a tap says so; open it goes to `s-gauntlet` (`ui/screens/gauntlet.js`) — its title, "Coming soon" and Back, nothing else. A newly open Gauntlet
+  arrives with L8's green and its own sound (`MAP_FX.gauntlet`). Drafted symbols: `gauntlet` a plain armoured glove, `gauntlet2` the same with spikes
+  in the Pro key's theme colour. The Key chest's GAUNTLET and the Pro chest's GAUNTLET II go to the tile; the Thorns chest's HARD GAUNTLET is gone,
+  so its reward is open again.
+- **AMENDED: the map's first open, ever (item 2).** `MAP_INTRO` in `config/chests.js`: the seven games one at a time top to bottom, the two Gauntlets,
+  then the four chests last — about 7s. Each tile's delay is `introAt()` in `ui/screens/pick.js`, its arrival `--tin`, and its sound is still read off
+  its animation (`mapSounds`). No skip; once (`prefs.gridSeen`); Fresh game replays it. A game or Gauntlet newly open ARRIVES with its own sound too
+  (`arrivalSounds`), and a result toast that unlocks a whole game is followed by that game's sound (`MAP_ON_UNLOCK_MS`). The catalogue's Key & unlock
+  animations section replays the sequence with its sounds and the speed buttons (`REF.mapIntro`).
+- **ADDED: an unwatched clip pulses (item 4).** `unwatched` on a row in `ui/screens/about.js` that is unlocked, has a `file` and is not in `prefs.msgSeen`:
+  `msgpulse` in the "not seen yet" green until play is tapped. Placeholders and locked slots never pulse. The About menu row's green while one waits was
+  already `msgDot()`; there is no separate dot.
+- **§B1 — the sounds.** Title whooshes longer with a slowly beating high pair; seven count-up whoosh versions at random (`WHOOSH_VARIANTS`); Sigh held —
+  `held` on its `ITEMS.snd` row, off Customise and out of `cleanPrefs`' list, and Grand tour no longer unlocks it (the achievement is Aiden's to
+  choose); the Sigh miss raised to 520 Hz; the Key chest's effects rebuilt from key 1's theme (its first two chords, its opening chord held) and its
+  sting cut 0.3s later; the Pro chest's effects doubled in weight and its sting cut 0.3s later onto a wider chord; Thorn earned with more layers; the
+  four result sounds climbing (Meh. unchanged, Good. a rising third, Great! build 45's Amazing!, Amazing! four notes ending highest), each with bass;
+  a round's sound its own list, `ROUND_FX`, one note shorter than the result's with bass under it; and the result's tier waits until End of run has
+  landed (`Snd.endLeft()`) — it had been playing 250ms into it. Full text in `docs/MUSIC.md`.
+
 ## Structure — the full text as of build 30
 
 `CLAUDE.md` keeps the module map. This is the paragraph-by-paragraph description it carried at build 30: the DAG, the

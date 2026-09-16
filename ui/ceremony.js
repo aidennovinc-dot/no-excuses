@@ -81,11 +81,19 @@ const setMeter = (m, v) => { if (!m) return; m.textContent = T(KEY.pct, { n: v }
    a `{ ms, steps, start, settle, clear }` and the reveal runs the clock, swallows the taps, pops the gifts out, holds "tap to continue" and
    ends on the congratulations card. Nothing about how a chest looks changed, and every timing is still config/chests.js CEREMONY.
    The meter's D.4 count-up is still the reveal's last beat (L.8b) and is still this file's, because it is part of the stage. */
+/* v26 (items 6 / 8, build 49): TWO MORE THINGS THE REVEAL ASKS A CHEST'S STAGE. `anchor()` is where the chest is on the host — its middle, its lid, its top
+   and its foot, off the stage's own 300 × 520 box and the chest's place in it — so the rewards can be laid out close under it and fly out of its lid.
+   `textMs` is how long the chest's own line needs once the rewards have landed: a key chest's count-up, nothing for the Games chest. The line and the
+   count-up start at `textAt` when the reveal passes one (after the last reward lands), and at the end of the ceremony when it does not. */
+const CHEST_BOX = { x: 150, lid: 293, top: 262, foot: 334 };
 let upT = 0;
 function chestStage(id, o = {}) { const cfg = CEREMONY[id]; if (!cfg) return null;
   const was = typeof o.was === 'number' ? o.was : 0, now = typeof o.now === 'number' ? o.now : was;
   let host = null, live = false;
-  return { ms: cfg.ms, steps: cfg.steps.map(s => ({ name: s.name, at: s.at, ms: s.ms })),
+  return { ms: cfg.ms, steps: cfg.steps.map(s => ({ name: s.name, at: s.at, ms: s.ms })), textMs: metered(id) ? CEREMONY_FX.meterMs + 150 : 0,
+    anchor() { const svg = host && host.querySelector('.rstage .cstage'); if (!svg) return null; const r = svg.getBoundingClientRect(), h = host.getBoundingClientRect(); if (!r.width || !r.height) return null;
+      const k = Math.min(r.width / 300, r.height / 520), ox = r.left - h.left + (r.width - 300 * k) / 2, oy = r.top - h.top + (r.height - 520 * k) / 2;
+      return { cx: ox + CHEST_BOX.x * k, lid: oy + CHEST_BOX.lid * k, top: oy + CHEST_BOX.top * k, bottom: oy + CHEST_BOX.foot * k }; },
     start(el, k = {}) { host = el.closest('.cere') || el; live = true;
       // the stage's own layers sit on the reveal's host, so the build-41 stylesheet (.cere.play [data-chest]) dresses them unchanged
       host.dataset.chest = id; host.setAttribute('style', (host.getAttribute('style') || '') + ';' + stageVars(id));
@@ -97,7 +105,7 @@ function chestStage(id, o = {}) { const cfg = CEREMONY[id]; if (!cfg) return nul
       const run = () => { if (!live || !m) return; if (now > was) { m.classList.add('up');
           countUp({ audio: o.silent ? null : Snd, from: was, to: now, ms: CEREMONY_FX.meterMs, fmt: v => Math.round(v), set: v => setMeter(m, v), alive: () => live }); }
         else setMeter(m, now); };
-      if (k.quick) run(); else upT = setTimeout(run, Math.max(0, cfg.ms - CEREMONY_FX.meterMs)); },
+      if (k.quick) run(); else upT = setTimeout(run, Math.max(0, typeof k.textAt === 'number' ? k.textAt : cfg.ms - CEREMONY_FX.meterMs)); },
     step() { },
     settle() { },
     clear() { live = false; clearTimeout(upT); if (host) delete host.dataset.chest; host = null; } }; }

@@ -68,6 +68,7 @@
    exist is written here — the panel under the ring renders whatever combos() returned, so a mode added to config/games.js
    shows up on this screen the same day. A combination with no bar renders as "no bar set" rather than vanishing (C.6). */
 import { Music, Snd } from "../../audio.js";
+import { HIDE_UNRECORDED } from "../../config/build.js";
 import { CHESTS, METER_BANDS, CHEST_LOOK } from "../../config/chests.js";
 import { CARD, GRID, KEY, SHEET } from "../../config/copy.js";
 import { KEY_NOTE } from "../../config/key-bars.js";
@@ -241,7 +242,7 @@ function ring() { const tier = keyTiers()[openKey]; const st = keyState(tier.id)
   /* v24 (C.5, build 43): the animated group carries NO transform attribute — the translate sits on a group inside it. A CSS scale or rotate on
      an SVG element that has a transform attribute composes inside it (the build-41 lesson), and the earn moments threw the glyph off the hub */
   const hub = `<g class="kglyph${st.whole ? ' whole' : ''}${kc ? ' tochest' : ''}"><g transform="translate(${CX - 24} ${CY - 24})">${KEY_ART[tier.id].map(d => `<path d="${d}"></path>`).join('')}</g></g>`
-    + (kc ? `<circle class="khubhit" data-act="key-chest" data-chest="${kc.id}" data-direct="1" cx="${CX}" cy="${CY}" r="${R_HUB}"></circle>` : '');
+    + (kc ? `<circle class="khubhit" data-act="key-chest" data-chest="${kc.id}" cx="${CX}" cy="${CY}" r="${R_HUB}"></circle>` : '');
   $('#key-ring').innerHTML = groundOf(style) + outer + `<circle class="khub" cx="${CX}" cy="${CY}" r="${R_HUB}"></circle>` + hub + parts + labelsHtml(st);
   $('#key-ring').classList.toggle('whole', st.whole); placeLabels();
   /* v17 (§A.6.7) / v18 (B.15): "19 of 30 · 74%" stays HERE — the cleared count is what a player acts on and this is the
@@ -283,11 +284,8 @@ function musicBtn(t) { const b = $('#key-music'), open = !!t.music && chestOpen(
   b.hidden = !open; b.classList.toggle('on', on); b.textContent = on ? KEY.musicOn : KEY.setMusic; }
 
 /* ---------- which key is on screen ---------- */
-/* L.10a: the four chests in a row, each in its state, with its name — the only chest reads on this screen go through chestState(). v23 (L.9a,
-   build 41): each in its OWN sprite, from ui/chest.js — the same four the map and the ceremony draw. v24 (C.1 / B.1, build 43): a READY one is a
-   button, with the pulsing green outline every openable chest wears, and its tap asks */
-const chestRow = () => `<div class="kchests">${CHESTS.map(c => { const st = chestState(c.id), inner = `${chestSvg(c.id)}<b>${esc(GRID.chest[c.id])}</b>`;
-  return st === 'ready' ? `<button class="kch ready" data-act="key-chest" data-chest="${c.id}">${inner}</button>` : `<span class="kch ${st}">${inner}</span>`; }).join('')}</div>`;
+/* L.10a's row of four chests under the quiet screen's key is GONE (v26, Aiden's answer to build 48's open questions, built for build 49): once
+   tapping the key asks again, the row's ready Games chest was a second button to the same ask, and the map already shows all four chests. */
 function render() { const tiers = keyTiers();
   // a tier that is not open cannot be the one on screen: fall to the first open one, or to key 1 on the quiet screen (L.10a)
   if (!tierOpen(tiers[openKey].id)) { const i = tiers.findIndex(k => tierOpen(k.id)); openKey = i < 0 ? 0 : i; }
@@ -303,7 +301,7 @@ function render() { const tiers = keyTiers();
   $('#key-main').hidden = !!t.shell || quiet; $('#key-shell').hidden = !t.shell && !quiet;
   if (quiet) { const m = modeCount(), ready = chestState('games') === 'ready', big = glyph(t.id, 't1 big');
     // C.1: while the Games chest waits, the quiet screen's key is the way to its ask
-    $('#key-shell').innerHTML = `${ready ? `<button class="kquiet" data-act="key-chest" data-chest="games" data-direct="1">${big}</button>` : big}<p>${esc(ready ? KEY.quietReady : KEY.quiet)}</p><p class="soon" id="key-quiet-count"></p>${chestRow()}`;
+    $('#key-shell').innerHTML = `${ready ? `<button class="kquiet" data-act="key-chest" data-chest="games">${big}</button>` : big}<p>${esc(ready ? KEY.quietReady : KEY.quiet)}</p><p class="soon" id="key-quiet-count"></p>`;
     $('#key-quiet-count').textContent = T(KEY.quietCount, { open: m.open, total: m.total }); return; }
   if (t.shell) { $('#key-shell').innerHTML = `${glyph(t.id, 't' + (openKey + 1) + ' big')}<p>${esc(t.lede)}</p><p class="soon">${esc(KEY.soon)}</p>`; return; }
   const st = ring(); panel();
@@ -430,14 +428,16 @@ function keyStage(tier) { const R = KEY_REVEAL[tier] || KEY_REVEAL.clear, el = $
    v26 (item 11, build 48): A CHEST'S CARD ONLY. Build 46's card after a key ("Lantern unlocked" — what you did, what you got, what's next) is
    removed for all three keys; the one congratulations card in the flow is the one after a chest opens. */
 // item 23: the message this unlock opens, if that slot has a clip. No clip, no button — the slot is still there on About
-const msgFor = by => { const m = MESSAGES.find(x => x.by && ((by.chest && x.by.chest === by.chest) || (by.key && x.by.key === by.key))); return m && m.file ? m.id : ''; };
-const nextChest = () => { const c = CHESTS.find(x => !chestOpen(x.id)); return c ? T(CARD.nChest, { chest: GRID.chest[c.id] }) : CARD.nDone; };
-/* v26 (item 7, build 48): the Games chest's card says no percentage — it opens on every game mode, which is a count and not a place on the key meter */
-function chestCard(id, now) { const c = CHESTS.find(x => x.id === id), m = modeCount(), band = METER_BANDS[(CHEST_LOOK[id] || {}).band] || METER_BANDS[1];
-  const modes = !!c && c.needs === 'modes';
-  const did = [modes ? T(CARD.cModes, { open: m.open, total: m.total }) : '', modes ? '' : T(CARD.cMeter, { pct: now })].filter(Boolean);
-  if (c && !modes) { const st = keyState(c.needs); did.unshift(T(CARD.kGames, { n: games().length, done: st.done, total: st.total })); }
-  return { title: T(CARD.chest, { chest: GRID.chest[id] }), col: band.col, did, got: giftsOf(id), next: nextChest(), msg: msgFor({ chest: id }) }; }
+/* v26 (item 5, build 49): the button stands while the slot is still a placeholder, so Aiden can review it; config/build.js HIDE_UNRECORDED is the
+   before-release switch that takes it off a slot with no clip — the same switch the reward in the pop-out and on the map reads (ui/chest.js) */
+const msgFor = by => { const m = MESSAGES.find(x => x.by && ((by.chest && x.by.chest === by.chest) || (by.key && x.by.key === by.key))); return m && (m.file || !HIDE_UNRECORDED) ? m.id : ''; };
+const nextChest = () => { const c = CHESTS.find(x => !chestOpen(x.id)); return c ? T(CARD.next, { chest: GRID.chest[c.id] }) : CARD.nDone; };
+/* v26 (item 8, build 49): SHORTER AND CELEBRATORY — "Congratulations" in the chest's own colour, the chest's one "You …" line (config/copy.js CARD.you),
+   "Next: can you open the … chest?", and the video it opened. No list of what you did or got, no headings, no percentage (item 7) */
+// the chest's own colour: a `gift` colour on its CHEST_LOOK row if it has one, else its band's — the card, the rings and sparks its rewards land with, and its rewards' symbols (ui/chest.js)
+const chestCol = id => { const L = CHEST_LOOK[id] || {}; return L.gift || (METER_BANDS[L.band] || METER_BANDS[1]).col; };
+function chestCard(id) { const m = modeCount();
+  return { title: CARD.title, col: chestCol(id), you: T((CARD.you || {})[id] || '', { total: m.total }), next: nextChest(), msg: msgFor({ chest: id }) }; }
 
 /* the reveal itself. `demo` is Testing replaying it with nothing stored (S5); everything else plays it once per tier (`prefs.revealed`) and
    writes that the moment it starts, so a reload mid-reveal never replays it.
@@ -476,7 +476,7 @@ function openNow(id) { if (chestState(id) !== 'ready') return false; askClose();
   /* v25 (items 6 / 22, build 46): THE SAME OPENING, INSIDE THE ONE SHARED REVEAL. The ceremony is the stage; what the chest unlocks then rises
      out of it as symbols with their titles (item 6), each with its own small sound, "tap to continue" waits for the last one to land, and the
      congratulations card ends it (item 22). The tap still goes to the MAP with the chest in view, where its words spill out (L.11b). */
-  playReveal($('#key-cere'), { kind: 'chest', id, stage: chestStage(id, { was: r.was, now: r.now }), gifts: giftsOf(id), card: chestCard(id, r.now),
+  playReveal($('#key-cere'), { kind: 'chest', id, col: chestCol(id), stage: chestStage(id, { was: r.was, now: r.now }), gifts: giftsOf(id), card: chestCard(id, r.now),
     // v26 (item 11, build 48): a chest opened from a key a run just finished goes back to that run's result; otherwise to the map, its words spilling
     onDone: () => { if (autoBack) { handBack(); return; } show('s-pick', { chest: id }); } });
   if (c && typeof c.screen === 'number') openKey = c.screen;
@@ -548,7 +548,7 @@ register('s-key', { onShow({ advance: a, from, auto: to, tier, whole, arrive, ce
     /* B.26 → v23 (L.6, build 41): Testing replays a chest's CEREMONY here with nothing stored — the meter holds where it is, and the tap
        goes to the map, where the spill replays the same way (ui/screens/pick.js spillDemo) */
     if (cer) setTimeout(() => { if (!$('#s-key').classList.contains('on')) return; const m = meter();
-      playReveal($('#key-cere'), { kind: 'chest', id: cer, stage: chestStage(cer, { was: m, now: m }), gifts: giftsOf(cer), card: chestCard(cer, m),
+      playReveal($('#key-cere'), { kind: 'chest', id: cer, col: chestCol(cer), stage: chestStage(cer, { was: m, now: m }), gifts: giftsOf(cer), card: chestCard(cer, m),
         onDone: () => show('s-pick', { spillDemo: cer }) }); }, 300);
     if (pending) { const p = pending; pending = null; if (auto) setTimeout(() => interlude(p, auto), 320); else setTimeout(() => advance(p), 260); }
     // C.1 (build 43): a chest that is ready as this screen opens is NOT opened here — the key is tapped, it asks, then it opens
@@ -581,9 +581,9 @@ define({
   'reveal-msg'(el) { const id = el.dataset.msg; revealGo(); show('s-about', { msg: id }); return 'click'; },
   /* v23 (L.12, build 40): a whole key goes to its chest on the map when that chest is open, with its words beside it.
      v24 (C.1, build 43): when that chest is READY the tap ASKS — and so does a ready chest in the row, and the quiet screen's key */
-  /* v26 (item 11, build 48): TAPPING THE KEY OPENS THE CHEST — the hub of a whole key, or the quiet screen's key (`data-direct`) — with no ask in
-     between: "tap the key to open the Key chest" is the whole instruction. A ready chest in the row of chests still asks (C.1) */
-  'key-chest'(el) { const id = el.dataset.chest; if (chestState(id) === 'ready') { if (el.dataset.direct) return openNow(id) ? 'click' : undefined; askOpen(id); return 'pick'; }
+  /* v26 (item 11, build 48) opened a ready chest straight from the key, with no ask. REVERSED (Aiden's answer to build 48's open questions, built for
+     build 49): tapping a whole key — or the quiet screen's key — ASKS again, as C.1 had it. "tap the key to open the Key chest" still leads to it */
+  'key-chest'(el) { const id = el.dataset.chest; if (chestState(id) === 'ready') { askOpen(id); return 'pick'; }
     if (keyWait) return undefined; show('s-pick', { chest: id }); return 'click'; },
   'key-ask-yes'(el) { return openNow(el.dataset.chest) ? 'click' : (askClose(), undefined); },
   'key-ask-no'() { askClose(); return 'click'; },
