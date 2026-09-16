@@ -271,3 +271,23 @@ of it, statically and by quitting a run mid-flight and reading storage back.
   D.8). Failing all three, `run/run.js` asks `keyGoal(g,d,s)` — the lowest open, non-shell, uncleared tier of this combination, drawn with
   `HUD.keyGoal` ("goal · 26 hits or more / Two steady · The key"), its green tick only offered for a floor. An aim the player arrived with
   (`pendingAim`, `pendingGoal`) still outranks all of it.
+
+## Build 48 (v26 items 3, 7, 9, 10, 11, 12; 2026-09-16): one saved value, and Testing plays forward
+
+**Supersedes the build-40 meter and the build-37 / build-40 Testing switches above — read those as history.**
+
+- **The meter is 0–300.** `METER.modes` false: key 1 0–100, Pro 100–200, Author 200–300, each band counting once its chest is open. The Key chest
+  is at 100, the Pro chest at 200, the Thorns chest at 300. The Games chest is not on the meter.
+- **No override.** `meter()` is `meterReal()`; `prefs.devMeter` is dropped on load. Chest state, key state and the meter are the bars and the
+  chests in the store.
+- **Where each figure prints.** Menu: the total, the one place. Key card: its own share (`bandPct`). Keys screen line: `N of 30`. Map: locked key
+  chests say `GRID.chestEarn` in words. Games chest stage and card: nothing.
+- **Testing, as play does it.** `devReach(id, modes)` plays forward to that chest READY: each chest before it filled (`devClearTo` for a key, the
+  caller's `modes(true)` for the Games chest) and opened with `devOpen` (`openChest` plus the flags its reveal and the map's first paint leave).
+  `devBack(id, modes)` backs that chest out with every later chest, the tiers they reveal and the key that opens it (`modes(false)` for the Games
+  chest). `devMeterTo(n, modes)` = `devBack('key')`, then forward to n in play's order; a whole key at exactly n leaves its chest READY.
+  `devChestReset` is `devBack`. `retroCol` is never cleared, so a boot does not credit backed-out bars straight back.
+- **The key reveal.** `keyStage` settles no earlier than `hubAt + KEY_EARN[tier].ms` and hands `ui/reveal.js` a `hold()` on the finished promise
+  of every animation `kwhole` started. The reveal is `auto`: it ends itself, no tap line, no card. Tapping the whole key (`data-direct`) calls
+  `openNow` with no ask.
+- **The menu's green.** `prefs.menuOpened[screen]`, written by `ui/screens/menu.js` on a screen change whose previous screen was the menu.

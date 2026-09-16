@@ -182,7 +182,11 @@ function keyState(tier = 'clear') { const games = Object.keys(GAMES).map(g => ga
    partial credit instead, §M.1) — and A BAND COUNTS ONLY ONCE THE CHEST THAT REVEALS ITS TIER IS OPEN, so the meter cannot pass 100
    before the Games chest or 200 before the Key chest; the gate asserts both. It never resets: nothing it reads goes down but a Testing
    reset. Supersedes B.15–B.17's frontPct() and its 30/70 re-base, retired with the step into Pro (L.8b). Shown as a whole number
-   with its sign — 142% (L.8a). Testing's "set meter to N%" (L.8f, S5) is the one override: prefs.devMeter exists only in a dev build. */
+   with its sign — 142% (L.8a).
+   v26 (items 7 / 9 / 12, build 48): 0–300 — METER.modes is false, so the bands are the three keys alone and the Pro key lands on 200. AND
+   THERE IS NO OVERRIDE. Build 40's `prefs.devMeter` let Testing make the meter read a figure nothing had earned, which is how the Pro chest
+   sat locked at 203% saying "opens at 300%" beside a Keys screen that disagreed. meter() is what the bars and the chests say, full stop, and
+   Testing's "set meter to N%" now clears the bars and opens the chests that figure means (devMeterTo, below). */
 const bandOf = tier => { if (!tierOpen(tier) || isShell(tier)) return 0;
   if (METER.partial) return keyPct(tier).pct / 100;
   const st = keyState(tier); return st.total ? st.done / st.total : 0; };
@@ -191,7 +195,7 @@ function meterBands() { const m = modeCount(), free = METER.freeStart ? m.free :
   return (METER.modes ? [modes] : []).concat(TIERS.map(bandOf)); }
 // the 1e-9 is floating point, not generosity: 100 × 0.29 is 28.999…, and a band that is 29% full must read 29
 const meterReal = () => Math.floor(METER.band * meterBands().reduce((n, v) => n + v, 0) + 1e-9);
-const meter = () => typeof prefs.devMeter === 'number' ? prefs.devMeter : meterReal();
+const meter = () => meterReal();
 const meterMax = () => METER.band * (TIERS.length + (METER.modes ? 1 : 0));
 /* v23 (§L.8d / §L.8e, build 41): WHICH BAND a meter figure is in, and how far through it — presentation only (L10). A band starts at its
    lower figure (100% is band 1, guess) and the top of the meter is the top of the last band, so 400% is band 3 at full strength. ui/chest.js
@@ -355,36 +359,54 @@ function keyGoal(g, d, s) { const c = COMBOS.find(x => x.key === keyOf(g, d, s))
   return { key: 'bar:' + skey(c.key, tier), kt: tier, need: wantOf(c, tier), name: rosterRow(c, tier).name, keyName: k ? k.name : '',
     test: r => floor && r.g === g && r.d === d && r.s === s && r.hits >= bar }; }
 
-/* ---------- v21 (G.8, build 37): Testing's per-key switches (S5, dev only) ----------
-   devKeyAll(tier, on) clears every bar of one key and REMEMBERS what that key held, so switching it off puts exactly that
-   back — the state a test started from, not an empty key. devKeyReset(tier) backs the key out entirely: its bars, its
-   whole-key moment, the chest it opens, its retroactive marks and its three key achievements. The buttons are [data-dev] and
-   the snapshot is shape-checked only while BUILD_FLAGS.dev is on, so none of this exists in a release build.
-   v23 (L.8f, build 40): the switches are PER CHEST on the screen — four of them — and a key's switch is its chest's: the Key chest's
-   is key 1, the Pro chest's Pro, the Thorns chest's Author. The Games chest's is the chain's, in progress.js (devModesAll), because
-   nothing here may touch store.unlock; devChestReset('games') shuts the chest itself. devSetMeter(n) is "set meter to N%". */
-const devKeyOn = tier => !!(prefs.devKeys && prefs.devKeys[tier]);
-function devKeyAll(tier, on) { const dk = Object.assign({}, prefs.devKeys);
-  if (on && !dk[tier]) { dk[tier] = COMBOS.map(c => skey(c.key, tier)).filter(k => store.bars[k]);
-    for (const c of COMBOS) { const k = skey(c.key, tier); if (!store.bars[k]) store.bars[k] = Date.now(); } }
-  else if (!on && dk[tier]) { const keep = new Set(dk[tier]);
-    for (const c of COMBOS) { const k = skey(c.key, tier); if (!keep.has(k)) delete store.bars[k]; }
-    delete dk[tier]; }
-  prefs.devKeys = dk; save(); return devKeyOn(tier); }
+/* ---------- v21 (G.8, build 37) → v26 (items 7 / 12, build 48): TESTING PLAYS THE GAME FORWARD (S5, dev only) ----------
+   Build 37's per-key switch filled a key's bars wherever it stood and REMEMBERED what it held, so switching it off put exactly that back; build
+   40 made the switches per chest and added "set meter to N%" as an override the meter read. Every one of those could leave a profile where real
+   play can never be: bars cleared on a key whose chest is shut, a Pro chest still open behind a Key chest a reset had shut, a meter reading a
+   figure nothing had earned. Aiden reviews the whole unlock flow through these buttons, so every one of those states was a misleading test
+   (FEEDBACK-v26 items 7 and 12: the Games chest at 103%, the Pro chest locked at 203% "opens at 300%", the map and the Keys screen disagreeing).
+   So Testing now does only what play does, through the functions play uses:
+   · devReach(id)    plays forward until that chest is READY — every chest before it filled the way play fills it and OPENED the way a tap opens
+                     it (openChest: stored, the tier it reveals credited silently), then its own need filled. It never opens the chest itself:
+                     play leaves a chest ready until the player taps it, and that tap is what Aiden is there to review.
+   · devBack(id)     backs that chest out AND EVERY CHEST AFTER IT, with the tiers they reveal and the key that opens it, so what is left is
+                     always a state play passes through on the way — never a chest open behind a shut one (L.10e).
+   · devMeterTo(n)   the meter at n, reached by clearing bars and opening chests in play's own order; what it lands on is what it reports.
+   A bar is cleared with checkKey's own write, and the key achievements it completes are banked the way a run banks them (checkKeyAch).
+   The Games chest's need is every game mode, which is progress.js's to write (nothing here may touch store.unlock, G.3), so the Testing
+   screen hands those two functions its `modes` — fill every mode, or take them all back out. */
 // a reset never leaves the last-painted meter above what the profile now holds, or the next rise would count up from a ghost
 const seenDown = () => { if (typeof prefs.meterSeen === 'number' && prefs.meterSeen > meterReal()) prefs.meterSeen = meterReal(); };
-function devKeyReset(tier) { const c = CHESTS.find(x => x.needs === tier);
-  for (const cb of COMBOS) delete store.bars[skey(cb.key, tier)];
+// the bars of one tier cleared in screen order until `n` of them are, with checkKey's write — only on a tier play could clear (open, numbered)
+function devClearTo(tier, n = Infinity) { if (!tierOpen(tier) || isShell(tier)) return keyState(tier).done; let wrote = false;
+  for (const c of COMBOS) { if (keyState(tier).done >= n) break; if (!c.bar || barOf(c, tier) === null || isCleared(c.key, tier)) continue;
+    store.bars[skey(c.key, tier)] = Date.now(); wrote = true; }
+  if (wrote) { save(); checkKeyAch({}); }
+  return keyState(tier).done; }
+/* a READY chest opened the way the player opens it — openChest(), then what its reveal and the map's first paint of it leave behind: the reveal
+   played (so did the reveal of the key that opened it, which always plays first), the ready sound heard and the words spilled. Used only for the
+   chests a Testing button passes THROUGH on the way to the one it leaves ready. */
+function devOpen(id) { const r = openChest(id); if (!r) return null; const c = chestOf(id);
+  prefs.meterSeen = r.now;
+  prefs.revealed = Object.assign({}, prefs.revealed, { ['chest:' + id]: 1 }, c && c.needs !== 'modes' ? { ['key:' + c.needs]: 1 } : {});
+  prefs.readySeen = Object.assign({}, prefs.readySeen, { [id]: 1 }); prefs.spill = Object.assign({}, prefs.spill, { [id]: 1 });
+  save(); return r; }
+// what a chest's need is filled with: every mode for the Games chest (the caller's), that key's every bar for the rest
+const devNeed = (c, modes) => { if (c.needs === 'modes') { if (!modesOpen() && modes) modes(true); } else devClearTo(c.needs); };
+function devReach(id, modes) { const i = chestIx(id); if (i < 0) return null;
+  for (let j = 0; j < i; j++) { const c = CHESTS[j]; if (chestOpen(c.id)) continue; devNeed(c, modes); if (chestState(c.id) !== 'ready' || !devOpen(c.id)) return chestState(id); }
+  if (!chestOpen(id)) devNeed(CHESTS[i], modes);
+  save(); return chestState(id); }
+/* one tier backed out entirely: its bars, its whole-key moment and first-open reveal, its retroactive marks and its key achievements (the 23
+   roster rows that kept an older id included, v24 D.2). `retroCol` is left alone on purpose — it records the column last credited, and clearing
+   it would have the next boot credit the bars straight back from saved bests. */
+function devTierOut(tier) { for (const cb of COMBOS) delete store.bars[skey(cb.key, tier)];
   if (prefs.keyWhole) delete prefs.keyWhole[tier];
-  // v25 (item 11, build 46): backing a key out backs out its first-open reveal with it, so the next time it is whole is a first time again
-  if (prefs.revealed) { const r = Object.assign({}, prefs.revealed); delete r['key:' + tier]; if (c) delete r['chest:' + c.id]; prefs.revealed = r; }
-  if (c) prefs.chests = Object.assign({}, prefs.chests, { [c.id]: 0 });
+  if (prefs.revealed) { const r = Object.assign({}, prefs.revealed); delete r['key:' + tier]; prefs.revealed = r; }
   if (prefs.retro) for (const k of Object.keys(prefs.retro)) if (retroTier(k) === tier) delete prefs.retro[k];
   if (prefs.devKeys) delete prefs.devKeys[tier];
   for (const id of Object.keys(store.ach)) if (id.startsWith(`key_${tier}_`)) delete store.ach[id];
-  // v24 (D.2, build 44): and the tier's roster rows, including the 23 that kept an older id
-  for (const a of keyAch()) if (a.kt === tier) delete store.ach[a.id];
-  seenDown(); save(); }
+  for (const a of keyAch()) if (a.kt === tier) delete store.ach[a.id]; }
 /* build 41 (L.9c / L.11b): a reset chest gets its first ready sound and its spill back, so both can be reviewed again.
    v25 (items 6 / 11 / 22, build 46): AND ITS REVEAL. Aiden's line: "the one exception is resetting the chest from Testing, which on this
    phone counts as a first time again." So a reset clears both flags in `prefs.revealed` — the chest's own opening, and the reveal of the
@@ -393,12 +415,31 @@ const unseen = id => { prefs.readySeen = Object.assign({}, prefs.readySeen, { [i
   const r = Object.assign({}, prefs.revealed); delete r['chest:' + id];
   const c = chestOf(id); if (c && c.needs !== 'modes') delete r['key:' + c.needs];
   prefs.revealed = r; };
-function devChestReset(id) { const c = chestOf(id); if (!c) return; unseen(id);
-  // v24 (A.1, build 43): the Keys row waits for the Games chest too, so a reset gives its green back with Customise's
-  if (c.needs === 'modes') { prefs.chests = Object.assign({}, prefs.chests, { [id]: 0 }); prefs.cusSeen = 0; prefs.keysSeen = 0; seenDown(); save(); return; }
-  devKeyReset(c.needs); }
-function devSetMeter(n) { if (n === null || n === '' || !Number.isFinite(+n)) delete prefs.devMeter;
-  else prefs.devMeter = Math.max(0, Math.min(meterMax(), Math.round(+n)));
-  save(); return meter(); }
+function devBack(id, modes) { const i = chestIx(id); if (i < 0) return;
+  for (let j = CHESTS.length - 1; j >= i; j--) { const c = CHESTS[j];
+    if (c.opens) devTierOut(c.opens);
+    prefs.chests = Object.assign({}, prefs.chests, { [c.id]: 0 }); unseen(c.id); }
+  const c = CHESTS[i];
+  if (c.needs !== 'modes') devTierOut(c.needs);
+  /* v24 (A.1, build 43): Keys and Customise wait for the Games chest, so backing it out gives both rows their green back (v26 item 3: the
+     menu's own record of having opened them goes with it) — and every mode goes, which is the chain's to take out */
+  else { prefs.cusSeen = 0; prefs.keysSeen = 0; if (prefs.menuOpened) { delete prefs.menuOpened['s-key']; delete prefs.menuOpened['s-custom']; } if (modes) modes(false); }
+  seenDown(); save(); }
+const devChestReset = (id, modes) => devBack(id, modes);
+/* "set meter to N%": every key backed out, then play forward to N — the Games chest opened (every mode first), key 1's bars, the Key chest
+   opened once key 1 is whole and there is more of N to go, Pro's bars, and so on. A figure that lands exactly on a whole key leaves that key's
+   chest READY, as play does. A bar is 3⅓% of a band, so the meter reads the highest figure at or under N that bars can make; a chest opening
+   can also credit bars a saved best already beats (G.4), which can carry it past. What it answers is meter(), which is the truth either way. */
+function devMeterTo(n, modes) { const want = Math.max(0, Math.min(meterMax(), Math.round(+n || 0)));
+  devBack('key'); if (!want) return meter();
+  devReach('games', modes); if (chestState('games') === 'ready') devOpen('games');
+  let left = want;
+  for (const tier of TIERS) { const total = keyState(tier).total; if (!total || !tierOpen(tier)) break;
+    let bars = total; if (left < METER.band) { bars = 0; while (bars < total && Math.floor(METER.band * (bars + 1) / total + 1e-9) <= left) bars++; }
+    devClearTo(tier, bars);
+    if (!keyState(tier).whole) break;
+    left -= METER.band; if (left <= 0) break;
+    const c = CHESTS.find(x => x.needs === tier); if (!c || chestState(c.id) !== 'ready' || !devOpen(c.id)) break; }
+  seenDown(); save(); return meter(); }
 
-export { COMBOS, RADAR_PAST, TIERS, msgDot, msgOpen, bandPct, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, checkKeyAch, chestAt, chestOpen, chestState, cleared, combos, credit, devChestReset, devKeyAll, devKeyOn, devKeyReset, devSetMeter, fillBars, gameKey, isCleared, isPlaceholder, isShell, keyAch, keyChest, keyFinished, keyGoal, keyOf, keyPct, keyState, keyTier, keyTiers, meter, meterBand, meterMax, modesOpen, openChest, placeholderCount, radarOf, radarRungs, readyChest, retroArrived, retroBank, retroTier, skey, tierFull, tierOpen };
+export { COMBOS, RADAR_PAST, TIERS, msgDot, msgOpen, bandPct, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, checkKeyAch, chestAt, chestOpen, chestState, cleared, combos, credit, devBack, devChestReset, devClearTo, devMeterTo, devOpen, devReach, fillBars, gameKey, isCleared, isPlaceholder, isShell, keyAch, keyChest, keyFinished, keyGoal, keyOf, keyPct, keyState, keyTier, keyTiers, meter, meterBand, meterMax, modesOpen, openChest, placeholderCount, radarOf, radarRungs, readyChest, retroArrived, retroBank, retroTier, skey, tierFull, tierOpen };

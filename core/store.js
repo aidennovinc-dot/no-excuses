@@ -35,6 +35,8 @@ const SND=ITEMS.snd.map(i=>i.v), RATES=ITEMS.rate.map(i=>i.v);
 const SQ='#FFFFFF', LEAD='#C8322A';
 // v23 (L.10, build 40): the four chests by name (config/chests.js), each opened (1) or not (0). Anything else in the map is dropped
 const cleanChests=raw=>Object.fromEntries(CHESTS.map(c=>[c.id,isObj(raw)&&raw[c.id]?1:0]));
+// v26 (item 3, build 48): the six home menu items, by the screen each opens — `menuOpened` keeps only these
+const MENU_SCREENS=['s-pick','s-board','s-prog','s-key','s-custom','s-about'];
 
 /* ---------- the shape of each field. Anything that is not what its default is becomes the default; the rest is kept ---------- */
 // S5: the two dev flags are read only while BUILD_FLAGS.dev is on — a `supporter: true` planted in storage is nothing in a release build
@@ -62,6 +64,13 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
        is first seen after the chest. No ladder step: an absent field takes `keySeen` (the screen's once-per-profile arrival), so a profile
        that has already been on the key screen is not handed a green row for a screen it knows. Progress: Fresh game clears it. */
     keysSeen:p.keysSeen!==undefined?(p.keysSeen?1:0):(p.keySeen?1:0),
+    /* v26 (item 3, build 48): WHICH HOME MENU ITEMS HAVE BEEN OPENED, by the screen each one opens. FEEDBACK-v20 asked for every item to stay
+       green from the moment it is available until it has been opened once, and only Keys and Customise ever did — each through its own flag,
+       which its screen set whenever it was shown by ANY route, a chest ceremony's or a Testing replay's included. One map now, written when the
+       player opens the screen, and ui/screens/menu.js reads it for all six. Progress: Fresh game clears it. No ladder step: an absent field
+       takes what the older flags already knew — the map from `gridSeen`, Keys from `keysSeen`, Customise from `cusSeen` — and the three that
+       had no flag go green once, which is what the item asks. */
+    menuOpened:Object.fromEntries(MENU_SCREENS.map(k=>[k,isObj(p.menuOpened)?(p.menuOpened[k]?1:0):k==='s-pick'?(p.gridSeen?1:0):k==='s-key'?(p.keysSeen!==undefined?(p.keysSeen?1:0):(p.keySeen?1:0)):k==='s-custom'?(p.cusSeen?1:0):0]).filter(([,v])=>v)),
     /* v23 (L.9c / L.11b, build 41): per chest by name, like `chests`. `readySeen` — the map has painted this chest READY and played its one
        quiet sound; `spill` — its words have shot out once, so from then on the column simply stands. Progress: Fresh game clears both, and
        Testing's per-chest reset clears that chest's. No ladder step: an absent field is every chest unseen, which is what it means. */
@@ -110,10 +119,9 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
   // v21 (F.4, build 35): how many games' colours up4 put back to white
   if(Number.isInteger(p.mig35)&&p.mig35>0) o.mig35=p.mig35;
   /* v23 (L.8a / D.4, build 40): the meter as last painted, 0–400 — one figure, not one per key. Absent until something has painted it,
-     so nothing ever counts up from nothing. Progress: Fresh game clears it. `devMeter` is Testing's "set meter to N%" (L.8f, S5) —
-     read only while BUILD_FLAGS.dev is on, like every other dev field. */
+     so nothing ever counts up from nothing. Progress: Fresh game clears it. v26 (items 7 / 12, build 48): `devMeter`, Testing's override
+     (L.8f), is RETIRED — the meter reads only what the profile holds, and a stored one is dropped on the next load. */
   if(Number.isInteger(p.meterSeen)&&p.meterSeen>=0&&p.meterSeen<=400) o.meterSeen=p.meterSeen;
-  if(dev&&Number.isInteger(p.devMeter)&&p.devMeter>=0&&p.devMeter<=400) o.devMeter=p.devMeter;
   return o; }
 const validRun=r=>isObj(r)&&!!GAMES[r.g]&&GAMES[r.g].modes.includes(r.d)&&typeof r.s==='number'&&typeof r.hits==='number'&&typeof r.t==='number';
 /* v18 (B.14): THE CAP NEVER DROPS A ROW THAT IS IN A TOP TEN. It did — the cap was `slice(0, 600)` here and
@@ -268,6 +276,6 @@ const musicOn=g=>!opened('games')||prefs.musicG[g]!==false;
    profile showed all 27 of them open. Supporter is a dev switch today (S5 gates it out of a release build entirely) and
    Fresh game is the switch for seeing the app as a new player does, so it belongs in this list. When it becomes a real
    purchase at the native build it will be restored from the store rather than from prefs, and this line stays correct. */
-function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,keysSeen:0,chests:cleanChests(null),cusSeen:0,readySeen:cleanChests(null),spill:cleanChests(null),keyWhole:{},revealed:{},msgSeen:{},retro:{},retroCol:{},devKeys:{}}); delete prefs.mig11; delete prefs.mig31; delete prefs.mig32; delete prefs.mig35; delete prefs.meterSeen; delete prefs.devMeter; save(); emit('store:reset'); }
+function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,keysSeen:0,chests:cleanChests(null),cusSeen:0,readySeen:cleanChests(null),spill:cleanChests(null),keyWhole:{},revealed:{},msgSeen:{},menuOpened:{},retro:{},retroCol:{},devKeys:{}}); delete prefs.mig11; delete prefs.mig31; delete prefs.mig32; delete prefs.mig35; delete prefs.meterSeen; delete prefs.devMeter; save(); emit('store:reset'); }
 
 export { RUNS_CAP, everywhere, look, lookCol, musicOn, opened, prefs, reset, save, store, trimRuns };

@@ -13,11 +13,11 @@ import { VS, sel } from "../../core/state.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, SHARED2, lenName, lenSub, versusAny, versusOf } from "../../games/registry.js";
 import { Scores, gameOpen, isOpen, lenLock, lenOpen, lensOf, markSeen, modeCount, needFor, newMark, newPlay, practiceOpen } from "../../progress.js";
-import { chestAt, chestState, gameKey, meter, tierOpen } from "../../progress/key.js";
+import { chestState, gameKey, tierOpen } from "../../progress/key.js";
 import { Snd } from "../../audio.js";
 import { start } from "../../run/run.js";
 import { define } from "../actions.js";
-import { burstHtml, chestSvg, meterLook, spillVars, wordsHtml } from "../chest.js";
+import { burstHtml, chestSvg, spillVars, wordsHtml } from "../chest.js";
 import { goLabel, picOf, scoreTxt } from "../format.js";
 import { register, show } from "../router.js";
 import { applyPrefs, colOf } from "../theme.js";
@@ -144,16 +144,19 @@ function drawLines(reveal){ const grid=$('#grid'), svg=$('#gridlines'); if(!svg)
    the column simply stands. Every word is a tap target (`chestword`). A locked key chest's meter line wears its band's colour (L.8d). */
 // the spill's timings, as the custom properties ui/chest.js names — set on an element without touching its grid placement
 const setVars=(el,s)=>s.split(';').forEach(kv=>{ const i=kv.indexOf(':'); if(i>0) el.style.setProperty(kv.slice(0,i),kv.slice(i+1)); });
-function renderChests(){ const m=modeCount(), pct=meter(), rang=[];
+function renderChests(){ const m=modeCount(), rang=[];
   $$('#grid .chest').forEach(el=>{ const id=el.dataset.chest, st=chestState(id), c=CHESTS.find(x=>x.id===id); if(!st||!c) return;
     el.hidden=false;
     el.classList.toggle('locked',st==='locked'||st==='before'); el.classList.toggle('ready',st==='ready'); el.classList.toggle('open',st==='open');
     el.querySelector('.name').textContent=GRID.chest[id]||id;
     const pic=el.querySelector('.pic'); if(!pic.querySelector('.chestart')) pic.insertAdjacentHTML('afterbegin',chestSvg(id));
-    const metered=st==='locked'&&c.needs!=='modes';
-    const need=st==='open'?GRID.chestOpened:st==='ready'?GRID.chestOpen:st==='before'?GRID.chestPrev
-      :c.needs==='modes'?T(GRID.chestModes,{open:m.open,total:m.total}):T(GRID.chestMeter,{pct,at:chestAt(id)});
-    pic.dataset.need=need; el.classList.toggle('metered',metered); if(metered) meterLook(el,pct,true);
+    /* v26 (item 12, build 48): A LOCKED KEY CHEST SAYS WHAT OPENS IT IN WORDS — "Earn the Pro key" — with no percentage, and so does one whose
+       chest ahead is still shut, because what opens it is the same key either way. It said "203% · opens at 300%": a figure the Keys screen and
+       the menu also print, in a second place where it could disagree with them. The Games chest keeps its count of modes, which is not a
+       percentage. The meter lives on the menu (the total) and on each key's card (its own share), and nowhere on the map. */
+    const need=st==='open'?GRID.chestOpened:st==='ready'?GRID.chestOpen
+      :c.needs==='modes'?(st==='before'?GRID.chestPrev:T(GRID.chestModes,{open:m.open,total:m.total})):(GRID.chestEarn[id]||GRID.chestPrev);
+    pic.dataset.need=need; el.classList.remove('metered');
     if(st==='ready'&&!(prefs.readySeen||{})[id]) rang.push(id);
     const spill=st==='open'&&!(prefs.spill||{})[id];
     const old=pic.querySelector('.pburst'); if(old) old.remove(); if(spill) pic.insertAdjacentHTML('beforeend',burstHtml(id));

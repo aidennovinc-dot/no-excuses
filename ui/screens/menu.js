@@ -43,15 +43,19 @@ function renderMenu(){ const first=firstRun(); const opening=menuWasFirst&&!firs
   $$('#s-menu .item').forEach((b,i)=>{ const dev=b.dataset.dev!==undefined, x=first&&b.dataset.go!=='s-pick'&&!dev; b.classList.toggle('dim',x); b.classList.remove('unx'); b.style.removeProperty('--ud');
     if(opening&&b.dataset.go!=='s-pick'&&!dev){ const d=i*90; b.style.setProperty('--ud',d+'ms'); b.classList.add('unx'); b.style.pointerEvents='none'; setTimeout(()=>{ b.classList.remove('unx'); b.style.removeProperty('--ud'); b.style.pointerEvents=''; },700+d); } });
   renderCustomise(first); renderKeys(first);
-  /* v25 (item 23, build 46): a small mark on the About row while a message is open, has a clip and has not been watched — L8's own green
-     first-seen mark, which is what this app already means by "there is something new in here". msgDot() is the one test (progress/key.js) */
-  { const ab=$('#s-menu .item[data-go="s-about"]'); if(ab) ab.classList.toggle('newthing',!first&&msgDot()); }
+  /* v26 (item 3, build 48): EVERY HOME MENU ITEM IS GREEN FROM THE MOMENT IT IS AVAILABLE UNTIL IT HAS BEEN OPENED ONCE. FEEDBACK-v20 (D.5) asked
+     for it and only Customise and Keys ever had it. Available is: not dimmed by the first run, and for Keys and Customise not locked behind the
+     Games chest. Opened is `prefs.menuOpened`, written below the moment the item's screen is opened from this menu, and cleared by Fresh game.
+     The Testing row is a dev tool, never dimmed and never green. About keeps build 46's reason as well: a message waiting to be watched. */
+  $$('#s-menu .item').forEach(b=>{ const go=b.dataset.go; if(b.dataset.dev!==undefined||!MENU_GO.includes(go)) return;
+    const avail=!b.classList.contains('dim')&&!b.classList.contains('keylock')&&!b.classList.contains('cuslock');
+    b.classList.toggle('newthing',avail&&(!(prefs.menuOpened||{})[go]||(go==='s-about'&&msgDot()))); });
   // v17 (B.20, build 29): the "play one run · the rest opens" line is gone — the struck-through items say it
   /* v17 (§A.6.7): percentage complete on the front of the app. It is hidden on a profile that has not run anything — A.6.2
      makes a new profile 0%, and handing a first-timer a number that says nothing has happened is the opposite of what §A.6.6
      is for. Tapping it opens the keys screen.
      v18 (B.15): the line is the PERCENTAGE ALONE — "67% complete" — and the cleared count stays on the keys screen.
-     v23 (L.8a, build 40): the percentage is THE METER, 0–400, the same meter() the map's chests and the key screen read — no re-base
+     v23 (L.8a, build 40): the percentage is THE METER (0–300 since build 48, v26 item 9 — the one place the total is printed), the same meter() the key screen reads — no re-base
      at Pro any more (B.17 retired with the step into Pro, L.8b). A chest waiting to be opened says so. */
   const mk=$('#menu-key');
   mk.hidden=first; if(!first) paintPct(mk,meter());
@@ -69,7 +73,6 @@ function renderMenu(){ const first=firstRun(); const opening=menuWasFirst&&!firs
 function renderCustomise(first){ const b=$('[data-go="s-custom"]'), need=$('#cus-need'); if(!b||!need) return;
   const locked=!chestOpen('games'), wiped=cusWasLocked&&!locked; cusWasLocked=locked;
   b.classList.toggle('cuslock',locked&&!first); need.hidden=!locked||first; need.textContent=locked?MENU.cusNeed:'';
-  b.classList.toggle('newthing',!locked&&!first&&!prefs.cusSeen);
   if(wiped&&!first){ b.classList.add('unx'); setTimeout(()=>b.classList.remove('unx'),700); } }
 /* v24 (A.1, build 43): KEYS IS LOCKED UNTIL THE GAMES CHEST OPENS, the same treatment as Customise and as a locked chest on the map: visible,
    crossed out, "open the Games chest" under it, and a tap says so and goes nowhere — so a new player can see the keys exist. The meter line
@@ -79,7 +82,6 @@ let keysWasLocked=!chestOpen('games');
 function renderKeys(first){ const b=$('#s-menu .item[data-go="s-key"]'), need=$('#keys-need'); if(!b||!need) return;
   const locked=!chestOpen('games'), wiped=keysWasLocked&&!locked; keysWasLocked=locked;
   b.classList.toggle('keylock',locked&&!first); need.hidden=!locked||first; need.textContent=locked?MENU.keysNeed:'';
-  b.classList.toggle('newthing',!locked&&!first&&!prefs.keysSeen);
   if(wiped&&!first){ b.classList.add('unx'); setTimeout(()=>b.classList.remove('unx'),700); } }
 
 /* v20 (D.4, build 37): THE FRONT NUMBER SAYS WHEN IT WENT UP. The last-painted figure is in the store, written when the menu PAINTS
@@ -134,5 +136,16 @@ define({ nextup(){ if(nextWhere) goWhere(nextWhere); return 'click'; },
   // v24 (A.1, build 43): the Keys row and the meter line. Locked, they say what opens them and stay put
   keys(){ if(!chestOpen('games')){ toast(TOAST.keysLocked,'','',true); return 'pick'; } show('s-key'); return 'click'; } });
 on('store:reset',()=>{ menuWasFirst=true; cusWasLocked=true; keysWasLocked=true; });
+/* v26 (item 3, build 48): AN ITEM IS OPENED WHEN ITS SCREEN IS OPENED FROM THIS MENU — the row itself, or the meter line under it, which opens
+   Keys. A screen reached some other way (a run's key interlude, a chest ceremony, a Testing replay, Progress's key row) was not opened from its
+   item, so the item stays green. The router announces a screen before it draws it, so the item is spent on the tap that opens it. */
+const MENU_GO=['s-pick','s-board','s-prog','s-key','s-custom','s-about'];
+// the screen on show when the app loads is the menu the markup already shows — boot draws it without announcing a screen change
+let lastScreen=($('.screen.on')||{}).id||null;
+on('screen:change',({id})=>{ if(lastScreen==='s-menu'&&MENU_GO.includes(id)&&!(prefs.menuOpened||{})[id]){ prefs.menuOpened=Object.assign({},prefs.menuOpened,{[id]:1}); save(); } lastScreen=id;
+  /* v26 (item 12, build 48): THE VERSION LABEL IS ON THE HOME MENU AND NOWHERE ELSE. Builds 39–46 kept moving it out of the way screen by screen
+     (the map, the Keys screen, a game's sheet, "tap to continue"); Aiden's call is one place for it, which ends every overlap at once. The
+     About screen's own line (the build, its label and its date) is A6's and stays */
+  const b=$('#build'); if(b) b.hidden=id!=='s-menu'; });
 
 export { enterMenu, firstRun };

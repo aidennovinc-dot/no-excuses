@@ -24,11 +24,17 @@ export const CHESTS = [
    `partial` is §M.1 (unanswered, guess): false counts CLEARED bars ÷ bars, as L.8a and DECISIONS 2026-09-14 write it; true counts
    keyPct()'s partial credit inside each band instead, the way the per-key % worked from build 28 to 39.
    `freeStart` is §M.4 (unanswered, guess): the modes a new profile starts with (Quick Tap · Two) are not counted, so a new profile
-   reads 0% (2026-09-10: "a new profile starts at 0") rather than 1 of 13 = 7%. */
-export const METER = { band: 100, modes: true, partial: false, freeStart: true };
+   reads 0% (2026-09-10: "a new profile starts at 0") rather than 1 of 13 = 7%.
+   v26 (items 7 / 9 / 12, build 48): `modes` IS FALSE — THE METER IS 0–300, THE THREE KEYS AND NOTHING ELSE. Aiden's meter is "the continuous
+   0–300% figure", and "the Pro chest opens when the Pro key is earned, which is 200%". With the modes band on, the Pro key landed at 300%, so
+   the map said "203% · opens at 300%" on a Pro chest that was one key short, which read as a threshold off by a tier. Key 1 is 0–100 (the Key
+   chest opens at 100), Pro 100–200 (the Pro chest at 200), Author 200–300 (the Thorns chest at 300). The Games chest is not on the meter at
+   all — it opens on every game mode, which is a count of modes, not a percentage — so its screen shows no percentage (item 7). */
+export const METER = { band: 100, modes: false, partial: false, freeStart: true };
 
 /* ---------- v23 (§L.8d / §L.8e, build 41): THE METER'S FOUR BANDS — presentation only (L10) ----------
-   One row per band, in meter order: 0–100 the quiet band, 100–200 ink, 200–300 gold, 300–400 Thorns. A band starts AT its lower
+   One row per band, in meter order: 0–100 the quiet band, 100–200 ink, 200–300 gold, 300–400 Thorns. Since build 48 the meter stops at 300
+   (METER.modes false), so the Thorns row is the look of a meter that is full. A band starts AT its lower
    figure, so 100% already reads ink (guess). Effects scale WITHIN a band (L.8e): `glow` and `spike` are [at the band's bottom, at its
    top] in px, `shake` is [px below half-way, px from half-way] — whole pixels, so the number never blurs. GREEN IS NEVER A BAND
    COLOUR (B.22 — green means new); the gate reads every `col` here. The chests wear the same four colours, one band each (L.9a). */

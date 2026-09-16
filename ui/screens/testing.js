@@ -14,7 +14,16 @@
 
    v23 (L.8f / G.8 extended, build 40): the switches and resets are PER CHEST — Games, Key, Pro, Thorns — and there is a "set meter to
    N%" field, so the meter can be looked at at any value without earning it. A chest's switch is what fills it: every mode for the
-   Games chest (progress.js, beside the chain), a key's every bar for the other three (progress/key.js). */
+   Games chest (progress.js, beside the chain), a key's every bar for the other three (progress/key.js).
+
+   v26 (items 7 / 12, build 48): EVERY BUTTON HERE LEAVES THE GAME WHERE PLAY WOULD. Aiden tests through this screen, and build 46's switches
+   filled a key behind a shut chest, its resets left later chests open, and "set meter" was an override nothing had earned — the 103% Games
+   chest, the Pro chest locked at 203%, the map and the Keys screen disagreeing. A chest's switch now plays forward until THAT chest is ready
+   (progress/key.js devReach: every chest before it filled and opened the way a player opens it, then its own need filled), and taking it off
+   is its reset. A reset backs that chest out with every chest after it (devBack). "Set meter to N%" backs the keys out and plays forward to
+   N (devMeterTo). Nothing is remembered and put back, and there is no override: the meter, the chests and the keys are read off what is
+   stored, the one value every screen reads. OPEN EVERYTHING and SUPPORTER stay what they were — two flags every gate honours (#411), which
+   store no progress at all. */
 import { audioClock, audioState } from "../../audio.js";
 import { BUILD_FLAGS } from "../../config/build.js";
 import { CHESTS } from "../../config/chests.js";
@@ -23,8 +32,8 @@ import { ABOUT, GRID, TOAST } from "../../config/copy.js";
 import { $, $$, T } from "../../core.js";
 import { prefs, reset, save } from "../../core/store.js";
 import { GAMES } from "../../games/registry.js";
-import { ACH, Scores, UNLOCKS, devModesAll, devModesOn, devModesReset, got, seedSeen, unlocked } from "../../progress.js";
-import { barsFaked, devChestReset, devKeyAll, devKeyOn, devSetMeter, fillBars, keyAch, meter } from "../../progress/key.js";
+import { ACH, Scores, UNLOCKS, devModesAll, devModesReset, got, seedSeen, unlocked } from "../../progress.js";
+import { barsFaked, chestState, devBack, devMeterTo, devReach, fillBars, keyAch, meter, meterMax } from "../../progress/key.js";
 import { define } from "../actions.js";
 import { register, show } from "../router.js";
 import { toast } from "../toast.js";
@@ -48,14 +57,16 @@ on('audio:state',devAudio);
 on('screen:change',({id})=>{ if(id!=='s-testing'&&clockT){ clearInterval(clockT); clockT=0; } });
 // L.8f: a chest's switch is what fills it — the chain for the Games chest, its key for the other three
 const chestOf=id=>CHESTS.find(c=>c.id===id);
-const chestOn=id=>{ const c=chestOf(id); return !!c&&(c.needs==='modes'?devModesOn():devKeyOn(c.needs)); };
+// v26 (items 7 / 12, build 48): a switch is ON while its chest is ready or open — read off the chest itself, never a snapshot of what it held
+const chestOn=id=>['ready','open'].includes(chestState(id));
+// the Games chest's need is the chain's: every mode in, or every mode out (progress.js, beside the chain — G.3)
+const modes=fill=>{ if(fill) devModesAll(true); else devModesReset(); };
 function devState(){ if(!BUILD_FLAGS.dev) return; devAudio(); const u=Object.keys(unlocked()).length, a=Object.keys(got()).length, r=Scores.runs().length, na=ACH.length+keyAch().length;
   $('#dev-state').textContent=(prefs.allOpen?ABOUT.devOpen:T(ABOUT.devProg,{u,nu:UNLOCKS.length,a,na}))+T(ABOUT.devRuns,{r})+(prefs.supporter?ABOUT.devSup:ABOUT.devFree);
   $('#dev-open').classList.toggle('sel',!!prefs.allOpen); $('#dev-sup').classList.toggle('sel',!!prefs.supporter);
   const b=$('#dev-bars'); if(b) b.classList.toggle('sel',barsFaked());
   $$('#dev-keys [data-act="dev-chestall"]').forEach(x=>x.classList.toggle('sel',chestOn(x.dataset.chest)));
-  const m=$('#dev-meter-now'); if(m) m.textContent=T(ABOUT.devMeter,{n:meter(),over:typeof prefs.devMeter==='number'?ABOUT.devMeterOver:''});
-  $('#dev-meteroff').classList.toggle('sel',typeof prefs.devMeter!=='number');
+  const m=$('#dev-meter-now'); if(m) m.textContent=T(ABOUT.devMeter,{n:meter()});
   const h=$('#dev-anim-hint'); if(h) h.textContent=ABOUT.devAnim; }
 // Fresh game: progress goes, the look and the name stay, and the title sequence plays again (L1)
 function freshGame(){ reset(); seedSeen(); show('s-menu',{story:true}); }
@@ -75,18 +86,17 @@ define({
      only — A.2 as amended forbids overwriting a number that is there, generated or not — and says so when there are none.
      No save(), the file untouched, gone on reload; the key screen says every number it derived is derived. */
   'dev-bars'(){ const was=barsFaked(), on=fillBars(!was); devState(); toast(on?TOAST.barsOn:was?TOAST.barsOff:TOAST.barsNone); return 'pick'; },
-  /* v21 (G.8, build 37), PER CHEST since build 40 (L.8f): the switch fills the chest's key (or, for the Games chest, every mode) and
-     remembers what it held; the reset backs the chest out entirely — for a key's chest its bars, its whole-key moment, the chest, its
-     retro marks and its key achievements; for the Games chest every mode and the chest itself */
-  'dev-chestall'(b){ const c=chestOf(b.dataset.chest); if(!c) return 'pick'; const name=GRID.chest[c.id];
-    if(c.needs==='modes'){ const on=devModesAll(!devModesOn()); devState(); toast(on?TOAST.devModesOn:TOAST.devModesOff); return 'pick'; }
-    const on=devKeyAll(c.needs,!devKeyOn(c.needs)); devState(); toast(T(on?TOAST.devKeyOn:TOAST.devKeyOff,{key:name})); return 'pick'; },
+  /* v21 (G.8, build 37), PER CHEST since build 40 (L.8f) → v26 (items 7 / 12, build 48): THE SWITCH PLAYS FORWARD UNTIL ITS CHEST IS READY, and
+     never opens it — that tap is the player's, and it is what Aiden is reviewing. Taking the switch off is the chest's reset. The RESET backs the
+     chest out and every chest after it, so no chest is ever left open behind a shut one; for the Games chest every mode goes too */
+  'dev-chestall'(b){ const c=chestOf(b.dataset.chest); if(!c) return 'pick'; const name=GRID.chest[c.id], st=chestState(c.id);
+    if(st==='ready'){ devBack(c.id,modes); devState(); toast(c.needs==='modes'?TOAST.devModesReset:T(TOAST.devKeyReset,{key:name})); return 'pick'; }
+    if(st==='open'){ devState(); toast(T(TOAST.devReachOpen,{key:name})); return 'pick'; }
+    devReach(c.id,modes); devState(); toast(T(TOAST.devReach,{key:name})); return 'pick'; },
   'dev-chestreset'(b){ const c=chestOf(b.dataset.chest); if(!c) return 'pick';
-    if(c.needs==='modes'){ devModesReset(); devChestReset(c.id); devState(); toast(TOAST.devModesReset); return 'pick'; }
-    devChestReset(c.id); devState(); toast(T(TOAST.devKeyReset,{key:GRID.chest[c.id]})); return 'pick'; },
-  // L.8f: "set meter to N%" — an override the meter reads, nothing earned; the other button takes it off
-  'dev-meter'(){ const v=$('#dev-meter').value; if(v===''){ return 'pick'; } const n=devSetMeter(v); devState(); toast(T(TOAST.devMeterSet,{n})); return 'pick'; },
-  'dev-meteroff'(){ devSetMeter(null); devState(); toast(TOAST.devMeterOff); return 'pick'; },
+    devBack(c.id,modes); devState(); toast(c.needs==='modes'?TOAST.devModesReset:T(TOAST.devKeyReset,{key:GRID.chest[c.id]})); return 'pick'; },
+  // "set meter to N%" — the keys backed out, then played forward to N: bars cleared and chests opened in play's own order (0–300)
+  'dev-meter'(){ const v=$('#dev-meter').value; if(v==='') return 'pick'; const n=devMeterTo(Math.min(meterMax(),+v),modes); devState(); toast(T(TOAST.devMeterSet,{n})); return 'pick'; },
   'dev-fresh'(){ freshGame(); devState(); toast(TOAST.fresh); return 'pick'; },
   'dev-story'(){ show('s-menu',{story:true}); return 'pick'; },
   // B.26: the animations, each on its own screen, nothing stored

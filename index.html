@@ -20,7 +20,7 @@
 </head><body>
 <canvas id="stars"></canvas>
 <!-- v25 (items 4 / 8, build 45): the build stamp comes BEFORE every screen, so each paints over it (styles/app.css #build) -->
-<div id="build">v0.47</div>
+<div id="build">v0.48</div>
 
 <section class="screen on" id="s-menu">
   <div class="nextup" id="nextup" data-act="nextup" hidden></div>
@@ -221,7 +221,7 @@
   <div class="eyebrow msgtitle" id="msg-title">messages</div>
   <div class="hint" id="msg-lede"></div>
   <div class="msglist" id="msglist"></div>
-  <div class="hint">v0.47 · gate housekeeping · 16 sept 2026</div>
+  <div class="hint">v0.48 · one saved value · 16 sept 2026</div>
 </section>
 
 <section class="screen" id="s-testing" data-back="s-menu" data-dev>
@@ -241,9 +241,12 @@
        a key's every bar for the other three) and remembers what it held; the reset backs the chest out. And a field that sets the
        meter to any figure for review, with nothing earned (S5) -->
   <div class="hint" id="dev-key-hint">chests · one at a time</div>
-  <div class="chips" id="dev-keys"><button data-act="dev-chestall" data-chest="games" class="chip">games chest · every mode</button><button data-act="dev-chestall" data-chest="key" class="chip">key chest · key 1 cleared</button><button data-act="dev-chestall" data-chest="pro" class="chip">pro chest · pro cleared</button><button data-act="dev-chestall" data-chest="thorns" class="chip">thorns chest · author cleared</button><button data-act="dev-chestreset" data-chest="games" class="chip">reset games chest</button><button data-act="dev-chestreset" data-chest="key" class="chip">reset key chest</button><button data-act="dev-chestreset" data-chest="pro" class="chip">reset pro chest</button><button data-act="dev-chestreset" data-chest="thorns" class="chip">reset thorns chest</button></div>
+  <div class="chips" id="dev-keys"><button data-act="dev-chestall" data-chest="games" class="chip">games chest · ready</button><button data-act="dev-chestall" data-chest="key" class="chip">key chest · ready</button><button data-act="dev-chestall" data-chest="pro" class="chip">pro chest · ready</button><button data-act="dev-chestall" data-chest="thorns" class="chip">thorns chest · ready</button><button data-act="dev-chestreset" data-chest="games" class="chip">reset games chest</button><button data-act="dev-chestreset" data-chest="key" class="chip">reset key chest</button><button data-act="dev-chestreset" data-chest="pro" class="chip">reset pro chest</button><button data-act="dev-chestreset" data-chest="thorns" class="chip">reset thorns chest</button></div>
   <div class="hint" id="dev-meter-now"></div>
-  <div class="chips" id="dev-meter-row"><input id="dev-meter" type="number" min="0" max="400" step="1" inputmode="numeric" placeholder="0–400" aria-label="meter percentage"><button data-act="dev-meter" class="chip" id="dev-meterset">set meter to N%</button><button data-act="dev-meteroff" class="chip" id="dev-meteroff">meter · as earned</button></div>
+  <!-- v26 (items 7 / 12, build 48): every button above and below leaves the game where PLAY would - a switch plays forward until its chest is
+       ready, a reset backs that chest out with every chest after it, and "set meter to N%" clears bars and opens chests to reach N (0-300).
+       There is no override any more, so "meter · as earned" went with it -->
+  <div class="chips" id="dev-meter-row"><input id="dev-meter" type="number" min="0" max="300" step="1" inputmode="numeric" placeholder="0–300" aria-label="meter percentage"><button data-act="dev-meter" class="chip" id="dev-meterset">set meter to N%</button></div>
   <div class="chips" id="dev-anim"><button data-act="dev-keyin" class="chip">key arrival</button><button data-act="dev-seg" class="chip">segment advance</button><button data-act="dev-whole" data-tier="0" class="chip">key 1 earned</button><button data-act="dev-whole" data-tier="1" class="chip">pro key earned</button><button data-act="dev-whole" data-tier="2" class="chip">author key earned</button><button data-act="dev-chest" data-chest="games" class="chip">replay games chest opening</button><button data-act="dev-chest" data-chest="key" class="chip">replay key chest opening</button><button data-act="dev-chest" data-chest="pro" class="chip">replay pro chest opening</button><button data-act="dev-chest" data-chest="thorns" class="chip">replay thorns chest opening</button></div>
 </section>
 
@@ -318,7 +321,7 @@
 <script>
 // build check: version.json is fetched with no-store, so a stale cached page still learns a newer build exists
 (function(){
-  const BUILD="47";
+  const BUILD="48";
   async function check(){
     try{
       const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});

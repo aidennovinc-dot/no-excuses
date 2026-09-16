@@ -20,14 +20,15 @@ check are in `../CLAUDE.md` → The gate.
 | `one set run` | one Set run and one Streak run per game (first mode) | a Set and a Streak of every game driven to its result; v14 6.3 / 6.18, v15 3.9, v16 A.3, v18 B.3d |
 | `pass & play` | pass & play Quick Tap | L3 pass & play: two whole runs with the hand-over screen between |
 | `two-player` | two-player (v15 section 4) | v15 §4.1–4.6 turn-taking inside one run, Sequence and Find versus; A.3 / L10 nothing stored |
-| `storage` | storage fixtures | A5 the one key `ne` and its ladder to v6 (v18 B.2 / B.4, v19 C.5, v21 F.4, v23 L.10 / L.7c), corrupt records, the 600-run cap |
+| `storage` | storage fixtures | A5 the one key `ne` and its ladder to v6 (v18 B.2 / B.4, v19 C.5, v21 F.4, v23 L.10 / L.7c), corrupt records, the 600-run cap; v26 item 3 `menuOpened` and the retired `devMeter` (build 48) |
 | `challenge` | challenge links | S1 a hostile score lands as text; S2 a bad link is no challenge and a link's run is never on a board |
 | `side screens` | side screens (v14 section 8) | v14 8.1–8.10 (Customise as v23 L.4a / L.11a left it) |
 | `key` | the key (v14 section 9) | v14 §9 and C.5–C.7 — contributors and count from the config, a bar per combination, a bar clears once and solo only; the meter line (A.6 / v23 L.8a) |
 | `chain` | the chain and its screens (v15 sections 1 and 2) | v15 §1.0–1.5 and §2.1–2.5 with L6 — thresholds either side of the line, one requirement builder, a mid-run earn survives a quit |
-| `runs` | the runs (v15 section 3) | v15 §3.1–3.12 with L4 / L5 |
-| `keys` | the keys, the surface and #375 (v15 sections 5 and 6) | v15 §5.1–5.4 and §6.1–6.5; #375a–c two-player defects |
+| `runs` | the runs (v15 section 3) | v15 §3.1–3.12 with L4 / L5; v26 item 1 the Go / No-go Set HUD (build 48) |
+| `keys` | the keys, the surface and #375 (v15 sections 5 and 6) | v15 §5.1–5.4 and §6.1–6.5; #375a–c two-player defects; v26 items 3, 9, 10, 11, 12 — the green menu items (earned through play), the key cards and count line, all three key reveals to their last frame, the key opening its chest, the version label on the home menu only (build 48) |
 | `button actions` | button actions (every data-act at least once) | every `data-act` control driven at least once |
+| `chests` | chests | v26 items 7 and 12 (build 48) — one saved value: the Games chest and key 1 EARNED BY RUNS and reached by Testing's buttons land in the same state, and after every step the store, the map, the Keys screen and the menu agree on a state play can reach; the 0–300 meter, the Pro chest at 200, locked chests in words, no percentage on the Games chest |
 | `build 27` | build 27 — v16 | v16 (batch 12) — the music engine, the Timing unlock, Find versus, the intro, A.3 |
 | `build 28` | build 28 - v17 sections B.1 to B.18 | v17 §B.1–B.18 — the chain and the scoring |
 | `build 29` | build 29 - v17 sections B.19 to B.26 | v17 §B.19–B.26 — the front of the app |

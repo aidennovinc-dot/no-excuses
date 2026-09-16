@@ -12,7 +12,7 @@
 
    frame() draws the same stage paused at a fraction of its length and plays nothing — the review catalogue's frames (L.10d / L.11e). It
    lives here so the catalogue cannot photograph a ceremony the app does not play. */
-import { CEREMONY, CEREMONY_FX, CHEST_LOOK, METER_BANDS } from "../config/chests.js";
+import { CEREMONY, CEREMONY_FX, CHESTS, CHEST_LOOK, METER_BANDS } from "../config/chests.js";
 import { GRID, KEY } from "../config/copy.js";
 import { KEY_ART } from "../config/keys.js";
 import { Snd } from "../audio.js";
@@ -65,12 +65,15 @@ function inFront(id) { const out = [];
     out.push('<rect class="csplit" x="149" y="0" width="2" height="520"></rect>'); }
   return out.join(''); }
 // v25 (build 46): `tapLine` is the review catalogue's frames only — in the app the shared reveal (ui/reveal.js) owns "tap to continue"
+/* v26 (item 7, build 48): THE GAMES CHEST'S SCREEN SHOWS NO PERCENTAGE. It opens on every game mode — a count, not a place on the key meter — and
+   the figure it showed ("103%") was the meter reading through. The three key chests keep their count-up: each one is a key's worth of meter */
+const metered = id => (CHESTS.find(c => c.id === id) || {}).needs !== 'modes';
 function stageHtml(id, name, was, tapLine) {
   const chest = chestSvg(id, 'cbig').replace('<svg ', '<svg x="90" y="250" width="120" height="98" ');
   return `<svg class="cstage" viewBox="0 0 300 520" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${behind(id)}<g class="cchestg">${chest}</g>${inFront(id)}</svg>`
-    + `<div class="ctxt"><b>${esc(name)}</b><u class="meterv">${esc(T(KEY.pct, { n: was }))}</u>${tapLine ? `<i class="ctap">${esc(KEY.tapOn)}</i>` : ''}</div>`; }
+    + `<div class="ctxt"><b>${esc(name)}</b>${metered(id) ? `<u class="meterv">${esc(T(KEY.pct, { n: was }))}</u>` : ''}${tapLine ? `<i class="ctap">${esc(KEY.tapOn)}</i>` : ''}</div>`; }
 const nameOf = id => T(KEY.opened, { chest: GRID.chest[id] });
-const setMeter = (m, v) => { m.textContent = T(KEY.pct, { n: v }); meterLook(m, v); };
+const setMeter = (m, v) => { if (!m) return; m.textContent = T(KEY.pct, { n: v }); meterLook(m, v); };
 
 /* ---------- v25 (items 6 / 22, build 46): A CHEST OPENING IS NOW A STAGE INSIDE THE ONE SHARED REVEAL ----------
    Build 41's playCeremony() owned its own clock, its own "tap to continue" and its own hand-over. Items 6, 11 and 22 put chests and keys
@@ -87,11 +90,11 @@ function chestStage(id, o = {}) { const cfg = CEREMONY[id]; if (!cfg) return nul
       // the stage's own layers sit on the reveal's host, so the build-41 stylesheet (.cere.play [data-chest]) dresses them unchanged
       host.dataset.chest = id; host.setAttribute('style', (host.getAttribute('style') || '') + ';' + stageVars(id));
       el.innerHTML = stageHtml(id, o.name || nameOf(id), was, false);
-      const m = el.querySelector('.meterv'); meterLook(m, was);
+      const m = el.querySelector('.meterv'); if (m) meterLook(m, was);
       if (!o.silent) Snd.chest(id);
       // D.4 / L.8e: the credit lands as the count-up in the last beat. Under Reduce Motion it lands at once, with the rest of it
       clearTimeout(upT);
-      const run = () => { if (!live) return; if (now > was) { m.classList.add('up');
+      const run = () => { if (!live || !m) return; if (now > was) { m.classList.add('up');
           countUp({ audio: o.silent ? null : Snd, from: was, to: now, ms: CEREMONY_FX.meterMs, fmt: v => Math.round(v), set: v => setMeter(m, v), alive: () => live }); }
         else setMeter(m, now); };
       if (k.quick) run(); else upT = setTimeout(run, Math.max(0, cfg.ms - CEREMONY_FX.meterMs)); },

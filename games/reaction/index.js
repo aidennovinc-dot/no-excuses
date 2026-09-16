@@ -242,8 +242,13 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
   /* v18 (B.1b / B.1c): the Set line is the ROUND and how far into it you are — "round 2 of 5 · 1 of 3" — where it used
      to count shapes and carry "{w} of 3 wrong", a tally of a run-ender that no longer exists. The Streak line is
      unchanged and already says what it is spending against what budget (B.13). */
+  /* v26 (item 1, build 48): A SOLO SET SHOWS THE BIG COUNTER AND THE GOAL BOX, AND NOTHING ELSE. "round 1 of 5 · 0 of 3" on the right went, and so
+     did the "Go / No-go · Set" label on the left, which wrapped onto two lines and had nothing to balance it once the right side was gone. The
+     "7/15" counter already says how far through the Set a player is (Aiden confirmed it, FEEDBACK-v26 Q1). A Streak keeps its budget line (B.13),
+     and pass & play keeps whose turn it is. */
   hudNogo(){ if(this.two.on) return hud.timeHtml(this.two.hudLine());
-    hud.time(this.streak()?T(CP.hudNogoStreak,{n:this.round,over:Math.round(this.over),bud:this.NOGO_BUD}):T(CP.hudNogo,{n:Math.min(this.ctx.len,this.round),s:this.ctx.len,h:this.got,p:this.GO_PER})); },
+    if(!this.streak()){ hud.time(''); hud.mode(''); return; }
+    hud.time(T(CP.hudNogoStreak,{n:this.round,over:Math.round(this.over),bud:this.NOGO_BUD})); },
   /* v18 (B.1b): a Set is scored over every target the run DEALT, not only the ones that were tapped. #375b already
      reasoned this out for a pass & play turn — an unanswered target is charged the whole beat window it was given, so
      giving up cannot score better than trying — and fifteen targets a Set instead of two or three is what makes it

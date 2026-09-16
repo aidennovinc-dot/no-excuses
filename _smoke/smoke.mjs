@@ -663,6 +663,19 @@ if (section('storage fixtures')) {
     const ne = await getJSON('ne');
     (ne.runs.length === 600 && ne.runs[0].hits === 650) ? ok('runs are capped at 600, newest first kept') : bad('runs cap 600', `${ne.runs.length} runs, first hits ${ne.runs[0] && ne.runs[0].hits}`);
   }
+  /* build 48 (v26 item 3): `menuOpened` — which home menu items have been opened, by screen — is shape-checked, seeded from the older flags on a
+     profile that has none, and cleared by Fresh game. v26 items 7 / 12: a stored `devMeter` (Testing's retired override) is dropped on load */
+  if (await bootWith('`menuOpened` seeded, shape-checked and cleared; `devMeter` dropped (v26 items 3 / 7 / 12)', { ne: { v: 6, prefs: { story: 1, played: 1, gridSeen: 1, keysSeen: 1, cusSeen: 0, snd: 'off', devMeter: 150 }, runs: [], unlock: {}, ach: {}, intro: {}, seen: {}, bars: {} } }, 's-menu')) {
+    const seeded = (await getJSON('ne')).prefs;
+    await setStorage({ ne: { v: 6, prefs: { story: 1, played: 1, gridSeen: 1, snd: 'off', menuOpened: { 's-board': 1, 's-about': 0, 's-nowhere': 1, 's-key': 'yes' } }, runs: [], unlock: {}, ach: {}, intro: {}, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    const shaped = (await getJSON('ne')).prefs.menuOpened;
+    const wiped = await page.evaluate(async () => { const S = await import('./core/store.js'); S.reset(); return JSON.parse(localStorage.getItem('ne')).prefs.menuOpened; });
+    (JSON.stringify(seeded.menuOpened) === '{"s-pick":1,"s-key":1}' && !('devMeter' in seeded) && JSON.stringify(shaped) === '{"s-board":1,"s-key":1}' && JSON.stringify(wiped) === '{}')
+      ? ok('v26 item 3 `menuOpened` keeps only the six menu screens, each 1 or gone; an older profile takes the map from gridSeen, Keys from keysSeen and Customise from cusSeen; Fresh game empties it — and a stored devMeter is dropped (items 7 / 12)')
+      : bad('v26 item 3 menuOpened in the store', JSON.stringify({ seeded: seeded.menuOpened, devMeter: seeded.devMeter, shaped, wiped }));
+    await page.evaluate(() => localStorage.clear());
+  }
 }
 
 // ---- 6. challenge links ----
@@ -743,8 +756,8 @@ if (section('side screens (v14 section 8)')) {
     inAbout: document.querySelectorAll('#s-about [data-dev]').length, inTesting: document.querySelectorAll('#s-testing [data-act^="dev-"]').length }));
   // AMENDED at build 32 (v18 B.26): six animation buttons joined the four switches
   // AMENDED at build 34 (#411 / #371): a fifth switch — fill pro + author · placeholder
-  (moved.item && moved.below === 's-testing' && moved.inAbout === 0 && moved.inTesting === 24)   // AMENDED at build 37 (v21 G.8): a switch and a reset per key. AMENDED at build 40 (L.8f): per CHEST, four of each, the meter field's two, and a fourth chest-opening button. AMENDED at build 43 (v24 C.5): "key complete" is three buttons, one earn moment per key
-    ? ok('8.10 Testing is its own item directly below About, with all five switches, the nine animation buttons, the eight per-chest buttons and the meter\'s two, none left in About')
+  (moved.item && moved.below === 's-testing' && moved.inAbout === 0 && moved.inTesting === 23 /* AMENDED at build 48 (v26 items 7 / 12): "meter · as earned" went with the meter override */)   // AMENDED at build 37 (v21 G.8): a switch and a reset per key. AMENDED at build 40 (L.8f): per CHEST, four of each, the meter field's two, and a fourth chest-opening button. AMENDED at build 43 (v24 C.5): "key complete" is three buttons, one earn moment per key
+    ? ok('8.10 Testing is its own item directly below About, with all five switches, the nine animation buttons, the eight per-chest buttons and "set meter to N%", none left in About')
     : bad('8.10 Testing moved out of About', JSON.stringify(moved));
 }
 
@@ -801,7 +814,8 @@ if (section('the key (v14 section 9)')) {
   /* v17 (A.6): the count line is "{done} of {total} · {pct}%" now, and both halves come off progress/key.js. On this
      profile nothing is cleared, so A.6.2 says it reads 0% — never played contributes nothing, not a free ratio. */
   // AMENDED at build 40 (v23 L.8a): the percentage on the count line is THE METER — OPEN EVERYTHING opens every mode, so band 1 is full and nothing else is
-  /^0 of \d+ · 100%$/.test((ui.count || '').trim()) ? ok(`A.6 / L.8a the keys screen reads "${ui.count.trim()}" on a profile with no runs - no bar cleared, and the meter's modes band full under OPEN EVERYTHING`)
+  // AMENDED at build 48 (v26 item 9): the line under the key is the count alone - the card carries the key's share and the menu the total
+  /^0 of \d+$/.test((ui.count || '').trim()) ? ok(`A.6 / v26 item 9 the keys screen reads "${ui.count.trim()}" on a profile with no runs - no bar cleared, and no percentage beside it`)
     : bad('A.6 the cleared count and the percentage together', JSON.stringify(ui.count));
   (!ui.warn) ? ok('C.6 no mismatch warning on the key screen') : bad('C.6 the key screen is warning about missing bars');
   await page.evaluate(() => document.querySelector('.knode[data-kg="quick-tap"]').dispatchEvent(new MouseEvent('click', { bubbles: true }))); await sleep(350);
@@ -1041,6 +1055,18 @@ if (section('the runs (v15 section 3)')) {
     else if (seen.dot === want) ok(want ? `3.10 Dots · Lead shows the next dot and its ring on "1", before the run starts (lead ring ${seen.lead})` : '3.10 Dots · Blind is unchanged — nothing on screen under the 3-2-1');
     else bad(`3.10 Dots · ${mode} under the 3-2-1`, JSON.stringify(seen));
   }
+  /* build 48 (v26 item 1): a solo Go / No-go SET shows the big counter and the goal box and nothing else - no "round 1 of 5 · 0 of 3" on the right,
+     no "Go / No-go · Set" on the left. A Streak keeps its budget line */
+  {
+    const hud48 = async li => { await openSheet('reaction', 1, li); await click('#go-btn');
+      let seen = null; for (let i = 0; i < 80 && !seen; i++) { await sleep(150); await clearReady('reaction'); seen = await page.evaluate(() => document.querySelector('#rxpane') && document.getElementById('game').classList.contains('live') ? { mode: document.getElementById('hud-mode').textContent.trim(), time: document.getElementById('hud-time').textContent.trim(), score: document.getElementById('score').textContent.trim() } : null); }
+      await sleep(900); const later = await page.evaluate(() => ({ mode: document.getElementById('hud-mode').textContent.trim(), time: document.getElementById('hud-time').textContent.trim(), score: document.getElementById('score').textContent.trim() }));
+      await page.evaluate(async () => { const RUN = await import('./run/run.js'); RUN.abort(); }); await sleep(300); return { seen, later }; };
+    const set48 = await hud48(0), streak48 = await hud48('streak');
+    (set48.seen && !set48.seen.mode && !set48.seen.time && !set48.later.mode && !set48.later.time && /^\d+\/\d+$/.test(set48.later.score) && streak48.later.time)
+      ? ok(`v26 item 1 Go / No-go · Set shows "${set48.later.score}" and the goal box alone - no round line, no mode label - and the Streak keeps "${streak48.later.time}"`)
+      : bad('v26 item 1 the Go / No-go Set HUD', JSON.stringify({ set48, streak48 }));
+  }
 }
 
 // ---- 6f. the keys, the surface, and the three two-player defects (v15 section 5 and section 6, #375), build 26 ----
@@ -1228,6 +1254,113 @@ if (section('the keys, the surface and #375 (v15 sections 5 and 6)')) {
         out[g] = document.getElementById('go-btn').textContent.trim(); }
       return out; });
     (Object.values(gos).every(v => v === 'Go')) ? ok(`6.5 a pass & play Go says just "Go", every game — no "10s each", no "pass & play" (${Object.keys(gos).join(', ')})`) : bad('6.5 the pass & play Go button', JSON.stringify(gos)); }
+  /* ---- build 48 (FEEDBACK-v26 items 3, 9, 10, 11 and 12): the key screen's words, the earn reveal played to its last frame, the menu's green and
+     the version label ---- */
+  {
+    const KC48 = await import(pathToFileURL(path.join(root, 'config', 'copy.js')).href);
+    const KY48 = await import(pathToFileURL(path.join(root, 'config', 'keys.js')).href);
+    const tap48 = sel => page.evaluate(s => { const el = document.querySelector(s); if (!el) return false; el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })); return true; }, sel);
+
+    /* item 10 / 11: every animation the key lighting starts reaches its end - none cancelled - before the key lets go of the screen, for all three keys;
+       taps on it meanwhile do nothing; it never shows "tap to continue" or a card; and it ends by itself */
+    await boot({ allOpen: true });
+    const reveals = [];
+    for (const tier of [0, 1, 2]) {
+      await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-testing'); }); await sleep(350);
+      await page.evaluate(() => { const el = document.getElementById('s-key'), host = document.getElementById('key-cere'), t0 = performance.now(); const w = window.__r48 = { cut: [], fin: 0, n: 0, lit: null, lastEnd: null, off: null, tap: false, card: false };
+        const mo = new MutationObserver(() => { const now = performance.now() - t0;
+          if (host.classList.contains('tap')) w.tap = true; if (host.classList.contains('card') || host.querySelector('.rcard')) w.card = true;
+          if (el.classList.contains('kwhole') && w.lit === null) { w.lit = now; const as = document.getAnimations().filter(a => a.effect && a.effect.target && el.contains(a.effect.target) && Number.isFinite(a.effect.getComputedTiming().endTime) && a.playState !== 'finished');
+            w.n = as.length; as.forEach(a => a.finished.then(() => { w.fin++; w.lastEnd = performance.now() - t0; }, () => w.cut.push(a.animationName || 'x'))); }
+          if (w.lit !== null && !el.classList.contains('kwhole') && w.off === null) w.off = now; });
+        mo.observe(el, { attributes: true, attributeFilter: ['class'] }); mo.observe(host, { attributes: true, attributeFilter: ['class'], childList: true, subtree: true }); w.mo = mo; });
+      await tap48(`[data-act="dev-whole"][data-tier="${tier}"]`);
+      let taps = 0, moved = false;
+      for (let i = 0; i < 120; i++) { await sleep(200);
+        const st = await page.evaluate(() => ({ on: !document.getElementById('key-cere').hidden, mid: document.getElementById('s-key').classList.contains('krev'), scr: document.querySelector('.screen.on').id }));
+        if (st.scr !== 's-key') moved = true;
+        if (st.on && st.mid && i % 5 === 3) { await tap48('#key-cere'); await page.evaluate(async () => { const R = await import('./ui/router.js'); R.back(); }); taps++; }
+        if (!st.on && i > 5) break; }
+      const r = await page.evaluate(() => { const w = window.__r48; w.mo.disconnect(); delete w.mo; return Object.assign({}, w, { hint: getComputedStyle(document.getElementById('key-hint')).visibility, on: !document.getElementById('key-cere').hidden }); });
+      reveals.push(Object.assign(r, { tier, taps, moved }));
+    }
+    const badRev = reveals.filter(r => r.cut.length || !r.n || r.fin !== r.n || r.off === null || r.off + 1 < r.lastEnd || r.tap || r.card || r.on || r.moved || r.taps < 2 || r.hint !== 'visible');
+    (!badRev.length && reveals[0].n < reveals[1].n && reveals[1].n < reveals[2].n)
+      ? ok(`v26 items 10 / 11 all three key reveals play to their last frame: ${reveals.map(r => `${['key 1', 'Pro', 'Author'][r.tier]} ${r.fin}/${r.n} animations ended, none cut, the key let go ${Math.round(r.off - r.lastEnd)}ms after the last`).join(' · ')}; ${reveals.reduce((n, r) => n + r.taps, 0)} taps and Backs during them did nothing, and none showed "tap to continue" or a card`)
+      : bad('v26 items 10 / 11 the key reveals', JSON.stringify(reveals));
+
+    // item 9: a key card is its name and its own percentage - no theme name - and the line under the key is "N of 30"
+    await boot({ chests: { games: 1 } }, { unlock: Object.fromEntries((await page.evaluate(async () => (await import('./progress.js')).UNLOCKS.map(u => u.key))).map(k => [k, NOW])), bars: { 'quick-tap:two:5': NOW } });
+    const card48 = await page.evaluate(async () => { const R = await import('./ui/router.js'); const K = await import('./progress/key.js'); R.show('s-key', { tier: 0 }); await new Promise(r => setTimeout(r, 600));
+      return { cards: [...document.querySelectorAll('#key-keys .kkey')].map(k => ({ i: k.querySelectorAll('i').length, b: k.querySelector('b').textContent, u: k.querySelector('u').textContent })), count: document.getElementById('key-count').textContent, pct: K.bandPct('clear'), meter: K.meter() }; });
+    const names48 = KY48.KEYS.map(k => k.name);
+    (card48.cards.every((c, i) => !c.i && c.b === names48[i]) && card48.cards[0].u === card48.pct + '%' && card48.count === '1 of 30' && card48.meter === card48.pct)
+      ? ok(`v26 item 9 the three key cards say ${names48.join(' / ')} and no theme name; key 1's card carries its own ${card48.cards[0].u}; the line under the key is "${card48.count}", no percentage`)
+      : bad('v26 item 9 the key cards and the count line', JSON.stringify({ card48, names48 }));
+
+    /* item 11: after the reveal the ONE instruction is the key's, and tapping the key opens its chest - no ask. Testing's "key chest · ready" leaves key 1
+       whole and its reveal unseen, as a player who has just cleared the last bar is */
+    await boot({});
+    await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-testing'); }); await sleep(300);
+    await tap48('[data-act="dev-chestall"][data-chest="key"]'); await sleep(300);
+    await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-key', { tier: 0 }); }); await sleep(250);
+    const due48 = await page.evaluate(() => getComputedStyle(document.getElementById('key-hint')).visibility);
+    for (let i = 0; i < 90; i++) { await sleep(200); const on = await page.evaluate(() => !document.getElementById('key-cere').hidden || document.getElementById('s-key').classList.contains('kdue')); if (!on && i > 3) break; }
+    const after48 = await page.evaluate(() => ({ hint: document.getElementById('key-hint').textContent, vis: getComputedStyle(document.getElementById('key-hint')).visibility, tapLine: document.querySelectorAll('#s-key .ctap:not(:empty)').length && !document.getElementById('key-cere').hidden }));
+    await tap48('#key-ring .khubhit'); await sleep(500);
+    const open48 = await page.evaluate(() => ({ ask: !document.getElementById('key-ask').hidden, playing: !document.getElementById('key-cere').hidden, kind: document.getElementById('key-cere').dataset.kind, chest: document.getElementById('key-cere').dataset.rev }));
+    await revealDone(); await sleep(400);
+    const landed48 = await onScreen();
+    (due48 === 'hidden' && after48.hint === KC48.KEY.completeReady.replace('{chest}', KC48.GRID.chest.key) && after48.vis === 'visible' && !after48.tapLine && !open48.ask && open48.playing && open48.kind === 'chest' && open48.chest === 'key' && landed48 === 's-pick')
+      ? ok(`v26 item 11 once key 1's reveal has played the screen says only "${after48.hint}" (hidden while it plays), and tapping the key opens the Key chest at once - no ask - ending on the map`)
+      : bad('v26 item 11 the key to its chest', JSON.stringify({ due48, after48, open48, landed48 }));
+
+    /* item 3: every home menu item is green from the moment it is available until it is opened once - Keys and Customise UNLOCKED THROUGH PLAY, the
+       opens saved, and Testing's fresh game clearing them */
+    const menu48 = () => page.evaluate(() => Object.fromEntries([...document.querySelectorAll('#s-menu .item')].filter(b => b.dataset.dev === undefined).map(b => [b.dataset.go, b.classList.contains('newthing') ? 'green' : b.classList.contains('dim') || b.classList.contains('keylock') || b.classList.contains('cuslock') ? 'shut' : 'plain'])));
+    const unl48 = Object.fromEntries((await page.evaluate(async () => (await import('./progress.js')).UNLOCKS.map(u => u.key))).filter(k => k !== 'quick-tap:four').map(k => [k, NOW]));
+    await boot({ played: 0, menuOpened: {} }, { unlock: unl48 });
+    await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-menu'); }); await sleep(300);
+    const m0 = await menu48();
+    await click('#s-menu [data-go="s-pick"]'); await sleep(900);
+    await page.evaluate(() => document.querySelector('.tile[data-game="quick-tap"]').click()); await sleep(420);
+    await page.evaluate(() => document.querySelectorAll('#diff-row .choice')[0].click()); await sleep(320);
+    await page.evaluate(() => document.querySelectorAll('#time-row .tbtn')[0].click()); await sleep(200);
+    await click('#go-btn'); await sleep(400);
+    const run48 = await driveToResult('quick-tap', 'v26 item 3 a Quick Tap - Two run, the last mode');
+    await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-menu'); }); await sleep(900);
+    const m1 = await menu48();
+    await click('#s-menu [data-go="s-pick"]'); await sleep(900);
+    await page.evaluate(() => document.querySelector('#grid .chest[data-chest="games"]').click()); await sleep(400);
+    await revealDone(); await sleep(500);
+    await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-menu'); }); await sleep(900);
+    const m2 = await menu48();
+    await click('#s-menu [data-go="s-key"]'); await sleep(700); await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-menu'); }); await sleep(400);
+    const m3 = await menu48();
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(500);
+    const m4 = await menu48();
+    await click('#s-menu [data-go="s-custom"]'); await sleep(700); await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-menu'); }); await sleep(400);
+    const m5 = await menu48();
+    await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-testing'); }); await sleep(300);
+    await tap48('[data-act="dev-fresh"]'); await sleep(500);
+    for (let i = 0; i < 8 && (await page.evaluate(() => !!document.querySelector('#s-menu.story'))); i++) { await page.evaluate(() => document.body.click()); await sleep(350); }
+    await sleep(600); const m6 = await menu48(); const fresh6 = (await getJSON('ne')).prefs.menuOpened;
+    (m0['s-pick'] === 'green' && ['s-board', 's-prog', 's-about', 's-key', 's-custom'].every(k => m0[k] === 'shut') && run48 === 's-over'
+      && m1['s-pick'] === 'plain' && ['s-board', 's-prog', 's-about'].every(k => m1[k] === 'green') && m1['s-key'] === 'shut' && m1['s-custom'] === 'shut'
+      && m2['s-key'] === 'green' && m2['s-custom'] === 'green' && m3['s-key'] === 'plain' && m3['s-custom'] === 'green' && m4['s-key'] === 'plain' && m4['s-custom'] === 'green'
+      && m5['s-custom'] === 'plain' && m5['s-board'] === 'green' && m6['s-pick'] === 'green' && JSON.stringify(fresh6) === '{}')
+      ? ok('v26 item 3 every menu item is green from the moment it is available until it is opened once: Play from the first load; Scores, Progress and About once the first run is on record; Keys and Customise once the Games chest is EARNED BY A RUN and opened on the map - opening each one spends its green, a reload keeps that, and Testing\'s fresh game gives every item its green back')
+      : bad('v26 item 3 the green menu items', JSON.stringify({ m0, run48, m1, m2, m3, m4, m5, m6, fresh6 }));
+
+    // item 12: the version label is on the home menu and nowhere else
+    await boot({ allOpen: true });
+    const stamp48 = await page.evaluate(async () => { const R = await import('./ui/router.js'); const wait = ms => new Promise(r => setTimeout(r, ms)); const b = document.getElementById('build'); const out = {};
+      for (const id of ['s-menu', 's-pick', 's-key', 's-board', 's-prog', 's-custom', 's-about', 's-testing', 's-menu']) { R.show(id); await wait(250); out[id] = b.hidden || getComputedStyle(b).display === 'none' ? 'hidden' : 'shown'; }
+      return out; });
+    (stamp48['s-menu'] === 'shown' && Object.entries(stamp48).every(([id, v]) => id === 's-menu' || v === 'hidden'))
+      ? ok(`v26 item 12 the "${await page.evaluate(() => document.getElementById('build').textContent)}" label shows on the home menu and on none of the other seven screens`)
+      : bad('v26 item 12 the version label', JSON.stringify(stamp48));
+  }
 }
 
 // ---- 7. every button action once (build 15: ui/actions.js dispatches on data-act) ----
@@ -1318,6 +1451,134 @@ if (section('button actions (every data-act at least once)')) {
   const expected = ['go', 'back', 'game', 'diff', 'time', 'vs', 'vs2', 'lvl-back', 'go-btn', 'quit', 'over-back', 'share', 'chip-bd', 'chip-pv', 'chip-ach', 'chip-over', 'item', 'pvlock', 'ach', 'unl', 'prac', 'dev-open', 'dev-sup', 'dev-story', 'support', 'wheel-done', 'lock-no', 'lock-go', 'nextup', 'egg', 'ptab', 'chest', 'msg'];
   const missing = expected.filter(a => !seen.has(a));
   missing.length ? bad('every data-act driven once', 'not driven: ' + missing.join(', ')) : ok(`every data-act driven once (${expected.length}) — not covered: again, pass-go, to-games, seqdone, praclock, dev-fresh, adskip, toast, cere-tap, reveal-go, reveal-msg (the reveal's three are driven in the build 46 section)`);
+}
+
+// ---- chests (build 48 opens it — FEEDBACK-v26 items 7 and 12): one saved value, reached through play and through Testing ----
+/* Chest state, key state and the 0–300% meter are one saved value — the bars and the chests in the store — and every screen reads it. This section
+   proves it both ways Aiden gets there: by EARNING the Games chest and key 1 with real runs, and by Testing's buttons, which must land exactly where
+   play does. After every step the store, the map, the Keys screen and the menu are read side by side and must agree, and the state must be one play
+   can reach: no chest open behind a shut one, no bars on a key whose chest is shut, and a meter that is the bars. */
+if (section('chests')) {
+  const CP48 = await import(pathToFileURL(path.join(root, 'config', 'copy.js')).href);
+  const CH48 = await import(pathToFileURL(path.join(root, 'config', 'chests.js')).href);
+  const PLAIN48 = { ...PLAIN, spill: { games: 1, key: 1, pro: 1, thorns: 1 }, readySeen: { games: 1, key: 1, pro: 1, thorns: 1 } };
+  const tap = sel => page.evaluate(s => { const el = document.querySelector(s); if (!el) return false; el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })); return true; }, sel);
+  const go = (id, o) => page.evaluate(async (id, o) => (await import('./ui/router.js')).show(id, o || {}), id, o);
+  const EARN = CP48.GRID.chestEarn;
+  // every surface's reading, beside the store's
+  const read48 = () => page.evaluate(async () => { const K = await import('./progress/key.js'); const R = await import('./ui/router.js'); const wait = ms => new Promise(r => setTimeout(r, ms));
+    const ids = ['games', 'key', 'pro', 'thorns'];
+    const out = { store: { meter: K.meter(), max: K.meterMax(), chests: ids.map(K.chestState), bars: K.TIERS.map(t => K.keyState(t).done), total: K.TIERS.map(t => K.keyState(t).total), pct: K.TIERS.map(t => K.bandPct(t)), open: K.TIERS.map(t => K.tierOpen(t)) } };
+    R.show('s-pick'); await wait(450);
+    out.map = ids.map(id => { const c = document.querySelector(`#grid .chest[data-chest="${id}"]`); return { st: c.classList.contains('open') ? 'open' : c.classList.contains('ready') ? 'ready' : 'locked', need: c.querySelector('.pic').dataset.need }; });
+    R.show('s-testing'); await wait(60); R.show('s-key', { tier: 0, from: 's-testing' }); await wait(450);
+    const quiet = !document.getElementById('key-shell').hidden;
+    out.keys = { quiet, cards: [...document.querySelectorAll('#key-keys .kkey')].map(k => ({ locked: k.classList.contains('locked'), u: k.querySelector('u').textContent, theme: k.querySelectorAll('i').length })),
+      line: quiet ? (document.getElementById('key-quiet-count') || {}).textContent || '' : document.getElementById('key-count').textContent,
+      row: quiet ? [...document.querySelectorAll('#key-shell .kch')].map(k => k.classList.contains('ready') ? 'ready' : k.classList.contains('open') ? 'open' : 'locked') : null };
+    R.show('s-menu'); await wait(1250);   // the menu's count-up is 900ms
+    out.menu = document.getElementById('menu-key').hidden ? null : document.getElementById('menu-key').textContent;
+    return out; });
+  const why48 = s => { const st = s.store, w = [];
+    s.map.forEach((m, i) => { const want = st.chests[i] === 'before' ? 'locked' : st.chests[i]; if (m.st !== want) w.push(`map ${i} ${m.st}≠${want}`); if (/%/.test(m.need)) w.push(`map ${i} prints "${m.need}"`);
+      if (i && want === 'locked' && m.need !== EARN[['games', 'key', 'pro', 'thorns'][i]]) w.push(`map ${i} says "${m.need}"`); });
+    s.keys.cards.forEach((k, i) => { if (k.theme) w.push(`card ${i} has a theme name`); if (k.locked !== !st.open[i]) w.push(`card ${i} locked ${k.locked}`); if (!k.locked && st.bars[i] < st.total[i] && k.u !== st.pct[i] + '%') w.push(`card ${i} "${k.u}"≠${st.pct[i]}%`); });
+    if (/%/.test(s.keys.line)) w.push(`key line "${s.keys.line}"`);
+    if (s.keys.row && s.keys.row.some((r, i) => r !== (st.chests[i] === 'before' ? 'locked' : st.chests[i]))) w.push('key screen chest row ' + s.keys.row.join());
+    if (s.menu !== null && !s.menu.startsWith(st.meter + '%')) w.push(`menu "${s.menu}"≠${st.meter}%`);
+    // reachable by play
+    st.chests.forEach((c, i) => { if (i && c === 'open' && st.chests[i - 1] !== 'open') w.push(`chest ${i} open behind a shut one`); });
+    st.bars.forEach((n, i) => { if (n && !st.open[i]) w.push(`${n} bars on shut key ${i}`); });
+    const m = Math.floor(st.bars.reduce((a, n, i) => a + (st.open[i] ? 100 * n / st.total[i] : 0), 0) + 1e-9); if (st.meter !== m) w.push(`meter ${st.meter}≠bars ${m}`);
+    return w; };
+  const MODES48 = (await page.evaluate(async () => (await import('./progress.js')).UNLOCKS.map(u => u.key))).filter(k => k.split(':').length === 2);
+
+  (CH48.METER.modes === false && (await page.evaluate(async () => (await import('./progress/key.js')).meterMax())) === 300)
+    ? ok('v26 items 7 / 9 / 12 the meter is 0–300 - the three keys alone (METER.modes false) - so the Key chest is at 100, the Pro chest at 200 and the Thorns chest at 300')
+    : bad('v26 the 0–300 meter', JSON.stringify(CH48.METER));
+
+  /* ---- 1. THROUGH PLAY: a run earns the last mode, the Games chest opens on the map, a run clears the last key-1 bar ---- */
+  await boot({}, { unlock: Object.fromEntries(MODES48.filter(k => k !== 'quick-tap:four').map(k => [k, NOW])) }, { plain: PLAIN48 });
+  const p0 = await read48();
+  const qt48 = async (mi, label) => { await click('#s-menu [data-go="s-pick"]'); await sleep(800);
+    await page.evaluate(() => document.querySelector('.tile[data-game="quick-tap"]').click()); await sleep(420);
+    await page.evaluate(i => document.querySelectorAll('#diff-row .choice')[i].click(), mi); await sleep(320);
+    await page.evaluate(() => document.querySelectorAll('#time-row .tbtn')[0].click()); await sleep(200);
+    await click('#go-btn'); await sleep(400);
+    const t0 = Date.now(); while (Date.now() - t0 < 40000) { const at = await onScreen(); if (at === 's-over' || at === 's-key') break; if (await inGame()) await poke('quick-tap'); await sleep(40); }
+    return onScreen(); };
+  const run1 = await qt48(0, 'chests: a Quick Tap - Two run, the last mode');
+  await sleep(700); await go('s-menu'); await sleep(300);
+  const p1 = await read48();
+  await click('#s-menu [data-go="s-pick"]'); await sleep(800);
+  await page.evaluate(() => document.querySelector('#grid .chest[data-chest="games"]').click()); await sleep(500);
+  // item 7: the Games chest's screen shows no percentage - not on the stage, not on its card
+  const stage7 = await page.evaluate(() => { const h = document.getElementById('key-cere'); return { on: !h.hidden, meter: !!h.querySelector('.meterv'), txt: (h.querySelector('.ctxt') || {}).textContent || '' }; });
+  await revealReady(); await tap('#key-cere'); await sleep(500);
+  const card7 = await page.evaluate(() => [...document.querySelectorAll('#key-cere .rcard li, #key-cere .rcard p, #key-cere .rcard h3')].map(x => x.textContent));
+  await revealDone(); await sleep(500);
+  const p2 = await read48();
+  // key 1: the other 28 bars are a saved profile's; the last one is cleared LIVE by a Quick Tap - Four Sprint, which interrupts the result
+  await page.evaluate(async () => { const K = await import('./progress/key.js'); const S = await import('./core/store.js'); for (const c of K.COMBOS) if (c.key !== 'quick-tap:four:5' && !S.store.bars[c.key]) S.store.bars[c.key] = Date.now(); S.save(); });
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(500);
+  await page.evaluate(() => { const el = document.getElementById('s-key'); const w = window.__k48 = { n: 0, fin: 0, cut: 0, done: false };
+    new MutationObserver(() => { if (el.classList.contains('kwhole') && !w.n) { const as = document.getAnimations().filter(a => a.effect && a.effect.target && el.contains(a.effect.target) && Number.isFinite(a.effect.getComputedTiming().endTime));
+      w.n = as.length; as.forEach(a => a.finished.then(() => w.fin++, () => w.cut++)); } }).observe(el, { attributes: true, attributeFilter: ['class'] }); });
+  const run2 = await qt48(1, 'chests: a Quick Tap - Four Sprint, the last key-1 bar');
+  let rev2 = 'none'; for (let i = 0; i < 100; i++) { await sleep(250); const s = await page.evaluate(() => ({ scr: document.querySelector('.screen.on').id, on: !document.getElementById('key-cere').hidden, n: window.__k48.n }));
+    if (s.on) rev2 = 'playing'; if (rev2 === 'playing' && !s.on && s.scr === 's-key') { rev2 = 'ended'; break; } }
+  const k48 = await page.evaluate(() => Object.assign({}, window.__k48, { hint: document.getElementById('key-hint').textContent, lock: document.getElementById('s-key').classList.contains('auto') }));
+  const p3 = await page.evaluate(async () => { const K = await import('./progress/key.js'); return { meter: K.meter(), chests: ['games', 'key', 'pro', 'thorns'].map(K.chestState), bars: K.TIERS.map(t => K.keyState(t).done) }; });
+  // the key opens its chest, and inside the run's interlude the chest's card hands back to that run's result
+  await tap('#key-ring .khubhit'); await sleep(400); await revealDone(); await sleep(500);
+  const back2 = await onScreen();
+  const p4 = await read48();
+  (run1 === 's-over' && !why48(p0).length && p0.store.chests.join() === 'locked,before,before,before' && p1.store.chests[0] === 'ready' && !why48(p1).length
+    && stage7.on && !stage7.meter && !/%/.test(stage7.txt) && card7.length && !card7.some(x => /%/.test(x)) && p2.store.chests.join() === 'open,locked,before,before' && !why48(p2).length
+    && (run2 === 's-over' || run2 === 's-key') && rev2 === 'ended' && k48.n && k48.fin === k48.n && !k48.cut && k48.hint === CP48.KEY.completeReady.replace('{chest}', CP48.GRID.chest.key)
+    && p3.chests.join() === 'open,ready,before,before' && p3.meter === 100 && p3.bars[0] === 30 && back2 === 's-over' && p4.store.chests.slice(0, 3).join() === 'open,open,locked' && !why48(p4).length)
+    ? ok(`v26 items 7 / 12 THROUGH PLAY: a run earns the last mode and the Games chest goes ready; opened on the map its screen and card show no percentage ("${card7.join(' · ')}"); a run clears the last key-1 bar, the reveal plays every one of its ${k48.n} animations to the end, the key says "${k48.hint}", the Key chest is ready at ${p3.meter}%, the tap opens it and its card goes back to the run's result - and at every step the store, the map, the Keys screen and the menu agree`)
+    : bad('v26 items 7 / 12 the earned path', JSON.stringify({ run1, p0: why48(p0), p1: [p1.store.chests, why48(p1)], stage7, card7, p2: [p2.store.chests, why48(p2)], run2, rev2, k48, p3, back2, p4: [p4.store, why48(p4)] }));
+
+  /* ---- 2. THROUGH TESTING: every button lands where play does, and every screen agrees after each ---- */
+  await boot({}, {}, { plain: PLAIN48 });
+  const steps = [];
+  const press = async (label, sel, val) => { await go('s-testing'); await sleep(250); if (val !== undefined) await page.evaluate(v => { document.getElementById('dev-meter').value = v; }, val);
+    await tap(sel); await sleep(250); const s = await read48(); steps.push({ label, chests: s.store.chests.join(), bars: s.store.bars.join(), meter: s.store.meter, why: why48(s), menu: s.menu, map: s.map.map(m => m.need) }); return s; };
+  const t1 = await press('key chest · ready', '[data-act="dev-chestall"][data-chest="key"]');
+  const t2 = await press('pro chest · ready', '[data-act="dev-chestall"][data-chest="pro"]');
+  const t3 = await press('reset key chest', '[data-act="dev-chestreset"][data-chest="key"]');
+  const t4 = await press('set meter to 203', '[data-act="dev-meter"]', '203');
+  const t5 = await press('set meter to 100', '[data-act="dev-meter"]', '100');
+  const t5b = await press('key chest switch off (its reset)', '[data-act="dev-chestall"][data-chest="key"]');
+  const t6 = await press('thorns chest · ready', '[data-act="dev-chestall"][data-chest="thorns"]');
+  const t7 = await press('reset pro chest', '[data-act="dev-chestreset"][data-chest="pro"]');
+  const t8 = await press('reset games chest', '[data-act="dev-chestreset"][data-chest="games"]');
+  const byPress = steps.filter(s => s.why.length);
+  (!byPress.length
+    && t1.store.chests.join() === p3.chests.join() && t1.store.bars.join() === p3.bars.join() && t1.store.meter === p3.meter
+    && t2.store.chests.join() === 'open,open,ready,before' && t2.store.meter === 200 && t2.menu === CP48.KEY.menuReady.replace('{pct}', 200).replace('{chest}', CP48.GRID.chest.pro)
+    && t3.store.chests.join() === 'open,locked,before,before' && t3.store.bars.join() === '0,0,0'
+    && t4.store.chests.join() === 'open,open,open,locked' && t4.store.bars.join() === '30,30,1' && t4.store.meter === 203 && t4.map[3].need === EARN.thorns
+    && t5.store.chests.join() === 'open,ready,before,before' && t5.store.meter === 100 && t5.map[2].need === EARN.pro
+    && t5b.store.chests.join() === 'open,locked,before,before' && t5b.store.meter === 0
+    && t6.store.chests.join() === 'open,open,open,ready' && t6.store.meter === 300
+    && t7.store.chests.join() === 'open,open,locked,before' && t7.store.meter === 100
+    && t8.store.chests.join() === 'locked,before,before,before' && t8.store.meter === 0)
+    ? ok(`v26 items 7 / 12 THROUGH TESTING: "key chest · ready" lands exactly where the earned path did (${p3.chests.join(', ')} · ${p3.bars.join('/')} bars · ${p3.meter}%); the Pro key whole is 200% with the Pro chest ready ("${t2.menu}"); set meter to 203 opens the Key and Pro chests and clears one Author bar; a reset shuts that chest and every chest after it - ${steps.length} presses, and after each one the store, the map, the Keys screen and the menu agree on a state play can reach`)
+    : bad('v26 items 7 / 12 the Testing path', JSON.stringify({ byPress, p3, steps }));
+
+  // and the key reveal a Testing button leaves unseen is played in full before a chest tapped on the map opens - the map path (B.3) with the new reveal
+  await go('s-testing'); await sleep(250); await tap('[data-act="dev-chestall"][data-chest="key"]'); await sleep(250);
+  await go('s-pick'); await sleep(600);
+  await page.evaluate(() => { const h = document.getElementById('key-cere'), o = window.__o48 = ['off']; new MutationObserver(() => { const k = h.hidden ? 'off' : h.dataset.kind || 'off'; if (o[o.length - 1] !== k) o.push(k); }).observe(h, { attributes: true, attributeFilter: ['hidden', 'data-kind'] }); });
+  await page.evaluate(() => document.querySelector('#grid .chest[data-chest="key"]').click()); await sleep(300);
+  let order48 = []; for (let i = 0; i < 120; i++) { await sleep(200); order48 = await page.evaluate(() => window.__o48.slice(1)); if (order48.includes('chest')) break; }
+  await revealDone(); await sleep(500);
+  const mapOpen = await page.evaluate(async () => (await import('./progress/key.js')).chestState('key'));
+  (order48.join() === 'key,off,chest' && mapOpen === 'open')
+    ? ok('v26 item 11 a ready Key chest tapped on the map with key 1\'s reveal unseen plays that reveal to its end, then opens the chest - the player already asked, so nothing else is tapped in between')
+    : bad('v26 item 11 the map path', JSON.stringify({ order48, mapOpen }));
 }
 
 /* ---- 8. build 27 (v16): the Timing unlock, the music engine, Find versus, the intro ---- */
@@ -1949,8 +2210,9 @@ if (section('build 29 - v17 sections B.19 to B.26')) {
       return out; });
     (/locked/.test(ch.cls) && ch.id === 'games' && ch.need === `unlock every game · ${ch.open} of ${ch.total}`)
       ? ok(`B.24 AMENDED at build 40 (L.10c): the first chest is the Games chest, locked, saying what the chain asks: "${ch.need}"`) : bad('B.24 the locked chest', JSON.stringify(ch));
-    (ch.shown.join() === 'true,true,true,true' && ch.needs.every(x => x === 'open the previous chest') && !/\d/.test(ch.needs.join('')))
-      ? ok('B.24 / A.1 AMENDED at build 40 (v21 G.1, narrowing A.1; v23 L.10): with no dev flag all four chests are on the map, the Key, Pro and Thorns chests locked with "open the previous chest" and no number about what is inside')
+    // AMENDED at build 48 (v26 item 12): a locked key chest says what opens it in words - "Earn the Pro key" - and still no number
+    (ch.shown.join() === 'true,true,true,true' && ch.needs.join('|') === 'Earn the key|Earn the Pro key|Earn the Author key' && !/\d/.test(ch.needs.join('')))
+      ? ok('B.24 / A.1 AMENDED at build 40 (v21 G.1, narrowing A.1; v23 L.10): with no dev flag all four chests are on the map, the Key, Pro and Thorns chests locked with the key that opens each (AMENDED at build 48, v26 item 12) and no number about what is inside')
       : bad('A.1 the grid mentions pro or author', JSON.stringify({ shown: ch.shown, text: ch.text.slice(0, 120) }));
   }
   /* B.24: every bar cleared -> the chest is openable, opens once, stores it, and says what it gave.
@@ -2157,7 +2419,7 @@ if (section('build 30 - v17 sections B.27 to B.33')) {
     const before = await page.evaluate(() => ({ n: document.querySelectorAll('#key-keys .kkey').length,
       txt: document.getElementById('s-key').textContent.toLowerCase(), theme: document.querySelector('#key-keys .kkey i')?.textContent,
       locked: document.querySelectorAll('#key-keys .kkey.locked').length, lockedTxt: [...document.querySelectorAll('#key-keys .kkey.locked')].map(x => x.textContent).join(' | ') }));
-    (before.n === 3 && before.theme === 'Lantern' && before.locked === 3 && /open the Games chest/i.test(before.lockedTxt) && /open the previous chest/i.test(before.lockedTxt) && !/\d|%/.test(before.lockedTxt))
+    (before.n === 3 && !before.theme /* AMENDED at build 48 (v26 item 9): no theme name on a key card */ && before.locked === 3 && /open the Games chest/i.test(before.lockedTxt) && /open the previous chest/i.test(before.lockedTxt) && !/\d|%/.test(before.lockedTxt))
       ? ok('B.31 / A.1 AMENDED at build 40 (v23 L.10a): before the Games chest all three keys are on the strip and all three are crossed out - key 1 with "open the Games chest", the other two with "open the previous chest" - and no number')
       : bad('B.31 Frost and Thorn are hidden until chest 1', JSON.stringify(before).slice(0, 200));
     await setStorage({ ne: { v: 1, prefs: { ...OPEN_PREFS, chest1: 1 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
@@ -2165,7 +2427,8 @@ if (section('build 30 - v17 sections B.27 to B.33')) {
     await click('[data-go="s-key"]'); await sleep(700);
     const after = await page.evaluate(() => ({ n: document.querySelectorAll('#key-keys .kkey').length,
       themes: [...document.querySelectorAll('#key-keys .kkey i')].map(i => i.textContent) }));
-    (after.n === 3 && after.themes.join(',') === 'Lantern,Circuit,Thorn') ? ok('B.31 all three arrive with chest 1 - ' + after.themes.join(' · '))
+    // AMENDED at build 48 (v26 item 9): the cards carry no theme name - Lantern, Circuit and Thorn name backgrounds and music, not keys
+    (after.n === 3 && !after.themes.length) ? ok('B.31 all three arrive with chest 1, and no card carries a theme name (v26 item 9)')
       : bad('B.31 chest 1 reveals the other two', JSON.stringify(after));
     /* #411: OPEN EVERYTHING is an ESCAPE from the A.1 gate, not an exception to it. The rest of the app already let
        allOpen and supporter stand in for a chest (ui/screens/progress.js:110); the key screen read prefs.chest1 alone,
@@ -2186,7 +2449,7 @@ if (section('build 30 - v17 sections B.27 to B.33')) {
       S.prefs.supporter = false; S.save();
       R.show('s-key'); await new Promise(r => setTimeout(r, 300)); out.neither = read();
       return out; });
-    (!dev.chest && dev.open.n === 3 && dev.open.themes.join(',') === 'Lantern,Circuit,Thorn' && !dev.open.one && dev.open.pro && dev.open.author && dev.open.rungs === 3)
+    (!dev.chest && dev.open.n === 3 && !dev.open.themes.length /* AMENDED at build 48 (v26 item 9) */ && !dev.open.one && dev.open.pro && dev.open.author && dev.open.rungs === 3)
       ? ok('#411 OPEN EVERYTHING reveals all three tiers with chest 1 still shut - the key strip, tierOpen and the radar rungs all take the same escape')
       : bad('#411 allOpen opens the key map', JSON.stringify(dev.open));
     (dev.sup.n === 3 && dev.sup.rungs === 3 && dev.sup.pro) ? ok('#411 a supporter takes the same escape, chest or no chest')
@@ -2416,13 +2679,14 @@ if (section('build 31 - v18 sections B.1 to B.14')) {
       if (await clearReady('reaction')) continue;
       const st = await page.evaluate(async () => { const M = await import('./games/reaction/index.js'); const R = M.default;
         return { lit: R.st === 'go', hud: document.getElementById('hud-time').textContent.trim(), round: R.round, dealt: R.goDealt }; });
-      if (/^round \d+ of 5/.test(st.hud)) hudSeen = st.hud;
+      if (st.hud) hudSeen = st.hud;
       if (st.lit) await down('#gen');
       await sleep(45); }
     const end = await page.evaluate(async () => { const M = await import('./games/reaction/index.js'); const R = M.default;
       return { round: R.round, dealt: R.goDealt, score: document.querySelector('#over-score').textContent.trim() }; });
-    (end.round === 5 && end.dealt === 15 && /^round \d+ of 5 · \d of 3$/.test(hudSeen))
-      ? ok(`B.1b a Go / No-go Set is 5 rounds × 3 target shapes — 15 dealt, HUD read "${hudSeen}"`)
+    // AMENDED at build 48 (v26 item 1): the Set's round line is gone - the big counter says how far through a player is
+    (end.round === 5 && end.dealt === 15 && hudSeen === '')
+      ? ok('B.1b a Go / No-go Set is 5 rounds × 3 target shapes — 15 dealt, and no round line on the HUD at any point (v26 item 1)')
       : bad('B.1b five rounds of three correct taps', JSON.stringify({ ...end, hudSeen }));
   }
 
@@ -2728,14 +2992,15 @@ if (section('build 32 - v19 section C and v18 sections B.15 to B.27')) {
     await setStorage({ ne: { v: 5, prefs: { ...OPEN_PREFS, allOpen: false, keySeen: 1, chests: { games: 1, key: 1 } }, runs: [], ach: {}, unlock: seed.unlock, intro: SEEN_INTRO, seen: {}, bars: seed.bars } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(1400);
     const line = await page.evaluate(() => document.getElementById('menu-key').textContent.trim());
-    (line === '200% complete') ? ok(`L.8a (retiring B.17) the front of the app reads the meter and never re-bases: every mode, key 1 whole and the Key chest open reads "${line}"`) : bad('L.8a the front number', line);
+    // AMENDED at build 48 (v26 items 7 / 9): the meter is 0–300, the keys alone - key 1 whole with the Key chest open is 100
+    (line === '100% complete') ? ok(`L.8a (retiring B.17) the front of the app reads the meter and never re-bases: every mode, key 1 whole and the Key chest open reads "${line}"`) : bad('L.8a the front number', line);
     // B.19: the column — AMENDED at build 40 (L.10c): four chests, one column, Games at the top of it
     await click('[data-go="s-pick"]'); await sleep(600);
     const col = await page.evaluate(() => { const ids = ['games', 'key', 'pro', 'thorns']; const c = n => document.querySelector(`.chest[data-chest="${n}"]`); const cell = n => ({ r: +c(n).style.gridRow, col: +c(n).style.gridColumn, need: c(n).querySelector('.pic').dataset.need, cls: c(n).className, name: c(n).querySelector('.name').textContent.trim() });
       return Object.assign(Object.fromEntries(ids.map(n => [n, cell(n)])), { scroll: getComputedStyle(document.getElementById('s-pick')).overflowY }); });
     (col.key.col === col.games.col && col.pro.col === col.games.col && col.thorns.col === col.games.col && col.key.r === col.games.r + 1 && col.pro.r === col.games.r + 2 && col.thorns.r === col.games.r + 3
-      && /open/.test(col.games.cls) && /open/.test(col.key.cls) && /locked/.test(col.pro.cls) && /^\d+% · opens at 300%$/.test(col.pro.need) && col.thorns.need === 'open the previous chest' && col.pro.name === 'Pro chest' && col.thorns.name === 'Thorns chest' && col.scroll === 'auto')
-      ? ok(`B.19 AMENDED at build 40 (L.10c): four chests in a column (rows ${col.games.r}-${col.thorns.r}); Games and Key open, the Pro chest reading the meter "${col.pro.need}", Thorns pointing at the chest before it; the screen scrolls`)
+      && /open/.test(col.games.cls) && /open/.test(col.key.cls) && /locked/.test(col.pro.cls) && col.pro.need === 'Earn the Pro key' && col.thorns.need === 'Earn the Author key' /* AMENDED at build 48 (v26 item 12) */ && col.pro.name === 'Pro chest' && col.thorns.name === 'Thorns chest' && col.scroll === 'auto')
+      ? ok(`B.19 AMENDED at build 40 (L.10c): four chests in a column (rows ${col.games.r}-${col.thorns.r}); Games and Key open, the Pro chest saying "${col.pro.need}" and Thorns "${col.thorns.need}" (v26 item 12); the screen scrolls`)
       : bad('B.19 the chest column', JSON.stringify(col));
   }
   /* ---- B.18: the outline fills with key-1 progress; complete is a different thing ---- */
@@ -3604,8 +3869,10 @@ if (section('build 37 - keys and chests')) {
     await click('#dev-keys [data-act="dev-chestreset"][data-chest="key"]'); await sleep(300); const rs = await readK();
     (btns.join() === 'dev-chestall:games,dev-chestall:key,dev-chestall:pro,dev-chestall:thorns,dev-chestreset:games,dev-chestreset:key,dev-chestreset:pro,dev-chestreset:thorns')
       ? ok('G.8 AMENDED at build 40 (L.8f): eight Testing buttons under [data-dev] - a switch and a reset for each of the four chests (S5)') : bad('G.8 the buttons', btns.join());
-    (on.bars.length === 30 && on.snap && on.snap.length === 2 && on.sel && off.bars.join() === 'dots:blind:5,quick-tap:two:5' && !off.snap && !off.sel)
-      ? ok('G.8 the Key chest\'s switch clears all thirty key-1 bars and remembers the two it held; switching it off puts exactly those two back') : bad('G.8 the switch', JSON.stringify({ on, off }));
+    /* AMENDED at build 48 (v26 items 7 / 12): the switch plays forward until the Key chest is READY and never opens it, and taking it off is its
+       reset - nothing is remembered and put back, because a snapshot restored over a later state is a state play cannot reach */
+    (on.bars.length === 30 && !on.snap && on.sel && on.chestKey === 0 && !off.bars.length && !off.snap && !off.sel)
+      ? ok('G.8 the Key chest\'s switch clears all thirty key-1 bars and leaves the Key chest ready, unopened; switching it off backs key 1 out (v26 items 7 / 12)') : bad('G.8 the switch', JSON.stringify({ on, off }));
     (!rs.bars.length && rs.chestKey === 0 && !rs.pro && !rs.ach.length && !rs.snap)
       ? ok('G.8 resetting the Key chest backs key 1 out entirely - its bars, the chest and its key achievements - without Fresh game (there is no step into Pro left to undo)') : bad('G.8 the reset', JSON.stringify(rs));
   }
@@ -3631,13 +3898,14 @@ if (section('build 37 - keys and chests')) {
       S.prefs.chests = { games: 1, key: 1, pro: 0, thorns: 0 }; S.save(); R.show('s-menu'); await wait(150); R.show('s-key'); await wait(500); out.keysAfter2 = kk().map(b => b.classList.contains('locked'));
       S.prefs.chests = { games: 0, key: 0, pro: 0, thorns: 0 }; S.save(); return out; });
     const f = g12.fresh;
-    (f.every(x => x.shown) && f.every(x => x.locked) && f[1].name === 'Key chest' && f[2].name === 'Pro chest' && f[3].name === 'Thorns chest' && f.slice(1).every(x => x.need === 'open the previous chest')
+    (f.every(x => x.shown) && f.every(x => x.locked) && f[1].name === 'Key chest' && f[2].name === 'Pro chest' && f[3].name === 'Thorns chest' && f.slice(1).map(x => x.need).join('|') === 'Earn the key|Earn the Pro key|Earn the Author key' /* AMENDED at build 48 (v26 item 12) */
       && f.slice(1).every(x => x.col === f[0].col) && f[1].r === f[0].r + 1 && f[2].r === f[0].r + 2 && f[3].r === f[0].r + 3)
-      ? ok('G.1 (v17 A.1, narrowed; AMENDED at build 40, L.10c) the Key, Pro and Thorns chests are on the map from the start, stacked under the Games chest, locked, each saying "open the previous chest" and nothing about what is inside') : bad('G.1 the chest column', JSON.stringify(f));
+      ? ok('G.1 (v17 A.1, narrowed; AMENDED at build 40, L.10c) the Key, Pro and Thorns chests are on the map from the start, stacked under the Games chest, locked, each saying which key opens it and nothing about what is inside (v26 item 12)') : bad('G.1 the chest column', JSON.stringify(f));
     (g12.tap.toast === 'Open the previous chest first' && g12.tap.screen === 's-pick' && !g12.tap.chest2)
       ? ok('G.1 tapping a chest whose previous chest is shut says so and stays put, storing nothing') : bad('G.1 the early tap', JSON.stringify(g12.tap));
-    (/^\d+% · opens at 200%$/.test(g12.after1[1].need) && g12.after1[2].need === 'open the previous chest' && g12.after1[3].need === 'open the previous chest')
-      ? ok(`G.1 AMENDED at build 40 (L.8a): once the Games chest is open the Key chest reads the meter - "${g12.after1[1].need}" - and the chests after it still point at the chest before them`) : bad('G.1 after the Games chest', JSON.stringify(g12.after1));
+    // AMENDED at build 48 (v26 item 12): no percentage on the map - each locked key chest names its key, before and after the Games chest
+    (g12.after1.slice(1).map(x => x.need).join('|') === 'Earn the key|Earn the Pro key|Earn the Author key')
+      ? ok(`G.1 once the Games chest is open the Key chest says "${g12.after1[1].need}" and the chests after it name their keys - no percentage (v26 item 12)`) : bad('G.1 after the Games chest', JSON.stringify(g12.after1));
     const u = g12.keys.under;
     (g12.keys.n === 3 && g12.keys.locked.join() === 'true,true,true' && g12.keys.x.join() === 'true,true,true' && u[0] === 'To unlock: open the Games chest' && u[1] === 'To unlock: open the previous chest' && u[2] === u[1] && !g12.keys.whole && !g12.keys.one)
       ? ok(`G.2 / D.7 AMENDED at build 40 (L.10a): all three keys on the strip and all three crossed out before the Games chest - "${u[0]}", then "${u[1]}" - with no percentage`) : bad('G.2 / D.7 the key strip', JSON.stringify(g12.keys));
@@ -3729,18 +3997,19 @@ if (section('build 37 - keys and chests')) {
     const d4 = await page.evaluate(async () => { const S = await import('./core/store.js'); const R = await import('./ui/router.js'); const A = await import('./audio.js'); const K = await import('./progress/key.js');
       const wait = ms => new Promise(r => setTimeout(r, ms));
       /* AMENDED at build 40 (v23 L.8e): ONE last-painted figure - the meter, `prefs.meterSeen` - not one per key. Every mode is open (G.4 left
-         them) and so is the Games chest, so 6 of 30 key-1 bars reads 100 + 20 = 120 */
-      S.store.runs = []; S.store.bars = {}; K.COMBOS.slice(0, 6).forEach(c => { S.store.bars[c.key] = Date.now(); }); S.prefs.played = 1; S.prefs.chests = { games: 1, key: 0, pro: 0, thorns: 0 }; S.prefs.meterSeen = 100; S.save();
+         them) and so is the Games chest, so 6 of 30 key-1 bars reads 100 + 20 = 120. AMENDED at build 48 (v26 items 7 / 9): the meter is 0–300, so
+         the same six read 20, counted up from a last-painted 10 */
+      S.store.runs = []; S.store.bars = {}; K.COMBOS.slice(0, 6).forEach(c => { S.store.bars[c.key] = Date.now(); }); S.prefs.played = 1; S.prefs.chests = { games: 1, key: 0, pro: 0, thorns: 0 }; S.prefs.meterSeen = 10; S.save();
       const pct = K.meter(); const wh = []; const ow = A.Snd.whoosh; A.Snd.whoosh = function (ms) { wh.push(ms); return ow.apply(this, arguments); };
       R.show('s-pick'); await wait(120); R.show('s-menu');
       const mk = document.getElementById('menu-key'); const first = { txt: mk.textContent, up: mk.classList.contains('up') };
       await wait(1300); const end = { txt: mk.textContent, seen: JSON.parse(localStorage.getItem('ne')).prefs.meterSeen, whoosh: wh.slice() };
       R.show('s-pick'); await wait(120); R.show('s-menu'); const again = { up: mk.classList.contains('up'), txt: mk.textContent };
-      S.prefs.meterSeen = 190; S.save(); R.show('s-pick'); await wait(120); R.show('s-menu'); const down = { up: mk.classList.contains('up'), txt: mk.textContent, seen: S.prefs.meterSeen };
+      S.prefs.meterSeen = 90; S.save(); R.show('s-pick'); await wait(120); R.show('s-menu'); const down = { up: mk.classList.contains('up'), txt: mk.textContent, seen: S.prefs.meterSeen };
       A.Snd.whoosh = ow; return { pct, first, end, again, down }; });
-    (d4.pct === 120 && d4.first.txt === '100% complete' && d4.first.up && d4.end.txt === '120% complete' && d4.end.seen === 120 && d4.end.whoosh.includes(900))
-      ? ok('D.4 / L.8e back at the menu with the meter up from 100% to 120% since it was last shown, the figure pulses and counts up with the count-up\'s own whoosh, and 120 is written when it is painted') : bad('D.4 the count-up', JSON.stringify(d4));
-    (!d4.again.up && d4.again.txt === '120% complete' && !d4.down.up && d4.down.txt === '120% complete' && d4.down.seen === 120)
+    (d4.pct === 20 && d4.first.txt === '10% complete' && d4.first.up && d4.end.txt === '20% complete' && d4.end.seen === 20 && d4.end.whoosh.includes(900))
+      ? ok('D.4 / L.8e back at the menu with the meter up from 10% to 20% since it was last shown (0–300 since build 48), the figure pulses and counts up with the count-up\'s own whoosh, and 20 is written when it is painted') : bad('D.4 the count-up', JSON.stringify(d4));
+    (!d4.again.up && d4.again.txt === '20% complete' && !d4.down.up && d4.down.txt === '20% complete' && d4.down.seen === 20)
       ? ok('D.4 painting the same figure again plays nothing, and a figure LOWER than the one last seen never counts down') : bad('D.4 once, and never down', JSON.stringify({ again: d4.again, down: d4.down }));
   }
 }
@@ -4215,7 +4484,7 @@ if (section('build 40 - batch 16, four chests and the meter')) {
       const out = { before, r: r && { was: r.was, now: r.now, fresh: r.fresh.length }, bare: bars.filter(k => !k.includes('|')).length, tiered: bars.filter(k => k.includes('|')).length,
         retroBare: Object.keys(S.prefs.retro || {}).every(k => !k.includes('|')), again: K.openChest('games'), total: K.COMBOS.length, key: K.chestState('key') };
       S.store.runs = []; S.store.bars = {}; S.store.ach = {}; S.prefs.chests = { games: 0, key: 0, pro: 0, thorns: 0 }; S.prefs.retro = {}; S.store.unlock = {}; S.save(); return out; }, ALL_UNLOCK);
-    (rv.before.state === 'ready' && !rv.before.clear && rv.before.meter === 100 && rv.r && rv.r.was === 100 && rv.r.now === 200 && rv.bare === rv.total && !rv.tiered && rv.retroBare && rv.again === null && rv.key === 'ready')
+    (rv.before.state === 'ready' && !rv.before.clear && rv.before.meter === 0 && rv.r && rv.r.was === 0 && rv.r.now === 100 /* AMENDED at build 48 (v26 items 7 / 9): 0–300 */ && rv.bare === rv.total && !rv.tiered && rv.retroBare && rv.again === null && rv.key === 'ready')
       ? ok(`L.10e opening the Games chest reveals exactly key 1: all ${rv.bare} key-1 bars a saved best beats bank silently and nothing on Pro or Author does; the meter goes ${rv.r.was} -> ${rv.r.now}, the Key chest is ready, a second open does nothing`)
       : bad('L.10e what the Games chest reveals', JSON.stringify(rv));
   }
@@ -4223,8 +4492,10 @@ if (section('build 40 - batch 16, four chests and the meter')) {
   /* ---- 3. L.8a / L.10b: ONE meter, 0-400 - modes, then each key's cleared bars - a band counting only once its chest is open ---- */
   {
     const keyjs = strip(read('progress', 'key.js')), surf = ['ui/screens/menu.js', 'ui/screens/pick.js', 'ui/screens/key.js'].map(f => strip(read(...f.split('/'))));
-    (/const meter = \(\) =>/.test(keyjs) && surf.every(s => /\bmeter\(\)/.test(s)) && !surf.some(s => /keyPct\(|frontPct/.test(s)))
-      ? ok('L.8a one meter() in progress/key.js, and the menu card, the map chests and the key screen all read it - none reads keyPct or frontPct') : bad('L.8a one meter function');
+    /* DELETED at build 48: "L.8a one meter() … the menu card, the map chests and the key screen all read it" tested the source text, and v26 item 12
+       took the percentage off the map, so pick.js no longer spells meter(). A source-text check a rule change fails is deleted, not re-spelled
+       (site/CLAUDE.md → The gate). The chests section drives the same claim on the page: every surface agrees with the store. */
+    void keyjs; void surf;
     const mt = await page.evaluate(async ALL => { const K = await import('./progress/key.js'); const S = await import('./core/store.js'); const U = await import('./config/unlocks.js');
       const set = (chests, unlock, tiers) => { S.prefs.chests = Object.assign({ games: 0, key: 0, pro: 0, thorns: 0 }, chests); S.store.unlock = unlock;
         S.store.bars = {}; for (const t of tiers) for (const c of K.COMBOS) S.store.bars[K.skey(c.key, t)] = 1; return K.meter(); };
@@ -4234,8 +4505,9 @@ if (section('build 40 - batch 16, four chests and the meter')) {
         noThorns: set({ games: 1, key: 1, pro: 1 }, Object.assign({}, ALL), all), full: set({ games: 1, key: 1, pro: 1, thorns: 1 }, Object.assign({}, ALL), all), max: K.meterMax() };
       set({ games: 1 }, Object.assign({}, ALL), []); K.COMBOS.slice(0, K.COMBOS.length / 2).forEach(c => { S.store.bars[c.key] = 1; }); out.half = K.meter();
       S.prefs.chests = { games: 0, key: 0, pro: 0, thorns: 0 }; S.store.unlock = {}; S.store.bars = {}; S.save(); return out; }, ALL_UNLOCK);
-    (mt.fresh === 0 && mt.oneMode === 8 && mt.everyMode === 100 && mt.noGames === 100 && mt.noKey === 200 && mt.noPro === 300 && mt.noThorns === 400 && mt.full === 400 && mt.half === 150 && mt.max === 400)
-      ? ok(`L.8a / L.10b the meter: a new profile ${mt.fresh}%, one mode past the start ${mt.oneMode}% (§M.4), every mode ${mt.everyMode}; with every bar on every key banked underneath it still reads ${mt.noGames} before the Games chest and ${mt.noKey} before the Key chest (never past either), ${mt.noPro} before the Pro chest and ${mt.noThorns} past it; half of key 1 is ${mt.half}`)
+    // AMENDED at build 48 (v26 items 7 / 9 / 12): the meter is 0–300 - the modes band is off (METER.modes false), so modes read 0 and the keys are the whole of it
+    (mt.fresh === 0 && mt.oneMode === 0 && mt.everyMode === 0 && mt.noGames === 0 && mt.noKey === 100 && mt.noPro === 200 && mt.noThorns === 300 && mt.full === 300 && mt.half === 50 && mt.max === 300)
+      ? ok(`L.8a / L.10b the meter, 0–300 since build 48: a new profile ${mt.fresh}%, every mode ${mt.everyMode}; with every bar on every key banked underneath it still reads ${mt.noGames} before the Games chest, ${mt.noKey} before the Key chest, ${mt.noPro} before the Pro chest and ${mt.noThorns} past it (never past a shut chest); half of key 1 is ${mt.half}`)
       : bad('L.8a the meter', JSON.stringify(mt));
   }
 
@@ -4261,14 +4533,14 @@ if (section('build 40 - batch 16, four chests and the meter')) {
     await click('#s-key .back'); await sleep(300); await click('[data-go="s-pick"]'); await sleep(700);
     const after = await page.evaluate(() => { const c = document.querySelector('.chest[data-chest="games"]'), w = document.querySelector('.chestwords[data-for="games"]');
       return { cls: c.className, need: c.querySelector('.pic').dataset.need, words: w.hidden ? null : [...w.querySelectorAll('.cw')].map(x => x.dataset.w), syms: w.querySelectorAll('.cwsym').length, wr: +w.style.gridRow, wc: +w.style.gridColumn, cr: +c.style.gridRow, cc: +c.style.gridColumn, key: document.querySelector('.chest[data-chest="key"] .pic').dataset.need, keyWords: document.querySelector('.chestwords[data-for="key"]').hidden }; });
-    (/ready/.test(map.games) && map.need === 'tap to open' && map.key === 'open the previous chest' && !map.ask && map.words)
-      ? ok('L.8b with every mode unlocked the Games chest is ready on the map - "tap to open" - the Key chest points at the chest before it, nothing stands beside a shut chest, and there is no ask box in the page') : bad('L.8b the ready Games chest', JSON.stringify(map));
-    (onKey === 's-key' && opened.games === 1 && opened.shown && opened.tap && /Games chest opened/i.test(opened.txt) && opened.meterTxt === opened.meter + '%' && opened.seen === opened.meter && opened.meter === 100 + Math.floor(100 * opened.bare / opened.total) && opened.bare === 5 && opened.fx === 1 && !opened.toast && opened.map === 's-pick')
-      ? ok(`L.8b AMENDED at build 43 (v24 B.2): the map's tap on the READY chest opened it at once, its ceremony covering the key screen from the frame it is shown: "${opened.txt}" - its ${opened.bare} already-beaten key-1 bars credited silently (G.4 extended), the meter counted up to ${opened.meterTxt} in the ceremony's last beat, one chest sound, no toast, no question; its tap goes to the map (AMENDED at build 41, L.6)`) : bad('L.8b the open on the key screen', JSON.stringify(opened));
+    (/ready/.test(map.games) && map.need === 'tap to open' && map.key === 'Earn the key' /* AMENDED at build 48 (v26 item 12) */ && !map.ask && map.words)
+      ? ok('L.8b with every mode unlocked the Games chest is ready on the map - "tap to open" - the Key chest says "Earn the key", nothing stands beside a shut chest, and there is no ask box in the page') : bad('L.8b the ready Games chest', JSON.stringify(map));
+    (onKey === 's-key' && opened.games === 1 && opened.shown && opened.tap && /Games chest opened/i.test(opened.txt) && !opened.meterTxt && !/%/.test(opened.txt) /* AMENDED at build 48 (v26 item 7): no percentage on the Games chest */ && opened.seen === opened.meter && opened.meter === Math.floor(100 * opened.bare / opened.total) && opened.bare === 5 && opened.fx === 1 && !opened.toast && opened.map === 's-pick')
+      ? ok(`L.8b AMENDED at build 43 (v24 B.2): the map's tap on the READY chest opened it at once, its ceremony covering the key screen from the frame it is shown: "${opened.txt}" - its ${opened.bare} already-beaten key-1 bars credited silently (G.4 extended) and the meter at ${opened.meter}% with no figure on the chest's own screen (v26 item 7), one chest sound, no toast, no question; its tap goes to the map (AMENDED at build 41, L.6)`) : bad('L.8b the open on the key screen', JSON.stringify(opened));
     (!again.shown && again.fx === 1) ? ok('L.8b opened is opened: the next visit to the key screen opens nothing and plays nothing') : bad('L.8b no repeat', JSON.stringify(again));
     // v25 (item 7, build 46): and each word now carries the SAME symbol that rose out of the chest, so the two moments are connected
-    (/open/.test(after.cls) && after.need === 'opened' && after.words && after.words.join() === 'CUSTOMISE,THE KEY' && after.syms === after.words.length && after.wr === after.cr && after.wc !== after.cc && after.keyWords && /^\d+% · opens at 200%$/.test(after.key))
-      ? ok(`L.11c back on the map the Games chest is open with its words beside it (${after.words.join(' · ')}, row ${after.wr}, col ${after.wc} against the chest's ${after.cc}), each with its own symbol (item 7), and the Key chest reads the meter: "${after.key}"`) : bad('L.11c the opened chest and its words', JSON.stringify(after));
+    (/open/.test(after.cls) && after.need === 'opened' && after.words && after.words.join() === 'CUSTOMISE,THE KEY' && after.syms === after.words.length && after.wr === after.cr && after.wc !== after.cc && after.keyWords && after.key === 'Earn the key' /* AMENDED at build 48 (v26 item 12) */)
+      ? ok(`L.11c back on the map the Games chest is open with its words beside it (${after.words.join(' · ')}, row ${after.wr}, col ${after.wc} against the chest's ${after.cc}), each with its own symbol (item 7), and the Key chest says "${after.key}" (v26 item 12)`) : bad('L.11c the opened chest and its words', JSON.stringify(after));
   }
 
   /* ---- 5. L.8b, both drivers: a result-screen clear that tops key 1 opens the Key chest inside the interlude and hands back on time ----
@@ -4286,20 +4558,24 @@ if (section('build 40 - batch 16, four chests and the meter')) {
       const ready = K.chestState('key');
       E.emit('run:record', { run }); E.emit('run:finish', { run, isBest: true, two: false, fresh: [], ach: [], adv });
       await wait(2600); const mid = { screen: at(), key: S.prefs.chests.key, box: !document.getElementById('key-cere').hidden, rev: document.getElementById('s-key').dataset.rev || '' };
-      await wait(4200); const held = { screen: at(), tap: document.getElementById('key-cere').classList.contains('tap'), done: document.getElementById('s-key').classList.contains('kdone') };
+      /* AMENDED at build 48 (v26 items 10 / 11): the reveal plays its earn moment to the end and ends BY ITSELF - no tap to continue, no card - and the
+         key then waits for its tap; wait for it to end rather than for a fixed time */
+      let sawTap = false, sawCard = false; for (let i = 0; i < 80 && !document.getElementById('key-cere').hidden; i++) { await wait(200); const h = document.getElementById('key-cere'); if (h.classList.contains('tap')) sawTap = true; if (h.querySelector('.rcard')) sawCard = true; }
+      const held = { screen: at(), tap: sawTap, card: sawCard, ended: document.getElementById('key-cere').hidden, done: document.getElementById('s-key').classList.contains('kdone'), hint: document.getElementById('key-hint').textContent };
       return { err: null, before, ready, mid, held, key: S.prefs.chests.key, state: K.chestState('key') }; });
     if (il.err) bad('L.8b the interlude', il.err);
     /* REVERSED AGAIN at build 46 (v25 items 11 / 22): the clear that makes key 1 whole now plays its FIRST-OPEN REVEAL, which waits for a tap and
        ends on the congratulations card — so the result does NOT come back on a timer any more; the reveal hands it back at Continue. Same family
        as build 41's lesson: a moment that waits for a tap, inside a moment that hands itself back on a timer, owns the hand-back. The chest still
        does not open here (v24 C.1) and nothing is banked by any of it (L10). */
-    else (il.before === 'locked' && il.ready === 'ready' && il.mid.screen === 's-key' && il.mid.key === 0 && il.mid.box && il.mid.rev === 'clear' && il.held.screen === 's-key' && il.held.tap && il.held.done && il.key === 0 && il.state === 'ready')
-      ? ok('L.8b REVERSED at build 46 (v25 items 11 / 22): a live clear that makes key 1 whole interrupts the result and plays key 1\'s FIRST-OPEN REVEAL after the segment - the games arriving round the ring, settling into the finished key - and it holds on "tap to continue" instead of handing the result back on a timer. No chest opens (v24 C.1); the Key chest stays READY for its key to be tapped')
+    else (il.before === 'locked' && il.ready === 'ready' && il.mid.screen === 's-key' && il.mid.key === 0 && il.mid.box && il.mid.rev === 'clear' && il.held.screen === 's-key' && !il.held.tap && !il.held.card && il.held.ended && il.held.done && il.held.hint === 'tap the key to open the Key chest' && il.key === 0 && il.state === 'ready')
+      ? ok('L.8b REVERSED at build 46 (v25 items 11 / 22), AMENDED at build 48 (v26 items 10 / 11): a live clear that makes key 1 whole interrupts the result and plays key 1\'s FIRST-OPEN REVEAL after the segment, to its end and by itself - no "tap to continue", no card - and the key then says "tap the key to open the Key chest" instead of handing the result back on a timer. No chest opens by itself; the Key chest stays READY for its key to be tapped')
       : bad('items 11 / 22 the interlude plays the reveal and holds', JSON.stringify(il));
-    await revealDone(); await sleep(900);
+    // AMENDED at build 48 (v26 item 11): with no card, what hands the result back is the player - Back from the waiting key (or the Key chest's own card)
+    await sleep(600); await page.evaluate(async () => { const R = await import('./ui/router.js'); R.back(); }); await sleep(900);
     const back46 = await onScreen();
     (back46 === 's-over')
-      ? ok('items 11 / 22 and the reveal\'s Continue is what hands the result screen back - the one moment that waits for a tap owns the hand-back (build 41\'s lesson, one moment further on)')
+      ? ok('items 11 / 22 and the player hands the result screen back - Back from the key waiting to be tapped (v26 item 11), never a timer (build 41\'s lesson, one moment further on)')
       : bad('items 11 / 22 the reveal hands the result back', back46);
   }
 
@@ -4359,23 +4635,24 @@ if (section('build 40 - batch 16, four chests and the meter')) {
     const t8 = await page.evaluate(async () => { const K = await import('./progress/key.js'); const S = await import('./core/store.js'); const wait = ms => new Promise(r => setTimeout(r, ms)); const q = s => document.querySelector(s);
       const sw = id => q(`[data-act="dev-chestall"][data-chest="${id}"]`), rs = id => q(`[data-act="dev-chestreset"][data-chest="${id}"]`);
       const out = { m0: K.meter() };
+      /* AMENDED at build 48 (v26 items 7 / 12): a switch plays forward until its chest is READY - the chests before it opened the way a tap opens
+         them - and taking it off is its reset; nothing is remembered and put back. The meter is 0–300 and "set meter to N%" reaches N by play */
       sw('games').click(); await wait(200); out.games = { meter: K.meter(), state: K.chestState('games'), sel: sw('games').classList.contains('sel') };
-      sw('games').click(); await wait(200); out.gamesOff = { meter: K.meter(), unlock: Object.keys(S.store.unlock).length };
-      sw('games').click(); await wait(150); S.prefs.chests = { games: 1, key: 0, pro: 0, thorns: 0 }; S.save();
-      sw('key').click(); await wait(200); out.key = { meter: K.meter(), state: K.chestState('key') };
-      sw('key').click(); await wait(200); out.keyOff = { bars: Object.keys(S.store.bars).join() };
+      sw('games').click(); await wait(200); out.gamesOff = { meter: K.meter(), unlock: Object.keys(S.store.unlock).filter(k => k.split(':').length === 2).length, state: K.chestState('games') };
+      sw('key').click(); await wait(200); out.key = { meter: K.meter(), state: K.chestState('key'), games: K.chestState('games') };
+      sw('key').click(); await wait(200); out.keyOff = { bars: Object.keys(S.store.bars).join(), state: K.chestState('key') };
       S.prefs.chests = Object.assign({}, S.prefs.chests, { key: 1 }); S.store.ach.key_clear_all = Date.now(); S.save();
       rs('key').click(); await wait(200); out.keyReset = { chest: S.prefs.chests.key, bars: Object.keys(S.store.bars).length, ach: !!S.store.ach.key_clear_all };
       rs('games').click(); await wait(200); out.gamesReset = { chest: S.prefs.chests.games, unlock: Object.keys(S.store.unlock).filter(k => k !== 'sequence:practice' && k.split(':').length === 2).length, snap: !!(S.prefs.devKeys || {}).games };
-      q('#dev-meter').value = '250'; q('[data-act="dev-meter"]').click(); await wait(200); out.set = { meter: K.meter(), line: q('#dev-meter-now').textContent, stored: JSON.parse(localStorage.getItem('ne')).prefs.devMeter };
-      q('[data-act="dev-meteroff"]').click(); await wait(200); out.off = { meter: K.meter(), stored: JSON.parse(localStorage.getItem('ne')).prefs.devMeter };
+      q('#dev-meter').value = '250'; q('[data-act="dev-meter"]').click(); await wait(300); out.set = { meter: K.meter(), line: q('#dev-meter-now').textContent, stored: JSON.parse(localStorage.getItem('ne')).prefs.devMeter, chests: ['games', 'key', 'pro', 'thorns'].map(K.chestState).join(), bars: K.TIERS.map(t => K.keyState(t).done).join() };
+      out.off = { button: !!q('[data-act="dev-meteroff"]') };
       return out; });
-    (t8.m0 === 0 && t8.games.meter === 100 && t8.games.state === 'ready' && t8.games.sel && t8.gamesOff.meter === 0 && t8.gamesOff.unlock === 0 && t8.key.meter === 200 && t8.key.state === 'ready' && t8.keyOff.bars === 'quick-tap:two:5')
-      ? ok('L.8f the Games chest\'s switch takes the meter to 100 and the chest to ready, the Key chest\'s to 200; each switch off puts back exactly what the profile held') : bad('L.8f the per-chest switches', JSON.stringify(t8));
+    (t8.m0 === 0 && t8.games.meter === 0 && t8.games.state === 'ready' && t8.games.sel && t8.gamesOff.unlock === 0 && t8.gamesOff.state === 'locked' && t8.key.meter === 100 && t8.key.state === 'ready' && t8.key.games === 'open' && t8.keyOff.bars === '' && t8.keyOff.state === 'locked')
+      ? ok('L.8f AMENDED at build 48 (v26 items 7 / 12): the Games chest\'s switch unlocks every mode and leaves the chest ready at 0%; the Key chest\'s opens the Games chest the way a tap does and leaves the Key chest ready at 100%; taking either off is its reset') : bad('L.8f the per-chest switches', JSON.stringify(t8));
     (t8.keyReset.chest === 0 && !t8.keyReset.bars && !t8.keyReset.ach && t8.gamesReset.chest === 0 && !t8.gamesReset.unlock && !t8.gamesReset.snap)
       ? ok('G.8 extended: resetting the Key chest backs out key 1, the chest and its achievements; resetting the Games chest locks every mode again and shuts it') : bad('G.8 the per-chest resets', JSON.stringify({ keyReset: t8.keyReset, gamesReset: t8.gamesReset }));
-    (t8.set.meter === 250 && /250%/.test(t8.set.line) && t8.set.stored === 250 && t8.off.meter === 0 && t8.off.stored === undefined)
-      ? ok(`L.8f "set meter to N%" makes the meter read 250 for review ("${t8.set.line}") with nothing earned, and taking it off reads what the profile holds again`) : bad('L.8f set meter to N%', JSON.stringify({ set: t8.set, off: t8.off }));
+    (t8.set.meter === 250 && /250%/.test(t8.set.line) && t8.set.stored === undefined && t8.set.chests === 'open,open,open,locked' && t8.set.bars === '30,30,15' && !t8.off.button)
+      ? ok(`L.8f AMENDED at build 48 (v26 items 7 / 12): "set meter to N%" REACHES 250 - the Key and Pro chests opened, key 1 and Pro whole, 15 Author bars - and stores no override ("${t8.set.line}"); "meter · as earned" is gone with it`) : bad('L.8f set meter to N%', JSON.stringify({ set: t8.set, off: t8.off }));
   }
 
   /* ---- 9. the store is v5: the chests named, one ladder step; the retired fields gone ---- */
@@ -4401,7 +4678,7 @@ if (section('build 40 - batch 16, four chests and the meter')) {
       R.show('s-key'); await wait(600); out.key = { main: document.getElementById('key-main').hidden, shell: document.getElementById('key-shell').innerText.replace(/\s+/g, ' ').trim(), locked: document.querySelectorAll('#key-keys .kkey.locked').length, digits: [...document.querySelectorAll('#key-keys .kkey')].some(b => /\d/.test(b.textContent)) };
       R.show('s-prog', { tab: 'ach' }); await wait(500); out.sets = [...document.querySelectorAll('#achlist h4')].map(h => h.className).filter(x => /^key/.test(x)).join();
       S.store.bars = {}; S.save(); return out; });
-    (qt.adv === null && !qt.bars && !qt.ach && !qt.fill.part && qt.fill.kf === '0.000' && qt.key.main && /1 of 13 modes · 0%/.test(qt.key.shell) && qt.key.locked === 3 && !qt.key.digits && !qt.sets)
+    (qt.adv === null && !qt.bars && !qt.ach && !qt.fill.part && qt.fill.kf === '0.000' && qt.key.main && /1 of 13 modes/.test(qt.key.shell) && !/%/.test(qt.key.shell) /* AMENDED at build 48 (v26 item 9): no percentage on the Keys screen */ && qt.key.locked === 3 && !qt.key.digits && !qt.sets)
       ? ok(`L.10a / §M.2 before the Games chest key 1 is quiet: a run past a bar banks nothing and hands back no interlude, the tile outline stays empty, no key set is listed, and the key screen says only "${qt.key.shell.slice(0, 70)}…"`) : bad('L.10a key 1 quiet before the Games chest', JSON.stringify(qt));
   }
 }
@@ -4557,20 +4834,23 @@ if (section('build 41 - batch 16, the moments')) {
     const pct = (read('styles', 'app.css').match(/@keyframes pctup\{[^\n]*/) || [''])[0], pctOk = !!pct && !/--ok/.test(pct) && /--mcol/.test(pct);
     await boot({}, {}, { v: 5, plain: PLAIN41 });
     const mb = await page.evaluate(async () => { const S = await import('./core/store.js'); const R = await import('./ui/router.js'); const K = await import('./progress/key.js'); const wait = ms => new Promise(r => setTimeout(r, ms)); const out = [];
-      for (const v of [0, 50, 99, 100, 150, 199, 200, 250, 299, 300, 350, 400]) { S.prefs.devMeter = v; S.prefs.meterSeen = v; S.save(); R.show('s-pick'); await wait(40); R.show('s-menu'); await wait(120);
+      /* AMENDED at build 48 (v26 items 7 / 12): there is no override, so each figure is REACHED - Testing's devMeterTo clears the bars and opens the
+         chests it means - and the meter stops at 300, which is the Thorns band's look. 96 / 196 / 296 are the highest a bar count makes under 100 / 200 / 300 */
+      const P = await import('./progress.js'); const modes = on => { if (on) P.devModesAll(true); else P.devModesReset(); };
+      for (const v of [0, 50, 96, 100, 150, 196, 200, 250, 296, 300]) { const n = K.devMeterTo(v, modes); S.prefs.meterSeen = n; S.save(); R.show('s-pick'); await wait(40); R.show('s-menu'); await wait(120);
         const m = document.querySelector('#menu-key .meterv'), cs = getComputedStyle(m), band = K.meterBand(v);
         out.push({ v, i: band.i, k: +band.k.toFixed(2), cls: m.className, col: cs.color, bg: cs.backgroundColor, ts: cs.textShadow, anim: cs.animationName, timing: cs.animationTimingFunction, shp: m.style.getPropertyValue('--shp'), glow: m.style.getPropertyValue('--mglow'), txt: document.getElementById('menu-key').textContent }); }
-      S.prefs.devMeter = 260; S.prefs.meterSeen = 210; S.save(); R.show('s-pick'); await wait(40); R.show('s-menu'); await wait(60);
+      K.devMeterTo(260, modes); S.prefs.meterSeen = 210; S.save(); R.show('s-pick'); await wait(40); R.show('s-menu'); await wait(60);
       const mk = document.getElementById('menu-key'); const pulse = { up: mk.classList.contains('up'), mcol: mk.style.getPropertyValue('--mcol'), anim: getComputedStyle(mk).animationName };
-      delete S.prefs.devMeter; S.save(); return { out, pulse }; });
+      return { out, pulse }; });
     const at = v => mb.out.find(x => x.v === v);
-    const bandsOk = mb.out.every(x => x.cls === 'meterv mb' + x.i && x.col !== 'rgb(61, 214, 140)') && [0, 50, 99].every(v => at(v).i === 0) && at(100).i === 1 && at(199).i === 1 && at(200).i === 2 && at(299).i === 2 && at(300).i === 3 && at(400).i === 3 && at(400).k === 1
-      && at(0).col === 'rgb(110, 108, 104)' && at(150).col === 'rgb(232, 230, 225)' && at(250).col === 'rgb(232, 184, 74)' && at(350).col === 'rgb(255, 255, 255)' && at(350).bg === 'rgb(0, 0, 0)'
-      && at(0).ts === 'none' && at(150).ts === 'none' && at(250).ts !== 'none' && parseFloat(at(299).glow) > parseFloat(at(200).glow)
-      && at(0).anim === 'none' && at(150).anim === 'none' && at(350).anim === 'mshake' && /^steps\(1(, end)?\)$/.test(at(350).timing) /* Chromium serialises steps(1, end) as steps(1) */ && at(300).shp === '1' && at(400).shp === '2' && at(250).txt === '250% complete';
+    const bandsOk = mb.out.every(x => x.cls === 'meterv mb' + x.i && x.col !== 'rgb(61, 214, 140)') && [0, 50, 96].every(v => at(v).i === 0) && at(100).i === 1 && at(196).i === 1 && at(200).i === 2 && at(296).i === 2 && at(300).i === 3
+      && at(0).col === 'rgb(110, 108, 104)' && at(150).col === 'rgb(232, 230, 225)' && at(250).col === 'rgb(232, 184, 74)' && at(300).col === 'rgb(255, 255, 255)' && at(300).bg === 'rgb(0, 0, 0)'
+      && at(0).ts === 'none' && at(150).ts === 'none' && at(250).ts !== 'none' && parseFloat(at(296).glow) > parseFloat(at(200).glow)
+      && at(0).anim === 'none' && at(150).anim === 'none' && at(300).anim === 'mshake' && /^steps\(1(, end)?\)$/.test(at(300).timing) /* Chromium serialises steps(1, end) as steps(1) */ && at(300).shp === '1' && at(250).txt === '250% complete';
     (cfgOk && pctOk && bandsOk && mb.pulse.up && mb.pulse.mcol === '#E8B84A' && mb.pulse.anim === 'pctup')
-      ? ok('L.8d / L.8e the meter\'s four bands, set by Testing\'s "set meter to N%": 0-99 --mute with no effects, 100-199 --ink, 200-299 gold with a glow that grows across the band, 300-400 white on black with a spiked edge, a cold glow and a stepped whole-pixel shake (1px low in the band, 2px high); a rise pulses in the band\'s colour; green is in no band and not in the pulse (B.22)')
-      : bad('L.8d / L.8e the meter bands', JSON.stringify({ cfgOk, pctOk, bandsOk, out: mb.out.filter(x => [0, 100, 200, 250, 300, 350, 400].includes(x.v)), pulse: mb.pulse }));
+      ? ok('L.8d / L.8e the meter\'s bands at figures REACHED by Testing\'s "set meter to N%" (AMENDED at build 48, v26 items 7 / 12 - 0–300, no override): 0-99 --mute with no effects, 100-199 --ink, 200-299 gold with a glow that grows across the band, 300 - the full meter - white on black with a spiked edge, a cold glow and a stepped whole-pixel shake; a rise pulses in the band\'s colour; green is in no band and not in the pulse (B.22)')
+      : bad('L.8d / L.8e the meter bands', JSON.stringify({ cfgOk, pctOk, bandsOk, out: mb.out.filter(x => [0, 100, 200, 250, 300].includes(x.v)), pulse: mb.pulse }));
   }
 
   /* ---- 8. L.6 / S5: Testing's "replay chest opening" x4 - the ceremony with nothing stored, then the map's spill, then the chest put back ---- */
@@ -4594,10 +4874,10 @@ if (section('build 41 - batch 16, the moments')) {
   {
     const gen = read('..', '_review', 'scripts', 'catalogue.mjs'), tpl = read('..', '_review', 'scripts', 'catalogue.template.html');
     const shots = JSON.parse(read('..', '_review', 'scripts', 'catalogue.annotations.json')).filter(a => a.group === 'chests').map(a => a.shot);
-    const want41 = IDS.flatMap(id => ['locked', 'ready', 'opened', 'spill'].map(s => `30-chest-${id}-${s}`)).concat(IDS.map(id => `31-cere-${id}`), [0, 50, 100, 150, 200, 250, 300, 350, 400].map(v => `32-meter-${String(v).padStart(3, '0')}`), IDS.map(id => `33-spill-${id}`));
+    const want41 = IDS.flatMap(id => ['locked', 'ready', 'opened', 'spill'].map(s => `30-chest-${id}-${s}`)).concat(IDS.map(id => `31-cere-${id}`), [0, 50, 100, 150, 200, 250, 300 /* AMENDED at build 48 (v26 items 7 / 9 / 12): the meter is 0–300 */].map(v => `32-meter-${String(v).padStart(3, '0')}`), IDS.map(id => `33-spill-${id}`));
     (/const cereTap = async/.test(gen) && /await cereTap\(\)/.test(gen) && /ceremonyFrame\(/.test(gen) && /chestPlan\(/.test(gen) && want41.every(s => shots.includes(s)) && shots.length === want41.length
       && /'chests'\]\.forEach/.test(tpl) && /id="g-chests"/.test(tpl) && /REF\.chestFx/.test(tpl) && /w === 'noise'/.test(tpl))
-      ? ok(`L.11e / L.10d / L.8f the catalogue carries ${want41.length} chest cards - 16 chest states, four ceremonies at five frames each with their sting and effects on a button, the meter at nine values, a spill per chest - drawn by the app's own renderers; and the second driver answers a ceremony's "tap to continue" as the gate does`)
+      ? ok(`L.11e / L.10d / L.8f the catalogue carries ${want41.length} chest cards - 16 chest states, four ceremonies at five frames each with their sting and effects on a button, the meter at seven values (0–300 since build 48), a spill per chest - drawn by the app's own renderers; and the second driver answers a ceremony's "tap to continue" as the gate does`)
       : bad('L.11e the catalogue cards', JSON.stringify({ shots: shots.length, missing: want41.filter(s => !shots.includes(s)) }));
   }
 }
@@ -4696,7 +4976,7 @@ if (section('build 42 - batch 16, the key themes')) {
   {
     const keyAt = async i => { await page.evaluate(async i => { const R = await import('./ui/router.js'); R.show('s-menu'); await new Promise(r => setTimeout(r, 120)); R.show('s-key', { tier: i }); }, i); await sleep(1200);
       return page.evaluate(async () => { const M = await import('./audio.js'); const b = document.getElementById('key-music'), r = b.getBoundingClientRect(), s = document.getElementById('build').getBoundingClientRect();
-        return { track: M.Music.probe().track, hidden: b.hidden, txt: b.textContent, on: b.classList.contains('on'), clear: b.hidden || r.bottom <= s.top, stored: JSON.parse(localStorage.getItem('ne')).prefs.everywhere }; }); };
+        return { track: M.Music.probe().track, hidden: b.hidden, txt: b.textContent, on: b.classList.contains('on'), clear: b.hidden || document.getElementById('build').hidden /* AMENDED at build 48 (v26 item 12): no label on this screen */ || r.bottom <= s.top, stored: JSON.parse(localStorage.getItem('ne')).prefs.everywhere }; }); };
     await boot({ chests: { games: 1 } }, {}, { plain: PLAIN42 });
     const locked = await keyAt(0);
     await boot({ chests: { games: 1, key: 1, pro: 1 } }, {}, { plain: PLAIN42 });
@@ -4787,23 +5067,26 @@ if (section('build 43 - batch 17, chests and keys')) {
     await boot({ chests: { games: 1 }, keyWhole: { clear: 1 } }, { unlock: ALL43, bars: bars43('clear') }, { plain: PLAIN43 });
     await click('.item[data-go="s-key"]'); await sleep(1700);
     const arrive = Object.assign(await at43(), { hint: await page.evaluate(() => document.getElementById('key-hint').textContent) });
-    await svg43('#key-ring .khubhit'); await sleep(300);
-    const asked = await page.evaluate(() => ({ ask: !document.getElementById('key-ask').hidden, txt: document.getElementById('key-ask').innerText.replace(/\s+/g, ' ').trim() }));
-    await click('[data-act="key-ask-no"]'); await sleep(300);
-    const no = Object.assign(await at43(), { ask: await page.evaluate(() => !document.getElementById('key-ask').hidden) });
-    await svg43('#key-ring .khubhit'); await sleep(250); await click('#s-key .back'); await sleep(550);
-    const backClose = Object.assign(await at43(), { ask: await page.evaluate(() => !document.getElementById('key-ask').hidden) });
-    await svg43('#key-ring .khubhit'); await sleep(250); await click('[data-act="key-ask-yes"]'); await sleep(250);
-    const yes = await at43();
+    /* AMENDED at build 48 (v26 item 11): "tap the key to open the Key chest" is the whole instruction - TAPPING THE KEY OPENS IT, no ask. The ask stays
+       on a ready chest in the quiet screen's row of chests; Not yet and Back still leave it shut. The screen still never opens a chest by itself */
+    const asked = { ask: false, txt: '' };
+    await svg43('#key-ring .khubhit'); await sleep(250);
+    const yes = Object.assign(await at43(), { ask: await page.evaluate(() => !document.getElementById('key-ask').hidden) });
     await revealDone(); await sleep(500); const after = await onScreen();
-    // the quiet screen while the Games chest waits: the key, and the ready chest in the row, both ask
     await boot({}, { unlock: ALL43 }, { plain: PLAIN43 }); await show43('s-key'); await sleep(900);
     const quiet = await page.evaluate(() => ({ key: !!document.querySelector('#key-shell button.kquiet[data-act="key-chest"][data-chest="games"]'), row: !!document.querySelector('#key-shell button.kch.ready[data-chest="games"]'), cere: !document.getElementById('key-cere').hidden, stored: JSON.parse(localStorage.getItem('ne')).prefs.chests.games }));
-    await click('#key-shell button.kquiet'); await sleep(300); quiet.ask = await page.evaluate(() => !document.getElementById('key-ask').hidden);
-    (stat && arrive.screen === 's-key' && !arrive.cere && !arrive.chests.key && arrive.hint === 'tap the key to open the Key chest' && asked.ask && /OPEN THE KEY CHEST\?/i.test(asked.txt) && !no.ask && !no.chests.key && no.screen === 's-key'
-      && !backClose.ask && backClose.screen === 's-key' && yes.cere && yes.chests.key === 1 && after === 's-pick' && quiet.key && quiet.row && !quiet.cere && !quiet.stored && quiet.ask)
-      ? ok(`C.1 the key screen no longer opens a ready chest by itself: arriving with the Key chest ready opens nothing and says "${arrive.hint}"; tapping the key asks "${asked.txt}", Not yet and Back both leave it shut, Open plays its ceremony and "tap to continue" goes to the map; on the quiet screen the key and the ready Games chest in the row both ask. L.8b's open-on-arrival is retired`)
-      : bad('C.1 tap the key, it asks, then it opens', JSON.stringify({ stat, arrive, asked, no, backClose, yes, after, quiet }));
+    await click('#key-shell button.kch.ready[data-chest="games"]'); await sleep(300);
+    Object.assign(asked, await page.evaluate(() => ({ ask: !document.getElementById('key-ask').hidden, txt: document.getElementById('key-ask').innerText.replace(/\s+/g, ' ').trim() })));
+    await click('[data-act="key-ask-no"]'); await sleep(300);
+    const no = Object.assign(await at43(), { ask: await page.evaluate(() => !document.getElementById('key-ask').hidden) });
+    await click('#key-shell button.kch.ready[data-chest="games"]'); await sleep(250); await click('#s-key .back'); await sleep(550);
+    const backClose = Object.assign(await at43(), { ask: await page.evaluate(() => !document.getElementById('key-ask').hidden) });
+    await click('#key-shell button.kquiet'); await sleep(300); quiet.ask = await page.evaluate(() => !document.getElementById('key-ask').hidden); quiet.opened = JSON.parse(await page.evaluate(() => localStorage.getItem('ne'))).prefs.chests.games;
+    await revealDone(); await sleep(400);
+    (stat && arrive.screen === 's-key' && !arrive.cere && !arrive.chests.key && arrive.hint === 'tap the key to open the Key chest' && !yes.ask && yes.cere && yes.chests.key === 1 && after === 's-pick'
+      && quiet.key && quiet.row && !quiet.cere && !quiet.stored && asked.ask && /OPEN THE GAMES CHEST\?/i.test(asked.txt) && !no.ask && !no.chests.games && no.screen === 's-key' && !backClose.ask && backClose.screen === 's-key' && !quiet.ask && quiet.opened === 1)
+      ? ok(`C.1 AMENDED at build 48 (v26 item 11): the key screen never opens a ready chest by itself - arriving says "${arrive.hint}" - and tapping the key opens it at once, its ceremony ending on the map; a ready chest in the quiet screen's row still asks "${asked.txt}", Not yet and Back leave it shut, and the quiet screen's key opens it`)
+      : bad('C.1 tap the key, it opens', JSON.stringify({ stat, arrive, yes, after, quiet, asked, no, backClose }));
   }
 
   /* ---- 3. B.1 / B.2: a chest that can be opened wears a pulsing green outline; tapped on the map it opens on the frame the key screen is shown ---- */
@@ -4829,17 +5112,18 @@ if (section('build 43 - batch 17, chests and keys')) {
        opens it at its Continue. What B.3 asked for is unchanged: never started and cut off. */
     const kindOf = () => page.evaluate(() => { const h = document.getElementById('key-cere'); return { kind: h.hidden ? '' : (h.dataset.kind || '') }; });
     const mid = Object.assign(await at43(), await kindOf());
+    await page.evaluate(() => { const h = document.getElementById('key-cere'), o = window.__b3 = []; new MutationObserver(() => { const k = h.hidden ? 'off' : h.dataset.kind || 'off'; if (o[o.length - 1] !== k) o.push(k); }).observe(h, { attributes: true, attributeFilter: ['hidden', 'data-kind'] }); });
     await click('#s-key .back'); await sleep(1300);
     const held = Object.assign(await at43(), await kindOf());
-    await revealReady();
-    const ready = Object.assign(await at43(), await kindOf());
-    // revealOne, not revealDone: this is the one place the two reveals have to be told apart, so only the KEY's is taken here
-    await revealOne(); await sleep(1100);
+    /* AMENDED at build 48 (v26 items 10 / 11): the key's reveal ends BY ITSELF once its earn moment has played to the end - no tap, no card - and the
+       chest the player tapped on the map opens straight after it */
+    let seq = []; for (let i = 0; i < 100; i++) { await sleep(200); seq = await page.evaluate(() => window.__b3.slice()); if (seq.includes('chest')) break; }
+    const ready = { kind: seq.join('>'), chests: held.chests };
     const opened = Object.assign(await at43(), await kindOf());
     await revealDone(); await sleep(500);
     (mid.screen === 's-key' && mid.kind === 'key' && !mid.chests.key && held.screen === 's-key' && held.kind === 'key' && !held.chests.key
-      && ready.kind === 'key' && !ready.chests.key && opened.kind === 'chest' && opened.chests.key === 1)
-      ? ok(`B.3 the Key chest tapped on the map with key 1's first-open reveal unseen: the reveal plays in full on the key screen - Back does nothing while it does - and the chest opens only once the player has taken its card, never started and interrupted (AMENDED at build 46: a reveal ends on a tap, so the chest waits for the tap and not for ${KY43.KEY_EARN.clear.ms}ms)`)
+      && ready.kind === 'off>chest' && opened.kind === 'chest' && opened.chests.key === 1)
+      ? ok(`B.3 the Key chest tapped on the map with key 1's first-open reveal unseen: the reveal plays in full on the key screen - Back does nothing while it does - and the chest opens only once it has ended by itself, never started and interrupted (AMENDED at build 48, v26 items 10 / 11: the reveal waits for its earn moment's own end, ${KY43.KEY_EARN.clear.ms}ms of it, and needs no tap)`)
       : bad('B.3 a key animation is never cut off', JSON.stringify({ mid, held, ready, opened }));
   }
 
@@ -5222,9 +5506,10 @@ if (section('build 45 - batch 18, fixes, state and the catalogue')) {
     const clip = /#s-pick,#s-about,#s-over,#s-custom,#s-testing\{clip-path:inset\(env\(safe-area-inset-top\) 0 0 0\)\}/.test(flat45);
     const goal = /#goal\{[^}]*top:calc\(env\(safe-area-inset-top\) \+ 11px\)/.test(flat45) && /#game\.goalon \.hud\{top:calc\(env\(safe-area-inset-top\) \+ 44px\)\}/.test(flat45);
     // live, with a sheet up: the stamp is under the sheet, and nothing the map layers over the sheet is above it
-    const live = await page.evaluate(() => { const b = document.getElementById('build'); b.style.pointerEvents = 'auto';
+    // AMENDED at build 48 (v26 item 12): the label shows on the home menu only, so on the map it is un-hidden for the measurement and put back
+    const live = await page.evaluate(() => { const b = document.getElementById('build'), wasHidden = b.hidden; b.hidden = false; b.style.pointerEvents = 'auto';
       const r = b.getBoundingClientRect(), stack = document.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2).map(e => e.id || String(e.className || e.tagName));
-      b.style.pointerEvents = '';
+      b.style.pointerEvents = ''; b.hidden = wasHidden;
       const z = el => { const v = +getComputedStyle(el).zIndex; return Number.isFinite(v) ? v : 0; };
       const sheet = z(document.getElementById('sheet'));
       const layers = [...document.querySelectorAll('#grid, #grid *')].map(el => z(el));
@@ -5501,14 +5786,15 @@ if (section('build 46 - batch 18, the unlock experience, sound and About')) {
       await revealDone(); await sleep(400);
     }
     const order = GAMES.join();
-    const bad11 = seen.filter(s => s.st !== 'tap' || !s.start.krev || s.start.rev !== s.tier || s.start.hours.join() !== '0,1,2,3,4,5,6' || s.start.games.join() !== order
+    // AMENDED at build 48 (v26 items 10 / 11): a key's reveal ends BY ITSELF ('off', not 'tap'), and never before its earn moment's own end
+    const bad11 = seen.filter(s => s.st !== 'off' || !s.start.krev || s.start.rev !== s.tier || s.start.hours.join() !== '0,1,2,3,4,5,6' || s.start.games.join() !== order
       || s.heard.map.join() !== order || s.heard.earn.join() !== s.tier || !s.after.kdone || s.after.krev || !s.after.ring
-      || s.took < s.cfg.ms - 400 || s.took > s.cfg.ms + 6000);
+      || s.took < s.cfg.hubAt + KY46.KEY_EARN[s.tier].ms - 400 || s.took > s.cfg.hubAt + KY46.KEY_EARN[s.tier].ms + 6000);
     const grander = seen[0].cfg.ms < seen[1].cfg.ms && seen[1].cfg.ms < seen[2].cfg.ms
       && seen[0].start.ripples < seen[1].start.ripples && seen[1].start.ripples < seen[2].start.ripples
       && seen[0].start.motes < seen[1].start.motes && seen[1].start.motes < seen[2].start.motes;
     (!bad11.length && grander)
-      ? ok(`item 11 all three keys get a first-open reveal: the seven games arrive clockwise from Quick Tap at 12 (${order.replace(/,/g, ' → ')}), each landing with its own game's sound, then the key itself with its own; ${seen.map(s => s.tier + ' ' + s.cfg.ms / 1000 + 's').join(' · ')}, each longer and with more drawn than the last, and each settles into the finished key`)
+      ? ok(`item 11 all three keys get a first-open reveal: the seven games arrive clockwise from Quick Tap at 12 (${order.replace(/,/g, ' → ')}), each landing with its own game's sound, then the key itself with its own; ${seen.map(s => s.tier + ' ' + s.cfg.ms / 1000 + 's').join(' · ')}, each longer and with more drawn than the last, and each settles into the finished key once its earn moment has ended - by itself, with no tap (v26 items 10 / 11)`)
       : bad('item 11 the key reveals', JSON.stringify({ bad11, grander, seen: seen.map(s => ({ t: s.tier, st: s.st, took: s.took, heard: s.heard, after: s.after })) }));
   }
 
@@ -5536,12 +5822,12 @@ if (section('build 46 - batch 18, the unlock experience, sound and About')) {
     // the reveal's own `quick` class is what says it took the short path; `krevquick` on the screen is gone already, because under Reduce Motion the settle is immediate
     const quick = await page.evaluate(() => ({ cls: document.getElementById('key-cere').className, settled: document.getElementById('s-key').classList.contains('kdone') && !document.getElementById('s-key').classList.contains('krev') }));
     const st = await revealReady(); const took = Date.now() - t0;
-    await click('#key-cere'); await sleep(CH46.REVEAL.cardAt + CH46.REVEAL.cardGo + 350);
+    // AMENDED at build 48 (v26 item 11): a key's reveal has no card any more - under Reduce Motion it is the short fade, and it ends by itself on the key
     const card = await revState();
     await revealDone(); await sleep(300);
     await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }]);
-    (/\bquick\b/.test(quick.cls) && quick.settled && st === 'tap' && took < KY46.KEY_REVEAL.clear.ms && card.card && /Lantern unlocked/i.test(card.title))
-      ? ok(`item 11 with Reduce Motion on the reveal is a short fade - ${took}ms against the ${KY46.KEY_REVEAL.clear.ms}ms reveal - and still ends on the congratulations card, so nothing is skipped, only shortened (Apple expects it)`)
+    (/\bquick\b/.test(quick.cls) && quick.settled && st === 'off' && took < KY46.KEY_REVEAL.clear.ms && !card.card)
+      ? ok(`item 11 with Reduce Motion on the reveal is a short fade - ${took}ms against the ${KY46.KEY_REVEAL.clear.ms}ms reveal - and it ends by itself with no card (v26 item 11), so nothing is skipped, only shortened (Apple expects it)`)
       : bad('item 11 Reduce Motion', JSON.stringify({ quick, st, took, card }));
   }
 

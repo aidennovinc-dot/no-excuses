@@ -468,6 +468,46 @@ anything new.**
   a captions track, and never full screen or autoplaying. A clip arrives by filling in a file name — no code change. `prefs.msgSeen` takes L8's
   green dot off the About row. Aiden records the eight clips himself (his decision, 2026-09-16).
 
+### Build 48 — v26 items 1, 3, 7, 9, 10, 11 and item 12's three fixes (make the flow work and every screen agree)
+
+- **AMENDED: the meter is 0–300 (items 7 / 9 / 12).** Aiden's meter is "the continuous 0–300% figure" and the Pro key is 200% on it. With build
+  40's modes band the Pro key landed on 300%, so the map said "203% · opens at 300%" on a Pro chest that was one key short — which read as a
+  threshold off by a tier. `METER.modes` is false (L.10b's one flag): key 1 is 0–100 (the Key chest at 100), Pro 100–200 (the Pro chest at 200),
+  Author 200–300 (the Thorns chest at 300). The Games chest is not on the meter at all; it opens on every game mode, a count and not a percentage.
+- **AMENDED: one saved value, no override (items 7 / 12).** Chest state, key state and the meter are the bars and the chests in the store, and
+  every screen reads them through `progress/key.js`. `prefs.devMeter` is retired and dropped on load: it let the meter read a figure nothing had
+  earned. `meter()` is `meterReal()`.
+- **AMENDED: Testing plays the game forward (items 7 / 12, v21 G.8 and v23 L.8f).** A chest's switch plays forward until THAT chest is ready —
+  every chest before it filled the way play fills it and opened the way a tap opens it (`devReach`, `devOpen`) — and never opens the chest itself.
+  Taking a switch off is its reset. A reset backs that chest out with every chest after it and the key that opens it (`devBack`), so no chest is
+  ever open behind a shut one. "Set meter to N%" backs the keys out and plays forward to N (`devMeterTo`), 0–300. A bar is cleared with
+  `checkKey`'s own write and the key achievements it completes are banked (`checkKeyAch`). Build 37's snapshot-and-restore and build 40's
+  override are gone, and so is "meter · as earned". OPEN EVERYTHING and SUPPORTER are unchanged: two flags every gate honours (#411) that store
+  no progress.
+- **AMENDED: a key's reveal is never cut off, ends by itself, and has no card (items 10 / 11; amends build 46's four beats for keys).** What cut it
+  was the reveal's own settle: the key lit at `hubAt` and the stage settled at `settleAt` — 600ms into a 2.9s earn moment on key 1, 800ms of 3.8s
+  on Pro, 900ms of 4.8s on Author — and the settle takes `kwhole` off. `keyStage` now reads every animation `kwhole` starts and hands the reveal a
+  `hold()` on their finished promises; `ui/reveal.js` waits for it before the settle, and `settleAt` / `ms` can only move later. A key's reveal is
+  `auto`: no "tap to continue", no congratulations card; it ends by itself and the screen under it says only "tap the key to open the Key chest"
+  (hidden while the reveal plays, `kdue` / `krev`). The chest's card is the only card in the flow. Taps and Back are swallowed until it ends.
+- **AMENDED: the key opens its chest (item 11; amends v24 C.1 for the key).** Tapping a whole key's hub — or the quiet screen's key — opens its
+  ready chest at once. A ready chest in the quiet screen's row of chests still asks. Inside a run's key interlude the key waits for its tap (or
+  Back, which hands back); the chest's card then hands back to that run's result screen. A chest tapped on the map while its key's reveal is unseen
+  still opens after the reveal, with no tap between: the player already asked.
+- **AMENDED: locked chests say what opens them in words (item 12).** "Earn the key", "Earn the Pro key", "Earn the Author key" (`GRID.chestEarn`)
+  whether the chest ahead is shut or not; no percentage on the map. The Games chest keeps its count of modes. `GRID.chestMeter` is retired.
+- **AMENDED: one figure per thing (items 7 / 9).** The Keys screen's line is "1 of 30"; each key card keeps its own share; the home menu carries the
+  0–300 total and is the one place it is printed. The Games chest's stage and card show no percentage. The key cards lose the italic theme name —
+  Lantern, Circuit and Thorn name backgrounds and music, not keys.
+- **AMENDED: every home menu item is green until opened once (item 3, v20 D.5 finally applied).** `prefs.menuOpened`, by screen, written when the
+  item's screen is opened FROM THE MENU (the row, or the meter line for Keys); available means not dimmed by the first run and not locked behind
+  the Games chest. Fresh game clears it; an older profile takes the map from `gridSeen`, Keys from `keysSeen`, Customise from `cusSeen`. Only
+  Customise and Keys had ever had the green, each through a flag its screen set on any show. Testing's row is never green.
+- **AMENDED: the version label is on the home menu only (item 12; supersedes v25 item 4's and item 10's per-screen fixes).** `#build` is hidden on
+  every other screen. The About screen's own line (build, label, date) is A6's and stays; A6 was not quoted.
+- **AMENDED: Go / No-go · Set's HUD (item 1).** A solo Set shows the big counter and the goal box only: no "round 1 of 5 · 0 of 3", no mode label.
+  A Streak keeps its budget line; pass & play keeps whose turn it is.
+
 ## Structure — the full text as of build 30
 
 `CLAUDE.md` keeps the module map. This is the paragraph-by-paragraph description it carried at build 30: the DAG, the
