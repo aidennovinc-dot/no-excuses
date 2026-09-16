@@ -411,3 +411,41 @@ export const VERDICT_FX = {
   ok:   [[0, 440, 440, 200, 'triangle', .06, 16], [.12, 466.2, 466.2, 340, 'triangle', .05, 16]],
   bad:  [[0, 392, 330, 260, 'triangle', .07, 14], [.14, 294.7, 196, 440, 'triangle', .06, 14], [0, 98, 98, 560, 'sine', .04, 70]],
 };
+
+/* ---------- v25 (items 1 / 2 / 6 / 11, build 46): THE FOUR NEW SOUND FAMILIES ----------
+   All four are EFFECTS in the VERDICT_FX / CHEST_FX shape — [at s, f0, f1, ms, wave, gain, attackMs, lowpassHz] — so audio.js plays them
+   through the one tone() every other effect goes through and they follow the sound-pack switch (off means off). None of them is the unlock
+   sound, the achievement click, a chest's or a key's earn (gated). Nobody has heard any of it: a Claude Code session has no audio device
+   (UNVERIFIED.md), so every level here is judged against the ones already written and not by ear.
+
+   TITLE_FX (item 1) — a low, soft whoosh under each line of the title as it fades in, the title line itself a little heavier. Tied to the
+   line's OWN animation (ui/screens/menu.js reads the CSS animation's delay rather than keeping a second set of numbers), so a timing edit in
+   the stylesheet cannot drift from the sound. A phone browser blocks audio until the player has tapped once, so on the web the very FIRST
+   title of a session is silent — accepted, as item 1 says, and never faked with a hidden tap. */
+export const TITLE_FX = {
+  line: [[0, 70, 160, 900, 'sine', .05, 260, 700], [0, 140, 320, 760, 'triangle', .012, 300, 900]],
+  title: [[0, 55, 150, 1300, 'sine', .075, 340, 800], [0, 110, 300, 1100, 'triangle', .02, 380, 1000], [.12, 220, 330, 1000, 'sine', .014, 420, 1200]],
+};
+
+/* MAP_FX (item 2, and item 11's nodes) — ONE SOFT SOUND PER GAME, so the map's first open previews what each game sounds like as its tile
+   animates in, and so a game's node landing on a key reveal sounds like that game. It is the same family in both places on purpose (item 11:
+   "the same family as item 2, so the sounds stay consistent across the app"). Each is that game's own character at a lower level than the game
+   plays it: Quick Tap its tap, Dots a pop, Estimate a swell that stops, Sequence two notes, Timing a tick and its bell, Reaction a flash blip,
+   Spot a sonar ping. `chest` is the chests' own arrival at the end of the map's sequence. LOCKED tiles play the same sound through `MAP_LOCKED`
+   — every note down `semi` semitones and every gain × `gain` — so a locked game is recognisably the same thing, lower and muted (item 2). */
+export const MAP_FX = {
+  'quick-tap': [[0, 700, 1500, 70, 'sine', .045, 4]],
+  dots: [[0, 320, 900, 90, 'triangle', .045, 6], [.05, 900, 620, 70, 'sine', .018, 4]],
+  hold: [[0, 196, 392, 420, 'sine', .04, 180, 1400], [.4, 392, 330, 110, 'triangle', .022, 8]],
+  sequence: [[0, 392, 392, 200, 'triangle', .04, 10], [.14, 523.3, 523.3, 260, 'triangle', .038, 10]],
+  timing: [[0, 880, 880, 60, 'sine', .028, 4], [.22, 659.3, 659.3, 420, 'triangle', .04, 14]],
+  reaction: [[0, 1320, 990, 55, 'square', .03, 2, 2200], [.09, 990, 1480, 130, 'sine', .04, 6]],
+  spot: [[0, 1046.5, 1046.5, 140, 'sine', .04, 8], [.16, 1046.5, 784, 340, 'sine', .022, 12, 2600]],
+  chest: [[0, 146.8, 146.8, 300, 'sine', .04, 40], [.16, 220, 293.7, 520, 'triangle', .03, 60]],
+};
+export const MAP_LOCKED = { semi: -7, gain: .45 };
+
+/* GIFT_FX (item 6) — the small sound each unlock makes as its symbol rises out of an opened chest. One list, played a step higher for each
+   symbol after the first (`step` semitones), so two or three arriving in turn read as a rising figure rather than the same noise repeated.
+   The reward moment is not silent (item 6) and it is not the unlock toast's sound either — this is its own (gated). */
+export const GIFT_FX = { step: 4, notes: [[0, 523.3, 523.3, 260, 'triangle', .05, 10], [.06, 1046.5, 1046.5, 420, 'sine', .022, 14], [0, 174.6, 261.6, 520, 'sine', .03, 90]] };

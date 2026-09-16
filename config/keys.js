@@ -76,3 +76,36 @@ export const KEY_ART = {
   pro: ['M24 8a9 9 0 1 0 0 18 9 9 0 1 0 0-18', 'M24 13a4 4 0 1 0 0 8 4 4 0 1 0 0-8', 'M24 26v14', 'M24 30h6', 'M24 34h5', 'M24 38h4', 'M15 12l-4-3', 'M33 12l4-3', 'M24 44l-3 3', 'M24 44l3 3'],
   author: ['M24 5l2.7 4.4 5 1-3.5 3.7.6 5-4.8-2.2-4.8 2.2.6-5-3.5-3.7 5-1z', 'M24 21a5 5 0 1 0 0 10 5 5 0 1 0 0-10', 'M24 31v11', 'M24 33h7', 'M24 36h6', 'M24 39h5', 'M17 26h-4', 'M35 26h-4', 'M24 42l-4 5', 'M24 42l4 5', 'M13 26l-3-4', 'M35 26l3-4'],
 };
+
+/* ---------- v25 (item 11, build 46): THE FIRST-OPEN REVEAL OF A KEY ----------
+   Build 43's KEY_EARN was a moment over a ring already lit. Item 11 asks for an EVENT: the games introduced one by one AROUND the key,
+   clockwise like a clock face from Quick Tap at 12 — which is the order ui/screens/key.js already draws them in, so the index IS the
+   hour — each landing with a soft version of its own game's sound (MAP_FX in config/audio.js, the same family the map's first open
+   plays, item 2), finishing on the key settling into its finished state (item 13). It plays ONCE, the first time that key is whole
+   (`prefs.revealed`), it cannot be tapped out of, and Testing's per-chest reset makes it a first time again.
+     `ms`       the whole reveal, before "tap to continue" — about 4s / 5s / 6–7s, escalating (item 11)
+     `dim`      how long the ring holds unlit before the first game arrives
+     `nodeAt`   when the first game lands, `nodeGap` the beat between them — seven games, so nodeAt + 6 × nodeGap is the last
+     `hubAt`    when the key itself lights: KEY_EARN's own layers and Snd.keyEarn(tier) (build 43's moment, inside the reveal now)
+     `settleAt` when it settles into the finished state — the 120% bright pulsing key item 13 asks for
+   The escalation is in what is drawn as well as in length (item 11): `motes` sparks rising round the ring, `ripple` rings running out
+   from the hub as each game lands. All (guess), and heard by nobody (UNVERIFIED.md). */
+export const KEY_REVEAL = {
+  clear: { ms: 4000, dim: 280, nodeAt: 520, nodeGap: 330, hubAt: 2700, settleAt: 3300, motes: 0, ripple: 1 },
+  pro: { ms: 5000, dim: 340, nodeAt: 600, nodeGap: 420, hubAt: 3400, settleAt: 4200, motes: 10, ripple: 2 },
+  author: { ms: 6600, dim: 420, nodeAt: 700, nodeGap: 560, hubAt: 4900, settleAt: 5800, motes: 18, ripple: 3 },
+};
+
+/* ---------- v25 (item 13, build 46): WHAT AN UNFINISHED KEY LOOKS LIKE, AND WHAT A FINISHED ONE LOOKS LIKE ----------
+   Both states were the same golden glow, so a key that was 3% done looked like a key that was earned. They are pushed apart from both
+   ends. UNFINISHED: no glow at all — no radial ground, no drop shadow, the centre key drawn in the tier's own `dim`, the spokes faint,
+   and the outer ring not drawn. A game's spoke lights segment by segment as its bars clear (9.6, unchanged) and its NODE lights only
+   when that game is home, so the key fills in piece by piece. FINISHED: the key scales to `scale`, takes the tier's full tint and glow,
+   breathes on a `pulse` cycle slow enough not to pull the eye off the rest of the screen, and the outer ring is drawn. The key's card at
+   the top of the screen takes the same pulse. Each tier is a step grander — `glow` and `ringW` rise Lantern → Circuit → Thorn (gated).
+   The reveal above ENDS in this state, which is the whole of item 13's last line. All (guess). */
+export const KEY_FINISH = {
+  clear: { scale: 1.18, pulse: 3000, glow: 10, ringW: 1.2, ringOp: .5 },
+  pro: { scale: 1.2, pulse: 3000, glow: 13, ringW: 1.6, ringOp: .6 },
+  author: { scale: 1.22, pulse: 3000, glow: 16, ringW: 2, ringOp: .7 },
+};

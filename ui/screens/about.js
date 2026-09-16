@@ -2,10 +2,12 @@
    line, the tier box, Send feedback and the build hint — nothing else since build 21: v14 (8.10) moved Testing out to its
    own menu item directly below About, in ui/screens/testing.js, so it can be reviewed on its own. */
 import { BUILD } from "../../config/build.js";
-import { ABOUT, TOAST } from "../../config/copy.js";
+import { ABOUT, MSG, TOAST } from "../../config/copy.js";
+import { MESSAGES } from "../../config/messages.js";
 import { MODE_NAME } from "../../config/games.js";
-import { $, T } from "../../core.js";
-import { prefs } from "../../core/store.js";
+import { $, $$, T, esc } from "../../core.js";
+import { prefs, save } from "../../core/store.js";
+import { msgOpen } from "../../progress/key.js";
 import { GAMES, lenName } from "../../games/registry.js";
 import { Scores } from "../../progress.js";
 import { define } from "../actions.js";
@@ -33,5 +35,49 @@ function renderFeedback(){ const a=$('#feedback'); if(!a) return; const build='v
   a.href=`mailto:${ABOUT.fbTo}?subject=${q(T(ABOUT.fbSubject,{build}))}`
     +`&body=${q(T(ABOUT.fbBody,{build,when:new Date().toISOString().slice(0,16).replace('T',' '),device:device(),run:lastRun()}))}`; }
 
-register('s-about',{ onShow(){ renderTier(); renderFeedback(); } });
-define({ support(){ toast(prefs.supporter?TOAST.supAlready:TOAST.supLater); return 'click'; } });
+
+/* ---------- v25 (item 23, build 46): THE MESSAGES ----------
+   Eight slots in unlock order (config/messages.js), and the list IS the screen — a clip arrives by filling in a file name and nothing here
+   changes. ONE test decides a row's state, and it is the same test the congratulations card asks (ui/screens/key.js msgFor):
+     no `by`          open from the first load (the intro)
+     { chest:'…' }    that chest opened        — chestOpen(), the one read every surface uses
+     { key:'…' }      that key finished        — keyFinished(), which is what opens its background in Customise too (C.6)
+   (the test itself is msgOpen() in progress/key.js — one test, because a screen may not import a screen, A4.)
+   A LOCKED row says what opens it and nothing about what is in it (v17 A.1's shape) and its tap says so where it stands. An OPEN row with a
+   clip is TAP-TO-PLAY: iPhones will not start a video with sound unaided, so nothing here autoplays, and the player is built in place with
+   `playsinline` so it never jumps to full screen. CAPTIONS ARE ON EVERY CLIP — many people play on silent and Apple checks for it — so the
+   track is written the moment a `cc` exists and a clip without one is a clip that is not finished. An OPEN row with no clip yet shows the
+   "video coming soon" frame, which is what all eight show today: Aiden records them and they drop in (his decision, 2026-09-16).
+   `prefs.msgSeen` marks a clip as watched, which is what takes the dot off the About row on the menu. */
+// the player, built in place. One at a time: opening a second closes the first, so nothing plays behind anything
+function playMsg(id){ const m=MESSAGES.find(x=>x.id===id); if(!m||!msgOpen(m)||!m.file) return false;
+  $$('#msglist .msgrow').forEach(r=>{ if(r.dataset.msg!==id) r.classList.remove('playing'); const v=r.querySelector('video'); if(v&&r.dataset.msg!==id){ v.pause(); v.remove(); } });
+  const row=$(`#msglist .msgrow[data-msg="${id}"]`); if(!row) return false;
+  if(!row.querySelector('video')){ const frame=row.querySelector('.msgframe');
+    frame.innerHTML=`<video playsinline preload="metadata" controls${m.cc?' crossorigin="anonymous"':''}><source src="${esc(m.file)}" type="video/mp4">`
+      +(m.cc?`<track kind="captions" srclang="en" label="English" src="${esc(m.cc)}" default>`:'')+`</video>`; }
+  row.classList.add('playing');
+  const v=row.querySelector('video'); if(v){ const p=v.play(); if(p&&p.catch) p.catch(()=>{}); }
+  // watched, without rebuilding the list under the player that is now running: the row says so and the dot on the menu comes off
+  if(!prefs.msgSeen||!prefs.msgSeen[id]){ prefs.msgSeen=Object.assign({},prefs.msgSeen,{[id]:1}); save();
+    row.classList.add('seen'); const t=row.querySelector('.msgtxt small'); if(t) t.textContent=MSG.watched; }
+  return true; }
+function renderMessages(){ const box=$('#msglist'); if(!box) return; const seen=prefs.msgSeen||{};
+  const open=MESSAGES.filter(msgOpen).length;
+  $('#msg-lede').textContent=MSG.lede+' · '+T(MSG.count,{done:open,total:MESSAGES.length});
+  box.innerHTML=MESSAGES.map(m=>{ const o=msgOpen(m), has=o&&!!m.file, w=!!seen[m.id];
+    const state=!o?T(MSG.locked,{need:m.need}):has?(w?MSG.watched:MSG.play):MSG.soon;
+    return `<button class="msgrow${o?'':' locked'}${has?' has':''}${w?' seen':''}" data-act="msg" data-msg="${esc(m.id)}">`
+      +`<span class="msgframe">${has?'':`<i>${esc(o?MSG.soon:'')}</i>`}</span>`
+      +`<span class="msgtxt"><b class="${o?'':'x'}">${esc(m.title)}</b><small class="${o?'':'need'}">${esc(state)}</small></span></button>`; }).join(''); }
+
+/* `msg` is the congratulations card's "A message from Aiden" button arriving here (item 22 × item 23): the screen opens with that row
+   scrolled to and, if it has a clip, playing. A row that is still locked is never opened this way — the card only offers one that is open. */
+register('s-about',{ onShow({msg}={}){ renderTier(); renderFeedback(); renderMessages();
+  if(msg) setTimeout(()=>{ const row=$(`#msglist .msgrow[data-msg="${msg}"]`); if(!row) return; row.scrollIntoView({block:'center'}); playMsg(msg); },120); } });
+define({ support(){ toast(prefs.supporter?TOAST.supAlready:TOAST.supLater); return 'click'; },
+  // item 23: a locked row says what opens it where it stands; an open one with no clip yet says so; an open one with a clip plays in place
+  msg(b){ const id=b.dataset.msg, m=MESSAGES.find(x=>x.id===id); if(!m) return 'click';
+    if(!msgOpen(m)){ toast(T(MSG.locked,{need:m.need})); return 'pick'; }
+    if(!m.file){ toast(MSG.noFile); return 'pick'; }
+    playMsg(id); return 'click'; } });

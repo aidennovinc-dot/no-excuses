@@ -90,3 +90,34 @@ export const CEREMONY_FX = { meterMs: 900, swatch: ['#FFB020', '#FFD1DC', '#E8B8
    `delay` ms after the map paints (so the scroll to the chest lands first), with `particles` dots bursting from the lid in the chest's band
    colour over `burstMs`. It plays ONCE per chest (`prefs.spill`); after that the column simply stands there (L.11b). All (guess). */
 export const SPILL = { stagger: 120, ms: 520, delay: 450, particles: 10, burstMs: 700 };
+
+/* ---------- v25 (items 6 / 7 / 22, build 46): THE SYMBOLS AN UNLOCK POPS OUT AS, AND THE REVEAL THAT ENDS EVERY UNLOCK ----------
+   SYMBOLS is one drawing per thing a chest gives, in a 24 × 24 box, as stroke paths (`p`) and optional filled paths (`f`). ui/chest.js
+   symSvg() draws one and nothing else knows a path: the SAME symbol pops out of the chest (item 6), stands beside that word on the map
+   (item 7) and sits in the congratulations card's row (item 22), which is the whole point of the item — the player connects the three.
+   Each word in CHEST_WORDS (config/copy.js) names its symbol by id. All (guess): Aiden re-draws one by editing its paths here. */
+export const SYMBOLS = {
+  // a key — the three tiers, each the plainer half of its own KEY_ART glyph so the pop-out and the key screen read as one thing
+  key: { p: ['M12 4a4 4 0 1 0 0 8 4 4 0 1 0 0-8', 'M12 12v8', 'M12 15h3', 'M12 18h2.5'] },
+  keypro: { p: ['M12 3a5 5 0 1 0 0 10 5 5 0 1 0 0-10', 'M12 6a2 2 0 1 0 0 4 2 2 0 1 0 0-4', 'M12 13v8', 'M12 16h3.5', 'M12 19h2.5', 'M7 6L5 4', 'M17 6l2-2'] },
+  keyauthor: { p: ['M12 2l1.5 2.6 3 .6-2.1 2.2.4 3-2.8-1.3-2.8 1.3.4-3L7.5 5.2l3-.6z', 'M12 11a3 3 0 1 0 0 6 3 3 0 1 0 0-6', 'M12 17v5', 'M12 19h4', 'M8 14H5', 'M16 14h3'] },
+  // customisation — a palette with three wells
+  palette: { p: ['M12 3a9 9 0 1 0 2 17.8c1.2-.2 1.6-1.6.8-2.5-.9-1-.2-2.5 1.1-2.5H18a3.9 3.9 0 0 0 3.9-4.4A9 9 0 0 0 12 3z'], f: ['M8 8.6a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 1 0 0-2.6', 'M12.4 6.2a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 1 0 0-2.6', 'M16.6 9.2a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 1 0 0-2.6'] },
+  // a gauntlet — a cuffed glove, the harder run
+  gauntlet: { p: ['M7 21v-6.5a2 2 0 0 1 4 0V9a1.6 1.6 0 0 1 3.2 0v4', 'M14.2 12.4a1.5 1.5 0 0 1 3 0V16', 'M17.2 14.6a1.4 1.4 0 0 1 2.8 0v3.2A4 4 0 0 1 16 21H7', 'M5.4 6.4l3-1.6', 'M18.6 6.4l-3-1.6'] },
+  // a cosmetic set — three swatches stacked
+  cosmetic: { p: ['M4 6h10v5H4z', 'M7 11h10v5H7z', 'M10 16h10v5H10z'] },
+  // the three key backgrounds (item 15), each a shorthand of the layer ui/atmosphere.js draws
+  'bg-lantern': { p: ['M3 5h18v14H3z', 'M8 15.5a3.2 3.2 0 1 1 6.4 0', 'M6 9.5a2.2 2.2 0 1 1 4.4 0', 'M15 11.5a2.6 2.6 0 1 1 5.2 0'], f: ['M16.4 16.6a.9.9 0 1 0 0 1.8.9.9 0 1 0 0-1.8', 'M6.6 17a.7.7 0 1 0 0 1.4.7.7 0 1 0 0-1.4'] },
+  'bg-circuit': { p: ['M3 5h18v14H3z', 'M6 8h5v4h6', 'M6 16h4v-4', 'M14 16h4'], f: ['M10.2 7.2h1.6v1.6h-1.6', 'M16.2 11.2h1.6v1.6h-1.6', 'M13.2 15.2h1.6v1.6h-1.6'] },
+  'bg-thorn': { p: ['M3 5h18v14H3z', 'M3 19c4-1.5 6.5-4.5 7.5-8.5', 'M21 19c-4-1.5-6.5-4.5-7.5-8.5'], f: ['M7.4 15.4l2.4-.6-1 2.2z', 'M16.6 15.4l-2.4-.6 1 2.2z', 'M11.4 10.4l2.2-1-.6 2.4z'] },
+};
+
+/* v25 (items 6 / 11 / 22, build 46): THE ONE SHARED REVEAL. ui/reveal.js runs it for a chest and for a key alike — the stage, then the gifts,
+   then "tap to continue", then the congratulations card — so "unlocking is an event" is one routine and not two (item 11's last line).
+   `giftAt` is when the first symbol starts rising after the stage's own length, `giftGap` the beat between them, `giftMs` how long one takes;
+   `hold` is the beat between the last one landing and "tap to continue" appearing (item 6: hold it back until the last one has landed).
+   `cardAt` is how long after the tap the card fades in, `cardGo` how long before its Continue button becomes tappable (item 22: "about a
+   second", so a tap left over from the animation cannot close it unseen). `fadeMs` is the WHOLE reveal under Reduce Motion — the stage, the
+   gifts and the settle collapse into one short fade and the card follows (item 11, and Apple expects it). All (guess). */
+export const REVEAL = { giftAt: 260, giftGap: 520, giftMs: 900, hold: 420, cardAt: 240, cardGo: 1000, fadeMs: 700 };

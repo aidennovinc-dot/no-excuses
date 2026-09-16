@@ -8,7 +8,7 @@
    rendered before the sequence starts, so nothing about the layout can change while it plays. */
 import { GRID, KEY, MENU, TOAST } from "../../config/copy.js";
 import { $, $$, T, esc } from "../../core.js";
-import { chestOpen, meter, readyChest } from "../../progress/key.js";
+import { chestOpen, meter, msgDot, readyChest } from "../../progress/key.js";
 import { meterLook } from "../chest.js";
 import { countUp } from "../../core/count.js";
 import { emit, on } from "../../core/events.js";
@@ -43,6 +43,9 @@ function renderMenu(){ const first=firstRun(); const opening=menuWasFirst&&!firs
   $$('#s-menu .item').forEach((b,i)=>{ const dev=b.dataset.dev!==undefined, x=first&&b.dataset.go!=='s-pick'&&!dev; b.classList.toggle('dim',x); b.classList.remove('unx'); b.style.removeProperty('--ud');
     if(opening&&b.dataset.go!=='s-pick'&&!dev){ const d=i*90; b.style.setProperty('--ud',d+'ms'); b.classList.add('unx'); b.style.pointerEvents='none'; setTimeout(()=>{ b.classList.remove('unx'); b.style.removeProperty('--ud'); b.style.pointerEvents=''; },700+d); } });
   renderCustomise(first); renderKeys(first);
+  /* v25 (item 23, build 46): a small mark on the About row while a message is open, has a clip and has not been watched — L8's own green
+     first-seen mark, which is what this app already means by "there is something new in here". msgDot() is the one test (progress/key.js) */
+  { const ab=$('#s-menu .item[data-go="s-about"]'); if(ab) ab.classList.toggle('newthing',!first&&msgDot()); }
   // v17 (B.20, build 29): the "play one run · the rest opens" line is gone — the struck-through items say it
   /* v17 (§A.6.7): percentage complete on the front of the app. It is hidden on a profile that has not run anything — A.6.2
      makes a new profile 0%, and handing a first-timer a number that says nothing has happened is the opposite of what §A.6.6
@@ -99,8 +102,22 @@ function paintPct(mk,pct){ const rc=readyChest();
 
 /* ---------- the title sequence (L1). Three beats: the first line at the top, the title in the middle, the second line under it.
    A tap anywhere ends it — that is the one capture in ui/actions.js — and the menu builds around the title that is already there ---------- */
-function storyStart(){ const m=$('#s-menu'); storyOn=true; m.classList.remove('storyend','intro'); m.classList.add('story'); void m.offsetWidth; m.classList.add('run'); }
-function storyEnd(){ if(!storyOn) return; storyOn=false; const m=$('#s-menu'); Snd.click(); prefs.story=1; save();
+/* ---------- v25 (item 1, build 46): A LOW WHOOSH UNDER EACH LINE OF THE TITLE ----------
+   Four beats, four sounds: the two story lines, NO EXCUSES itself (the heavier one) and "tap to begin". Each is scheduled off THAT LINE'S OWN
+   ANIMATION — `getComputedTiming().delay`, read after `.run` starts it — so the stylesheet keeps the only copy of the timing and a re-tune
+   cannot leave the sound behind. It follows the sound setting like every other effect (config/audio.js TITLE_FX through Snd.titleFx).
+   THE BUILD CATCH, accepted as item 1 writes it: a phone browser blocks audio until the player has tapped once, so the very first title of a
+   web session plays silent. It works the second time the title is seen and in the App Store build, and it is NOT faked with a hidden tap. */
+const TITLE_BEATS=[['#st1','line'],['#s-menu .wmin','title'],['#st2','line'],['#storyhint','line']];
+let titleT=[];
+function titleSounds(){ titleT.forEach(clearTimeout); titleT=[];
+  for(const [sel,kind] of TITLE_BEATS){ const el=$(sel); if(!el||!el.getAnimations) continue;
+    const a=el.getAnimations()[0]; if(!a||!a.effect) continue;
+    const d=a.effect.getComputedTiming().delay||0;
+    titleT.push(setTimeout(()=>{ if(storyOn) Snd.titleFx(kind); },d)); } }
+const titleStop=()=>{ titleT.forEach(clearTimeout); titleT=[]; };
+function storyStart(){ const m=$('#s-menu'); storyOn=true; m.classList.remove('storyend','intro'); m.classList.add('story'); void m.offsetWidth; m.classList.add('run'); titleSounds(); }
+function storyEnd(){ if(!storyOn) return; storyOn=false; titleStop(); const m=$('#s-menu'); Snd.click(); prefs.story=1; save();
   m.classList.add('storyend'); setTimeout(()=>{ m.classList.remove('story','run','storyend'); menuIn(); },320);
   // v13 (3.6): a challenge link waits for the title sequence, then opens its pick sheet
   if(CHAL) setTimeout(()=>emit('challenge',CHAL),570); }
@@ -109,7 +126,7 @@ capture(()=>{ if(!storyOn) return false; storyEnd(); return true; });
 // a returning player boots straight onto the menu the markup already shows: the reveal plays once, and a challenge link opens its sheet
 function enterMenu(){ renderMenu(); menuIn(); if(CHAL) setTimeout(()=>emit('challenge',CHAL),300); }
 
-register('s-menu',{ onShow({intro,story}){ setPendingAim(''); storyOn=false; $('#s-menu').classList.remove('story','run','storyend');
+register('s-menu',{ onShow({intro,story}){ setPendingAim(''); storyOn=false; titleStop(); $('#s-menu').classList.remove('story','run','storyend');
   renderMenu(); if(story) storyStart(); else if(intro) menuIn(); } });
 define({ nextup(){ if(nextWhere) goWhere(nextWhere); return 'click'; },
   // L.11a: the Customise row. Locked, it says what opens it and stays put; open, it is an ordinary menu row

@@ -411,6 +411,63 @@ anything new.**
   its own config and engine. `SP.ramp(r, n)`, `SP.findSpec(r)`, `SP.SHAPES`, `TM.hiddenRamp(r, vary)`, `TM.DEAL`, `RX.NOGO_TURNS`,
   `RX.NOGO_JITTER` and `HD.TURNS` exist so those figures are read rather than typed; none of them moved a value.
 
+### Build 46 — v25 items 6, 7, 11, 13, 15, 22, 1, 2, 23 (the unlock experience, sound and About)
+
+- **AMENDED: v23 L.6 and v24 C.5 become ONE ROUTINE (items 6 / 11 / 22).** L.6 (build 41) gave a chest opening its own ceremony — its own clock,
+  its own "tap to continue", its own hand-over — and C.5 (build 43) gave a key its own earn moment beside it. Item 11's last line settles it:
+  *"'Unlocking is an event' is the rule for chests and keys alike, so build them from one shared reveal routine rather than two."* `ui/reveal.js`
+  is that routine and it runs four beats, always in this order: **the stage**, **the gifts**, **"tap to continue"**, **the congratulations card**.
+  It owns the clock, swallows every tap before the hold, hushes the music, and hands over on the card's Continue.
+  The two callers hand it a STAGE and nothing else. `chestStage(id, o)` in `ui/ceremony.js` is build 41's drawing, unchanged, with its times still
+  in `config/chests.js CEREMONY` and the meter's D.4 count-up still its own last beat. `keyStage(tier)` in `ui/screens/key.js` drives the ring:
+  `KEY_REVEAL` in `config/keys.js` says how long, when the first game lands and the beat between them, when the key lights and when it settles.
+  Neither file holds a timer for the hold, the tap or the hand-over any more, and the gate fails if `playCeremony` / `ceremonyTap` /
+  `stopCeremony` / `ceremonyOn` come back.
+  **First time only** is `prefs.revealed` — `'chest:<id>'` and `'key:<tier>'`, written the moment the reveal starts, so a reload mid-reveal never
+  replays it. Testing's per-chest reset clears that chest's flag AND the flag of the key that chest is the reward for, which is Aiden's own
+  exception: *"resetting the chest from Testing, which on this phone counts as a first time again."*
+  **Reduce Motion** collapses the stage, the gifts and the settle into one `REVEAL.fadeMs` fade and still ends on the card. Nothing is skipped,
+  only shortened — Apple expects it and the App Store review looks for it.
+  **A moment that waits for a tap owns the hand-back.** Build 41 learned this when a chest ceremony landed inside a result interlude; a key
+  becoming whole mid-run now plays a reveal that waits for a tap too, so the interlude's timer stands down and the reveal's Continue returns the
+  result screen. Build 40's "the result comes back by itself once the moment has played" is reversed a second time.
+- **New: what an unlock GIVES is a symbol, and it is the same symbol in three places (items 6 / 7 / 22).** `SYMBOLS` in `config/chests.js` is
+  nine drawings in a 24 × 24 box; `symSvg()` in `ui/chest.js` is the only thing that turns one into markup. It rises out of the chest as it
+  opens, stands beside that word on the map, and sits in the card's row — so the player connects the three by construction rather than by
+  anyone remembering to keep them in step. `sym` on each `CHEST_WORDS` entry names it, and `giftsOf(id)` is the one list both the reveal and the
+  card read. Each gift lands with `Snd.gift(i)`, `GIFT_FX` a step higher for each one after the first, so two or three arriving in turn read as
+  a rising figure. "Tap to continue" is held back until the last one has landed (item 6's own line).
+- **New: item 22's congratulations card.** Title in that chest's or key's colour; at most three lines of WHAT YOU DID (a chest: the modes count
+  and the meter, or the key it needed; a key: its bars, the solo runs it took and the days since the first one); WHAT YOU GOT as the same
+  symbols; one line of WHAT'S NEXT; and Continue, which is dead for `REVEAL.cardGo` so a tap left over from the animation cannot close it
+  unseen. No sound of its own — the reveal's last chord is still ringing. The card is never drawn over the animation: it is the beat after it.
+- **AMENDED: the two key states (item 13).** Both wore the tier's golden glow, so a key 3% of the way along looked earned. `kdone` on `#s-key`
+  is the whole of the difference. Without it: no radial ground, no drop shadow anywhere, the hub glyph in the tier's own `dim`, the spokes
+  faint, a node lit only once its game is HOME, and no outer ring. With it: `KEY_FINISH` in `config/keys.js` — a scale, the tier's full tint and
+  glow, a slow breathing pulse on the key and on its card at the top of the screen, and the ring drawn — each tier a step grander. The
+  first-open reveal ENDS by settling into it, which is item 13's last line and the join between the two items.
+- **AMENDED: v24 C.4 / C.6 — a key's background REPLACES the base (item 15).** Build 43 already drew a code layer per key, already matched it to
+  that key's tempo and already unlocked it in Customise once the key was finished. What was wrong is what item 15 actually reports: the layer was
+  drawn OVER the chosen design, so the Circuit's traces sat on the app's grid and two backgrounds moved against each other. `ui/atmosphere.js`
+  now draws the stars and that key's layer and NOT the chosen design while a key layer is over — which is also exactly what a key background
+  chosen in Customise already is, so the screen and the choice look the same. New art for Lantern and Thorn was **not** written; they have had
+  their own layers since build 43. Each key's background is also one of the symbols its own chest pops out (item 15's last line).
+- **New: a sound tied to an animation READS the animation (items 1 / 2).** `getComputedTiming().delay` off the element itself, never a second
+  list of times — so the stylesheet keeps the only copy of every timing and a re-tune cannot leave a sound behind. The title plays `TITLE_FX`
+  under each of its four beats, the title line heavier; the map's first open plays `MAP_FX`, one soft sound per game so the first look previews
+  what the seven sound like, with a locked tile the same sound down `MAP_LOCKED.semi` semitones and quieter, and the chests their own note at
+  the end. First open only; after that the map comes in silent. The same family lands each game's node on a key reveal, which is what keeps the
+  two items one family rather than two.
+  **The build catch, accepted as item 1 writes it:** a phone browser blocks audio until the player has tapped once, so the very first title of a
+  web session is silent. It works the second time the title is seen and in the App Store build, and it is not faked with a hidden tap.
+- **New: the About screen's eight message slots (item 23).** `config/messages.js` — id, title, what opens it, file, captions — in unlock order:
+  the intro, then the Games chest, the Lantern, the Key chest, the Circuit, the Pro chest, the Thorn, the Thorns chest. `by` is ONE of
+  `{chest:'…'}` or `{key:'…'}`, never both, so `msgOpen()` in `progress/key.js` is the whole rule; it lives there and not on the screen because
+  the congratulations card asks it too and a screen may not import a screen (A4). A locked row says what opens it and nothing about what is in
+  it; an open row with no clip shows the "video coming soon" frame; an open row with a clip is tap-to-play, built in place, `playsinline`, with
+  a captions track, and never full screen or autoplaying. A clip arrives by filling in a file name — no code change. `prefs.msgSeen` takes L8's
+  green dot off the About row. Aiden records the eight clips himself (his decision, 2026-09-16).
+
 ## Structure — the full text as of build 30
 
 `CLAUDE.md` keeps the module map. This is the paragraph-by-paragraph description it carried at build 30: the DAG, the

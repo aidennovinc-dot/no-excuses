@@ -6,16 +6,16 @@
    (`--st-<step>-at`, `--st-<step>-ms`) the stylesheet's animations read, so a timing is a number edit and the gate holds the names to L.6.
    The effects and the sting are config/audio.js, scheduled in one call to Snd.chest() on the audio clock.
 
-   One ceremony at a time, on one host — the key screen's #key-cere. NOT SKIPPABLE (L.6): a tap before the end does nothing; from `ms` the
-   reveal says "tap to continue", and the next tap ends it and hands over to whoever asked (the map, or the result screen after an
-   interlude). The music is hushed for the whole of it and comes back on that tap. The meter's D.4 count-up is the reveal's last beat (L.8b).
+   v25 (items 6 / 22, build 46): THE CLOCK, THE TAP AND THE HAND-OVER MOVED TO ui/reveal.js — the one shared reveal chests and keys both run
+   through. What is left here is the drawing and its times: chestStage(id, o) below. Still not skippable, still hushed, still holding on "tap
+   to continue" and still ending on the meter's D.4 count-up — one routine does all four now, for a key as well as for a chest.
 
    frame() draws the same stage paused at a fraction of its length and plays nothing — the review catalogue's frames (L.10d / L.11e). It
    lives here so the catalogue cannot photograph a ceremony the app does not play. */
 import { CEREMONY, CEREMONY_FX, CHEST_LOOK, METER_BANDS } from "../config/chests.js";
 import { GRID, KEY } from "../config/copy.js";
 import { KEY_ART } from "../config/keys.js";
-import { Music, Snd } from "../audio.js";
+import { Snd } from "../audio.js";
 import { T, esc } from "../core.js";
 import { countUp } from "../core/count.js";
 import { COMBOS } from "../progress/key.js";
@@ -64,47 +64,49 @@ function inFront(id) { const out = [];
       out.push(`<path class="cspk l" d="M0 ${y}L72 ${y + 26}L0 ${y + 52}z" style="--i:${i}"></path><path class="cspk r" d="M300 ${y}L228 ${y + 26}L300 ${y + 52}z" style="--i:${i}"></path>`); }
     out.push('<rect class="csplit" x="149" y="0" width="2" height="520"></rect>'); }
   return out.join(''); }
-function stageHtml(id, name, was) {
+// v25 (build 46): `tapLine` is the review catalogue's frames only — in the app the shared reveal (ui/reveal.js) owns "tap to continue"
+function stageHtml(id, name, was, tapLine) {
   const chest = chestSvg(id, 'cbig').replace('<svg ', '<svg x="90" y="250" width="120" height="98" ');
   return `<svg class="cstage" viewBox="0 0 300 520" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${behind(id)}<g class="cchestg">${chest}</g>${inFront(id)}</svg>`
-    + `<div class="ctxt"><b>${esc(name)}</b><u class="meterv">${esc(T(KEY.pct, { n: was }))}</u><i class="ctap">${esc(KEY.tapOn)}</i></div>`; }
+    + `<div class="ctxt"><b>${esc(name)}</b><u class="meterv">${esc(T(KEY.pct, { n: was }))}</u>${tapLine ? `<i class="ctap">${esc(KEY.tapOn)}</i>` : ''}</div>`; }
 const nameOf = id => T(KEY.opened, { chest: GRID.chest[id] });
 const setMeter = (m, v) => { m.textContent = T(KEY.pct, { n: v }); meterLook(m, v); };
 
-/* ---------- the one that is playing ---------- */
-let cur = null;
-// ends it with no hand-over: a screen change, a second ceremony, the screen reopened. Idempotent, and always gives the music back
-function stop() { if (!cur) return; const c = cur; cur = null; c.timers.forEach(clearTimeout);
-  c.host.classList.remove('play', 'tap'); c.host.hidden = true; c.host.innerHTML = ''; Music.hush(false); }
-/* play(host, id, { was, now, name, silent, onReady, onDone }). `was` → `now` is the meter's count-up in the last beat; `onReady` fires when
-   "tap to continue" appears; `onDone` when that tap lands. `silent` plays no sound (Testing's replay still plays the sounds — it is how the
-   ceremony is reviewed — so only the catalogue passes it). */
-function play(host, id, o = {}) { stop(); const cfg = CEREMONY[id]; if (!host || !cfg) return false;
+/* ---------- v25 (items 6 / 22, build 46): A CHEST OPENING IS NOW A STAGE INSIDE THE ONE SHARED REVEAL ----------
+   Build 41's playCeremony() owned its own clock, its own "tap to continue" and its own hand-over. Items 6, 11 and 22 put chests and keys
+   through ONE routine (ui/reveal.js), so what is left here is the DRAWING and the times it is drawn on: chestStage(id, o) hands the reveal
+   a `{ ms, steps, start, settle, clear }` and the reveal runs the clock, swallows the taps, pops the gifts out, holds "tap to continue" and
+   ends on the congratulations card. Nothing about how a chest looks changed, and every timing is still config/chests.js CEREMONY.
+   The meter's D.4 count-up is still the reveal's last beat (L.8b) and is still this file's, because it is part of the stage. */
+let upT = 0;
+function chestStage(id, o = {}) { const cfg = CEREMONY[id]; if (!cfg) return null;
   const was = typeof o.was === 'number' ? o.was : 0, now = typeof o.now === 'number' ? o.now : was;
-  const c = cur = { id, host, timers: [], ready: false, onReady: o.onReady, onDone: o.onDone };
-  host.dataset.chest = id; host.dataset.step = ''; host.setAttribute('style', stageVars(id)); host.innerHTML = stageHtml(id, o.name || nameOf(id), was);
-  host.classList.remove('play', 'tap'); host.hidden = false; void host.offsetWidth; host.classList.add('play');
-  const m = host.querySelector('.meterv'); meterLook(m, was);
-  Music.hush(true); if (!o.silent) Snd.chest(id);
-  const at = (ms, fn) => c.timers.push(setTimeout(() => { if (cur === c) fn(); }, ms));
-  for (const s of cfg.steps) at(s.at, () => { host.dataset.step = s.name; });
-  at(cfg.ms - CEREMONY_FX.meterMs, () => {
-    if (now > was) { m.classList.add('up'); countUp({ audio: o.silent ? null : Snd, from: was, to: now, ms: CEREMONY_FX.meterMs, fmt: v => Math.round(v), set: v => setMeter(m, v), alive: () => cur === c }); }
-    else setMeter(m, now); });
-  at(cfg.ms, () => { c.ready = true; host.classList.add('tap'); host.dataset.step = 'tap'; if (c.onReady) c.onReady(); });
-  return true; }
-// the tap. Before "tap to continue" it is nothing at all; after it, the ceremony ends and hands over. Answers whether it ended
-function tap() { if (!cur || !cur.ready) return false; const c = cur; stop(); if (c.onDone) c.onDone(); return true; }
-const playing = () => !!cur;
+  let host = null, live = false;
+  return { ms: cfg.ms, steps: cfg.steps.map(s => ({ name: s.name, at: s.at, ms: s.ms })),
+    start(el, k = {}) { host = el.closest('.cere') || el; live = true;
+      // the stage's own layers sit on the reveal's host, so the build-41 stylesheet (.cere.play [data-chest]) dresses them unchanged
+      host.dataset.chest = id; host.setAttribute('style', (host.getAttribute('style') || '') + ';' + stageVars(id));
+      el.innerHTML = stageHtml(id, o.name || nameOf(id), was, false);
+      const m = el.querySelector('.meterv'); meterLook(m, was);
+      if (!o.silent) Snd.chest(id);
+      // D.4 / L.8e: the credit lands as the count-up in the last beat. Under Reduce Motion it lands at once, with the rest of it
+      clearTimeout(upT);
+      const run = () => { if (!live) return; if (now > was) { m.classList.add('up');
+          countUp({ audio: o.silent ? null : Snd, from: was, to: now, ms: CEREMONY_FX.meterMs, fmt: v => Math.round(v), set: v => setMeter(m, v), alive: () => live }); }
+        else setMeter(m, now); };
+      if (k.quick) run(); else upT = setTimeout(run, Math.max(0, cfg.ms - CEREMONY_FX.meterMs)); },
+    step() { },
+    settle() { },
+    clear() { live = false; clearTimeout(upT); if (host) delete host.dataset.chest; host = null; } }; }
 
 /* the review catalogue's frames: the stage at `frac` of its length, every animation paused there, the meter where the count-up would be */
 function frame(host, id, frac, o = {}) { const cfg = CEREMONY[id]; if (!host || !cfg) return;
   const f = Math.max(0, Math.min(1, frac)), t = f * cfg.ms, was = o.was || 0, now = typeof o.now === 'number' ? o.now : was;
-  host.dataset.chest = id; host.setAttribute('style', stageVars(id)); host.innerHTML = stageHtml(id, o.name || nameOf(id), was);
+  host.dataset.chest = id; host.setAttribute('style', stageVars(id)); host.innerHTML = stageHtml(id, o.name || nameOf(id), was, true);
   host.classList.add('cere', 'play'); host.classList.toggle('tap', f >= 1); host.hidden = false;
   const up = cfg.ms - CEREMONY_FX.meterMs, k = Math.max(0, Math.min(1, (t - up) / CEREMONY_FX.meterMs));
   setMeter(host.querySelector('.meterv'), Math.round(was + (now - was) * k));
   const last = cfg.steps.filter(s => s.at <= t).pop(); host.dataset.step = f >= 1 ? 'tap' : last ? last.name : '';
   for (const a of host.getAnimations({ subtree: true })) { a.pause(); a.currentTime = t; } }
 
-export { frame as ceremonyFrame, play as playCeremony, playing as ceremonyOn, stop as stopCeremony, tap as ceremonyTap };
+export { frame as ceremonyFrame, chestStage };

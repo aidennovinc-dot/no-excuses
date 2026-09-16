@@ -571,3 +571,54 @@ fills them, so every future board carries them (#441).
 
 **Amended at build 45:** 5.3 / #426's Author-screen check and #426's `isPlaceholder` check no longer expect the placeholder note on the key
 screen — both now assert every warning is empty while the counts stay 18 and 30 (v25 item 14).
+
+## Build 46 (batch 18, the unlock experience, sound and About — FEEDBACK-v25 items 6, 7, 11, 13, 15, 22, 1, 2, 23)
+
+**Two shared drivers first.** A chest opening and a key's first open are the same reveal now, and it has TWO waits, not one — "tap to continue",
+then the congratulations card whose Continue is dead for about a second. `revealReady()` polls for the hold and `revealDone()` finishes the whole
+thing; both are no-ops when nothing is playing, so they are safe anywhere. **Every wait is a poll, never a number** — the length is
+`config/chests.js REVEAL` plus that stage's own, and a number typed into the gate would go stale the day either is re-tuned. `catalogue.mjs`'s
+`cereTap()` learned the same two waits, because a build that adds a blocking moment has to teach every script that drives the app, not only the
+gate (the build-27 lesson, third time).
+
+**Items 6 / 11 / 22 — one routine.** Statically: `ui/ceremony.js` and `ui/screens/key.js` hold no clock, tap or hand-over of their own
+(`playCeremony` / `ceremonyTap` / `stopCeremony` / `ceremonyOn` are gone), `chestStage()` exists, the key screen calls `playReveal` for both
+kinds, the routine itself carries the swallow, the hold and `REVEAL.cardGo`, and neither the routine nor the chest drawer writes anything (L10).
+**Item 6** drives all four chests from a profile set up to have each one ready: mid-stage nothing is tappable and no gift has landed; at the hold
+the symbols on screen are exactly that chest's `CHEST_WORDS`, each with a symbol, and `Snd.gift` has fired once per gift in order. **Not
+skippable**: eight taps and Back during a reveal change nothing and none of them is queued; the tap that lands brings the card up with Continue
+disabled, and it is enabled after `REVEAL.cardAt + REVEAL.cardGo`. **Item 22** reads the card: the title names the chest, there is at least one
+and at most three lines of what you did, what you got is the same symbols, and what's next names the next chest.
+
+**Item 11 — all three keys.** Each is driven from a profile whose bars are complete at that tier: `--h` on the seven roots is `0…6` in
+`Object.keys(GAMES)` order (clockwise from Quick Tap at 12), `Snd.mapFx` fires once per game in that same order, `Snd.keyEarn` fires once for
+that tier, the reveal reaches the hold no sooner than its configured length, and afterwards `kdone` is on, `krev` is off and the outer ring is
+drawn. The three escalate in length, ripples and sparks. **First time only**: the flag is in `prefs.revealed` after it plays, a second visit goes
+straight to the finished key, and `devChestReset` clears that key's flag. **Reduce Motion** is emulated: the host wears `quick`, the reveal
+finishes well inside its configured length, and it still ends on the card.
+
+**Item 13** measures both states on all three tiers. Unfinished: no `kdone`, no ring, `filter: none`, `animation-name: none`, no scale, and the
+ring's ground at opacity 0. Finished: `kdone`, the ring drawn, a filter, `kbreathe` on the hub glyph AND on the key's card at the top, and a
+scale above 1. `KEY_FINISH`'s glow rises across the three tiers.
+
+**Item 7** reads all four chests' word columns on the map: each word's symbol is the one its `CHEST_WORDS` row names, every word still fits its
+cell at 390px (the text is `.cwt` now, and the row may be up to 44px tall — amended from build 41's 36px, because the row carries a drawing),
+and `symSvg()` is the only thing that reads `SYMBOLS`. **Item 15** checks `ui/atmosphere.js` draws the stars and not the chosen design while a
+key layer is over it, that each key's background is one of the symbols its own chest gives, and that the layers still read the file's own
+`reduce`. **Items 1 / 2** hook `Snd.titleFx` and `Snd.mapFx`: the title fires four times — line, title, line, line — each within 400ms of the
+delay the stylesheet's own animation reports, and no timing literal is left in `menu.js`; the map's first open fires eleven times, open tiles
+plain and locked ones flagged, and the second visit is silent. **Item 23** reads the eight rows on a fresh profile (the intro open with the
+"video coming soon" frame, seven locked saying what opens them, in `config/messages.js` order), then with every chest and key open (all eight
+unlocked), then puts a file on the first slot at runtime and drives it: the player is built in place with `playsinline` and a default captions
+track, the slot is marked watched, and the About row's dot goes. **Items 20 / 22** run `soundsRef()` and require the five new `src` strings to be
+in it with events, and the card's message button to be gated on the slot having a file.
+
+**Amended at build 46, both ways:** B.24, B.26, L.8b, L.6, L.11c, L.11d, C.1, B.1 / B.2 and build 45's `openChest45` all answer the reveal's two
+taps instead of one; L.6's step list is `uncross,path,lid,chord,settle,tap` (the two new beats are the shared routine's, after the ceremony's own
+four) and now also asserts the two symbols and their ids; L.11c and L.11d read a word from `data-w` rather than the element's first child, which
+is the symbol now; L.11d's row-height allowance goes 36 → 44. **L.8b section 5 is REVERSED AGAIN**: build 43 made the interlude play the earn
+moment and hand the result back on a timer; the reveal waits for a tap, so it owns the hand-back, and the check now asserts the interlude HOLDS
+and that the reveal's Continue is what returns the result screen. The sound list's row floor goes 24 → 34 and `mapPlan` / `giftPlan` join the
+helper list.
+
+**Gate: 591 checks; the review catalogue is 103 cards and 39 sounds.** The first full run passed 582 and failed 9; the second, after the two app fixes the reveal needed, passed 590 and failed 1 — this build's own new driver. Both were re-run on their own, and the second full run was not optional: the fix changed app code (`lock`, `pendingOpen`) that other checks drive, which is the one case the build-43 rule says a full re-run is owed.

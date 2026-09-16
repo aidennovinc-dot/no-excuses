@@ -140,11 +140,17 @@ export const GRID = { chest:{ games:'Games chest', key:'Key chest', pro:'Pro che
    also names THE KEY, because opening it is what reveals key 1 (L.10a). */
 /* v23 (L.11b, build 41): EACH WORD IS A TAP TARGET to the thing it names — `to` is where: a screen id, `key:<n>` for that key's tab, or
    `soon` for a reward that is not built yet (Gauntlet, #382; the Pro and Thorns placeholders), which says so in a toast (guess). */
+/* v25 (items 6 / 7 / 15, build 46): EVERY WORD NOW CARRIES ITS SYMBOL — `sym`, an id in SYMBOLS (config/chests.js). The same drawing pops
+   out of the chest as it opens (item 6), stands beside the word here on the map (item 7) and sits in the congratulations card's row
+   (item 22), so the player connects the three. Item 15 adds the key backgrounds: finishing a key makes its chest ready, so the chest that
+   key opens is the one that gives its background away — the Key chest the Lantern's, the Pro chest the Circuit's, the Thorns chest the
+   Thorn's, each landing in Customise (`ITEMS.bg` in config/theme.js, locked on keyFinished since build 43). SKY is a placeholder word like
+   every other on this list — one line each to change. */
 export const CHEST_WORDS = {
-  games:[{ w:'CUSTOMISE', to:'s-custom' }, { w:'THE KEY', to:'key:0' }],
-  key:[{ w:'GAUNTLET', to:'soon' }, { w:'PRO KEY', to:'key:1' }],
-  pro:[{ w:'AUTHOR KEY', to:'key:2' }, { w:'COSMETIC SET', tba:1, to:'soon' }],
-  thorns:[{ w:'HARD GAUNTLET', tba:1, to:'soon' }] };
+  games:[{ w:'CUSTOMISE', sym:'palette', to:'s-custom' }, { w:'THE KEY', sym:'key', to:'key:0' }],
+  key:[{ w:'GAUNTLET', sym:'gauntlet', to:'soon' }, { w:'PRO KEY', sym:'keypro', to:'key:1' }, { w:'LANTERN SKY', sym:'bg-lantern', to:'s-custom' }],
+  pro:[{ w:'AUTHOR KEY', sym:'keyauthor', to:'key:2' }, { w:'COSMETIC SET', sym:'cosmetic', tba:1, to:'soon' }, { w:'CIRCUIT SKY', sym:'bg-circuit', to:'s-custom' }],
+  thorns:[{ w:'HARD GAUNTLET', sym:'gauntlet', tba:1, to:'soon' }, { w:'THORN SKY', sym:'bg-thorn', to:'s-custom' }] };
 // v23 (L.11b, build 41): what a word whose reward is not built yet says when tapped (guess)
 export const CHEST_SOON = '{w}<small>not built yet · a later build</small>';
 export const SHEET = { mode:'Mode', toUnlock:'To unlock: {need}', tileUnlock:'to unlock: {need}', locked:'locked', noRun:'no run yet', best:'best', closest:'closest',
@@ -325,3 +331,28 @@ export const SPOT = { count:['count','the'], find:['find','the'], howMany:'how m
   // as they have to be, so the rule bar is where the colours say whose is whose
   vsBar:'find yours', vsRound:'round {n} · first to {t}', vsTook:'Player {n} found theirs', vsMiss:'not either one', vsHow:'first to {t} rounds',
   draw:'draw', wins:'Player {n} wins', hudFindStreak:'Round {n} · {tot}s of 10s', hudFind:'Round {n} of {s} · {tot}s', hudTwo:'round {n} / {s}', hudCountStreak:'Round {n} · {off} of {bud} off', hudCount:'Round {n} of {s} · {off} off', over10:'{a}–{b} over {s} rounds' };
+
+/* ---------- v25 (item 22, build 46): THE CONGRATULATIONS CARD ----------
+   The last step of the shared reveal (ui/reveal.js), never over the top of the animation: a title in that chest's or key's own colour, up to
+   three lines of WHAT YOU DID, a row of WHAT YOU GOT (the item 6 symbols with their titles), one line of WHAT'S NEXT, and a Continue button
+   that only becomes tappable after about a second (REVEAL.cardGo in config/chests.js) so a tap left over from the animation cannot close it
+   unseen. No sound of its own — the reveal's last chord is still ringing. Item 23 adds `msg` when the unlock opens a message from Aiden.
+   Placeholder wording, one line each to change (guess). */
+export const CARD = {
+  chest:'{chest} opened', key:'{key} unlocked',
+  did:'what you did', got:'what you got', next:'what’s next', go:'Continue',
+  // WHAT YOU DID — a chest counts modes and the meter; a key counts its own bars, the runs it took and the days since the first one
+  cModes:'{open} of {total} game modes unlocked', cMeter:'{pct}% complete', cSince:'{n} mode(s) earned since the last chest',
+  kGames:'all {n} games · {done} of {total} bars', kRuns:'{n} solo runs to get here', kDays:'{n} days since your first run', kDay:'all in one day',
+  // WHAT'S NEXT — the next chest by name, or the next key, or nothing left
+  nChest:'Next: open the {chest}', nKey:'Next: {key} — {need}', nDone:'That is all of it. Every chest open.', nNone:'Keep playing — the rest opens as you go.',
+  // item 23: the button that appears when this unlock opened a message
+  msg:'A message from Aiden' };
+
+/* ---------- v25 (item 23, build 46): THE ABOUT SCREEN'S MESSAGES ----------
+   Eight slots, in unlock order (config/messages.js). An unlocked slot with a file plays inside the screen on a tap, captions on; an unlocked
+   slot with no file yet shows the "video coming soon" frame; a locked one shows what opens it and nothing about what is in it (A.1's shape).
+   Aiden records the clips and they drop in by filling a file name in — no code change (his decision, 2026-09-16). */
+export const MSG = { title:'messages', lede:'Short messages from Aiden, as you go.',
+  locked:'opens with {need}', soon:'video coming soon', play:'play', watched:'watched', count:'{done} of {total}',
+  noFile:'Not recorded yet — this slot is waiting for its clip.', capOff:'captions', capOn:'captions on' };

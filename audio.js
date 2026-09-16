@@ -7,7 +7,7 @@
    finish ramp that lands the last downbeat on the clock (B.28), an end cadence in the track's own key (B.30), a flow-state
    layer over the two tap games (B.27) and a duck for Sequence (B.30). Still no percussion. */
 
-import { CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, DUCK, DUCK_TAIL, FLOW_STEM, HUSH, KEY_EARN_FX, KEY_THEMES, ROUND_VERDICT, SCALES, SET_SECS, STEMS, STING_RING, TRACKS, TRACK_PICK, VERDICT_FX } from "./config/audio.js";
+import { CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, DUCK, DUCK_TAIL, FLOW_STEM, GIFT_FX, HUSH, KEY_EARN_FX, KEY_THEMES, MAP_FX, MAP_LOCKED, ROUND_VERDICT, SCALES, SET_SECS, STEMS, STING_RING, TITLE_FX, TRACKS, TRACK_PICK, VERDICT_FX } from "./config/audio.js";
 import { STREAK } from "./config/games.js";
 import { emit, on } from "./core/events.js";
 import { sel } from "./core/state.js";
@@ -206,6 +206,20 @@ const Snd = (()=>{
         else if(kind==='sting'){ if(sting) tone(f0,f1,ms,w,g,t+at,am,true,undefined,{lp:lp||0,hold:.55}); }
         else tone(f0,f1,ms,w,g,t+at,am,false,undefined,lp?{lp}:undefined); } },
     chestReady(){ this.fx(CHEST_READY_FX); },
+    /* v25 (items 1 / 2 / 6 / 11, build 46): THE FOUR NEW FAMILIES. Each is an event list in config/audio.js played through the one tone(), so
+       each follows the tap-sound switch like every other effect and each is recorded by plan() for the review catalogue's sound list (item 20).
+       None of them is unlockFx, click, a chest's or a key's earn (gated).
+       `titleFx(kind)` — item 1, a low whoosh under a line of the title; 'title' is the heavier one under NO EXCUSES itself.
+       `mapFx(g, locked)` — item 2, one soft sound per game as its tile arrives on the map's first open, and item 11's node landing on a key
+       reveal. A locked tile plays the same events down MAP_LOCKED.semi semitones and quieter, so it is recognisably the same game.
+       `gift(i)` — item 6, the small sound a symbol lands with as it rises out of a chest, a step higher for each one after the first. */
+    titleFx(kind){ this.fx(TITLE_FX[kind]||TITLE_FX.line); },
+    mapPlan(g,locked){ const ev=MAP_FX[g]||[]; if(!locked) return ev.map(e=>e.slice());
+      const r=Math.pow(2,MAP_LOCKED.semi/12); return ev.map(([at,f0,f1,ms,w,gn,am,lp])=>[at,+(f0*r).toFixed(2),+(f1*r).toFixed(2),ms,w,+(gn*MAP_LOCKED.gain).toFixed(4),am||0,lp?Math.round(lp*r):0]); },
+    mapFx(g,locked,at){ this.fx(this.mapPlan(g,locked),at); },
+    giftPlan(i){ const r=Math.pow(2,(GIFT_FX.step*(i||0))/12);
+      return GIFT_FX.notes.map(([at,f0,f1,ms,w,g,am,lp])=>[at,+(f0*r).toFixed(2),+(f1*r).toFixed(2),ms,w,g,am||0,lp||0]); },
+    gift(i){ this.fx(this.giftPlan(i)); },
     // v13 (6.6): the counting whoosh — one voice sweeping low to high for the length of the count, so the pitch follows the fill
     // v25 (item 20): recorded as its two voices through one fixed lowpass — the page cannot sweep a filter, so the catalogue says it is approximate
     whoosh(ms,f0,f1){ const a=AC(); if(!a) return null; if(rec){ const d=Math.max(120,ms); rec.push([0,f0||110,f1||660,d,'sawtooth',.045,80,2400],[0,(f0||110)*2,(f1||660)*2,d,'sine',.045,80,2400]); return null; }

@@ -17,6 +17,7 @@
 import { KEY_THEMES, SCALES, TRACK_OPTS } from "../config/audio.js";
 import { BUILD_FLAGS, RUN_SCHEMA } from "../config/build.js";
 import { CHESTS } from "../config/chests.js";
+import { MESSAGES } from "../config/messages.js";
 import { DESIGNS, ITEMS } from "../config/theme.js";
 import { GAMES, GC } from "../games/registry.js";
 import { emit } from "./events.js";
@@ -67,6 +68,14 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
     readySeen:cleanChests(p.readySeen), spill:cleanChests(p.spill),
     // B.20: which tiers' whole-key moment has played on the keys screen, once each. Progress — Fresh game clears it
     keyWhole:isObj(p.keyWhole)?Object.fromEntries(Object.entries(p.keyWhole).filter(([k,v])=>['clear','pro','author'].includes(k)&&v).map(([k])=>[k,1])):{},
+    /* v25 (items 6 / 11 / 22, build 46): WHICH REVEALS HAVE PLAYED — 'chest:<id>' for a chest opening and 'key:<tier>' for a key's first open,
+       one flag each, because both go through the one shared reveal (ui/reveal.js) and "first time only" is one rule and not two. Progress:
+       Fresh game clears it, and Testing's per-chest reset clears that chest's AND the key it reveals, which is what makes it a first time
+       again on the phone (item 11). No ladder step: an absent field means nothing has been revealed, which is what it means. */
+    revealed:isObj(p.revealed)?Object.fromEntries(Object.keys(p.revealed).filter(k=>/^(chest:(games|key|pro|thorns)|key:(clear|pro|author))$/.test(k)&&p.revealed[k]).map(k=>[k,1])):{},
+    /* v25 (item 23, build 46): which of the eight messages on About have been watched — the small dot beside the menu row comes off a slot
+       once it has. Progress: Fresh game clears it. An id no longer in config/messages.js is dropped, so deleting a slot costs nothing. */
+    msgSeen:isObj(p.msgSeen)?Object.fromEntries(Object.entries(p.msgSeen).filter(([k,v])=>MESSAGES.some(m=>m.id===k)&&v).map(([k])=>[k,1])):{},
     /* v17 (build 30): `track` is which music option each game plays (B.32), a preference like `lastGame`, so Fresh game leaves
        it. A value that is not one of that game's own options is dropped, which means renaming an option costs a player their
        choice and never their boot. (`chest2`, shape-checked beside it until build 39, is the Pro chest in `chests` now.) */
@@ -259,6 +268,6 @@ const musicOn=g=>!opened('games')||prefs.musicG[g]!==false;
    profile showed all 27 of them open. Supporter is a dev switch today (S5 gates it out of a release build entirely) and
    Fresh game is the switch for seeing the app as a new player does, so it belongs in this list. When it becomes a real
    purchase at the native build it will be restored from the store rather than from prefs, and this line stays correct. */
-function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,keysSeen:0,chests:cleanChests(null),cusSeen:0,readySeen:cleanChests(null),spill:cleanChests(null),keyWhole:{},retro:{},retroCol:{},devKeys:{}}); delete prefs.mig11; delete prefs.mig31; delete prefs.mig32; delete prefs.mig35; delete prefs.meterSeen; delete prefs.devMeter; save(); emit('store:reset'); }
+function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,keysSeen:0,chests:cleanChests(null),cusSeen:0,readySeen:cleanChests(null),spill:cleanChests(null),keyWhole:{},revealed:{},msgSeen:{},retro:{},retroCol:{},devKeys:{}}); delete prefs.mig11; delete prefs.mig31; delete prefs.mig32; delete prefs.mig35; delete prefs.meterSeen; delete prefs.devMeter; save(); emit('store:reset'); }
 
 export { RUNS_CAP, everywhere, look, lookCol, musicOn, opened, prefs, reset, save, store, trimRuns };

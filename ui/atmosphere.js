@@ -84,9 +84,14 @@ const LAYER={
         cx.beginPath(); cx.moveTo(a[0]-ux*2*dpr,a[1]-uy*2*dpr); cx.lineTo(a[0]+ux*2*dpr,a[1]+uy*2*dpr); cx.lineTo(a[0]+ux*4*dpr-uy*side*len,a[1]+uy*4*dpr+ux*side*len); cx.closePath(); cx.fill(); } } },
 };
 
+/* v25 (item 15, build 46): ON A KEY'S SCREEN, ONLY THAT KEY'S BACKGROUND SHOWS. Build 43 drew the layer OVER the live background, so the
+   Circuit's traces sat on top of the app's grid and two backgrounds moved against each other — "distracting", and the lines ran across the
+   Thorn card. A key screen's own layer now REPLACES the base: the grid, the rain, the orbs, whichever was chosen, is simply not drawn while
+   `over` is set. The stars stay under it — they are the ground every design sits on and are what keeps the screen from being black — which is
+   also exactly what a key background chosen in Customise already is (stars + that layer), so the screen and the choice look the same. */
 function draw(t){ if(paused){ running=false; return; } cx.clearRect(0,0,W,H);
-  // a key background chosen in Customise is the stock stars with its layer over them; on a key screen that key's own layer wins
-  const bg=look('bg'), own=LAYER[bg]?bg:null; (DRAW[own?'stars':bg]||DRAW.stars)(t);
+  const bg=look('bg'), own=LAYER[bg]?bg:null;
+  (DRAW[over||own?'stars':bg]||DRAW.stars)(t);
   const ly=over||own; if(ly){ if(!geo) geo=build(); LAYER[ly](t); }
   cx.globalAlpha=1; requestAnimationFrame(draw); }
 function resume(){ if(running) return; running=true; requestAnimationFrame(draw); }

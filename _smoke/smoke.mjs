@@ -209,6 +209,28 @@ async function poke(g) {
   if (g === 'spot') { await page.evaluate(n => { const b = document.querySelector(`#gen [data-num="${n}"]`); if (b) b.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: 0, clientY: 0, pointerId: 1 })); }, 14); return; }
 }
 // the ad break (every fourth result) has a 2s skip; press it when it is live
+/* v25 (items 6 / 11 / 22, build 46): A CHEST OPENING AND A KEY'S FIRST OPEN ARE THE SAME REVEAL NOW — the stage, the symbols rising out of it,
+   "tap to continue", then the congratulations card whose Continue is dead for about a second. So every driver that used to answer one tap
+   answers both, and every wait is a POLL rather than a number: the length of one is config/chests.js REVEAL plus that stage's own, and a
+   number typed here would go stale the day either is re-tuned. `revealReady` waits for it to reach the tap; `revealDone` finishes the whole
+   thing and answers whether it ended one. Both are no-ops when nothing is playing, so they are safe anywhere. */
+const revealReady = async (ms = 20000) => { const t0 = Date.now();
+  while (Date.now() - t0 < ms) { const st = await page.evaluate(() => { const h = document.getElementById('key-cere');
+      return !h || h.hidden ? 'off' : h.classList.contains('card') ? 'card' : h.classList.contains('tap') ? 'tap' : 'on'; });
+    if (st !== 'on') return st; await sleep(150); }
+  return 'timeout'; };
+/* it finishes EVERY reveal that is queued, not one: a chest tapped on the map while its key's first open has not been seen plays the key's
+   reveal and then the chest's, and a driver that answered only the first would photograph the second and call it the next screen. */
+const revealOne = async () => { const st = await revealReady(); if (st === 'off' || st === 'timeout') return false;
+  if (st === 'tap') { await click('#key-cere'); await sleep(320); }
+  for (let i = 0; i < 40; i++) { const b = await page.evaluate(() => { const x = document.querySelector('#key-cere .rgo'); return !x ? '' : x.disabled ? 'wait' : 'go'; });
+    if (b === 'go') { await page.evaluate(() => document.querySelector('#key-cere .rgo').click()); await sleep(320); return true; }
+    if (!b) return false; await sleep(150); }
+  return false; };
+const revealDone = async () => { let any = false;
+  for (let i = 0; i < 4; i++) { const on = await page.evaluate(() => !document.getElementById('key-cere').hidden);
+    if (!on) break; if (!(await revealOne())) break; any = true; await sleep(450); }
+  return any; };
 const skipAd = () => page.evaluate(() => { const a = document.getElementById('adbreak'), b = document.getElementById('adskip'); if (a.classList.contains('on') && !b.disabled) { b.click(); return true; } return false; });
 
 /* v16 (A.3): a player's FIRST run of each game ends its intro with a "Ready?" that has to be tapped. Nothing else in the
@@ -1198,6 +1220,9 @@ console.log('\nbutton actions (every data-act at least once)');
   await sleep(500); await tap('#s-pick .back', 'grid · back');
   // about: support. v14 (8.10): the dev switches live on their own screen now, one menu item below About
   await tap('[data-go="s-about"]'); await tap('#support', 'about · support');
+  // v25 (item 23, build 46): the eight message slots. The first is open with no clip yet; a later one is locked and says what opens it
+  await tap('#msglist .msgrow[data-msg="intro"]', 'about · a message');
+  await tap('#msglist .msgrow[data-msg="thorn"]', 'about · a locked message');
   await sleep(400); await tap('#s-about .back', 'about · back');
   await tap('[data-go="s-testing"]'); await tap('#dev-sup', 'testing · supporter on'); await tap('#dev-sup', 'testing · supporter off');
   await tap('#dev-open', 'testing · progression on'); await tap('#dev-open', 'testing · everything open');
@@ -1229,9 +1254,9 @@ console.log('\nbutton actions (every data-act at least once)');
   (await onScreen()) === 's-pick' ? ok('result back opens the pick sheet') : bad('result back opens the pick sheet', 'on ' + (await onScreen()));
   await tap('#time-row .tbtn:nth-child(2)', 'sheet · length'); await tap('[data-vs="1"]', 'sheet · with a friend'); await tap('[data-vs2="1"]', 'sheet · pass & play'); await tap('[data-vs="0"]', 'sheet · solo');
   // build 18: the chips are one act per screen, and the overlays (lock box, Next card, the full stop) are acts too
-  const expected = ['go', 'back', 'game', 'diff', 'time', 'vs', 'vs2', 'lvl-back', 'go-btn', 'quit', 'over-back', 'share', 'chip-bd', 'chip-pv', 'chip-ach', 'chip-over', 'item', 'pvlock', 'ach', 'unl', 'prac', 'dev-open', 'dev-sup', 'dev-story', 'support', 'wheel-done', 'lock-no', 'lock-go', 'nextup', 'egg', 'ptab', 'chest'];
+  const expected = ['go', 'back', 'game', 'diff', 'time', 'vs', 'vs2', 'lvl-back', 'go-btn', 'quit', 'over-back', 'share', 'chip-bd', 'chip-pv', 'chip-ach', 'chip-over', 'item', 'pvlock', 'ach', 'unl', 'prac', 'dev-open', 'dev-sup', 'dev-story', 'support', 'wheel-done', 'lock-no', 'lock-go', 'nextup', 'egg', 'ptab', 'chest', 'msg'];
   const missing = expected.filter(a => !seen.has(a));
-  missing.length ? bad('every data-act driven once', 'not driven: ' + missing.join(', ')) : ok(`every data-act driven once (${expected.length}) — not covered: again, pass-go, to-games, seqdone, praclock, dev-fresh, adskip, toast`);
+  missing.length ? bad('every data-act driven once', 'not driven: ' + missing.join(', ')) : ok(`every data-act driven once (${expected.length}) — not covered: again, pass-go, to-games, seqdone, praclock, dev-fresh, adskip, toast, cere-tap, reveal-go, reveal-msg (the reveal's three are driven in the build 46 section)`);
 }
 
 /* ---- 8. build 27 (v16): the Timing unlock, the music engine, Find versus, the intro ---- */
@@ -1888,8 +1913,8 @@ console.log('\nbuild 29 - v17 sections B.19 to B.26');
     await click('.chest[data-chest="key"]'); await sleep(2300);
     const after = await page.evaluate(() => ({ screen: (document.querySelector('.screen.on') || {}).id, stored: JSON.parse(localStorage.getItem('ne')).prefs.chests.key,
       box: document.getElementById('key-cere').hidden ? '' : document.getElementById('key-cere').innerText.replace(/\s+/g, ' ').trim(), toast: document.getElementById('toast').classList.contains('on') ? document.getElementById('toast').textContent.trim() : '' }));
-    await sleep(3000); await click('#key-cere'); await sleep(900);
-    after.map = await page.evaluate(() => ({ screen: (document.querySelector('.screen.on') || {}).id, words: [...document.querySelectorAll('.chestwords[data-for="key"] .cw')].map(x => x.firstChild.textContent).join(' · ') }));
+    await revealDone(); await sleep(700);
+    after.map = await page.evaluate(() => ({ screen: (document.querySelector('.screen.on') || {}).id, words: [...document.querySelectorAll('.chestwords[data-for="key"] .cw')].map(x => x.dataset.w).join(' · ') }));
     (/ready/.test(before.cls) && before.need === 'tap to open' && !before.ask) ? ok('B.24 every bar cleared and the Key chest is openable - and there is no ask box in the page (AMENDED at build 40, L.8b)') : bad('B.24 the openable chest', JSON.stringify(before));
     (after.screen === 's-key' && after.stored === 1 && /Key chest opened/i.test(after.box) && !after.toast && after.map.screen === 's-pick' && /GAUNTLET/.test(after.map.words))
       ? ok(`B.24 a tap on the ready chest opens it once and for good, as its ceremony over the key screen - "${after.box}" - and its tap lands on the map with "${after.map.words}" beside it (AMENDED at build 43, B.2: the map's tap opens it, the key screen never does by itself)`) : bad('B.24 opening the chest', JSON.stringify(after));
@@ -2811,38 +2836,45 @@ console.log('\nbuild 32 - v19 section C and v18 sections B.15 to B.27');
   /* ---- B.20 / B.26: the whole-key moment, and the Testing buttons ---- */
   {
     // AMENDED at build 43 (v24 C.5): the whole-key moment is earnMoment(tier) — each key's own earn, Lantern's still the glyph's turn and flare
-    (/kwholeglyph/.test(css32) && /function earnMoment\(tier\)/.test(keyjs32) && /prefs\.keyWhole/.test(keyjs32)) ? ok('B.20 the whole-key moment exists — once per tier per profile, each key its own earn moment since build 43 (C.5)') : bad('B.20 the whole-key moment');
+    // AMENDED at build 46 (v25 item 11): the whole-key moment is the beat inside the first-open REVEAL where the key lights, and the once-flag is prefs.revealed
+    (/kwholeglyph/.test(css32) && /function keyStage\(tier\)/.test(keyjs32) && /function keyReveal\(tier/.test(keyjs32) && /prefs\.revealed/.test(keyjs32)) ? ok('B.20 the whole-key moment exists — once per tier per profile, each key its own earn since build 43 (C.5), inside its first-open reveal since build 46 (item 11)') : bad('B.20 the whole-key moment');
     const bars = await page.evaluate(async () => { const K = await import('./progress/key.js'); const o = {}; for (const c of K.COMBOS) o[c.key] = Date.now(); return o; });
     await setStorage({ ne: { v: 3, prefs: { ...OPEN_PREFS, keySeen: 1 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
     await click('[data-go="s-key"]'); await sleep(700);
-    const w1 = await page.evaluate(() => ({ cls: document.getElementById('s-key').classList.contains('kwhole'), count: document.getElementById('key-count').textContent.trim(), seen: JSON.parse(localStorage.getItem('ne')).prefs.keyWhole }));
-    await sleep(3600); await click('#s-key .back'); await sleep(400); await click('[data-go="s-key"]'); await sleep(700);
-    const w2 = await page.evaluate(() => document.getElementById('s-key').classList.contains('kwhole'));
-    (w1.cls && /whole/.test(w1.count) && w1.seen && w1.seen.clear === 1 && !w2) ? ok(`B.20 a whole key plays its moment on the keys screen once — "${w1.count}" — and not on the next open`) : bad('B.20 the moment plays once', JSON.stringify({ w1, w2 }));
+    /* AMENDED at build 46 (v25 items 11 / 22): the moment is now a beat inside the key's REVEAL - the ring starts unlit (`krev`) and the key lights
+       part-way through - and the once-flag is `prefs.revealed['key:clear']`, written as it starts rather than when the moment fires. */
+    const w1 = await page.evaluate(() => ({ cls: document.getElementById('s-key').classList.contains('krev'), count: document.getElementById('key-count').textContent.trim(), seen: JSON.parse(localStorage.getItem('ne')).prefs.revealed }));
+    await revealDone(); await sleep(400); await click('#s-key .back'); await sleep(400); await click('[data-go="s-key"]'); await sleep(900);
+    const w2 = await page.evaluate(() => ({ rev: document.getElementById('s-key').classList.contains('krev'), done: document.getElementById('s-key').classList.contains('kdone') }));
+    (w1.cls && /whole/.test(w1.count) && w1.seen && w1.seen['key:clear'] === 1 && !w2.rev && w2.done) ? ok(`B.20 a whole key plays its reveal on the keys screen once — "${w1.count}" — and the next open goes straight to the finished key`) : bad('B.20 the moment plays once', JSON.stringify({ w1, w2 }));
     // AMENDED at build 40 (v23 L.10): a chest-opening button per chest, four, named by chest
     const btns = await page.evaluate(() => [...document.querySelectorAll('#s-testing[data-dev] #dev-anim [data-act]')].map(b => b.dataset.act + (b.dataset.chest ? ':' + b.dataset.chest : '')));
     // AMENDED at build 43 (v24 C.5): an earn-moment button per key, three
     (btns.join(',') === 'dev-keyin,dev-seg,dev-whole,dev-whole,dev-whole,dev-chest:games,dev-chest:key,dev-chest:pro,dev-chest:thorns') ? ok('B.26 nine Testing buttons, one per animation, an earn moment per key and a chest opening per chest, under [data-dev] (S5)') : bad('B.26 the buttons', btns.join(','));
     await setStorage({ ne: { v: 3, prefs: { ...OPEN_PREFS, keySeen: 1, keyWhole: { clear: 1 } }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
-    await click('[data-go="s-testing"]'); await sleep(300); await click('[data-act="dev-whole"]'); await sleep(700);
-    const dw = await page.evaluate(() => ({ screen: (document.querySelector('.screen.on') || {}).id, cls: document.getElementById('s-key').classList.contains('kwhole') }));
-    await sleep(3400); await click('#s-key .back'); await sleep(400);
+    await click('[data-go="s-testing"]'); await sleep(300); await click('[data-act="dev-whole"]'); await sleep(900);
+    /* AMENDED at build 46 (v25 item 11): "key complete" replays the whole REVEAL, which is not skippable - so Back does nothing while it plays, and it
+       ends on its own congratulations card. Nothing is stored either way (S5): this is Testing's replay, not an earn. */
+    const dw = await page.evaluate(() => ({ screen: (document.querySelector('.screen.on') || {}).id, cls: document.getElementById('s-key').classList.contains('krev') }));
+    await click('#s-key .back'); await sleep(300);
+    const dwLocked = await onScreen();
+    await revealDone(); await sleep(400); await click('#s-key .back'); await sleep(400);
     const dwBack = await onScreen();
     // AMENDED at build 41 (v23 L.6): "replay key chest opening" plays the Key chest's CEREMONY on the key screen with nothing stored, and its tap lands on the map's spill, replayed the same way
     await click('[data-act="dev-chest"][data-chest="key"]'); await sleep(1200);
     const dc = await page.evaluate(() => { const h = document.getElementById('key-cere'); return { screen: (document.querySelector('.screen.on') || {}).id, shown: !h.hidden, chest: h.dataset.chest }; });
-    await sleep(3800); await click('#key-cere'); await sleep(900);
+    await revealDone(); await sleep(700);
     const dcMap = await page.evaluate(() => { const c = document.querySelector('.chest[data-chest="key"]'), w = document.querySelector('.chestwords[data-for="key"]'); return { screen: (document.querySelector('.screen.on') || {}).id, spill: c.classList.contains('spill') && w.classList.contains('spill') }; });
     await sleep(3600);
     const dcAfter = await page.evaluate(async () => { const K = await import('./progress/key.js'); const c = document.querySelector('.chest[data-chest="key"]');
       // AMENDED at build 34 (#411): the resting state is whatever the gate says, not "hidden" - and the demo must clear its own class
       // AMENDED at build 40 (L.10): every chest is on the map, so the resting state is the chest's own - open under OPEN EVERYTHING
       return { rest: !c.hidden && c.classList.contains(K.chestState('key')), spill: c.classList.contains('spill'), chest2: JSON.parse(localStorage.getItem('ne')).prefs.chests.key, whole: JSON.parse(localStorage.getItem('ne')).prefs.keyWhole }; });
-    (dw.screen === 's-key' && dw.cls && dwBack === 's-testing' && dc.screen === 's-key' && dc.shown && dc.chest === 'key' && dcMap.screen === 's-pick' && dcMap.spill && dcAfter.rest && !dcAfter.spill && !dcAfter.chest2 && dcAfter.whole && dcAfter.whole.clear === 1)
-      ? ok('B.26 "key complete" plays the moment and Back returns to Testing; "replay key chest opening" plays its ceremony, its tap lands on the map\'s spill, and the chest is put back exactly as its state left it — nothing stored (AMENDED at build 41, L.6)')
-      : bad('B.26 the buttons play and store nothing', JSON.stringify({ dw, dwBack, dc, dcMap, dcAfter }));
+    (dw.screen === 's-key' && dw.cls && dwLocked === 's-key' && dwBack === 's-testing' && dc.screen === 's-key' && dc.shown && dc.chest === 'key' && dcMap.screen === 's-pick' && dcMap.spill && dcAfter.rest && !dcAfter.spill && !dcAfter.chest2 && dcAfter.whole && dcAfter.whole.clear === 1)
+      ? ok('B.26 "key complete" replays the key\'s whole reveal - Back does nothing while it plays, and once it has been taken Back returns to Testing; "replay key chest opening" plays its reveal, its tap and Continue land on the map\'s spill, and the chest is put back exactly as its state left it — nothing stored (AMENDED at build 46, item 11)')
+      : bad('B.26 the buttons play and store nothing', JSON.stringify({ dw, dwLocked, dwBack, dc, dcMap, dcAfter }));
     await click('[data-act="dev-keyin"]').catch(() => {}); await sleep(300);
     const arrive = await page.evaluate(() => document.getElementById('s-key').classList.contains('first'));
     arrive ? ok('B.26 "key arrival" plays the arrival again') : bad('B.26 the arrival button');
@@ -3845,11 +3877,13 @@ console.log('\nbuild 38 - the tile keeps its amber, Author waits for the Pro che
         const seg = document.querySelector(`#key-ring [data-seg="spot:${g.done - 1}"]`), halo = document.querySelector('#key-ring .kr[data-rg="spot"] .khalo');
         row.advance = { grow: !!seg && seg.classList.contains('grow'), seg: seg ? names(seg) : '', halo: halo ? halo.getAnimations().map(a => a.animationName).join() : '', haloTint: !!halo && getComputedStyle(halo).stroke.includes(tint) };
         delete S.store.bars[K.skey(spot.key, t)]; S.save(); await wait(900);
-        // B.20: the whole-key moment
-        R.show('s-menu'); await wait(80); R.show('s-key', { tier: i, whole: true }); await wait(520);
+        /* B.20 → AMENDED at build 46 (v25 item 11): Testing's "key complete" replays the whole REVEAL, and the key lights at its hub beat
+           (KEY_REVEAL[t].hubAt) rather than 260ms in — so the wait is that beat, read from the config rather than typed */
+        R.show('s-menu'); await wait(80); R.show('s-key', { tier: i, whole: true }); await wait(300 + KY.KEY_REVEAL[t].hubAt + 320);
         const glyph = document.querySelector('#key-ring .kglyph');
         row.whole = { on: key.classList.contains('kwhole'), names: names(key), glyph: glyph ? glyph.getAnimations().map(a => a.animationName).join() : '', count: getComputedStyle(document.getElementById('key-count')).color.includes(tint) };
-        await wait(3000);
+        await wait(400); document.getElementById('key-cere').click(); await wait(400);
+        const go = document.querySelector('#key-cere .rgo'); if (go) { await wait(1400); go.click(); } await wait(600);
         // 5.4 / B.21: the staged first open
         R.show('s-menu'); await wait(80); R.show('s-key', { tier: i, arrive: true }); await wait(250);
         const every = (sel, n) => { const els = [...document.querySelectorAll(sel)]; return els.length > 0 && els.every(x => x.getAnimations().some(a => a.animationName === n)); };
@@ -4062,9 +4096,14 @@ console.log('\nbuild 39 - batch 16, the surface');
     const flat = css39.replace(/\/\*[\s\S]*?\*\//g, '');
     const autos = [...flat.matchAll(/(?:^|\})\s*([^{}@]+?)\s*\{[^}]*overflow-y:auto/g)].flatMap(m => m[1].split(',').map(s => s.trim()));
     const spacer = ((flat.match(/([^{}]+)\{content:"";display:block;flex:none;height:var\(--stampclear\)\}/) || [])[1] || '').split(',').map(s => s.trim());
-    const bare = autos.filter(s => s !== '.otwrap' && !spacer.includes(s + '::after'));
+    /* AMENDED at build 46 (v25 item 22): `.rcard` is the congratulations card, and it is the second exemption. The rule exists because the stamp is
+       drawn BEHIND every screen (item 4) and a screen's last control would otherwise sit over it; the card lives inside `.cere`, a fixed overlay at
+       z-index 60 with its own opaque panel, so the stamp is behind the whole layer and cannot reach its last control. A scroller that is part of a
+       SCREEN still joins the selector or this fails. */
+    const OVERLAY = ['.otwrap', '.rcard'];
+    const bare = autos.filter(s => !OVERLAY.includes(s) && !spacer.includes(s + '::after'));
     (/--stampclear:calc\(var\(--stampat\) \+ var\(--stamp\) \+ 16px\)/.test(flat) && /#build\{[^}]*bottom:var\(--stampat\)[^}]*font:500 var\(--stamp\)\/1/.test(flat) && autos.length && !bare.length)
-      ? ok(`L.5 every overflow-y:auto scroller ends with the stamp's offset + height + a 16px line of space (${autos.filter(s => s !== '.otwrap').join(', ')}); .otwrap, the result's fixed top-10 box mid-screen, is left out`)
+      ? ok(`L.5 every overflow-y:auto scroller on a SCREEN ends with the stamp's offset + height + a 16px line of space (${autos.filter(s => !OVERLAY.includes(s)).join(', ')}); the two inside fixed overlays are left out - .otwrap, the result's top-10 box, and .rcard, the congratulations card at z-index 60`)
       : bad('L.5 a scroller without the stamp clearance', JSON.stringify({ autos, bare, spacer }));
     const runs = Array.from({ length: 10 }, (_, i) => ({ t: NOW39 - i * 1000, g: 'quick-tap', d: 'two', s: 5, n: 'AIDEN', v: 4, hits: 10 + i, misses: 0 }));
     await setStorage({ ne: { v: 4, prefs: { ...OPEN_PREFS, menuSeen: 1, name: 'AIDEN', keySeen: 1 }, runs, ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
@@ -4189,23 +4228,24 @@ console.log('\nbuild 40 - batch 16, four chests and the meter');
       A.Snd.chest = function () { window.__fx40++; return o.apply(this, arguments); }; A.Snd.unlockFx = function () { window.__un40++; return u.apply(this, arguments); }; });
     await click('.chest[data-chest="games"]'); await sleep(250);
     const onKey = await onScreen();
-    await sleep(3700);
+    await revealReady();
     const opened = await page.evaluate(async () => { const K = await import('./progress/key.js'); const ne = JSON.parse(localStorage.getItem('ne')); const box = document.getElementById('key-cere');
       return { games: ne.prefs.chests.games, shown: !box.hidden, tap: box.classList.contains('tap'), txt: box.innerText.replace(/\s+/g, ' ').trim(), meterTxt: (box.querySelector('.meterv') || {}).textContent, meter: K.meter(), seen: ne.prefs.meterSeen, total: K.COMBOS.length,
         bare: Object.keys(ne.bars).filter(k => !k.includes('|')).length, fx: window.__un40 ? -window.__un40 : window.__fx40, toast: document.getElementById('toast').classList.contains('on') ? document.getElementById('toast').textContent.trim() : '' }; });
-    await click('#key-cere'); await sleep(700); opened.map = await onScreen();
+    await revealDone(); await sleep(500); opened.map = await onScreen();
     await click('#s-pick .back'); await sleep(400); await click('[data-go="s-key"]'); await sleep(1400);
     const again = await page.evaluate(() => ({ shown: !document.getElementById('key-cere').hidden, fx: window.__fx40 }));
     await click('#s-key .back'); await sleep(300); await click('[data-go="s-pick"]'); await sleep(700);
     const after = await page.evaluate(() => { const c = document.querySelector('.chest[data-chest="games"]'), w = document.querySelector('.chestwords[data-for="games"]');
-      return { cls: c.className, need: c.querySelector('.pic').dataset.need, words: w.hidden ? null : [...w.querySelectorAll('.cw')].map(x => x.firstChild.textContent), wr: +w.style.gridRow, wc: +w.style.gridColumn, cr: +c.style.gridRow, cc: +c.style.gridColumn, key: document.querySelector('.chest[data-chest="key"] .pic').dataset.need, keyWords: document.querySelector('.chestwords[data-for="key"]').hidden }; });
+      return { cls: c.className, need: c.querySelector('.pic').dataset.need, words: w.hidden ? null : [...w.querySelectorAll('.cw')].map(x => x.dataset.w), syms: w.querySelectorAll('.cwsym').length, wr: +w.style.gridRow, wc: +w.style.gridColumn, cr: +c.style.gridRow, cc: +c.style.gridColumn, key: document.querySelector('.chest[data-chest="key"] .pic').dataset.need, keyWords: document.querySelector('.chestwords[data-for="key"]').hidden }; });
     (/ready/.test(map.games) && map.need === 'tap to open' && map.key === 'open the previous chest' && !map.ask && map.words)
       ? ok('L.8b with every mode unlocked the Games chest is ready on the map - "tap to open" - the Key chest points at the chest before it, nothing stands beside a shut chest, and there is no ask box in the page') : bad('L.8b the ready Games chest', JSON.stringify(map));
     (onKey === 's-key' && opened.games === 1 && opened.shown && opened.tap && /Games chest opened/i.test(opened.txt) && opened.meterTxt === opened.meter + '%' && opened.seen === opened.meter && opened.meter === 100 + Math.floor(100 * opened.bare / opened.total) && opened.bare === 5 && opened.fx === 1 && !opened.toast && opened.map === 's-pick')
       ? ok(`L.8b AMENDED at build 43 (v24 B.2): the map's tap on the READY chest opened it at once, its ceremony covering the key screen from the frame it is shown: "${opened.txt}" - its ${opened.bare} already-beaten key-1 bars credited silently (G.4 extended), the meter counted up to ${opened.meterTxt} in the ceremony's last beat, one chest sound, no toast, no question; its tap goes to the map (AMENDED at build 41, L.6)`) : bad('L.8b the open on the key screen', JSON.stringify(opened));
     (!again.shown && again.fx === 1) ? ok('L.8b opened is opened: the next visit to the key screen opens nothing and plays nothing') : bad('L.8b no repeat', JSON.stringify(again));
-    (/open/.test(after.cls) && after.need === 'opened' && after.words && after.words.join() === 'CUSTOMISE,THE KEY' && after.wr === after.cr && after.wc !== after.cc && after.keyWords && /^\d+% · opens at 200%$/.test(after.key))
-      ? ok(`L.11c back on the map the Games chest is open with its words beside it (${after.words.join(' · ')}, row ${after.wr}, col ${after.wc} against the chest's ${after.cc}), and the Key chest reads the meter: "${after.key}"`) : bad('L.11c the opened chest and its words', JSON.stringify(after));
+    // v25 (item 7, build 46): and each word now carries the SAME symbol that rose out of the chest, so the two moments are connected
+    (/open/.test(after.cls) && after.need === 'opened' && after.words && after.words.join() === 'CUSTOMISE,THE KEY' && after.syms === after.words.length && after.wr === after.cr && after.wc !== after.cc && after.keyWords && /^\d+% · opens at 200%$/.test(after.key))
+      ? ok(`L.11c back on the map the Games chest is open with its words beside it (${after.words.join(' · ')}, row ${after.wr}, col ${after.wc} against the chest's ${after.cc}), each with its own symbol (item 7), and the Key chest reads the meter: "${after.key}"`) : bad('L.11c the opened chest and its words', JSON.stringify(after));
   }
 
   /* ---- 5. L.8b, both drivers: a result-screen clear that tops key 1 opens the Key chest inside the interlude and hands back on time ----
@@ -4222,14 +4262,22 @@ console.log('\nbuild 40 - batch 16, four chests and the meter');
       const before = K.chestState('key'); const adv = K.checkKey(run, false); if (!adv) return { err: 'no clear' };
       const ready = K.chestState('key');
       E.emit('run:record', { run }); E.emit('run:finish', { run, isBest: true, two: false, fresh: [], ach: [], adv });
-      await wait(2600); const mid = { screen: at(), key: S.prefs.chests.key, box: !document.getElementById('key-cere').hidden, earn: document.getElementById('s-key').dataset.earn || '' };
-      await wait(1900); const held = at();
-      await wait(1700);
-      return { err: null, before, ready, mid, held, back: at(), key: S.prefs.chests.key, state: K.chestState('key'), faded: document.getElementById('s-over').classList.contains('fadeout') }; });
+      await wait(2600); const mid = { screen: at(), key: S.prefs.chests.key, box: !document.getElementById('key-cere').hidden, rev: document.getElementById('s-key').dataset.rev || '' };
+      await wait(4200); const held = { screen: at(), tap: document.getElementById('key-cere').classList.contains('tap'), done: document.getElementById('s-key').classList.contains('kdone') };
+      return { err: null, before, ready, mid, held, key: S.prefs.chests.key, state: K.chestState('key') }; });
     if (il.err) bad('L.8b the interlude', il.err);
-    else (il.before === 'locked' && il.ready === 'ready' && il.mid.screen === 's-key' && il.mid.key === 0 && !il.mid.box && il.mid.earn === 'clear' && il.held === 's-key' && il.back === 's-over' && il.key === 0 && il.state === 'ready' && !il.faded)
-      ? ok('L.8b REVERSED at build 43 (v24 C.1 / C.5): a live clear that makes key 1 whole interrupts the result as always and plays key 1\'s earn moment after the segment - no chest opens, the Key chest stays READY for its key to be tapped - and the result comes back by itself once the moment has played')
-      : bad('C.1 / C.5 the interlude plays the earn moment and does not open the chest', JSON.stringify(il));
+    /* REVERSED AGAIN at build 46 (v25 items 11 / 22): the clear that makes key 1 whole now plays its FIRST-OPEN REVEAL, which waits for a tap and
+       ends on the congratulations card — so the result does NOT come back on a timer any more; the reveal hands it back at Continue. Same family
+       as build 41's lesson: a moment that waits for a tap, inside a moment that hands itself back on a timer, owns the hand-back. The chest still
+       does not open here (v24 C.1) and nothing is banked by any of it (L10). */
+    else (il.before === 'locked' && il.ready === 'ready' && il.mid.screen === 's-key' && il.mid.key === 0 && il.mid.box && il.mid.rev === 'clear' && il.held.screen === 's-key' && il.held.tap && il.held.done && il.key === 0 && il.state === 'ready')
+      ? ok('L.8b REVERSED at build 46 (v25 items 11 / 22): a live clear that makes key 1 whole interrupts the result and plays key 1\'s FIRST-OPEN REVEAL after the segment - the games arriving round the ring, settling into the finished key - and it holds on "tap to continue" instead of handing the result back on a timer. No chest opens (v24 C.1); the Key chest stays READY for its key to be tapped')
+      : bad('items 11 / 22 the interlude plays the reveal and holds', JSON.stringify(il));
+    await revealDone(); await sleep(900);
+    const back46 = await onScreen();
+    (back46 === 's-over')
+      ? ok('items 11 / 22 and the reveal\'s Continue is what hands the result screen back - the one moment that waits for a tap owns the hand-back (build 41\'s lesson, one moment further on)')
+      : bad('items 11 / 22 the reveal hands the result back', back46);
   }
 
   /* ---- 6. L.11a: Customise locked until the Games chest - crossed out, "open the Games chest", defaults applied, choices kept; green until first opened ---- */
@@ -4440,16 +4488,20 @@ console.log('\nbuild 41 - batch 16, the moments');
       const out = { screen: (document.querySelector('.screen.on') || {}).id, shown: !h.hidden, tap: h.classList.contains('tap'), hushed: A.Music.probe().hushed, stored: JSON.parse(localStorage.getItem('ne')).prefs.chests.games };
       h.click(); document.querySelector('#s-key .back').click(); await wait(200);
       out.after = { screen: (document.querySelector('.screen.on') || {}).id, shown: !h.hidden }; return out; });
-    await sleep(2600);
-    const ready = await page.evaluate(() => { const h = document.getElementById('key-cere'); return { tap: h.classList.contains('tap'), txt: h.innerText.replace(/\s+/g, ' ').trim(), steps: window.__st41.slice(), vars: h.getAttribute('style') || '' }; });
-    await click('#key-cere'); await sleep(1300);
+    await revealReady();
+    const ready = await page.evaluate(() => { const h = document.getElementById('key-cere'); return { tap: h.classList.contains('tap'), txt: h.innerText.replace(/\s+/g, ' ').trim(), steps: window.__st41.slice(), vars: h.getAttribute('style') || '',
+      gifts: [...h.querySelectorAll('.rgift b')].map(g => g.textContent), syms: [...h.querySelectorAll('.rgift .sym')].map(x => x.dataset.sym) }; });
+    await revealDone(); await sleep(900);
     const done = await page.evaluate(async () => { const A = await import('./audio.js'); const c = document.querySelector('.chest[data-chest="games"]'), w = document.querySelector('.chestwords[data-for="games"]');
       return { screen: (document.querySelector('.screen.on') || {}).id, hidden: document.getElementById('key-cere').hidden, hushed: A.Music.probe().hushed, chest: window.__c41.slice(), spill: w.classList.contains('spill') && c.classList.contains('spill'),
         spilled: JSON.parse(localStorage.getItem('ne')).prefs.spill.games, words: [...w.querySelectorAll('.cw')].map(x => x.dataset.act + ':' + x.dataset.to).join(), burst: c.querySelectorAll('.pburst i').length }; });
     (early.screen === 's-key' && early.shown && !early.tap && early.hushed && early.stored === 1 && early.after.screen === 's-key' && early.after.shown)
       ? ok('L.6 / L10 a ready Games chest opens on its key screen as its CEREMONY - the chest already stored before a frame plays, the music hushed fully, and neither a tap on it nor Back does anything before the end') : bad('L.6 the ceremony plays and is not skippable', JSON.stringify(early));
-    (ready.tap && ready.steps.join() === 'uncross,path,lid,chord,tap' && /GAMES CHEST OPENED/i.test(ready.txt) && /TAP TO CONTINUE/i.test(ready.txt) && /--st-uncross-at:0ms/.test(ready.vars))
-      ? ok(`L.6 its named steps play in order off the config's own times (${ready.steps.join(' → ')}) and it holds on "${ready.txt}"`) : bad('L.6 the steps and the reveal', JSON.stringify(ready));
+    /* AMENDED at build 46 (v25 items 6 / 22): the named steps are unchanged and still come off the config's own times, and `settle` then `tap`
+       are the shared reveal's own two beats after them — the stage ends, the symbols rise out of the chest, and only then does it hold. */
+    (ready.tap && ready.steps.join() === 'uncross,path,lid,chord,settle,tap' && /GAMES CHEST OPENED/i.test(ready.txt) && /TAP TO CONTINUE/i.test(ready.txt) && /--st-uncross-at:0ms/.test(ready.vars)
+      && ready.gifts.join() === 'CUSTOMISE,THE KEY' && ready.syms.join() === 'palette,key')
+      ? ok(`L.6 its named steps play in order off the config's own times (${ready.steps.join(' → ')}); item 6: ${ready.gifts.length} unlocks rise out of it as symbols with their titles (${ready.gifts.join(' · ')}) and only then does it hold on "tap to continue"`) : bad('L.6 the steps and the reveal', JSON.stringify(ready));
     (done.screen === 's-pick' && done.hidden && !done.hushed && done.chest.join() === 'games' && done.spill && done.spilled === 1 && done.words === 'chestword:s-custom,chestword:key:0' && done.burst === CH41.SPILL.particles)
       ? ok('L.6 / L.11b "tap to continue" goes to the map and the music comes back, one chest sound played; the words spill out beside the chest with a burst from the lid, once, and each word is a tap target to what it names') : bad('L.6 / L.11b after the tap', JSON.stringify(done));
   }
@@ -4460,7 +4512,8 @@ console.log('\nbuild 41 - batch 16, the moments');
     await click('[data-go="s-pick"]'); await sleep(900);
     const lay = await page.evaluate(() => Object.fromEntries(['games', 'key', 'pro', 'thorns'].map(id => { const c = document.querySelector(`.chest[data-chest="${id}"]`), w = document.querySelector(`.chestwords[data-for="${id}"]`), cell = w.hidden ? null : w.getBoundingClientRect();
       return [id, { r: c.style.gridRow, col: c.style.gridColumn, hidden: w.hidden, n: w.hidden ? 0 : w.querySelectorAll('.cw').length,
-        fit: w.hidden ? null : [...w.querySelectorAll('.cw')].every(x => { const b = x.getBoundingClientRect(); return x.scrollWidth <= x.clientWidth + 1 && b.right <= cell.right + 1 && b.right <= innerWidth && b.height <= 36; }) }]; })));
+        // AMENDED at build 46 (v25 item 7): the word is `.cwt` now, with its symbol beside it — the text is what has to fit, and the row is taller
+        fit: w.hidden ? null : [...w.querySelectorAll('.cw')].every(x => { const b = x.getBoundingClientRect(), t = x.querySelector('.cwt'); return t.scrollWidth <= t.clientWidth + 1 && b.right <= cell.right + 1 && b.right <= innerWidth && b.height <= 44; }) }]; })));
     const shut = await page.evaluate(async () => { const S = await import('./core/store.js'); const R = await import('./ui/router.js'); const wait = ms => new Promise(r => setTimeout(r, ms));
       S.prefs.chests = { games: 0, key: 0, pro: 0, thorns: 0 }; S.store.unlock = {}; S.save(); R.show('s-menu'); await wait(80); R.show('s-pick'); await wait(600);
       return Object.fromEntries(['games', 'key', 'pro', 'thorns'].map(id => { const c = document.querySelector(`.chest[data-chest="${id}"]`); return [id, { r: c.style.gridRow, col: c.style.gridColumn, words: !document.querySelector(`.chestwords[data-for="${id}"]`).hidden }]; })); });
@@ -4511,7 +4564,7 @@ console.log('\nbuild 41 - batch 16, the moments');
     for (const id of IDS) { await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-testing'); }); await sleep(200);
       await click(`[data-act="dev-chest"][data-chest="${id}"]`); await sleep(700);
       rp.push(await page.evaluate(id => { const h = document.getElementById('key-cere'); return { id, screen: (document.querySelector('.screen.on') || {}).id, shown: !h.hidden, chest: h.dataset.chest, stored: JSON.parse(localStorage.getItem('ne')).prefs.chests[id] }; }, id)); }
-    await sleep(CH41.CEREMONY.thorns.ms); await click('#key-cere'); await sleep(900);
+    await revealDone(); await sleep(700);
     const end = await page.evaluate(() => { const c = document.querySelector('.chest[data-chest="thorns"]'); return { screen: (document.querySelector('.screen.on') || {}).id, spill: c.classList.contains('spill'), open: c.classList.contains('open'), stored: JSON.parse(localStorage.getItem('ne')).prefs.chests.thorns }; });
     await sleep(3800);
     const rest = await page.evaluate(() => { const c = document.querySelector('.chest[data-chest="thorns"]'); return { cls: ['locked', 'ready', 'open', 'spill'].filter(k => c.classList.contains(k)).join(), words: !document.querySelector('.chestwords[data-for="thorns"]').hidden }; });
@@ -4734,7 +4787,7 @@ console.log('\nbuild 43 - batch 17, chests and keys');
     const backClose = Object.assign(await at43(), { ask: await page.evaluate(() => !document.getElementById('key-ask').hidden) });
     await svg43('#key-ring .khubhit'); await sleep(250); await click('[data-act="key-ask-yes"]'); await sleep(250);
     const yes = await at43();
-    await sleep(4200); await click('#key-cere'); await sleep(700); const after = await onScreen();
+    await revealDone(); await sleep(500); const after = await onScreen();
     // the quiet screen while the Games chest waits: the key, and the ready chest in the row, both ask
     await boot43({}, { unlock: ALL43 }); await show43('s-key'); await sleep(900);
     const quiet = await page.evaluate(() => ({ key: !!document.querySelector('#key-shell button.kquiet[data-act="key-chest"][data-chest="games"]'), row: !!document.querySelector('#key-shell button.kch.ready[data-chest="games"]'), cere: !document.getElementById('key-cere').hidden, stored: JSON.parse(localStorage.getItem('ne')).prefs.chests.games }));
@@ -4751,7 +4804,7 @@ console.log('\nbuild 43 - batch 17, chests and keys');
     const ring = await page.evaluate(() => { const c = id => document.querySelector(`.chest[data-chest="${id}"] .pic`); return { ready: getComputedStyle(c('games')).animationName, before: getComputedStyle(c('key')).animationName }; });
     const tap = await page.evaluate(() => { document.querySelector('.chest[data-chest="games"]').click(); const h = document.getElementById('key-cere'), on = document.querySelector('.screen.on');
       return { screen: on && on.id, cere: !h.hidden, playing: h.classList.contains('play'), stored: JSON.parse(localStorage.getItem('ne')).prefs.chests.games }; });
-    await sleep(3300); await click('#key-cere'); await sleep(700); const after = await onScreen();
+    await revealDone(); await sleep(500); const after = await onScreen();
     const css = read43('styles', 'app.css');
     (ring.ready === 'readyring' && ring.before === 'none' && /\.tile\.chest\.ready \.pic,\.kch\.ready,\.kquiet\{box-shadow:0 0 0 2px var\(--ok\);animation:readyring/.test(css) && tap.screen === 's-key' && tap.cere && tap.playing && tap.stored === 1 && after === 's-pick')
       ? ok('B.1 / B.2 a chest that can be opened wears a pulsing green outline (readyring in --ok) on the map and in the key screen\'s row, and a chest that cannot does not; tapped on the map the ready chest opens in the same task that shows the key screen - its ceremony already covers it, so the key screen never flashes - and "tap to continue" returns to the map')
@@ -4763,15 +4816,23 @@ console.log('\nbuild 43 - batch 17, chests and keys');
     await boot43({ chests: { games: 1 }, keyWhole: {} }, { unlock: ALL43, bars: bars43('clear') });
     await click('[data-go="s-pick"]'); await sleep(700);
     await click('.chest[data-chest="key"]'); await sleep(700);
-    const mid = await at43();
+    /* AMENDED at build 46 (v25 item 11): the unseen key animation is the first-open REVEAL now. It still plays IN FULL and Back still does nothing
+       while it does — but it ends on a TAP, so the chest that was waiting cannot be opened on a timer. `pendingOpen` hands it to the reveal, which
+       opens it at its Continue. What B.3 asked for is unchanged: never started and cut off. */
+    const kindOf = () => page.evaluate(() => { const h = document.getElementById('key-cere'); return { kind: h.hidden ? '' : (h.dataset.kind || '') }; });
+    const mid = Object.assign(await at43(), await kindOf());
     await click('#s-key .back'); await sleep(1300);
-    const held = await at43();
-    await sleep(1800);
-    const opened = await at43();
-    await sleep(4200); await click('#key-cere'); await sleep(600);
-    (mid.screen === 's-key' && !mid.cere && mid.earn === 'clear' && !mid.chests.key && held.screen === 's-key' && !held.cere && held.earn === 'clear' && !held.chests.key && opened.cere && opened.chests.key === 1 && !opened.earn)
-      ? ok(`B.3 the Key chest tapped on the map with key 1's earn moment unseen: the moment plays in full on the key screen - Back does nothing while it does - and the chest opens only once it has finished (${KY43.KEY_EARN.clear.ms}ms), never started and interrupted`)
-      : bad('B.3 a key animation is never cut off', JSON.stringify({ mid, held, opened }));
+    const held = Object.assign(await at43(), await kindOf());
+    await revealReady();
+    const ready = Object.assign(await at43(), await kindOf());
+    // revealOne, not revealDone: this is the one place the two reveals have to be told apart, so only the KEY's is taken here
+    await revealOne(); await sleep(1100);
+    const opened = Object.assign(await at43(), await kindOf());
+    await revealDone(); await sleep(500);
+    (mid.screen === 's-key' && mid.kind === 'key' && !mid.chests.key && held.screen === 's-key' && held.kind === 'key' && !held.chests.key
+      && ready.kind === 'key' && !ready.chests.key && opened.kind === 'chest' && opened.chests.key === 1)
+      ? ok(`B.3 the Key chest tapped on the map with key 1's first-open reveal unseen: the reveal plays in full on the key screen - Back does nothing while it does - and the chest opens only once the player has taken its card, never started and interrupted (AMENDED at build 46: a reveal ends on a tap, so the chest waits for the tap and not for ${KY43.KEY_EARN.clear.ms}ms)`)
+      : bad('B.3 a key animation is never cut off', JSON.stringify({ mid, held, ready, opened }));
   }
 
   /* ---- 5. C.5: earning a key is its own moment per tier, escalating, drawn centred on the hub, with its own sound from that key's theme ---- */
@@ -4784,12 +4845,16 @@ console.log('\nbuild 43 - batch 17, chests and keys');
       const calls = [], o = A.Snd.keyEarn, u = A.Snd.unlockFx, c = A.Snd.chest;
       A.Snd.keyEarn = function (t) { calls.push(t); return o.apply(this, arguments); }; A.Snd.unlockFx = function () { calls.push('unlockFx'); return u.apply(this, arguments); }; A.Snd.chest = function () { calls.push('chest'); return c.apply(this, arguments); };
       const out = {};
-      for (const [i, t] of [[0, 'clear'], [1, 'pro'], [2, 'author']]) { R.show('s-menu'); await wait(80); R.show('s-key', { tier: i }); await wait(900);
+      // AMENDED at build 46 (v25 item 11): arriving at a whole key plays its REVEAL, and the earn is the beat inside it where the key lights
+      const KR = (await import('./config/keys.js')).KEY_REVEAL;
+      for (const [i, t] of [[0, 'clear'], [1, 'pro'], [2, 'author']]) { R.show('s-menu'); await wait(80); R.show('s-key', { tier: i }); await wait(KR[t].hubAt + 420);
         const el = document.getElementById('s-key'), g = document.querySelector('#key-ring .kglyph'), hub = document.querySelector('#key-ring .khub').getBoundingClientRect(), gr = g.getBoundingClientRect();
         out[t] = { earn: el.dataset.earn, on: el.classList.contains('kwhole'), ms: el.style.getPropertyValue('--earn-ms'), bloom: document.querySelectorAll('#key-ring .kebloom').length, sq: document.querySelectorAll('#key-ring .kesq').length,
-          pulse: document.querySelectorAll('#key-ring .kepulse').length, spk: document.querySelectorAll('#key-ring .kespk').length, glyph: g.getAnimations().map(a => a.animationName).join(), attr: g.hasAttribute('transform'),
+          pulse: document.querySelectorAll('#key-ring .kepulse').length, spk: document.querySelectorAll('#key-ring .kespk').length, glyph: g.getAnimations().map(a => a.animationName).filter(Boolean).join(), attr: g.hasAttribute('transform'),   // AMENDED at build 46: the finished look is a state change, so a transition can ride alongside the earn's own animation
           off: Math.round(Math.hypot((gr.left + gr.width / 2) - (hub.left + hub.width / 2), (gr.top + gr.height / 2) - (hub.top + hub.height / 2))) };
-        await wait(5200); out[t].after = document.getElementById('s-key').classList.contains('kwhole'); }
+        // and it comes off by itself: the reveal settles, and its tap and Continue put the screen back
+        await wait(5200); out[t].after = document.getElementById('s-key').classList.contains('kwhole');
+        document.getElementById('key-cere').click(); await wait(400); const g2 = document.querySelector('#key-cere .rgo'); if (g2) { await wait(1400); g2.click(); } await wait(500); }
       const plans = Object.fromEntries(['clear', 'pro', 'author'].map(t => [t, A.Snd.keyEarnPlan(t)]));
       A.Snd.keyEarn = o; A.Snd.unlockFx = u; A.Snd.chest = c; return { out, calls, plans }; });
     const P = got.plans, len = t => Math.max(...P[t].map(e => e[0] + e[3] / 1000)), O = got.out;
@@ -5076,12 +5141,9 @@ console.log('\nbuild 45 - batch 18, fixes, state and the catalogue');
     return { keys: k.className, cus: c.className, need: !document.getElementById('keys-need').hidden || !document.getElementById('cus-need').hidden }; });
   const menuOpen45 = m => !/\bdim\b/.test(m.keys) && !/keylock/.test(m.keys) && !/\bdim\b/.test(m.cus) && !/cuslock/.test(m.cus) && !m.need;
   // a player's own route into a chest: tap it on the map, then answer its ceremony's "tap to continue"
+  // AMENDED at build 46 (v25 items 6 / 22): the open is a REVEAL - its stage, its symbols, the tap, then the card's Continue. revealDone does both
   const openChest45 = async id => { await page.evaluate(i => document.querySelector(`#grid .chest[data-chest="${i}"]`).click(), id); await sleep(400);
-    for (let i = 0; i < 40; i++) { const st = await page.evaluate(() => { const c = document.getElementById('key-cere'); return !c || c.hidden ? '' : c.classList.contains('tap') ? 'tap' : 'on'; });
-      if (st === 'tap') { await click('#key-cere'); await sleep(600); break; }
-      if (!st && (await onScreen()) === 's-pick') break;
-      await sleep(250); }
-    await sleep(400); return onScreen(); };
+    await revealDone(); await sleep(500); return onScreen(); };
   // every point of every line drawn in the key's ring, and every label's box — the check item 12 stands on
   const labels45 = () => page.evaluate(() => { const svg = document.getElementById('key-ring'); const pts = [];
     svg.querySelectorAll('.kroot,.kdot2,.kthorn,.khub,.karc').forEach(el => { let len = 0; try { len = el.getTotalLength(); } catch (e) { return; }
@@ -5289,11 +5351,12 @@ console.log('\nbuild 45 - batch 18, fixes, state and the catalogue');
     const rows = snd.groups.flatMap(g => g.rows);
     const silent = rows.filter(r => !r.plays.length || r.plays.some(p => !p.ev || !p.ev.length)).map(r => r.id);
     // nothing that makes a sound can be left off the list: every Snd method but the helpers is named in a row's `src`
-    const HELP = ['unlock', 'tone', 'plan', 'fx', 'noise', 'chestPlan', 'keyEarnPlan', 'roundVerdictPlan'];
+    // AMENDED at build 46 (v25 items 1 / 2 / 6): three more sound-makers, and their two plan helpers, which are not sounds of their own
+    const HELP = ['unlock', 'tone', 'plan', 'fx', 'noise', 'chestPlan', 'keyEarnPlan', 'roundVerdictPlan', 'mapPlan', 'giftPlan'];
     const srcs = rows.map(r => r.src).join(' ');
     const missed = snd.methods.filter(m => !HELP.includes(m) && !srcs.includes(m + '('));
     const packs = rows.filter(r => r.plays.length > 1).length;
-    (!silent.length && !missed.length && rows.length >= 24 && snd.groups.length === 7)
+    (!silent.length && !missed.length && rows.length >= 34 && snd.groups.length === 7)
       ? ok(`item 20 the sound list: ${rows.length} sounds in ${snd.groups.length} groups, every one with events off audio.js itself (${packs} of them a button per sound pack), and every sound-making Snd method is in it`)
       : bad('item 20 the sound list', JSON.stringify({ silent, missed, rows: rows.length, groups: snd.groups.length }));
     const rf = await page.evaluate(roundsRef);
@@ -5318,6 +5381,315 @@ console.log('\nbuild 45 - batch 18, fixes, state and the catalogue');
       && /page\.evaluate\(soundsRef\)/.test(gen45) && /page\.evaluate\(roundsRef\)/.test(gen45))
       ? ok('items 20 / 21 both sections are in catalogue.template.html with their note boxes, and catalogue.mjs fills them from catalogue.ref.mjs - so every future npm run review carries them (#441)')
       : bad('items 20 / 21 the template and the generator', JSON.stringify({ tpl: /id="sounds"/.test(tpl45) && /id="rounds"/.test(tpl45), gen: /soundsRef/.test(gen45) }));
+  }
+}
+
+
+console.log('\nbuild 46 - batch 18, the unlock experience, sound and About');
+{
+  const root46 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const read46 = (...p) => fs.readFileSync(path.join(root46, ...p), 'utf8');
+  const strip46 = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
+  const css46 = read46('styles', 'app.css'), flat46 = css46.replace(/\/\*[\s\S]*?\*\//g, '');
+  const NOW46 = Date.now();
+  const U46 = await import(pathToFileURL(path.join(root46, 'config', 'unlocks.js')).href);
+  const KB46 = await import(pathToFileURL(path.join(root46, 'config', 'key-bars.js')).href);
+  const CH46 = await import(pathToFileURL(path.join(root46, 'config', 'chests.js')).href);
+  const KY46 = await import(pathToFileURL(path.join(root46, 'config', 'keys.js')).href);
+  const CP46 = await import(pathToFileURL(path.join(root46, 'config', 'copy.js')).href);
+  const MS46 = await import(pathToFileURL(path.join(root46, 'config', 'messages.js')).href);
+  const ALL46 = Object.fromEntries(U46.UNLOCKS.map(u => [u.key, NOW46]));
+  const tier46 = (...ts) => Object.fromEntries(Object.keys(KB46.KEY_BARS).flatMap(k => ts.map(t => [t === 'clear' ? k : k + '|' + t, NOW46])));
+  const PLAIN46 = { story: 1, gridSeen: 1, played: 1, menuSeen: 1, keySeen: 1, keysSeen: 1, snd: 'off', musicG: {}, spill: {}, readySeen: {} };
+  const boot46 = async (prefs, extra = {}) => { await setStorage({ ne: Object.assign({ v: 6, prefs: { ...PLAIN46, ...prefs }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} }, extra) }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(450); };
+  const show46 = (id, o) => page.evaluate(async (i, x) => { const R = await import('./ui/router.js'); R.show(i, x); }, id, o || {});
+  const revState = () => page.evaluate(() => { const h = document.getElementById('key-cere'), c = h.querySelector('.rcard');
+    return { on: !h.hidden, kind: h.dataset.kind || '', id: h.dataset.rev || '', step: h.dataset.step || '', tap: h.classList.contains('tap'), card: h.classList.contains('card'),
+      gifts: [...h.querySelectorAll('.rgifts:not(.row) .rgift b')].map(g => g.textContent), syms: [...h.querySelectorAll('.rgifts:not(.row) .rgift .sym')].map(x => x.dataset.sym),
+      title: c ? c.querySelector('h3').textContent : '', did: c ? [...c.querySelectorAll('li')].map(l => l.textContent) : [], got: c ? [...c.querySelectorAll('.rgift b')].map(b => b.textContent) : [],
+      next: c ? [...c.querySelectorAll('p')].map(x => x.textContent).join(' ') : '', go: c ? (c.querySelector('.rgo').disabled ? 'off' : 'on') : '' }; });
+
+  /* ---- 1. items 6 / 11 / 22: ONE shared reveal routine, and both kinds go through it ---- */
+  {
+    const rev = strip46(read46('ui', 'reveal.js')), cere = strip46(read46('ui', 'ceremony.js')), keyjs = strip46(read46('ui', 'screens', 'key.js'));
+    // the routine lives in one file: the ceremony no longer owns a clock, a tap or a hand-over, and the key screen starts both kinds the same way
+    const oneRoutine = !/playCeremony|ceremonyTap|stopCeremony|ceremonyOn/.test(cere + keyjs) && /export function chestStage|const chestStage|function chestStage/.test(cere)
+      && (keyjs.match(/playReveal\(/g) || []).length >= 3 && /kind: 'chest'/.test(keyjs) && /kind: 'key'/.test(keyjs);
+    // and the routine itself is the one that swallows the taps, holds, and ends on the card
+    const inRev = /function tap\(\)/.test(rev) && /cur\.ready/.test(rev) && /REVEAL\.cardGo/.test(rev) && /reduced\(\)/.test(rev);
+    // presentation only (L10): neither the routine nor the drawer writes anything
+    const l10 = !/\bsave\(|localStorage|store\.bars/.test(rev + cere);
+    (oneRoutine && inRev && l10)
+      ? ok('items 6 / 11 / 22 ONE shared reveal routine (ui/reveal.js): the stage, the gifts, "tap to continue", the congratulations card - a chest hands it its ceremony as a stage, a key hands it the ring, and neither draws a clock, a tap or a hand-over of its own. Presentation only (L10): the routine and the chest drawer write nothing')
+      : bad('items 6 / 11 / 22 one routine', JSON.stringify({ oneRoutine, inRev, l10 }));
+  }
+
+  /* ---- 2. item 6: ALL FOUR chests pop their unlocks out as symbols with titles, and "tap to continue" waits for the last ---- */
+  {
+    const want = { games: ['games', {}], key: ['key', { games: 1 }], pro: ['pro', { games: 1, key: 1 }], thorns: ['thorns', { games: 1, key: 1, pro: 1 }] };
+    const seen = [];
+    for (const id of Object.keys(want)) {
+      const [, chests] = want[id];
+      const bars = id === 'games' ? {} : id === 'key' ? tier46('clear') : id === 'pro' ? tier46('clear', 'pro') : tier46('clear', 'pro', 'author');
+      // the keys' own first opens are already seen on this fixture, so what the tap plays is the chest's reveal and nothing queued in front of it
+      await boot46({ chests, revealed: { 'key:clear': 1, 'key:pro': 1, 'key:author': 1 } }, { unlock: ALL46, bars });
+      await page.evaluate(async () => { const A = await import('./audio.js'); window.__g46 = []; const o = A.Snd.gift; A.Snd.gift = function (i) { window.__g46.push(i); return o.apply(this, arguments); }; });
+      await click('[data-go="s-pick"]'); await sleep(800);
+      const state = await page.evaluate(i => { const c = document.querySelector(`#grid .chest[data-chest="${i}"]`); return c && c.className; }, id);
+      await page.evaluate(i => document.querySelector(`#grid .chest[data-chest="${i}"]`).click(), id); await sleep(500);
+      // mid-reveal: nothing is tappable yet and no gift has landed before the stage has finished
+      const early = Object.assign(await revState(), { fired: await page.evaluate(() => window.__g46.length) });
+      await revealReady();
+      const held = Object.assign(await revState(), { fired: await page.evaluate(() => window.__g46.slice()) });
+      seen.push({ id, state, early, held, words: (CP46.CHEST_WORDS[id] || []).map(x => x.w) });
+      await revealDone(); await sleep(400);
+    }
+    const bad6 = seen.filter(s => !/ready/.test(s.state) || s.early.tap || s.early.card || !s.held.tap
+      || s.held.gifts.join() !== s.words.join() || s.held.syms.length !== s.words.length || s.held.syms.some(x => !x) || s.held.fired.join() !== s.words.map((_, i) => i).join());
+    (!bad6.length)
+      ? ok(`item 6 all four chests pop their unlocks out as symbols with titles, each landing with its own sound a step higher (${seen.map(s => s.id + ' ' + s.held.gifts.join('+')).join(' · ')}), and "tap to continue" is held back until the last one has landed`)
+      : bad('item 6 the chest pop-out', JSON.stringify(bad6));
+  }
+
+  /* ---- 3. items 6 / 11: not skippable, and taps are SWALLOWED, not queued ---- */
+  {
+    await boot46({}, { unlock: ALL46 });
+    await click('[data-go="s-pick"]'); await sleep(800);
+    await page.evaluate(() => document.querySelector('#grid .chest[data-chest="games"]').click()); await sleep(900);
+    // eight taps on the host and one Back, mid-stage: nothing moves, and none of them is waiting to fire when it ends
+    const during = await page.evaluate(async () => { const h = document.getElementById('key-cere'); const wait = ms => new Promise(r => setTimeout(r, ms));
+      for (let i = 0; i < 8; i++) { h.click(); await wait(40); }
+      document.querySelector('#s-key .back').click(); await wait(200);
+      return { screen: (document.querySelector('.screen.on') || {}).id, on: !h.hidden, card: h.classList.contains('card') }; });
+    const st = await revealReady();
+    const atTap = await revState();
+    // one tap now brings the card up, and its Continue is DEAD for about a second (item 22), so a leftover tap cannot close it unseen
+    await click('#key-cere'); await sleep(200);
+    const early = await revState();
+    await sleep(CH46.REVEAL.cardAt + CH46.REVEAL.cardGo + 350);
+    const late = await revState();
+    await page.evaluate(() => document.querySelector('#key-cere .rgo').click()); await sleep(600);
+    const done = await onScreen();
+    (during.screen === 's-key' && during.on && !during.card && st === 'tap' && atTap.tap && early.card && early.go === 'off' && late.go === 'on' && done === 's-pick')
+      ? ok(`items 6 / 11 / 22 the reveal cannot be tapped out of: eight taps and Back during it do nothing and none of them is queued; the tap that lands brings the card up, whose Continue is dead for ${CH46.REVEAL.cardGo}ms and then takes it to the map`)
+      : bad('items 6 / 11 taps swallowed', JSON.stringify({ during, st, atTap, early, late, done }));
+  }
+
+  /* ---- 4. item 22: what the congratulations card says ---- */
+  {
+    await boot46({}, { unlock: ALL46 });
+    await click('[data-go="s-pick"]'); await sleep(800);
+    await page.evaluate(() => document.querySelector('#grid .chest[data-chest="games"]').click());
+    await revealReady(); await click('#key-cere'); await sleep(CH46.REVEAL.cardAt + 300);
+    const card = await revState();
+    const three = card.did.length > 0 && card.did.length <= 3;
+    await revealDone(); await sleep(400);
+    (/Games chest opened/i.test(card.title) && three && card.got.join() === 'CUSTOMISE,THE KEY' && /Next: open the Key chest/.test(card.next))
+      ? ok(`item 22 the card ends the routine: "${card.title}", ${card.did.length} line(s) of what you did (${card.did.join(' · ')}), what you got as the same symbols (${card.got.join(' · ')}) and one line of what's next ("${card.next.trim()}")`)
+      : bad('item 22 the congratulations card', JSON.stringify(card));
+  }
+
+  /* ---- 5. item 11: all three keys - the games arrive clockwise from Quick Tap, each with its own game's sound, 4s / 5s / 6-7s and grander ---- */
+  {
+    const seen = [];
+    for (const [tier, chests, bars, tab] of [['clear', { games: 1 }, tier46('clear'), 0], ['pro', { games: 1, key: 1 }, tier46('clear', 'pro'), 1], ['author', { games: 1, key: 1, pro: 1 }, tier46('clear', 'pro', 'author'), 2]]) {
+      await boot46({ chests }, { unlock: ALL46, bars });
+      await page.evaluate(async () => { const A = await import('./audio.js'); window.__m46 = []; const o = A.Snd.mapFx; A.Snd.mapFx = function (g) { window.__m46.push(g); return o.apply(this, arguments); };
+        window.__k46 = []; const k = A.Snd.keyEarn; A.Snd.keyEarn = function (t) { window.__k46.push(t); return k.apply(this, arguments); }; });
+      await show46('s-key', { tier: tab }); await sleep(500);
+      const t0 = Date.now();
+      const start = await page.evaluate(() => ({ krev: document.getElementById('s-key').classList.contains('krev'), rev: document.getElementById('s-key').dataset.rev || '',
+        hours: [...document.querySelectorAll('#key-ring .kr')].map(g => g.style.getPropertyValue('--h')), games: [...document.querySelectorAll('#key-ring .kr')].map(g => g.dataset.rg),
+        motes: document.querySelectorAll('#key-ring .kmote').length, ripples: document.querySelectorAll('#key-ring .kripple').length }));
+      const st = await revealReady(); const took = Date.now() - t0;
+      const heard = await page.evaluate(() => ({ map: window.__m46.slice(), earn: window.__k46.slice() }));
+      const after = await page.evaluate(() => ({ kdone: document.getElementById('s-key').classList.contains('kdone'), krev: document.getElementById('s-key').classList.contains('krev'),
+        ring: !!document.querySelector('#key-ring .kring') }));
+      seen.push({ tier, st, took, start, heard, after, cfg: KY46.KEY_REVEAL[tier] });
+      await revealDone(); await sleep(400);
+    }
+    const order = GAMES.join();
+    const bad11 = seen.filter(s => s.st !== 'tap' || !s.start.krev || s.start.rev !== s.tier || s.start.hours.join() !== '0,1,2,3,4,5,6' || s.start.games.join() !== order
+      || s.heard.map.join() !== order || s.heard.earn.join() !== s.tier || !s.after.kdone || s.after.krev || !s.after.ring
+      || s.took < s.cfg.ms - 400 || s.took > s.cfg.ms + 6000);
+    const grander = seen[0].cfg.ms < seen[1].cfg.ms && seen[1].cfg.ms < seen[2].cfg.ms
+      && seen[0].start.ripples < seen[1].start.ripples && seen[1].start.ripples < seen[2].start.ripples
+      && seen[0].start.motes < seen[1].start.motes && seen[1].start.motes < seen[2].start.motes;
+    (!bad11.length && grander)
+      ? ok(`item 11 all three keys get a first-open reveal: the seven games arrive clockwise from Quick Tap at 12 (${order.replace(/,/g, ' → ')}), each landing with its own game's sound, then the key itself with its own; ${seen.map(s => s.tier + ' ' + s.cfg.ms / 1000 + 's').join(' · ')}, each longer and with more drawn than the last, and each settles into the finished key`)
+      : bad('item 11 the key reveals', JSON.stringify({ bad11, grander, seen: seen.map(s => ({ t: s.tier, st: s.st, took: s.took, heard: s.heard, after: s.after })) }));
+  }
+
+  /* ---- 6. items 11 / 22: FIRST TIME ONLY, and a Testing chest reset makes it a first time again ---- */
+  {
+    await boot46({ chests: { games: 1 } }, { unlock: ALL46, bars: tier46('clear') });
+    await show46('s-key', { tier: 0 }); await revealReady(); await revealDone(); await sleep(500);
+    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('ne')).prefs.revealed);
+    await show46('s-menu'); await sleep(200); await show46('s-key', { tier: 0 }); await sleep(1400);
+    const again = await page.evaluate(() => ({ on: !document.getElementById('key-cere').hidden, krev: document.getElementById('s-key').classList.contains('krev'), kdone: document.getElementById('s-key').classList.contains('kdone') }));
+    // Testing's per-chest reset gives the key back its first time (item 11: "which on this phone counts as a first time again")
+    const reset = await page.evaluate(async () => { const K = await import('./progress/key.js'); K.devChestReset('key');
+      return JSON.parse(localStorage.getItem('ne')).prefs.revealed; });
+    (stored['key:clear'] === 1 && !again.on && !again.krev && again.kdone && !reset['key:clear'])
+      ? ok('items 11 / 22 the reveal plays once: it is written to prefs.revealed as it starts, a second visit goes straight to the finished key with no animation, and Testing\'s per-chest reset clears that key\'s flag so it is a first time again')
+      : bad('item 11 first time only', JSON.stringify({ stored, again, reset }));
+  }
+
+  /* ---- 7. item 11: Reduce Motion gives a short fade, and still reaches the card ---- */
+  {
+    await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
+    await boot46({ chests: { games: 1 } }, { unlock: ALL46, bars: tier46('clear') });
+    const t0 = Date.now();
+    await show46('s-key', { tier: 0 }); await sleep(250);
+    // the reveal's own `quick` class is what says it took the short path; `krevquick` on the screen is gone already, because under Reduce Motion the settle is immediate
+    const quick = await page.evaluate(() => ({ cls: document.getElementById('key-cere').className, settled: document.getElementById('s-key').classList.contains('kdone') && !document.getElementById('s-key').classList.contains('krev') }));
+    const st = await revealReady(); const took = Date.now() - t0;
+    await click('#key-cere'); await sleep(CH46.REVEAL.cardAt + CH46.REVEAL.cardGo + 350);
+    const card = await revState();
+    await revealDone(); await sleep(300);
+    await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }]);
+    (/\bquick\b/.test(quick.cls) && quick.settled && st === 'tap' && took < KY46.KEY_REVEAL.clear.ms && card.card && /Lantern unlocked/i.test(card.title))
+      ? ok(`item 11 with Reduce Motion on the reveal is a short fade - ${took}ms against the ${KY46.KEY_REVEAL.clear.ms}ms reveal - and still ends on the congratulations card, so nothing is skipped, only shortened (Apple expects it)`)
+      : bad('item 11 Reduce Motion', JSON.stringify({ quick, st, took, card }));
+  }
+
+  /* ---- 8. item 13: an unfinished key and a finished one, all three keys ---- */
+  {
+    const seen = [];
+    for (const [tier, tab, chests] of [['clear', 0, { games: 1 }], ['pro', 1, { games: 1, key: 1 }], ['author', 2, { games: 1, key: 1, pro: 1 }]]) {
+      const under = tier === 'clear' ? {} : tier === 'pro' ? tier46('clear') : tier46('clear', 'pro');
+      for (const [label, bars, done] of [['unfinished', under, false], ['finished', Object.assign({}, under, tier46(tier)), true]]) {
+        // `revealed` already set, so the finished one is simply the settled state and not the reveal
+        await boot46({ chests, revealed: { 'key:clear': 1, 'key:pro': 1, 'key:author': 1 } }, { unlock: ALL46, bars });
+        await show46('s-key', { tier: tab }); await sleep(900);
+        seen.push(Object.assign({ tier, label, done }, await page.evaluate(() => { const el = document.getElementById('s-key'), gl = document.querySelector('#key-ring .kglyph'), gr = document.querySelector('#key-ring .kground'), kk = document.querySelector('.kkey.sel');
+          const cs = getComputedStyle(gl);
+          return { kdone: el.classList.contains('kdone'), ring: !!document.querySelector('#key-ring .kring'), scale: cs.scale, filter: cs.filter, anim: cs.animationName,
+            stroke: cs.stroke, ground: gr ? +getComputedStyle(gr).opacity : 0, card: kk ? getComputedStyle(kk.querySelector('.kgl path')).animationName : '',
+            dim: getComputedStyle(el).getPropertyValue('--kdim').trim(), tint: getComputedStyle(el).getPropertyValue('--ktint').trim() }; })));
+      }
+    }
+    const un = seen.filter(s => !s.done), fin = seen.filter(s => s.done);
+    const badUn = un.filter(s => s.kdone || s.ring || s.filter !== 'none' || s.anim !== 'none' || s.scale !== 'none' || s.ground > 0);
+    const badFin = fin.filter(s => !s.kdone || !s.ring || s.filter === 'none' || s.anim !== 'kbreathe' || s.card !== 'kbreathe' || !(+s.scale > 1));
+    const steps = KY46.KEY_FINISH.clear.glow < KY46.KEY_FINISH.pro.glow && KY46.KEY_FINISH.pro.glow < KY46.KEY_FINISH.author.glow;
+    (!badUn.length && !badFin.length && steps)
+      ? ok(`item 13 the two states are pushed apart on all three keys: unfinished has no glow at all - no ground, no drop shadow, no pulse, the centre key in the tier's own dim and no outer ring - and finished is ${fin.map(s => s.tier + ' × ' + s.scale).join(', ')}, full tint, a ${KY46.KEY_FINISH.clear.pulse}ms breathing pulse on the key and on its card at the top, the ring drawn, each tier a step brighter`)
+      : bad('item 13 unfinished against finished', JSON.stringify({ badUn, badFin, steps }));
+  }
+
+  /* ---- 9. item 7: a symbol beside every chest unlock on the map - the same one that pops out ---- */
+  {
+    await boot46({ chests: { games: 1, key: 1, pro: 1, thorns: 1 }, spill: { games: 1, key: 1, pro: 1, thorns: 1 } }, { unlock: ALL46, bars: tier46('clear', 'pro', 'author') });
+    await click('[data-go="s-pick"]'); await sleep(900);
+    const map = await page.evaluate(() => Object.fromEntries(['games', 'key', 'pro', 'thorns'].map(id => { const w = document.querySelector(`.chestwords[data-for="${id}"]`);
+      return [id, [...w.querySelectorAll('.cw')].map(x => ({ w: x.dataset.w, sym: (x.querySelector('.sym') || {}).dataset && x.querySelector('.sym').dataset.sym, fits: (() => { const t = x.querySelector('.cwt'), b = x.getBoundingClientRect(); return t.scrollWidth <= t.clientWidth + 1 && b.right <= innerWidth; })() }))]; })));
+    const wantSym = Object.fromEntries(Object.keys(map).map(id => [id, (CP46.CHEST_WORDS[id] || []).map(x => x.sym)]));
+    const bad7 = Object.keys(map).filter(id => map[id].map(x => x.sym).join() !== wantSym[id].join() || map[id].some(x => !x.sym || !x.fits) || !map[id].length);
+    // and it is the SAME symbol the chest pops out — one drawer, one list, so they cannot drift (ui/chest.js symSvg / giftsOf)
+    const one = /function symSvg/.test(strip46(read46('ui', 'chest.js'))) && !/SYMBOLS\[/.test(strip46(read46('ui', 'reveal.js')) + strip46(read46('ui', 'screens', 'pick.js')));
+    (!bad7.length && one)
+      ? ok(`item 7 every chest's unlock on the map carries its symbol beside the title - ${Object.keys(map).map(id => id + ' ' + map[id].map(x => x.sym).join('+')).join(' · ')} - each drawn by the one symSvg() the chest pop-out and the card use, and every word still fits its cell at 390px`)
+      : bad('item 7 the map symbols', JSON.stringify({ bad7, one, map }));
+  }
+
+  /* ---- 10. item 15: a key's background REPLACES the base on its screen, and it is what its chest gives ---- */
+  {
+    const atm = strip46(read46('ui', 'atmosphere.js'));
+    // the base design is not drawn while a key layer is over: DRAW[over||own ? 'stars' : bg]
+    const replaces = /DRAW\[\s*over\s*\|\|\s*own\s*\?\s*'stars'\s*:\s*bg\s*\]/.test(atm);
+    await boot46({ chests: { games: 1, key: 1, pro: 1, thorns: 1 }, bg: 'grid', revealed: { 'key:clear': 1, 'key:pro': 1, 'key:author': 1 } }, { unlock: ALL46, bars: tier46('clear', 'pro', 'author') });
+    const layers = [];
+    for (const [tier, tab, style] of [['clear', 0, 'lantern'], ['pro', 1, 'circuit'], ['author', 2, 'thorn']]) {
+      await show46('s-menu'); await sleep(150); await show46('s-key', { tier: tab }); await sleep(700);
+      layers.push(Object.assign({ tier, style }, await page.evaluate(async () => { const A = await import('./ui/atmosphere.js'); const S = await import('./core/store.js');
+        return { style: document.getElementById('s-key').dataset.style, chosen: S.look('bg'), draws: !!A.LAYER }; })));
+    }
+    await show46('s-menu'); await sleep(400);
+    const off = await page.evaluate(() => document.getElementById('s-key').dataset.style);
+    // and each key's background is in what that key's chest pops out (item 15's last line), on the same list item 7 reads
+    const inChest = ['key', 'pro', 'thorns'].every((c, i) => (CP46.CHEST_WORDS[c] || []).some(x => x.sym === 'bg-' + ['lantern', 'circuit', 'thorn'][i]));
+    // Reduce Motion holds it still: every layer reads the same `reduce` the rest of the file does
+    const still = /const reduce=matchMedia/.test(atm) && /reduce\?0:t/.test(atm.replace(/\s/g, ''));
+    (replaces && layers.every((l, i) => l.style === l.style && l.chosen === 'grid') && inChest && still)
+      ? ok('item 15 on a key\'s screen only that key\'s background shows - the chosen design (grid here) is not drawn at all while a key layer is over, so nothing is ever layered twice - and each key\'s background is one of the symbols its own chest pops out; Reduce Motion holds every layer still')
+      : bad('item 15 the key backgrounds', JSON.stringify({ replaces, layers, off, inChest, still }));
+  }
+
+  /* ---- 11. items 1 / 2: the title whoosh and the map's sounds, both tied to the animation's own timing ---- */
+  {
+    const menujs = strip46(read46('ui', 'screens', 'menu.js')), pickjs = strip46(read46('ui', 'screens', 'pick.js'));
+    const offAnim = /getComputedTiming\(\)\.delay/.test(menujs) && /getComputedTiming\(\)\.delay/.test(pickjs) && !/4600|3300|1900/.test(menujs);
+    // the title: four beats, four sounds, at the delays the stylesheet itself carries
+    await boot46({ story: 0 }, { unlock: ALL46 });
+    const title = await page.evaluate(async () => { const A = await import('./audio.js'); const wait = ms => new Promise(r => setTimeout(r, ms));
+      const fired = []; const o = A.Snd.titleFx; A.Snd.titleFx = function (k) { fired.push([k, Math.round(performance.now())]); return o.apply(this, arguments); };
+      const R = await import('./ui/router.js'); const t0 = performance.now(); R.show('s-menu', { story: 1 }); await wait(5600);
+      const want = ['#st1', '#s-menu .wmin', '#st2', '#storyhint'].map(s => { const el = document.querySelector(s), a = el && el.getAnimations()[0];
+        return a ? Math.round(a.effect.getComputedTiming().delay) : -1; });
+      A.Snd.titleFx = o; return { fired: fired.map(([k, t]) => [k, Math.round(t - t0)]), want }; });
+    const kinds = title.fired.map(f => f[0]).join();
+    const onTime = title.fired.length === 4 && title.fired.every((f, i) => Math.abs(f[1] - title.want[i]) < 400);
+    // the map: one sound per tile on the FIRST open only, off each tile's own animation delay, a locked one lower and muted
+    await boot46({ gridSeen: 0 }, { unlock: { 'quick-tap:four': NOW46 } });
+    const map = await page.evaluate(async () => { const A = await import('./audio.js'); const wait = ms => new Promise(r => setTimeout(r, ms));
+      const fired = []; const o = A.Snd.mapFx; A.Snd.mapFx = function (g, lk) { fired.push([g, !!lk]); return o.apply(this, arguments); };
+      const R = await import('./ui/router.js'); R.show('s-pick'); await wait(2200);
+      const first = fired.slice(); fired.length = 0;
+      R.show('s-menu'); await wait(200); R.show('s-pick'); await wait(1800);
+      A.Snd.mapFx = o; return { first, again: fired.slice() }; });
+    const locked = map.first.filter(f => f[1]).length, open = map.first.filter(f => !f[1]).length;
+    (offAnim && kinds === 'line,title,line,line' && onTime && map.first.length === 11 && open >= 2 && locked >= 4 && !map.again.length)
+      ? ok(`items 1 / 2 the title plays a low whoosh under each line, the title line heavier (${kinds}), each scheduled off that line's own CSS animation delay (${title.want.join('/')}ms); the map's first open plays ${map.first.length} sounds - ${open} open tiles, ${locked} locked ones lower and muted, and the chests - each off its own tile's animation, and the second visit is silent`)
+      : bad('items 1 / 2 the title and map sounds', JSON.stringify({ offAnim, title, map }));
+  }
+
+  /* ---- 12. item 23: the About screen's eight slots ---- */
+  {
+    await boot46({}, { unlock: ALL46 });
+    await show46('s-about'); await sleep(600);
+    const fresh = await page.evaluate(() => ({ rows: [...document.querySelectorAll('#msglist .msgrow')].map(r => ({ id: r.dataset.msg, locked: r.classList.contains('locked'),
+      title: r.querySelector('.msgtxt b').textContent, state: r.querySelector('.msgtxt small').textContent, frame: !!r.querySelector('.msgframe'), video: !!r.querySelector('video') })),
+      lede: document.getElementById('msg-lede').textContent }));
+    // everything open: the four chests and the three keys, so every slot is unlocked
+    await boot46({ chests: { games: 1, key: 1, pro: 1, thorns: 1 } }, { unlock: ALL46, bars: tier46('clear', 'pro', 'author') });
+    await show46('s-about'); await sleep(600);
+    const all = await page.evaluate(() => [...document.querySelectorAll('#msglist .msgrow')].map(r => r.classList.contains('locked')));
+    // a clip drops in with no code change: a row with a file renders the player, playsinline, with its captions track
+    const withFile = await page.evaluate(async () => { const M = await import('./config/messages.js'); const A = await import('./ui/router.js'); const wait = ms => new Promise(r => setTimeout(r, ms));
+      const m = M.MESSAGES[0]; m.file = 'video/test.mp4'; m.cc = 'video/test.vtt';
+      A.show('s-menu'); await wait(120); A.show('s-about'); await wait(400);
+      const row = document.querySelector('#msglist .msgrow[data-msg="intro"]'); row.click(); await wait(300);
+      const v = row.querySelector('video');
+      const out = { has: !!v, inline: v ? v.hasAttribute('playsinline') : false, full: v ? v.hasAttribute('webkit-playsinline') || !v.hasAttribute('autoplay') : false,
+        src: v ? v.querySelector('source').getAttribute('src') : '', cc: v ? !!v.querySelector('track[kind="captions"][default]') : false,
+        seen: JSON.parse(localStorage.getItem('ne')).prefs.msgSeen.intro === 1, dot: false };
+      A.show('s-menu'); await wait(300); out.dot = document.querySelector('#s-menu .item[data-go="s-about"]').classList.contains('newthing');
+      m.file = ''; m.cc = ''; return out; });
+    const order = MS46.MESSAGES.map(m => m.id).join();
+    (fresh.rows.length === 8 && order === fresh.rows.map(r => r.id).join() && !fresh.rows[0].locked && fresh.rows.slice(1).every(r => r.locked)
+      && fresh.rows.every(r => r.frame && !r.video) && /video coming soon/i.test(fresh.rows[0].state) && /opens with/i.test(fresh.rows[1].state)
+      && all.every(l => !l) && withFile.has && withFile.inline && withFile.cc && withFile.src === 'video/test.mp4' && withFile.seen && !withFile.dot)
+      ? ok(`item 23 About carries the eight message slots in unlock order (${order}) as data in config/messages.js: the intro open from the first load with the "video coming soon" frame, the other seven saying what opens them, all eight open once every chest and key is; a clip drops in by filling a file name - the player is built in place, playsinline with its captions track, and watching it takes the dot off the About row`)
+      : bad('item 23 the About messages', JSON.stringify({ fresh, all, withFile, order }));
+  }
+
+  /* ---- 13. items 20 / 22: every new sound is in the catalogue's list, and the card offers a message that has one ---- */
+  {
+    const { soundsRef } = await import(pathToFileURL(path.join(root46, '..', '_review', 'scripts', 'catalogue.ref.mjs')).href);
+    await boot46({}, { unlock: ALL46 });
+    const snd = await page.evaluate(soundsRef);
+    const rows = snd.groups.flatMap(g => g.rows);
+    const srcs = rows.map(r => r.src).join(' ');
+    const want = ["Snd.titleFx('line')", "Snd.titleFx('title')", "Snd.mapFx('quick-tap')", "Snd.mapFx('chest')", 'Snd.gift(i)'];
+    const missed = want.filter(x => !srcs.includes(x));
+    const silent = rows.filter(r => !r.plays.length || r.plays.some(p => !p.ev || !p.ev.length)).map(r => r.id);
+    // the card's message button appears only when the slot that unlock opens has a clip (item 23's tie-in with item 22)
+    const keyjs = strip46(read46('ui', 'screens', 'key.js'));
+    const tie = /msgFor\(/.test(keyjs) && /m\.file \? m\.id : ''/.test(keyjs) && /reveal-msg/.test(keyjs);
+    (!missed.length && !silent.length && tie)
+      ? ok(`items 20 / 22 every sound this build adds is in the catalogue's Every sound list with events off audio.js itself (${rows.length} rows now), and the congratulations card offers "A message from Aiden" only when the unlock opens a slot that has a clip`)
+      : bad('items 20 / 22 the new sounds and the message button', JSON.stringify({ missed, silent, tie }));
   }
 }
 

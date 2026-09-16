@@ -1621,3 +1621,135 @@
   .cere[data-chest="thorns"] .cchestg{opacity:0}
   .cere.play[data-chest="thorns"] .cchestg{animation:cfade .8s ease-out calc(var(--st-widen-at) + 500ms) both}
   @media (prefers-reduced-motion:reduce){.cere.tap .ctap{animation:none}}
+
+/* ==================================================================
+   v25 items 6 / 7 / 11 / 13 / 15 / 22 / 23 (build 46) — the one shared reveal, the two key states, the symbols and the messages
+   ================================================================== */
+  /* ---------- the symbol an unlock is drawn as (items 6 / 7 / 22) ----------
+     One drawing, three places: rising out of the chest, beside that word on the map, and in the congratulations card's row. The paths are
+     config/chests.js SYMBOLS and ui/chest.js symSvg() is the only thing that turns one into markup, so the three cannot drift apart.
+     It takes its colour from `currentColor`, so wherever it is drawn it wears that surface's own colour and this file names none. */
+  .sym{display:block;overflow:visible}
+  .sym .sp{fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+  .sym .sf{fill:currentColor;stroke:none}
+
+  /* ---------- item 7: the symbol beside an opened chest's words on the map ----------
+     The word keeps its own element (`.cwt`), so the "every word fits its cell at 390px" check (L.11d) still measures the text. */
+  .chestwords .cw{display:flex;align-items:center;gap:5px}
+  .chestwords.left .cw{flex-direction:row-reverse}
+  .chestwords .cwt{white-space:nowrap}
+  .chestwords .cwsym{width:13px;height:13px;flex:none;color:var(--ink);opacity:.9}
+  .chestwords .cw.tba .cwsym{color:var(--mute);opacity:.7}
+
+  /* ---------- items 6 / 11 / 22: THE ONE SHARED REVEAL (ui/reveal.js) ----------
+     Four beats on one host: the stage, the gifts rising out of it, "tap to continue", then the congratulations card. A CHEST's stage is
+     opaque and covers the screen (the build-41 ceremony, unchanged); a KEY's is transparent, because the ring being revealed is the screen
+     underneath — `.clear` is the only difference. Every time is a custom property the routine sets from config/chests.js REVEAL, so nothing
+     below is a literal a timing edit could miss. Not skippable: the host takes every tap and does nothing with it until `.tap`. */
+  .cere.rev{gap:10px}
+  .cere .rstage{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:100%;flex:1 1 auto;min-height:0}
+  .cere.clear{background:transparent}
+  .cere.clear .rstage{flex:1 1 auto;pointer-events:none}
+  .cere.clear .ctap{background:var(--ground);padding:7px 14px}
+  /* the gifts (item 6): each rises out of the chest with its title under it, one after another, and "tap to continue" waits for the last */
+  .cere .rgifts{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-start;gap:12px 16px;flex:0 0 auto;width:100%;padding-inline:8px}
+  .cere .rgifts:empty{display:none}
+  .cere .rgift{display:flex;flex-direction:column;align-items:center;gap:6px;width:86px;opacity:0}
+  .cere .rgift b{font-family:var(--mono);font-weight:400;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);text-align:center;line-height:1.35}
+  .cere .rgift.tba b{color:var(--mute)}
+  .cere .rsym{width:34px;height:34px;color:var(--rc,var(--ink))}
+  .cere.play .rgift{animation:rgiftin var(--gift-ms) cubic-bezier(.2,1.25,.35,1) calc(var(--gift-at) + var(--i) * var(--gift-gap)) both}
+  @keyframes rgiftin{0%{opacity:0;translate:0 52px;scale:.45}55%{opacity:1;scale:1.14}100%{opacity:1;translate:0 0;scale:1}}
+  /* the card (item 22): over everything, never under the animation, and its Continue is dead for about a second after it appears */
+  .cere .rcardwrap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-top)) 12px max(16px,env(safe-area-inset-bottom));opacity:0;pointer-events:none}
+  .cere.card .rcardwrap{pointer-events:auto;animation:cfade var(--card-ms) ease-out both}
+  .rcard{width:min(92vw,360px);max-height:100%;overflow-y:auto;background:var(--ground);border:1px solid var(--line);padding:18px 16px;display:flex;flex-direction:column;align-items:stretch;gap:9px;text-align:center}
+  .rcard h3{font-family:var(--mono);font-weight:500;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--rc,var(--ink));margin:0}
+  .rcard u{text-decoration:none;font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);margin-top:4px}
+  .rcard ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px}
+  .rcard li,.rcard p{font-size:13px;line-height:1.45;color:var(--ink);margin:0}
+  .cere.play .rcard .rgift{animation:none;opacity:1;width:74px}
+  .rcard .rgifts{gap:10px 12px;padding:0}
+  .rcard .rsym{width:28px;height:28px}
+  .rcard .rgo{margin-top:6px;opacity:.3}
+  .rcard .rgo.on{opacity:1}
+  .rcard .rmsg{margin-top:2px;color:var(--rc,var(--ink));border-color:var(--rc,var(--line))}
+  /* Reduce Motion (item 11): the same four beats, in the same order, as one short fade — Apple expects it and the review looks for it */
+  .cere.quick .rstage *,.cere.quick .rgift,.cere.quick .ctxt{animation:none!important}
+  .cere.quick .rstage,.cere.quick .rgifts{animation:cfade var(--rev-ms) ease-out both}
+  .cere.quick .rgift,.cere.quick .ctxt{opacity:1}
+  @media (prefers-reduced-motion:reduce){.cere.play .rgift{animation:none;opacity:1}}
+
+  /* ---------- item 11: THE FIRST-OPEN REVEAL OF A KEY, drawn on the ring itself ----------
+     The ring starts unlit; the seven games arrive CLOCKWISE FROM QUICK TAP AT 12, each on its own hour (`--h`, the index ui/screens/key.js
+     already draws them in), at `--node-at` + hour × `--node-gap`. Then the hub lights (the build-43 earn moment, `kwhole`), then it SETTLES
+     into the finished state below. A `.kdot` is scaled, never a `.knode` — a node group carries a transform attribute and a CSS scale would
+     compose inside it (the build-41 lesson, twice learned). */
+  #s-key.krev .kr,#s-key.krev .knode,#s-key.krev .klabels text,#s-key.krev .kring{opacity:0}
+  /* the hub is held dim UNTIL the key lights — `kwhole` is that beat (build 43's earn, inside the reveal), and from it the glyph is the earn's own */
+  #s-key.krev:not(.kwhole) .kglyph{opacity:.22;filter:none}
+  #s-key.krev .kground{opacity:0}
+  #s-key.krev:not(.krevquick) .kr{animation:krevarm .55s ease-out calc(var(--node-at) + var(--h) * var(--node-gap)) both}
+  #s-key.krev:not(.krevquick) .knode{animation:cfade .5s ease-out calc(var(--node-at) + var(--h) * var(--node-gap)) both}
+  #s-key.krev:not(.krevquick) .kdot{animation:krevdot .55s cubic-bezier(.2,1.3,.4,1) calc(var(--node-at) + var(--h) * var(--node-gap)) both;transform-box:fill-box;transform-origin:center}
+  #s-key.krev:not(.krevquick) .klabels text{animation:cfade .45s ease-out calc(var(--node-at) + var(--h) * var(--node-gap) + 200ms) both}
+  @keyframes krevarm{0%{opacity:0;translate:0 0;scale:1}100%{opacity:1}}
+  @keyframes krevdot{0%{opacity:0;scale:.2}62%{opacity:1;scale:1.35}100%{opacity:1;scale:1}}
+  /* what escalates without a clock: sparks round the ring (Circuit and Thorn) and rings running out of the hub, more of each per tier */
+  .kmote{fill:var(--ktint);opacity:0}
+  #s-key.krev:not(.krevquick) .kmote{animation:kmote 1.8s ease-out calc(var(--node-at) + var(--i) * 110ms) both}
+  @keyframes kmote{0%{opacity:0;translate:0 0}28%{opacity:.85}100%{opacity:0;translate:0 -24px}}
+  .kripple{fill:none;stroke:var(--ktint);stroke-width:1.2;opacity:0;transform-box:view-box;transform-origin:150px 150px}
+  #s-key.krev:not(.krevquick) .kripple{animation:kripple 2.4s ease-out calc(var(--node-at) + var(--i) * 320ms) infinite}
+  @keyframes kripple{0%{opacity:.45;scale:1}100%{opacity:0;scale:2.8}}
+  /* the reveal settles: the glow, the ring and the pulse arrive together, and from then on it is simply the finished key */
+  #s-key.ksettle .kground{animation:cfade .9s ease-out both}
+  #s-key.ksettle .kring{animation:kringin .9s ease-out both}
+  @keyframes kringin{from{opacity:0}to{opacity:var(--kringop,.5)}}
+  @media (prefers-reduced-motion:reduce){#s-key.krev .kr,#s-key.krev .knode,#s-key.krev .klabels text,#s-key.krev .kdot{animation:none;opacity:1}
+    #s-key.krev .kmote,#s-key.krev .kripple{animation:none}}
+
+  /* ---------- item 13: AN UNFINISHED KEY AND A FINISHED ONE ----------
+     Both wore the same golden glow, so 3% looked like earned. UNFINISHED (`#s-key` without `.kdone`): no radial ground, no drop shadow
+     anywhere, the centre key drawn in the tier's own `dim`, the spokes faint, a node lit only once that game is HOME, and no outer ring.
+     FINISHED (`.kdone`): the key at KEY_FINISH's scale in the tier's full tint with its glow, breathing on a `--kpulse` cycle, the ring
+     drawn, and the key's own card at the top of the screen breathing with it. Each tier is a step grander — the glow and the ring's weight
+     come off config/keys.js KEY_FINISH, so this file names no number. */
+  #s-key:not(.kdone) .kground{opacity:0}
+  #s-key:not(.kdone) #key-main{background:none}
+  #s-key:not(.kdone) .kglyph{stroke:var(--kdim,var(--line));opacity:.75;filter:none}
+  #s-key:not(.kdone) .kroot{opacity:.5}
+  #s-key:not(.kdone)[data-style] .kroot.on,#s-key:not(.kdone)[data-style] .karc{filter:none}
+  #s-key:not(.kdone) .knode.lit:not(.home) .kdot{stroke:var(--kdim,var(--line))}
+  .kring{fill:none;stroke:var(--ktint);stroke-width:var(--kringw,1.4);opacity:var(--kringop,.5)}
+  /* :not(.kwhole) — the earn beat inside the reveal (build 43's C.5 moment) keeps the glyph for itself; the finished look takes over after it */
+  #s-key.kdone:not(.kwhole) .kglyph{stroke:var(--ktint);scale:var(--kscale,1.2);transform-box:fill-box;transform-origin:center;
+    filter:drop-shadow(0 0 var(--kglow,10px) color-mix(in srgb,var(--ktint) 70%,transparent));animation:kbreathe var(--kpulse,3000ms) ease-in-out infinite}
+  @keyframes kbreathe{0%,100%{opacity:.82}50%{opacity:1}}
+  #s-key.kdone .kkey.whole .kgl path{stroke:var(--ktint);filter:drop-shadow(0 0 6px color-mix(in srgb,var(--ktint) 60%,transparent));animation:kbreathe var(--kpulse,3000ms) ease-in-out infinite}
+  /* while the reveal is running the finished look is held back — it is what the reveal settles INTO (item 13's last line). It does NOT reach the
+     earn (`kwhole`): that is the beat inside the reveal where the key lights, and its animation is the one thing the glyph should be running then */
+  #s-key.krev.kdone:not(.kwhole) .kglyph{scale:1;filter:none;animation:none}
+  #s-key.krev.kdone .kkey.whole .kgl path{animation:none;filter:none}
+  @media (prefers-reduced-motion:reduce){#s-key.kdone .kglyph,#s-key.kdone .kkey.whole .kgl path{animation:none}}
+
+  /* ---------- item 23: the messages on About ----------
+     Eight rows, in unlock order. A locked row is CROSSED OUT with what opens it under it — the locked-mode pattern this app uses everywhere
+     — and says nothing about what is in it. An open row with no clip shows the "video coming soon" frame; an open row with a clip plays it
+     in place, `playsinline`, captions on, never full screen. */
+  .msgtitle{margin-top:20px}
+  #msg-lede{margin-bottom:2px}
+  .msglist{display:flex;flex-direction:column;gap:2px;width:100%;max-width:420px}
+  .msgrow{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:12px;width:100%;padding:9px 2px;background:none;border:0;border-bottom:1px solid var(--line);border-radius:0;text-align:left;cursor:pointer}
+  .msgframe{position:relative;width:74px;aspect-ratio:16/9;border:1px solid var(--line);background:#0B0B0C;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .msgframe i{font-style:normal;font-family:var(--mono);font-size:7px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);text-align:center;line-height:1.3;padding:0 3px}
+  .msgrow.locked .msgframe{filter:blur(2px);opacity:.5}
+  .msgtxt b{display:block;font-weight:500;font-size:13px;letter-spacing:.04em;color:var(--ink)}
+  .msgtxt small{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-top:3px}
+  .msgrow.has .msgtxt small{color:var(--ink)}
+  .msgrow.seen .msgtxt small{color:var(--mute)}
+  .msgrow.playing{grid-template-columns:1fr}
+  .msgrow.playing .msgtxt{grid-column:1}
+  .msgrow.playing .msgframe{width:100%;aspect-ratio:16/9}
+  .msgframe video{width:100%;height:100%;object-fit:contain;background:#000}
+  @media (prefers-reduced-motion:reduce){.msgrow.locked .msgframe{filter:none}}

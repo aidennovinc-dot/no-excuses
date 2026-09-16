@@ -37,6 +37,7 @@
    into Pro (L.8b removed the "proceed to pro" confirmation), and v21 G.3's gate is retired into the Games chest itself. */
 import { KEY_ROSTER } from "../config/achievements.js";
 import { CHESTS, METER, METER_BANDS } from "../config/chests.js";
+import { MESSAGES } from "../config/messages.js";
 import { MODE_NAME } from "../config/games.js";
 import { KEY_BARS } from "../config/key-bars.js";
 import { KEYS } from "../config/keys.js";
@@ -242,6 +243,12 @@ const keyTiers = () => KEYS.map((_, i) => keyTier(i));
    in Customise. Read here, not off the `key_<tier>_all` achievement, so a key filled by Testing's switch opens it the moment it is whole, as
    the key screen already shows it; and like every progression gate it honours the two dev escapes (#411). */
 const keyFinished = tier => !!(prefs.allOpen || prefs.supporter) || (tierOpen(tier) && !isShell(tier) && keyState(tier).whole);
+/* v25 (item 23, build 46): IS THIS MESSAGE OPEN? One test, here, because both the About screen and the congratulations card ask it and a
+   screen may not import a screen (A4). A row in config/messages.js has no `by` (open from the first load), a `chest` (that chest opened) or
+   a `key` (that key finished) — never two — so this is the whole rule. `msgDot` is the small mark on the About menu row: an open slot that
+   HAS A CLIP and has not been watched. With no clips recorded yet it is never on, which is right — a dot pointing at "coming soon" is noise. */
+const msgOpen = m => !m ? false : !m.by ? true : m.by.chest ? chestOpen(m.by.chest) : m.by.key ? keyFinished(m.by.key) : false;
+const msgDot = () => MESSAGES.some(m => m.file && msgOpen(m) && !(prefs.msgSeen || {})[m.id]);
 
 /* ---------- B.25: the three achievement sets tied to the keys ----------
    One row per game per tier — clear every one of that game's bars at that tier — and one per tier for the whole key:
@@ -369,6 +376,8 @@ const seenDown = () => { if (typeof prefs.meterSeen === 'number' && prefs.meterS
 function devKeyReset(tier) { const c = CHESTS.find(x => x.needs === tier);
   for (const cb of COMBOS) delete store.bars[skey(cb.key, tier)];
   if (prefs.keyWhole) delete prefs.keyWhole[tier];
+  // v25 (item 11, build 46): backing a key out backs out its first-open reveal with it, so the next time it is whole is a first time again
+  if (prefs.revealed) { const r = Object.assign({}, prefs.revealed); delete r['key:' + tier]; if (c) delete r['chest:' + c.id]; prefs.revealed = r; }
   if (c) prefs.chests = Object.assign({}, prefs.chests, { [c.id]: 0 });
   if (prefs.retro) for (const k of Object.keys(prefs.retro)) if (retroTier(k) === tier) delete prefs.retro[k];
   if (prefs.devKeys) delete prefs.devKeys[tier];
@@ -376,8 +385,14 @@ function devKeyReset(tier) { const c = CHESTS.find(x => x.needs === tier);
   // v24 (D.2, build 44): and the tier's roster rows, including the 23 that kept an older id
   for (const a of keyAch()) if (a.kt === tier) delete store.ach[a.id];
   seenDown(); save(); }
-// build 41 (L.9c / L.11b): a reset chest gets its first ready sound and its spill back, so both can be reviewed again
-const unseen = id => { prefs.readySeen = Object.assign({}, prefs.readySeen, { [id]: 0 }); prefs.spill = Object.assign({}, prefs.spill, { [id]: 0 }); };
+/* build 41 (L.9c / L.11b): a reset chest gets its first ready sound and its spill back, so both can be reviewed again.
+   v25 (items 6 / 11 / 22, build 46): AND ITS REVEAL. Aiden's line: "the one exception is resetting the chest from Testing, which on this
+   phone counts as a first time again." So a reset clears both flags in `prefs.revealed` — the chest's own opening, and the reveal of the
+   key that chest is the reward for finishing, which is the key whose `needs` names it. */
+const unseen = id => { prefs.readySeen = Object.assign({}, prefs.readySeen, { [id]: 0 }); prefs.spill = Object.assign({}, prefs.spill, { [id]: 0 });
+  const r = Object.assign({}, prefs.revealed); delete r['chest:' + id];
+  const c = chestOf(id); if (c && c.needs !== 'modes') delete r['key:' + c.needs];
+  prefs.revealed = r; };
 function devChestReset(id) { const c = chestOf(id); if (!c) return; unseen(id);
   // v24 (A.1, build 43): the Keys row waits for the Games chest too, so a reset gives its green back with Customise's
   if (c.needs === 'modes') { prefs.chests = Object.assign({}, prefs.chests, { [id]: 0 }); prefs.cusSeen = 0; prefs.keysSeen = 0; seenDown(); save(); return; }
@@ -386,4 +401,4 @@ function devSetMeter(n) { if (n === null || n === '' || !Number.isFinite(+n)) de
   else prefs.devMeter = Math.max(0, Math.min(meterMax(), Math.round(+n)));
   save(); return meter(); }
 
-export { COMBOS, RADAR_PAST, TIERS, bandPct, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, checkKeyAch, chestAt, chestOpen, chestState, cleared, combos, credit, devChestReset, devKeyAll, devKeyOn, devKeyReset, devSetMeter, fillBars, gameKey, isCleared, isPlaceholder, isShell, keyAch, keyChest, keyFinished, keyGoal, keyOf, keyPct, keyState, keyTier, keyTiers, meter, meterBand, meterMax, modesOpen, openChest, placeholderCount, radarOf, radarRungs, readyChest, retroArrived, retroBank, retroTier, skey, tierFull, tierOpen };
+export { COMBOS, RADAR_PAST, TIERS, msgDot, msgOpen, bandPct, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, checkKeyAch, chestAt, chestOpen, chestState, cleared, combos, credit, devChestReset, devKeyAll, devKeyOn, devKeyReset, devSetMeter, fillBars, gameKey, isCleared, isPlaceholder, isShell, keyAch, keyChest, keyFinished, keyGoal, keyOf, keyPct, keyState, keyTier, keyTiers, meter, meterBand, meterMax, modesOpen, openChest, placeholderCount, radarOf, radarRungs, readyChest, retroArrived, retroBank, retroTier, skey, tierFull, tierOpen };

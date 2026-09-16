@@ -198,7 +198,21 @@ function renderTiles(){ const reveal=!prefs.gridSeen; if(reveal){ prefs.gridSeen
      display:none — so after Fresh game the map came back wherever it was last left, which since build 40 was down at the chests. The loading
      sequence plays on a new profile's first visit, so that is when it starts from the top (measured headless: 0 on a clean install, 254 after
      scrolling down and taking Fresh game) */
-  if(reveal) $('#s-pick').scrollTop=0; }
+  if(reveal){ $('#s-pick').scrollTop=0; mapSounds(); } }
+/* ---------- v25 (item 2, build 46): THE MAP'S FIRST OPEN HAS A SOUND PER TILE ----------
+   As each tile lands, that game's own sound plays — softly, at the level config/audio.js MAP_FX sets — so the first look at the map previews
+   what the seven games sound like, and the four chests arrive on their own note at the end of the sequence. A LOCKED tile plays the same
+   sound lower and muted (MAP_LOCKED), so it reads as the same game behind a lock rather than as a different thing.
+   EVERY SOUND IS READ OFF THE TILE'S OWN ANIMATION — `getComputedTiming().delay`, not a second list of times — so the two cannot drift apart
+   however the stagger is re-tuned (item 2 asks for exactly this). First open only: after that the map comes in silent. Audio is allowed here
+   because the player has already tapped at least once to get to this screen. */
+let mapT=[];
+function mapSounds(){ mapT.forEach(clearTimeout); mapT=[];
+  $$('#grid .tile').forEach(t=>{ const an=(t.getAnimations?t.getAnimations():[])[0]; if(!an||!an.effect) return;
+    const d=an.effect.getComputedTiming().delay||0, g=t.dataset.game, chest=t.dataset.chest;
+    mapT.push(setTimeout(()=>{ if(!$('#s-pick').classList.contains('on')) return;
+      if(chest) Snd.mapFx('chest'); else if(g) Snd.mapFx(g,!gameOpen(g)); },d)); }); }
+on('screen:change',({id})=>{ if(id!=='s-pick'){ mapT.forEach(clearTimeout); mapT=[]; } });
 // a locked mode (v11) is crossed out, not just greyed; tapping it says what it takes
 function fillSheet(){ const g=GAMES[sel.game]; const fresh=[]; $('#diff-row').innerHTML=g.modes.map(d=>{ const open=isOpen(sel.game,d); const nw=open?newMark('mode:'+sel.game+':'+d,fresh):''; const np=open&&newPlay(sel.game,d)?' newplay':''; return `<button data-act="diff" class="choice ${open?'':'locked'}${nw}${np}" data-diff="${d}"><span class="pic">${picOf(sel.game,d)}</span><span class="txt"><b class="${open?'':'x'}">${MODE_NAME[d]}</b><small class="${open?'':'need'}">${open?g[d]:T(SHEET.toUnlock,{need:needFor(sel.game,d)})}</small></span></button>`; }).join(''); markSeen(fresh); }
 // the length face (v11): the name with its seconds beside it on the pick sheet, the best underneath; a locked length is crossed out
