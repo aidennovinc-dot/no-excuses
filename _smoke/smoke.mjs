@@ -1046,8 +1046,9 @@ console.log('\nthe keys, the surface and #375 (v15 sections 5 and 6)');
     rings: document.querySelectorAll('#key-ring .kroot').length, style: document.getElementById('s-key').dataset.style,
     warn: document.getElementById('key-warn').hidden ? '' : document.getElementById('key-warn').textContent.trim(),
     title: document.getElementById('key-title').textContent.trim() }));
-  (k3.main && !k3.shell && k3.rings > 0 && k3.style === 'thorn' && /^(\d+) of the \1 numbers on this key are PLACEHOLDERS/.test(k3.warn))
-    ? ok(`5.3 / #426 the Author key opens its own ring - "${k3.title}", ${k3.rings} segments in Thorn - and says "${k3.warn}"`) : bad('5.3 the Author screen', JSON.stringify(k3));
+  // AMENDED at build 45 (v25 item 14): the red placeholder note is gone from this screen — the Author key says nothing about its generated numbers
+  (k3.main && !k3.shell && k3.rings > 0 && k3.style === 'thorn' && k3.warn === '')
+    ? ok(`5.3 / #426 the Author key opens its own ring - "${k3.title}", ${k3.rings} segments in Thorn - with no note about placeholders on it (v25 item 14)`) : bad('5.3 the Author screen', JSON.stringify(k3));
   await page.evaluate(() => document.querySelector('.kkey[data-kt="0"]').click()); await sleep(320);
 
   /* 5.2: a clearance-bar row is a way IN. It uses the same pendingAim the achievement-at-the-top uses (2.2), so the bar
@@ -2387,7 +2388,12 @@ console.log('\nbuild 31 - v18 sections B.1 to B.14');
   {
     const ms = /const off=\(b\.t-b\.markT\)\/b\.v\*1000/.test(tm31);
     const cfgOk = G31.HIDDEN.band > 0 && G31.HIDDEN.tilt > 0 && G31.HIDDEN.far > 0;
-    const varies = /const vary=this\.streak\(\)&&!this\.two\.on/.test(tm31) && /jit\(HIDDEN\.band\)/.test(tm31) && /HIDDEN\.tilt/.test(tm31);
+    /* AMENDED at build 45 (v25 item 21): the three variations moved into TM.hiddenRamp(round, vary) — expression for expression, so the review
+       catalogue's Round formats table reads the ramp the game deals from instead of a typed copy. The check follows them there. */
+    const ramp45 = (tm31.match(/hiddenRamp\(round,vary\)\{[\s\S]*?\},\r?\n/) || [''])[0];
+    const varies = /const vary=this\.streak\(\)&&!this\.two\.on/.test(tm31) && /const R=this\.hiddenRamp\(this\.round,vary\)/.test(tm31)
+      && /jit\(R\.band\)/.test(tm31) && /jit\(R\.spread\)/.test(tm31) && /R\.tilt\*Math\.PI\/180/.test(tm31)
+      && /band:vary\?HIDDEN\.band:0/.test(ramp45) && /HIDDEN\.far\*k/.test(ramp45) && /HIDDEN\.spread\*k/.test(ramp45) && /HIDDEN\.tilt\*\(k\/Math\.max\(1,HIDDEN\.rampTo-1\)\)/.test(ramp45);
     (ms && cfgOk && varies) ? ok(`B.4 / B.5 Hidden scores the TIME between ball and marker, and a Streak varies its pace (±${G31.HIDDEN.band * 100}%), its angle (to ${G31.HIDDEN.tilt}°) and its distance (+${G31.HIDDEN.far * 100}% a round)`)
       : bad('B.4 / B.5 milliseconds and the variation', JSON.stringify({ ms, cfgOk, varies }));
     // nothing anywhere still calls Hidden pixels
@@ -3479,8 +3485,9 @@ console.log('\nbuild 37 - keys and chests');
   /* ---- c. §K: one colour for "this is what you chose" - and its three checks ---- */
   {
     (/\n  \.choice\.sel\{border-color:var\(--press\)\}/.test(css37) && /\.grid\.chosen \.tile\.keep \.pic\{outline-color:var\(--line\)\}/.test(css37) && /\.grid\.chosen \.tile\.keep \.name\{color:var\(--mute\)\}/.test(css37)
-      && /\.choice\.sel\.newthing,\.choice\.sel\.newplay\{border-color:var\(--press\)!important\}/.test(css37) && /\.choice\.sel\.picked\{border-color:var\(--ok\)!important\}/.test(css37))
-      ? ok('§K a selected mode takes --press, the pressed tile demotes once a mode is chosen (build 38), first-seen and unplayed modes take --press when selected, and .picked keeps --ok (the tap\'s own 170ms confirmation)')
+      // AMENDED at build 45 (v25 item 3): the `.picked` override is gone with the 170ms hold it was the confirmation for — nothing sets the class now
+      && /\.choice\.sel\.newthing,\.choice\.sel\.newplay\{border-color:var\(--press\)!important\}/.test(css37) && !/\.choice\.sel\.picked/.test(css37) && !/\bclassList\.[a-z]+\('picked'/.test(pick37))
+      ? ok('§K a selected mode takes --press, the pressed tile demotes once a mode is chosen (build 38), first-seen and unplayed modes take --press when selected, and the `.picked` override is gone with its 170ms hold (v25 item 3)')
       : bad('§K the rules');
     await setStorage({ ne: { v: 4, prefs: { ...OPEN_PREFS }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
@@ -3493,7 +3500,7 @@ console.log('\nbuild 37 - keys and chests');
       const qt = document.querySelector('.tile[data-game="quick-tap"]'); qt.click(); await wait(450);
       const out = { P, mode: { dim: grid.classList.contains('dim'), stage: sheet.classList.contains('len') ? 'len' : 'mode', outline: getComputedStyle(qt.querySelector('.pic')).outlineColor, line: (() => { const p = document.createElement('i'); p.style.cssText = 'position:absolute;border-top:1px solid var(--line)'; document.body.appendChild(p); const c = getComputedStyle(p).borderTopColor; p.remove(); return c; })(), name: getComputedStyle(qt.querySelector('.name')).color, amber: amber(qt) } };
       const two = document.querySelector('#diff-row .choice[data-diff="two"]'); two.click(); await wait(60);
-      out.picked = getComputedStyle(two).borderTopColor; await wait(500);
+      out.picked = getComputedStyle(two).borderTopColor; out.pickedStage = sheet.classList.contains('len'); out.pickedClass = two.className; await wait(500);
       out.len = { stage: sheet.classList.contains('len') ? 'len' : 'mode', sel: getComputedStyle(document.querySelector('#diff-row .choice.sel')).borderTopColor, amber: amber(qt) };
       // (3) the contrast of --press against the SHEET's own ground, plain and pass & play
       const parse = s => { let m = /rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)/.exec(s); if (m) return [+m[1], +m[2], +m[3]]; m = /color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/.exec(s); return m ? [m[1] * 255, m[2] * 255, m[3] * 255] : null; };
@@ -3508,9 +3515,10 @@ console.log('\nbuild 37 - keys and chests');
       out.okRgb = rgb(OK); return out; });
     (k.mode.dim && k.mode.stage === 'mode' && k.seq.dim && k.seq.stage === 'len')
       ? ok('§K check 1: .grid.dim is on for the MODE sheet (Quick Tap) as well as the length sheet (Sequence, one mode) - it is set for every stage but the grid') : bad('§K check 1', JSON.stringify({ mode: k.mode, seq: k.seq }));
-    (k.mode.outline === rgb37(k.P) && k.mode.amber === 1 && k.len.sel === rgb37(k.P) && k.len.amber === 1 && k.picked === k.okRgb)
-      ? ok(`§K one amber thing at a time: with the mode row up and nothing tapped the pressed tile is the one amber thing; once a mode is chosen that mode is (AMENDED at build 38) (${k.len.sel}); for the 170ms of the tap it flashes --ok first`)
-      : bad('§K one colour for what you chose', JSON.stringify({ mode: k.mode, len: k.len, picked: k.picked }));
+    // AMENDED at build 45 (v25 item 3): there is no 170ms --ok flash to catch any more — the tap is at the length stage on the frame it lands
+    (k.mode.outline === rgb37(k.P) && k.mode.amber === 1 && k.len.sel === rgb37(k.P) && k.len.amber === 1 && k.pickedStage && !/\bpicked\b/.test(k.pickedClass))
+      ? ok(`§K one amber thing at a time: with the mode row up and nothing tapped the pressed tile is the one amber thing; once a mode is chosen that mode is (AMENDED at build 38) (${k.len.sel}); the tap goes straight to the lengths with no green flash on the way (v25 item 3)`)
+      : bad('§K one colour for what you chose', JSON.stringify({ mode: k.mode, len: k.len, picked: k.picked, stage: k.pickedStage, cls: k.pickedClass }));
     (k.contrast.plain >= 3 && k.contrast.pass >= 3)
       ? ok(`§K check 3: --press against the sheet's own ground is ${k.contrast.plain}:1, and ${k.contrast.pass}:1 on the pass & play sheet - past the 3:1 a UI line needs`) : bad('§K check 3 the contrast', JSON.stringify(k.contrast));
   }
@@ -3802,9 +3810,10 @@ console.log('\nbuild 38 - the tile keeps its amber, Author waits for the Pro che
       R.show('s-menu'); await wait(80); R.show('s-key', { tier: 0 }); await wait(350); out.warnClear = warn();
       return out; });
     // AMENDED at build 44 (v24 §E): 18 Pro placeholders (Aiden set the other 12) and 30 Author
+    // AMENDED at build 45 (v25 item 14): isPlaceholder() is unchanged and still counts them — what is gone is the key screen SAYING so (every warn is empty now)
     (ph.pro === ph.n - 12 && ph.author === ph.n && ph.clear === 0 && !ph.edited.is && ph.edited.count === ph.n - 13 && ph.edited.author
-      && ph.warnPro.startsWith(`${ph.n - 12} of the ${ph.n} numbers on this key are PLACEHOLDERS`) && ph.edited.warn.startsWith(`${ph.n - 13} of the ${ph.n}`) && ph.warnClear === '')
-      ? ok(`#426 progress/key.js tells a generated number from a set one: ${ph.pro} Pro and ${ph.author} Author placeholders, none on key 1; one Pro number changed in place is a person's (${ph.edited.count} left) and Circuit says "${ph.edited.warn}"`)
+      && ph.warnPro === '' && ph.edited.warn === '' && ph.warnClear === '')
+      ? ok(`#426 progress/key.js tells a generated number from a set one: ${ph.pro} Pro and ${ph.author} Author placeholders, none on key 1; one Pro number changed in place is a person's (${ph.edited.count} left) — and since build 45 no key screen says a word about it`)
       : bad('#426 isPlaceholder and the key screen note', JSON.stringify(ph));
   }
 
@@ -5044,6 +5053,271 @@ console.log('\nbuild 44 - batch 17, the key roster, Aiden\'s bars, the goal and 
     (hit.onTarget === 0 && hit.nearest === 1 && hit.offTarget === 1 && hit.pairs >= 1 && wired)
       ? ok(`F.7 Spot · Find: a tap inside the target's own box counts even when a decoy's centre is nearer (the old nearest-centre test gave it to the decoy), a tap off the target still goes to the nearest shape, and ${Math.round(G44.SPOT_FIND.overlap * 100)}% of the crowd is dealt on a neighbour from round 1 (${hit.pairs} overlapping pair(s) from half of a clean grid) - solo and versus both hit through hitAt`)
       : bad('F.7 overlap and tap precedence', JSON.stringify({ hit, wired }));
+  }
+}
+
+/* ---- 22. build 45 (batch 18, fixes, state and the catalogue - FEEDBACK-v25 items 3, 4, 5, 8, 9, 10, 12, 14, 16-21) ---- */
+console.log('\nbuild 45 - batch 18, fixes, state and the catalogue');
+{
+  const root45 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const read45 = (...p) => fs.readFileSync(path.join(root45, ...p), 'utf8');
+  const css45 = read45('styles', 'app.css'), flat45 = css45.replace(/\/\*[\s\S]*?\*\//g, ''), html45 = read45('index.html');
+  const strip45 = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
+  const NOW45 = Date.now();
+  const U45 = await import(pathToFileURL(path.join(root45, 'config', 'unlocks.js')).href);
+  const VD45 = await import(pathToFileURL(path.join(root45, 'config', 'verdicts.js')).href);
+  const AU45 = await import(pathToFileURL(path.join(root45, 'config', 'audio.js')).href);
+  const KB45 = await import(pathToFileURL(path.join(root45, 'config', 'key-bars.js')).href);
+  const ALLUNL = Object.fromEntries(U45.UNLOCKS.map(u => [u.key, NOW45]));
+  const VH45 = 844;   // the phone the gate drives
+  const PLAIN45 = { story: 1, gridSeen: 1, played: 1, menuSeen: 1, keySeen: 1, keysSeen: 1, snd: 'off', musicG: {}, spill: { games: 1, key: 1, pro: 1, thorns: 1 }, readySeen: { games: 1, key: 1, pro: 1, thorns: 1 } };
+  const boot45 = async (prefs, extra = {}) => { await setStorage({ ne: Object.assign({ v: 6, prefs: { ...PLAIN45, ...prefs }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} }, extra) }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(450); };
+  const menu45 = () => page.evaluate(() => { const k = document.querySelector('#s-menu .item[data-go="s-key"]'), c = document.querySelector('[data-go="s-custom"]');
+    return { keys: k.className, cus: c.className, need: !document.getElementById('keys-need').hidden || !document.getElementById('cus-need').hidden }; });
+  const menuOpen45 = m => !/\bdim\b/.test(m.keys) && !/keylock/.test(m.keys) && !/\bdim\b/.test(m.cus) && !/cuslock/.test(m.cus) && !m.need;
+  // a player's own route into a chest: tap it on the map, then answer its ceremony's "tap to continue"
+  const openChest45 = async id => { await page.evaluate(i => document.querySelector(`#grid .chest[data-chest="${i}"]`).click(), id); await sleep(400);
+    for (let i = 0; i < 40; i++) { const st = await page.evaluate(() => { const c = document.getElementById('key-cere'); return !c || c.hidden ? '' : c.classList.contains('tap') ? 'tap' : 'on'; });
+      if (st === 'tap') { await click('#key-cere'); await sleep(600); break; }
+      if (!st && (await onScreen()) === 's-pick') break;
+      await sleep(250); }
+    await sleep(400); return onScreen(); };
+  // every point of every line drawn in the key's ring, and every label's box — the check item 12 stands on
+  const labels45 = () => page.evaluate(() => { const svg = document.getElementById('key-ring'); const pts = [];
+    svg.querySelectorAll('.kroot,.kdot2,.kthorn,.khub,.karc').forEach(el => { let len = 0; try { len = el.getTotalLength(); } catch (e) { return; }
+      for (let s = 0; s <= len; s += 2) { const p = el.getPointAtLength(s); pts.push([p.x, p.y]); } });
+    const ring = 128, cx = 150, cy = 150, n = Math.ceil(2 * Math.PI * ring / 2);
+    for (let k = 0; k < n; k++) { const t = k / n * 2 * Math.PI; pts.push([cx + Math.cos(t) * ring, cy + Math.sin(t) * ring]); }
+    const boxes = [...svg.querySelectorAll('.klabels text')].map(t => ({ g: t.dataset.kg, b: t.getBBox(), txt: t.textContent }));
+    const hit = boxes.filter(o => pts.some(([x, y]) => x > o.b.x - 1 && x < o.b.x + o.b.width + 1 && y > o.b.y - 1 && y < o.b.y + o.b.height + 1)).map(o => o.g);
+    const over = boxes.filter((o, i) => boxes.some((p, j) => j !== i && o.b.x < p.b.x + p.b.width && o.b.x + o.b.width > p.b.x && o.b.y < p.b.y + p.b.height && o.b.y + o.b.height > p.b.y)).map(o => o.g);
+    const out = boxes.filter(o => o.b.x < -20 || o.b.x + o.b.width > 320 || o.b.y < -16 || o.b.y + o.b.height > 318).map(o => o.g);
+    return { n: boxes.length, hit, over, out, style: document.getElementById('s-key').dataset.style, counted: boxes.every(o => /\d+\/\d+$/.test(o.txt.replace(/\s+/g, ''))) }; });
+
+  /* ---- 1. item 9: the menu, the map and the key screen read ONE chest state - through Testing's switches AND through play ---- */
+  {
+    await boot45({ played: 0 });
+    const before = await menu45();
+    await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-testing'); }); await sleep(350);
+    await click('#dev-keys [data-act="dev-chestall"][data-chest="games"]'); await sleep(250);
+    await click('#s-testing .back'); await sleep(400);
+    await click('#s-menu [data-go="s-pick"]'); await sleep(900);
+    const ready = await page.evaluate(async () => (await import('./progress/key.js')).chestState('games'));
+    const landed = await openChest45('games');
+    await click('#s-pick .back'); await sleep(600);
+    const after = await menu45();
+    const agree = await page.evaluate(async () => { const K = await import('./progress/key.js'); const R = await import('./ui/router.js'); const wait = ms => new Promise(r => setTimeout(r, ms));
+      R.show('s-pick'); await wait(500); const map = document.querySelector('#grid .chest[data-chest="games"]').classList.contains('open');
+      R.show('s-key', { tier: 0 }); await wait(600); const quiet = !document.getElementById('key-shell').hidden;
+      R.show('s-menu'); await wait(200);
+      return { store: K.chestOpen('games'), map, quiet }; });
+    (!menuOpen45(before) && ready === 'ready' && landed === 's-pick' && menuOpen45(after) && agree.store && agree.map && !agree.quiet)
+      ? ok('item 9 Testing\'s "every mode" leaves the Games chest READY, the map opens it, and Keys and Customise open on the menu with it - map, key screen and menu all read chestOpen()')
+      : bad('item 9 the Testing path', JSON.stringify({ before, ready, landed, after, agree }));
+  }
+  {
+    // the real path: EARN the chest. Everything is open but Quick Tap - Four, which any Two run opens, so the run itself is the last mode
+    const unl = Object.assign({}, ALLUNL); delete unl['quick-tap:four'];
+    await boot45({ played: 0 }, { unlock: unl });
+    const before = await menu45();
+    await click('[data-go="s-pick"]'); await sleep(800);
+    await page.evaluate(() => document.querySelector('.tile[data-game="quick-tap"]').click()); await sleep(420);
+    await page.evaluate(() => { const c = document.querySelectorAll('#diff-row .choice'); c[0].click(); }); await sleep(320);
+    await page.evaluate(() => { const t = document.querySelectorAll('#time-row .tbtn'); t[0].click(); }); await sleep(200);
+    await click('#go-btn'); await sleep(400);
+    const at = await driveToResult('quick-tap', 'item 9 a Quick Tap - Two run, to earn the last mode');
+    await sleep(600);
+    const earned = await page.evaluate(async () => { const K = await import('./progress/key.js'); const P = await import('./progress.js'); const R = await import('./ui/router.js');
+      const m = P.modeCount(); R.show('s-pick'); await new Promise(r => setTimeout(r, 600)); return { state: K.chestState('games'), open: m.open, total: m.total }; });
+    const landed = earned.state === 'ready' ? await openChest45('games') : null;
+    await click('#s-pick .back'); await sleep(600);
+    const after = await menu45();
+    (at === 's-over' && !menuOpen45(before) && earned.state === 'ready' && earned.open === earned.total && landed === 's-pick' && menuOpen45(after))
+      ? ok(`item 9 the real path: one Quick Tap run opens the last mode (${earned.open} of ${earned.total}), the Games chest goes ready, opening it on the map opens Keys and Customise on the menu - no Testing switch involved`)
+      : bad('item 9 the earned path', JSON.stringify({ at, before, earned, landed, after }));
+  }
+
+  /* ---- 2. item 3: a tap that moves the sheet on never waits for its own highlight ---- */
+  {
+    const pick45 = strip45(read45('ui', 'screens', 'pick.js'));
+    const diff45 = (pick45.match(/diff\(b\)\{[\s\S]*?\n {2}'lvl-back'/) || [''])[0];
+    const clean = !/setTimeout/.test(diff45) && !/picked/.test(pick45) && !/\.choice\.picked|\.picking/.test(flat45);
+    await boot45({}, { unlock: ALLUNL });
+    await click('[data-go="s-pick"]'); await sleep(700);
+    await page.evaluate(() => document.querySelector('.tile[data-game="quick-tap"]').click()); await sleep(420);
+    // the class is read in the SAME task as the tap: if anything waited, the sheet would still be on the mode stage
+    const snap = await page.evaluate(() => { document.querySelectorAll('#diff-row .choice')[0].click();
+      return { sheet: document.getElementById('sheet').className, lens: document.querySelectorAll('#time-row .tbtn').length }; });
+    (clean && /\blen\b/.test(snap.sheet) && snap.lens > 0)
+      ? ok(`item 3 tapping a mode moves to the lengths on the same frame - ${snap.lens} lengths drawn with no timer between (v14 4.6's 170ms hold and its .picked green are gone)`)
+      : bad('item 3 the picker never waits', JSON.stringify({ clean, snap }));
+  }
+
+  /* ---- 3. items 4 / 5 / 8 / 19: the stamp behind every screen, the sheet above the map, and the safe area at the top ---- */
+  {
+    const stampZ = /#build\{[^}]*z-index:0[^}]*\}/.test(flat45);
+    const iB = html45.indexOf('<div id="build">'), iC = html45.indexOf('<canvas id="stars">'), iS = html45.indexOf('<section class="screen'), iG = html45.indexOf('<div id="game"');
+    const order = iB > iC && iB < iS && (iG < 0 || iB < iG);
+    const sheetZ = /\.sheet\{[^}]*z-index:5\}/.test(flat45);
+    const clip = /#s-pick,#s-about,#s-over,#s-custom,#s-testing\{clip-path:inset\(env\(safe-area-inset-top\) 0 0 0\)\}/.test(flat45);
+    const goal = /#goal\{[^}]*top:calc\(env\(safe-area-inset-top\) \+ 11px\)/.test(flat45) && /#game\.goalon \.hud\{top:calc\(env\(safe-area-inset-top\) \+ 44px\)\}/.test(flat45);
+    // live, with a sheet up: the stamp is under the sheet, and nothing the map layers over the sheet is above it
+    const live = await page.evaluate(() => { const b = document.getElementById('build'); b.style.pointerEvents = 'auto';
+      const r = b.getBoundingClientRect(), stack = document.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2).map(e => e.id || String(e.className || e.tagName));
+      b.style.pointerEvents = '';
+      const z = el => { const v = +getComputedStyle(el).zIndex; return Number.isFinite(v) ? v : 0; };
+      const sheet = z(document.getElementById('sheet'));
+      const layers = [...document.querySelectorAll('#grid, #grid *')].map(el => z(el));
+      return { stack, sheet, top: Math.max(0, ...layers), grid: z(document.getElementById('grid')) }; });
+    const iSheet = live.stack.findIndex(s => /sheet/.test(s)), iBuild = live.stack.indexOf('build');
+    (stampZ && order && sheetZ && clip && goal && iSheet === 0 && iBuild > iSheet && live.sheet > live.top && !live.grid)
+      ? ok(`items 4 / 5 / 8 / 19 the stamp is drawn before every screen and paints under them (the sheet is over it, ${live.stack.slice(0, 3).join(' > ')}); the sheet sits at z ${live.sheet} over the map's ${live.top}; the five scrolling screens are clipped at the safe-area line and the goal box and its HUD sit below it`)
+      : bad('items 4 / 5 / 8 / 19 the stamp, the sheet and the safe area', JSON.stringify({ stampZ, order, sheetZ, clip, goal, live }));
+  }
+
+  /* ---- 4. item 10: the map is the phone's width, whatever stands beside the chests ---- */
+  {
+    const fits = [];
+    for (const [label, chests] of [['nothing open', {}], ['Games open', { games: 1 }], ['Games + Key open', { games: 1, key: 1 }]]) {
+      await boot45({ chests }, { unlock: ALLUNL, bars: Object.fromEntries(Object.keys(KB45.KEY_BARS).map(k => [k, NOW45])) });
+      await click('[data-go="s-pick"]'); await sleep(900);
+      const m = await page.evaluate(() => { const p = document.getElementById('s-pick'), g = document.getElementById('grid').getBoundingClientRect();
+        p.scrollLeft = 999; const forced = p.scrollLeft; p.scrollLeft = 0;
+        return { sw: p.scrollWidth, cw: p.clientWidth, left: Math.round(g.left), right: Math.round(window.innerWidth - g.right), forced, ox: getComputedStyle(p).overflowX,
+          words: [...document.querySelectorAll('#grid .chestwords')].filter(w => !w.hidden).length }; });
+      fits.push({ label, ...m });
+    }
+    const bad10 = fits.filter(f => f.sw > f.cw || f.left !== f.right || f.forced !== 0 || f.ox !== 'hidden');
+    (!bad10.length)
+      ? ok(`item 10 the map never scrolls sideways: ${fits.map(f => `${f.label} ${f.sw}/${f.cw}px, ${f.left}px a side, ${f.words} word column(s)`).join(' · ')} - and a forced sideways scroll comes straight back to 0`)
+      : bad('item 10 the map\'s width', JSON.stringify(fits));
+  }
+
+  /* ---- 5. item 12: every name and count on the key sits clear of every line, in all three styles, part-done and whole ---- */
+  {
+    const seen = [];
+    for (const [label, bars] of [['nothing cleared', {}], ['every bar cleared', 'all']]) {
+      const B = bars === 'all' ? Object.fromEntries(Object.keys(KB45.KEY_BARS).flatMap(k => [[k, NOW45], [k + '|pro', NOW45], [k + '|author', NOW45]])) : {};
+      await boot45({ chests: { games: 1, key: 1, pro: 1, thorns: 1 }, keyWhole: { clear: 1, pro: 1, author: 1 } }, { unlock: ALLUNL, bars: B });
+      for (const tier of [0, 1, 2]) {
+        await page.evaluate(async t => { const R = await import('./ui/router.js'); R.show('s-menu'); await new Promise(r => setTimeout(r, 80)); R.show('s-key', { tier: t }); }, tier);
+        await sleep(900);
+        seen.push(Object.assign({ label }, await labels45()));
+      }
+    }
+    const bad12 = seen.filter(s => s.n !== GAMES.length || s.hit.length || s.over.length || s.out.length || !s.counted);
+    (!bad12.length)
+      ? ok(`item 12 all ${seen.length * GAMES.length} labels on the key - name and count in one line - clear every spoke, corner dot, thorn, hub and the ring itself, in ${[...new Set(seen.map(s => s.style))].join(' / ')}, part-done and whole`)
+      : bad('item 12 a label on a line', JSON.stringify(bad12));
+  }
+
+  /* ---- 6. item 14: the red placeholder note is gone from the key screen (a real config mismatch still speaks) ---- */
+  {
+    await boot45({ chests: { games: 1, key: 1, pro: 1, thorns: 1 } }, { unlock: ALLUNL });
+    const warn = await page.evaluate(async () => { const R = await import('./ui/router.js'); const K = await import('./progress/key.js'); const wait = ms => new Promise(r => setTimeout(r, ms));
+      const out = []; for (const t of [0, 1, 2]) { R.show('s-menu'); await wait(80); R.show('s-key', { tier: t }); await wait(500);
+        const el = document.getElementById('key-warn'); out.push(el.hidden ? '' : el.textContent.trim()); }
+      return { out, ph: [K.placeholderCount('pro'), K.placeholderCount('author')] }; });
+    const CP45 = await import(pathToFileURL(path.join(root45, 'config', 'copy.js')).href);
+    (warn.out.every(t => !t) && warn.ph[0] > 0 && warn.ph[1] > 0 && !('placeholder' in CP45.KEY) && !/are PLACEHOLDERS/.test(read45('ui', 'screens', 'key.js')) && /KEY\.mismatch/.test(read45('ui', 'screens', 'key.js')))
+      ? ok(`item 14 no key screen says anything about placeholders any more (${warn.ph[0]} Pro and ${warn.ph[1]} Author cells still are, and isPlaceholder still answers for the generator and the catalogue); the config-mismatch warning is untouched`)
+      : bad('item 14 the placeholder note', JSON.stringify(warn));
+  }
+
+  /* ---- 7. item 16: a game's panel fits the phone and scrolls inside itself ---- */
+  {
+    await boot45({ chests: { games: 1, key: 1, pro: 1, thorns: 1 } }, { unlock: ALLUNL });
+    await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-key', { tier: 0 }); }); await sleep(800);
+    const panels = [];
+    for (const g of GAMES) {
+      await page.evaluate(x => document.querySelector(`.knode[data-kg="${x}"]`).dispatchEvent(new MouseEvent('click', { bubbles: true })), g); await sleep(450);
+      panels.push(Object.assign({ g }, await page.evaluate(() => { const l = document.getElementById('key-list'), m = document.getElementById('key-music'), s = document.getElementById('s-key');
+        const lb = l.getBoundingClientRect(), floor = m.hidden ? window.innerHeight : m.getBoundingClientRect().top;
+        const kids = [...s.children].filter(c => c.getClientRects().length && !['absolute', 'fixed'].includes(getComputedStyle(c).position));
+        const lowest = Math.max(...kids.map(c => c.getBoundingClientRect().bottom));
+        l.scrollTop = l.scrollHeight; const rows = l.querySelectorAll('.krow'), last = rows[rows.length - 1].getBoundingClientRect();
+        return { bottom: Math.round(lb.bottom), floor: Math.round(floor), lowest: Math.round(lowest), rows: rows.length, lastIn: last.bottom <= lb.bottom + 1, panel: s.classList.contains('kpanel') }; })));
+    }
+    const bad16 = panels.filter(p => p.bottom > p.floor + 1 || p.lowest > VH45 || !p.lastIn || !p.panel || !p.rows);
+    (!bad16.length)
+      ? ok(`item 16 every game's panel ends above SET THIS MUSIC and inside the screen, and its last row can be scrolled to (${panels.map(p => p.g + ' ' + p.rows).join(', ')} rows)`)
+      : bad('item 16 the key screen panel', JSON.stringify(bad16));
+  }
+
+  /* ---- 8. items 17 / 18: every round that shows a tier names it and sounds it ---- */
+  {
+    const src = { reaction: read45('games', 'reaction', 'index.js'), timing: read45('games', 'timing', 'index.js'), spot: read45('games', 'spot', 'index.js'), estimate: read45('games', 'estimate', 'index.js') };
+    const direct = Object.entries(src).filter(([, s]) => /\broundTier\(/.test(strip45(s))).map(([g]) => g);
+    const tier45 = strip45(read45('games', '_shared', 'tier.js'));
+    const oneCall = /roundShow\([\s\S]*?audio\.roundVerdict\(id\)/.test(tier45);
+    const shows = Object.entries(src).map(([g, s]) => [g, (strip45(s).match(/roundShow\(/g) || []).length]);
+    await boot45({ chests: { games: 1 } }, { unlock: ALLUNL });
+    const flash = await page.evaluate(async () => { const ST = await import('./core/state.js'); const RUN = await import('./run/run.js'); const MU = await import('./audio.js');
+      const TI = await import('./games/_shared/tier.js'); const RX = (await import('./games/reaction/index.js')).RX; const wait = ms => new Promise(r => setTimeout(r, ms));
+      const fired = [], real = MU.Snd.roundVerdict; MU.Snd.roundVerdict = id => fired.push(id);
+      Object.assign(ST.sel, { game: 'reaction', diff: 'flash', secs: 5, vs: 0, practice: 0 }); ST.VS.reset(); RUN.start();
+      const tap = () => RUN.input({ type: 'down', x: 195, y: 420, el: document.getElementById('gen'), raw: new PointerEvent('pointerdown') });
+      const cards = []; const t0 = performance.now();
+      while (performance.now() - t0 < 45000 && cards.length < 3) {
+        // v14 6.3: an attempt's card stays up until it is tapped — the driver answers it, or the run never reaches its next round
+        if (document.getElementById('game').classList.contains('tapon')) { tap(); await wait(220); continue; }
+        if (RX.st === 'go' && RX.armed) { await wait(30 + Math.random() * 90); tap(); await wait(260);
+          const b = document.querySelector('#rxpane .rxmsg b'), w = document.querySelector('#rxpane .tiername');
+          const ms = b ? parseInt(b.textContent, 10) : null;
+          cards.push({ ms, word: w ? w.textContent : '', col: w ? w.style.color : '', want: TI.roundId('reaction:flash', ms) });
+          continue; }
+        await wait(25); }
+      RUN.abort(); MU.Snd.roundVerdict = real; await wait(200);
+      return { cards, fired }; });
+    const named = flash.cards.every(c => { const t = VD45.VERDICT_TIERS.find(x => x.id === c.want); return t && c.word === t.name; });
+    const sounded = flash.fired.length >= flash.cards.length && flash.cards.every((c, i) => flash.fired[i] === c.want);
+    // the round variant of every tier is shorter and quieter than the one the result screen plays, event for event
+    const quieter = await page.evaluate(async ids => { const MU = await import('./audio.js'); const AU = await import('./config/audio.js');
+      return ids.every(id => { const full = AU.VERDICT_FX[id] || [], cut = MU.Snd.roundVerdictPlan(id);
+        const end = ev => Math.max(0, ...ev.map(e => e[0] + e[3] / 1000));
+        return full.length === cut.length && cut.every((e, i) => e[5] < full[i][5] && e[3] < full[i][3]) && end(cut) < end(full); }); }, VD45.VERDICT_TIERS.map(t => t.id));
+    (!direct.length && oneCall && shows.every(([, n]) => n > 0) && flash.cards.length === 3 && named && sounded && quieter)
+      ? ok(`items 17 / 18 a round's tier is one call: three Flash attempts read ${flash.cards.map(c => `${c.ms}ms "${c.word}"`).join(', ')}, each in its tier's colour with its tier's sound (${flash.fired.join(', ')}), shorter and quieter than the result's (× ${AU45.ROUND_VERDICT.time} long, × ${AU45.ROUND_VERDICT.gain} loud); every engine goes through roundShow (${shows.map(([g, n]) => g + ' ' + n).join(', ')}) and none calls roundTier itself`)
+      : bad('items 17 / 18 the round tier', JSON.stringify({ direct, oneCall, shows, flash }));
+  }
+
+  /* ---- 9. items 20 / 21: the catalogue's sound list and Round formats, built by the same two functions npm run review uses ---- */
+  {
+    const { roundsRef, soundsRef } = await import(pathToFileURL(path.join(root45, '..', '_review', 'scripts', 'catalogue.ref.mjs')).href);
+    await boot45({}, { unlock: ALLUNL });
+    const snd = await page.evaluate(soundsRef);
+    const rows = snd.groups.flatMap(g => g.rows);
+    const silent = rows.filter(r => !r.plays.length || r.plays.some(p => !p.ev || !p.ev.length)).map(r => r.id);
+    // nothing that makes a sound can be left off the list: every Snd method but the helpers is named in a row's `src`
+    const HELP = ['unlock', 'tone', 'plan', 'fx', 'noise', 'chestPlan', 'keyEarnPlan', 'roundVerdictPlan'];
+    const srcs = rows.map(r => r.src).join(' ');
+    const missed = snd.methods.filter(m => !HELP.includes(m) && !srcs.includes(m + '('));
+    const packs = rows.filter(r => r.plays.length > 1).length;
+    (!silent.length && !missed.length && rows.length >= 24 && snd.groups.length === 7)
+      ? ok(`item 20 the sound list: ${rows.length} sounds in ${snd.groups.length} groups, every one with events off audio.js itself (${packs} of them a button per sound pack), and every sound-making Snd method is in it`)
+      : bad('item 20 the sound list', JSON.stringify({ silent, missed, rows: rows.length, groups: snd.groups.length }));
+    const rf = await page.evaluate(roundsRef);
+    const want21 = ['rf-hold-grow', 'rf-hold-cut', 'rf-reaction-nogo', 'rf-spot-count', 'rf-spot-find', 'rf-timing-hidden'];
+    const shaped = rf.every(g => g.bands.length && g.bands.every(b => b.rows.length && b.rows.every(r => r.length === g.cols.length)));
+    const drawn = rf.every(g => g.id === 'rf-timing-hidden' || g.bands.every(b => (b.shapes || []).length && b.shapes.every(s => /^<svg /.test(s.svg))));
+    const nogo = rf.find(g => g.id === 'rf-reaction-nogo');
+    const diamond = (nogo.bands[0].shapes || []).some(s => s.flag && /diamond/.test(s.name));
+    // the figures are the engine's own, not a copy of them: three spot checks against the modules
+    const live21 = await page.evaluate(async () => { const SP = (await import('./games/spot/index.js')).SP, TM = (await import('./games/timing/index.js')).TM;
+      return { decoys7: String(SP.ramp(7, 0).decoys), find5: String(SP.findSpec(5).n), hid5: TM.hiddenRamp(5, true).ramp.toFixed(2) }; });
+    const rowOf = (id, first) => { const g = rf.find(x => x.id === id); for (const b of g.bands) for (const r of b.rows) if (r[0] === first) return r; return null; };
+    const c7 = rowOf('rf-spot-count', '7'), f5 = rowOf('rf-spot-find', '5'), h5 = (rf.find(g => g.id === 'rf-timing-hidden').bands.find(b => /Streak/.test(b.label) && b.rows.some(r => r[0] === '5')) || { rows: [] }).rows.find(r => r[0] === '5');
+    const figures = c7 && f5 && h5 && c7[2].startsWith(live21.decoys7) && f5[1] === live21.find5 && h5[1].includes('× ' + live21.hid5);
+    const bands = rf.reduce((n, g) => n + g.bands.length, 0);
+    (want21.every(id => rf.some(g => g.id === id)) && rf.length === want21.length && shaped && drawn && diamond && figures)
+      ? ok(`item 21 Round formats: ${rf.length} games, ${bands} bands, every figure read from the game's own config and engine (spot checks: Count round 7 deals ${live21.decoys7} decoys, Find round 5 deals ${live21.find5} shapes, a Hidden Streak's round 5 stretches × ${live21.hid5}); the shapes are drawn by the app's own code, and Go / No-go's square at 45° is flagged as the diamond (#444)`)
+      : bad('item 21 Round formats', JSON.stringify({ ids: rf.map(g => g.id), shaped, drawn, diamond, figures, c7, f5, h5 }));
+    // and the page has somewhere to put both, carried in the template so every future board keeps them (#441)
+    const tpl45 = read45('..', '_review', 'scripts', 'catalogue.template.html'), gen45 = read45('..', '_review', 'scripts', 'catalogue.mjs');
+    (/id="sounds"/.test(tpl45) && /id="snd-host"/.test(tpl45) && /id="rounds"/.test(tpl45) && /id="rf-host"/.test(tpl45) && /REF\.sounds/.test(tpl45) && /REF\.rounds/.test(tpl45)
+      && /page\.evaluate\(soundsRef\)/.test(gen45) && /page\.evaluate\(roundsRef\)/.test(gen45))
+      ? ok('items 20 / 21 both sections are in catalogue.template.html with their note boxes, and catalogue.mjs fills them from catalogue.ref.mjs - so every future npm run review carries them (#441)')
+      : bad('items 20 / 21 the template and the generator', JSON.stringify({ tpl: /id="sounds"/.test(tpl45) && /id="rounds"/.test(tpl45), gen: /soundsRef/.test(gen45) }));
   }
 }
 

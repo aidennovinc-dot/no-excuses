@@ -14,5 +14,15 @@ function roundId(key, v) { const at = ROUND_AT[key]; if (!at || !Number.isFinite
 // the colour for it, ready to drop into a style attribute; '' where there is nothing to say
 function roundTier(key, v) { const id = roundId(key, v); if (!id) return '';
   return (VERDICT_TIERS.find(t => t.id === id) || {}).col || ''; }
+/* v25 (items 17 / 18, build 45): A ROUND THAT SHOWS A TIER NAMES IT AND SOUNDS IT — ONE CALL, SO THE THREE CAN NEVER DISAGREE. Build 29 gave the
+   result screen its tier's sound and build 31 put the tier's colour on each round's figure, but nothing played on a round, and Flash's card
+   still said "good" from its own 200 / 300ms steps: 234ms read GOOD in grey beside a green Great! figure. Every engine now asks this for the
+   colour, the name (VERDICT_TIERS — Aiden's Amazing! / Great! / Good. / Meh.) and the sound in one go: `audio.roundVerdict(id)`, the shorter,
+   quieter ROUND_VERDICT variant of VERDICT_FX. `on` is the caller's solo test (L4): off, nothing is shown and nothing plays. */
+function roundShow(audio, key, v, on = true) { if (!on) return null; const id = roundId(key, v); if (!id) return null;
+  const t = VERDICT_TIERS.find(x => x.id === id); if (audio && audio.roundVerdict) audio.roundVerdict(id);
+  return { id, name: t.name, col: t.col }; }
+// the tier's name as it sits on a round's card — in its colour and in Aiden's own spelling, never upper-cased by the card around it
+const tierWord = t => t ? `<span class="tiername" style="color:${t.col}">${t.name}</span>` : '';
 
-export { roundId, roundTier };
+export { roundId, roundShow, roundTier, tierWord };

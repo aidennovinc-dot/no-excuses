@@ -5,11 +5,13 @@ import { ESTIMATE as CP } from "../../config/copy.js";
 import { CFG, ESTIMATE as EST, STREAK } from "../../config/games.js";
 import { $, $$, T, f2, mean, minMax, vmin } from "../../core.js";
 import * as hud from "../_shared/hud.js";
-import { roundTier } from "../_shared/tier.js";
+import { roundShow, tierWord } from "../_shared/tier.js";
 import { Shapes } from "../_shared/shapes.js";
 import { makeTwo } from "../_shared/two.js";
 /* ---------- Estimate (v9, was Hold). Grow: a shape grows with a wobble and vanishes; tap and hold to grow yours to the same area — the same shape on odd rounds, a different one on even. Cut: a shape appears; drag a line through it that splits off the share asked for. Score is % off, lower is better. Five rounds ---------- */
 const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, rot:0, shape:null, mine:null, t0:0, raf:0, p0:null, p1:null, share:50, pending:null, maxed:false, two:{on:false},
+  // v25 (item 21, build 45): the angles a Grow target may be turned by — the list play() drew inline, named so the review catalogue can print it. Unmoved
+  TURNS:[35,60,90,120,145,180,225,270],
   est(){ return this.ctx.mode==='grow'&&this.round%2===0; },
   // the hold's ceiling, in one place — down() and up() used to carry the same expression twice and could drift apart
   capOf(){ return Math.min(this.target*2.8,96*vmin()); },
@@ -76,7 +78,7 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
   play(){ if(this.cut()) return this.cutRound();
     this.hud(); const v=vmin(); this.shape=this.pickTarget(); this.target=this.growTarget()*v; this.mine=this.pickMine();
     // v14 (6.13): rotating a circle does nothing and rotating a square barely more — a shape with an obvious axis of symmetry is never turned
-    this.rot=(this.est()||EST.SYM.includes(this.shape.name))?0:[35,60,90,120,145,180,225,270][Math.random()*8|0];
+    this.rot=(this.est()||EST.SYM.includes(this.shape.name))?0:this.TURNS[Math.random()*this.TURNS.length|0];
     // v14 (6.11): the shape you are about to grow is always drawn, centre-top, whether or not it is the target's shape
     // v17 (B.3): no footer line. #hbg carries the one instruction that matters and the HUD carries the round
     this.icon(this.mine); $('#hfield').classList.add('show');
@@ -100,11 +102,13 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
     // Readable without motion and it needs no dismiss, which is why it beat flashing between the two
     this.set('hg',this.shape,this.target,{a:this.rot,x:0,y:0}); this.set('ht',this.shape,this.target,{a:this.rot,x:0,y:0}); $('#hfield').classList.add('show','rev'); this.clipTo('tclipr',0,this.target); this.clipTo('hclipr',0,size);
     this.calc([[CP.target,tgt,'',0,'',k=>this.clipTo('tclipr',k,this.target)],[CP.yours,mine,'m',0,'',k=>this.clipTo('hclipr',k,size)]],Math.max(tgt,mine)*1.15,()=>{ const diff=Math.round(mine-tgt); return `<b class="${err<=2?'g':err>8?'r':''}" style="font-size:22px">${diff>0?'+':'−'}${Math.abs(diff).toLocaleString()} ${CP.px}</b>`; },
-      `<b class="${err<=2?'g':err>8?'r':''}" id="hpct"${this.rcol('hold:grow',err)}>${f2(pct)}%</b>${word}`, err, {from:pct,to:100}); },
+      ()=>{ const t=this.tierOf('hold:grow',err); return `<b class="${err<=2?'g':err>8?'r':''}" id="hpct"${t?` style="color:${t.col}"`:''}>${f2(pct)}%</b>${t?tierWord(t)+(t.id==='ace'?'':' · '+(pct>100?CP.much:CP.little)):word}`; }, err, {from:pct,to:100}); },
   /* v18 (B.10): the tier's colour on the round's own figure, as a ready-made style attribute. The class beside it stays:
      `g` / `r` are the engine's own dead-on / way-off marks and the tier is the four-step reading of the same number.
      Solo only (L4) — light blue is Player 2 and red is Player 1, so a shared run keeps the player colours. */
-  rcol(key,v){ if(this.two&&this.two.on) return ''; const c=roundTier(key,v); return c?` style="color:${c}"`:''; },
+  /* v25 (items 17 / 18, build 45): the round's tier — colour, Aiden's name and its short sound — through games/_shared/tier.js. It is asked for
+     when the % line LANDS (calc() builds that line lazily), so the sound plays with the figure it describes, not at the release two seconds before */
+  tierOf(key,v){ return roundShow(this.ctx.audio,key,v,!(this.two&&this.two.on)); },
   // the panel (v9): rows of bars. v11: both bars share one scale — max × 1.15 — so the bigger sits at ~87% and the smaller shows the real ratio; never both at 100%. Row[5] is a hook that fills the shape as the bar fills
   // v15 (3.7): `walk` is the round's ONE number and where it has to end up — 120% walking down to 100% on Grow, the share
   // you cut walking to the share you were asked for on Cut. It moves while the running figure gains the same overspend,
@@ -123,7 +127,7 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
        then does the difference drain into the running total (the total counts up, the difference counts down). Grow and Cut
        take the same path, because calc() is the one path both reveals go through. */
     chain.then(()=>pause(300))
-      .then(()=>{ if(this.st!=='reveal') return; const v=$('#hres'); if(v){ v.innerHTML=resultHtml; v.classList.add('on'); } err<=8?this.ctx.audio.hit():this.ctx.audio.miss(); if(err>8&&navigator.vibrate) navigator.vibrate(30); return pause(450); })
+      .then(()=>{ if(this.st!=='reveal') return; const v=$('#hres'); if(v){ v.innerHTML=typeof resultHtml==='function'?resultHtml():resultHtml; v.classList.add('on'); } err<=8?this.ctx.audio.hit():this.ctx.audio.miss(); if(err>8&&navigator.vibrate) navigator.vibrate(30); return pause(450); })
       .then(()=>{ if(this.st!=='reveal') return; const d=$('#hdiff'); if(d&&diffHtml){ d.innerHTML=diffHtml(); d.style.opacity=1; d.classList.add('pop'); } return pause(diffHtml?800:100); })
       .then(()=>{ if(this.st!=='reveal') return;
         const was=this.errs.length?mean(this.errs):0; this.errs.push(err);
@@ -170,7 +174,7 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
     // v13 (6.5): ONE bar. It is the whole shape; the cut piece's share fills it from the left while the px² count, and the red target line stays put.
     // The two pieces wear the customisable pair — the piece in --cutp, the rest at 40% of it — and the bar wears the same two colours
     this.clipFull('bclipr');
-    this.calc([[CP.piece,aS,'cutbar',Math.round(want/total*100),'',k=>this.clipTo('aclipr',k,this.target)]],total,()=>{ const diff=Math.round(aS-want); return `<b class="${err<=1.5?'g':err>8?'r':''}" style="font-size:22px">${diff>0?'+':'−'}${Math.abs(diff).toLocaleString()} ${CP.px}</b><br><span style="font-size:10px">${T(CP.targetPx,{n:Math.round(want).toLocaleString()})}</span>`; },`<b class="${err<=1.5?'g':err>8?'r':''}" id="hpct"${this.rcol('hold:cut',err)}>${f2(share)}%</b>${word} · ${T(CP.targetShare,{n:this.share})}`,err,{from:share,to:this.share}); } };
+    this.calc([[CP.piece,aS,'cutbar',Math.round(want/total*100),'',k=>this.clipTo('aclipr',k,this.target)]],total,()=>{ const diff=Math.round(aS-want); return `<b class="${err<=1.5?'g':err>8?'r':''}" style="font-size:22px">${diff>0?'+':'−'}${Math.abs(diff).toLocaleString()} ${CP.px}</b><br><span style="font-size:10px">${T(CP.targetPx,{n:Math.round(want).toLocaleString()})}</span>`; },()=>{ const t=this.tierOf('hold:cut',err); return `<b class="${err<=1.5?'g':err>8?'r':''}" id="hpct"${t?` style="color:${t.col}"`:''}>${f2(share)}%</b>${t?tierWord(t)+(t.id==='ace'?'':' · '+(share>this.share?CP.much:CP.little)):word} · ${T(CP.targetShare,{n:this.share})}`; },err,{from:share,to:this.share}); } };
 
 export default HD;
 export { HD };

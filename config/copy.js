@@ -246,7 +246,6 @@ export const KEY = { title:'the key', hint:'tap a game · solo runs only',
   faked:'Every number on this key is a PLACEHOLDER, derived from key 1 for testing. Not set by hand, never saved, gone on reload.',
   /* build 38 (#426, A.2 amended): both columns carry GENERATED placeholders, and a generated number on screen says so.
      `soon` is what a tier says if a column ever has an empty cell again */
-  placeholder:'{n} of the {total} numbers on this key are PLACEHOLDERS, generated from key 1 — not set by hand yet.',
   soon:'Not set yet. At least one bar on this key has no number — not a placeholder, and not one set by hand.',
   // 5.2: a clearance-bar row is a way IN. Tapping it starts that combination with the bar pinned at the top of the run,
   // through the same goal line an unlock uses (2.2) — one mechanism, not two

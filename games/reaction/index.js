@@ -6,7 +6,7 @@ import { CFG, NOGO_COUNTER, SHAPE_WORD } from "../../config/games.js";
 import { $, $$, T, mean, minMax, pWho, shapeI, vmin, winner } from "../../core.js";
 import * as hud from "../_shared/hud.js";
 import { genRect, rnd, roundEngine, rxBar } from "../_shared/round.js";
-import { roundTier } from "../_shared/tier.js";
+import { roundShow, tierWord } from "../_shared/tier.js";
 import { makeTwo } from "../_shared/two.js";
 // v18 (B.3c / B.7): one hold, shared with Timing, so both Streaks add up at the same readable beat
 const HOLD_MS=CFG.hold;
@@ -59,20 +59,26 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
      at a good phone pace lasts about twice as long. */
   FLASH_FREE:150, FLASH_BUD:1000, FLASH_EARLY:400, FLASH_MAX:1000, NOGO_FREE:180, NOGO_BUD:3000, NOGO_WRONG_SET:150, NOGO_WRONG_STREAK:200,
   GO_PER:3, GO_GAP_MIN:1, GO_GAP_MAX:5, NOGO_DWELL:{ set:980, streak:1330, spread:180 },
+  /* v25 (item 21, build 45): how a dealt shape is turned, moved and sized on its beat — the lists beat() drew inline, named so the review catalogue's
+     Round formats section can print them. Unmoved. NOTE for #444: a square turns 0° or 45°, and a square at 45° is drawn exactly as a diamond */
+  NOGO_TURNS:{ tri:[0,180,90,270], square:[0,45], hex:[0,30] }, NOGO_JITTER:{ x:24, y:22, scale:[.75,1.2] },
   // v15 (3.6): every Flash result reads down the same four lines — the time, the baseline it is measured against, the
   // difference between them, then where the run stands. The running total is BELOW as well as in the HUD above
   /* v18 (B.6): a Flash SET shows no baseline and no difference. Both of them are Streak furniture — the baseline is what
      the budget is spent against and the difference is what is spent — and on a Set neither is scored: it is an average of
      milliseconds and the line under the number says exactly that. The Streak keeps all four lines.
      v18 (B.10): the number itself wears its tier colour, judged on this attempt alone against ROUND_AT. Solo only (L4). */
-  rxCard(word,ms,add,bad,note){ const pane=$('#rxpane'); if(!pane) return; pane.classList.remove('lit'); pane.classList.add(bad?'bad':'hit');
-    const col=this.roundCol('reaction:flash',ms);
-    pane.innerHTML=`<div class="rxmsg">${word}<b${col?` style="color:${col}"`:''}>${ms}<small style="font-size:14px;letter-spacing:.2em">${CP.ms}</small></b>`
+  rxCard(word,ms,add,bad,note,judged){ const pane=$('#rxpane'); if(!pane) return; pane.classList.remove('lit'); pane.classList.add(bad?'bad':'hit');
+    /* v25 (items 17 / 18, build 45): the attempt's tier, through games/_shared/tier.js — its colour on the number, its short sound, and on a judged tap
+       its NAME in place of quick / good / slow, which were their own 200 / 300ms steps (234ms read GOOD in grey beside a green Great! figure).
+       "too early" and "no tap" keep their words: they say what happened, and the number still wears the tier */
+    const t=roundShow(this.ctx.audio,'reaction:flash',ms,this.tierOn()), col=t?t.col:'';
+    pane.innerHTML=`<div class="rxmsg">${judged&&t?tierWord(t):word}<b${col?` style="color:${col}"`:''}>${ms}<small style="font-size:14px;letter-spacing:.2em">${CP.ms}</small></b>`
       +(this.streak()?`<span class="sub">${T(CP.baseline,{n:this.FLASH_FREE})}</span><span class="sub" id="rxadd">+${add}${CP.ms}</span>`:'')
       +`<span class="sub tot" id="rxtot">${this.totLine(this.streak()?this.over+add:mean(this.times))}</span>`
       +(note?`<span class="sub">${note}</span>`:'')+`</div>`; },
   // v18 (B.10): the tier's colour for one round's own figure. Nothing in a two-player run wears it — light blue is P2 (L4)
-  roundCol(key,v){ return this.two.on||this.versus()?'':roundTier(key,v); },
+  tierOn(){ return !this.two.on&&!this.versus(); },
   totLine(v){ return this.streak()?T(CP.runTotal,{n:Math.round(v),bud:this.FLASH_BUD}):T(CP.runAvg,{n:Math.round(v)}); },
   setTot(v){ const el=$('#rxtot'); if(el) el.textContent=this.totLine(v); },
   nogo(){ return this.ctx.mode==='nogo'; }, versus(){ return this.ctx.players===2; },
@@ -145,7 +151,7 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
     if(this.st==='wait') return this.early();
     if(this.st!=='go'||!this.armed) return;
     const ms=Math.max(1,Math.round(ev.t-this.t0)); this.st='show'; this.times.push(ms); const add=Math.max(0,ms-this.FLASH_FREE);
-    this.rxCard(ms<200?CP.quick:ms<300?CP.good:CP.slowWord,ms,add,false); this.ctx.audio.hit(); this.hud();
+    this.rxCard(ms<200?CP.quick:ms<300?CP.good:CP.slowWord,ms,add,false,'',true); this.ctx.audio.hit(); this.hud();
     if(this.two.on) return this.twoAdd(ms);
     if(this.streak()){ hud.score(String(this.times.length)); return this.flashAdd(add); }
     this.setAdd(); },
@@ -298,8 +304,8 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
     if(!this.block||this.bi>=this.block.length) return this.two.on?this.twoBlockEnd():this.nextRule();
     const pane=$('#rxpane'); if(!pane) return; this.shown=this.block[this.bi++]; this.seen++; if(this.shown===this.rule) this.goDealt++; this.hudNogo();
     // v19 (C.3): the two new shapes turn like the two that already did — a diamond is a square on its point and stays one
-    const v=vmin(), dx=(Math.random()-.5)*24*v, dy=(Math.random()-.5)*22*v, sc=.75+Math.random()*.45,
-      rot=this.shown==='tri'?[0,180,90,270][rnd(4)]:this.shown==='square'?[0,45][rnd(2)]:this.shown==='hex'?[0,30][rnd(2)]:0;
+    const v=vmin(), J=this.NOGO_JITTER, turns=this.NOGO_TURNS[this.shown]||[0], dx=(Math.random()-.5)*J.x*v, dy=(Math.random()-.5)*J.y*v, sc=J.scale[0]+Math.random()*(J.scale[1]-J.scale[0]),
+      rot=turns[rnd(turns.length)];
     // v14 (6.24): the next shape replaces the last one where it stands — square to triangle goes straight through, never to black.
     // Every beat moves, turns and resizes it, so a repeat of the same shape still reads as a new one
     pane.classList.remove('bad'); pane.innerHTML=`<div class="rxshape ${this.shown}" style="translate:${dx}px ${dy}px;scale:${sc};rotate:${rot}deg"></div>`;
@@ -310,7 +316,7 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
     if(this.st==='go'&&this.armed){ const ms=Math.max(1,Math.round(ev.t-this.t0)); this.times.push(ms); this.got++; this.gotAll++; this.st='hit';
       const add=this.gated(ms); if(this.streak()) this.over+=add;
       // v18 (B.10): the round's own figure wears its tier colour. Solo only (L4)
-      const col=this.roundCol('reaction:nogo',ms);
+      const t=roundShow(this.ctx.audio,'reaction:nogo',ms,this.tierOn()), col=t?t.col:'';   // v25 (item 17): and its short sound
       pane.innerHTML=`<div class="rxmsg" style="top:40%"><b style="font-size:clamp(28px,9vw,60px)${col?';color:'+col:''}">${ms}<small style="font-size:12px;letter-spacing:.2em">${CP.ms}</small></b>${this.streak()?`<span class="sub">+${add}${CP.ms}</span>`:''}</div>`;
       this.ctx.audio.hit(); hud.score(this.liveNum()); hud.scorePop(); this.hudNogo(); this.ctx.emit('live',this.nogoScore()); return; }
     if(this.st==='hit'||this.st==='go'||this.st==='wrongshow') return; // the rule shape before it has painted, a second tap on a hit, or a tap during the wrong-tap card: nothing

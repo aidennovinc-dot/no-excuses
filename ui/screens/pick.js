@@ -24,7 +24,7 @@ import { applyPrefs, colOf } from "../theme.js";
 import { toast } from "../toast.js";
 import { TOAST } from "../../config/copy.js";
 
-let stage='grid', pickT=0;
+let stage='grid';
 const ask=(g,d,s)=>emit('lock:ask',{g,d,s});
 // v14 (4.2): the caption and the grey sub-line under the picture are gone. Versus keeps one line, because 4.14 changed what wins
 // v15 (4.5 / 4.6): Sequence versus is lives now, not Compose, and Spot · Find has a versus to describe for the first time
@@ -237,7 +237,8 @@ function showChallenge(c){ const el=$('#chal'); el.textContent=''; if(c.score!==
 function chestInView(id){ const b=$(`#grid .chest[data-chest="${id}"]`); if(!b) return;
   b.scrollIntoView({block:'center',behavior:'smooth'}); b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); setTimeout(()=>b.classList.remove('flash'),1800); }
 register('s-pick',{
-  onShow({g,d,s,spillDemo:sd,chest}){ if(g){ sel.game=g; prefs.lastGame=g; save(); applyPrefs(g); } renderTiles(); setStage('grid'); if(g) openSheet(g,d,s); if(sd) setTimeout(()=>spillDemo(sd),350); if(chest) setTimeout(()=>chestInView(chest),150); },
+  // v25 (item 10, build 45): the map never keeps a sideways offset — see #s-pick in styles/app.css
+  onShow({g,d,s,spillDemo:sd,chest}){ $('#s-pick').scrollLeft=0; if(g){ sel.game=g; prefs.lastGame=g; save(); applyPrefs(g); } renderTiles(); setStage('grid'); if(g) openSheet(g,d,s); if(sd) setTimeout(()=>spillDemo(sd),350); if(chest) setTimeout(()=>chestInView(chest),150); },
   onBack(){ if(stage==='len'){ setStage(GAMES[sel.game].modes.length===1?'grid':'mode'); return true; } if(stage==='mode'){ setStage('grid'); return true; } return false; },
 });
 /* B.26 → v23 (L.6 / L.11b, build 41): Testing's "replay chest opening" plays the CEREMONY on the key screen, and its tap lands here, where
@@ -263,9 +264,10 @@ define({
   // length row walked the sheet back a stage instead of saying what the mode takes — and every §1 requirement, the five
   // deliberate-failure ones especially, is only findable by tapping the thing that is locked
   diff(b){ if(b.classList.contains('locked')){ ask(sel.game,b.dataset.diff); return 'pick'; } if(stage==='len'){ setStage('mode'); return 'pick'; } sel.diff=b.dataset.diff;
-    // v14 (4.6): the picked mode turns green and the other darkens, then the length row and Go push up — no jump cut
-    $$('.choice').forEach(c=>{ c.classList.toggle('sel',c===b); c.classList.toggle('picked',c===b); }); $('#diff-row').classList.add('picking');
-    clearTimeout(pickT); pickT=setTimeout(()=>{ $('#diff-row').classList.remove('picking'); $$('.choice').forEach(c=>c.classList.remove('picked')); if(stage==='mode'){ setStage('len'); fillTimes(); } },170); return 'pick'; },
+    /* v25 (item 3, build 45): A TAP THAT MOVES THE SHEET ON GOES AT ONCE. v14 (4.6) held the tap for 170ms while the picked mode turned green,
+       so a tap on Two paused, lit up, then moved to the lengths — the highlight was the thing being waited for. The row is chosen on the frame
+       it is tapped and the sheet's own transition carries it; this is the only picker in the app that waited on its highlight. */
+    $$('.choice').forEach(c=>c.classList.toggle('sel',c===b)); setStage('len'); fillTimes(); return 'pick'; },
   'lvl-back'(){ setStage('mode'); return 'click'; },
   time(b){ const v=+b.dataset.time; if(b.classList.contains('locked')){ ask(sel.game,sel.diff,v); return 'pick'; } sel.secs=v; $$('[data-time]').forEach(c=>c.classList.toggle('sel',c===b)); return 'pick'; },
   'go-btn'(){ if(sel.game!=='sequence') sel.practice=0; VS.reset(); start(); return 'click'; },

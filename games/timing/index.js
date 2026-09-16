@@ -7,7 +7,7 @@ import { $, T, f2, minMax, sum } from "../../core.js";
 import { ROUND_AT } from "../../config/verdicts.js";
 import * as hud from "../_shared/hud.js";
 import { genRect, rnd, roundEngine } from "../_shared/round.js";
-import { roundTier } from "../_shared/tier.js";
+import { roundShow, tierWord } from "../_shared/tier.js";
 import { makeTwo } from "../_shared/two.js";
 /* Timing — Stopwatch: a clock counts up and fades at 1.5s, tap on the target. Hidden: a ball rolls behind a wall, tap when it is at the marker. Both Sets are a TOTAL since build 31 (B.2), and Hidden is scored in milliseconds (B.4) */
 const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, ball:null, targets:[], out:false, tot:0, asked:0, stopAt:0, ranOut:0, two:{on:false}, held:0,
@@ -37,7 +37,10 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
   // v14 (6.18): the targets are generated so their mean is EXACTLY the stated average — five rounds averaging 7s ask for 35.00s,
   // never 34.6 or 35.4. Random offsets either side, then the mean offset is taken back out of every one, so no player is ever
   // dealt a harder set of targets than another. Aiden's reasoning, and the whole theme: no excuses. A Streak deals as it goes
-  deal(n){ const mid=this.hid()?1.2:7, sp=this.hid()?[.15,.5]:[.6,2.6]; if(n<1) return [];
+  /* v25 (item 21, build 45): what a round's target is dealt around — Hidden's time behind the wall, Stopwatch's target seconds — and how far either
+     side, as named numbers the review catalogue reads. The values are build 44's, unmoved */
+  DEAL:{ hidden:{ mid:1.2, sp:[.15,.5] }, stopwatch:{ mid:7, sp:[.6,2.6] } },
+  deal(n){ const D=this.DEAL[this.hid()?'hidden':'stopwatch'], mid=D.mid, sp=D.sp; if(n<1) return [];
     const off=Array.from({length:n},()=>(rnd(2)?1:-1)*(sp[0]+Math.random()*sp[1]));
     const m=off.reduce((a,b)=>a+b,0)/n;
     const t=off.map(d=>Math.round((mid+d-m)*100)/100);
@@ -106,14 +109,19 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
      one); the path gains an off-axis TILT that widens with the round, so the ball no longer travels dead along an axis;
      and the marker sits further BEHIND the wall each round, on a spread that widens too, instead of the old fixed +6%
      held from round ten. `maxAt` keeps the marker on screen whatever the ramp asks for. */
+  /* v25 (item 21, build 45): a Hidden round's ramp as numbers — the expressions hidden() deals from, moved here unchanged so the review catalogue's
+     Round formats table cannot print a ramp the game does not play. `vary` is a solo Streak; a Set and a shared run draw none of it.
+     band: the pace's ± share · ramp: how much further behind the wall than the dealt time · spread: that distance's ± share · tilt: the widest angle, degrees */
+  hiddenRamp(round,vary){ const k=vary?Math.min(HIDDEN.rampTo,round)-1:0;
+    return { k, band:vary?HIDDEN.band:0, ramp:vary?1+HIDDEN.far*k:1+.06*(Math.min(10,round)-1), spread:vary?HIDDEN.spread*k:0, tilt:vary?HIDDEN.tilt*(k/Math.max(1,HIDDEN.rampTo-1)):0 }; },
   hidden(){ const r=genRect(); const size=Math.max(28,Math.min(r.width,r.height)*.11); const dir=rnd(4), horiz=dir<2; const L=horiz?r.width:r.height;
     const vary=this.streak()&&!this.two.on;
-    const k=vary?Math.min(HIDDEN.rampTo,this.round)-1:0;
+    const R=this.hiddenRamp(this.round,vary);
     const jit=(a)=>1+(Math.random()*2-1)*a;
-    const v=L*HIDDEN.speed*(vary?jit(HIDDEN.band):1);
-    const ramp=vary?1+HIDDEN.far*k:1+.06*(Math.min(10,this.round)-1);
-    const spread=vary?jit(HIDDEN.spread*k):1;
-    const tilt=vary?(Math.random()*2-1)*HIDDEN.tilt*(k/Math.max(1,HIDDEN.rampTo-1))*Math.PI/180:0;
+    const v=L*HIDDEN.speed*(vary?jit(R.band):1);
+    const ramp=R.ramp;
+    const spread=vary?jit(R.spread):1;
+    const tilt=vary?(Math.random()*2-1)*R.tilt*Math.PI/180:0;
     const cross=horiz?r.height*(.18+Math.random()*.55):r.width*(.12+Math.random()*.7);
     let behind=Math.max(.6,(this.targets[this.round-1]||1.2)*ramp*spread);
     const need=v*behind+size*1.5; const cover=Math.min(.86,Math.max(.6,need/L+.06)), wallStart=L*(1-cover);
@@ -150,8 +158,10 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
     /* v13 (8.4): Hidden shows every round's result — the miss, dead on / early / late — then moves on.
        v18 (B.10): the round's own figure wears its tier colour, judged against ROUND_AT for this mode. Solo only (L4). */
     const key='timing:'+this.ctx.mode; const at=ROUND_AT[key]||[]; const good=err<=at[0], ok=err<=at[2];
-    const col=this.two.on?'':roundTier(key,err);
-    $('#gen').insertAdjacentHTML('beforeend',`<div class="glbl bot" id="tmres"><b class="${good?'g':ok?'':'r'}" id="tmerr"${col?` style="color:${col}"`:''}>${hid?err+CP.msU:f2(err)+'s'}</b>${good?CP.dead:ok?CP.close:note}</div>`); const h=$('#tmhint'); if(h) h.remove();
+    /* v25 (items 17 / 18, build 45): solo, the round's word IS its tier — Aiden's name in its colour, then early / late unless it was Amazing! — and the
+       tier's short sound plays with it. A shared run keeps dead on / close / early / late and no tier (L4) */
+    const t=roundShow(this.ctx.audio,key,err,!this.two.on), col=t?t.col:'';
+    $('#gen').insertAdjacentHTML('beforeend',`<div class="glbl bot" id="tmres"><b class="${good?'g':ok?'':'r'}" id="tmerr"${col?` style="color:${col}"`:''}>${hid?err+CP.msU:f2(err)+'s'}</b>${t?tierWord(t)+(t.id==='ace'?'':' · '+note):good?CP.dead:ok?CP.close:note}</div>`); const h=$('#tmhint'); if(h) h.remove();
     ok?this.ctx.audio.hit():this.ctx.audio.miss(); if(!ok&&navigator.vibrate) navigator.vibrate(30);
     if(this.two.on) return this.twoAdd(err,hid);
     if(this.streak()) return this.addUp(err,hid);

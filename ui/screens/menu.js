@@ -22,7 +22,11 @@ import { toast } from "../toast.js";
 import { Snd } from "../../audio.js";
 
 // first experience (v10): until one run is on the record only Play is live. v11: the rest are crossed out, and the strike wipes off the moment they open
-const firstRun=()=>!prefs.played&&!Scores.runs().length&&!prefs.allOpen;
+/* v25 (item 9, build 45): A PROFILE WITH THE GAMES CHEST OPEN IS NOT A FIRST RUN. The chest is read through chestOpen() — the one read the map and
+   the key screen use — but this rule outranked it: Testing's chest switches open the Games chest without a run on the record, so the menu kept
+   every row but Play crossed out while the map showed the chest opened and Keys and Customise had nothing locking them. Earned by play, a run is
+   always on the record first, so the real path never met it; the Testing path always did. */
+const firstRun=()=>!prefs.played&&!Scores.runs().length&&!prefs.allOpen&&!chestOpen('games');
 let menuWasFirst=firstRun(), nextWhere=null, storyOn=false;
 // v23 (L.11a): whether Customise was locked the last time the menu drew it, so the strike wipes off once, the first draw after the Games chest
 let cusWasLocked=!chestOpen('games');

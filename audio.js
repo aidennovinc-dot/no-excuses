@@ -7,7 +7,7 @@
    finish ramp that lands the last downbeat on the clock (B.28), an end cadence in the track's own key (B.30), a flow-state
    layer over the two tap games (B.27) and a duck for Sequence (B.30). Still no percussion. */
 
-import { CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, DUCK, DUCK_TAIL, FLOW_STEM, HUSH, KEY_EARN_FX, KEY_THEMES, SCALES, SET_SECS, STEMS, STING_RING, TRACKS, TRACK_PICK, VERDICT_FX } from "./config/audio.js";
+import { CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, DUCK, DUCK_TAIL, FLOW_STEM, HUSH, KEY_EARN_FX, KEY_THEMES, ROUND_VERDICT, SCALES, SET_SECS, STEMS, STING_RING, TRACKS, TRACK_PICK, VERDICT_FX } from "./config/audio.js";
 import { STREAK } from "./config/games.js";
 import { emit, on } from "./core/events.js";
 import { sel } from "./core/state.js";
@@ -109,7 +109,14 @@ const Snd = (()=>{
      stems and the flow layer use it; every sound effect leaves it undefined and goes straight out.
      build 30: `o` is the per-note shaping the new tracks need — {lp, q} a lowpass, {hold} a fraction of the note to hold
      full gain for before the existing exponential release. A note with no `o` behaves exactly as it did. */
-  function tone(f0,f1,ms,type,gain,at,attack,force,dest,o){ const a=AC(); if(!a||(look('snd')==='off'&&!force)) return; const t=at||a.currentTime; const dur=Math.max(.02,ms/1000);
+  /* v25 (item 20, build 45): THE RECORDER. `plan(fn)` runs a sound's own code with `rec` set, and tone(), noise() and whoosh() write what they
+     would have played — [at, f0, f1, ms, wave, gain, attackMs, filterHz] from the moment plan() started — instead of playing it. It is how the
+     review catalogue's sound list plays EVERY sound the app makes without a second copy of any of them; the sound-pack switch does not silence
+     a recording. Nothing in the app calls plan(). */
+  let rec=null;
+  const recAt=(a,at)=>+Math.max(0,(at||a.currentTime)-rec.t0).toFixed(3);
+  function tone(f0,f1,ms,type,gain,at,attack,force,dest,o){ const a=AC(); if(!a) return; if(rec){ rec.push([recAt(a,at),f0,f1,ms,type,gain,attack||0,(o&&o.lp)||0]); return; }
+    if(look('snd')==='off'&&!force) return; const t=at||a.currentTime; const dur=Math.max(.02,ms/1000);
     const osc=a.createOscillator(), g=a.createGain(); osc.type=type; osc.frequency.setValueAtTime(f0,t); osc.frequency.exponentialRampToValueAtTime(Math.max(1,f1),t+dur);
     const atk=attack?Math.min(dur*.95,attack/1000):0;
     g.gain.setValueAtTime(atk?0.0001:gain,t); if(atk) g.gain.exponentialRampToValueAtTime(gain,t+atk);
@@ -147,7 +154,8 @@ const Snd = (()=>{
        its quality behind in `endTune`; the cadence transposes to it (nearest wrap, never more than a tritone), takes a
        minor third where the track's first chord is minor, and lands the tonic chord under the last note. With no track
        (`endTune` null — a run with music off, or the very first sound of a session) it is exactly the sound it was. */
-    end(){ const a=AC(); if(!a) return; const t=a.currentTime; if(t-lastEnd<2) return; lastEnd=t; const k=endTune;
+    // v25 (item 20): a RECORDING is never turned away by the de-duplication — a fresh context's clock starts near zero, which reads as "played just now"
+    end(){ const a=AC(); if(!a) return; const t=a.currentTime; if(!rec){ if(t-lastEnd<2) return; lastEnd=t; } const k=endTune;
       const r=k?k.r:1, third=440*(k&&k.minor?Math.pow(2,3/12):Math.pow(2,4/12));
       [[880,0,220],[660,.14,240],[third,.28,260],[440,.44,620]].forEach(([f,d,ms])=>{ tone(f*r,f*r,ms,'triangle',.10,t+d,18); });
       tone(220*r,220*r,900,'sine',.05,t+.44,60);
@@ -163,13 +171,19 @@ const Snd = (()=>{
        It plays when the result is READ, not when the run ends — Snd.end() already owns the finish. */
     verdict(id){ const a=AC(); if(!a) return; const ev=VERDICT_FX[id]; if(!ev) return; const t=a.currentTime;
       for(const [at,f0,f1,ms,w,g,am] of ev) tone(f0,f1,ms,w,g,t+at,am); },
+    /* v25 (item 17, build 45): the same tier's sound on a ROUND — shorter and quieter (ROUND_VERDICT), played by games/_shared/tier.js roundShow()
+       whenever a round's figure wears a tier. Solo only, like the tier (L4). An effect: it follows the tap-sound switch */
+    roundVerdictPlan(id){ const k=ROUND_VERDICT; return (VERDICT_FX[id]||[]).map(([at,f0,f1,ms,w,g,am])=>[+(at*k.time).toFixed(3),f0,f1,Math.round(ms*k.time),w,+(g*k.gain).toFixed(4),Math.round((am||0)*k.time)]); },
+    roundVerdict(id){ const a=AC(); if(!a) return; const t=a.currentTime;
+      for(const [at,f0,f1,ms,w,g,am] of this.roundVerdictPlan(id)) tone(f0,f1,ms,w,g,t+at,am); },
+    plan(fn){ const a=AC(); if(!a) return []; const was=rec; rec=[]; rec.t0=a.currentTime; try{ fn(); }catch(e){} const out=rec; rec=was; return out.sort((x,y)=>x[0]-y[0]); },
     /* v23 (§L.6 / §L.9c / §L.10d, build 41): THE CHESTS. `fx` plays an event list in the VERDICT_FX shape plus an optional lowpass; `noise` is
        the one noise in the app — the Thorns chest's cut, an effect and not a music role; `chest(id)` schedules a ceremony's effects AND its
        sting in one pass on the audio clock; `chestReady()` is the map's quiet two-note rise. None of them is unlockFx or click, and the gate
        holds all of them apart. The effects follow the tap-sound pack like every effect; the sting is MUSIC, so it follows the menu music
        switch and nothing else. `chestPlan(id)` is the same events flat — the review catalogue plays exactly what the app plays. */
     fx(ev,t0){ const a=AC(); if(!a||!ev) return; const t=t0||a.currentTime; for(const [at,f0,f1,ms,w,g,am,lp] of ev) tone(f0,f1,ms,w,g,t+at,am,false,undefined,lp?{lp}:undefined); },
-    noise(at,ms,gain,hp){ const a=AC(); if(!a||look('snd')==='off') return; const t=at||a.currentTime, dur=Math.max(.02,ms/1000), n=Math.max(1,Math.ceil(a.sampleRate*dur));
+    noise(at,ms,gain,hp){ const a=AC(); if(!a) return; if(rec){ rec.push([recAt(a,at),0,0,ms,'noise',gain,0,hp||800]); return; } if(look('snd')==='off') return; const t=at||a.currentTime, dur=Math.max(.02,ms/1000), n=Math.max(1,Math.ceil(a.sampleRate*dur));
       const buf=a.createBuffer(1,n,a.sampleRate), d=buf.getChannelData(0); for(let i=0;i<n;i++) d[i]=Math.random()*2-1;
       const src=a.createBufferSource(), f=a.createBiquadFilter(), g=a.createGain(); src.buffer=buf; f.type='highpass'; f.frequency.value=hp||800;
       g.gain.setValueAtTime(gain,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); src.connect(f).connect(g).connect(a.destination); src.start(t); src.stop(t+dur+.02); },
@@ -193,7 +207,9 @@ const Snd = (()=>{
         else tone(f0,f1,ms,w,g,t+at,am,false,undefined,lp?{lp}:undefined); } },
     chestReady(){ this.fx(CHEST_READY_FX); },
     // v13 (6.6): the counting whoosh — one voice sweeping low to high for the length of the count, so the pitch follows the fill
-    whoosh(ms,f0,f1){ const a=AC(); if(!a||look('snd')==='off') return null; const t=a.currentTime, dur=Math.max(120,ms)/1000;
+    // v25 (item 20): recorded as its two voices through one fixed lowpass — the page cannot sweep a filter, so the catalogue says it is approximate
+    whoosh(ms,f0,f1){ const a=AC(); if(!a) return null; if(rec){ const d=Math.max(120,ms); rec.push([0,f0||110,f1||660,d,'sawtooth',.045,80,2400],[0,(f0||110)*2,(f1||660)*2,d,'sine',.045,80,2400]); return null; }
+      if(look('snd')==='off') return null; const t=a.currentTime, dur=Math.max(120,ms)/1000;
       const o=a.createOscillator(), n=a.createOscillator(), g=a.createGain(), f=a.createBiquadFilter();
       o.type='sawtooth'; n.type='sine'; f.type='lowpass';
       o.frequency.setValueAtTime(f0||110,t); o.frequency.exponentialRampToValueAtTime(f1||660,t+dur);

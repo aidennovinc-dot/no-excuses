@@ -399,6 +399,11 @@ export const KEY_EARN_FX = {
     [2.3, 0, 2400, 'sawtooth', .013, 200, 1100], [2.3, 7, 2400, 'sawtooth', .013, 200, 1100], [2.3, 15, 2400, 'sawtooth', .011, 200, 1100], [2.5, 19, 2200, 'sine', .016, 500], [3.2, 24, 1500, 'sine', .012, 400]] },
 };
 
+/* v25 (item 17, build 45): A ROUND'S TIER SOUND is VERDICT_FX played shorter and quieter — every start, length and attack × `time`, every gain ×
+   `gain` — so five of them in a Set do not wear, and the result's own full sound is still the big moment (both guesses). Snd.roundVerdict(id) plays
+   it and Snd.roundVerdictPlan(id) hands it to the review catalogue; nothing else reads it. */
+export const ROUND_VERDICT = { time: 0.6, gain: 0.5 };
+
 export const VERDICT_FX = {
   ace:  [[0, 523.3, 523.3, 300, 'triangle', .075, 18], [.10, 784, 784, 300, 'triangle', .075, 18], [.20, 1046.5, 1046.5, 460, 'triangle', .08, 18],
          [.20, 2093, 2093, 320, 'sine', .022, 26], [0, 261.6, 392, 760, 'sine', .05, 90]],

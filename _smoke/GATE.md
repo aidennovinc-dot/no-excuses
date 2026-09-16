@@ -541,3 +541,33 @@ was build 44's own §E check, which was wrong about the data. All ten were re-ru
 - **The middle tab:** L.4c's "what it holds" reads ACH + `keyAch()` for rows with a reward — nine are roster rows.
 - **§E:** the brief said every Quick Tap and Dots length is Sprint × 1 / 3 / 6. That holds at Pro and at Dots' key 1, not at Quick Tap's
   key 1 (9 / 26 / 51). The check now asserts the data as Aiden set it.
+
+## Build 45 (batch 18, fixes, state and the catalogue — FEEDBACK-v25 items 3, 4, 5, 8, 9, 10, 12, 14, 16–21)
+
+**Item 9** is asserted twice, because the report was about the Testing path and the fix had to hold on the earned one. *Testing:* a profile with
+nothing on it has Keys and Customise shut; "Games chest · every mode" leaves the chest READY; the map's tap opens it through its ceremony and
+lands back on the map; Keys and Customise are open on the menu afterwards, and the store, the map's tile and the key screen all say the chest is
+open. *Earned:* the same profile with every mode but Quick Tap · Four unlocked plays one Quick Tap · Two run, which opens the last mode — the
+chest goes ready with `open === total`, the map opens it, and the menu opens with it. **Item 3**: `diff()` in `pick.js` holds no timer and
+nothing wears `.picked` any more; live, the class read in the same task as the tap already says `len` and the lengths are drawn. **Items 4 / 5 /
+8 / 19**: statically `#build` is at `z-index:0` and sits between the canvas and the first screen in `index.html`, the sheet is `z-index:5`, the
+five screen-level scrollers carry the safe-area clip and `#goal` / `#game.goalon .hud` are `calc(env(...) + 11px / 44px)`; live, with a sheet up,
+the sheet is the topmost element at the stamp's own centre and the stamp is under it, and the sheet's z-index is above every layer in the map.
+**Item 10**: the map is measured in three chest states — nothing open, Games open, Games and Key open with their word columns — and each must
+have `scrollWidth <= clientWidth`, equal margins, `overflow-x: hidden`, and a forced `scrollLeft` that comes back to 0. **Item 12**: for both
+keys states (nothing cleared, every bar cleared) and all three styles, every label's box is checked against every point of every drawn line, the
+full ring, and the other labels, and must be inside the drawing; each must end in its count. **Item 14**: all three tiers' key screens show no
+warning while `placeholderCount` still counts 18 and 30, `KEY.placeholder` is gone from the copy, and the config-mismatch warning is still
+wired. **Item 16**: each of the seven games' panels must end above SET THIS MUSIC, leave nothing past 844px, carry `kpanel`, and scroll to its
+last row. **Items 17 / 18**: no engine calls `roundTier` itself and every one calls `roundShow`, which is the only thing that plays
+`roundVerdict`; live, three Flash attempts are driven and each card's word must be its own tier's name (from its ms through `roundId`), with one
+`roundVerdict` call per attempt in the same order, and every tier's round variant must be shorter and quieter than the result's, event for
+event. **Items 20 / 21**: the gate runs the two builders in `_review/scripts/catalogue.ref.mjs` — the same functions `npm run review` uses — and
+checks that every sound row has events, that every sound-making method on `Snd` is named in some row's `src` (the list cannot silently miss a
+sound), that the six round-format games are all there with every row the width of its columns, that every band but Timing's has shapes drawn as
+SVG, that Go / No-go's 45° square is flagged, and that three figures match what the engines answer live (Count's round-7 decoys, Find's round-5
+crowd, a Hidden Streak's round-5 stretch). Then statically: both sections and their hosts are in `catalogue.template.html` and `catalogue.mjs`
+fills them, so every future board carries them (#441).
+
+**Amended at build 45:** 5.3 / #426's Author-screen check and #426's `isPlaceholder` check no longer expect the placeholder note on the key
+screen — both now assert every warning is empty while the counts stay 18 and 30 (v25 item 14).

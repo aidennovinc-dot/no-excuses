@@ -30,13 +30,20 @@
    shell — index.html, core/ — the root, type, buttons, chips, the screen frame, tables, the build bar
    ================================================================== */
   /* No Excuses — styles (build 18, refactor stage 4). Moved out of index.html as one block; the sections come next. */
-  #build{position:fixed;left:0;right:0;bottom:var(--stampat);text-align:center;font:500 var(--stamp)/1 var(--mono);color:var(--mute);pointer-events:none;z-index:50;opacity:.7}
+  #build{position:fixed;left:0;right:0;bottom:var(--stampat);text-align:center;font:500 var(--stamp)/1 var(--mono);color:var(--mute);pointer-events:none;z-index:0;opacity:.7}
+  /* v25 (items 4 / 8, build 45): THE STAMP SITS BEHIND EVERY SCREEN, never over one. It was z-index 50 and last in the page, so it drew over the pick
+     sheet's Four card and Go button, the map's Pro chest card and the key screen's game panel. It now comes BEFORE the screens in index.html with
+     no z-index of its own, so every screen, sheet, card and the run paints over it; it still shows through wherever nothing is drawn. */
   /* v23 (L.5, build 39): THE STAMP NEVER COVERS A CONTROL. #build is fixed to the viewport while a screen scrolls under it,
      so on Customise the v0.38 stamp sat on the Menu music label. Every scroller ends with the stamp's offset, its height
      and one line more of empty space (guess: a 16px line), so the last thing in it clears the stamp when scrolled to the
      bottom. A pseudo-element, not padding: bottom padding inside a scrolling flex column is not honoured by every engine,
      and a flex item is. .otwrap (the result's top-10 box) sits mid-screen and is left out. The gate scrolls each one. */
   #s-pick::after,#s-about::after,#s-over::after,#s-custom::after,#s-testing::after,.scroll::after{content:"";display:block;flex:none;height:var(--stampclear)}
+  /* v25 (items 8 / 19, build 45): NOTHING SCROLLS UNDER THE PHONE'S CLOCK. A screen that scrolls as a whole starts below the status bar (its
+     padding-top) but its content scrolled up behind the time and battery. Each is clipped at the safe-area line, so scrolled content disappears
+     there and the live background still shows through the status bar. Zero on a phone with no inset, and in the gate's headless Chromium. */
+  #s-pick,#s-about,#s-over,#s-custom,#s-testing{clip-path:inset(env(safe-area-inset-top) 0 0 0)}
   #update{display:none;position:fixed;left:16px;right:16px;bottom:max(28px,calc(env(safe-area-inset-bottom) + 24px));z-index:60;padding:14px;border-radius:12px;background:var(--ok);color:#000;font:800 14px var(--display);text-align:center;border:0}
   #update.on{display:block}
   :root{
@@ -209,7 +216,8 @@
   /* eight games (v7): three across so the whole set fits one phone screen */
   /* v17 (B.23, build 29): the gap opened from 14/10 to 24/16 to leave the unlock-order lines somewhere to be. The
      tiles lose a few pixels of width for it, which is the trade — the path is the thing being added. */
-  .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px 16px;width:min(94vw,520px)}
+  /* v25 (item 10, build 45): 100% of the map's own width, not 94vw — see #s-pick below */
+  .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px 16px;width:min(100%,520px)}
   @media (min-width:700px){.grid{grid-template-columns:repeat(4,1fr)}}
   .tile{display:flex;flex-direction:column;gap:6px;text-align:left;transition:opacity .35s}
   .tile .name{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink);transition:color .35s;white-space:nowrap}
@@ -281,7 +289,9 @@
   .mini.seq i:nth-child(2){background:#8a8883}
   .mini.seq i:nth-child(3){background:#45443f}
   /* bottom sheet: mode row stays, dims to the unpicked one, and the length row builds on it */
-  .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);padding:18px 22px max(28px,env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .32s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;gap:12px;align-items:center}
+  /* v25 (item 5, build 45): the sheet is ABOVE everything the map layers — the lines (z 1), the key fill (1), the padlock (2) and a chest's words (2) all
+     painted over it, which is the connector running down through Two and Go and "Gauntlet / Pro key" sitting on the Two card */
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);padding:18px 22px max(28px,env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .32s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;gap:12px;align-items:center;z-index:5}
   .sheet.up{transform:none}
   .diffs{display:flex;flex-direction:column;gap:10px;width:min(88vw,400px);transition:gap .18s}
   .diffs.single{display:none}
@@ -396,6 +406,11 @@
   .tile.chest[hidden]{display:none}
   /* the grid can be five rows once the chests exist, so the screen scrolls */
   #s-pick{overflow-y:auto;justify-content:flex-start;padding-top:max(24px,env(safe-area-inset-top))}
+  /* v25 (item 10, build 45): A FIXED SIDE MARGIN, AND NO SIDEWAYS SCROLL. The grid was 94vw (366px at 390) inside a screen padded 24px a side (342px of
+     room), so it hung 12px out of both sides and #s-pick scrolled sideways by 12px — a sideways drag left the whole map, Back included, shifted
+     left and clipped at the edge. Nothing to do with the chests' words (measured: 402 wide against 390 before and after both chests opened).
+     The map is padded 12px a side and the grid fills it, which is the same 366px grid; overflow-x is hidden and onShow puts scrollLeft back */
+  #s-pick{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right));overflow-x:hidden}
   /* v23 (L.8b, build 40): the ask box is gone — "Open the chest?" and "progress to Pro?" were the double confirmation L.8 removed */
   /* the grid reveal (v11): tiles arrive one by one on the first visit; locked tiles wear a padlock that wipes off when the game opens */
   .tile.reveal{animation:tilein .5s ease-out both}
@@ -420,9 +435,7 @@
   .choice small.need{color:var(--ok)}
   /* v14 (3.4): "best" / "closest" is green on every best-of row, on the sheet and on the result screen */
   .tbtn small i.bw,.stats i.bw{font-style:normal;color:var(--ok)}
-  /* v14 (4.6): picking a mode turns it green and darkens the other for a beat, then the length row and Go push up */
-  .choice.picked{border-color:var(--ok)!important;background:color-mix(in srgb,var(--ok) 12%,transparent)}
-  .diffs.picking .choice:not(.picked){opacity:.25}
+  /* v14 (4.6) picked a mode green for a beat before the length row came up; v25 (item 3, build 45) retires the beat — nothing waits on a highlight */
   .diffs .choice{transition:opacity .18s,padding .18s,background .18s,border-color .18s}
   .sheet.len #go-btn{animation:goup .3s cubic-bezier(.2,.8,.2,1) .06s both}
   @keyframes goup{0%{opacity:0;translate:0 28px}100%{opacity:1;translate:0 0}}
@@ -594,13 +607,22 @@
   .knode.lit .kdot{stroke:var(--ok)}
   .knode.home .kdot{fill:var(--ok);stroke:var(--ok)}
   .knode.sel .kdot{stroke:var(--ink);stroke-width:2.5}
-  .klbl{fill:var(--mute);font-family:var(--display);font-weight:500;font-size:11px;letter-spacing:.06em;text-anchor:middle}
-  .knode.sel .klbl{fill:var(--ink)}
-  .knum{fill:var(--mute);font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-anchor:middle;opacity:.75}
-  .knode.home .knum{fill:var(--ok);opacity:1}
+  .klbl{fill:var(--mute);font-family:var(--display);font-weight:500;font-size:11px;letter-spacing:.06em}
+  /* v25 (item 12, build 45): the name and the count are ONE text in a layer over the ring (.klabels), placed clear of every line by ui/screens/key.js,
+     so the node's state is a class on the text itself */
+  .klbl{cursor:pointer}
+  .klbl.sel{fill:var(--ink)}
+  .knum{fill:var(--mute);font-family:var(--mono);font-size:9px;letter-spacing:.1em;opacity:.75}
+  .klbl.home .knum{fill:var(--ok);opacity:1}
   .keycount{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink)}
   #key-warn.warn{color:var(--miss);opacity:1;text-transform:none;letter-spacing:.08em;max-width:34ch}
-  #key-list{max-height:34vh}
+  /* v25 (item 16, build 45): THE GAME PANEL FITS ON THE PHONE. It was a 34vh box under a ring up to 46vh tall with the keys row above both, so the
+     panel ran off the bottom — Sequence's second line under the stamp. The screen is the phone's height and no taller; the ring's column takes what
+     is left, a game's panel shrinks to fit and scrolls inside itself, and opening one steps the ring down to 30vh (guess) to give it the room */
+  #s-key{overflow:hidden}
+  #key-main{flex:1 1 auto}
+  #key-list{max-height:none;flex:0 1 auto;min-height:0}
+  #s-key.kpanel #key-ring{max-height:30vh}
   .keyblk h4{font:500 14px var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--ink);padding:2px 0 2px}
   .keyblk h4 span{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--mute);margin-left:8px}
   .keyblk p{color:var(--mute);font-size:12px;line-height:1.5;margin:2px 0 8px}
@@ -621,7 +643,7 @@
   #s-key.first .kkey:nth-child(3){animation-delay:.28s}
   #s-key.first .khub,#s-key.first .kglyph{animation:hubin .7s cubic-bezier(.2,.9,.3,1.2) .5s both;transform-box:fill-box;transform-origin:center}
   #s-key.first .kr{animation:keyin .6s ease-out 1s both}
-  #s-key.first .knode{animation:keyin .5s ease-out 1.5s both}
+  #s-key.first .knode,#s-key.first .klabels{animation:keyin .5s ease-out 1.5s both}
   #s-key.first .keycount,#s-key.first #key-hint{animation:keyin .5s ease-out 1.9s both}
   /* 5.1: while the interlude plays, nothing on this screen invites a tap — the run is coming straight back */
   #s-key.auto .back,#s-key.auto .keyrow{opacity:.2;transition:opacity .3s ease}
@@ -652,7 +674,7 @@
   .kglyph path{fill:none;stroke:inherit}
   .knode.lit .kdot{stroke:var(--ktint)}
   .knode.home .kdot{fill:var(--ktint);stroke:var(--ktint)}
-  .knode.home .knum{fill:var(--ktint)}
+  .klbl.home .knum{fill:var(--ktint)}
   .kglyph.whole{stroke:var(--ktint);filter:drop-shadow(0 0 8px color-mix(in srgb,var(--ktint) 60%,transparent))}
   /* B.23: the ring's own ground absorbs a tap (its act is silence), and each root has a wide invisible hit line */
   .kground{cursor:default}
@@ -956,6 +978,8 @@
   .glbl.bot{bottom:4%}
   .glbl b{color:var(--ink);font-weight:700;font-size:26px;letter-spacing:0;display:block}
   .glbl b.g{color:var(--ok)}
+  /* v25 (item 18, build 45): a round's tier name is Aiden's own spelling — Amazing! / Great! / Good. / Meh. — so the upper-casing of the card around it stops at it */
+  .tiername{text-transform:none;letter-spacing:.06em}
   .glbl b.r{color:var(--miss)}
   /* v15 (3.9 answer, build 25): Spot · Count flashes the right answer instead of holding the card. 0.6s, then the round goes */
   .glbl b.cflash{animation:cflash .6s cubic-bezier(.2,.9,.3,1.2) both}
@@ -1036,7 +1060,9 @@
   /* the next unlock, in view while you play (v8). v15 (2.2): it sits at the TOP of the screen now — above the HUD, not
      under it — because the thing being chased has to be visible while playing, achievements included. The HUD steps down
      to make room only when there is something to chase, so a run with no goal looks exactly as it did */
-  #goal{position:absolute;left:50%;top:max(11px,env(safe-area-inset-top));transform:translateX(-50%);font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);border:1px solid var(--line);padding:5px 10px;white-space:nowrap;pointer-events:none;display:none;z-index:4;max-width:min(92vw,calc(100vw - 116px));overflow:hidden;text-overflow:ellipsis}
+  /* v25 (item 19, build 45): the goal box sits 11px BELOW the safe-area line, not flush on it — max(11px, inset) put its top edge on the status bar's
+     own bottom, and the clock covered its first line. The same 11px as before on a phone with no inset (and in the gate) */
+  #goal{position:absolute;left:50%;top:calc(env(safe-area-inset-top) + 11px);transform:translateX(-50%);font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);border:1px solid var(--line);padding:5px 10px;white-space:nowrap;pointer-events:none;display:none;z-index:4;max-width:min(92vw,calc(100vw - 116px));overflow:hidden;text-overflow:ellipsis}
   #goal.on{display:block}
   #goal b{color:var(--ink);font-weight:500}
   #goal.hit{border-color:var(--ok);color:var(--ok);animation:pop .3s ease-out}
@@ -1050,7 +1076,7 @@
   @keyframes goalroll{0%,40%{translate:0 0}50%,90%{translate:0 -22px}100%{translate:0 0}}
   #goal.hit>i::before{content:"\2713 "}
   /* v15 (2.2): the run's own furniture moves down under the goal line rather than the goal line hiding behind it */
-  #game.goalon .hud{top:calc(max(14px,env(safe-area-inset-top)) + 30px)}
+  #game.goalon .hud{top:calc(env(safe-area-inset-top) + 44px)}
   #game.goalon #rate{top:calc(28% + env(safe-area-inset-top))}
   #game.bigc #score{visibility:hidden}
   #intro p{background:color-mix(in srgb,var(--ground) 88%,#fff);border:1px solid var(--line);padding:12px 14px;left:24px;right:24px}
@@ -1373,7 +1399,7 @@
      PICKED (v14 4.6) is the tap's own confirmation and still wins for its 170ms, on every mode alike. */
   /* AMENDED at build 37 (v22 §K): the selected line is --press now, the same amber as the pressed tile — see §K below */
   .choice.sel.newthing,.choice.sel.newplay{border-color:var(--press)!important}
-  .choice.sel.picked{border-color:var(--ok)!important}
+  /* v25 (item 3, build 45): the green override on a freshly picked mode went with the 170ms hold — nothing sets that class any more, so it had nothing left to win against */
   .tile.keep.newthing .pic,.tile.keep.newplay .pic{border-color:var(--press)}
   /* F.3: a versus pad answers the finger that hit it — the lit square often moves on to the SAME pad, which changed nothing
      on screen and read as a miss. (guess) .14s. Presentation only (L10) */
@@ -1387,8 +1413,9 @@
      three checks §K asked for, answered: (1) `.grid.dim` IS on for the mode sheet as well as the length sheet —
      setStage() in ui/screens/pick.js toggles it for every stage but the grid (the gate asserts it on a two-mode game and on
      Sequence, which goes straight to its length row); (2) the two !important overrides were decided one by one — a
-     first-seen or unplayed mode that is selected takes --press like any other selected mode (above), and `.picked` KEEPS
-     --ok: it is the 170ms confirmation of the tap itself (v14 4.6), not a selected state; (3) --press is checked against
+     first-seen or unplayed mode that is selected takes --press like any other selected mode (above); `.picked` used to keep
+     --ok as the 170ms confirmation of the tap itself (v14 4.6) and is retired with that hold at build 45 (v25 item 3);
+     (3) --press is checked against
      the SHEET's own ground (--panel, and the pass & play sheet's green-tinted one), not the grid's — the gate measures
      the contrast. Everywhere else `.sel` appears is unchanged: this is the game-then-mode pick only. */
   .choice.sel{border-color:var(--press)}

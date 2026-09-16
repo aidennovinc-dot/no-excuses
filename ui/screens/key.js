@@ -78,7 +78,7 @@ import { emit, on } from "../../core/events.js";
 import { everywhere, prefs, save } from "../../core/store.js";
 import { GAMES, lenFull, lenName } from "../../games/registry.js";
 import { isOpen, lenOpen, modeCount } from "../../progress.js";
-import { bandPct, barOf, barsFaked, barsMissing, chestOpen, chestState, gameKey, isCleared, keyChest, keyState, keyTiers, meter, openChest, placeholderCount, retroTier, skey, tierOpen } from "../../progress/key.js";
+import { bandPct, barOf, barsFaked, barsMissing, chestOpen, chestState, gameKey, isCleared, keyChest, keyState, keyTiers, meter, openChest, retroTier, skey, tierOpen } from "../../progress/key.js";
 import { goWhere } from "../../run/run.js";
 import { scoreTxt } from "../format.js";
 import { define, lock } from "../actions.js";
@@ -171,9 +171,45 @@ function node(i, g, style) { const [nx, ny] = at(i, R_RING); const cls = `knode$
   // Lantern: a game that is home wears an arc of the ring around its node, the page's own flourish
   const arc = style === 'lantern' && g.done === g.total && g.total ? `<path class="karc" d="${arcAt(i)}" transform="translate(${f1(-nx)} ${f1(-ny)})"></path>` : '';
   return `<g class="${cls}" data-act="key-game" data-kg="${g.g}" transform="translate(${f1(nx)} ${f1(ny)})">`
-    + `<circle class="khit" r="21"></circle>${arc}${dot}`
-    + `<text class="klbl" y="${ny < CY ? -17 : 24}">${esc(GAMES[g.g].name)}</text>`
-    + `<text class="knum" y="${ny < CY ? 26 : -14}">${g.done}/${g.total}</text></g>`; }
+    + `<circle class="khit" r="21"></circle>${arc}${dot}</g>`; }
+/* v25 (item 12, build 45): THE NAMES AND COUNTS SIT CLEAR OF EVERY LINE. Each game's name and its n/m hung at fixed offsets off the node — the count
+   on the INWARD side, which is where the spoke runs (Quick Tap's 1/6, Timing's 0/4 and Sequence's 0/2 had a line through them), and the two side
+   nodes' names straight across the ring (Reaction, Estimate). They are ONE text now, "Quick Tap 6/6", in a layer drawn after everything else, and
+   each is PLACED: the first of a short list of spots round its node whose box no spoke, corner dot, thorn, hub outline, node or the ring itself
+   reaches, measured off the geometry actually drawn — so Lantern, Circuit and Thorn each find their own. The ring counts whether or not its arcs are
+   drawn yet, so a label does not jump the day its game comes home. A spot that leaves the drawing or lands on another label is never taken; if
+   every spot is touched, the least-touched one is. */
+const LABEL_PAD = 2.5, LABEL_STEP = 2.5;
+function labelSpots(nx, ny) { const a = Math.atan2(ny - CY, nx - CX), ux = Math.cos(a), uy = Math.sin(a), s = Math.sign(ux) || 1;
+  const out = s > 0 ? 'start' : 'end', inn = s > 0 ? 'end' : 'start', old = [nx, ny < CY ? ny - 17 : ny + 24, 'middle'];
+  if (Math.abs(ux) < .35) return [[nx, uy < 0 ? ny - 15 : ny + 23, 'middle'], [nx, uy < 0 ? ny - 26 : ny + 34, 'middle'], old];
+  if (uy < -.35) return [[nx - 10 * s, ny - 16, out], [nx + 12 * s, ny - 9, out], old];
+  if (uy > .35) return [[nx + 12 * s, ny + 17, out], [nx - 10 * s, ny + 22, out], old];
+  return [[nx - 14 * s, ny + 23, inn], [nx - 14 * s, ny - 14, inn], [nx + 12 * s, ny + 4, out], old]; }
+// every point a label must stay off, in the ring's own units: the drawn lines, the full ring, and each node's marker
+function labelObstacles(svg) { const pts = [];
+  svg.querySelectorAll('.kroot,.kdot2,.kthorn,.khub').forEach(el => { let len = 0; try { len = el.getTotalLength(); } catch (e) { return; }
+    for (let s = 0; s <= len; s += LABEL_STEP) { const p = el.getPointAtLength(s); pts.push([p.x, p.y]); } });
+  const ringN = Math.ceil(2 * Math.PI * R_RING / LABEL_STEP);
+  for (let k = 0; k < ringN; k++) { const t = k / ringN * 2 * Math.PI; pts.push([CX + Math.cos(t) * R_RING, CY + Math.sin(t) * R_RING]); }
+  games().forEach((g, i) => { const [x, y] = at(i, R_RING); for (let k = 0; k < 16; k++) { const t = k / 16 * 2 * Math.PI; pts.push([x + Math.cos(t) * 8, y + Math.sin(t) * 8]); } });
+  return pts; }
+// how badly a box sits: points of line inside it, another label under it, or off the drawing
+function labelCost(b, pts, taken) { let n = 0;
+  for (const [x, y] of pts) if (x > b.x - LABEL_PAD && x < b.x + b.width + LABEL_PAD && y > b.y - LABEL_PAD && y < b.y + b.height + LABEL_PAD) n++;
+  for (const t of taken) if (b.x < t.x + t.width && b.x + b.width > t.x && b.y < t.y + t.height && b.y + b.height > t.y) n += 500;
+  if (b.x < -20 || b.x + b.width > 320 || b.y < -16 || b.y + b.height > 318) n += 1000;
+  return n; }
+function placeLabels() { const svg = $('#key-ring'), layer = svg && svg.querySelector('.klabels'); if (!layer) return;
+  const pts = labelObstacles(svg), taken = [];
+  layer.querySelectorAll('text').forEach(t => { const nx = +t.dataset.nx, ny = +t.dataset.ny; let best = null;
+    for (const [x, y, anchor] of labelSpots(nx, ny)) { t.setAttribute('x', f1(x)); t.setAttribute('y', f1(y)); t.setAttribute('text-anchor', anchor);
+      const b = t.getBBox(); if (!b.width) return;   // not laid out (a hidden screen): keep the first spot
+      const cost = labelCost(b, pts, taken); if (!best || cost < best.cost) best = { x, y, anchor, cost, b: { x: b.x, y: b.y, width: b.width, height: b.height } };
+      if (!cost) break; }
+    if (!best) return; t.setAttribute('x', f1(best.x)); t.setAttribute('y', f1(best.y)); t.setAttribute('text-anchor', best.anchor); taken.push(best.b); }); }
+const labelsHtml = st => `<g class="klabels">${st.games.map((g, i) => { const [nx, ny] = at(i, R_RING);
+  return `<text class="klbl${g.done === g.total ? ' home' : ''}${openGame === g.g ? ' sel' : ''}" data-act="key-game" data-kg="${g.g}" data-nx="${f1(nx)}" data-ny="${f1(ny)}" x="${f1(nx)}" y="${f1(ny < CY ? ny - 17 : ny + 24)}" text-anchor="middle">${esc(GAMES[g.g].name)}<tspan class="knum" dx="5">${g.done}/${g.total}</tspan></text>`; }).join('')}</g>`;
 function arcAt(i) { const a = angleOf(i), w = Math.PI / 7; const p = t => [CX + Math.cos(t) * R_RING, CY + Math.sin(t) * R_RING]; const [x0, y0] = p(a - w), [x1, y1] = p(a + w);
   return `M${f1(x0)} ${f1(y0)}A${R_RING} ${R_RING} 0 0 1 ${f1(x1)} ${f1(y1)}`; }
 // the ground behind the ring, by style: a warm radial for Lantern, a dot grid for Circuit, nothing for Thorn (C.4: the live background is its ground)
@@ -191,8 +227,8 @@ function ring() { const tier = keyTiers()[openKey]; const st = keyState(tier.id)
      an SVG element that has a transform attribute composes inside it (the build-41 lesson), and the earn moments threw the glyph off the hub */
   const hub = `<g class="kglyph${st.whole ? ' whole' : ''}${kc ? ' tochest' : ''}"><g transform="translate(${CX - 24} ${CY - 24})">${KEY_ART[tier.id].map(d => `<path d="${d}"></path>`).join('')}</g></g>`
     + (kc ? `<circle class="khubhit" data-act="key-chest" data-chest="${kc.id}" cx="${CX}" cy="${CY}" r="${R_HUB}"></circle>` : '');
-  $('#key-ring').innerHTML = groundOf(style) + `<circle class="khub" cx="${CX}" cy="${CY}" r="${R_HUB}"></circle>` + hub + parts;
-  $('#key-ring').classList.toggle('whole', st.whole);
+  $('#key-ring').innerHTML = groundOf(style) + `<circle class="khub" cx="${CX}" cy="${CY}" r="${R_HUB}"></circle>` + hub + parts + labelsHtml(st);
+  $('#key-ring').classList.toggle('whole', st.whole); placeLabels();
   /* v17 (§A.6.7) / v18 (B.15): "19 of 30 · 74%" stays HERE — the cleared count is what a player acts on and this is the
      screen they act on it from. v23 (L.8a, build 40): the percentage is THE METER now — "19 of 30 · 142%" — the one figure every
      surface reads; the count is still this key's own */
@@ -208,7 +244,8 @@ function meterLine(el, text, v = meter()) { el.innerHTML = esc(text).replace(/(\
 // a count of hits, rounds or miscounts — the word comes from the bar's own `unit`, so nothing is ever printed twice
 function barTxt(c, bar) { const n = scoreTxt(c.g, bar, c.d, c.s); return /[^\d.]$/.test(n) || !c.bar.unit ? n : n + ' ' + c.bar.unit; }
 const wantTxt = c => { const bar = barOf(c, tierId()); return bar === null ? KEY.none : T(c.bar.dir === 'lower' ? KEY.ceil : KEY.floor, { bar: barTxt(c, bar) }); };
-function panel() { const box = $('#key-list'); if (!openGame) { box.innerHTML = ''; box.hidden = true; return; }
+function panel() { const box = $('#key-list'); $('#s-key').classList.toggle('kpanel', !!openGame);   // v25 (item 16): the ring steps down to make room
+  if (!openGame) { box.innerHTML = ''; box.hidden = true; return; }
   const tier = tierId(); const st = gameKey(openGame, tier); box.hidden = false;
   // v21 (G.4, build 37): a row cleared RETROACTIVELY when a chest opened wears L8's green the first time it is on screen
   const retro = prefs.retro || {}, spent = [];
@@ -260,15 +297,14 @@ function render() { const tiers = keyTiers();
   // L.12: a whole key says what a tap on it does — open its waiting chest (C.1: it asks first), or see what its chest gave
   const kc = keyChest(t.id);
   $('#key-hint').textContent = st.whole ? (kc && kc.state === 'open' ? KEY.completeOpen : kc && kc.state === 'ready' ? T(KEY.completeReady, { chest: GRID.chest[kc.id] }) : KEY.completeSub) : openGame ? KEY.rowGo : KEY.hint;
-  /* a real config mismatch outranks the placeholder notes — one is a fault, the others are choices. Testing's in-memory fill
-     first, then the generated placeholders in the file: A.2 as amended at build 38 (#426) lets a build generate a bar, but
-     never silently — a generated number on screen has to say it is generated, or it is indistinguishable from one Aiden set.
-     Key 1 carries none, so it says nothing. */
-  const miss = barsMissing(); const fake = barsFaked() && t.id !== 'clear'; const ph = placeholderCount(t.id);
-  $('#key-warn').hidden = !miss.length && !fake && !ph;
+  /* a real config mismatch outranks Testing's in-memory fill — one is a fault, the other a dev switch (S5).
+     v25 (item 14, build 45, superseding #428 on this screen): THE RED "N OF THE 30 NUMBERS ON THIS KEY ARE PLACEHOLDERS" LINE IS GONE. This screen
+     is written for the player; it covered the requirements under it, and which numbers are placeholders is Aiden's to know, not the player's —
+     isPlaceholder() still answers it for the catalogue and the generator (A.2 as amended at #426). */
+  const miss = barsMissing(); const fake = barsFaked() && t.id !== 'clear';
+  $('#key-warn').hidden = !miss.length && !fake;
   if (miss.length) $('#key-warn').textContent = T(KEY.mismatch, { n: miss.length, keys: miss.join(', ') });
   else if (fake) $('#key-warn').textContent = KEY.faked;
-  else if (ph) $('#key-warn').textContent = T(KEY.placeholder, { n: ph, total: st.total });
   /* B.20 → v24 (C.5, build 43): a key that has just become whole gets its EARN moment, once per tier per profile — never under a chest
      ceremony, which would hide it and spend it. `earnAt` is when it starts: 260ms after the screen draws, or after the segment inside an
      interlude (onShow sets it); `earnPlan` tells the interlude and the map's open path how long to wait for it */

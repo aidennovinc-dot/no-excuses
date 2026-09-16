@@ -365,6 +365,52 @@ the goal line, the counter and the add-up are presentation; the roster rows are 
   `copy.js` gained `HUD.keyGoal`, `KEY_ACH.shut`, `KEY.conf.set`, `REACTION.nogoCount`, and `SPOT.of5` / `hudCountStreak` take `{bud}`;
   `build.js` LABEL is `batch 17 · the key roster`.
 
+### Amended at build 45 (batch 18, fixes, state and the catalogue: FEEDBACK-v25 items 3, 4, 5, 8, 9, 10, 12, 14, 16–21), 2026-09-16
+
+**One standing rule amended, one extended; L10 quoted throughout — every item in this build is presentation. Nothing clears, opens or banks
+anything new.**
+
+- **v23 L.5 amended: "the build stamp never covers a control" becomes THE STAMP IS DRAWN BEHIND EVERY SCREEN (item 4).** Build 39 pinned `#build`
+  to the viewport at `z-index:50` and gave every scroller a `--stampclear` spacer so its last control cleared the stamp *when scrolled to the
+  bottom*. A fixed element over scrolling content is over something at every other scroll position, which is what Aiden saw: v0.44 on the Four
+  card and the Go button with a sheet up, on the Pro chest card mid-map, and on the Sequence panel's second line. The element now comes before
+  the screens in `index.html` with no z-index of its own, so every screen paints over it. The spacer stays — it is what keeps the last control
+  off the stamp where nothing opaque covers it. Aiden's alternative (hide it while a sheet is up) is not built: it would have left the map and
+  the key screen as they were.
+- **v18 B.10 extended: a round's tier is its colour, its NAME and its SOUND, from one call (items 17 / 18).** Build 31 put the tier's colour on
+  each round's figure and build 29 gave the result screen the tier's sound; a round played nothing, and Flash's card carried its own 200 / 300ms
+  word steps, so 234ms read GOOD in grey beside a green Great! figure. `roundShow(audio, key, v, solo)` in `games/_shared/tier.js` is the one
+  call: it returns the id, the name and the colour and plays `Snd.roundVerdict(id)` — `VERDICT_FX` at `ROUND_VERDICT.time` of its length and
+  `ROUND_VERDICT.gain` of its loudness (0.6 and 0.5, guesses). Where a round carried a judgement word the tier's name replaces it, the direction
+  (early / late, too much / too little) staying beside it except on the top tier. Solo only (L4), and the board's rows stay silent on purpose:
+  a list is not a moment.
+- **v24 A.1 / #428 superseded on the key screen (item 14).** The red "N of the 30 numbers on this key are PLACEHOLDERS" line is deleted.
+  `isPlaceholder()` and `placeholderCount()` are untouched — the generator and the review catalogue still ask them — but the key screen is
+  written for the player, and the note covered the requirements under it.
+- **New: one chest state, and the menu's first-run rule no longer outranks it (item 9).** `firstRun()` in `ui/screens/menu.js` now also asks
+  `chestOpen('games')`. The map and the key screen never disagreed with the store; the menu did, because a profile with no runs on it crosses
+  out every row but Play and Testing's chest switches open a chest without a run. Proved both ways in the gate: the Testing switch, and one
+  Quick Tap run that opens the last mode and earns the chest.
+- **New: a tap that moves the sheet on goes at once (item 3).** v14 4.6's 170ms hold, which lit the picked mode green before the length row came
+  up, is retired with its `.picked` rule. It was the only picker in the app that waited on its own highlight.
+- **New: the safe area at the top (items 8 / 19).** The five screen-level scrollers are clipped at `env(safe-area-inset-top)`, so content
+  disappears at the status bar rather than sliding behind the clock; `#goal` and the HUD under it sit 11px and 44px *below* the inset instead of
+  flush on it. Zero change where there is no inset — which is every environment the gate can drive, so this one waits on the phone.
+- **New: the map is the phone's width (item 10), and the sheet is above it (item 5).** The grid was `min(94vw, 520px)` inside a screen padded
+  24px a side: 366px of grid in 342px of room, hanging 12px out of each side, and `#s-pick` could be dragged sideways by exactly that — the whole
+  map, Back included. It is padded 12px a side with `overflow-x:hidden` and the grid fills it. The sheet takes `z-index:5`, above the map's lines
+  (1), key fill (1), padlocks (2) and a chest's words (2), which is what was drawing through it.
+- **New: the key's labels are placed, not offset (item 12).** Each game's name and count are one text in a `.klabels` layer drawn after
+  everything else, and `placeLabels()` takes the first of a short list of spots round each node whose box no drawn line, node or the ring itself
+  reaches. The ring is counted whether or not its arcs are drawn, so a label does not move the day its game comes home.
+- **New: the key screen fits (item 16).** `#s-key` never overflows the phone, `#key-main` takes the room left and a game's panel shrinks and
+  scrolls inside itself; opening one adds `kpanel` and steps the ring down to 30vh.
+- **New: the review catalogue's two sections are built from the app (items 20 / 21).** `_review/scripts/catalogue.ref.mjs` holds both builders as
+  plain functions handed to `page.evaluate`, so `npm run review` and the gate run the same code: every sound the app makes as the events
+  `audio.js` schedules (`Snd.plan()` records a sound's own code where there is no plan function), and every round-based game's bands read from
+  its own config and engine. `SP.ramp(r, n)`, `SP.findSpec(r)`, `SP.SHAPES`, `TM.hiddenRamp(r, vary)`, `TM.DEAL`, `RX.NOGO_TURNS`,
+  `RX.NOGO_JITTER` and `HD.TURNS` exist so those figures are read rather than typed; none of them moved a value.
+
 ## Structure — the full text as of build 30
 
 `CLAUDE.md` keeps the module map. This is the paragraph-by-paragraph description it carried at build 30: the DAG, the
