@@ -14,7 +14,8 @@ done / not done / why, bump the build, smoke test, commit `build N — batch NN`
 | `docs/RULES-HISTORY.md` | A feedback line quotes a lock (L1–L10), or you need a standing rule's full text and history, the store's `prefs` changelog, the engine contract or the `config/` inventory |
 | `docs/MUSIC.md` | Touching `audio.js`, `config/audio.js`, `_smoke/loudness.mjs` or any `Snd.*` call |
 | `docs/PROGRESSION.md` | Touching `progress.js`, `progress/`, `config/unlocks.js`, `config/key-bars.js`, `config/keys.js`, the key or Progress screens, or `liveCheck` |
-| `_smoke/GATE.md` | Extending the gate, or an assertion fails and you need the feedback line it stands for |
+| `_smoke/GATE.md` | Adding a check, or a section fails: one line per section — the feedback lines it stands for and the name `--only` takes |
+| `docs/GATE-HISTORY.md` | You need the paragraph a build-14–46 assertion was written with (frozen at build 46, never appended) |
 
 Trimmed 2026-09-12 (batch 14 S.1) from 58KB; every sentence moved, none deleted. A build that amends a rule changes
 its one line here and its full text there, in the same commit.
@@ -179,13 +180,15 @@ file that changes a rule, threshold, name, unlock or screen layout is not built 
 **Code decisions A1–A8 in `ARCHITECTURE.md` — same quote-the-ID rule.** A feedback line changes one
 only when it names the ID (e.g. `A6:`); otherwise it goes under "Proposed" in FEATURES.md.
 
-## The gate — five lines; the full list is `_smoke/GATE.md`
+## The gate — the rules; one line per section in `_smoke/GATE.md`
 
-- **`npm test`** spawns its own static server and drives headless Chromium at 390×844 with zero uncaught errors; ~4 minutes; `CHROME_PATH` overrides the Windows default Chrome.
-- **Static checks first:** A6 one build number (`config/build.js` = `index.html` ×3 = `version.json`, the visible two as `v0.N`), A2 `config/` has no imports and no functions, A3 engines import only `_shared` / `core` / `config`, A4 no screen imports a screen or an engine and the run imports no screen — then the L-asserts and every per-build assertion.
-- **A failing assertion blocks the push.** Run it before every push.
+- **`npm test`** spawns its own static server and drives headless Chromium at 390×844 with zero uncaught errors; ~GATE_MINUTES minutes (measured, build 47); `CHROME_PATH` overrides the Windows default Chrome. It prints each failure, one line per section (`storage fixtures · 19 checks · ok`) and the verdict; `--verbose` prints every pass as well.
+- **Static checks first:** A6 one build number (`config/build.js` = `index.html` ×3 = `version.json`, the visible two as `v0.N`), A2 `config/` has no imports and no functions, A3 engines import only `_shared` / `core` / `config`, A4 no screen imports a screen or an engine and the run imports no screen — then the L-asserts and every section after them.
+- **A failing assertion blocks the push. The full `npm test`, no flags, runs ONCE — the last thing before the push** (build 47). While fixing, run only what failed: `npm test -- --only <section> --bail` (a comma list; `--from 44` for build 44 onward). A partial run prints PARTIAL RUN and never stands in for the gate. Go back to a full run before the push only when a fix changed app code other sections drive.
+- **A new assertion goes into the section for the feature it tests — chests, keys, music, runs, the surface, storage — and never into a new "build N" section** (build 47). Storage is `storage fixtures`, runs `the runs (v15 section 3)`, keys and the surface `the keys, the surface and #375 (v15 sections 5 and 6)`. Chests and music have no section yet: the first check for either opens `chests` or `music` just before `build 27`, booting its own profile. Every section uses the one `boot()`, `read()` and `strip()` at the top of `smoke.mjs` — never a copy — and one that needs a section before it goes in `LEADS`.
+- **No new check tests the source text for how a line of code is spelled** (`/…/.test(read(…))`, `.includes()` on a file) — drive the page, or import the config and test its data (build 47). **The only exception is A2–A4's import boundaries.** When an existing source-text check fails on a refactor, delete it and name it in the outcome; never adjust it to the new spelling.
+- **`_smoke/GATE.md` gets one index line per new section, not a paragraph.** A check added to a section changes that section's line only if it now stands for a new feedback line; `docs/GATE-HISTORY.md` is frozen.
 - **`npm run review`** drives `../_review/scripts/` (capture → `build-catalogue.mjs`); Cowork publishes the page. After a template change, headless-load `../_review/catalogue.html` once and read the page errors. **The page's Every sound and Round formats sections are built by `_review/scripts/catalogue.ref.mjs`** (v25 items 20 / 21, build 45) — two functions handed to `page.evaluate`, so the gate runs the same two against the build it tests, and a sound or a figure in the page is one the app itself produced.
-- **A build that extends the gate appends its paragraph to `_smoke/GATE.md`** — what each assertion stands for, by feedback line.
 
 No bundler, no build step — GitHub Pages serves the modules directly, so every import path stays
 relative (`./games/dots/index.js`).

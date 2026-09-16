@@ -26,7 +26,19 @@
  *       combination has a clearance bar and every bar has a combination, each bar's direction agrees with the game's own
  *       scoring, a bar clears ONCE (9.3) and only from a solo run (9.4)
  *   7. every button action (data-act) driven at least once — customise, chips, dev switches, lock box, Next card, full stop, share
- * Pass a base URL as argv[2] to test a server you are already running instead.
+ * Pass a base URL as the one bare argument to test a server you are already running instead.
+ *
+ * HOW TO RUN IT (build 47, the gate housekeeping). `npm test` with no flags IS the gate: run it once, before the push. It prints each
+ * failure as it happens, one line per section (`build 46 - batch 18, the unlock experience, sound and About · 13 checks · ok`) and the
+ * verdict. The flags are for the fix loop and never stand in for the gate:
+ *   npm test -- --only "build 46"   only the sections whose printed name starts with that — a comma list, a bare number means that
+ *                                   build, a leading "the " may be left off (--only static,runs); a section another one stands on
+ *                                   runs with it (LEADS)
+ *   npm test -- --from 44           that build section and every section after it
+ *   npm test -- --bail              stop at the first failure
+ *   npm test -- --verbose           every pass line as well, which is what the gate printed until build 46
+ *   npm test -- --labels <file>     every check, by section and in order, written to <file> — how a refactor proves it kept them all
+ * What each section stands for, and the name to hand --only: _smoke/GATE.md.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -34,32 +46,81 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { serve } from './server.mjs';
 import { launch, phonePage, FONT_HOST, IGNORED_REQUEST } from './chrome.mjs';
 
-const own = !process.argv[2];
+const ARGV = process.argv.slice(2);
+const optOf = f => { const i = ARGV.indexOf(f); return i < 0 ? null : ARGV[i + 1]; };
+const baseArg = ARGV.find((a, i) => !a.startsWith('--') && !['--only', '--from', '--labels'].includes(ARGV[i - 1]));
+const own = !baseArg;
 const srv = own ? await serve() : null;
-const BASE = process.argv[2] || srv.base;
+const BASE = baseArg || srv.base;
 { const r = await fetch(BASE + '/index.html').catch(() => null); if (!r || !r.ok) { console.error(`No page at ${BASE}/index.html (${r ? r.status : 'no answer'})`); process.exit(2); } console.log('serving ' + BASE); }
 
 const GAMES = ['quick-tap', 'dots', 'hold', 'sequence', 'timing', 'reaction', 'spot'];
 const errors = [];
 const fail = [];
-const ok = (label) => console.log('  ok   ' + label);
-const bad = (label, why) => { fail.push(label + (why ? ' — ' + why : '')); console.log('  FAIL ' + label + (why ? ' — ' + why : '')); };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+/* ---- sections, quiet output and partial runs (build 47) ----
+   Every section opens with `if (section('its name')) {`. The name is what its summary line prints, what --only and --from match and
+   what GATE.md indexes, and `section` answers whether it runs. `part` splits a running section's count without gating it. */
+const T0 = Date.now();
+const VERBOSE = ARGV.includes('--verbose'), BAIL = ARGV.includes('--bail'), LABELS = optOf('--labels');
+const termsOf = s => (s || '').split(',').map(t => t.trim().toLowerCase()).filter(Boolean).map(t => /^\d+$/.test(t) ? 'build ' + t : t);
+const ONLY = termsOf(optOf('--only')), FROM = termsOf(optOf('--from')), PARTIAL = ONLY.length + FROM.length > 0;
+const named = (name, t) => [name.toLowerCase(), name.toLowerCase().replace(/^the /, '')].some(n => n.startsWith(t) && !/[a-z0-9]/.test(n.charAt(t.length)));
+// a section that leaves the page, or a name, that a later one reads: asking for the later one runs both
+const LEADS = { 'cold start (empty storage)': ['locked decisions (fresh profile)'] };
+const sections = [], names = [];
+let cur = null, fromOn = false;
+const close = () => { if (!cur) return; console.log(`${cur.name} · ${cur.n} check${cur.n === 1 ? '' : 's'} · ${cur.failed ? cur.failed + ' failed' : 'ok'}`); cur = null; };
+const part = name => { close(); cur = { name, n: 0, failed: 0, lines: [] }; sections.push(cur); if (VERBOSE) console.log('\n' + name); };
+const section = (name, ...aka) => { close(); names.push(name, ...aka);
+  const all = [name, ...aka, ...(LEADS[name] || [])], hit = ts => ts.some(t => all.some(n => named(n, t)));
+  if (hit(FROM)) fromOn = true;
+  const run = !PARTIAL || fromOn || hit(ONLY);
+  if (run) part(name);
+  return run; };
+const check = (line, failed) => { if (!cur) part('(outside any section)'); cur.n++; cur.lines.push(line); if (failed) cur.failed++; };
+const ok = (label) => { check('  ok   ' + label); if (VERBOSE) console.log('  ok   ' + label); };
+const bad = (label, why) => { const line = label + (why ? ' — ' + why : ''); fail.push(line); check('  FAIL ' + line, true); console.log('  FAIL ' + line);
+  if (BAIL) { verdict('STOPPED AT THE FIRST FAILURE (--bail)'); process.exit(1); } };
+function verdict(stopped) {
+  close();
+  if (LABELS) fs.writeFileSync(LABELS, sections.map(s => '\n' + s.name + '\n' + s.lines.join('\n')).join('\n') + '\n');
+  const unknown = stopped ? [] : [...ONLY, ...FROM].filter(t => !names.some(n => named(n, t)));
+  console.log('\n' + '-'.repeat(60));
+  if (errors.length) { console.log('UNCAUGHT ERRORS (' + errors.length + '):'); for (const e of [...new Set(errors)]) console.log('  ' + e); }
+  if (fail.length) console.log('FAILED CHECKS:\n  ' + fail.join('\n  '));
+  if (unknown.length) console.log(`NO SECTION STARTS WITH ${unknown.map(t => '"' + t + '"').join(', ')} — the sections are:\n  ` + [...new Set(names)].join('\n  '));
+  { const n = sections.reduce((a, s) => a + s.n, 0), m = sections.length; console.log(`${n} check${n === 1 ? '' : 's'} in ${m} section${m === 1 ? '' : 's'}, ${Math.round((Date.now() - T0) / 1000)}s`); }
+  if (stopped || PARTIAL) console.log((stopped || 'PARTIAL RUN (--only / --from)') + ' — not the gate: the full npm test runs once before the push');
+  const pass = !errors.length && !fail.length && !unknown.length;
+  console.log(pass ? 'SMOKE TEST PASSED' : 'SMOKE TEST FAILED');
+  return pass;
+}
+
+/* ---- the shared helpers (build 47): one root, one read, one strip, one boot ----
+   Until build 46 every build section carried its own copy of each (root28-root46, read32-read46, strip28-strip46, boot40-boot46). */
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const read = (...p) => fs.readFileSync(path.join(root, ...p), 'utf8');
+const strip = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
+/* boot writes a whole profile and reloads: `prefs` over `plain`, `extra` over the rest of the store, at store version `v` (a 5 walks
+   the ladder's up6). PLAIN is build 46's profile — title, map, menu and key screen already seen, sound off, nothing spilled or ready */
+const PLAIN = { story: 1, gridSeen: 1, played: 1, menuSeen: 1, keySeen: 1, keysSeen: 1, snd: 'off', musicG: {}, spill: {}, readySeen: {} };
+const boot = async (prefs, extra = {}, { v = 6, plain = PLAIN } = {}) => { await setStorage({ ne: Object.assign({ v, prefs: { ...plain, ...prefs }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} }, extra) }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(450); };
+const NOW = Date.now();   // the fixtures' clock; storage fixtures, build 32 and build 38 stamp with it
+let at, sawStory;         // cold start leaves both for the sections after it
+
 // ---- 0. static: one build number (A6), config/ is data only (A2) ----
-console.log('\nstatic checks');
-{
-  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+if (section('static checks')) {
   const { BUILD } = await import(pathToFileURL(path.join(root, 'config', 'build.js')).href);
-  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8'); const vj = JSON.parse(fs.readFileSync(path.join(root, 'version.json'), 'utf8'));
+  const html = read('index.html'); const vj = JSON.parse(read('version.json'));
   // v18 (S.2, batch 14): the two places a person reads wear `v0.N`; the constant and version.json stay the bare integer (A6)
   const places = [html.match(/<div class="hint">v0\.(\d+) ·/)?.[1], html.match(/<div id="build">v0\.(\d+)<\/div>/)?.[1], html.match(/const BUILD="(\d+)";/)?.[1], String(vj.build)];
   places.every(p => p === String(BUILD)) ? ok(`A6 build ${BUILD} in config/build.js = index.html ×3 = version.json (visible two as v0.${BUILD})`) : bad('A6 one build number', JSON.stringify(places) + ' vs config ' + BUILD);
   const oldForm = html.match(/<div class="hint">build \d+ ·|<div id="build">build \d+</g) || [];
   (!oldForm.length && /'v0\.'\+j\.build/.test(html)) ? ok('S.2 v0.N on screen — hint line, #build and the update bar; no `build N` form left') : bad('S.2 v0.N on screen', oldForm.join(' | ') || 'update bar does not name v0.N');
-  const strip = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
   const cfg = fs.readdirSync(path.join(root, 'config')).filter(f => f.endsWith('.js'));
-  const dirty = cfg.filter(f => /\bimport\b|=>|\bfunction\b/.test(strip(fs.readFileSync(path.join(root, 'config', f), 'utf8'))));
+  const dirty = cfg.filter(f => /\bimport\b|=>|\bfunction\b/.test(strip(read('config', f))));
   dirty.length ? bad('A2 config/ is data only', dirty.join(', ')) : ok(`A2 config/ is data only (${cfg.length} files: no imports, no functions)`);
   /* v16 (§1) — THE MUSIC DATA. Three options for every game, each with its own voicing AND its own rhythm: Aiden's
      complaint was that seven tracks of the same arrangement at different speeds all sounded the same, so "three options"
@@ -116,7 +177,7 @@ console.log('\nstatic checks');
   /* v16 (1.6): an unlock has its own sound and it is not the achievement's. The achievement path must still be Snd.click:
      Aiden's line was "achievements currently sound great as is", so this asserts what did NOT change as well. */
   {
-    const t = fs.readFileSync(path.join(root, 'ui', 'toast.js'), 'utf8');
+    const t = read('ui', 'toast.js');
     const good = /cls==='ok'\?Snd\.unlockFx\(\):Snd\.click\(\)/.test(t.replace(/\s+/g, ''));
     good ? ok('1.6 an unlock toast plays Snd.unlockFx, an achievement toast still plays Snd.click')
          : bad('1.6 the unlock sound is its own', 'ui/toast.js does not pick unlockFx for an ok toast');
@@ -131,12 +192,12 @@ console.log('\nstatic checks');
   // build 17 (A3): an engine's imports name only _shared, core, config or core.js. sel, prefs, audio, the run and the other engines reach it through ctx, or not at all
   const engines = fs.readdirSync(path.join(root, 'games'), { withFileTypes: true }).filter(d => d.isDirectory() && !d.name.startsWith('_')).map(d => `games/${d.name}/index.js`).concat(fs.readdirSync(path.join(root, 'games', '_shared')).map(f => `games/_shared/${f}`));
   const stray = [];
-  for (const f of engines) { const shared = f.startsWith('games/_shared/'); const src = strip(fs.readFileSync(path.join(root, f), 'utf8')); for (const m of src.matchAll(/from\s+["']([^"']+)["']/g)) { const p = m[1]; const okPath = shared ? /^(\.\/[\w.-]+\.js$|\.\.\/\.\.\/(core\/|config\/|core\.js$))/.test(p) : /^\.\.\/(_shared\/|\.\.\/(core\/|config\/|core\.js$))/.test(p); if (!okPath) stray.push(`${f} → ${p}`); } }
+  for (const f of engines) { const shared = f.startsWith('games/_shared/'); const src = strip(read(f)); for (const m of src.matchAll(/from\s+["']([^"']+)["']/g)) { const p = m[1]; const okPath = shared ? /^(\.\/[\w.-]+\.js$|\.\.\/\.\.\/(core\/|config\/|core\.js$))/.test(p) : /^\.\.\/(_shared\/|\.\.\/(core\/|config\/|core\.js$))/.test(p); if (!okPath) stray.push(`${f} → ${p}`); } }
   stray.length ? bad('A3 engines import only _shared / core / config', stray.join(', ')) : ok(`A3 engines import only _shared / core / config (${engines.length} files)`);
   // v14 C.1 / C.2 / C.3 (L5, build 22): Flash spends what is over 150ms of 500; a Go / No-go Streak spends what is over 150ms
   // of 1000 and 200ms a wrong tap, while its SET still ADDS 150ms a wrong tap. Two currencies — the gate holds them apart so
   // nobody harmonises them. C.4: the Streak has no wrong-tap run-ender, so the `wrong>=3` test must stay inside a !streak() branch
-  { const rx = fs.readFileSync(path.join(root, 'games', 'reaction', 'index.js'), 'utf8');
+  { const rx = read('games', 'reaction', 'index.js');
     const num = k => { const m = rx.match(new RegExp(k + ':\\s*(\\d+)')); return m ? +m[1] : null; };
     // AMENDED at build 32 (v19 C.5 / C.6, L5): the Go / No-go gate is 180 and its Streak budget 3000; the wrong-tap costs did not move
     // AMENDED at build 44 (v24 F.1, L5 amended at Aiden's direct request): Flash's Streak budget is 1000
@@ -154,20 +215,28 @@ console.log('\nstatic checks');
   // build 18 (A4): a screen never imports another screen or an engine; the run never imports a screen. They talk through core/events.js
   const screens = fs.readdirSync(path.join(root, 'ui', 'screens')).filter(f => f.endsWith('.js') && f !== 'index.js').map(f => `ui/screens/${f}`);
   const cross = [];
-  for (const f of screens) { const src = strip(fs.readFileSync(path.join(root, f), 'utf8')); for (const m of src.matchAll(/from\s+["']([^"']+)["']/g)) { if (/^\.\/|\/games\/(?!registry)/.test(m[1])) cross.push(`${f} → ${m[1]}`); } }
-  { const src = strip(fs.readFileSync(path.join(root, 'run', 'run.js'), 'utf8')); for (const m of src.matchAll(/from\s+["']([^"']+)["']/g)) if (/screens\//.test(m[1])) cross.push(`run/run.js → ${m[1]}`); }
+  for (const f of screens) { const src = strip(read(f)); for (const m of src.matchAll(/from\s+["']([^"']+)["']/g)) { if (/^\.\/|\/games\/(?!registry)/.test(m[1])) cross.push(`${f} → ${m[1]}`); } }
+  { const src = strip(read('run', 'run.js')); for (const m of src.matchAll(/from\s+["']([^"']+)["']/g)) if (/screens\//.test(m[1])) cross.push(`run/run.js → ${m[1]}`); }
   cross.length ? bad('A4 screens and the run talk by events, not imports', cross.join(', ')) : ok(`A4 no screen imports a screen or an engine, the run imports no screen (${screens.length} screens)`);
 }
 
 const browser = await launch();
 const page = await phonePage(browser);
-page.on('pageerror', e => errors.push('pageerror: ' + e.message));
-page.on('console', m => { if (m.type() === 'error' && !IGNORED_REQUEST(m.text())) errors.push('console: ' + m.text()); });
-page.on('requestfailed', r => { const u = r.url(); if (!IGNORED_REQUEST(u)) errors.push('requestfailed: ' + u + ' ' + (r.failure()?.errorText || '')); });
-page.on('dialog', async d => { errors.push('dialog opened: ' + d.message()); await d.dismiss(); });
+/* build 47: every uncaught error names the section it happened in, and a console error the URL it came from, so a failed run says
+   which --only to run. PLANTED are the only two resources the gate forgives a 404 on, because the gate makes them fail: build 46's
+   item 23 check puts a clip at video/test.mp4 with captions at video/test.vtt to prove the player is built, and neither file exists.
+   Every build-46 full run failed on those two 404s with all 591 checks passing. Any other 404 still fails the run. */
+const inSection = () => cur ? ' — in ' + cur.name : '';
+const PLANTED = u => /\/video\/test\.(mp4|vtt)$/.test(u || '');
+page.on('pageerror', e => errors.push('pageerror: ' + e.message + inSection()));
+page.on('console', m => { const u = m.location()?.url || ''; if (m.type() === 'error' && !IGNORED_REQUEST(m.text()) && !PLANTED(u)) errors.push('console: ' + m.text() + (u ? ' ' + u : '') + inSection()); });
+page.on('requestfailed', r => { const u = r.url(); if (!IGNORED_REQUEST(u)) errors.push('requestfailed: ' + u + ' ' + (r.failure()?.errorText || '') + inSection()); });
+page.on('dialog', async d => { errors.push('dialog opened: ' + d.message() + inSection()); await d.dismiss(); });
 // v18 (B.32, build 33): every URL the page asks for, for the whole run — the font assertion counts the ones that left the origin
 const reqs = [];
 page.on('request', r => reqs.push(r.url()));
+// a partial run can start at any section, and a section's first setStorage needs the page on the app's origin
+if (PARTIAL) await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
 
 const onScreen = () => page.$eval('.screen.on', s => s.id).catch(() => null);
 const inGame = () => page.$eval('#game', g => g.classList.contains('on')).catch(() => false);
@@ -291,64 +360,65 @@ async function openSheet(g, mi, li, vs = 0) {
 }
 
 // ---- 1. cold start: intro plays, then the menu ----
-console.log('\ncold start (empty storage)');
-await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
-await page.evaluate(() => localStorage.clear());
-await page.reload({ waitUntil: 'networkidle0' });
-await sleep(400);
-let at = await onScreen();
-const storyOn = () => page.evaluate(() => !!document.querySelector('#s-menu.story'));
-const sawStory = at === 's-menu' && (await storyOn());
-sawStory ? ok('the title sequence shows') : bad('the title sequence shows', 'on ' + at);
-// v14 (1.2): mark the title node and the box it sits in, so the same node in the same place can be proved after the menu builds
-const titleBefore = await page.evaluate(() => { const w = document.getElementById('wordmark'); if (!w) return null; w.dataset.probe = 'ne'; const r = document.querySelector('.titlewrap').getBoundingClientRect(); return { n: document.querySelectorAll('#s-menu .wordmark').length, x: Math.round(r.left), y: Math.round(r.top), t: w.textContent }; });
-for (let i = 0; i < 8 && (await storyOn()); i++) { await page.evaluate(() => document.body.click()); await sleep(350); }
-await sleep(600);
-at = await onScreen();
-at === 's-menu' ? ok('the title sequence leads to the menu') : bad('the title sequence leads to the menu', 'on ' + at);
-const titleAfter = await page.evaluate(() => { const w = document.getElementById('wordmark'); if (!w) return null; const r = document.querySelector('.titlewrap').getBoundingClientRect(); return { probe: w.dataset.probe === 'ne', n: document.querySelectorAll('#s-menu .wordmark').length, x: Math.round(r.left), y: Math.round(r.top), t: w.textContent }; });
-(titleBefore && titleAfter && titleAfter.probe && titleBefore.n === 1 && titleAfter.n === 1 && titleAfter.x === titleBefore.x && titleAfter.y === titleBefore.y && titleAfter.t === titleBefore.t)
-  ? ok('1.2 NO EXCUSES is the same node, in the same place, before and after the menu builds')
-  : bad('1.2 NO EXCUSES never moves or re-renders between the title and the menu', JSON.stringify({ titleBefore, titleAfter }));
+if (section('cold start (empty storage)')) {
+  await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
+  await page.evaluate(() => localStorage.clear());
+  await page.reload({ waitUntil: 'networkidle0' });
+  await sleep(400);
+  at = await onScreen();
+  const storyOn = () => page.evaluate(() => !!document.querySelector('#s-menu.story'));
+  sawStory = at === 's-menu' && (await storyOn());
+  sawStory ? ok('the title sequence shows') : bad('the title sequence shows', 'on ' + at);
+  // v14 (1.2): mark the title node and the box it sits in, so the same node in the same place can be proved after the menu builds
+  const titleBefore = await page.evaluate(() => { const w = document.getElementById('wordmark'); if (!w) return null; w.dataset.probe = 'ne'; const r = document.querySelector('.titlewrap').getBoundingClientRect(); return { n: document.querySelectorAll('#s-menu .wordmark').length, x: Math.round(r.left), y: Math.round(r.top), t: w.textContent }; });
+  for (let i = 0; i < 8 && (await storyOn()); i++) { await page.evaluate(() => document.body.click()); await sleep(350); }
+  await sleep(600);
+  at = await onScreen();
+  at === 's-menu' ? ok('the title sequence leads to the menu') : bad('the title sequence leads to the menu', 'on ' + at);
+  const titleAfter = await page.evaluate(() => { const w = document.getElementById('wordmark'); if (!w) return null; const r = document.querySelector('.titlewrap').getBoundingClientRect(); return { probe: w.dataset.probe === 'ne', n: document.querySelectorAll('#s-menu .wordmark').length, x: Math.round(r.left), y: Math.round(r.top), t: w.textContent }; });
+  (titleBefore && titleAfter && titleAfter.probe && titleBefore.n === 1 && titleAfter.n === 1 && titleAfter.x === titleBefore.x && titleAfter.y === titleBefore.y && titleAfter.t === titleBefore.t)
+    ? ok('1.2 NO EXCUSES is the same node, in the same place, before and after the menu builds')
+    : bad('1.2 NO EXCUSES never moves or re-renders between the title and the menu', JSON.stringify({ titleBefore, titleAfter }));
+}
 
 // ---- 1b. the locked decisions that can be asserted, on this fresh profile ----
-console.log('\nlocked decisions (fresh profile)');
-sawStory ? ok('L1 title sequence plays before the menu') : bad('L1 title sequence plays before the menu');
-await click('[data-go="s-pick"]'); await sleep(400);
-const tileCol = await page.evaluate(() => { const t = document.querySelector('.tile[data-game="quick-tap"]'); return { sq: t.style.getPropertyValue('--sq-live').trim(), unplayed: t.classList.contains('unplayed') }; });
-(tileCol.unplayed && tileCol.sq.toUpperCase() === '#FFFFFF') ? ok('L7 Quick Tap tile is white before any run') : bad('L7 Quick Tap tile is white before any run', JSON.stringify(tileCol));
-await click('.tile[data-game="quick-tap"]'); await sleep(320);
-const soloSub = await page.evaluate(() => { const sub = document.querySelector('#vs-sub'); return { hidden: sub.hasAttribute('hidden'), shown: getComputedStyle(sub).display !== 'none' }; });
-(soloSub.hidden && !soloSub.shown) ? ok('L3 Solo shows no Pass & play / Versus') : bad('L3 Solo shows no Pass & play / Versus', JSON.stringify(soloSub));
-await page.evaluate(() => document.querySelector('#diff-row').children[0].click()); await sleep(420);
-const lens = await page.evaluate(() => [...document.querySelectorAll('#time-row .tbtn b')].map(b => b.childNodes[0].textContent.trim()));
-(lens.length === 3 && lens[0] === 'Sprint' && lens[1] === 'Dash' && lens[2] === 'Marathon') ? ok('L2 Quick Tap lengths are Sprint / Dash / Marathon') : bad('L2 Quick Tap lengths are Sprint / Dash / Marathon', JSON.stringify(lens));
-const lenTitle = await page.evaluate(() => document.querySelector('#len-title').textContent.trim());
-lenTitle === 'Mode' ? ok('L9 the length row is labelled Mode') : bad('L9 the length row is labelled Mode', lenTitle);
-await click('#grid'); await sleep(200);
-
-// ---- 2. everything unlocked, so every pick sheet can be opened ----
-console.log('\npick sheets (all unlocked)');
-await setStorage({ 'ne.prefs': { ...OPEN_PREFS, played: 0 } });
-await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
-await click('[data-go="s-pick"]'); await sleep(400);
-(await onScreen()) === 's-pick' ? ok('Play opens the grid') : bad('Play opens the grid');
-for (const g of GAMES) {
-  await page.evaluate(g => document.querySelector(`.tile[data-game="${g}"]`).click(), g); await sleep(320);
-  await page.evaluate(() => document.querySelector('#diff-row').children[0]?.click()); await sleep(420);
-  const state = await page.evaluate(() => ({ screen: document.querySelector('.screen.on')?.id, modes: document.querySelector('#diff-row').children.length, lens: document.querySelector('#time-row').children.length, title: document.querySelector('#sheet-title').textContent.trim() }));
-  (state.screen === 's-pick' && state.modes > 0 && state.lens > 0) ? ok(`${g} sheet — ${state.modes} mode(s), ${state.lens} length(s) · "${state.title}"`) : bad(`${g} sheet`, JSON.stringify(state));
+if (section('locked decisions (fresh profile)')) {
+  sawStory ? ok('L1 title sequence plays before the menu') : bad('L1 title sequence plays before the menu');
+  await click('[data-go="s-pick"]'); await sleep(400);
+  const tileCol = await page.evaluate(() => { const t = document.querySelector('.tile[data-game="quick-tap"]'); return { sq: t.style.getPropertyValue('--sq-live').trim(), unplayed: t.classList.contains('unplayed') }; });
+  (tileCol.unplayed && tileCol.sq.toUpperCase() === '#FFFFFF') ? ok('L7 Quick Tap tile is white before any run') : bad('L7 Quick Tap tile is white before any run', JSON.stringify(tileCol));
+  await click('.tile[data-game="quick-tap"]'); await sleep(320);
+  const soloSub = await page.evaluate(() => { const sub = document.querySelector('#vs-sub'); return { hidden: sub.hasAttribute('hidden'), shown: getComputedStyle(sub).display !== 'none' }; });
+  (soloSub.hidden && !soloSub.shown) ? ok('L3 Solo shows no Pass & play / Versus') : bad('L3 Solo shows no Pass & play / Versus', JSON.stringify(soloSub));
+  await page.evaluate(() => document.querySelector('#diff-row').children[0].click()); await sleep(420);
+  const lens = await page.evaluate(() => [...document.querySelectorAll('#time-row .tbtn b')].map(b => b.childNodes[0].textContent.trim()));
+  (lens.length === 3 && lens[0] === 'Sprint' && lens[1] === 'Dash' && lens[2] === 'Marathon') ? ok('L2 Quick Tap lengths are Sprint / Dash / Marathon') : bad('L2 Quick Tap lengths are Sprint / Dash / Marathon', JSON.stringify(lens));
+  const lenTitle = await page.evaluate(() => document.querySelector('#len-title').textContent.trim());
+  lenTitle === 'Mode' ? ok('L9 the length row is labelled Mode') : bad('L9 the length row is labelled Mode', lenTitle);
   await click('#grid'); await sleep(200);
 }
-// the other screens open and render
-// AMENDED at build 39 (v23 L.4a): s-custom is back — Customise is its own menu row again (a tab of s-prog from build 33 to 38)
-for (const s of ['s-board', 's-prog', 's-custom', 's-key', 's-about', 's-testing']) { await click('.back'); await sleep(250); await click(`[data-go="${s}"]`); await sleep(600); (await onScreen()) === s ? ok(`${s} opens`) : bad(`${s} opens`, 'on ' + (await onScreen())); }
+
+// ---- 2. everything unlocked, so every pick sheet can be opened ----
+if (section('pick sheets (all unlocked)')) {
+  await setStorage({ 'ne.prefs': { ...OPEN_PREFS, played: 0 } });
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+  await click('[data-go="s-pick"]'); await sleep(400);
+  (await onScreen()) === 's-pick' ? ok('Play opens the grid') : bad('Play opens the grid');
+  for (const g of GAMES) {
+    await page.evaluate(g => document.querySelector(`.tile[data-game="${g}"]`).click(), g); await sleep(320);
+    await page.evaluate(() => document.querySelector('#diff-row').children[0]?.click()); await sleep(420);
+    const state = await page.evaluate(() => ({ screen: document.querySelector('.screen.on')?.id, modes: document.querySelector('#diff-row').children.length, lens: document.querySelector('#time-row').children.length, title: document.querySelector('#sheet-title').textContent.trim() }));
+    (state.screen === 's-pick' && state.modes > 0 && state.lens > 0) ? ok(`${g} sheet — ${state.modes} mode(s), ${state.lens} length(s) · "${state.title}"`) : bad(`${g} sheet`, JSON.stringify(state));
+    await click('#grid'); await sleep(200);
+  }
+  // the other screens open and render
+  // AMENDED at build 39 (v23 L.4a): s-custom is back — Customise is its own menu row again (a tab of s-prog from build 33 to 38)
+  for (const s of ['s-board', 's-prog', 's-custom', 's-key', 's-about', 's-testing']) { await click('.back'); await sleep(250); await click(`[data-go="${s}"]`); await sleep(600); (await onScreen()) === s ? ok(`${s} opens`) : bad(`${s} opens`, 'on ' + (await onScreen())); }
+}
 
 // ---- 2b. the Set and Streak lines on every sheet come from the one table (L5 / v14 section 5) ----
-console.log('\nsheet copy comes from SET_COPY (L5)');
-{
-  const cfgRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const { SET_COPY, GAMES: TABLE } = await import(pathToFileURL(path.join(cfgRoot, 'config', 'games.js')).href);
+if (section('sheet copy comes from SET_COPY (L5)')) {
+  const { SET_COPY, GAMES: TABLE } = await import(pathToFileURL(path.join(root, 'config', 'games.js')).href);
   for (const key of Object.keys(SET_COPY)) {
     const [g, d] = key.split(':'); const mi = TABLE[g].modes.indexOf(d); const want = SET_COPY[key];
     await openSheet(g, mi, 0);
@@ -360,61 +430,61 @@ console.log('\nsheet copy comes from SET_COPY (L5)');
 }
 
 // ---- 3. one Set run and one Streak run per game ----
-console.log('\none Set run and one Streak run per game (first mode)');
-let askedSet = '', askedSetTot = null, askedStreakLine = '';
-const RUNS = [['quick-tap', 0, 0], ['dots', 0, 0], ['hold', 0, 0], ['hold', 0, 'streak'], ['sequence', 0, 0], ['timing', 0, 0], ['timing', 0, 'streak'], ['reaction', 0, 0], ['reaction', 0, 'streak'], ['spot', 0, 0], ['spot', 0, 'streak']];
-for (const [g, mi, li] of RUNS) {
-  const face = await openSheet(g, mi, li);
-  const label = `${g} · ${face || '?'}`;
-  if (!face) { bad(label, 'no length button'); continue; }
-  await click('#go-btn');
-  const at = await driveToResult(g, label, 90000, g === 'reaction' && li === 'streak');
-  if (g === 'timing' && li === 0) { askedSet = askedLine; askedSetTot = askedTot; }   // the Set: 6.18 and §3 below
-  if (g === 'timing' && li === 'streak') askedStreakLine = askedLine;                   // the Streak keeps its baseline (§3)
-  if (at === 's-over') { const r = await resultLine(); r.score ? ok(`${label} → "${r.score}" · ${r.verdict} · ${r.stats}`) : bad(label, 'result screen has no score'); }
+if (section('one Set run and one Streak run per game (first mode)')) {
+  let askedSet = '', askedSetTot = null, askedStreakLine = '';
+  const RUNS = [['quick-tap', 0, 0], ['dots', 0, 0], ['hold', 0, 0], ['hold', 0, 'streak'], ['sequence', 0, 0], ['timing', 0, 0], ['timing', 0, 'streak'], ['reaction', 0, 0], ['reaction', 0, 'streak'], ['spot', 0, 0], ['spot', 0, 'streak']];
+  for (const [g, mi, li] of RUNS) {
+    const face = await openSheet(g, mi, li);
+    const label = `${g} · ${face || '?'}`;
+    if (!face) { bad(label, 'no length button'); continue; }
+    await click('#go-btn');
+    const at = await driveToResult(g, label, 90000, g === 'reaction' && li === 'streak');
+    if (g === 'timing' && li === 0) { askedSet = askedLine; askedSetTot = askedTot; }   // the Set: 6.18 and §3 below
+    if (g === 'timing' && li === 'streak') askedStreakLine = askedLine;                   // the Streak keeps its baseline (§3)
+    if (at === 's-over') { const r = await resultLine(); r.score ? ok(`${label} → "${r.score}" · ${r.verdict} · ${r.stats}`) : bad(label, 'result screen has no score'); }
+  }
+  // v14 (6.3): every round-based game held at least one result until it was tapped. A game that never raised #game.tapon
+  // auto-advanced, which is the thing this batch removed
+  {
+    // v15 (3.9) narrows the list: only a result with something to read waits. Timing and Spot lost the cue this build,
+    // so they must NOT hold — the assertion runs both ways or "removed it" and "broke it" look identical
+    const want = ['hold', 'reaction'], gone = ['timing', 'spot'];
+    const missing = want.filter(g => !heldSeen.has(g));
+    const stillHolding = gone.filter(g => heldSeen.has(g));
+    missing.length ? bad('6.3 a complicated result waits for a tap', 'never held: ' + missing.join(', ')) : ok(`6.3 Estimate and Reaction hold their result until it is tapped (${want.join(', ')})`);
+    stillHolding.length ? bad('3.9 Timing and Spot no longer wait for a tap', 'still holding: ' + stillHolding.join(', ')) : ok(`3.9 tap-to-continue is gone from ${gone.join(' and ')} — they advance on their own`);
+  }
+  // v14 (6.18): five Stopwatch rounds averaging 7s ask for exactly 35.00s — the targets are generated so the total lands on the
+  // stated average, so no run is ever dealt a harder set of targets than another
+  {
+    if (!askedSetTot) bad('6.18 the Stopwatch Set deals to an exact total', 'the engine never reported one');
+    else if (askedSetTot.all.toFixed(2) !== '35.00') bad('6.18 five rounds averaging 7s ask for 35.00s', 'the run asked for ' + askedSetTot.all + 's');
+    else if (Math.abs(askedSetTot.asked - askedSetTot.all) > 0.005) bad('6.18 the last round lands on the stated total', askedSetTot.asked + ' of ' + askedSetTot.all);
+    else ok(`6.18 Stopwatch · Set deals five targets totalling exactly ${askedSetTot.all.toFixed(2)}s — the exact-mean deal survives §3`);
+    /* v18 (B.3d) REVERSES v16 §3, and B.2 is why. v16 took the baseline off the Set on the reasoning that a Set was scored
+       on a MEAN and the total the game had asked for was decoration; B.2 makes the Set a TOTAL, so the total it was
+       measured against is the thing it is measured against. The Streak loses it instead: its own HUD already carried two
+       climbing second-figures and Aiden's note is that the third was noise. The assertion runs both ways, because
+       "moved it" and "lost it" look identical from one side. */
+    /^[\d.]+s of [\d.]+s asked$/.test(askedSet) ? ok(`B.3d Timing · Set carries the baseline it is now totalled against ("${askedSet}")`)
+             : bad('B.3d the Stopwatch Set shows what it asked for', 'the line read "' + askedSet + '"');
+    askedStreakLine ? bad('B.3d the Stopwatch Streak drops the targets line', 'it still showed "' + askedStreakLine + '"')
+             : ok('B.3d Timing · Streak shows no targets line — the budget and the spend are the only two numbers left');
+  }
+  // v16 (A.3): the Ready gate appeared on the first run of a game — every game the driver played had to answer one
+  {
+    const want = ['quick-tap', 'dots', 'hold', 'sequence', 'timing', 'reaction', 'spot'];
+    const miss = want.filter(g => !readySeen.has(g));
+    miss.length ? bad('A.3 "Ready?" ends the first intro of each game', 'never seen on: ' + miss.join(', '))
+                : ok('A.3 a player\'s first run of each game ends its intro on "Ready?" (all seven)');
+  }
+  // the timed games have no Streak (Sprint / Dash / Marathon are seconds) — noted, not a failure
+  ok('quick-tap and dots: timed, no Streak length to run (L2)');
+  ok('sequence: one length family (keys), the run is its own streak');
 }
-// v14 (6.3): every round-based game held at least one result until it was tapped. A game that never raised #game.tapon
-// auto-advanced, which is the thing this batch removed
-{
-  // v15 (3.9) narrows the list: only a result with something to read waits. Timing and Spot lost the cue this build,
-  // so they must NOT hold — the assertion runs both ways or "removed it" and "broke it" look identical
-  const want = ['hold', 'reaction'], gone = ['timing', 'spot'];
-  const missing = want.filter(g => !heldSeen.has(g));
-  const stillHolding = gone.filter(g => heldSeen.has(g));
-  missing.length ? bad('6.3 a complicated result waits for a tap', 'never held: ' + missing.join(', ')) : ok(`6.3 Estimate and Reaction hold their result until it is tapped (${want.join(', ')})`);
-  stillHolding.length ? bad('3.9 Timing and Spot no longer wait for a tap', 'still holding: ' + stillHolding.join(', ')) : ok(`3.9 tap-to-continue is gone from ${gone.join(' and ')} — they advance on their own`);
-}
-// v14 (6.18): five Stopwatch rounds averaging 7s ask for exactly 35.00s — the targets are generated so the total lands on the
-// stated average, so no run is ever dealt a harder set of targets than another
-{
-  if (!askedSetTot) bad('6.18 the Stopwatch Set deals to an exact total', 'the engine never reported one');
-  else if (askedSetTot.all.toFixed(2) !== '35.00') bad('6.18 five rounds averaging 7s ask for 35.00s', 'the run asked for ' + askedSetTot.all + 's');
-  else if (Math.abs(askedSetTot.asked - askedSetTot.all) > 0.005) bad('6.18 the last round lands on the stated total', askedSetTot.asked + ' of ' + askedSetTot.all);
-  else ok(`6.18 Stopwatch · Set deals five targets totalling exactly ${askedSetTot.all.toFixed(2)}s — the exact-mean deal survives §3`);
-  /* v18 (B.3d) REVERSES v16 §3, and B.2 is why. v16 took the baseline off the Set on the reasoning that a Set was scored
-     on a MEAN and the total the game had asked for was decoration; B.2 makes the Set a TOTAL, so the total it was
-     measured against is the thing it is measured against. The Streak loses it instead: its own HUD already carried two
-     climbing second-figures and Aiden's note is that the third was noise. The assertion runs both ways, because
-     "moved it" and "lost it" look identical from one side. */
-  /^[\d.]+s of [\d.]+s asked$/.test(askedSet) ? ok(`B.3d Timing · Set carries the baseline it is now totalled against ("${askedSet}")`)
-           : bad('B.3d the Stopwatch Set shows what it asked for', 'the line read "' + askedSet + '"');
-  askedStreakLine ? bad('B.3d the Stopwatch Streak drops the targets line', 'it still showed "' + askedStreakLine + '"')
-           : ok('B.3d Timing · Streak shows no targets line — the budget and the spend are the only two numbers left');
-}
-// v16 (A.3): the Ready gate appeared on the first run of a game — every game the driver played had to answer one
-{
-  const want = ['quick-tap', 'dots', 'hold', 'sequence', 'timing', 'reaction', 'spot'];
-  const miss = want.filter(g => !readySeen.has(g));
-  miss.length ? bad('A.3 "Ready?" ends the first intro of each game', 'never seen on: ' + miss.join(', '))
-              : ok('A.3 a player\'s first run of each game ends its intro on "Ready?" (all seven)');
-}
-// the timed games have no Streak (Sprint / Dash / Marathon are seconds) — noted, not a failure
-ok('quick-tap and dots: timed, no Streak length to run (L2)');
-ok('sequence: one length family (keys), the run is its own streak');
 
 // ---- 4. pass & play Quick Tap: two players, the hand-over screen between ----
-console.log('\npass & play Quick Tap');
-{
+if (section('pass & play Quick Tap')) {
   await openSheet('quick-tap', 0, 0, 1);
   const btn = await page.evaluate(() => document.querySelector('#go-btn').textContent.trim());
   await click('#go-btn');
@@ -428,208 +498,209 @@ console.log('\npass & play Quick Tap');
 }
 
 // ---- 4b. two-player: the five games that never had it (v15 section 4, build 25) ----
-console.log('\ntwo-player (v15 section 4)');
-{
-  // the config the section is built on, read straight out of the module rather than matched in its source
-  const cfg = await import(pathToFileURL(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'config', 'games.js')).href);
-  const WANT = ['hold:grow', 'hold:cut', 'timing:stopwatch', 'timing:hidden', 'reaction:flash', 'reaction:nogo', 'spot:count'];
-  const keys = Object.keys(cfg.PASS_TURNS);
-  const missing = WANT.filter(k => !keys.includes(k));
-  const stray = keys.filter(k => { const [g, d] = k.split(':'); return !cfg.GAMES[g] || !cfg.GAMES[g].modes.includes(d); });
-  const shaped = keys.every(k => Array.isArray(cfg.PASS_TURNS[k]) && cfg.PASS_TURNS[k].length === 2 && cfg.PASS_TURNS[k].every(n => n >= 1));
-  (!missing.length && !stray.length && shaped) ? ok(`4.x every turn-taking mode has a PASS_TURNS row and every row names a real mode (${keys.length})`)
-    : bad('4.x PASS_TURNS covers the turn-taking modes', `missing ${missing.join(', ') || 'none'} · stray ${stray.join(', ') || 'none'} · shaped ${shaped}`);
-  // 4.5 / 4.6: the two new versus modes exist in the config at all
-  (cfg.SEQ_VS.lives >= 1 && cfg.SEQ_VS.opens.length > 1) ? ok(`4.5 Sequence versus is lives (${cfg.SEQ_VS.lives}) with an opening length to pick (${cfg.SEQ_VS.opens.join('/')})`) : bad('4.5 SEQ_VS', JSON.stringify(cfg.SEQ_VS));
-  const spotVs = Array.isArray(cfg.GAMES.spot.versus) && cfg.GAMES.spot.versus.includes('find');
-  (spotVs && cfg.VS_TARGET.spot >= 1) ? ok(`4.6 Spot · Find has a versus, first to ${cfg.VS_TARGET.spot} rounds`) : bad('4.6 Spot versus', `versus ${JSON.stringify(cfg.GAMES.spot.versus)} · target ${cfg.VS_TARGET.spot}`);
-}
-/* 4.1-4.4: Estimate, Timing and Reaction pass & play alternate INSIDE one run now. The hand-over screen must never appear,
-   the result must be the pair, and nothing about the run may reach the store (L10, widened by A.3) */
-for (const [g, mi, label] of [['hold', 0, 'Estimate · Grow'], ['timing', 0, 'Timing · Stopwatch'], ['reaction', 0, 'Reaction · Flash'], ['reaction', 1, 'Reaction · Go / No-go']]) {
-  await openSheet(g, mi, 0, 1);
-  const btn = await page.evaluate(() => document.querySelector('#go-btn').textContent.trim());
-  await click('#go-btn');
-  const at = await driveToResult(g, `pass & play · ${label}`, 150000);
-  if (at === 's-pass') { bad(`4.x ${label} pass & play is one run, not two`, 'it ended on the hand-over screen'); continue; }
-  if (at !== 's-over') continue;
-  const r = await page.evaluate(() => ({ pair: document.querySelector('#vsbox').classList.contains('on'), board: document.querySelector('#over-top').hidden, txt: document.querySelector('#vsbox').textContent.replace(/\s+/g, ' ').trim().slice(0, 60) }));
-  (r.pair && r.board) ? ok(`4.x ${label} pass & play → one run, a pair and no board (Go read "${btn}") · ${r.txt}`) : bad(`4.x ${label} pass & play shows the pair and no board (L10)`, JSON.stringify(r));
-  const st = await getJSON('ne');
-  const wrote = ['unlock', 'ach', 'bars', 'runs'].filter(k => st && st[k] && Object.keys(st[k]).length);
-  (!wrote.length) ? ok(`A.3 / L10 ${label} pass & play wrote nothing — no run, no unlock, no achievement, no bar`) : bad('A.3 a two-player run wrote to the store', wrote.join(', '));
-}
-// 4.5: Sequence versus keeps the key row and gains an opening-length row, then plays to a pair
-{
-  await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
-  await setStorage({ 'ne.prefs': OPEN_PREFS }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(320);
-  await click('[data-go="s-pick"]'); await sleep(260);
-  await page.evaluate(() => document.querySelector('.tile[data-game="sequence"]').click()); await sleep(300);
-  await click('[data-vs="1"]'); await sleep(180); await click('[data-vs2="2"]'); await sleep(240);
-  const sheet = await page.evaluate(() => ({
-    lens: [...document.querySelectorAll('#time-row .tbtn b')].map(b => b.textContent.trim()),
-    lenShown: getComputedStyle(document.querySelector('#time-row')).display !== 'none',
-    opens: [...document.querySelectorAll('#prac-row [data-opens]')].map(b => b.textContent.trim()),
-    optsShown: getComputedStyle(document.querySelector('#seq-opts')).display !== 'none',
-    line: (document.querySelector('#vsart small') || {}).textContent || '' }));
-  // v17 (B.9): two key counts, not three - the row itself is what 4.5 is about, and the count comes off the config
-  (sheet.lenShown && sheet.lens.length === 2 && sheet.lens.join() === '3 keys,7 keys') ? ok(`4.5 Sequence versus keeps the key row (${sheet.lens.join(' · ')})`) : bad('4.5 Sequence versus shows the key row', JSON.stringify(sheet));
-  (sheet.optsShown && sheet.opens.length > 1) ? ok(`4.5 and gains the opening length (${sheet.opens.join('/')} notes) · "${sheet.line}"`) : bad('4.5 Sequence versus opening length', JSON.stringify(sheet));
-  (!/compose/i.test(sheet.line)) ? ok('4.5 Compose is gone from the versus line') : bad('4.5 the versus line still describes Compose', sheet.line);
-  await page.evaluate(() => { const t = [...document.querySelectorAll('#time-row .tbtn')]; if (t[0]) t[0].click(); }); await sleep(160);
-  await click('#go-btn');
-  const at = await driveToResult('sequence', 'versus · Sequence', 120000);
-  if (at === 's-over') { const r = await page.evaluate(() => ({ pair: document.querySelector('#vsbox').classList.contains('on'), board: document.querySelector('#over-top').hidden, txt: document.querySelector('#vsbox').textContent.replace(/\s+/g, ' ').trim().slice(0, 60) }));
-    (r.pair && r.board) ? ok(`4.5 Sequence versus ends on lives, a pair and no board · ${r.txt}`) : bad('4.5 Sequence versus result', JSON.stringify(r)); }
-  else bad('4.5 Sequence versus reaches a result', 'on ' + at);
-}
-// 4.6: Spot · Find versus — two odd shapes in one crowd, first to find theirs takes the round
-{
-  await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
-  await setStorage({ 'ne.prefs': OPEN_PREFS }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(320);
-  await click('[data-go="s-pick"]'); await sleep(260);
-  await page.evaluate(() => document.querySelector('.tile[data-game="spot"]').click()); await sleep(300);
-  await click('[data-vs="1"]'); await sleep(180);
-  const offered = await page.evaluate(() => !document.querySelector('#vs-sub [data-vs2="2"]').hidden);
-  offered ? ok('4.6 Spot offers Versus on the player row even though its FIRST mode has none') : bad('4.6 Spot offers Versus', 'the chip is hidden on the mode stage');
-  await click('[data-vs2="2"]'); await sleep(200);
-  await page.evaluate(() => { const c = document.querySelectorAll('#diff-row .choice'); c[1].click(); }); await sleep(460);
-  const stillVs = await page.evaluate(() => document.querySelector('#vs-sub [data-vs2="2"]').classList.contains('sel'));
-  stillVs ? ok('4.6 and keeps it once Find is the mode') : bad('4.6 Versus survives picking Find');
-  await click('#go-btn');
-  // the two odd shapes are the only two classes with a single member; tap one and its owner takes the round
-  const pokeFind = () => page.evaluate(() => {
-    const els = [...document.querySelectorAll('#gen .fs')]; if (!els.length) return false;
-    const cls = e => ['circle', 'square', 'tri'].find(c => e.classList.contains(c)) || '';
-    const n = {}; els.forEach(e => { const c = cls(e); n[c] = (n[c] || 0) + 1; });
-    const t = els.find(e => n[cls(e)] === 1); if (!t) return false;
-    const r = t.getBoundingClientRect();
-    document.getElementById('gen').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1 }));
-    return true; });
-  const deadline = Date.now() + 120000; let at = null;
-  while (Date.now() < deadline) { at = await onScreen(); if (at === 's-over') break; if (await skipAd()) continue; if (at === null || (await inGame())) await pokeFind(); await sleep(120); }
-  if (at === 's-over') { const r = await page.evaluate(() => ({ pair: document.querySelector('#vsbox').classList.contains('on'), board: document.querySelector('#over-top').hidden, txt: document.querySelector('#vsbox').textContent.replace(/\s+/g, ' ').trim().slice(0, 60) }));
-    (r.pair && r.board) ? ok(`4.6 Spot · Find versus plays out to a pair and no board · ${r.txt}`) : bad('4.6 Spot versus result', JSON.stringify(r)); }
-  else bad('4.6 Spot · Find versus reaches a result', 'on ' + (at || 'the game'));
+if (section('two-player (v15 section 4)')) {
+  {
+    // the config the section is built on, read straight out of the module rather than matched in its source
+    const cfg = await import(pathToFileURL(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'config', 'games.js')).href);
+    const WANT = ['hold:grow', 'hold:cut', 'timing:stopwatch', 'timing:hidden', 'reaction:flash', 'reaction:nogo', 'spot:count'];
+    const keys = Object.keys(cfg.PASS_TURNS);
+    const missing = WANT.filter(k => !keys.includes(k));
+    const stray = keys.filter(k => { const [g, d] = k.split(':'); return !cfg.GAMES[g] || !cfg.GAMES[g].modes.includes(d); });
+    const shaped = keys.every(k => Array.isArray(cfg.PASS_TURNS[k]) && cfg.PASS_TURNS[k].length === 2 && cfg.PASS_TURNS[k].every(n => n >= 1));
+    (!missing.length && !stray.length && shaped) ? ok(`4.x every turn-taking mode has a PASS_TURNS row and every row names a real mode (${keys.length})`)
+      : bad('4.x PASS_TURNS covers the turn-taking modes', `missing ${missing.join(', ') || 'none'} · stray ${stray.join(', ') || 'none'} · shaped ${shaped}`);
+    // 4.5 / 4.6: the two new versus modes exist in the config at all
+    (cfg.SEQ_VS.lives >= 1 && cfg.SEQ_VS.opens.length > 1) ? ok(`4.5 Sequence versus is lives (${cfg.SEQ_VS.lives}) with an opening length to pick (${cfg.SEQ_VS.opens.join('/')})`) : bad('4.5 SEQ_VS', JSON.stringify(cfg.SEQ_VS));
+    const spotVs = Array.isArray(cfg.GAMES.spot.versus) && cfg.GAMES.spot.versus.includes('find');
+    (spotVs && cfg.VS_TARGET.spot >= 1) ? ok(`4.6 Spot · Find has a versus, first to ${cfg.VS_TARGET.spot} rounds`) : bad('4.6 Spot versus', `versus ${JSON.stringify(cfg.GAMES.spot.versus)} · target ${cfg.VS_TARGET.spot}`);
+  }
+  /* 4.1-4.4: Estimate, Timing and Reaction pass & play alternate INSIDE one run now. The hand-over screen must never appear,
+     the result must be the pair, and nothing about the run may reach the store (L10, widened by A.3) */
+  for (const [g, mi, label] of [['hold', 0, 'Estimate · Grow'], ['timing', 0, 'Timing · Stopwatch'], ['reaction', 0, 'Reaction · Flash'], ['reaction', 1, 'Reaction · Go / No-go']]) {
+    await openSheet(g, mi, 0, 1);
+    const btn = await page.evaluate(() => document.querySelector('#go-btn').textContent.trim());
+    await click('#go-btn');
+    const at = await driveToResult(g, `pass & play · ${label}`, 150000);
+    if (at === 's-pass') { bad(`4.x ${label} pass & play is one run, not two`, 'it ended on the hand-over screen'); continue; }
+    if (at !== 's-over') continue;
+    const r = await page.evaluate(() => ({ pair: document.querySelector('#vsbox').classList.contains('on'), board: document.querySelector('#over-top').hidden, txt: document.querySelector('#vsbox').textContent.replace(/\s+/g, ' ').trim().slice(0, 60) }));
+    (r.pair && r.board) ? ok(`4.x ${label} pass & play → one run, a pair and no board (Go read "${btn}") · ${r.txt}`) : bad(`4.x ${label} pass & play shows the pair and no board (L10)`, JSON.stringify(r));
+    const st = await getJSON('ne');
+    const wrote = ['unlock', 'ach', 'bars', 'runs'].filter(k => st && st[k] && Object.keys(st[k]).length);
+    (!wrote.length) ? ok(`A.3 / L10 ${label} pass & play wrote nothing — no run, no unlock, no achievement, no bar`) : bad('A.3 a two-player run wrote to the store', wrote.join(', '));
+  }
+  // 4.5: Sequence versus keeps the key row and gains an opening-length row, then plays to a pair
+  {
+    await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
+    await setStorage({ 'ne.prefs': OPEN_PREFS }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(320);
+    await click('[data-go="s-pick"]'); await sleep(260);
+    await page.evaluate(() => document.querySelector('.tile[data-game="sequence"]').click()); await sleep(300);
+    await click('[data-vs="1"]'); await sleep(180); await click('[data-vs2="2"]'); await sleep(240);
+    const sheet = await page.evaluate(() => ({
+      lens: [...document.querySelectorAll('#time-row .tbtn b')].map(b => b.textContent.trim()),
+      lenShown: getComputedStyle(document.querySelector('#time-row')).display !== 'none',
+      opens: [...document.querySelectorAll('#prac-row [data-opens]')].map(b => b.textContent.trim()),
+      optsShown: getComputedStyle(document.querySelector('#seq-opts')).display !== 'none',
+      line: (document.querySelector('#vsart small') || {}).textContent || '' }));
+    // v17 (B.9): two key counts, not three - the row itself is what 4.5 is about, and the count comes off the config
+    (sheet.lenShown && sheet.lens.length === 2 && sheet.lens.join() === '3 keys,7 keys') ? ok(`4.5 Sequence versus keeps the key row (${sheet.lens.join(' · ')})`) : bad('4.5 Sequence versus shows the key row', JSON.stringify(sheet));
+    (sheet.optsShown && sheet.opens.length > 1) ? ok(`4.5 and gains the opening length (${sheet.opens.join('/')} notes) · "${sheet.line}"`) : bad('4.5 Sequence versus opening length', JSON.stringify(sheet));
+    (!/compose/i.test(sheet.line)) ? ok('4.5 Compose is gone from the versus line') : bad('4.5 the versus line still describes Compose', sheet.line);
+    await page.evaluate(() => { const t = [...document.querySelectorAll('#time-row .tbtn')]; if (t[0]) t[0].click(); }); await sleep(160);
+    await click('#go-btn');
+    const at = await driveToResult('sequence', 'versus · Sequence', 120000);
+    if (at === 's-over') { const r = await page.evaluate(() => ({ pair: document.querySelector('#vsbox').classList.contains('on'), board: document.querySelector('#over-top').hidden, txt: document.querySelector('#vsbox').textContent.replace(/\s+/g, ' ').trim().slice(0, 60) }));
+      (r.pair && r.board) ? ok(`4.5 Sequence versus ends on lives, a pair and no board · ${r.txt}`) : bad('4.5 Sequence versus result', JSON.stringify(r)); }
+    else bad('4.5 Sequence versus reaches a result', 'on ' + at);
+  }
+  // 4.6: Spot · Find versus — two odd shapes in one crowd, first to find theirs takes the round
+  {
+    await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
+    await setStorage({ 'ne.prefs': OPEN_PREFS }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(320);
+    await click('[data-go="s-pick"]'); await sleep(260);
+    await page.evaluate(() => document.querySelector('.tile[data-game="spot"]').click()); await sleep(300);
+    await click('[data-vs="1"]'); await sleep(180);
+    const offered = await page.evaluate(() => !document.querySelector('#vs-sub [data-vs2="2"]').hidden);
+    offered ? ok('4.6 Spot offers Versus on the player row even though its FIRST mode has none') : bad('4.6 Spot offers Versus', 'the chip is hidden on the mode stage');
+    await click('[data-vs2="2"]'); await sleep(200);
+    await page.evaluate(() => { const c = document.querySelectorAll('#diff-row .choice'); c[1].click(); }); await sleep(460);
+    const stillVs = await page.evaluate(() => document.querySelector('#vs-sub [data-vs2="2"]').classList.contains('sel'));
+    stillVs ? ok('4.6 and keeps it once Find is the mode') : bad('4.6 Versus survives picking Find');
+    await click('#go-btn');
+    // the two odd shapes are the only two classes with a single member; tap one and its owner takes the round
+    const pokeFind = () => page.evaluate(() => {
+      const els = [...document.querySelectorAll('#gen .fs')]; if (!els.length) return false;
+      const cls = e => ['circle', 'square', 'tri'].find(c => e.classList.contains(c)) || '';
+      const n = {}; els.forEach(e => { const c = cls(e); n[c] = (n[c] || 0) + 1; });
+      const t = els.find(e => n[cls(e)] === 1); if (!t) return false;
+      const r = t.getBoundingClientRect();
+      document.getElementById('gen').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1 }));
+      return true; });
+    const deadline = Date.now() + 120000; let at = null;
+    while (Date.now() < deadline) { at = await onScreen(); if (at === 's-over') break; if (await skipAd()) continue; if (at === null || (await inGame())) await pokeFind(); await sleep(120); }
+    if (at === 's-over') { const r = await page.evaluate(() => ({ pair: document.querySelector('#vsbox').classList.contains('on'), board: document.querySelector('#over-top').hidden, txt: document.querySelector('#vsbox').textContent.replace(/\s+/g, ' ').trim().slice(0, 60) }));
+      (r.pair && r.board) ? ok(`4.6 Spot · Find versus plays out to a pair and no board · ${r.txt}`) : bad('4.6 Spot versus result', JSON.stringify(r)); }
+    else bad('4.6 Spot · Find versus reaches a result', 'on ' + (at || 'the game'));
+  }
 }
 
 // ---- 5. storage fixtures ----
-console.log('\nstorage fixtures');
-const bootWith = async (name, storage, expectScreen) => {
-  await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
-  const before = errors.length;
-  await setStorage(storage); await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
-  const at = await onScreen();
-  (at === expectScreen && errors.length === before) ? ok(`${name}: boots to ${at}`) : bad(`${name}: boots to ${expectScreen}`, `on ${at}, ${errors.length - before} new error(s)`);
-  return at === expectScreen;
-};
-await bootWith('empty', {}, 's-menu');   // v14 (1.2): the title sequence is the menu screen wearing .story
-const NOW = Date.now();
-const B13 = {
-  'ne.prefs': { sq: '#FFFFFF', lead: '#C8322A', bg: 'stars', tint: '', snd: 'space', music: true, musicG: {}, lastGame: 'quick-tap', name: 'AIDEN', scale: 'penta', allOpen: false, supporter: false, adRuns: 3, story: 1, played: 1, gridSeen: 1, col: { 'quick-tap': { sq: '#FFE9C4', lead: '#C8322A', cut: '#FFE9C4' } } },
-  'ne.runs': [{ t: NOW - 60000, g: 'quick-tap', d: 'two', s: 5, n: 'AIDEN', v: 13, hits: 12, misses: 1, peak: 4 }, { t: NOW - 120000, g: 'dots', d: 'blind', s: 5, n: 'AIDEN', v: 13, hits: 9, misses: 0, peak: 3 }],
-  'ne.unlock': { 'dots:blind': NOW - 120000 }, 'ne.ach': { first: NOW - 120000, named: NOW - 100000 }, 'ne.seen': { 'game:quick-tap': 1, 'game:dots': 1 }, 'ne.intro': { 'quick-tap:two': NOW - 130000 },
-};
-if (await bootWith('build-13 layout', B13, 's-menu')) {
-  const ne = await getJSON('ne'); const runs = ne && ne.runs;
-  (Array.isArray(runs) && runs.length === 2 && runs[0].hits === 12) ? ok('build-13 layout: both runs survive the boot') : bad('build-13 layout: runs survive', JSON.stringify(runs).slice(0, 80));
-  // build 18 (A5): the seven keys become one versioned record; every surviving run carries the current schema stamp
-  // v18 (B.2 / B.4): the record is v2 and RUN_SCHEMA is 3 — two Timing scoring units changed, so the ladder gained a step
-  // v19 (C.5 / C.6): the record is v3 and RUN_SCHEMA is 4 — Go / No-go's units changed, so the ladder gained its second step
-  // AMENDED at build 35 (v21 F.4): the record is v4 - up4 is the ladder's third step
-  (ne && ne.v === 6 /* AMENDED at build 40: the ladder ends at v5; at build 42 at v6 (up6, L.7c) */ && Array.isArray(runs) && runs.every(r => r.v === 4)) ? ok('build-13 layout: migrated to `ne` v6, runs stamped RUN_SCHEMA 4') : bad('build-13 layout: ne v6 + run stamp', JSON.stringify({ v: ne && ne.v, stamps: runs && runs.map(r => r.v) }));
-  const left = await page.evaluate(() => ['ne.prefs', 'ne.runs', 'ne.unlock', 'ne.ach', 'ne.seen', 'ne.intro', 'ne.tileSeen'].filter(k => localStorage.getItem(k) !== null));
-  left.length === 0 ? ok('build-13 layout: the seven old keys are gone') : bad('build-13 layout: old keys removed', left.join(', '));
-  (ne && ne.unlock['dots:blind'] && ne.ach.first && ne.ach.named && ne.intro['quick-tap:two'] && ne.seen && ne.seen['game:dots']) ? ok('build-13 layout: unlocks, achievements, intros and seen carried over') : bad('build-13 layout: maps carried', JSON.stringify({ u: ne && ne.unlock, a: ne && ne.ach, i: ne && ne.intro, s: ne && ne.seen }).slice(0, 160));
-  (ne && ne.prefs.col['quick-tap'].sq === '#FFFFFF' && ne.prefs.mig35 >= 1 && ne.prefs.adRuns === 3 && ne.prefs.col.dots && ne.prefs.col.dots.sq === '#FFFFFF') ? ok('build-13 layout: prefs carried and missing games seeded - AMENDED at build 35 (F.4): the carried colour is retired to white by up4 and counted in mig35') : bad('build-13 layout: prefs carried', JSON.stringify(ne && ne.prefs).slice(0, 160));
-  await click('[data-go="s-board"]'); await sleep(400);
-  const row = await page.evaluate(() => document.querySelector('#runs tr.best td:nth-child(3)')?.textContent.trim());
-  row === '12' ? ok('build-13 layout: the Quick Tap board shows the 12-hit run first') : bad('build-13 layout: board shows the run', 'first score ' + row);
-  const name = await page.evaluate(() => document.querySelector('#pname').value);
-  name === 'AIDEN' ? ok('build-13 layout: the profile name is kept') : bad('build-13 layout: profile name', name);
-}
-const CORRUPT = { 'ne.prefs': { story: 1, played: 1, gridSeen: 1, allOpen: true, scale: 'foo', col: 42, snd: 'off', musicG: {} }, 'ne.runs': '{}', 'ne.unlock': '[]', 'ne.ach': 'null', 'ne.seen': '"x"' };
-if (await bootWith('corrupt build-13 keys (ne.runs="{}", prefs.scale="foo", prefs.col=42)', CORRUPT, 's-menu')) {
-  const p = (await getJSON('ne')).prefs;
-  p.scale === 'penta' ? ok('corrupt: prefs.scale fell back to penta') : bad('corrupt: prefs.scale fallback', String(p.scale));
-  (p.col && typeof p.col === 'object' && p.col['quick-tap']) ? ok('corrupt: prefs.col was rebuilt') : bad('corrupt: prefs.col rebuilt', JSON.stringify(p.col));
-  // Sequence reads SCALES[sel.scale] the moment a run starts — the crash site the fixture is for
-  await click('[data-go="s-pick"]'); await sleep(260); await click('.tile[data-game="sequence"]'); await sleep(260);
-  await page.evaluate(() => document.querySelector('#time-row .tbtn')?.click()); await sleep(160);
-  const before = errors.length; await click('#go-btn'); await sleep(1200);
-  ((await inGame()) && errors.length === before) ? ok('corrupt: a Sequence run starts on the fallback scale') : bad('corrupt: Sequence run starts', `${errors.length - before} error(s)`);
-  await click('#quit'); await sleep(300);
-}
-// build 18: a corrupt one-key record — every bad field falls back to its own default, the good ones stay; and the 600-run cap
-// v18 (B.2 / B.4): the ladder step. A v1 record's Timing · Stopwatch Sets and Hidden runs are in units the build no
-// longer scores in, so they retire — and nothing else does
-{
-  const OLD = { ne: { v: 1, prefs: { story: 1, played: 1, gridSeen: 1, snd: 'off', musicG: {} }, runs: [
-    { t: NOW - 1000, g: 'timing', d: 'stopwatch', s: 5, n: '', v: 2, hits: 0.31, misses: 0 },
-    { t: NOW - 2000, g: 'timing', d: 'hidden', s: 10, n: '', v: 2, hits: 210, misses: 0 },
-    { t: NOW - 3000, g: 'timing', d: 'stopwatch', s: -1, n: '', v: 2, hits: 7, misses: 0 },
-    { t: NOW - 4000, g: 'quick-tap', d: 'two', s: 5, n: '', v: 2, hits: 14, misses: 0 } ],
-    unlock: {}, ach: { tm_wall: NOW, first: NOW }, intro: {}, seen: {}, bars: { 'timing:hidden:10': NOW, 'quick-tap:two:5': NOW } } };
-  if (await bootWith('a v1 record carrying pre-build-31 Timing runs', OLD, 's-menu')) {
-    const ne = await getJSON('ne');
-    const kinds = ne.runs.map(r => r.g + ':' + r.d + ':' + r.s).sort();
-    const want = ['quick-tap:two:5', 'timing:stopwatch:-1'].join('|');
-    /* the bars and the achievement STAY: they were converted at the measured pace, not retuned, so a player who cleared
-       180px has cleared 1200ms. The RUNS go, because a stored `hits` in the old unit has nothing to be compared against. */
-    // AMENDED at build 32: the survivors come out stamped 4 in a v3 record — up3 runs after up2 and touches none of these
-    (ne.v === 6 /* AMENDED at build 40: the ladder runs on to v5; at build 42 to v6 */ && kinds.join('|') === want && ne.runs.every(r => r.v === 4) && ne.bars['timing:hidden:10'] && ne.bars['quick-tap:two:5'] && ne.ach.tm_wall && ne.ach.first)
-      ? ok('B.2 / B.4 the v1 → v2 step retires the Stopwatch Set and the Hidden run whose units changed — the Stopwatch Streak and the Quick Tap run stay, and so do the cleared bars and the achievement, because those were converted rather than retuned')
-      : bad('B.2 / B.4 the ladder step retires only the records that changed unit', JSON.stringify({ v: ne.v, kinds, bars: Object.keys(ne.bars), ach: Object.keys(ne.ach) }));
+if (section('storage fixtures')) {
+  const bootWith = async (name, storage, expectScreen) => {
+    await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
+    const before = errors.length;
+    await setStorage(storage); await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    const at = await onScreen();
+    (at === expectScreen && errors.length === before) ? ok(`${name}: boots to ${at}`) : bad(`${name}: boots to ${expectScreen}`, `on ${at}, ${errors.length - before} new error(s)`);
+    return at === expectScreen;
+  };
+  await bootWith('empty', {}, 's-menu');   // v14 (1.2): the title sequence is the menu screen wearing .story
+  const B13 = {
+    'ne.prefs': { sq: '#FFFFFF', lead: '#C8322A', bg: 'stars', tint: '', snd: 'space', music: true, musicG: {}, lastGame: 'quick-tap', name: 'AIDEN', scale: 'penta', allOpen: false, supporter: false, adRuns: 3, story: 1, played: 1, gridSeen: 1, col: { 'quick-tap': { sq: '#FFE9C4', lead: '#C8322A', cut: '#FFE9C4' } } },
+    'ne.runs': [{ t: NOW - 60000, g: 'quick-tap', d: 'two', s: 5, n: 'AIDEN', v: 13, hits: 12, misses: 1, peak: 4 }, { t: NOW - 120000, g: 'dots', d: 'blind', s: 5, n: 'AIDEN', v: 13, hits: 9, misses: 0, peak: 3 }],
+    'ne.unlock': { 'dots:blind': NOW - 120000 }, 'ne.ach': { first: NOW - 120000, named: NOW - 100000 }, 'ne.seen': { 'game:quick-tap': 1, 'game:dots': 1 }, 'ne.intro': { 'quick-tap:two': NOW - 130000 },
+  };
+  if (await bootWith('build-13 layout', B13, 's-menu')) {
+    const ne = await getJSON('ne'); const runs = ne && ne.runs;
+    (Array.isArray(runs) && runs.length === 2 && runs[0].hits === 12) ? ok('build-13 layout: both runs survive the boot') : bad('build-13 layout: runs survive', JSON.stringify(runs).slice(0, 80));
+    // build 18 (A5): the seven keys become one versioned record; every surviving run carries the current schema stamp
+    // v18 (B.2 / B.4): the record is v2 and RUN_SCHEMA is 3 — two Timing scoring units changed, so the ladder gained a step
+    // v19 (C.5 / C.6): the record is v3 and RUN_SCHEMA is 4 — Go / No-go's units changed, so the ladder gained its second step
+    // AMENDED at build 35 (v21 F.4): the record is v4 - up4 is the ladder's third step
+    (ne && ne.v === 6 /* AMENDED at build 40: the ladder ends at v5; at build 42 at v6 (up6, L.7c) */ && Array.isArray(runs) && runs.every(r => r.v === 4)) ? ok('build-13 layout: migrated to `ne` v6, runs stamped RUN_SCHEMA 4') : bad('build-13 layout: ne v6 + run stamp', JSON.stringify({ v: ne && ne.v, stamps: runs && runs.map(r => r.v) }));
+    const left = await page.evaluate(() => ['ne.prefs', 'ne.runs', 'ne.unlock', 'ne.ach', 'ne.seen', 'ne.intro', 'ne.tileSeen'].filter(k => localStorage.getItem(k) !== null));
+    left.length === 0 ? ok('build-13 layout: the seven old keys are gone') : bad('build-13 layout: old keys removed', left.join(', '));
+    (ne && ne.unlock['dots:blind'] && ne.ach.first && ne.ach.named && ne.intro['quick-tap:two'] && ne.seen && ne.seen['game:dots']) ? ok('build-13 layout: unlocks, achievements, intros and seen carried over') : bad('build-13 layout: maps carried', JSON.stringify({ u: ne && ne.unlock, a: ne && ne.ach, i: ne && ne.intro, s: ne && ne.seen }).slice(0, 160));
+    (ne && ne.prefs.col['quick-tap'].sq === '#FFFFFF' && ne.prefs.mig35 >= 1 && ne.prefs.adRuns === 3 && ne.prefs.col.dots && ne.prefs.col.dots.sq === '#FFFFFF') ? ok('build-13 layout: prefs carried and missing games seeded - AMENDED at build 35 (F.4): the carried colour is retired to white by up4 and counted in mig35') : bad('build-13 layout: prefs carried', JSON.stringify(ne && ne.prefs).slice(0, 160));
+    await click('[data-go="s-board"]'); await sleep(400);
+    const row = await page.evaluate(() => document.querySelector('#runs tr.best td:nth-child(3)')?.textContent.trim());
+    row === '12' ? ok('build-13 layout: the Quick Tap board shows the 12-hit run first') : bad('build-13 layout: board shows the run', 'first score ' + row);
+    const name = await page.evaluate(() => document.querySelector('#pname').value);
+    name === 'AIDEN' ? ok('build-13 layout: the profile name is kept') : bad('build-13 layout: profile name', name);
   }
-}
-const CORRUPT2 = { ne: { v: 1, prefs: { story: 1, played: 1, gridSeen: 1, allOpen: true, scale: 'foo', col: 42, snd: 'off', musicG: { dots: false, spot: 'yes' }, bg: '#123456', name: 12, adRuns: 'x', tint: 'red', lastGame: 'dots' }, runs: '{}', unlock: [], ach: null, intro: 'x', seen: 'x' } };
-if (await bootWith('corrupt `ne` v1 (runs="{}", col=42, bg="#123456", name=12, adRuns="x")', CORRUPT2, 's-menu')) {
-  const ne = await getJSON('ne'); const p = ne.prefs;
-  const good = p.scale === 'penta' && p.bg === 'stars' && p.tint === '' && p.name === '' && p.adRuns === 0 && p.snd === 'off' && p.lastGame === 'dots' && p.allOpen === true && p.musicG.dots === false && !('spot' in p.musicG) && p.col['quick-tap'].sq === '#FFFFFF' && Array.isArray(ne.runs) && ne.runs.length === 0 && ne.seen && typeof ne.seen === 'object' && Object.keys(ne.ach).length === 0;   // seen was corrupt → null → boot reseeded it
-  good ? ok('corrupt ne v1: each bad field fell back on its own; scale, bg, tint, name, adRuns, col, runs repaired, seen reseeded; snd, lastGame, allOpen, musicG.dots kept') : bad('corrupt ne v1: per-field fallback', JSON.stringify(ne).slice(0, 220));
-}
-const MANY = Array.from({ length: 650 }, (_, i) => ({ t: NOW - i * 1000, g: 'quick-tap', d: 'two', s: 5, n: '', v: 3, hits: 650 - i, misses: 0 }));
-if (await bootWith('650 runs in `ne`', { ne: { v: 1, prefs: { story: 1, played: 1, gridSeen: 1, snd: 'off' }, runs: MANY, unlock: {}, ach: {}, intro: {}, seen: {} } }, 's-menu')) {
-  const ne = await getJSON('ne');
-  (ne.runs.length === 600 && ne.runs[0].hits === 650) ? ok('runs are capped at 600, newest first kept') : bad('runs cap 600', `${ne.runs.length} runs, first hits ${ne.runs[0] && ne.runs[0].hits}`);
+  const CORRUPT = { 'ne.prefs': { story: 1, played: 1, gridSeen: 1, allOpen: true, scale: 'foo', col: 42, snd: 'off', musicG: {} }, 'ne.runs': '{}', 'ne.unlock': '[]', 'ne.ach': 'null', 'ne.seen': '"x"' };
+  if (await bootWith('corrupt build-13 keys (ne.runs="{}", prefs.scale="foo", prefs.col=42)', CORRUPT, 's-menu')) {
+    const p = (await getJSON('ne')).prefs;
+    p.scale === 'penta' ? ok('corrupt: prefs.scale fell back to penta') : bad('corrupt: prefs.scale fallback', String(p.scale));
+    (p.col && typeof p.col === 'object' && p.col['quick-tap']) ? ok('corrupt: prefs.col was rebuilt') : bad('corrupt: prefs.col rebuilt', JSON.stringify(p.col));
+    // Sequence reads SCALES[sel.scale] the moment a run starts — the crash site the fixture is for
+    await click('[data-go="s-pick"]'); await sleep(260); await click('.tile[data-game="sequence"]'); await sleep(260);
+    await page.evaluate(() => document.querySelector('#time-row .tbtn')?.click()); await sleep(160);
+    const before = errors.length; await click('#go-btn'); await sleep(1200);
+    ((await inGame()) && errors.length === before) ? ok('corrupt: a Sequence run starts on the fallback scale') : bad('corrupt: Sequence run starts', `${errors.length - before} error(s)`);
+    await click('#quit'); await sleep(300);
+  }
+  // build 18: a corrupt one-key record — every bad field falls back to its own default, the good ones stay; and the 600-run cap
+  // v18 (B.2 / B.4): the ladder step. A v1 record's Timing · Stopwatch Sets and Hidden runs are in units the build no
+  // longer scores in, so they retire — and nothing else does
+  {
+    const OLD = { ne: { v: 1, prefs: { story: 1, played: 1, gridSeen: 1, snd: 'off', musicG: {} }, runs: [
+      { t: NOW - 1000, g: 'timing', d: 'stopwatch', s: 5, n: '', v: 2, hits: 0.31, misses: 0 },
+      { t: NOW - 2000, g: 'timing', d: 'hidden', s: 10, n: '', v: 2, hits: 210, misses: 0 },
+      { t: NOW - 3000, g: 'timing', d: 'stopwatch', s: -1, n: '', v: 2, hits: 7, misses: 0 },
+      { t: NOW - 4000, g: 'quick-tap', d: 'two', s: 5, n: '', v: 2, hits: 14, misses: 0 } ],
+      unlock: {}, ach: { tm_wall: NOW, first: NOW }, intro: {}, seen: {}, bars: { 'timing:hidden:10': NOW, 'quick-tap:two:5': NOW } } };
+    if (await bootWith('a v1 record carrying pre-build-31 Timing runs', OLD, 's-menu')) {
+      const ne = await getJSON('ne');
+      const kinds = ne.runs.map(r => r.g + ':' + r.d + ':' + r.s).sort();
+      const want = ['quick-tap:two:5', 'timing:stopwatch:-1'].join('|');
+      /* the bars and the achievement STAY: they were converted at the measured pace, not retuned, so a player who cleared
+         180px has cleared 1200ms. The RUNS go, because a stored `hits` in the old unit has nothing to be compared against. */
+      // AMENDED at build 32: the survivors come out stamped 4 in a v3 record — up3 runs after up2 and touches none of these
+      (ne.v === 6 /* AMENDED at build 40: the ladder runs on to v5; at build 42 to v6 */ && kinds.join('|') === want && ne.runs.every(r => r.v === 4) && ne.bars['timing:hidden:10'] && ne.bars['quick-tap:two:5'] && ne.ach.tm_wall && ne.ach.first)
+        ? ok('B.2 / B.4 the v1 → v2 step retires the Stopwatch Set and the Hidden run whose units changed — the Stopwatch Streak and the Quick Tap run stay, and so do the cleared bars and the achievement, because those were converted rather than retuned')
+        : bad('B.2 / B.4 the ladder step retires only the records that changed unit', JSON.stringify({ v: ne.v, kinds, bars: Object.keys(ne.bars), ach: Object.keys(ne.ach) }));
+    }
+  }
+  const CORRUPT2 = { ne: { v: 1, prefs: { story: 1, played: 1, gridSeen: 1, allOpen: true, scale: 'foo', col: 42, snd: 'off', musicG: { dots: false, spot: 'yes' }, bg: '#123456', name: 12, adRuns: 'x', tint: 'red', lastGame: 'dots' }, runs: '{}', unlock: [], ach: null, intro: 'x', seen: 'x' } };
+  if (await bootWith('corrupt `ne` v1 (runs="{}", col=42, bg="#123456", name=12, adRuns="x")', CORRUPT2, 's-menu')) {
+    const ne = await getJSON('ne'); const p = ne.prefs;
+    const good = p.scale === 'penta' && p.bg === 'stars' && p.tint === '' && p.name === '' && p.adRuns === 0 && p.snd === 'off' && p.lastGame === 'dots' && p.allOpen === true && p.musicG.dots === false && !('spot' in p.musicG) && p.col['quick-tap'].sq === '#FFFFFF' && Array.isArray(ne.runs) && ne.runs.length === 0 && ne.seen && typeof ne.seen === 'object' && Object.keys(ne.ach).length === 0;   // seen was corrupt → null → boot reseeded it
+    good ? ok('corrupt ne v1: each bad field fell back on its own; scale, bg, tint, name, adRuns, col, runs repaired, seen reseeded; snd, lastGame, allOpen, musicG.dots kept') : bad('corrupt ne v1: per-field fallback', JSON.stringify(ne).slice(0, 220));
+  }
+  const MANY = Array.from({ length: 650 }, (_, i) => ({ t: NOW - i * 1000, g: 'quick-tap', d: 'two', s: 5, n: '', v: 3, hits: 650 - i, misses: 0 }));
+  if (await bootWith('650 runs in `ne`', { ne: { v: 1, prefs: { story: 1, played: 1, gridSeen: 1, snd: 'off' }, runs: MANY, unlock: {}, ach: {}, intro: {}, seen: {} } }, 's-menu')) {
+    const ne = await getJSON('ne');
+    (ne.runs.length === 600 && ne.runs[0].hits === 650) ? ok('runs are capped at 600, newest first kept') : bad('runs cap 600', `${ne.runs.length} runs, first hits ${ne.runs[0] && ne.runs[0].hits}`);
+  }
 }
 
 // ---- 6. challenge links ----
-console.log('\nchallenge links');
-const openChallenge = async (qs) => {
-  await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' }); await page.evaluate(() => localStorage.clear());
-  await page.goto(BASE + '/index.html' + qs, { waitUntil: 'networkidle0' }); await sleep(400);
-  for (let i = 0; i < 8 && (await page.evaluate(() => !!document.querySelector('#s-menu.story'))); i++) { await page.evaluate(() => document.body.click()); await sleep(350); }
-  await sleep(500);
-  return page.evaluate(() => { const c = document.getElementById('chal'); return { screen: document.querySelector('.screen.on')?.id, shown: !c.hidden, img: !!c.querySelector('img'), html: c.innerHTML, text: c.textContent.trim() }; });
-};
-{
-  const h = await openChallenge('?g=quick-tap&d=two&s=5&score=<img%20src=x%20onerror=alert(1)>');
-  (h.screen === 's-pick' && h.shown && !h.img && !/<img/i.test(h.html)) ? ok(`S1 hostile score lands as text: "${h.text}"`) : bad('S1 hostile score lands as text', JSON.stringify(h));
-  const n = await openChallenge('?g=quick-tap&d=two&s=5&score=31');
-  (n.screen === 's-pick' && n.text === 'A friend scored 31 — beat it') ? ok('a numeric score reads as before') : bad('a numeric score reads as before', JSON.stringify(n));
-  for (const [qs, why] of [['?g=quick-tap&d=two&s=1e308', 's=1e308'], ['?g=quick-tap&d=two&s=-5', 's=-5'], ['?g=quick-tap&d=two&s=NaN', 's=NaN'], ['?g=quick-tap&d=lead&s=5', 'd not a mode'], ['?g=nope&d=two&s=5', 'g not a game']]) {
-    const b = await openChallenge(qs);
-    (b.screen === 's-menu' && !b.shown) ? ok(`S2 ${why} is no challenge`) : bad(`S2 ${why} is no challenge`, JSON.stringify(b));
-  }
-  // a locked mode opened by the link: the run reaches the result and is never on a board or in achievements
-  const c = await openChallenge('?g=quick-tap&d=four&s=5&score=20');
-  if (c.screen === 's-pick' && c.shown) {
-    const open = await page.evaluate(() => !document.querySelector('#diff-row .choice[data-diff="four"]').classList.contains('locked'));
-    open ? ok('S2 the link opens Four for this visit') : bad('S2 the link opens Four for this visit');
-    await click('#go-btn');
-    const at = await driveToResult('quick-tap', 'challenge run', 30000);
-    if (at === 's-over') {
-      const ne = await getJSON('ne'), runs = ne && ne.runs, ach = ne && ne.ach, r = await resultLine();
-      (!runs || runs.length === 0) ? ok(`S2 challenge run is not on the board (chal:1) · "${r.score}" · ${r.rank}`) : bad('S2 challenge run is not on the board', JSON.stringify(runs).slice(0, 80));
-      (!ach || !ach.first) ? ok('S2 challenge run earns no achievement') : bad('S2 challenge run earns no achievement', JSON.stringify(ach));
+if (section('challenge links')) {
+  const openChallenge = async (qs) => {
+    await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' }); await page.evaluate(() => localStorage.clear());
+    await page.goto(BASE + '/index.html' + qs, { waitUntil: 'networkidle0' }); await sleep(400);
+    for (let i = 0; i < 8 && (await page.evaluate(() => !!document.querySelector('#s-menu.story'))); i++) { await page.evaluate(() => document.body.click()); await sleep(350); }
+    await sleep(500);
+    return page.evaluate(() => { const c = document.getElementById('chal'); return { screen: document.querySelector('.screen.on')?.id, shown: !c.hidden, img: !!c.querySelector('img'), html: c.innerHTML, text: c.textContent.trim() }; });
+  };
+  {
+    const h = await openChallenge('?g=quick-tap&d=two&s=5&score=<img%20src=x%20onerror=alert(1)>');
+    (h.screen === 's-pick' && h.shown && !h.img && !/<img/i.test(h.html)) ? ok(`S1 hostile score lands as text: "${h.text}"`) : bad('S1 hostile score lands as text', JSON.stringify(h));
+    const n = await openChallenge('?g=quick-tap&d=two&s=5&score=31');
+    (n.screen === 's-pick' && n.text === 'A friend scored 31 — beat it') ? ok('a numeric score reads as before') : bad('a numeric score reads as before', JSON.stringify(n));
+    for (const [qs, why] of [['?g=quick-tap&d=two&s=1e308', 's=1e308'], ['?g=quick-tap&d=two&s=-5', 's=-5'], ['?g=quick-tap&d=two&s=NaN', 's=NaN'], ['?g=quick-tap&d=lead&s=5', 'd not a mode'], ['?g=nope&d=two&s=5', 'g not a game']]) {
+      const b = await openChallenge(qs);
+      (b.screen === 's-menu' && !b.shown) ? ok(`S2 ${why} is no challenge`) : bad(`S2 ${why} is no challenge`, JSON.stringify(b));
     }
-  } else bad('challenge link opens a locked mode sheet', JSON.stringify(c));
+    // a locked mode opened by the link: the run reaches the result and is never on a board or in achievements
+    const c = await openChallenge('?g=quick-tap&d=four&s=5&score=20');
+    if (c.screen === 's-pick' && c.shown) {
+      const open = await page.evaluate(() => !document.querySelector('#diff-row .choice[data-diff="four"]').classList.contains('locked'));
+      open ? ok('S2 the link opens Four for this visit') : bad('S2 the link opens Four for this visit');
+      await click('#go-btn');
+      const at = await driveToResult('quick-tap', 'challenge run', 30000);
+      if (at === 's-over') {
+        const ne = await getJSON('ne'), runs = ne && ne.runs, ach = ne && ne.ach, r = await resultLine();
+        (!runs || runs.length === 0) ? ok(`S2 challenge run is not on the board (chal:1) · "${r.score}" · ${r.rank}`) : bad('S2 challenge run is not on the board', JSON.stringify(runs).slice(0, 80));
+        (!ach || !ach.first) ? ok('S2 challenge run earns no achievement') : bad('S2 challenge run earns no achievement', JSON.stringify(ach));
+      }
+    } else bad('challenge link opens a locked mode sheet', JSON.stringify(c));
+  }
 }
 
 // ---- 6b. the side screens (v14 section 8) ----
-console.log('\nside screens (v14 section 8)');
-{
+if (section('side screens (v14 section 8)')) {
   await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
   // a brand-new profile: everything unseen, which is what 8.7 broke. AMENDED at build 40 (v23 L.11a): Customise opens with the Games
   // chest, so the new profile has that one chest open and nothing else
@@ -678,13 +749,11 @@ console.log('\nside screens (v14 section 8)');
 }
 
 // ---- 6c. the key (v14 section 9 / C.5 / C.6 / C.7, build 22) ----
-console.log('\nthe key (v14 section 9)');
-{
-  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+if (section('the key (v14 section 9)')) {
   const { KEY_BARS } = await import(pathToFileURL(path.join(root, 'config', 'key-bars.js')).href);
   // C.5: the list is BUILT, never listed. A literal count or an array of ids in the CODE means a new mode would not join
   // the key. Comments come off first — the header is allowed to say what 31 is made of, the code is not allowed to know it
-  const src = fs.readFileSync(path.join(root, 'progress', 'key.js'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
+  const src = read('progress', 'key.js').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
   (!/\b31\b/.test(src) && !/['"]quick-tap:/.test(src)) ? ok('C.5 progress/key.js hard-codes neither 31 nor a list of combinations') : bad('C.5 the contributor list must come from GAMES + SET_COPY');
   await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
   await setStorage({ 'ne.prefs': OPEN_PREFS }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(500);
@@ -741,9 +810,7 @@ console.log('\nthe key (v14 section 9)');
 }
 
 // ---- 6d. the chain (v15 section 1) and the screens that carry it (v15 section 2), build 23 ----
-console.log('\nthe chain and its screens (v15 sections 1 and 2)');
-{
-  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+if (section('the chain and its screens (v15 sections 1 and 2)')) {
   const { LEN_RULES, UNLOCKS: U } = await import(pathToFileURL(path.join(root, 'config', 'unlocks.js')).href);
   const { GAMES: GT } = await import(pathToFileURL(path.join(root, 'config', 'games.js')).href);
   const { ACH } = await import(pathToFileURL(path.join(root, 'config', 'achievements.js')).href);
@@ -756,8 +823,8 @@ console.log('\nthe chain and its screens (v15 sections 1 and 2)');
     (a && a.tier === 'secret' && a.hint && a.g === 'hold') ? ok(`1.5 hd_max "${a.name}" is a secret Estimate row with a hint`) : bad('1.5 the new Estimate · Grow achievement', JSON.stringify(a)); }
   // 2.5 static: the earning moved OUT of the result screen's ad-break callback and INTO the run. If it ever moves back,
   // an achievement earned on a run the player leaves before the ad clears is lost again, silently
-  { const rs = fs.readFileSync(path.join(root, 'ui', 'screens', 'result.js'), 'utf8');
-    const rn = fs.readFileSync(path.join(root, 'run', 'run.js'), 'utf8');
+  { const rs = read('ui', 'screens', 'result.js');
+    const rn = read('run', 'run.js');
     const clean = /checkUnlocks|checkAch\(/.test(rs) === false;
     const banks = /checkUnlocks\(run\)/.test(rn) && /checkAch\(run\)/.test(rn) && rn.indexOf('checkUnlocks(run)') < rn.indexOf("emit('run:finish'");
     const onAbort = /function abort\(\)[\s\S]{0,400}liveCheck\(/.test(rn);
@@ -892,10 +959,8 @@ console.log('\nthe chain and its screens (v15 sections 1 and 2)');
 }
 
 // ---- 6e. the runs (v15 section 3), build 24 ----
-console.log('\nthe runs (v15 section 3)');
-{
-  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const css = fs.readFileSync(path.join(root, 'styles', 'app.css'), 'utf8');
+if (section('the runs (v15 section 3)')) {
+  const css = read('styles', 'app.css');
   // 3.12: a glow, not a solid line. The old rule is the thing that must be gone, so test for its absence too
   { const rule = (css.match(/#game\.pturn::after\{[^}]*\}/) || [''])[0];
     const glow = /box-shadow:\s*inset/.test(rule), solid = /border:\s*\d+px solid/.test(rule);
@@ -979,14 +1044,11 @@ console.log('\nthe runs (v15 section 3)');
 }
 
 // ---- 6f. the keys, the surface, and the three two-player defects (v15 section 5 and section 6, #375), build 26 ----
-console.log('\nthe keys, the surface and #375 (v15 sections 5 and 6)');
-{
-  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const strip = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
-  const rx = strip(fs.readFileSync(path.join(root, 'games', 'reaction', 'index.js'), 'utf8'));
-  const sq = strip(fs.readFileSync(path.join(root, 'games', 'sequence', 'index.js'), 'utf8'));
-  const css = fs.readFileSync(path.join(root, 'styles', 'app.css'), 'utf8');
-  const mjs = strip(fs.readFileSync(path.join(root, 'ui', 'screens', 'menu.js'), 'utf8'));
+if (section('the keys, the surface and #375 (v15 sections 5 and 6)')) {
+  const rx = strip(read('games', 'reaction', 'index.js'));
+  const sq = strip(read('games', 'sequence', 'index.js'));
+  const css = read('styles', 'app.css');
+  const mjs = strip(read('ui', 'screens', 'menu.js'));
   const cfg = await import(pathToFileURL(path.join(root, 'config', 'games.js')).href);
 
   /* #375a: PASS_TURNS['reaction:nogo'][0] was dead config - beat() ended a block on this.ctx.len, the Set's own round
@@ -1018,7 +1080,7 @@ console.log('\nthe keys, the surface and #375 (v15 sections 5 and 6)');
   { const two = /this\.seqs=vs\?\[this\.deal\(this\.round\),this\.deal\(this\.round\)\]/.test(sq);
     const own = /if\(vs\) this\.seq=this\.seqs\[this\.p\]/.test(sq);
     const grow = /this\.seqs\[0\]\.push\([\s\S]{0,40}?this\.seqs\[1\]\.push\(/.test(sq);
-    const lives = /lives:3/.test(fs.readFileSync(path.join(root, 'config', 'games.js'), 'utf8'));
+    const lives = /lives:3/.test(read('config', 'games.js'));
     (two && own && grow) ? ok('#375c Sequence versus deals each player their own pattern of equal length, and both grow together')
       : bad('#375c each player gets their own pattern', `dealt ${two} · picked ${own} · grown ${grow}`);
     lives ? ok('#375c SEQ_VS.lives is still 3 — untouched, it is Aiden\'s on #376') : bad('#375c SEQ_VS.lives must not change on this build', 'it is not 3'); }
@@ -1169,8 +1231,7 @@ console.log('\nthe keys, the surface and #375 (v15 sections 5 and 6)');
 }
 
 // ---- 7. every button action once (build 15: ui/actions.js dispatches on data-act) ----
-console.log('\nbutton actions (every data-act at least once)');
-{
+if (section('button actions (every data-act at least once)')) {
   const seen = new Set();
   const tap = async (sel, label) => {
     const before = errors.length;
@@ -1260,8 +1321,7 @@ console.log('\nbutton actions (every data-act at least once)');
 }
 
 /* ---- 8. build 27 (v16): the Timing unlock, the music engine, Find versus, the intro ---- */
-console.log('\nbuild 27 — v16');
-{
+if (section('build 27 — v16')) {
   await setStorage({ 'ne.prefs': OPEN_PREFS }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
 
   /* §1: every track plans. `plan` is the one arrangement engine — the review catalogue plays its output rather than
@@ -1391,14 +1451,12 @@ console.log('\nbuild 27 — v16');
 
 
 /* ---- 9. build 28 (v17 §B.1-§B.18): the chain and the scoring ---- */
-console.log('\nbuild 28 - v17 sections B.1 to B.18');
-{
-  const root28 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const G28 = await import(pathToFileURL(path.join(root28, 'config', 'games.js')).href);
-  const U28 = await import(pathToFileURL(path.join(root28, 'config', 'unlocks.js')).href);
-  const A28 = await import(pathToFileURL(path.join(root28, 'config', 'achievements.js')).href);
-  const C28 = await import(pathToFileURL(path.join(root28, 'config', 'copy.js')).href);
-  const KB28 = await import(pathToFileURL(path.join(root28, 'config', 'key-bars.js')).href);
+if (section('build 28 - v17 sections B.1 to B.18')) {
+  const G28 = await import(pathToFileURL(path.join(root, 'config', 'games.js')).href);
+  const U28 = await import(pathToFileURL(path.join(root, 'config', 'unlocks.js')).href);
+  const A28 = await import(pathToFileURL(path.join(root, 'config', 'achievements.js')).href);
+  const C28 = await import(pathToFileURL(path.join(root, 'config', 'copy.js')).href);
+  const KB28 = await import(pathToFileURL(path.join(root, 'config', 'key-bars.js')).href);
 
   // ---- B.9: five keys is gone from every table that could still offer it ----
   {
@@ -1415,10 +1473,9 @@ console.log('\nbuild 28 - v17 sections B.1 to B.18');
   }
   // B.9: no literal 31 survives anywhere the count is stated
   {
-    const strip28 = x => x.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
     // build 29: unlocks.js is the Unlocks TAB of ui/screens/progress.js now (B.21), and it is still one of the four
     const files = ['progress/key.js', 'ui/screens/key.js', 'ui/screens/progress.js', 'ui/screens/menu.js'];
-    const hits = files.filter(f => /\b31\b|thirty-one/i.test(strip28(fs.readFileSync(path.join(root28, f), 'utf8'))));
+    const hits = files.filter(f => /\b31\b|thirty-one/i.test(strip(read(f))));
     hits.length ? bad('B.9 no literal 31 in the code that prints the count', hits.join(', '))
       : ok(`B.9 the count is read from the config in all ${files.length} files that print it - none of them knows a number`);
   }
@@ -1613,7 +1670,7 @@ console.log('\nbuild 28 - v17 sections B.1 to B.18');
   // ---- B.15: the Spot ramp. The crowd is the difficulty, not the clock ----
   {
     const R = G28.SPOT_RAMP;
-    const kp = fs.readFileSync(path.join(root28, 'games', 'spot', 'index.js'), 'utf8');
+    const kp = read('games', 'spot', 'index.js');
     const padFromCap = /length:\s*SPOT_RAMP\.nCap\s*\+\s*1/.test(kp);
     padFromCap ? ok(`B.15 the keypad is built from SPOT_RAMP.nCap (${R.nCap}), so the band can never deal a count the player cannot answer`)
       : bad('B.15 the keypad must read the cap', 'it carries its own length');
@@ -1747,7 +1804,7 @@ console.log('\nbuild 28 - v17 sections B.1 to B.18');
 
   // ---- B.2 / B.3: the Estimate round result ----
   {
-    const src = fs.readFileSync(path.join(root28, 'games', 'estimate', 'index.js'), 'utf8');
+    const src = read('games', 'estimate', 'index.js');
     const flat = src.replace(/\/\*[\s\S]*?\*\//g, '');
     const iRes = flat.indexOf("$('#hres')"), iDiff = flat.indexOf("$('#hdiff')", flat.indexOf('chain.then'));
     (iRes > 0 && iDiff > 0 && iRes < iDiff) ? ok('B.2 the round result shows HIS % first, then the difference, then the 800ms hold, then the drain')
@@ -1765,15 +1822,13 @@ console.log('\nbuild 28 - v17 sections B.1 to B.18');
 }
 
 /* ---- 10. build 29 (v17 §B.19–§B.26): the front of the app ---- */
-console.log('\nbuild 29 - v17 sections B.19 to B.26');
-{
-  const root29 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const V29 = await import(pathToFileURL(path.join(root29, 'config', 'verdicts.js')).href);
-  const AU29 = await import(pathToFileURL(path.join(root29, 'config', 'audio.js')).href);
-  const TH29 = await import(pathToFileURL(path.join(root29, 'config', 'theme.js')).href);
-  const C29 = await import(pathToFileURL(path.join(root29, 'config', 'copy.js')).href);
-  const html29 = fs.readFileSync(path.join(root29, 'index.html'), 'utf8');
-  const css29 = fs.readFileSync(path.join(root29, 'styles', 'app.css'), 'utf8');
+if (section('build 29 - v17 sections B.19 to B.26')) {
+  const V29 = await import(pathToFileURL(path.join(root, 'config', 'verdicts.js')).href);
+  const AU29 = await import(pathToFileURL(path.join(root, 'config', 'audio.js')).href);
+  const TH29 = await import(pathToFileURL(path.join(root, 'config', 'theme.js')).href);
+  const C29 = await import(pathToFileURL(path.join(root, 'config', 'copy.js')).href);
+  const html29 = read('index.html');
+  const css29 = read('styles', 'app.css');
 
   // ---- B.20: the first-run menu line is gone from the markup AND from the copy, not merely unrendered ----
   {
@@ -1796,7 +1851,7 @@ console.log('\nbuild 29 - v17 sections B.19 to B.26');
     (m.prog && !m.old && m.custom && m.items.includes('Progress') && !m.items.includes('Unlocks') && !m.items.includes('Achievements') && m.items.includes('Customise') && m.tabs.join() === 'unl,cul,ach')
       ? ok(`B.21 / B.31 one menu item - ${m.items.join(' · ')} - with tabs ${m.tabs.join(' / ')}, Game unlocks first (2.2)`)
       : bad('B.21 / B.31 Unlocks, Customise and Achievements are one item with three tabs', JSON.stringify(m));
-    const files = fs.readdirSync(path.join(root29, 'ui', 'screens'));
+    const files = fs.readdirSync(path.join(root, 'ui', 'screens'));
     (!files.includes('unlocks.js') && !files.includes('achievements.js') && files.includes('progress.js'))
       ? ok('B.21 one screen file, not a host importing two (A4)') : bad('B.21 the two screen files are merged', files.join(', '));
   }
@@ -1942,7 +1997,7 @@ console.log('\nbuild 29 - v17 sections B.19 to B.26');
     // the old five-line table is gone from copy.js, not left behind to be read by accident
     (C29.VERDICTS === undefined) ? ok('B.25 the old five-line VERDICTS is out of config/copy.js') : bad('B.25 two verdict tables', 'copy.js still exports VERDICTS');
     // L4: light blue and red are the player colours, and the tiers use them - which is exactly why the colours are solo only
-    const P = await import(pathToFileURL(path.join(root29, 'config', 'theme.js')).href);
+    const P = await import(pathToFileURL(path.join(root, 'config', 'theme.js')).href);
     const clash = V29.VERDICT_TIERS.filter(t => t.col === P.P1C || t.col === P.P2C).map(t => t.id);
     (clash.length === 2) ? ok(`B.25 / L4 ${clash.join(' and ')} ARE the player colours - which is why the tier colour is solo only`)
       : ok('B.25 the tier colours do not collide with the player colours');
@@ -1973,8 +2028,8 @@ console.log('\nbuild 29 - v17 sections B.19 to B.26');
   }
   // ---- B.26: the review catalogue reads the same table, and prints the lines, the colours and the sounds ----
   {
-    const gen = fs.readFileSync(path.resolve(root29, '..', '_review', 'scripts', 'catalogue.mjs'), 'utf8');
-    const tpl = fs.readFileSync(path.resolve(root29, '..', '_review', 'scripts', 'catalogue.template.html'), 'utf8');
+    const gen = fs.readFileSync(path.resolve(root, '..', '_review', 'scripts', 'catalogue.mjs'), 'utf8');
+    const tpl = fs.readFileSync(path.resolve(root, '..', '_review', 'scripts', 'catalogue.template.html'), 'utf8');
     const reads = /config\/verdicts\.js/.test(gen) && /verdicts/.test(gen);
     const prints = /id="verdicts"/.test(tpl) && /verd-host/.test(tpl) && /REF\.verdicts/.test(tpl);
     (reads && prints) ? ok('B.26 the catalogue reads config/verdicts.js out of the running app and prints a section per game')
@@ -1983,14 +2038,12 @@ console.log('\nbuild 29 - v17 sections B.19 to B.26');
 }
 
 /* ---- 11. build 30 (v17 §B.27–§B.33): music and sound ---- */
-console.log('\nbuild 30 - v17 sections B.27 to B.33');
-{
-  const root30 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const AU30 = await import(pathToFileURL(path.join(root30, 'config', 'audio.js')).href);
-  const KY30 = await import(pathToFileURL(path.join(root30, 'config', 'keys.js')).href);
-  const G30 = await import(pathToFileURL(path.join(root30, 'config', 'games.js')).href);
-  const css30 = fs.readFileSync(path.join(root30, 'styles', 'app.css'), 'utf8');
-  const keyjs30 = fs.readFileSync(path.join(root30, 'ui', 'screens', 'key.js'), 'utf8');
+if (section('build 30 - v17 sections B.27 to B.33')) {
+  const AU30 = await import(pathToFileURL(path.join(root, 'config', 'audio.js')).href);
+  const KY30 = await import(pathToFileURL(path.join(root, 'config', 'keys.js')).href);
+  const G30 = await import(pathToFileURL(path.join(root, 'config', 'games.js')).href);
+  const css30 = read('styles', 'app.css');
+  const keyjs30 = read('ui', 'screens', 'key.js');
   const G7 = ['quick-tap', 'dots', 'hold', 'sequence', 'timing', 'reaction', 'spot'];
 
   /* ---- B.29: a run's music is arranged to the run. Two properties, and they are the whole of the item: a known
@@ -2023,7 +2076,7 @@ console.log('\nbuild 30 - v17 sections B.27 to B.33');
      clock, and the run reaches its result with no error. The round-based half (Set: final round, Streak: 80% of the
      budget) is build 27's `fin` and is untouched; Sequence gets no ramp at all and the static check below says so. */
   {
-    const src = fs.readFileSync(path.join(root30, 'audio.js'), 'utf8');
+    const src = read('audio.js');
     const hasMap = /function finPlan/.test(src) && /endAudio/.test(src) && /!st\.live\|\|!st\.end/.test(src.replace(/\s/g, ''));
     // Sequence answers no `fin` at all, so the round-based ramp cannot reach it either - it has nothing to count down to
     const seqFin = await page.evaluate(async () => { const S = (await import('./games/sequence/index.js')).default; return typeof S.fin === 'function' ? S.fin() : 'none'; });
@@ -2079,7 +2132,7 @@ console.log('\nbuild 30 - v17 sections B.27 to B.33');
     (!offC.length && Math.max(...top) < 261.6) ? ok(`B.30 every Sequence track is C and G only and tops out at ${Math.round(Math.max(...top))}Hz - under the keys' own C4, which is what "they confuse the user" was`)
       : bad('B.30 Sequence sits under the keys', JSON.stringify({ offC, top }));
     // the duck is one rule in one place, and it only ever fires under a Sequence track
-    const src = fs.readFileSync(path.join(root30, 'audio.js'), 'utf8');
+    const src = read('audio.js');
     (/duckHook/.test(src) && /mode!=='sequence'/.test(src) && AU30.DUCK > 0 && AU30.DUCK < 1)
       ? ok(`B.30 the bed ducks to ${Math.round(AU30.DUCK * 100)}% while a key rings, Sequence only`) : bad('B.30 Sequence ducks its own music');
     // the end cadence is in the track's key, and with no track it is the sound it always was
@@ -2254,8 +2307,8 @@ console.log('\nbuild 30 - v17 sections B.27 to B.33');
   }
   /* ---- the review catalogue plays what a run plays (B.29 / B.27 / B.31) ---- */
   {
-    const gen = fs.readFileSync(path.resolve(root30, '..', '_review', 'scripts', 'catalogue.mjs'), 'utf8');
-    const tpl = fs.readFileSync(path.resolve(root30, '..', '_review', 'scripts', 'catalogue.template.html'), 'utf8');
+    const gen = fs.readFileSync(path.resolve(root, '..', '_review', 'scripts', 'catalogue.mjs'), 'utf8');
+    const tpl = fs.readFileSync(path.resolve(root, '..', '_review', 'scripts', 'catalogue.template.html'), 'utf8');
     // AMENDED at build 42 (v23 L.7e): the key themes are read out of KEY_THEMES, not named
     const reads = /\{ *long: *1 *\}/.test(gen) && /\{ *run:/.test(gen) && /\{ *flow: *1 *\}/.test(gen) && /AU\.KEY_THEMES/.test(gen);
     const plays = /hold > 0/.test(tpl) && /createBiquadFilter/.test(tpl) && /what a run plays/.test(tpl);
@@ -2265,18 +2318,16 @@ console.log('\nbuild 30 - v17 sections B.27 to B.33');
 }
 
 /* ---- 12. build 31 (v18 §B.1–§B.14): the runs ---- */
-console.log('\nbuild 31 - v18 sections B.1 to B.14');
-{
-  const root31 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const UN31 = await import(pathToFileURL(path.join(root31, 'config', 'unlocks.js')).href);
-  const AU31 = await import(pathToFileURL(path.join(root31, 'config', 'audio.js')).href);
-  const G31 = await import(pathToFileURL(path.join(root31, 'config', 'games.js')).href);
-  const KB31 = await import(pathToFileURL(path.join(root31, 'config', 'key-bars.js')).href);
-  const VD31 = await import(pathToFileURL(path.join(root31, 'config', 'verdicts.js')).href);
-  const rx31 = fs.readFileSync(path.join(root31, 'games', 'reaction', 'index.js'), 'utf8');
-  const tm31 = fs.readFileSync(path.join(root31, 'games', 'timing', 'index.js'), 'utf8');
-  const run31 = fs.readFileSync(path.join(root31, 'run', 'run.js'), 'utf8');
-  const pg31 = fs.readFileSync(path.join(root31, 'progress.js'), 'utf8');
+if (section('build 31 - v18 sections B.1 to B.14')) {
+  const UN31 = await import(pathToFileURL(path.join(root, 'config', 'unlocks.js')).href);
+  const AU31 = await import(pathToFileURL(path.join(root, 'config', 'audio.js')).href);
+  const G31 = await import(pathToFileURL(path.join(root, 'config', 'games.js')).href);
+  const KB31 = await import(pathToFileURL(path.join(root, 'config', 'key-bars.js')).href);
+  const VD31 = await import(pathToFileURL(path.join(root, 'config', 'verdicts.js')).href);
+  const rx31 = read('games', 'reaction', 'index.js');
+  const tm31 = read('games', 'timing', 'index.js');
+  const run31 = read('run', 'run.js');
+  const pg31 = read('progress.js');
 
   /* ---- B.8: a LENGTH rung may only be judged mid-run when its test can only become MORE true. The Flash Streak rung
      is "a Set averaging over 500ms" and Reaction emits its running average as `hits`, so one slow attempt made it true
@@ -2403,7 +2454,7 @@ console.log('\nbuild 31 - v18 sections B.1 to B.14');
       ? ok(`B.3c / B.7 the round’s figure holds ${G31.CFG.hold}ms before it drains — one number, Timing and Reaction on the same beat`)
       : bad('B.3c / B.7 the hold before the drain', 'CFG.hold ' + G31.CFG.hold);
     // B.3d / B.13: every Streak says what it is spending and what the budget is, and the Stopwatch score is the spend
-    (/spentOf:'\{tot\} \/ \{bud\}s'/.test(fs.readFileSync(path.join(root31, 'config', 'copy.js'), 'utf8'))
+    (/spentOf:'\{tot\} \/ \{bud\}s'/.test(read('config', 'copy.js'))
       && /streakScore\(\)\{ return this\.hid\(\)\?String\(this\.errs\.length\):this\.spentLine\(\); \}/.test(tm31))
       ? ok('B.3d the Stopwatch Streak’s big number is the time spent out of the budget, not the round "attempt N" already names')
       : bad('B.3d the Streak score is the spend');
@@ -2431,7 +2482,7 @@ console.log('\nbuild 31 - v18 sections B.1 to B.14');
 
   /* ---- B.6: the Flash Set scores a slow attempt instead of throwing it away ---- */
   {
-    const cp31 = fs.readFileSync(path.join(root31, 'config', 'copy.js'), 'utf8');
+    const cp31 = read('config', 'copy.js');
     const gone = !/\bslow:'too slow'/.test(cp31) && !/again:'try again/.test(cp31) && !/fault\(msg\)/.test(rx31);
     gone ? ok('B.6 "too slow" and "try again · attempt N of 5" are gone with the retake — fault() has no callers and no copy')
       : bad('B.6 the Flash Set has no retake');
@@ -2455,7 +2506,7 @@ console.log('\nbuild 31 - v18 sections B.1 to B.14');
     const tiers = VD31.VERDICT_TIERS.map(t => t.id);
     const rounds = Object.keys(VD31.ROUND_AT);
     const fxOk = tiers.every(id => (AU31.VERDICT_FX[id] || []).length) && Object.keys(AU31.VERDICT_FX).length === tiers.length;
-    const audio31 = fs.readFileSync(path.join(root31, 'audio.js'), 'utf8');
+    const audio31 = read('audio.js');
     const noPerGame = /verdict\(id\)\{[^}]*VERDICT_FX\[id\]/.test(audio31) && !/VERDICT_FX\[[^\]]*g\s*\+/.test(audio31);
     (fxOk && noPerGame) ? ok(`B.11 one sound set for every game — ${tiers.join(', ')} in VERDICT_FX, and audio.js keys it by tier alone with nothing per game`)
       : bad('B.11 the tier sounds are one standard set', JSON.stringify({ fxOk, noPerGame }));
@@ -2490,8 +2541,8 @@ console.log('\nbuild 31 - v18 sections B.1 to B.14');
 
   /* ---- B.12: an unlock toast goes there ---- */
   {
-    const toast31 = fs.readFileSync(path.join(root31, 'ui', 'toast.js'), 'utf8');
-    const res31 = fs.readFileSync(path.join(root31, 'ui', 'screens', 'result.js'), 'utf8');
+    const toast31 = read('ui', 'toast.js');
+    const res31 = read('ui', 'screens', 'result.js');
     const passes = /\[unlockToast\(u\.key\),'','ok',false,u\.key\]/.test(res31);
     const midRun = /toast\(unlockToast\(x\.key\),'','ok'\)/.test(run31) && !/toast\(unlockToast\(x\.key\),'','ok',[^)]/.test(run31);
     (/dataset\.goto/.test(toast31) && /unlockWhere/.test(toast31) && passes && midRun)
@@ -2526,19 +2577,15 @@ console.log('\nbuild 31 - v18 sections B.1 to B.14');
 }
 
 /* ---- 13. build 32 (v19 §C, v18 §B.15–§B.27): Go / No-go's dealing and scoring, the three tiers, the chests ---- */
-console.log('\nbuild 32 - v19 section C and v18 sections B.15 to B.27');
-{
-  const root32 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const read32 = (...p) => fs.readFileSync(path.join(root32, ...p), 'utf8');
-  const rx32 = read32('games', 'reaction', 'index.js'), keyjs32 = read32('ui', 'screens', 'key.js'), css32 = read32('styles', 'app.css');
-  const store32 = read32('core', 'store.js'), run32 = read32('run', 'run.js'), pkjs32 = read32('progress', 'key.js'), pick32 = read32('ui', 'screens', 'pick.js');
-  const tpl32 = read32('..', '_review', 'scripts', 'catalogue.template.html'), cat32 = read32('..', '_review', 'scripts', 'catalogue.mjs');
-  const G32 = await import(pathToFileURL(path.join(root32, 'config', 'games.js')).href);
-  const KB32 = await import(pathToFileURL(path.join(root32, 'config', 'key-bars.js')).href);
-  const KY32 = await import(pathToFileURL(path.join(root32, 'config', 'keys.js')).href);
-  const CP32 = await import(pathToFileURL(path.join(root32, 'config', 'copy.js')).href);
-  const B32 = await import(pathToFileURL(path.join(root32, 'config', 'build.js')).href);
-  const strip32 = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
+if (section('build 32 - v19 section C and v18 sections B.15 to B.27')) {
+  const rx32 = read('games', 'reaction', 'index.js'), keyjs32 = read('ui', 'screens', 'key.js'), css32 = read('styles', 'app.css');
+  const store32 = read('core', 'store.js'), run32 = read('run', 'run.js'), pkjs32 = read('progress', 'key.js'), pick32 = read('ui', 'screens', 'pick.js');
+  const tpl32 = read('..', '_review', 'scripts', 'catalogue.template.html'), cat32 = read('..', '_review', 'scripts', 'catalogue.mjs');
+  const G32 = await import(pathToFileURL(path.join(root, 'config', 'games.js')).href);
+  const KB32 = await import(pathToFileURL(path.join(root, 'config', 'key-bars.js')).href);
+  const KY32 = await import(pathToFileURL(path.join(root, 'config', 'keys.js')).href);
+  const CP32 = await import(pathToFileURL(path.join(root, 'config', 'copy.js')).href);
+  const B32 = await import(pathToFileURL(path.join(root, 'config', 'build.js')).href);
   const svgClick = sel => page.evaluate(s => { const el = document.querySelector(s); if (!el) return false; el.dispatchEvent(new MouseEvent('click', { bubbles: true })); return true; }, sel);
 
   /* ---- §C statically: the gate, the budget, the gaps, the dwell, the five shapes, the units ---- */
@@ -2556,7 +2603,7 @@ console.log('\nbuild 32 - v19 section C and v18 sections B.15 to B.27');
     (Object.keys(G32.SHAPE_WORD).length === 5 && /\.rxshape\.diamond\{/.test(css32) && /\.rxshape\.hex\{/.test(css32) && /#rxbar i\.diamond/.test(css32) && /\.rxrule i\.hex/.test(css32))
       ? ok(`C.3 five shapes in SHAPE_WORD (${Object.keys(G32.SHAPE_WORD).join(', ')}), each drawn on the pane, the rule bar and the rule line`)
       : bad('C.3 five shapes', Object.keys(G32.SHAPE_WORD).join(','));
-    const s32 = strip32(rx32);
+    const s32 = strip(rx32);
     (/gated\(ms\)\{ return Math\.max\(0,ms-this\.NOGO_FREE\); \}/.test(s32) && /const add=this\.gated\(ms\); if\(this\.streak\(\)\) this\.over\+=add;/.test(s32) && /const all=this\.gatedAll\(\);/.test(s32) && !/this\.beatMs\(\)\)\.fill|fill\(this\.beatMs\(\)\)/.test(s32))
       ? ok('C.5 every tap goes through gated() — Streak spend and Set mean alike — and a skipped target is charged the dwell it was given')
       : bad('C.5 the gate is one function on both lengths');
@@ -2883,18 +2930,15 @@ console.log('\nbuild 32 - v19 section C and v18 sections B.15 to B.27');
 }
 
 /* ---- 14. build 33 (v18 §B.28–§B.32): the surface ---- */
-console.log('\nbuild 33 - v18 sections B.28 to B.32');
-{
-  const root33 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const read33 = (...p) => fs.readFileSync(path.join(root33, ...p), 'utf8');
-  const html33 = read33('index.html'), css33 = read33('styles', 'app.css'), audio33 = read33('audio.js');
-  const prog33 = read33('ui', 'screens', 'progress.js') + read33('ui', 'screens', 'customise.js'), store33 = read33('core', 'store.js');   // build 39: Customise's code is its own file again
+if (section('build 33 - v18 sections B.28 to B.32')) {
+  const html33 = read('index.html'), css33 = read('styles', 'app.css'), audio33 = read('audio.js');
+  const prog33 = read('ui', 'screens', 'progress.js') + read('ui', 'screens', 'customise.js'), store33 = read('core', 'store.js');   // build 39: Customise's code is its own file again
 
   /* ---- B.31: ONE screen, three tabs, one file. A4 forbids a screen importing a screen, so a tab host that called
      into customise.js would be the thing it forbids — this is the merge, and the file it replaced is gone. ---- */
   {
-    const gone = fs.existsSync(path.join(root33, 'ui', 'screens', 'customise.js'));   // AMENDED at build 39 (v23 L.4a): the file is back
-    const idx = read33('ui', 'screens', 'index.js');
+    const gone = fs.existsSync(path.join(root, 'ui', 'screens', 'customise.js'));   // AMENDED at build 39 (v23 L.4a): the file is back
+    const idx = read('ui', 'screens', 'index.js');
     const markup = { custom: /id="s-custom"/.test(html33), row: /data-go="s-custom"/.test(html33), cus: /id="p-cus"/.test(html33) };
     (gone && /customise\.js"/.test(idx) && markup.custom && markup.row && !markup.cus)
       ? ok('B.31 AMENDED (v23 L.4a): customise.js is back and imported, s-custom and its menu row exist, and no #p-cus is left on s-prog')
@@ -3007,8 +3051,8 @@ console.log('\nbuild 33 - v18 sections B.28 to B.32');
     !off.length ? ok(`B.32 no font request left the origin in ${reqs.length} requests — Google Fonts is gone`) : bad('B.32 a font request left the origin', [...new Set(off)].join(', '));
     const faces = [...css33.matchAll(/@font-face\{font-family:"([^"]+)";font-style:normal;font-weight:(\d+);font-display:swap;src:url\(\.\.\/fonts\/([\w.-]+)\)/g)];
     const files = [...new Set(faces.map(f => f[3]))];
-    const onDisk = files.filter(f => fs.existsSync(path.join(root33, 'fonts', f)));
-    const bytes = onDisk.reduce((a, f) => a + fs.statSync(path.join(root33, 'fonts', f)).size, 0);
+    const onDisk = files.filter(f => fs.existsSync(path.join(root, 'fonts', f)));
+    const bytes = onDisk.reduce((a, f) => a + fs.statSync(path.join(root, 'fonts', f)).size, 0);
     (faces.length === 5 && onDisk.length === files.length && !/fonts\.googleapis\.com/.test(html33))
       ? ok(`B.32 five faces from ${files.length} self-hosted files (${(bytes / 1024).toFixed(1)}KB), every one font-display:swap, and the <link> to Google is gone`)
       : bad('B.32 the @font-face block', JSON.stringify({ faces: faces.length, files, onDisk: onDisk.length }));
@@ -3026,7 +3070,7 @@ console.log('\nbuild 33 - v18 sections B.28 to B.32');
   /* ---- the beta paragraph, item 1: Send feedback on About. A mailto with the build, the device and the last run
      filled in — no form, no endpoint, no third party, and nothing leaves without the tester's own send button. ---- */
   {
-    const B33 = await import(pathToFileURL(path.join(root33, 'config', 'build.js')).href);
+    const B33 = await import(pathToFileURL(path.join(root, 'config', 'build.js')).href);
     await click('.back'); await sleep(300); await click('[data-go="s-about"]'); await sleep(500);
     const fb = await page.evaluate(() => { const a = document.getElementById('feedback'); if (!a) return null;
       return { tag: a.tagName, text: a.textContent, href: a.getAttribute('href'), act: a.dataset.act,
@@ -3044,7 +3088,7 @@ console.log('\nbuild 33 - v18 sections B.28 to B.32');
     const named = await page.evaluate(async () => { const S = await import('./core/store.js');
       S.prefs.name = 'AIDEN'; S.save();
       const runjs = 1; return { field: !!document.getElementById('pname'), stored: JSON.parse(localStorage.getItem('ne')).prefs.name, runjs }; });
-    const runSrc = read33('run', 'run.js');
+    const runSrc = read('run', 'run.js');
     (named.field && named.stored === 'AIDEN' && /n:prefs\.name\|\|''/.test(runSrc.replace(/\s/g, '')))
       ? ok('beta 2 — already built: every run record carries the profile name (run/run.js), and the field is on Scores, not Customise')
       : bad('beta 2 the name on a run', JSON.stringify(named));
@@ -3052,14 +3096,11 @@ console.log('\nbuild 33 - v18 sections B.28 to B.32');
 }
 
 /* ---- 15. build 35 (batch 15: FEEDBACK-v21 §F.1–§F.5 and §G.7; FEEDBACK-v20 §D.1–§D.3, §D.8–§D.10; #415; the Verdict Desk) ---- */
-console.log('\nbuild 35 - batch 15, bugs and the runs');
-{
-  const root35 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const read35 = (...p) => fs.readFileSync(path.join(root35, ...p), 'utf8');
-  const imp35 = (...p) => import(pathToFileURL(path.join(root35, ...p)).href);
-  const html35 = read35('index.html'), css35 = read35('styles', 'app.css'), audio35 = read35('audio.js'), hud35 = read35('games', '_shared', 'hud.js');
-  const vs35 = read35('games', '_shared', 'versus.js'), rx35 = read35('games', 'reaction', 'index.js'), sp35 = read35('games', 'spot', 'index.js');
-  const pick35 = read35('ui', 'screens', 'pick.js'), prog35 = read35('ui', 'screens', 'progress.js') + read35('ui', 'screens', 'customise.js'), store35 = read35('core', 'store.js'), rules35 = read35('progress', 'rules.js'), run35 = read35('run', 'run.js');
+if (section('build 35 - batch 15, bugs and the runs')) {
+  const imp35 = (...p) => import(pathToFileURL(path.join(root, ...p)).href);
+  const html35 = read('index.html'), css35 = read('styles', 'app.css'), audio35 = read('audio.js'), hud35 = read('games', '_shared', 'hud.js');
+  const vs35 = read('games', '_shared', 'versus.js'), rx35 = read('games', 'reaction', 'index.js'), sp35 = read('games', 'spot', 'index.js');
+  const pick35 = read('ui', 'screens', 'pick.js'), prog35 = read('ui', 'screens', 'progress.js') + read('ui', 'screens', 'customise.js'), store35 = read('core', 'store.js'), rules35 = read('progress', 'rules.js'), run35 = read('run', 'run.js');
   const V35 = await imp35('config', 'verdicts.js'), C35 = await imp35('config', 'copy.js'), G35 = await imp35('config', 'games.js'), U35 = await imp35('config', 'unlocks.js'), TH35 = await imp35('config', 'theme.js');
   const NOW35 = Date.now();
   const rgb35 = hex => { const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex); return m ? `rgb(${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)})` : hex; };
@@ -3147,9 +3188,9 @@ console.log('\nbuild 35 - batch 15, bugs and the runs');
   {
     // AMENDED at build 43 (v24 A.3): `dist` is `npm run native`'s generated copy of the tree (git-ignored) — the same writers twice, not new ones
     const walk = d => fs.readdirSync(d, { withFileTypes: true }).flatMap(e => (e.name === 'node_modules' || e.name === '_smoke' || e.name === 'dist' || e.name.startsWith('.')) ? [] : e.isDirectory() ? walk(path.join(d, e.name)) : e.name.endsWith('.js') ? [path.join(d, e.name)] : []);
-    const files = walk(root35);
-    const writers = files.flatMap(f => [...fs.readFileSync(f, 'utf8').matchAll(/prefs\.col\[[^\]]+\]\[[^\]]+\]\s*=(?!=)/g)].map(() => path.relative(root35, f).replace(/\\/g, '/')));
-    const near = files.filter(f => /prefs\.col[^;\n]*\b(P1C|P2C)\b/.test(fs.readFileSync(f, 'utf8'))).map(f => path.relative(root35, f));
+    const files = walk(root);
+    const writers = files.flatMap(f => [...fs.readFileSync(f, 'utf8').matchAll(/prefs\.col\[[^\]]+\]\[[^\]]+\]\s*=(?!=)/g)].map(() => path.relative(root, f).replace(/\\/g, '/')));
+    const near = files.filter(f => /prefs\.col[^;\n]*\b(P1C|P2C)\b/.test(fs.readFileSync(f, 'utf8'))).map(f => path.relative(root, f));
     (writers.length === 2 && writers.every(w => w === 'ui/screens/customise.js' /* AMENDED at build 39: Customise's code is its own file again */) && !near.length)
       ? ok('F.4 investigated: the only two writers of a game colour are Customise\'s swatch tap and its wheel, and no player colour is written near prefs.col anywhere')
       : bad('F.4 who writes prefs.col', JSON.stringify({ writers, near }));
@@ -3185,7 +3226,7 @@ console.log('\nbuild 35 - batch 15, bugs and the runs');
 
   /* ---- F.3, F.5, G.7: a Quick Tap versus run ---- */
   {
-    (C35.SHEET.goVersus === undefined && /const goLabel=\(\)=>SHEET\.go;/.test(read35('ui', 'format.js')))
+    (C35.SHEET.goVersus === undefined && /const goLabel=\(\)=>SHEET\.go;/.test(read('ui', 'format.js')))
       ? ok('F.5 SHEET.goVersus is retired and goLabel reads Go for every run') : bad('F.5 the versus Go label, statically');
     (/tapped\(p,i\)\{/.test(vs35) && /this\.tapped\(p,i\); this\.score\(p\);/.test(vs35) && /\.pad\.tapped\{animation:padtap/.test(css35))
       ? ok('F.3 a correct versus pad tap pulses that pad (versus.js tapped(), .pad.tapped)') : bad('F.3 the pad pulse, statically');
@@ -3357,12 +3398,9 @@ console.log('\nbuild 35 - batch 15, bugs and the runs');
 }
 
 /* ---- 16. build 36 (FEEDBACK-v22 §J.1, the frozen clock; the Verdict Desk export, version 658) ---- */
-console.log('\nbuild 36 - the frozen clock and the verdict export');
-{
-  const root36 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const read36 = (...p) => fs.readFileSync(path.join(root36, ...p), 'utf8');
-  const imp36 = (...p) => import(pathToFileURL(path.join(root36, ...p)).href);
-  const audio36 = read36('audio.js'), testing36 = read36('ui', 'screens', 'testing.js');
+if (section('build 36 - the frozen clock and the verdict export')) {
+  const imp36 = (...p) => import(pathToFileURL(path.join(root, ...p)).href);
+  const audio36 = read('audio.js'), testing36 = read('ui', 'screens', 'testing.js');
 
   /* ---- §J.1: iOS leaves state 'running' on a frozen clock. The gates are off the foreground paths, revive() checks the clock,
      and the tap reads a flag and never waits. Static first, then every path driven with the clock frozen by hand. ---- */
@@ -3471,7 +3509,7 @@ console.log('\nbuild 36 - the frozen clock and the verdict export');
     (!atBad.length && !raBad.length && Object.keys(V.ROUND_AT).length === 8)
       ? ok('Verdict export: Reaction\'s two threshold triples and the per-round ceilings for Cut, Flash and Go / No-go are Aiden\'s; Timing\'s `at` AND its per-round ceilings are Aiden\'s numbers from build 37 (#414 closed); Spot keeps its own')
       : bad('Verdict export thresholds', JSON.stringify({ atBad, raBad }));
-    /timing':r=>1-Math\.min\(1,r\.hits\/5\), 'timing:hidden':r=>1-Math\.min\(1,r\.hits\/5400\)/.test(read36('progress', 'rules.js'))
+    /timing':r=>1-Math\.min\(1,r\.hits\/5\), 'timing:hidden':r=>1-Math\.min\(1,r\.hits\/5400\)/.test(read('progress', 'rules.js'))
       ? ok('Verdict export: Timing\'s QUALITY scales are still 5 and 5400 - build 37\'s Timing thresholds are written against those') : bad('Timing\'s scale moved');
     const q = await page.evaluate(async () => { const P = await import('./progress.js');
       const tier = r => (P.tierOf(Object.assign({ misses: 0, t: 1, v: 4 }, r)) || {}).tier;
@@ -3483,13 +3521,9 @@ console.log('\nbuild 36 - the frozen clock and the verdict export');
 }
 
 /* ---- 17. build 37 (batch 15: FEEDBACK-v21 §G.1–§G.4, §G.8; FEEDBACK-v20 §D.4, §D.7; FEEDBACK-v22 §K; Aiden's 2026-09-14 data fixes) ---- */
-console.log('\nbuild 37 - keys and chests');
-{
-  const root37 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const read37 = (...p) => fs.readFileSync(path.join(root37, ...p), 'utf8');
-  const imp37 = (...p) => import(pathToFileURL(path.join(root37, ...p)).href);
-  const strip37 = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
-  const css37 = read37('styles', 'app.css'), pick37 = read37('ui', 'screens', 'pick.js'), keyjs37 = read37('progress', 'key.js'), menu37 = read37('ui', 'screens', 'menu.js'), hud37 = read37('games', '_shared', 'hud.js'), prog37 = read37('progress.js');
+if (section('build 37 - keys and chests')) {
+  const imp37 = (...p) => import(pathToFileURL(path.join(root, ...p)).href);
+  const css37 = read('styles', 'app.css'), pick37 = read('ui', 'screens', 'pick.js'), keyjs37 = read('progress', 'key.js'), menu37 = read('ui', 'screens', 'menu.js'), hud37 = read('games', '_shared', 'hud.js'), prog37 = read('progress.js');
   const NOW37 = Date.now();
   const rgb37 = hex => { const n = parseInt(hex.slice(1), 16); return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`; };
 
@@ -3500,12 +3534,12 @@ console.log('\nbuild 37 - keys and chests');
     (T['reaction:nogo'].lines.ok[1] === 'You got it!' && T['reaction:nogo'].lines.bad[2] === 'You need to be one with the shapes.' && !lines.some(l => /!\.$|be own with/.test(l)))
       ? ok('a. the two Go / No-go typos are corrected - "You got it!" and "You need to be one with the shapes."') : bad('a. the typos', JSON.stringify([T['reaction:nogo'].lines.ok[1], T['reaction:nogo'].lines.bad[2]]));
     const at = { sw: T['timing:stopwatch'].at.join(), hd: T['timing:hidden'].at.join(), rsw: V.ROUND_AT['timing:stopwatch'].join(), rhd: V.ROUND_AT['timing:hidden'].join() };
-    const rules = read37('progress', 'rules.js');
+    const rules = read('progress', 'rules.js');
     (at.sw === '0.9,0.74,0.56' && at.hd === '0.9259,0.8796,0.8241' && at.rsw === '0.1,0.3,0.55' && at.rhd === '40,70,95' && /'timing':r=>1-Math\.min\(1,r\.hits\/5\), 'timing:hidden':r=>1-Math\.min\(1,r\.hits\/5400\)/.test(rules))
       ? ok('b. Timing\'s thresholds build (#414 closed) - Stopwatch 0.90 / 0.74 / 0.56 and per round 0.1 / 0.3 / 0.55, Hidden 0.9259 / 0.8796 / 0.8241 and 40 / 70 / 95 - and the scales did not move (5s, 5400ms)')
       : bad('b. Timing thresholds', JSON.stringify(at));
     const warn = [['site', 'config', 'verdicts.js'], ['site', 'progress', 'rules.js'], ['_review', '2026-09-13_personal_verdict-desk-edits.md'], ['_review', '2026-09-14_personal_verdict-desk-export.md']]
-      .filter(p => /DO NOT BUILD Timing|DO-NOT-BUILD-TIMING|DO NOT BUILD THE LINE TABLES BELOW[\s\S]*DO NOT BUILD Timing/i.test(fs.readFileSync(path.join(root37, '..', ...p), 'utf8'))).map(p => p.join('/'));
+      .filter(p => /DO NOT BUILD Timing|DO-NOT-BUILD-TIMING|DO NOT BUILD THE LINE TABLES BELOW[\s\S]*DO NOT BUILD Timing/i.test(read('..', ...p))).map(p => p.join('/'));
     !warn.length ? ok('b. the DO NOT BUILD Timing warning is gone from the config, the rules and both Verdict Desk files') : bad('b. the Timing warning still stands somewhere', warn.join(', '));
     const tq = await page.evaluate(async () => { const P = await import('./progress.js'); const tier = r => (P.tierOf(Object.assign({ misses: 0, t: 1, v: 4 }, r)) || {}).tier;
       return { sw: [tier({ g: 'timing', d: 'stopwatch', s: 5, hits: 0.5 }), tier({ g: 'timing', d: 'stopwatch', s: 5, hits: 0.51 }), tier({ g: 'timing', d: 'stopwatch', s: 5, hits: 2.19 }), tier({ g: 'timing', d: 'stopwatch', s: 5, hits: 2.3 })],
@@ -3618,14 +3652,14 @@ console.log('\nbuild 37 - keys and chests');
     const chain = new Set(U.UNLOCKS.map(x => x.key));
     const modes = [...new Set(Object.keys(KB.KEY_BARS).map(key => key.split(':').slice(0, 2).join(':')))];
     const stranded = modes.filter(m => !chain.has(m) && m !== 'quick-tap:two');
-    const chestInChain = [['config', 'unlocks.js'], ['progress', 'rules.js']].filter(p => /chest/i.test(strip37(read37(...p)))).map(p => p.join('/'));
+    const chestInChain = [['config', 'unlocks.js'], ['progress', 'rules.js']].filter(p => /chest/i.test(strip(read(...p)))).map(p => p.join('/'));
     const modeOpenLine = (/const modeOpen=\(g,d,noChal\)=>[^\n]*/.exec(prog37) || [''])[0];
     (!stranded.length && !chestInChain.length && modeOpenLine && !/chest/.test(modeOpenLine))
       ? ok(`G.3 VERIFIED: every key-1 bar belongs to a mode the chain reaches without chest 1 (${modes.length} modes, none stranded) and nothing in the chain reads a chest - the chest can always be opened`)
       : bad('G.3 a key-1 bar sits behind chest 1', JSON.stringify({ stranded, chestInChain }));
     // AMENDED at build 40 (v23 L.10): modesOpen() sits beside tierOpen() now - mapOpen() is gone - and it is what opens the Games chest
     (/const modesOpen = \(\) => [^\n]*modeCount\(\)/.test(keyjs37) && keyjs37.indexOf('const modesOpen') > keyjs37.indexOf('const tierOpen') && keyjs37.indexOf('const modesOpen') - keyjs37.indexOf('const tierOpen') < 1600
-      && !/store\.unlock/.test(strip37(keyjs37)) && !/store\.unlock/.test(strip37(pick37)))
+      && !/store\.unlock/.test(strip(keyjs37)) && !/store\.unlock/.test(strip(pick37)))
       ? ok('G.3 ONE exported predicate, modesOpen(), beside tierOpen() - reading the chain through progress.js modeCount(), and neither the key nor the grid reads store.unlock') : bad('G.3 the one crossing');
     await setStorage({ ne: { v: 5, prefs: { story: 1, gridSeen: 1, played: 1, snd: 'off', musicG: {} }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
@@ -3682,7 +3716,7 @@ console.log('\nbuild 37 - keys and chests');
     (g4.ready && g4.pro && !g4.author && g4.retro.join() === 'quick-tap:two:5|pro' && g4.fx === 1 && !g4.un && !g4.toasts.length && /Key chest opened/i.test(g4.box))
       ? ok(`G.4 opening the Key chest banks the Pro bars a saved best already beats, SILENTLY (Author waits for the Pro chest, build 38) - one chest sound and its ceremony ("${g4.box}"), no toast, no unlock sound for the clears (AMENDED at build 40, L.8b; at build 41, L.6)`)
       : bad('G.4 the retroactive clear is silent', JSON.stringify(g4));
-    (g4.live === 'pro' && /if\(adv\) keyBreak\(adv,rest\)/.test(read37('ui', 'screens', 'result.js')))
+    (g4.live === 'pro' && /if\(adv\) keyBreak\(adv,rest\)/.test(read('ui', 'screens', 'result.js')))
       ? ok('G.4 a LIVE clear still announces - checkKey hands back the fresh Pro clear and the result screen interrupts for it, exactly as before') : bad('G.4 the live clear', JSON.stringify({ live: g4.live }));
     (g4.proGreen && g4.rows.join() === 'quick-tap:two:5' && !g4.retroAfter.length)
       ? ok('G.4 the keys screen already wears L8\'s green on the Pro key and on the rows banked that way, the first time they are seen - and then the mark is spent') : bad('G.4 the green on first sight', JSON.stringify({ proGreen: g4.proGreen, rows: g4.rows, retroAfter: g4.retroAfter }));
@@ -3690,7 +3724,7 @@ console.log('\nbuild 37 - keys and chests');
 
   /* ---- D.4: the front percentage counts up when it has gone up since it was last shown ---- */
   {
-    (/import \{ countUp \} from "\.\.\/\.\.\/core\/count\.js";/.test(menu37) && /import \{ countUp as baseCountUp \} from "\.\.\/\.\.\/core\/count\.js";/.test(hud37) && !/requestAnimationFrame/.test(strip37(menu37)))
+    (/import \{ countUp \} from "\.\.\/\.\.\/core\/count\.js";/.test(menu37) && /import \{ countUp as baseCountUp \} from "\.\.\/\.\.\/core\/count\.js";/.test(hud37) && !/requestAnimationFrame/.test(strip(menu37)))
       ? ok('D.4 the menu reuses the run\'s count-up - it lives in core/count.js now, hud.countUp wraps it, and the menu has no loop of its own (A4 kept)') : bad('D.4 one count-up');
     const d4 = await page.evaluate(async () => { const S = await import('./core/store.js'); const R = await import('./ui/router.js'); const A = await import('./audio.js'); const K = await import('./progress/key.js');
       const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -3712,11 +3746,8 @@ console.log('\nbuild 37 - keys and chests');
 }
 
 /* ---- 18. build 38 (Aiden's two answers to build 37, 2026-09-14): the tile keeps its amber until a mode is chosen; Author waits for the Pro chest ---- */
-console.log('\nbuild 38 - the tile keeps its amber, Author waits for the Pro chest');
-{
-  const root38 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const read38 = (...p) => fs.readFileSync(path.join(root38, ...p), 'utf8');
-  const css38 = read38('styles', 'app.css'), pick38 = read38('ui', 'screens', 'pick.js'), key38 = read38('progress', 'key.js'), prog38 = read38('ui', 'screens', 'progress.js');
+if (section('build 38 - the tile keeps its amber, Author waits for the Pro chest', 'build 38 - #426 Pro and Author placeholders')) {
+  const css38 = read('styles', 'app.css'), pick38 = read('ui', 'screens', 'pick.js'), key38 = read('progress', 'key.js'), prog38 = read('ui', 'screens', 'progress.js');
 
   /* ---- 1. the pressed tile keeps --press until a mode is actually chosen ---- */
   {
@@ -3780,10 +3811,10 @@ console.log('\nbuild 38 - the tile keeps its amber, Author waits for the Pro che
   }
 
   /* ---- 3. #426: Pro and Author PLACEHOLDERS (A.2 amended) - the generator writes the file, and never a person's number ---- */
-  console.log('\nbuild 38 - #426 Pro and Author placeholders');
-  const P38 = await import(pathToFileURL(path.join(root38, 'scripts', 'placeholders.mjs')).href);
-  const { ROUND_AT: RA38 } = await import(pathToFileURL(path.join(root38, 'config', 'verdicts.js')).href);
-  const bars38 = read38('config', 'key-bars.js'), json38 = fs.readFileSync(path.join(root38, '..', '_review', 'key-bars.json'), 'utf8');
+  part('build 38 - #426 Pro and Author placeholders');
+  const P38 = await import(pathToFileURL(path.join(root, 'scripts', 'placeholders.mjs')).href);
+  const { ROUND_AT: RA38 } = await import(pathToFileURL(path.join(root, 'config', 'verdicts.js')).href);
+  const bars38 = read('config', 'key-bars.js'), json38 = read('..', '_review', 'key-bars.json');
   const rows38 = P38.rowsOf(bars38);
   const spanOf = (src, key, name) => { const r = P38.rowsOf(src).find(x => x.key === key); const f = P38.fieldsOf(src, r.from, r.to).find(x => x.name === name); return f ? src.slice(f.from, f.to) : ''; };
   {
@@ -3959,11 +3990,8 @@ console.log('\nbuild 38 - the tile keeps its amber, Author waits for the Pro che
 }
 
 /* ---- 19. build 39 (batch 16, the surface - FEEDBACK-v23 §L.2-§L.5): Customise out of Progress, the partition, the labels, the stamp ---- */
-console.log('\nbuild 39 - batch 16, the surface');
-{
-  const root39 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const read39 = (...p) => fs.readFileSync(path.join(root39, ...p), 'utf8');
-  const html39 = read39('index.html'), css39 = read39('styles', 'app.css'), prog39 = read39('ui', 'screens', 'progress.js'), cus39 = read39('ui', 'screens', 'customise.js'), store39 = read39('core', 'store.js');
+if (section('build 39 - batch 16, the surface')) {
+  const html39 = read('index.html'), css39 = read('styles', 'app.css'), prog39 = read('ui', 'screens', 'progress.js'), cus39 = read('ui', 'screens', 'customise.js'), store39 = read('core', 'store.js');
   const INK39 = 'rgb(232, 230, 225)', OK39 = 'rgb(61, 214, 140)', RED39 = ['rgb(200, 50, 42)', 'rgb(179, 38, 30)', 'rgb(224, 69, 59)'];
   const NOW39 = Date.now();
   const PLAIN39 = { story: 1, gridSeen: 1, played: 1, menuSeen: 1, snd: 'off', musicG: {} };
@@ -4138,29 +4166,24 @@ console.log('\nbuild 39 - batch 16, the surface');
 }
 
 /* ---- 20. build 40 (batch 16, four chests and the 0-400 meter - FEEDBACK-v23 §L.8 a-c f, §L.10 a-c e, §L.11 a c, §L.12, G.8 extended) ---- */
-console.log('\nbuild 40 - batch 16, four chests and the meter');
-{
-  const root40 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const read40 = (...p) => fs.readFileSync(path.join(root40, ...p), 'utf8');
-  const strip40 = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
+if (section('build 40 - batch 16, four chests and the meter')) {
   const NOW40 = Date.now();
   const PLAIN40 = { story: 1, gridSeen: 1, played: 1, menuSeen: 1, keySeen: 1, snd: 'off', musicG: {} };
-  const CH40 = await import(pathToFileURL(path.join(root40, 'config', 'chests.js')).href);
-  const U40 = await import(pathToFileURL(path.join(root40, 'config', 'unlocks.js')).href);
-  const KB40 = await import(pathToFileURL(path.join(root40, 'config', 'key-bars.js')).href);
+  const CH40 = await import(pathToFileURL(path.join(root, 'config', 'chests.js')).href);
+  const U40 = await import(pathToFileURL(path.join(root, 'config', 'unlocks.js')).href);
+  const KB40 = await import(pathToFileURL(path.join(root, 'config', 'key-bars.js')).href);
   const ALL_UNLOCK = Object.fromEntries(U40.UNLOCKS.map(x => [x.key, NOW40]));
   const KEY1_BARS = Object.fromEntries(Object.keys(KB40.KEY_BARS).map(k => [k, NOW40]));
   // the build-32 block's svgClick is scoped to that block: an SVG element takes a dispatched click, not .click()
   const svgClick = sel => page.evaluate(s => { const el = document.querySelector(s); if (!el) return false; el.dispatchEvent(new MouseEvent('click', { bubbles: true })); return true; }, sel);
-  const boot40 = async (prefs, extra = {}) => { await setStorage({ ne: Object.assign({ v: 5, prefs: { ...PLAIN40, ...prefs }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} }, extra) }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(450); };
 
   /* ---- 1. L.10: FOUR chests, named by what opens them, in one config beside config/key-bars.js; G.3's gate, both asks and frontPct are gone ---- */
   {
-    const cfg = read40('config', 'chests.js');
+    const cfg = read('config', 'chests.js');
     const ids = CH40.CHESTS.map(c => c.id).join(), needs = CH40.CHESTS.map(c => c.needs).join(), opens = CH40.CHESTS.map(c => c.opens).join();
-    const a2 = !/^\s*import\b/m.test(cfg) && !/=>|\bfunction\b/.test(strip40(cfg));
+    const a2 = !/^\s*import\b/m.test(cfg) && !/=>|\bfunction\b/.test(strip(cfg));
     const code = ['index.html', 'progress/key.js', 'ui/screens/pick.js', 'ui/screens/key.js', 'ui/screens/menu.js', 'ui/screens/testing.js', 'ui/screens/customise.js', 'ui/screens/progress.js', 'config/copy.js', 'styles/app.css']
-      .map(f => [f, strip40(read40(...f.split('/')))]);
+      .map(f => [f, strip(read(...f.split('/')))]);
     const numbered = code.filter(([, s]) => /\bchest[123]\b|data-chest="\d|\bchestN\b/.test(s)).map(([f]) => f);
     const gate = code.filter(([, s]) => /glgate|gateState|gateOff|\.gated\b|unlock all games first|askPro|askBox|askwrap|proAsk|openAsk|frontPct|prefs\.pro\b|mapOpen/i.test(s)).map(([f]) => f);
     (ids === 'games,key,pro,thorns' && needs === 'modes,clear,pro,author' && opens === 'clear,pro,author,' && a2 && !numbered.length && !gate.length)
@@ -4170,7 +4193,7 @@ console.log('\nbuild 40 - batch 16, four chests and the meter');
 
   /* ---- 2. L.10e: strictly sequential - no chest ready while the one before it is shut - and opening Games reveals exactly key 1 ---- */
   {
-    await boot40({});
+    await boot({}, {}, { v: 5, plain: PLAIN40 });
     const sq = await page.evaluate(async ALL => { const K = await import('./progress/key.js'); const S = await import('./core/store.js'); const C = await import('./config/chests.js');
       const ids = C.CHESTS.map(c => c.id), bad = []; let n = 0;
       for (let mask = 0; mask < 16; mask++) for (let modes = 0; modes < 2; modes++) for (let whole = 0; whole < 8; whole++) { n++;
@@ -4199,7 +4222,7 @@ console.log('\nbuild 40 - batch 16, four chests and the meter');
 
   /* ---- 3. L.8a / L.10b: ONE meter, 0-400 - modes, then each key's cleared bars - a band counting only once its chest is open ---- */
   {
-    const keyjs = strip40(read40('progress', 'key.js')), surf = ['ui/screens/menu.js', 'ui/screens/pick.js', 'ui/screens/key.js'].map(f => strip40(read40(...f.split('/'))));
+    const keyjs = strip(read('progress', 'key.js')), surf = ['ui/screens/menu.js', 'ui/screens/pick.js', 'ui/screens/key.js'].map(f => strip(read(...f.split('/'))));
     (/const meter = \(\) =>/.test(keyjs) && surf.every(s => /\bmeter\(\)/.test(s)) && !surf.some(s => /keyPct\(|frontPct/.test(s)))
       ? ok('L.8a one meter() in progress/key.js, and the menu card, the map chests and the key screen all read it - none reads keyPct or frontPct') : bad('L.8a one meter function');
     const mt = await page.evaluate(async ALL => { const K = await import('./progress/key.js'); const S = await import('./core/store.js'); const U = await import('./config/unlocks.js');
@@ -4219,7 +4242,7 @@ console.log('\nbuild 40 - batch 16, four chests and the meter');
   /* ---- 4. L.8b: a chest's tap opens its screen and the open happens THERE by itself - no ask - then no repeat; L.11c its words beside it ---- */
   {
     const runs = Object.keys(KB40.KEY_BARS).slice(0, 5).map(k => { const [g, d, s] = k.split(':'); return { t: NOW40, g, d, s: +s, n: '', v: 4, hits: KB40.KEY_BARS[k].author, misses: 0 }; });
-    await boot40({}, { unlock: ALL_UNLOCK, runs });
+    await boot({}, { unlock: ALL_UNLOCK, runs }, { v: 5, plain: PLAIN40 });
     await click('[data-go="s-pick"]'); await sleep(700);
     const map = await page.evaluate(() => { const c = id => document.querySelector(`.chest[data-chest="${id}"]`);
       return { games: c('games').className, need: c('games').querySelector('.pic').dataset.need, key: c('key').querySelector('.pic').dataset.need, ask: !!document.getElementById('askwrap'), words: document.querySelector('.chestwords[data-for="games"]').hidden }; });
@@ -4254,7 +4277,7 @@ console.log('\nbuild 40 - batch 16, four chests and the meter');
      the result comes back by itself once the moment has finished (nothing waits for a tap, so the second driver needs nothing new) */
   {
     const bars = Object.assign({}, KEY1_BARS); delete bars['quick-tap:two:5'];
-    await boot40({ chests: { games: 1 }, adRuns: 0 }, { unlock: ALL_UNLOCK, bars });
+    await boot({ chests: { games: 1 }, adRuns: 0 }, { unlock: ALL_UNLOCK, bars }, { v: 5, plain: PLAIN40 });
     const il = await page.evaluate(async () => { const E = await import('./core/events.js'); const ST = await import('./core/state.js'); const K = await import('./progress/key.js'); const S = await import('./core/store.js');
       const wait = ms => new Promise(r => setTimeout(r, ms)); const at = () => (document.querySelector('.screen.on') || {}).id;
       Object.assign(ST.sel, { game: 'quick-tap', diff: 'two', secs: 5, vs: 0, practice: 0 }); ST.VS.reset();
@@ -4282,7 +4305,7 @@ console.log('\nbuild 40 - batch 16, four chests and the meter');
 
   /* ---- 6. L.11a: Customise locked until the Games chest - crossed out, "open the Games chest", defaults applied, choices kept; green until first opened ---- */
   {
-    await boot40({ col: { 'quick-tap': { sq: '#FFD1DC', lead: '#FFB020', cut: '#FFD1DC' } }, bg: 'grid', snd: 'wood', lastGame: 'quick-tap' }, { ach: { first: NOW40 } });
+    await boot({ col: { 'quick-tap': { sq: '#FFD1DC', lead: '#FFB020', cut: '#FFD1DC' } }, bg: 'grid', snd: 'wood', lastGame: 'quick-tap' }, { ach: { first: NOW40 } }, { v: 5, plain: PLAIN40 });
     const lk = await page.evaluate(async () => { const S = await import('./core/store.js'); const R = await import('./ui/router.js'); const T = await import('./ui/theme.js'); const wait = ms => new Promise(r => setTimeout(r, ms));
       const root = () => getComputedStyle(document.documentElement).getPropertyValue('--sq-live').trim().toUpperCase(), on = () => (document.querySelector('.screen.on') || {}).id;
       const item = () => document.querySelector('[data-go="s-custom"]'), need = () => document.getElementById('cus-need');
@@ -4314,10 +4337,10 @@ console.log('\nbuild 40 - batch 16, four chests and the meter');
 
   /* ---- 7. L.12: a whole key taps through to its chest on the map - one exported predicate, no chest read on the key screen (A4) ---- */
   {
-    const keyScr = strip40(read40('ui', 'screens', 'key.js'));
-    (/export \{[^}]*\bkeyChest\b/.test(read40('progress', 'key.js')) && /keyChest\(/.test(keyScr) && !/prefs\.chests|prefs\[['"]chest|store\.unlock/.test(keyScr))
+    const keyScr = strip(read('ui', 'screens', 'key.js'));
+    (/export \{[^}]*\bkeyChest\b/.test(read('progress', 'key.js')) && /keyChest\(/.test(keyScr) && !/prefs\.chests|prefs\[['"]chest|store\.unlock/.test(keyScr))
       ? ok('L.12 keyChest() is the one exported predicate, and the key screen reads no chest flag of its own (A4)') : bad('L.12 one predicate');
-    await boot40({ chests: { games: 1, key: 1 } }, { unlock: ALL_UNLOCK, bars: KEY1_BARS });
+    await boot({ chests: { games: 1, key: 1 } }, { unlock: ALL_UNLOCK, bars: KEY1_BARS }, { v: 5, plain: PLAIN40 });
     await click('[data-go="s-key"]'); await sleep(900);
     const k12 = await page.evaluate(() => ({ hub: (document.querySelector('#key-ring [data-act="key-chest"]') || {}).dataset?.chest || null, hint: document.getElementById('key-hint').textContent }));
     await svgClick('#key-ring [data-act="key-chest"]'); await sleep(700);
@@ -4331,7 +4354,7 @@ console.log('\nbuild 40 - batch 16, four chests and the meter');
 
   /* ---- 8. L.8f + G.8 extended: Testing's switch and reset PER CHEST, four of each, and "set meter to N%" (S5) ---- */
   {
-    await boot40({}, { bars: { 'quick-tap:two:5': NOW40 } });
+    await boot({}, { bars: { 'quick-tap:two:5': NOW40 } }, { v: 5, plain: PLAIN40 });
     await click('[data-go="s-testing"]'); await sleep(400);
     const t8 = await page.evaluate(async () => { const K = await import('./progress/key.js'); const S = await import('./core/store.js'); const wait = ms => new Promise(r => setTimeout(r, ms)); const q = s => document.querySelector(s);
       const sw = id => q(`[data-act="dev-chestall"][data-chest="${id}"]`), rs = id => q(`[data-act="dev-chestreset"][data-chest="${id}"]`);
@@ -4357,7 +4380,7 @@ console.log('\nbuild 40 - batch 16, four chests and the meter');
 
   /* ---- 9. the store is v5: the chests named, one ladder step; the retired fields gone ---- */
   {
-    const st9 = read40('core', 'store.js');
+    const st9 = read('core', 'store.js');
     (/VERSION=6/.test(st9) /* AMENDED at build 42: v6 (up6, L.7c) follows up5 */ && /if\(\(raw\.v\|\|0\)<5\) raw=up5\(raw\);/.test(st9) && /chests:cleanChests\(p\.chests\)/.test(st9) && !/\bpro:\[0,1,2\]|chest1:p\.chest1|gateOff:p\.gateOff|pctSeen:isObj/.test(st9))
       ? ok('store v5: up5 on the ladder, `chests` shape-checked by name, and `pro`, `chest1`-`chest3`, `gateOff` and `pctSeen` no longer read') : bad('store v5 statics');
     await setStorage({ ne: { v: 4, prefs: { ...PLAIN40, chest1: 1, chest2: 1, chest3: 0, pro: 1, gateOff: 1, pctSeen: { clear: 40 } }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
@@ -4369,7 +4392,7 @@ console.log('\nbuild 40 - batch 16, four chests and the meter');
 
   /* ---- 10. L.10a / §M.2: key 1 is quiet before the Games chest - no clear banked, no interlude, no outline fill, no key set, the modes count on the key screen ---- */
   {
-    await boot40({}, { runs: [{ t: NOW40, g: 'quick-tap', d: 'two', s: 5, n: '', v: 4, hits: 60, misses: 0 }] });
+    await boot({}, { runs: [{ t: NOW40, g: 'quick-tap', d: 'two', s: 5, n: '', v: 4, hits: 60, misses: 0 }] }, { v: 5, plain: PLAIN40 });
     const qt = await page.evaluate(async () => { const K = await import('./progress/key.js'); const S = await import('./core/store.js'); const R = await import('./ui/router.js'); const wait = ms => new Promise(r => setTimeout(r, ms));
       const c = K.COMBOS.find(x => x.key === 'quick-tap:two:5');
       const out = { adv: K.checkKey({ t: Date.now(), g: 'quick-tap', d: 'two', s: 5, n: '', v: 4, hits: c.bar.bar + 5, misses: 0 }, false), bars: Object.keys(S.store.bars).length, ach: K.checkKeyAch({ g: 'quick-tap' }).length };
@@ -4384,21 +4407,16 @@ console.log('\nbuild 40 - batch 16, four chests and the meter');
 }
 
 /* ---- 21. build 41 (batch 16, the moments - FEEDBACK-v23 §L.6, §L.8 d-e, §L.9 a-d, §L.10 d, §L.11 b d e). Presentation only, L10 quoted ---- */
-console.log('\nbuild 41 - batch 16, the moments');
-{
-  const root41 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const read41 = (...p) => fs.readFileSync(path.join(root41, ...p), 'utf8');
-  const strip41 = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
+if (section('build 41 - batch 16, the moments')) {
   const NOW41 = Date.now();
   const PLAIN41 = { story: 1, gridSeen: 1, played: 1, menuSeen: 1, keySeen: 1, snd: 'off', musicG: {} };
-  const CH41 = await import(pathToFileURL(path.join(root41, 'config', 'chests.js')).href);
-  const AU41 = await import(pathToFileURL(path.join(root41, 'config', 'audio.js')).href);
-  const U41 = await import(pathToFileURL(path.join(root41, 'config', 'unlocks.js')).href);
-  const KB41 = await import(pathToFileURL(path.join(root41, 'config', 'key-bars.js')).href);
+  const CH41 = await import(pathToFileURL(path.join(root, 'config', 'chests.js')).href);
+  const AU41 = await import(pathToFileURL(path.join(root, 'config', 'audio.js')).href);
+  const U41 = await import(pathToFileURL(path.join(root, 'config', 'unlocks.js')).href);
+  const KB41 = await import(pathToFileURL(path.join(root, 'config', 'key-bars.js')).href);
   const ALL41 = Object.fromEntries(U41.UNLOCKS.map(x => [x.key, NOW41]));
   const tierBars = t => Object.fromEntries(Object.keys(KB41.KEY_BARS).map(k => [t === 'clear' ? k : `${k}|${t}`, NOW41]));
   const IDS = ['games', 'key', 'pro', 'thorns'];
-  const boot41 = async (prefs, extra = {}) => { await setStorage({ ne: Object.assign({ v: 5, prefs: { ...PLAIN41, ...prefs }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} }, extra) }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(450); };
   const scr = () => page.evaluate(() => (document.querySelector('.screen.on') || {}).id);
 
   /* ---- 1. L.9a / L.10d: four sprites in one data config, one renderer for every surface, no art left in the markup; L10 - the two new modules write nothing ---- */
@@ -4412,9 +4430,9 @@ console.log('\nbuild 41 - batch 16, the moments');
       && L.thorns.fill === '#000000' && L.thorns.stroke === '#FFFFFF' && (L.thorns.spikes || []).length >= 3 && (L.thorns.boxSpikes || []).length > 0
       && IDS.every((id, i) => L[id].band === i);
     const idle = IDS.map(id => L[id].idle.kind).join() === 'breath,glow,shimmer,spikes' && L.games.idle.px < L.key.idle.px && L.key.idle.px < L.pro.idle.px && L.pro.idle.px <= L.thorns.idle.px;
-    const drawers = ['ui/screens/pick.js', 'ui/screens/key.js', 'ui/ceremony.js'].every(f => /chestSvg\(/.test(strip41(read41(...f.split('/')))));
-    const noArt = !/class="chestart"/.test(read41('index.html')) && !/CHEST_ART/.test(strip41(read41('ui', 'screens', 'key.js')));
-    const l10 = ['ui/ceremony.js', 'ui/chest.js'].every(f => !/\bsave\(|\bstore\b|\bprefs\b|localStorage/.test(strip41(read41(...f.split('/')))));
+    const drawers = ['ui/screens/pick.js', 'ui/screens/key.js', 'ui/ceremony.js'].every(f => /chestSvg\(/.test(strip(read(...f.split('/')))));
+    const noArt = !/class="chestart"/.test(read('index.html')) && !/CHEST_ART/.test(strip(read('ui', 'screens', 'key.js')));
+    const l10 = ['ui/ceremony.js', 'ui/chest.js'].every(f => !/\bsave\(|\bstore\b|\bprefs\b|localStorage/.test(strip(read(...f.split('/')))));
     (Object.keys(L).join() === IDS.join() && distinct && looks && idle && drawers && noArt && l10)
       ? ok('L.9a / L.10d four chest sprites in one data config (config/chests.js CHEST_LOOK): Games a thin --mute outline, Key clean --ink lines, Pro gold fittings and a heavier lid, Thorns black with spikes and white accents, each in its own band colour; four idles rising in strength; one renderer (ui/chest.js) draws the map, the key screen and the ceremony, no chest art is left in the markup, and neither new module writes anything (L10)')
       : bad('L.9a the four sprites', JSON.stringify({ keys: Object.keys(L), distinct, looks, idle, drawers, noArt, l10 }));
@@ -4422,7 +4440,7 @@ console.log('\nbuild 41 - batch 16, the moments');
 
   /* ---- 2. L.9b: READY animates, locked and opened do not; locked is crossed out, opened is lid up ---- */
   {
-    await boot41({ chests: { games: 1, key: 1 }, spill: { games: 1, key: 1 }, readySeen: { pro: 1 } }, { unlock: ALL41, bars: Object.assign({}, tierBars('clear'), tierBars('pro')) });
+    await boot({ chests: { games: 1, key: 1 }, spill: { games: 1, key: 1 }, readySeen: { pro: 1 } }, { unlock: ALL41, bars: Object.assign({}, tierBars('clear'), tierBars('pro')) }, { v: 5, plain: PLAIN41 });
     await click('[data-go="s-pick"]'); await sleep(1400);
     const s9 = await page.evaluate(() => Object.fromEntries(['games', 'key', 'pro', 'thorns'].map(id => { const c = document.querySelector(`.chest[data-chest="${id}"]`), svg = c.querySelector('.chestart');
       return [id, { cls: ['locked', 'ready', 'open'].filter(k => c.classList.contains(k)).join(), look: svg && svg.dataset.look, run: svg ? svg.getAnimations({ subtree: true }).filter(a => a.playState === 'running').map(a => a.animationName) : null,
@@ -4436,7 +4454,7 @@ console.log('\nbuild 41 - batch 16, the moments');
 
   /* ---- 3. L.9c: one quiet sound the first time the map paints a chest ready, not on the next visit ---- */
   {
-    await boot41({}, { unlock: ALL41 });
+    await boot({}, { unlock: ALL41 }, { v: 5, plain: PLAIN41 });
     const r9 = await page.evaluate(async () => { const A = await import('./audio.js'); const R = await import('./ui/router.js'); const S = await import('./core/store.js'); const wait = ms => new Promise(r => setTimeout(r, ms));
       let n = 0; const o = A.Snd.chestReady; A.Snd.chestReady = function () { n++; return o.apply(this, arguments); };
       R.show('s-pick'); await wait(500); const first = n; R.show('s-menu'); await wait(100); R.show('s-pick'); await wait(500); const second = n;
@@ -4469,7 +4487,7 @@ console.log('\nbuild 41 - batch 16, the moments');
     const isUnlock = id => [523.3, 784, 1046.5].every((f, i) => (AU41.CHEST_FX[id] || []).some(e => e[1] === f && Math.abs(e[0] - i * .1) < .01));
     const notVerdict = IDS.every(id => !Object.values(AU41.VERDICT_FX).some(v => JSON.stringify(v) === JSON.stringify(AU41.CHEST_FX[id])));
     const noise = Object.keys(AU41.CHEST_NOISE).join() === 'thorns' && AU41.CHEST_NOISE.thorns.length === 1;
-    const keyScr = strip41(read41('ui', 'screens', 'key.js')), cer = strip41(read41('ui', 'ceremony.js')), aud = strip41(read41('audio.js'));
+    const keyScr = strip(read('ui', 'screens', 'key.js')), cer = strip(read('ui', 'ceremony.js')), aud = strip(read('audio.js'));
     const block = (aud.match(/chest\(id\)\{[\s\S]*?\n    chestReady/) || [''])[0];
     const code = !/unlockFx/.test(keyScr) && !/unlockFx/.test(cer) && /Snd\.chest\(id\)/.test(cer) && !!block && !/unlockFx|click\(/.test(block);
     (names && rising && inside && !stingBad.length && themes && !fxBad.length && distinct && !IDS.some(isUnlock) && notVerdict && noise && code)
@@ -4479,7 +4497,7 @@ console.log('\nbuild 41 - batch 16, the moments');
 
   /* ---- 5. L.6 live: a real open - not skippable, music hushed, the steps in order, "tap to continue", then the map and the spill (L.11b) ---- */
   {
-    await boot41({}, { unlock: ALL41 });
+    await boot({}, { unlock: ALL41 }, { v: 5, plain: PLAIN41 });
     await click('[data-go="s-pick"]'); await sleep(700);
     await page.evaluate(async () => { const A = await import('./audio.js'); window.__c41 = []; const o = A.Snd.chest; A.Snd.chest = function (id) { window.__c41.push(id); return o.apply(this, arguments); };
       window.__st41 = []; const h = document.getElementById('key-cere'); new MutationObserver(() => { const s = h.dataset.step; if (s && window.__st41[window.__st41.length - 1] !== s) window.__st41.push(s); }).observe(h, { attributes: true, attributeFilter: ['data-step'] }); });
@@ -4508,7 +4526,7 @@ console.log('\nbuild 41 - batch 16, the moments');
 
   /* ---- 6. L.11d one layout, nothing beside a shut chest, every word fits at 390px; L.11b the words go where they say ---- */
   {
-    await boot41({ chests: { games: 1, key: 1, pro: 1 }, spill: { games: 1, key: 1, pro: 1 }, readySeen: { thorns: 1 } }, { unlock: ALL41, bars: Object.assign({}, tierBars('clear'), tierBars('pro'), tierBars('author')) });
+    await boot({ chests: { games: 1, key: 1, pro: 1 }, spill: { games: 1, key: 1, pro: 1 }, readySeen: { thorns: 1 } }, { unlock: ALL41, bars: Object.assign({}, tierBars('clear'), tierBars('pro'), tierBars('author')) }, { v: 5, plain: PLAIN41 });
     await click('[data-go="s-pick"]'); await sleep(900);
     const lay = await page.evaluate(() => Object.fromEntries(['games', 'key', 'pro', 'thorns'].map(id => { const c = document.querySelector(`.chest[data-chest="${id}"]`), w = document.querySelector(`.chestwords[data-for="${id}"]`), cell = w.hidden ? null : w.getBoundingClientRect();
       return [id, { r: c.style.gridRow, col: c.style.gridColumn, hidden: w.hidden, n: w.hidden ? 0 : w.querySelectorAll('.cw').length,
@@ -4519,7 +4537,7 @@ console.log('\nbuild 41 - batch 16, the moments');
       return Object.fromEntries(['games', 'key', 'pro', 'thorns'].map(id => { const c = document.querySelector(`.chest[data-chest="${id}"]`); return [id, { r: c.style.gridRow, col: c.style.gridColumn, words: !document.querySelector(`.chestwords[data-for="${id}"]`).hidden }]; })); });
     (IDS.every(id => lay[id].r === shut[id].r && lay[id].col === shut[id].col) && IDS.every(id => !shut[id].words) && lay.thorns.hidden && ['games', 'key', 'pro'].every(id => lay[id].fit && lay[id].n >= 1))
       ? ok('L.11d one layout for every state - each chest keeps its cell open or shut, nothing stands beside a chest that is not open, and at 390px every word fits its cell on one line (the sprite did not need shrinking)') : bad('L.11d the layout', JSON.stringify({ lay, shut }));
-    await boot41({ chests: { games: 1, key: 1 }, spill: { games: 1, key: 1 } }, { unlock: ALL41, bars: tierBars('clear') });
+    await boot({ chests: { games: 1, key: 1 }, spill: { games: 1, key: 1 } }, { unlock: ALL41, bars: tierBars('clear') }, { v: 5, plain: PLAIN41 });
     await click('[data-go="s-pick"]'); await sleep(800);
     const taps = await page.evaluate(async () => { const wait = ms => new Promise(r => setTimeout(r, ms)); const R = await import('./ui/router.js'); const on = () => (document.querySelector('.screen.on') || {}).id; const out = {};
       const word = (id, w) => [...document.querySelectorAll(`.chestwords[data-for="${id}"] .cw`)].find(x => x.dataset.w === w);
@@ -4536,8 +4554,8 @@ console.log('\nbuild 41 - batch 16, the moments');
     const B = CH41.METER_BANDS;
     const cfgOk = B.length === 4 && B.map(b => b.col).join() === 'var(--mute),var(--ink),#E8B84A,#FFFFFF' && !B.some(b => /3DD68C|--ok/i.test(JSON.stringify(b)))
       && B[3].ground === '#000000' && B[3].shake.every(Number.isInteger) && B[3].shake[1] <= 2 && B[2].glow[1] > B[2].glow[0] && B[3].spike[1] > 0 && !B[0].glow[1] && !B[1].glow[1];
-    const pct = (read41('styles', 'app.css').match(/@keyframes pctup\{[^\n]*/) || [''])[0], pctOk = !!pct && !/--ok/.test(pct) && /--mcol/.test(pct);
-    await boot41({});
+    const pct = (read('styles', 'app.css').match(/@keyframes pctup\{[^\n]*/) || [''])[0], pctOk = !!pct && !/--ok/.test(pct) && /--mcol/.test(pct);
+    await boot({}, {}, { v: 5, plain: PLAIN41 });
     const mb = await page.evaluate(async () => { const S = await import('./core/store.js'); const R = await import('./ui/router.js'); const K = await import('./progress/key.js'); const wait = ms => new Promise(r => setTimeout(r, ms)); const out = [];
       for (const v of [0, 50, 99, 100, 150, 199, 200, 250, 299, 300, 350, 400]) { S.prefs.devMeter = v; S.prefs.meterSeen = v; S.save(); R.show('s-pick'); await wait(40); R.show('s-menu'); await wait(120);
         const m = document.querySelector('#menu-key .meterv'), cs = getComputedStyle(m), band = K.meterBand(v);
@@ -4557,7 +4575,7 @@ console.log('\nbuild 41 - batch 16, the moments');
 
   /* ---- 8. L.6 / S5: Testing's "replay chest opening" x4 - the ceremony with nothing stored, then the map's spill, then the chest put back ---- */
   {
-    await boot41({});
+    await boot({}, {}, { v: 5, plain: PLAIN41 });
     await click('[data-go="s-testing"]'); await sleep(400);
     const btns = await page.evaluate(() => [...document.querySelectorAll('#s-testing[data-dev] [data-act="dev-chest"]')].map(b => b.dataset.chest + ':' + b.textContent.trim()));
     const rp = [];
@@ -4574,8 +4592,8 @@ console.log('\nbuild 41 - batch 16, the moments');
 
   /* ---- 9. L.11e / L.10d / L.8f: the catalogue's chest cards, and the second driver answering a ceremony ---- */
   {
-    const gen = read41('..', '_review', 'scripts', 'catalogue.mjs'), tpl = read41('..', '_review', 'scripts', 'catalogue.template.html');
-    const shots = JSON.parse(read41('..', '_review', 'scripts', 'catalogue.annotations.json')).filter(a => a.group === 'chests').map(a => a.shot);
+    const gen = read('..', '_review', 'scripts', 'catalogue.mjs'), tpl = read('..', '_review', 'scripts', 'catalogue.template.html');
+    const shots = JSON.parse(read('..', '_review', 'scripts', 'catalogue.annotations.json')).filter(a => a.group === 'chests').map(a => a.shot);
     const want41 = IDS.flatMap(id => ['locked', 'ready', 'opened', 'spill'].map(s => `30-chest-${id}-${s}`)).concat(IDS.map(id => `31-cere-${id}`), [0, 50, 100, 150, 200, 250, 300, 350, 400].map(v => `32-meter-${String(v).padStart(3, '0')}`), IDS.map(id => `33-spill-${id}`));
     (/const cereTap = async/.test(gen) && /await cereTap\(\)/.test(gen) && /ceremonyFrame\(/.test(gen) && /chestPlan\(/.test(gen) && want41.every(s => shots.includes(s)) && shots.length === want41.length
       && /'chests'\]\.forEach/.test(tpl) && /id="g-chests"/.test(tpl) && /REF\.chestFx/.test(tpl) && /w === 'noise'/.test(tpl))
@@ -4585,17 +4603,12 @@ console.log('\nbuild 41 - batch 16, the moments');
 }
 
 /* ---- 22. build 42 (batch 16, the key themes - FEEDBACK-v23 §L.7 a-e). Music and one preference; nothing clears, opens or banks anything (L10) ---- */
-console.log('\nbuild 42 - batch 16, the key themes');
-{
-  const root42 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const read42 = (...p) => fs.readFileSync(path.join(root42, ...p), 'utf8');
-  const strip42 = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
-  const AU42 = await import(pathToFileURL(path.join(root42, 'config', 'audio.js')).href);
-  const KY42 = await import(pathToFileURL(path.join(root42, 'config', 'keys.js')).href);
-  const CH42 = await import(pathToFileURL(path.join(root42, 'config', 'chests.js')).href);
+if (section('build 42 - batch 16, the key themes')) {
+  const AU42 = await import(pathToFileURL(path.join(root, 'config', 'audio.js')).href);
+  const KY42 = await import(pathToFileURL(path.join(root, 'config', 'keys.js')).href);
+  const CH42 = await import(pathToFileURL(path.join(root, 'config', 'chests.js')).href);
   const THEMES = ['key', 'pro', 'thorns'], IDS42 = THEMES.map(k => (AU42.KEY_THEMES || {})[k]);
   const PLAIN42 = { story: 1, gridSeen: 1, played: 1, menuSeen: 1, keySeen: 1, snd: 'off', musicG: {}, spill: { games: 1, key: 1, pro: 1, thorns: 1 }, readySeen: { games: 1, key: 1, pro: 1, thorns: 1 } };
-  const boot42 = async (prefs, v = 6) => { await setStorage({ ne: { v, prefs: { ...PLAIN42, ...prefs }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(450); };
   const LV42 = c => c === 'x' ? 1 : (c >= '1' && c <= '9') ? +c / 10 : 0;
 
   /* ---- 1. L.7a: three rewritten themes in their motif from the first step, escalating, to batch 12's rules; the build-30 three kept one build, retired ---- */
@@ -4614,7 +4627,7 @@ console.log('\nbuild 42 - batch 16, the key themes');
       if (!t.voices.some(v => v.v === 'lead' && /[xo]/.test((v.pat || 'x')[0]) && v.seq[0] !== null)) opens.push(`${id} no motif on the first step`);
       t.voices.forEach((v, i) => { for (const s of [v.lv, v.lpv].filter(Boolean)) { if (LV42(s[0]) < .7) opens.push(`${id} voice ${i} opens at ${s[0]}`); if ([...s].some(c => LV42(c) < .6)) opens.push(`${id} voice ${i} drops: ${s}`); }
         if (!/[xo]/.test(v.pat || 'x')) opens.push(`${id} voice ${i} never sounds`); }); }
-    await boot42({});
+    await boot({}, {}, { plain: PLAIN42 });
     const pl = await page.evaluate(async ids => { const M = await import('./audio.js'); const A = await import('./config/audio.js');
       return ids.map(id => { const t = A.TRACKS[id], full = M.Music.plan(id), one = M.Music.plan(id, { bars: 1 }), beat = 60000 / t.bpm, barSec = 60 / t.bpm * (t.beats || 4);
         return { id, bad: full.plan.filter(e => (e[3] < 700 && e[1] >= 300) || (e[1] > 523.3 && e[3] < 1200)).slice(0, 3).map(e => `${Math.round(e[1])}Hz ${e[3]}ms`),
@@ -4631,18 +4644,18 @@ console.log('\nbuild 42 - batch 16, the key themes');
 
   /* ---- 2. L.7c: ONE store key, one ladder step - it round-trips, nonsense is dropped, and a theme whose chest is shut is kept and never applied ---- */
   {
-    const src = strip42(read42('core', 'store.js'));
+    const src = strip(read('core', 'store.js'));
     const stat = /VERSION=6/.test(src) && /if\(\(raw\.v\|\|0\)<6\) raw=up6\(raw\);/.test(src) && /p\.everywhere===undefined\) p\.everywhere='game'/.test(src) && /everywhere:Object\.keys\(KEY_THEMES\)\.includes\(p\.everywhere\)/.test(src);
-    await boot42({ chests: { games: 1, key: 1, pro: 1 } }, 5);
+    await boot({ chests: { games: 1, key: 1, pro: 1 } }, {}, { v: 5, plain: PLAIN42 });
     const a = await page.evaluate(async () => { const S = await import('./core/store.js'); const out = { v: S.store.v, first: S.prefs.everywhere, eff: S.everywhere() }; S.prefs.everywhere = 'pro'; S.save(); return out; });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
     const b = await page.evaluate(async () => { const S = await import('./core/store.js'); const raw = JSON.parse(localStorage.getItem('ne')); return { v: raw.v, stored: raw.prefs.everywhere, eff: S.everywhere() }; });
-    await boot42({ chests: { games: 1, key: 1 }, everywhere: 'key' }, 5);
+    await boot({ chests: { games: 1, key: 1 }, everywhere: 'key' }, {}, { v: 5, plain: PLAIN42 });
     const kept = await page.evaluate(async () => (await import('./core/store.js')).prefs.everywhere);
-    await boot42({ chests: { games: 1, key: 1 }, everywhere: 'thorns' });
+    await boot({ chests: { games: 1, key: 1 }, everywhere: 'thorns' }, {}, { plain: PLAIN42 });
     const shut = await page.evaluate(async () => { const S = await import('./core/store.js'); const M = await import('./audio.js'); const st = await import('./core/state.js');
       st.sel.vs = 0; M.Music.start('dots', { on: true, live: false }, 20); const id = M.Music.probe().track; M.Music.stop(); return { stored: S.prefs.everywhere, eff: S.everywhere(), id }; });
-    await boot42({ chests: { games: 1 }, everywhere: 'constructor' });
+    await boot({ chests: { games: 1 }, everywhere: 'constructor' }, {}, { plain: PLAIN42 });
     const junk = await page.evaluate(async () => (await import('./core/store.js')).prefs.everywhere);
     (stat && a.v === 6 && a.first === 'game' && a.eff === 'game' && b.v === 6 && b.stored === 'pro' && b.eff === 'pro' && kept === 'key' && shut.stored === 'thorns' && shut.eff === 'game' && shut.id === 'dots:waltz' && junk === 'game')
       ? ok('L.7c one store key, prefs.everywhere, and one ladder step (v5 → v6): a v5 record arrives with it as Per game, and one that already carries a theme keeps it (up6 adds, never replaces); a theme round-trips a reload; "constructor" is dropped; a theme whose chest is shut is KEPT and never applied - everywhere() reads Per game and a Dots run plays Waltz')
@@ -4652,7 +4665,7 @@ console.log('\nbuild 42 - batch 16, the key themes');
   /* ---- 3. L.7c: Customise's EVERYWHERE row above the tracks; a shut theme crossed out with its chest under it and unselectable; a theme on greys the tracks
      with one line; a track tapped then goes back to Per game with that track chosen ---- */
   {
-    await boot42({ chests: { games: 1, key: 1 } });
+    await boot({ chests: { games: 1, key: 1 } }, {}, { plain: PLAIN42 });
     await click('[data-go="s-custom"]'); await sleep(500);
     const cu = await page.evaluate(async () => { const wait = ms => new Promise(r => setTimeout(r, ms)); const S = await import('./core/store.js');
       const row = () => [...document.querySelectorAll('#c-everywhere button')].map(b => ({ v: b.dataset.v, txt: b.innerText.replace(/\s+/g, ' ').trim(), sel: b.classList.contains('sel'), shut: b.classList.contains('shut'), x: b.querySelector('s') ? getComputedStyle(b.querySelector('s')).textDecorationLine : '' }));
@@ -4663,7 +4676,7 @@ console.log('\nbuild 42 - batch 16, the key themes');
       out.on = { stored: JSON.parse(localStorage.getItem('ne')).prefs.everywhere, sel: (row().find(b => b.sel) || {}).v, grey: [...document.querySelectorAll('#c-track button')].every(b => b.classList.contains('grey')),
         note: document.getElementById('cn-track').textContent, opac: getComputedStyle(document.querySelector('#c-track button')).opacity };
       return out; });
-    await boot42({ chests: { games: 1, key: 1, pro: 1 }, everywhere: 'key' });
+    await boot({ chests: { games: 1, key: 1, pro: 1 }, everywhere: 'key' }, {}, { plain: PLAIN42 });
     await click('[data-go="s-custom"]'); await sleep(500);
     const back = await page.evaluate(async () => { const wait = ms => new Promise(r => setTimeout(r, ms)); const S = await import('./core/store.js'); const bs = [...document.querySelectorAll('#c-track button')];
       const before = { grey: bs.every(x => x.classList.contains('grey')), n: bs.length }; const pick = bs.find(x => !x.classList.contains('sel')), v = pick.dataset.v; pick.click(); await wait(300);
@@ -4684,9 +4697,9 @@ console.log('\nbuild 42 - batch 16, the key themes');
     const keyAt = async i => { await page.evaluate(async i => { const R = await import('./ui/router.js'); R.show('s-menu'); await new Promise(r => setTimeout(r, 120)); R.show('s-key', { tier: i }); }, i); await sleep(1200);
       return page.evaluate(async () => { const M = await import('./audio.js'); const b = document.getElementById('key-music'), r = b.getBoundingClientRect(), s = document.getElementById('build').getBoundingClientRect();
         return { track: M.Music.probe().track, hidden: b.hidden, txt: b.textContent, on: b.classList.contains('on'), clear: b.hidden || r.bottom <= s.top, stored: JSON.parse(localStorage.getItem('ne')).prefs.everywhere }; }); };
-    await boot42({ chests: { games: 1 } });
+    await boot({ chests: { games: 1 } }, {}, { plain: PLAIN42 });
     const locked = await keyAt(0);
-    await boot42({ chests: { games: 1, key: 1, pro: 1 } });
+    await boot({ chests: { games: 1, key: 1, pro: 1 } }, {}, { plain: PLAIN42 });
     const k0 = await keyAt(0), k1 = await keyAt(1), k2 = await keyAt(2);
     await page.evaluate(() => document.getElementById('key-music').click()); await sleep(200);
     const k2tap = await page.evaluate(() => JSON.parse(localStorage.getItem('ne')).prefs.everywhere);
@@ -4698,7 +4711,7 @@ console.log('\nbuild 42 - batch 16, the key themes');
     await click('#key-keys [data-kt="1"]'); await sleep(300);
     const k1back = await page.evaluate(() => document.getElementById('key-music').textContent);
     const cus = await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-custom'); await new Promise(r => setTimeout(r, 400)); return (document.querySelector('#c-everywhere .sel') || { dataset: {} }).dataset.v; });
-    const srcKey = strip42(read42('ui', 'screens', 'key.js')), srcCus = strip42(read42('ui', 'screens', 'customise.js')), srcAud = strip42(read42('audio.js'));
+    const srcKey = strip(read('ui', 'screens', 'key.js')), srcCus = strip(read('ui', 'screens', 'customise.js')), srcAud = strip(read('audio.js'));
     const a4 = !/screens\/customise|"\.\/customise\.js"/.test(srcKey) && !/screens\/key|"\.\/key\.js"/.test(srcCus) && /everywhere\(\)/.test(srcKey) && /everywhere\(\)/.test(srcCus) && !/key:roots/.test(srcAud);
     /* AMENDED at build 43 (v24 C.2 / C.3): a key's theme plays on its screen once its TIER is open, not once the chest it opens is — build 42's
        guess was what silenced Pro and Author. So key 1 with only the Games chest plays theme:key, and Author with its Thorns chest shut plays
@@ -4711,7 +4724,7 @@ console.log('\nbuild 42 - batch 16, the key themes');
 
   /* ---- 5. L.7d: a key theme as run music takes the one path a game's track takes, so it obeys every run-music rule; the menu loop is not the setting (guess) ---- */
   {
-    await boot42({ chests: { games: 1, key: 1, pro: 1 }, everywhere: 'pro' });
+    await boot({ chests: { games: 1, key: 1, pro: 1 }, everywhere: 'pro' }, {}, { plain: PLAIN42 });
     const rm = await page.evaluate(async () => { const M = await import('./audio.js'); const st = await import('./core/state.js'); const A = await import('./config/audio.js'); const wait = ms => new Promise(r => setTimeout(r, ms)); const out = {};
       const t = A.TRACKS['theme:pro'], barSec = 60 / t.bpm * (t.beats || 4);
       st.sel.vs = 0; M.Music.start('quick-tap', { on: true, live: true, end: performance.now() + 4500, flow: 1 }, 20); await wait(500); out.timed = M.Music.probe();
@@ -4720,7 +4733,7 @@ console.log('\nbuild 42 - batch 16, the key themes');
       st.sel.vs = 2; M.Music.start('reaction', { on: true, live: true, vsP: [.4, .6] }, 0, 'flash'); out.vs = M.Music.probe(); st.sel.vs = 0;
       M.Music.stop(); M.Music.menu('menu'); out.menu = M.Music.probe(); M.Music.stop();
       return out; });
-    const srcAud = strip42(read42('audio.js'));
+    const srcAud = strip(read('audio.js'));
     const one = /const t=pickRun\(g\); run\(t,g,shapeFor\(t,g,d,len\)\)/.test(srcAud) && (srcAud.match(/pickRun\(/g) || []).length === 1 && /menu\(id\)\{[^\n]*const t=TR\[id\]/.test(srcAud);
     (one && rm.timed.track === 'theme:pro' && rm.timed.arc && rm.timed.fin && rm.timed.flow && !rm.timed.stems
       && rm.set.track === 'theme:pro' && rm.set.arc && Math.abs(rm.set.arcBars - rm.set.want) < .02 && !rm.set.flow
@@ -4731,8 +4744,8 @@ console.log('\nbuild 42 - batch 16, the key themes');
 
   /* ---- 6. L.7e: the catalogue - the new themes on the music cards and linked both ways with their key screen cards, the old three once more marked retired, the Everywhere row photographed ---- */
   {
-    const gen = read42('..', '_review', 'scripts', 'catalogue.mjs'), tpl = read42('..', '_review', 'scripts', 'catalogue.template.html');
-    const shots = JSON.parse(read42('..', '_review', 'scripts', 'catalogue.annotations.json')).map(x => x.shot);
+    const gen = read('..', '_review', 'scripts', 'catalogue.mjs'), tpl = read('..', '_review', 'scripts', 'catalogue.template.html');
+    const shots = JSON.parse(read('..', '_review', 'scripts', 'catalogue.annotations.json')).map(x => x.shot);
     const catOk = { gen: /AU\.KEY_THEMES\)/.test(gen) && /AU\.KEY_THEMES_RETIRED\)/.test(gen) && /'13d-s-key-lantern'/.test(gen) && /prefs\.everywhere = 'pro'/.test(gen),
       tpl: /(\\u266a|♪) its theme/.test(tpl) && /(\\u266a|♪) its key screen/.test(tpl) && /t\.retired/.test(tpl), shot: shots.includes('13g-s-custom-everywhere') };
     (catOk.gen && catOk.tpl && catOk.shot)
@@ -4743,29 +4756,24 @@ console.log('\nbuild 42 - batch 16, the key themes');
 
 /* ---- 23. build 43 (batch 17, chests and keys - FEEDBACK-v24 §A, §B.1-§B.3, §B.5, §C). Presentation, one menu lock and one build flag;
    nothing clears, opens by itself or banks anything new (L10) ---- */
-console.log('\nbuild 43 - batch 17, chests and keys');
-{
-  const root43 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const read43 = (...p) => fs.readFileSync(path.join(root43, ...p), 'utf8');
-  const strip43 = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
-  const AU43 = await import(pathToFileURL(path.join(root43, 'config', 'audio.js')).href);
-  const KY43 = await import(pathToFileURL(path.join(root43, 'config', 'keys.js')).href);
-  const TH43 = await import(pathToFileURL(path.join(root43, 'config', 'theme.js')).href);
-  const U43 = await import(pathToFileURL(path.join(root43, 'config', 'unlocks.js')).href);
-  const KB43 = await import(pathToFileURL(path.join(root43, 'config', 'key-bars.js')).href);
+if (section('build 43 - batch 17, chests and keys')) {
+  const AU43 = await import(pathToFileURL(path.join(root, 'config', 'audio.js')).href);
+  const KY43 = await import(pathToFileURL(path.join(root, 'config', 'keys.js')).href);
+  const TH43 = await import(pathToFileURL(path.join(root, 'config', 'theme.js')).href);
+  const U43 = await import(pathToFileURL(path.join(root, 'config', 'unlocks.js')).href);
+  const KB43 = await import(pathToFileURL(path.join(root, 'config', 'key-bars.js')).href);
   const ALL43 = Object.fromEntries(U43.UNLOCKS.map(x => [x.key, Date.now()]));
   const bars43 = (...tiers) => Object.fromEntries(tiers.flatMap(t => Object.keys(KB43.KEY_BARS).map(k => [t === 'clear' ? k : `${k}|${t}`, Date.now()])));
   const PLAIN43 = { story: 1, gridSeen: 1, played: 1, menuSeen: 1, keySeen: 1, snd: 'off', musicG: {}, spill: { games: 1, key: 1, pro: 1, thorns: 1 }, readySeen: { games: 1, key: 1, pro: 1, thorns: 1 } };
-  const boot43 = async (prefs, extra = {}) => { await setStorage({ ne: Object.assign({ v: 6, prefs: { ...PLAIN43, ...prefs }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} }, extra) }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(450); };
   const show43 = (id, o) => page.evaluate(async (id, o) => { const R = await import('./ui/router.js'); R.show(id, o); }, id, o || {});
   const svg43 = sel => page.evaluate(s => { const el = document.querySelector(s); if (!el) return false; el.dispatchEvent(new MouseEvent('click', { bubbles: true })); return true; }, sel);
-  const keyjs43 = strip43(read43('ui', 'screens', 'key.js'));
+  const keyjs43 = strip(read('ui', 'screens', 'key.js'));
   const at43 = () => page.evaluate(() => ({ screen: (document.querySelector('.screen.on') || {}).id, cere: !document.getElementById('key-cere').hidden, earn: document.getElementById('s-key').dataset.earn || '', chests: JSON.parse(localStorage.getItem('ne')).prefs.chests }));
 
   /* ---- 1. C.2 / C.3: the Pro and Author keys have their music back - a key's theme plays on its screen once its TIER is open ---- */
   {
     const stat = /const themeOf = t => tierOpen\(t\.id\) \? t\.track : 'menu';/.test(keyjs43);
-    const trackAt = async (chests, tier, bars) => { await boot43({ chests }, { unlock: ALL43, bars: bars || {} }); await show43('s-menu'); await sleep(120); await show43('s-key', { tier }); await sleep(1300);
+    const trackAt = async (chests, tier, bars) => { await boot({ chests }, { unlock: ALL43, bars: bars || {} }, { plain: PLAIN43 }); await show43('s-menu'); await sleep(120); await show43('s-key', { tier }); await sleep(1300);
       return page.evaluate(async () => (await import('./audio.js')).Music.probe().track); };
     const t = { quiet: await trackAt({}, 0), key1: await trackAt({ games: 1 }, 0), pro: await trackAt({ games: 1, key: 1 }, 1, bars43('clear')), author: await trackAt({ games: 1, key: 1, pro: 1 }, 2, bars43('clear', 'pro')) };
     (stat && t.quiet === 'menu' && t.key1 === 'theme:key' && t.pro === 'theme:pro' && t.author === 'theme:thorns')
@@ -4776,7 +4784,7 @@ console.log('\nbuild 43 - batch 17, chests and keys');
   /* ---- 2. C.1: the key screen never opens a chest by itself - the key asks; Not yet and Back leave it; Open opens it ---- */
   {
     const stat = !/OPEN_AT|OPEN_AFTER_ARRIVAL|OPEN_IN_INTERLUDE|autoOpen/.test(keyjs43) && /function askOpen\(id\)/.test(keyjs43);
-    await boot43({ chests: { games: 1 }, keyWhole: { clear: 1 } }, { unlock: ALL43, bars: bars43('clear') });
+    await boot({ chests: { games: 1 }, keyWhole: { clear: 1 } }, { unlock: ALL43, bars: bars43('clear') }, { plain: PLAIN43 });
     await click('.item[data-go="s-key"]'); await sleep(1700);
     const arrive = Object.assign(await at43(), { hint: await page.evaluate(() => document.getElementById('key-hint').textContent) });
     await svg43('#key-ring .khubhit'); await sleep(300);
@@ -4789,7 +4797,7 @@ console.log('\nbuild 43 - batch 17, chests and keys');
     const yes = await at43();
     await revealDone(); await sleep(500); const after = await onScreen();
     // the quiet screen while the Games chest waits: the key, and the ready chest in the row, both ask
-    await boot43({}, { unlock: ALL43 }); await show43('s-key'); await sleep(900);
+    await boot({}, { unlock: ALL43 }, { plain: PLAIN43 }); await show43('s-key'); await sleep(900);
     const quiet = await page.evaluate(() => ({ key: !!document.querySelector('#key-shell button.kquiet[data-act="key-chest"][data-chest="games"]'), row: !!document.querySelector('#key-shell button.kch.ready[data-chest="games"]'), cere: !document.getElementById('key-cere').hidden, stored: JSON.parse(localStorage.getItem('ne')).prefs.chests.games }));
     await click('#key-shell button.kquiet'); await sleep(300); quiet.ask = await page.evaluate(() => !document.getElementById('key-ask').hidden);
     (stat && arrive.screen === 's-key' && !arrive.cere && !arrive.chests.key && arrive.hint === 'tap the key to open the Key chest' && asked.ask && /OPEN THE KEY CHEST\?/i.test(asked.txt) && !no.ask && !no.chests.key && no.screen === 's-key'
@@ -4800,12 +4808,12 @@ console.log('\nbuild 43 - batch 17, chests and keys');
 
   /* ---- 3. B.1 / B.2: a chest that can be opened wears a pulsing green outline; tapped on the map it opens on the frame the key screen is shown ---- */
   {
-    await boot43({}, { unlock: ALL43 }); await click('[data-go="s-pick"]'); await sleep(900);
+    await boot({}, { unlock: ALL43 }, { plain: PLAIN43 }); await click('[data-go="s-pick"]'); await sleep(900);
     const ring = await page.evaluate(() => { const c = id => document.querySelector(`.chest[data-chest="${id}"] .pic`); return { ready: getComputedStyle(c('games')).animationName, before: getComputedStyle(c('key')).animationName }; });
     const tap = await page.evaluate(() => { document.querySelector('.chest[data-chest="games"]').click(); const h = document.getElementById('key-cere'), on = document.querySelector('.screen.on');
       return { screen: on && on.id, cere: !h.hidden, playing: h.classList.contains('play'), stored: JSON.parse(localStorage.getItem('ne')).prefs.chests.games }; });
     await revealDone(); await sleep(500); const after = await onScreen();
-    const css = read43('styles', 'app.css');
+    const css = read('styles', 'app.css');
     (ring.ready === 'readyring' && ring.before === 'none' && /\.tile\.chest\.ready \.pic,\.kch\.ready,\.kquiet\{box-shadow:0 0 0 2px var\(--ok\);animation:readyring/.test(css) && tap.screen === 's-key' && tap.cere && tap.playing && tap.stored === 1 && after === 's-pick')
       ? ok('B.1 / B.2 a chest that can be opened wears a pulsing green outline (readyring in --ok) on the map and in the key screen\'s row, and a chest that cannot does not; tapped on the map the ready chest opens in the same task that shows the key screen - its ceremony already covers it, so the key screen never flashes - and "tap to continue" returns to the map')
       : bad('B.1 / B.2 the ready outline and the no-flash open', JSON.stringify({ ring, tap, after }));
@@ -4813,7 +4821,7 @@ console.log('\nbuild 43 - batch 17, chests and keys');
 
   /* ---- 4. B.3: a key animation not yet seen plays IN FULL, input held, and only then does the chest open - never started and cut off ---- */
   {
-    await boot43({ chests: { games: 1 }, keyWhole: {} }, { unlock: ALL43, bars: bars43('clear') });
+    await boot({ chests: { games: 1 }, keyWhole: {} }, { unlock: ALL43, bars: bars43('clear') }, { plain: PLAIN43 });
     await click('[data-go="s-pick"]'); await sleep(700);
     await click('.chest[data-chest="key"]'); await sleep(700);
     /* AMENDED at build 46 (v25 item 11): the unseen key animation is the first-open REVEAL now. It still plays IN FULL and Back still does nothing
@@ -4840,7 +4848,7 @@ console.log('\nbuild 43 - batch 17, chests and keys');
     const E = KY43.KEY_EARN, F = AU43.KEY_EARN_FX, T3 = ['clear', 'pro', 'author'];
     const cfg = T3.every((t, i) => !i || E[t].ms > E[T3[i - 1]].ms) && E.clear.bloom && E.pro.rings && E.pro.pulses && E.author.spikes
       && F.clear.track === 'theme:key' && F.pro.track === 'theme:pro' && F.author.track === 'theme:thorns';
-    await boot43({ allOpen: true, keyWhole: {} }, { unlock: ALL43, bars: bars43('clear', 'pro', 'author') });
+    await boot({ allOpen: true, keyWhole: {} }, { unlock: ALL43, bars: bars43('clear', 'pro', 'author') }, { plain: PLAIN43 });
     const got = await page.evaluate(async () => { const A = await import('./audio.js'); const R = await import('./ui/router.js'); const wait = ms => new Promise(r => setTimeout(r, ms));
       const calls = [], o = A.Snd.keyEarn, u = A.Snd.unlockFx, c = A.Snd.chest;
       A.Snd.keyEarn = function (t) { calls.push(t); return o.apply(this, arguments); }; A.Snd.unlockFx = function () { calls.push('unlockFx'); return u.apply(this, arguments); }; A.Snd.chest = function () { calls.push('chest'); return c.apply(this, arguments); };
@@ -4870,12 +4878,12 @@ console.log('\nbuild 43 - batch 17, chests and keys');
 
   /* ---- 6. C.6 / C.4: three key backgrounds drawn in code over the live background, each a Customise background once its key is finished ---- */
   {
-    const atm = strip43(read43('ui', 'atmosphere.js'));
+    const atm = strip(read('ui', 'atmosphere.js'));
     const code = /const LAYER=\{/.test(atm) && ['lantern(t)', 'circuit(t)', 'thorn(t)'].every(s => atm.includes(s)) && /TRACKS\[k\.track\]/.test(atm) && !/\.png|\.jpe?g|\.webp|new Image|url\(/i.test(atm)
       && /setKeyLayer\(quiet \|\| t\.shell \? null : t\.style\)/.test(keyjs43);
     const items = TH43.ITEMS.bg.filter(i => i.key).map(i => i.v + ':' + i.key).join() === 'lantern:clear,circuit:pro,thorn:author' && ['lantern', 'circuit', 'thorn'].every(v => TH43.DESIGNS[v]);
-    const ground = !/rgba\(0,\s*0,\s*0/.test(KY43.KEYS[2].ground) && !/\[data-style="thorn"\] #key-main\{background/.test(read43('styles', 'app.css'));
-    await boot43({ allOpen: true });
+    const ground = !/rgba\(0,\s*0,\s*0/.test(KY43.KEYS[2].ground) && !/\[data-style="thorn"\] #key-main\{background/.test(read('styles', 'app.css'));
+    await boot({ allOpen: true }, {}, { plain: PLAIN43 });
     const live = await page.evaluate(async () => { const R = await import('./ui/router.js'); const AT = await import('./ui/atmosphere.js'); const wait = ms => new Promise(r => setTimeout(r, ms));
       const cv = document.getElementById('stars'), cx = cv.getContext('2d'), out = { layers: Object.keys(AT.LAYER).join() };
       // what is drawn, sampled off the canvas rather than trusted: pixels with anything in them, every ninth
@@ -4883,10 +4891,10 @@ console.log('\nbuild 43 - batch 17, chests and keys');
       R.show('s-menu'); await wait(400); out.stars = lit();
       for (const [i, s] of [[0, 'lantern'], [1, 'circuit'], [2, 'thorn']]) { R.show('s-key', { tier: i }); await wait(500); out[s] = lit(); if (s === 'thorn') out.main = getComputedStyle(document.getElementById('key-main')).backgroundColor; }
       R.show('s-menu'); await wait(400); out.back = lit(); return out; });
-    await boot43({ chests: { games: 1 } }); await show43('s-custom'); await sleep(500);
+    await boot({ chests: { games: 1 } }, {}, { plain: PLAIN43 }); await show43('s-custom'); await sleep(500);
     const lockd = await page.evaluate(async () => { const wait = ms => new Promise(r => setTimeout(r, ms)); const S = await import('./core/store.js'); const b = v => document.querySelector(`#c-bg [data-v="${v}"]`);
       const out = { locked: ['lantern', 'circuit', 'thorn'].map(v => !!b(v) && b(v).classList.contains('locked')).join() }; b('circuit').click(); await wait(250); out.line = document.getElementById('lk-bg').textContent; out.bg = S.prefs.bg; return out; });
-    await boot43({ chests: { games: 1, key: 1 } }, { unlock: ALL43, bars: bars43('clear') }); await show43('s-custom'); await sleep(500);
+    await boot({ chests: { games: 1, key: 1 } }, { unlock: ALL43, bars: bars43('clear') }, { plain: PLAIN43 }); await show43('s-custom'); await sleep(500);
     const fin = await page.evaluate(async () => { const wait = ms => new Promise(r => setTimeout(r, ms)); const S = await import('./core/store.js'); const b = v => document.querySelector(`#c-bg [data-v="${v}"]`);
       const out = { lantern: b('lantern').classList.contains('locked'), green: b('lantern').classList.contains('newthing'), circuit: b('circuit').classList.contains('locked') }; b('lantern').click(); await wait(250); out.bg = S.prefs.bg; out.look = S.look('bg'); return out; });
     (code && items && ground && live.layers === 'lantern,circuit,thorn' && ['lantern', 'circuit', 'thorn'].every(s => live[s] > live.stars * 2) && live.back < live.lantern && live.main === 'rgba(0, 0, 0, 0)'
@@ -4898,7 +4906,7 @@ console.log('\nbuild 43 - batch 17, chests and keys');
   /* ---- 7. C.7: every chest's sting is cut from its own key's theme, escalating Games -> Key -> Pro -> Thorns ---- */
   {
     const S7 = AU43.CHEST_STING, IDS = ['games', 'key', 'pro', 'thorns'];
-    const shape = IDS.every(id => S7[id].track && typeof S7[id].cut === 'number' && Array.isArray(S7[id].tail) && !S7[id].notes) && IDS.map(id => S7[id].track).join() === 'theme:key,theme:key,theme:pro,theme:thorns' && /function stingOf\(s,tr\)/.test(strip43(read43('audio.js')));
+    const shape = IDS.every(id => S7[id].track && typeof S7[id].cut === 'number' && Array.isArray(S7[id].tail) && !S7[id].notes) && IDS.map(id => S7[id].track).join() === 'theme:key,theme:key,theme:pro,theme:thorns' && /function stingOf\(s,tr\)/.test(strip(read('audio.js')));
     const st = await page.evaluate(async ids => { const M = await import('./audio.js'); const A = await import('./config/audio.js');
       return ids.map(id => { const s = A.CHEST_STING[id], p = M.Snd.chestPlan(id).filter(e => e[8] === 'sting'), body = p.filter(e => e[0] < s.cut), theme = M.Music.plan(s.track).plan;
         const fromTheme = body.every(e => theme.some(x => Math.abs(x[0] - e[0]) < 2e-3 && Math.abs(x[1] - e[1]) < .05 && x[4] === e[4]));
@@ -4913,7 +4921,7 @@ console.log('\nbuild 43 - batch 17, chests and keys');
 
   /* ---- 8. A.1: Keys is locked until the Games chest - crossed out with "open the Games chest", the meter line and Progress's key row refused too; green until first seen ---- */
   {
-    await boot43({}, { runs: [{ t: Date.now(), g: 'quick-tap', d: 'two', s: 5, n: '', v: 4, hits: 10, misses: 0 }] });
+    await boot({}, { runs: [{ t: Date.now(), g: 'quick-tap', d: 'two', s: 5, n: '', v: 4, hits: 10, misses: 0 }] }, { plain: PLAIN43 });
     await show43('s-menu'); await sleep(350);
     const lk = await page.evaluate(async () => { const wait = ms => new Promise(r => setTimeout(r, ms)); const R = await import('./ui/router.js'); const on = () => (document.querySelector('.screen.on') || {}).id;
       const k = document.querySelector('.item[data-go="s-key"]'), out = { cls: k.className, need: document.getElementById('keys-need').hidden ? '' : document.getElementById('keys-need').textContent, x: getComputedStyle(k, '::after').content };
@@ -4921,12 +4929,12 @@ console.log('\nbuild 43 - batch 17, chests and keys');
       document.getElementById('menu-key').click(); await wait(250); out.meter = on();
       R.show('s-prog', { tab: 'unl' }); await wait(450); const row = document.querySelector('[data-act="unl"][data-key]'); out.row = !!row; if (row) row.click(); await wait(250); out.prog = on();
       return out; });
-    await boot43({ chests: { games: 1 }, keySeen: 0 }, { unlock: ALL43 }); await show43('s-menu'); await sleep(350);
+    await boot({ chests: { games: 1 }, keySeen: 0 }, { unlock: ALL43 }, { plain: PLAIN43 }); await show43('s-menu'); await sleep(350);
     const op = await page.evaluate(async () => { const wait = ms => new Promise(r => setTimeout(r, ms)); const R = await import('./ui/router.js'); const on = () => (document.querySelector('.screen.on') || {}).id; const k = () => document.querySelector('.item[data-go="s-key"]');
       const out = { cls: k().className, need: document.getElementById('keys-need').hidden }; k().click(); await wait(600); out.tap = on();
       R.show('s-menu'); await wait(300); out.after = k().className; out.seen = JSON.parse(localStorage.getItem('ne')).prefs.keysSeen; return out; });
-    const st = strip43(read43('core', 'store.js'));
-    const store = /keysSeen:p\.keysSeen!==undefined\?\(p\.keysSeen\?1:0\):\(p\.keySeen\?1:0\)/.test(st) && /keySeen:0,keysSeen:0/.test(st) && /prefs\.keysSeen = 0/.test(strip43(read43('progress', 'key.js')));
+    const st = strip(read('core', 'store.js'));
+    const store = /keysSeen:p\.keysSeen!==undefined\?\(p\.keysSeen\?1:0\):\(p\.keySeen\?1:0\)/.test(st) && /keySeen:0,keysSeen:0/.test(st) && /prefs\.keysSeen = 0/.test(strip(read('progress', 'key.js')));
     (/keylock/.test(lk.cls) && lk.need === 'open the Games chest' && lk.x !== 'none' && lk.tap === 's-menu' && /Games chest/.test(lk.toast) && lk.meter === 's-menu' && lk.row && lk.prog === 's-prog'
       && !/keylock/.test(op.cls) && /newthing/.test(op.cls) && op.need && op.tap === 's-key' && !/newthing/.test(op.after) && op.seen === 1 && store)
       ? ok('A.1 before the Games chest the Keys row is on the menu, crossed out with "open the Games chest" under it - the Customise treatment - and a tap says so and stays put, as do the meter line and Progress\'s key row; once the chest is open the strike is gone, the row is green until the key screen is first seen, and that spends it (prefs.keysSeen; an older profile takes keySeen, Fresh game and the Games chest reset clear it)')
@@ -4935,7 +4943,7 @@ console.log('\nbuild 43 - batch 17, chests and keys');
 
   /* ---- 9. A.2 / B.5: a brand new game opens the map at the top, and the chests arrive with the loading sequence ---- */
   {
-    await boot43({}); await click('[data-go="s-pick"]'); await sleep(600);
+    await boot({}, {}, { plain: PLAIN43 }); await click('[data-go="s-pick"]'); await sleep(600);
     await page.evaluate(() => { document.getElementById('s-pick').scrollTop = 9999; }); const was = await page.evaluate(() => document.getElementById('s-pick').scrollTop);
     const fr = await page.evaluate(async () => { const wait = ms => new Promise(r => setTimeout(r, ms)); const S = await import('./core/store.js'); const R = await import('./ui/router.js');
       S.reset(); R.show('s-menu'); await wait(200); R.show('s-pick'); await wait(150);
@@ -4952,14 +4960,14 @@ console.log('\nbuild 43 - batch 17, chests and keys');
     const first = await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-menu'); await new Promise(r => setTimeout(r, 400));
       const t = document.querySelector('#s-menu [data-go="s-testing"]'), p = document.querySelector('#s-menu [data-go="s-board"]');
       return { dim: t.classList.contains('dim'), pe: getComputedStyle(t).pointerEvents, other: p.classList.contains('dim') }; });
-    const cfg = read43('config', 'build.js');
-    const flag = /export const TARGET = 'web';/.test(cfg) && /export const BUILD_FLAGS = \{ dev: TARGET !== 'native' \};/.test(cfg) && /"native": "node scripts\/native\.mjs"/.test(read43('package.json'));
+    const cfg = read('config', 'build.js');
+    const flag = /export const TARGET = 'web';/.test(cfg) && /export const BUILD_FLAGS = \{ dev: TARGET !== 'native' \};/.test(cfg) && /"native": "node scripts\/native\.mjs"/.test(read('package.json'));
     const os = await import('node:os'); const { execFileSync } = await import('node:child_process');
     const outDir = path.join(os.tmpdir(), 'ne-native-gate-43'); let nat = null, ran = '';
-    try { ran = execFileSync(process.execPath, [path.join(root43, 'scripts', 'native.mjs'), outDir], { encoding: 'utf8' }); } catch (e) { ran = 'FAILED ' + (e.stderr || e.message); }
+    try { ran = execFileSync(process.execPath, [path.join(root, 'scripts', 'native.mjs'), outDir], { encoding: 'utf8' }); } catch (e) { ran = 'FAILED ' + (e.stderr || e.message); }
     if (!/^FAILED/.test(ran)) {
       const nh = fs.readFileSync(path.join(outDir, 'index.html'), 'utf8'), nb = fs.readFileSync(path.join(outDir, 'config', 'build.js'), 'utf8');
-      nat = { html: !/\sdata-dev[\s>=]/.test(nh) && !/id="s-testing"/.test(nh) && !/data-act="dev-/.test(nh), target: /export const TARGET = 'native';/.test(nb), web: /id="s-testing"/.test(read43('index.html')) && /export const TARGET = 'web';/.test(read43('config', 'build.js')) };
+      nat = { html: !/\sdata-dev[\s>=]/.test(nh) && !/id="s-testing"/.test(nh) && !/data-act="dev-/.test(nh), target: /export const TARGET = 'native';/.test(nb), web: /id="s-testing"/.test(read('index.html')) && /export const TARGET = 'web';/.test(read('config', 'build.js')) };
       const nsrv = await serve(outDir);
       await page.goto(nsrv.base + '/index.html', { waitUntil: 'networkidle0' });
       await page.evaluate(() => { localStorage.clear(); localStorage.setItem('ne', JSON.stringify({ v: 6, prefs: { story: 1, played: 1, menuSeen: 1, allOpen: true, supporter: true }, runs: [], ach: {}, unlock: {}, intro: {}, seen: {}, bars: {} })); });
@@ -4975,8 +4983,8 @@ console.log('\nbuild 43 - batch 17, chests and keys');
 
   /* ---- 11. the review board: the new cards, and each key's earn sound on its card ---- */
   {
-    const gen = read43('..', '_review', 'scripts', 'catalogue.mjs'), tpl = read43('..', '_review', 'scripts', 'catalogue.template.html');
-    const shots = JSON.parse(read43('..', '_review', 'scripts', 'catalogue.annotations.json')).map(a => a.shot);
+    const gen = read('..', '_review', 'scripts', 'catalogue.mjs'), tpl = read('..', '_review', 'scripts', 'catalogue.template.html');
+    const shots = JSON.parse(read('..', '_review', 'scripts', 'catalogue.annotations.json')).map(a => a.shot);
     const want43 = ['13h-s-key-ask', '13i-s-key-earn-clear', '13j-s-key-earn-pro', '13k-s-key-earn-author', '13l-s-custom-keybg', '13m-menu-keys-locked'];
     (want43.every(s => shots.includes(s) && gen.includes(`'${s}'`)) && /keyEarnPlan\(/.test(gen) && /REF\.earnFx/.test(tpl))
       ? ok(`build 43 the catalogue carries ${want43.length} new cards - the ask, the three earn moments (each with its sound on a button, off Snd.keyEarnPlan), Customise's key backgrounds and the Keys row locked`)
@@ -4984,19 +4992,14 @@ console.log('\nbuild 43 - batch 17, chests and keys');
   }
 }
 
-console.log('\nbuild 44 - batch 17, the key roster, Aiden\'s bars, the goal and six game tweaks');
-{
-  const root44 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const read44 = (...p) => fs.readFileSync(path.join(root44, ...p), 'utf8');
-  const strip44 = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
-  const KB44 = await import(pathToFileURL(path.join(root44, 'config', 'key-bars.js')).href);
-  const G44 = await import(pathToFileURL(path.join(root44, 'config', 'games.js')).href);
-  const U44 = await import(pathToFileURL(path.join(root44, 'config', 'unlocks.js')).href);
+if (section('build 44 - batch 17, the key roster, Aiden\'s bars, the goal and six game tweaks')) {
+  const KB44 = await import(pathToFileURL(path.join(root, 'config', 'key-bars.js')).href);
+  const G44 = await import(pathToFileURL(path.join(root, 'config', 'games.js')).href);
+  const U44 = await import(pathToFileURL(path.join(root, 'config', 'unlocks.js')).href);
   const NOW44 = Date.now();
   const ALL44 = Object.assign(Object.fromEntries(U44.UNLOCKS.map(x => [x.key, NOW44])), Object.fromEntries(Object.keys(KB44.KEY_BARS).map(k => [k, NOW44])));
   const PLAIN44 = { story: 1, gridSeen: 1, played: 1, menuSeen: 1, keySeen: 1, snd: 'off', musicG: {}, spill: { games: 1, key: 1, pro: 1, thorns: 1 }, readySeen: { games: 1, key: 1, pro: 1, thorns: 1 } };
-  const boot44 = async (prefs, extra = {}) => { await setStorage({ ne: Object.assign({ v: 6, prefs: { ...PLAIN44, ...prefs }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} }, extra) }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(450); };
-  const spot44 = strip44(read44('games', 'spot', 'index.js'));
+  const spot44 = strip(read('games', 'spot', 'index.js'));
 
   /* ---- 1. §E: Aiden's 42 numbers, exactly as he set them, and the two shapes in them ---- */
   {
@@ -5019,7 +5022,7 @@ console.log('\nbuild 44 - batch 17, the key roster, Aiden\'s bars, the goal and 
 
   /* ---- 2. §D.2: one achievement on every key requirement at every tier - 90 rows, named off KEY_ROSTER, 23 older ids kept with their rewards ---- */
   {
-    await boot44({ chests: { games: 1, key: 1, pro: 1 } }, { unlock: ALL44 });
+    await boot({ chests: { games: 1, key: 1, pro: 1 } }, { unlock: ALL44 }, { plain: PLAIN44 });
     const ro = await page.evaluate(async () => { const K = await import('./progress/key.js'); const P = await import('./progress.js'); const AC = await import('./config/achievements.js'); const TH = await import('./config/theme.js');
       const all = K.keyAch(), rows = all.filter(a => a.combo);
       const named = rows.every(a => { const c = K.COMBOS.find(x => x.key === a.combo); const r = (AC.KEY_ROSTER[c.bar.id] || {})[a.kt]; return !!r && r.name === a.name && (!r.id || r.id === a.id) && typeof a.how === 'string' && !/revealed/.test(a.how); });
@@ -5037,7 +5040,7 @@ console.log('\nbuild 44 - batch 17, the key roster, Aiden\'s bars, the goal and 
     const earn = await page.evaluate(async () => { const K = await import('./progress/key.js'); const S = await import('./core/store.js'); const P = await import('./progress.js');
       S.store.bars = { 'quick-tap:four:5': Date.now() }; S.store.ach = {}; const fresh = K.checkKeyAch({}); const row = fresh.find(a => a.id === 'qt_clean5');
       return { got: !!row, name: row && row.name, tab: row && P.achTab(row), others: fresh.filter(a => a.combo && a.id !== 'qt_clean5').map(a => a.id) }; });
-    await boot44({ chests: { games: 1 } }, { unlock: ALL44 });
+    await boot({ chests: { games: 1 } }, { unlock: ALL44 }, { plain: PLAIN44 });
     const shut = await page.evaluate(async () => { const K = await import('./progress/key.js'); const r = K.keyAch().find(a => a.id === 'key_pro_qt-two-5'); return r ? r.how : ''; });
     (earn.got && earn.name === 'Warm hands' && earn.tab === 'cul' && !earn.others.length && /revealed/.test(shut) && !/13/.test(shut))
       ? ok(`D.2 clearing Quick Tap · Four · Sprint's key 1 bar banks Warm hands (id qt_clean5, on Customise unlocks) and nothing else; a Pro row before the Key chest says "${shut}" and prints no number (A.1)`)
@@ -5057,11 +5060,11 @@ console.log('\nbuild 44 - batch 17, the key roster, Aiden\'s bars, the goal and 
       Object.assign(ST.sel, { game: g, diff: d, secs: s, vs: 0, practice: 0 }); ST.VS.reset(); if (aim) P.setPendingAim(aim); RUN.start(); await new Promise(r => setTimeout(r, 150));
       const gl = document.getElementById('goal'), txt = gl.classList.contains('on') ? gl.textContent.replace(/\s+/g, ' ').trim() : ''; RUN.abort(); await new Promise(r => setTimeout(r, 120)); return txt; }, g, d, s, aim || '');
     const G = {};
-    await boot44({}); G.fresh = await goal44('quick-tap', 'two', 5);
-    await boot44({}, { unlock: { 'quick-tap:four': NOW44 } }); G.fourSprint = await goal44('quick-tap', 'four', 5);
-    await boot44({}, { unlock: { 'quick-tap:four': NOW44, 'quick-tap:two:15': NOW44, 'quick-tap:two:30': NOW44 } }); G.twoSprint = await goal44('quick-tap', 'two', 5); G.twoMarathon = await goal44('quick-tap', 'two', 30);
-    await boot44({ chests: { games: 1 } }, { unlock: ALL44 }); G.key = await goal44('quick-tap', 'two', 15); G.aimed = await goal44('quick-tap', 'two', 15, 'a pinned aim');
-    await boot44({}, { unlock: ALL44 }); G.quiet = await goal44('quick-tap', 'two', 15);
+    await boot({}, {}, { plain: PLAIN44 }); G.fresh = await goal44('quick-tap', 'two', 5);
+    await boot({}, { unlock: { 'quick-tap:four': NOW44 } }, { plain: PLAIN44 }); G.fourSprint = await goal44('quick-tap', 'four', 5);
+    await boot({}, { unlock: { 'quick-tap:four': NOW44, 'quick-tap:two:15': NOW44, 'quick-tap:two:30': NOW44 } }, { plain: PLAIN44 }); G.twoSprint = await goal44('quick-tap', 'two', 5); G.twoMarathon = await goal44('quick-tap', 'two', 30);
+    await boot({ chests: { games: 1 } }, { unlock: ALL44 }, { plain: PLAIN44 }); G.key = await goal44('quick-tap', 'two', 15); G.aimed = await goal44('quick-tap', 'two', 15, 'a pinned aim');
+    await boot({}, { unlock: ALL44 }, { plain: PLAIN44 }); G.quiet = await goal44('quick-tap', 'two', 15);
     (/7 hits in a row/.test(G.fresh) && !/15 hits/.test(G.fresh) && /7 hits in a row/.test(G.fourSprint) && !/35 hits/.test(G.fourSprint) && !/35 hits/.test(G.twoSprint) && /35 hits/.test(G.twoMarathon)
       && /26 hits or more/.test(G.key) && /Two steady/.test(G.key) && /a pinned aim/.test(G.aimed) && !/26 hits/.test(G.aimed) && G.quiet === '')
       ? ok(`D.1 the goal: a first Sprint is "${G.fresh}", not fifteen in a row; "35 hits in any run" waits for the longest open length ("${G.twoMarathon}") and never sits on a Sprint; with the chain done it is the nearest key requirement ("${G.key}"), none before the Games chest; a pinned aim still shows ("${G.aimed}")`)
@@ -5070,11 +5073,11 @@ console.log('\nbuild 44 - batch 17, the key roster, Aiden\'s bars, the goal and 
 
   /* ---- 4. §E: a key 1 column that changes credits a saved best silently, once - Aiden's #426 answer, now reaching key 1 ---- */
   {
-    await boot44({ chests: { games: 1 }, retroCol: { clear: 'build 43' } }, { unlock: ALL44, runs: [{ t: NOW44, g: 'quick-tap', d: 'two', s: 5, n: '', v: 4, hits: 10, misses: 0 }] });
+    await boot({ chests: { games: 1 }, retroCol: { clear: 'build 43' } }, { unlock: ALL44, runs: [{ t: NOW44, g: 'quick-tap', d: 'two', s: 5, n: '', v: 4, hits: 10, misses: 0 }] }, { plain: PLAIN44 });
     const r1 = await page.evaluate(() => { const ne = JSON.parse(localStorage.getItem('ne')); return { bar: !!ne.bars['quick-tap:two:5'], ach: !!ne.ach.qt_bclean5, mark: !!(ne.prefs.retro || {})['quick-tap:two:5'] }; });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
     const r2 = await page.evaluate(() => { const ne = JSON.parse(localStorage.getItem('ne')); return Object.keys(ne.bars).length; });
-    await boot44({ retroCol: { clear: 'build 43' } }, { unlock: ALL44, runs: [{ t: NOW44, g: 'quick-tap', d: 'two', s: 5, n: '', v: 4, hits: 10, misses: 0 }] });
+    await boot({ retroCol: { clear: 'build 43' } }, { unlock: ALL44, runs: [{ t: NOW44, g: 'quick-tap', d: 'two', s: 5, n: '', v: 4, hits: 10, misses: 0 }] }, { plain: PLAIN44 });
     const r3 = await page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('ne')).bars).length);
     (r1.bar && r1.ach && r1.mark && r2 === 1 && r3 === 0)
       ? ok('E a key 1 column that changed since it was last credited credits a saved best at boot - Quick Tap · Two · Sprint on 10 hits against Aiden\'s 9 banks the bar and Two hands, marked green once - and a reload credits nothing more; with the Games chest shut key 1 stays quiet')
@@ -5083,7 +5086,7 @@ console.log('\nbuild 44 - batch 17, the key roster, Aiden\'s bars, the goal and 
 
   /* ---- 5. §F.1 / F.3: Flash's Streak budget is 1000 (the L5 check above); Go / No-go's big number counts targets ---- */
   {
-    await boot44({ chests: { games: 1 } }, { unlock: ALL44 });
+    await boot({ chests: { games: 1 } }, { unlock: ALL44 }, { plain: PLAIN44 });
     const ng = await page.evaluate(async () => { const ST = await import('./core/state.js'); const RUN = await import('./run/run.js'); const RX = (await import('./games/reaction/index.js')).RX; const wait = ms => new Promise(r => setTimeout(r, ms));
       Object.assign(ST.sel, { game: 'reaction', diff: 'nogo', secs: 5, vs: 0, practice: 0 }); ST.VS.reset(); RUN.start(); const t0 = performance.now(); const out = { start: '', after: '' };
       while (performance.now() - t0 < 9000 && RX.st !== 'rule') await wait(40); await wait(300); out.start = document.getElementById('score').textContent;
@@ -5098,7 +5101,7 @@ console.log('\nbuild 44 - batch 17, the key roster, Aiden\'s bars, the goal and 
   /* ---- 6. §F.5 / F.6: Spot · Count's add-up holds then walks, and its Streak budget is one number, 8 ---- */
   {
     const budget = G44.COUNT_BUDGET === 8 && (spot44.match(/off>=COUNT_BUDGET/g) || []).length === 2 && !/off>=5\b/.test(spot44) && /this\.find\(\)\?10:COUNT_BUDGET/.test(spot44) && /lim:COUNT_BUDGET\+' miscounts'/.test(spot44);
-    const copy = /of5:' · \{off\} of \{bud\}'/.test(read44('config', 'copy.js')) && /hudCountStreak:'Round \{n\} · \{off\} of \{bud\} off'/.test(read44('config', 'copy.js'));
+    const copy = /of5:' · \{off\} of \{bud\}'/.test(read('config', 'copy.js')) && /hudCountStreak:'Round \{n\} · \{off\} of \{bud\} off'/.test(read('config', 'copy.js'));
     const walk = /ms:off\?COUNT_ADD\.ms:0/.test(spot44) && /off\?CFG\.hold:0\)/.test(spot44) && /String\(this\.off-off\)/.test(spot44) && G44.COUNT_ADD.ms > 480;
     (budget && copy && walk)
       ? ok(`F.5 / F.6 Spot · Count: a miscount holds CFG.hold (${G44.CFG.hold}ms) and walks into the total over ${G44.COUNT_ADD.ms}ms, the Set's number waiting on the old total; the Streak's budget is COUNT_BUDGET (${G44.COUNT_BUDGET}, a placeholder) everywhere it is read or printed`)
@@ -5122,21 +5125,16 @@ console.log('\nbuild 44 - batch 17, the key roster, Aiden\'s bars, the goal and 
 }
 
 /* ---- 22. build 45 (batch 18, fixes, state and the catalogue - FEEDBACK-v25 items 3, 4, 5, 8, 9, 10, 12, 14, 16-21) ---- */
-console.log('\nbuild 45 - batch 18, fixes, state and the catalogue');
-{
-  const root45 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const read45 = (...p) => fs.readFileSync(path.join(root45, ...p), 'utf8');
-  const css45 = read45('styles', 'app.css'), flat45 = css45.replace(/\/\*[\s\S]*?\*\//g, ''), html45 = read45('index.html');
-  const strip45 = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
+if (section('build 45 - batch 18, fixes, state and the catalogue')) {
+  const css45 = read('styles', 'app.css'), flat45 = css45.replace(/\/\*[\s\S]*?\*\//g, ''), html45 = read('index.html');
   const NOW45 = Date.now();
-  const U45 = await import(pathToFileURL(path.join(root45, 'config', 'unlocks.js')).href);
-  const VD45 = await import(pathToFileURL(path.join(root45, 'config', 'verdicts.js')).href);
-  const AU45 = await import(pathToFileURL(path.join(root45, 'config', 'audio.js')).href);
-  const KB45 = await import(pathToFileURL(path.join(root45, 'config', 'key-bars.js')).href);
+  const U45 = await import(pathToFileURL(path.join(root, 'config', 'unlocks.js')).href);
+  const VD45 = await import(pathToFileURL(path.join(root, 'config', 'verdicts.js')).href);
+  const AU45 = await import(pathToFileURL(path.join(root, 'config', 'audio.js')).href);
+  const KB45 = await import(pathToFileURL(path.join(root, 'config', 'key-bars.js')).href);
   const ALLUNL = Object.fromEntries(U45.UNLOCKS.map(u => [u.key, NOW45]));
   const VH45 = 844;   // the phone the gate drives
   const PLAIN45 = { story: 1, gridSeen: 1, played: 1, menuSeen: 1, keySeen: 1, keysSeen: 1, snd: 'off', musicG: {}, spill: { games: 1, key: 1, pro: 1, thorns: 1 }, readySeen: { games: 1, key: 1, pro: 1, thorns: 1 } };
-  const boot45 = async (prefs, extra = {}) => { await setStorage({ ne: Object.assign({ v: 6, prefs: { ...PLAIN45, ...prefs }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} }, extra) }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(450); };
   const menu45 = () => page.evaluate(() => { const k = document.querySelector('#s-menu .item[data-go="s-key"]'), c = document.querySelector('[data-go="s-custom"]');
     return { keys: k.className, cus: c.className, need: !document.getElementById('keys-need').hidden || !document.getElementById('cus-need').hidden }; });
   const menuOpen45 = m => !/\bdim\b/.test(m.keys) && !/keylock/.test(m.keys) && !/\bdim\b/.test(m.cus) && !/cuslock/.test(m.cus) && !m.need;
@@ -5158,7 +5156,7 @@ console.log('\nbuild 45 - batch 18, fixes, state and the catalogue');
 
   /* ---- 1. item 9: the menu, the map and the key screen read ONE chest state - through Testing's switches AND through play ---- */
   {
-    await boot45({ played: 0 });
+    await boot({ played: 0 }, {}, { plain: PLAIN45 });
     const before = await menu45();
     await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-testing'); }); await sleep(350);
     await click('#dev-keys [data-act="dev-chestall"][data-chest="games"]'); await sleep(250);
@@ -5180,7 +5178,7 @@ console.log('\nbuild 45 - batch 18, fixes, state and the catalogue');
   {
     // the real path: EARN the chest. Everything is open but Quick Tap - Four, which any Two run opens, so the run itself is the last mode
     const unl = Object.assign({}, ALLUNL); delete unl['quick-tap:four'];
-    await boot45({ played: 0 }, { unlock: unl });
+    await boot({ played: 0 }, { unlock: unl }, { plain: PLAIN45 });
     const before = await menu45();
     await click('[data-go="s-pick"]'); await sleep(800);
     await page.evaluate(() => document.querySelector('.tile[data-game="quick-tap"]').click()); await sleep(420);
@@ -5201,10 +5199,10 @@ console.log('\nbuild 45 - batch 18, fixes, state and the catalogue');
 
   /* ---- 2. item 3: a tap that moves the sheet on never waits for its own highlight ---- */
   {
-    const pick45 = strip45(read45('ui', 'screens', 'pick.js'));
+    const pick45 = strip(read('ui', 'screens', 'pick.js'));
     const diff45 = (pick45.match(/diff\(b\)\{[\s\S]*?\n {2}'lvl-back'/) || [''])[0];
     const clean = !/setTimeout/.test(diff45) && !/picked/.test(pick45) && !/\.choice\.picked|\.picking/.test(flat45);
-    await boot45({}, { unlock: ALLUNL });
+    await boot({}, { unlock: ALLUNL }, { plain: PLAIN45 });
     await click('[data-go="s-pick"]'); await sleep(700);
     await page.evaluate(() => document.querySelector('.tile[data-game="quick-tap"]').click()); await sleep(420);
     // the class is read in the SAME task as the tap: if anything waited, the sheet would still be on the mode stage
@@ -5241,7 +5239,7 @@ console.log('\nbuild 45 - batch 18, fixes, state and the catalogue');
   {
     const fits = [];
     for (const [label, chests] of [['nothing open', {}], ['Games open', { games: 1 }], ['Games + Key open', { games: 1, key: 1 }]]) {
-      await boot45({ chests }, { unlock: ALLUNL, bars: Object.fromEntries(Object.keys(KB45.KEY_BARS).map(k => [k, NOW45])) });
+      await boot({ chests }, { unlock: ALLUNL, bars: Object.fromEntries(Object.keys(KB45.KEY_BARS).map(k => [k, NOW45])) }, { plain: PLAIN45 });
       await click('[data-go="s-pick"]'); await sleep(900);
       const m = await page.evaluate(() => { const p = document.getElementById('s-pick'), g = document.getElementById('grid').getBoundingClientRect();
         p.scrollLeft = 999; const forced = p.scrollLeft; p.scrollLeft = 0;
@@ -5260,7 +5258,7 @@ console.log('\nbuild 45 - batch 18, fixes, state and the catalogue');
     const seen = [];
     for (const [label, bars] of [['nothing cleared', {}], ['every bar cleared', 'all']]) {
       const B = bars === 'all' ? Object.fromEntries(Object.keys(KB45.KEY_BARS).flatMap(k => [[k, NOW45], [k + '|pro', NOW45], [k + '|author', NOW45]])) : {};
-      await boot45({ chests: { games: 1, key: 1, pro: 1, thorns: 1 }, keyWhole: { clear: 1, pro: 1, author: 1 } }, { unlock: ALLUNL, bars: B });
+      await boot({ chests: { games: 1, key: 1, pro: 1, thorns: 1 }, keyWhole: { clear: 1, pro: 1, author: 1 } }, { unlock: ALLUNL, bars: B }, { plain: PLAIN45 });
       for (const tier of [0, 1, 2]) {
         await page.evaluate(async t => { const R = await import('./ui/router.js'); R.show('s-menu'); await new Promise(r => setTimeout(r, 80)); R.show('s-key', { tier: t }); }, tier);
         await sleep(900);
@@ -5275,20 +5273,20 @@ console.log('\nbuild 45 - batch 18, fixes, state and the catalogue');
 
   /* ---- 6. item 14: the red placeholder note is gone from the key screen (a real config mismatch still speaks) ---- */
   {
-    await boot45({ chests: { games: 1, key: 1, pro: 1, thorns: 1 } }, { unlock: ALLUNL });
+    await boot({ chests: { games: 1, key: 1, pro: 1, thorns: 1 } }, { unlock: ALLUNL }, { plain: PLAIN45 });
     const warn = await page.evaluate(async () => { const R = await import('./ui/router.js'); const K = await import('./progress/key.js'); const wait = ms => new Promise(r => setTimeout(r, ms));
       const out = []; for (const t of [0, 1, 2]) { R.show('s-menu'); await wait(80); R.show('s-key', { tier: t }); await wait(500);
         const el = document.getElementById('key-warn'); out.push(el.hidden ? '' : el.textContent.trim()); }
       return { out, ph: [K.placeholderCount('pro'), K.placeholderCount('author')] }; });
-    const CP45 = await import(pathToFileURL(path.join(root45, 'config', 'copy.js')).href);
-    (warn.out.every(t => !t) && warn.ph[0] > 0 && warn.ph[1] > 0 && !('placeholder' in CP45.KEY) && !/are PLACEHOLDERS/.test(read45('ui', 'screens', 'key.js')) && /KEY\.mismatch/.test(read45('ui', 'screens', 'key.js')))
+    const CP45 = await import(pathToFileURL(path.join(root, 'config', 'copy.js')).href);
+    (warn.out.every(t => !t) && warn.ph[0] > 0 && warn.ph[1] > 0 && !('placeholder' in CP45.KEY) && !/are PLACEHOLDERS/.test(read('ui', 'screens', 'key.js')) && /KEY\.mismatch/.test(read('ui', 'screens', 'key.js')))
       ? ok(`item 14 no key screen says anything about placeholders any more (${warn.ph[0]} Pro and ${warn.ph[1]} Author cells still are, and isPlaceholder still answers for the generator and the catalogue); the config-mismatch warning is untouched`)
       : bad('item 14 the placeholder note', JSON.stringify(warn));
   }
 
   /* ---- 7. item 16: a game's panel fits the phone and scrolls inside itself ---- */
   {
-    await boot45({ chests: { games: 1, key: 1, pro: 1, thorns: 1 } }, { unlock: ALLUNL });
+    await boot({ chests: { games: 1, key: 1, pro: 1, thorns: 1 } }, { unlock: ALLUNL }, { plain: PLAIN45 });
     await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-key', { tier: 0 }); }); await sleep(800);
     const panels = [];
     for (const g of GAMES) {
@@ -5308,12 +5306,12 @@ console.log('\nbuild 45 - batch 18, fixes, state and the catalogue');
 
   /* ---- 8. items 17 / 18: every round that shows a tier names it and sounds it ---- */
   {
-    const src = { reaction: read45('games', 'reaction', 'index.js'), timing: read45('games', 'timing', 'index.js'), spot: read45('games', 'spot', 'index.js'), estimate: read45('games', 'estimate', 'index.js') };
-    const direct = Object.entries(src).filter(([, s]) => /\broundTier\(/.test(strip45(s))).map(([g]) => g);
-    const tier45 = strip45(read45('games', '_shared', 'tier.js'));
+    const src = { reaction: read('games', 'reaction', 'index.js'), timing: read('games', 'timing', 'index.js'), spot: read('games', 'spot', 'index.js'), estimate: read('games', 'estimate', 'index.js') };
+    const direct = Object.entries(src).filter(([, s]) => /\broundTier\(/.test(strip(s))).map(([g]) => g);
+    const tier45 = strip(read('games', '_shared', 'tier.js'));
     const oneCall = /roundShow\([\s\S]*?audio\.roundVerdict\(id\)/.test(tier45);
-    const shows = Object.entries(src).map(([g, s]) => [g, (strip45(s).match(/roundShow\(/g) || []).length]);
-    await boot45({ chests: { games: 1 } }, { unlock: ALLUNL });
+    const shows = Object.entries(src).map(([g, s]) => [g, (strip(s).match(/roundShow\(/g) || []).length]);
+    await boot({ chests: { games: 1 } }, { unlock: ALLUNL }, { plain: PLAIN45 });
     const flash = await page.evaluate(async () => { const ST = await import('./core/state.js'); const RUN = await import('./run/run.js'); const MU = await import('./audio.js');
       const TI = await import('./games/_shared/tier.js'); const RX = (await import('./games/reaction/index.js')).RX; const wait = ms => new Promise(r => setTimeout(r, ms));
       const fired = [], real = MU.Snd.roundVerdict; MU.Snd.roundVerdict = id => fired.push(id);
@@ -5345,8 +5343,8 @@ console.log('\nbuild 45 - batch 18, fixes, state and the catalogue');
 
   /* ---- 9. items 20 / 21: the catalogue's sound list and Round formats, built by the same two functions npm run review uses ---- */
   {
-    const { roundsRef, soundsRef } = await import(pathToFileURL(path.join(root45, '..', '_review', 'scripts', 'catalogue.ref.mjs')).href);
-    await boot45({}, { unlock: ALLUNL });
+    const { roundsRef, soundsRef } = await import(pathToFileURL(path.join(root, '..', '_review', 'scripts', 'catalogue.ref.mjs')).href);
+    await boot({}, { unlock: ALLUNL }, { plain: PLAIN45 });
     const snd = await page.evaluate(soundsRef);
     const rows = snd.groups.flatMap(g => g.rows);
     const silent = rows.filter(r => !r.plays.length || r.plays.some(p => !p.ev || !p.ev.length)).map(r => r.id);
@@ -5376,7 +5374,7 @@ console.log('\nbuild 45 - batch 18, fixes, state and the catalogue');
       ? ok(`item 21 Round formats: ${rf.length} games, ${bands} bands, every figure read from the game's own config and engine (spot checks: Count round 7 deals ${live21.decoys7} decoys, Find round 5 deals ${live21.find5} shapes, a Hidden Streak's round 5 stretches × ${live21.hid5}); the shapes are drawn by the app's own code, and Go / No-go's square at 45° is flagged as the diamond (#444)`)
       : bad('item 21 Round formats', JSON.stringify({ ids: rf.map(g => g.id), shaped, drawn, diamond, figures, c7, f5, h5 }));
     // and the page has somewhere to put both, carried in the template so every future board keeps them (#441)
-    const tpl45 = read45('..', '_review', 'scripts', 'catalogue.template.html'), gen45 = read45('..', '_review', 'scripts', 'catalogue.mjs');
+    const tpl45 = read('..', '_review', 'scripts', 'catalogue.template.html'), gen45 = read('..', '_review', 'scripts', 'catalogue.mjs');
     (/id="sounds"/.test(tpl45) && /id="snd-host"/.test(tpl45) && /id="rounds"/.test(tpl45) && /id="rf-host"/.test(tpl45) && /REF\.sounds/.test(tpl45) && /REF\.rounds/.test(tpl45)
       && /page\.evaluate\(soundsRef\)/.test(gen45) && /page\.evaluate\(roundsRef\)/.test(gen45))
       ? ok('items 20 / 21 both sections are in catalogue.template.html with their note boxes, and catalogue.mjs fills them from catalogue.ref.mjs - so every future npm run review carries them (#441)')
@@ -5385,23 +5383,17 @@ console.log('\nbuild 45 - batch 18, fixes, state and the catalogue');
 }
 
 
-console.log('\nbuild 46 - batch 18, the unlock experience, sound and About');
-{
-  const root46 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const read46 = (...p) => fs.readFileSync(path.join(root46, ...p), 'utf8');
-  const strip46 = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
-  const css46 = read46('styles', 'app.css'), flat46 = css46.replace(/\/\*[\s\S]*?\*\//g, '');
+if (section('build 46 - batch 18, the unlock experience, sound and About')) {
+  const css46 = read('styles', 'app.css'), flat46 = css46.replace(/\/\*[\s\S]*?\*\//g, '');
   const NOW46 = Date.now();
-  const U46 = await import(pathToFileURL(path.join(root46, 'config', 'unlocks.js')).href);
-  const KB46 = await import(pathToFileURL(path.join(root46, 'config', 'key-bars.js')).href);
-  const CH46 = await import(pathToFileURL(path.join(root46, 'config', 'chests.js')).href);
-  const KY46 = await import(pathToFileURL(path.join(root46, 'config', 'keys.js')).href);
-  const CP46 = await import(pathToFileURL(path.join(root46, 'config', 'copy.js')).href);
-  const MS46 = await import(pathToFileURL(path.join(root46, 'config', 'messages.js')).href);
+  const U46 = await import(pathToFileURL(path.join(root, 'config', 'unlocks.js')).href);
+  const KB46 = await import(pathToFileURL(path.join(root, 'config', 'key-bars.js')).href);
+  const CH46 = await import(pathToFileURL(path.join(root, 'config', 'chests.js')).href);
+  const KY46 = await import(pathToFileURL(path.join(root, 'config', 'keys.js')).href);
+  const CP46 = await import(pathToFileURL(path.join(root, 'config', 'copy.js')).href);
+  const MS46 = await import(pathToFileURL(path.join(root, 'config', 'messages.js')).href);
   const ALL46 = Object.fromEntries(U46.UNLOCKS.map(u => [u.key, NOW46]));
   const tier46 = (...ts) => Object.fromEntries(Object.keys(KB46.KEY_BARS).flatMap(k => ts.map(t => [t === 'clear' ? k : k + '|' + t, NOW46])));
-  const PLAIN46 = { story: 1, gridSeen: 1, played: 1, menuSeen: 1, keySeen: 1, keysSeen: 1, snd: 'off', musicG: {}, spill: {}, readySeen: {} };
-  const boot46 = async (prefs, extra = {}) => { await setStorage({ ne: Object.assign({ v: 6, prefs: { ...PLAIN46, ...prefs }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} }, extra) }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(450); };
   const show46 = (id, o) => page.evaluate(async (i, x) => { const R = await import('./ui/router.js'); R.show(i, x); }, id, o || {});
   const revState = () => page.evaluate(() => { const h = document.getElementById('key-cere'), c = h.querySelector('.rcard');
     return { on: !h.hidden, kind: h.dataset.kind || '', id: h.dataset.rev || '', step: h.dataset.step || '', tap: h.classList.contains('tap'), card: h.classList.contains('card'),
@@ -5411,7 +5403,7 @@ console.log('\nbuild 46 - batch 18, the unlock experience, sound and About');
 
   /* ---- 1. items 6 / 11 / 22: ONE shared reveal routine, and both kinds go through it ---- */
   {
-    const rev = strip46(read46('ui', 'reveal.js')), cere = strip46(read46('ui', 'ceremony.js')), keyjs = strip46(read46('ui', 'screens', 'key.js'));
+    const rev = strip(read('ui', 'reveal.js')), cere = strip(read('ui', 'ceremony.js')), keyjs = strip(read('ui', 'screens', 'key.js'));
     // the routine lives in one file: the ceremony no longer owns a clock, a tap or a hand-over, and the key screen starts both kinds the same way
     const oneRoutine = !/playCeremony|ceremonyTap|stopCeremony|ceremonyOn/.test(cere + keyjs) && /export function chestStage|const chestStage|function chestStage/.test(cere)
       && (keyjs.match(/playReveal\(/g) || []).length >= 3 && /kind: 'chest'/.test(keyjs) && /kind: 'key'/.test(keyjs);
@@ -5432,7 +5424,7 @@ console.log('\nbuild 46 - batch 18, the unlock experience, sound and About');
       const [, chests] = want[id];
       const bars = id === 'games' ? {} : id === 'key' ? tier46('clear') : id === 'pro' ? tier46('clear', 'pro') : tier46('clear', 'pro', 'author');
       // the keys' own first opens are already seen on this fixture, so what the tap plays is the chest's reveal and nothing queued in front of it
-      await boot46({ chests, revealed: { 'key:clear': 1, 'key:pro': 1, 'key:author': 1 } }, { unlock: ALL46, bars });
+      await boot({ chests, revealed: { 'key:clear': 1, 'key:pro': 1, 'key:author': 1 } }, { unlock: ALL46, bars });
       await page.evaluate(async () => { const A = await import('./audio.js'); window.__g46 = []; const o = A.Snd.gift; A.Snd.gift = function (i) { window.__g46.push(i); return o.apply(this, arguments); }; });
       await click('[data-go="s-pick"]'); await sleep(800);
       const state = await page.evaluate(i => { const c = document.querySelector(`#grid .chest[data-chest="${i}"]`); return c && c.className; }, id);
@@ -5453,7 +5445,7 @@ console.log('\nbuild 46 - batch 18, the unlock experience, sound and About');
 
   /* ---- 3. items 6 / 11: not skippable, and taps are SWALLOWED, not queued ---- */
   {
-    await boot46({}, { unlock: ALL46 });
+    await boot({}, { unlock: ALL46 });
     await click('[data-go="s-pick"]'); await sleep(800);
     await page.evaluate(() => document.querySelector('#grid .chest[data-chest="games"]').click()); await sleep(900);
     // eight taps on the host and one Back, mid-stage: nothing moves, and none of them is waiting to fire when it ends
@@ -5477,7 +5469,7 @@ console.log('\nbuild 46 - batch 18, the unlock experience, sound and About');
 
   /* ---- 4. item 22: what the congratulations card says ---- */
   {
-    await boot46({}, { unlock: ALL46 });
+    await boot({}, { unlock: ALL46 });
     await click('[data-go="s-pick"]'); await sleep(800);
     await page.evaluate(() => document.querySelector('#grid .chest[data-chest="games"]').click());
     await revealReady(); await click('#key-cere'); await sleep(CH46.REVEAL.cardAt + 300);
@@ -5493,7 +5485,7 @@ console.log('\nbuild 46 - batch 18, the unlock experience, sound and About');
   {
     const seen = [];
     for (const [tier, chests, bars, tab] of [['clear', { games: 1 }, tier46('clear'), 0], ['pro', { games: 1, key: 1 }, tier46('clear', 'pro'), 1], ['author', { games: 1, key: 1, pro: 1 }, tier46('clear', 'pro', 'author'), 2]]) {
-      await boot46({ chests }, { unlock: ALL46, bars });
+      await boot({ chests }, { unlock: ALL46, bars });
       await page.evaluate(async () => { const A = await import('./audio.js'); window.__m46 = []; const o = A.Snd.mapFx; A.Snd.mapFx = function (g) { window.__m46.push(g); return o.apply(this, arguments); };
         window.__k46 = []; const k = A.Snd.keyEarn; A.Snd.keyEarn = function (t) { window.__k46.push(t); return k.apply(this, arguments); }; });
       await show46('s-key', { tier: tab }); await sleep(500);
@@ -5522,7 +5514,7 @@ console.log('\nbuild 46 - batch 18, the unlock experience, sound and About');
 
   /* ---- 6. items 11 / 22: FIRST TIME ONLY, and a Testing chest reset makes it a first time again ---- */
   {
-    await boot46({ chests: { games: 1 } }, { unlock: ALL46, bars: tier46('clear') });
+    await boot({ chests: { games: 1 } }, { unlock: ALL46, bars: tier46('clear') });
     await show46('s-key', { tier: 0 }); await revealReady(); await revealDone(); await sleep(500);
     const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('ne')).prefs.revealed);
     await show46('s-menu'); await sleep(200); await show46('s-key', { tier: 0 }); await sleep(1400);
@@ -5538,7 +5530,7 @@ console.log('\nbuild 46 - batch 18, the unlock experience, sound and About');
   /* ---- 7. item 11: Reduce Motion gives a short fade, and still reaches the card ---- */
   {
     await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
-    await boot46({ chests: { games: 1 } }, { unlock: ALL46, bars: tier46('clear') });
+    await boot({ chests: { games: 1 } }, { unlock: ALL46, bars: tier46('clear') });
     const t0 = Date.now();
     await show46('s-key', { tier: 0 }); await sleep(250);
     // the reveal's own `quick` class is what says it took the short path; `krevquick` on the screen is gone already, because under Reduce Motion the settle is immediate
@@ -5560,7 +5552,7 @@ console.log('\nbuild 46 - batch 18, the unlock experience, sound and About');
       const under = tier === 'clear' ? {} : tier === 'pro' ? tier46('clear') : tier46('clear', 'pro');
       for (const [label, bars, done] of [['unfinished', under, false], ['finished', Object.assign({}, under, tier46(tier)), true]]) {
         // `revealed` already set, so the finished one is simply the settled state and not the reveal
-        await boot46({ chests, revealed: { 'key:clear': 1, 'key:pro': 1, 'key:author': 1 } }, { unlock: ALL46, bars });
+        await boot({ chests, revealed: { 'key:clear': 1, 'key:pro': 1, 'key:author': 1 } }, { unlock: ALL46, bars });
         await show46('s-key', { tier: tab }); await sleep(900);
         seen.push(Object.assign({ tier, label, done }, await page.evaluate(() => { const el = document.getElementById('s-key'), gl = document.querySelector('#key-ring .kglyph'), gr = document.querySelector('#key-ring .kground'), kk = document.querySelector('.kkey.sel');
           const cs = getComputedStyle(gl);
@@ -5580,14 +5572,14 @@ console.log('\nbuild 46 - batch 18, the unlock experience, sound and About');
 
   /* ---- 9. item 7: a symbol beside every chest unlock on the map - the same one that pops out ---- */
   {
-    await boot46({ chests: { games: 1, key: 1, pro: 1, thorns: 1 }, spill: { games: 1, key: 1, pro: 1, thorns: 1 } }, { unlock: ALL46, bars: tier46('clear', 'pro', 'author') });
+    await boot({ chests: { games: 1, key: 1, pro: 1, thorns: 1 }, spill: { games: 1, key: 1, pro: 1, thorns: 1 } }, { unlock: ALL46, bars: tier46('clear', 'pro', 'author') });
     await click('[data-go="s-pick"]'); await sleep(900);
     const map = await page.evaluate(() => Object.fromEntries(['games', 'key', 'pro', 'thorns'].map(id => { const w = document.querySelector(`.chestwords[data-for="${id}"]`);
       return [id, [...w.querySelectorAll('.cw')].map(x => ({ w: x.dataset.w, sym: (x.querySelector('.sym') || {}).dataset && x.querySelector('.sym').dataset.sym, fits: (() => { const t = x.querySelector('.cwt'), b = x.getBoundingClientRect(); return t.scrollWidth <= t.clientWidth + 1 && b.right <= innerWidth; })() }))]; })));
     const wantSym = Object.fromEntries(Object.keys(map).map(id => [id, (CP46.CHEST_WORDS[id] || []).map(x => x.sym)]));
     const bad7 = Object.keys(map).filter(id => map[id].map(x => x.sym).join() !== wantSym[id].join() || map[id].some(x => !x.sym || !x.fits) || !map[id].length);
     // and it is the SAME symbol the chest pops out — one drawer, one list, so they cannot drift (ui/chest.js symSvg / giftsOf)
-    const one = /function symSvg/.test(strip46(read46('ui', 'chest.js'))) && !/SYMBOLS\[/.test(strip46(read46('ui', 'reveal.js')) + strip46(read46('ui', 'screens', 'pick.js')));
+    const one = /function symSvg/.test(strip(read('ui', 'chest.js'))) && !/SYMBOLS\[/.test(strip(read('ui', 'reveal.js')) + strip(read('ui', 'screens', 'pick.js')));
     (!bad7.length && one)
       ? ok(`item 7 every chest's unlock on the map carries its symbol beside the title - ${Object.keys(map).map(id => id + ' ' + map[id].map(x => x.sym).join('+')).join(' · ')} - each drawn by the one symSvg() the chest pop-out and the card use, and every word still fits its cell at 390px`)
       : bad('item 7 the map symbols', JSON.stringify({ bad7, one, map }));
@@ -5595,10 +5587,10 @@ console.log('\nbuild 46 - batch 18, the unlock experience, sound and About');
 
   /* ---- 10. item 15: a key's background REPLACES the base on its screen, and it is what its chest gives ---- */
   {
-    const atm = strip46(read46('ui', 'atmosphere.js'));
+    const atm = strip(read('ui', 'atmosphere.js'));
     // the base design is not drawn while a key layer is over: DRAW[over||own ? 'stars' : bg]
     const replaces = /DRAW\[\s*over\s*\|\|\s*own\s*\?\s*'stars'\s*:\s*bg\s*\]/.test(atm);
-    await boot46({ chests: { games: 1, key: 1, pro: 1, thorns: 1 }, bg: 'grid', revealed: { 'key:clear': 1, 'key:pro': 1, 'key:author': 1 } }, { unlock: ALL46, bars: tier46('clear', 'pro', 'author') });
+    await boot({ chests: { games: 1, key: 1, pro: 1, thorns: 1 }, bg: 'grid', revealed: { 'key:clear': 1, 'key:pro': 1, 'key:author': 1 } }, { unlock: ALL46, bars: tier46('clear', 'pro', 'author') });
     const layers = [];
     for (const [tier, tab, style] of [['clear', 0, 'lantern'], ['pro', 1, 'circuit'], ['author', 2, 'thorn']]) {
       await show46('s-menu'); await sleep(150); await show46('s-key', { tier: tab }); await sleep(700);
@@ -5618,10 +5610,10 @@ console.log('\nbuild 46 - batch 18, the unlock experience, sound and About');
 
   /* ---- 11. items 1 / 2: the title whoosh and the map's sounds, both tied to the animation's own timing ---- */
   {
-    const menujs = strip46(read46('ui', 'screens', 'menu.js')), pickjs = strip46(read46('ui', 'screens', 'pick.js'));
+    const menujs = strip(read('ui', 'screens', 'menu.js')), pickjs = strip(read('ui', 'screens', 'pick.js'));
     const offAnim = /getComputedTiming\(\)\.delay/.test(menujs) && /getComputedTiming\(\)\.delay/.test(pickjs) && !/4600|3300|1900/.test(menujs);
     // the title: four beats, four sounds, at the delays the stylesheet itself carries
-    await boot46({ story: 0 }, { unlock: ALL46 });
+    await boot({ story: 0 }, { unlock: ALL46 });
     const title = await page.evaluate(async () => { const A = await import('./audio.js'); const wait = ms => new Promise(r => setTimeout(r, ms));
       const fired = []; const o = A.Snd.titleFx; A.Snd.titleFx = function (k) { fired.push([k, Math.round(performance.now())]); return o.apply(this, arguments); };
       const R = await import('./ui/router.js'); const t0 = performance.now(); R.show('s-menu', { story: 1 }); await wait(5600);
@@ -5631,7 +5623,7 @@ console.log('\nbuild 46 - batch 18, the unlock experience, sound and About');
     const kinds = title.fired.map(f => f[0]).join();
     const onTime = title.fired.length === 4 && title.fired.every((f, i) => Math.abs(f[1] - title.want[i]) < 400);
     // the map: one sound per tile on the FIRST open only, off each tile's own animation delay, a locked one lower and muted
-    await boot46({ gridSeen: 0 }, { unlock: { 'quick-tap:four': NOW46 } });
+    await boot({ gridSeen: 0 }, { unlock: { 'quick-tap:four': NOW46 } });
     const map = await page.evaluate(async () => { const A = await import('./audio.js'); const wait = ms => new Promise(r => setTimeout(r, ms));
       const fired = []; const o = A.Snd.mapFx; A.Snd.mapFx = function (g, lk) { fired.push([g, !!lk]); return o.apply(this, arguments); };
       const R = await import('./ui/router.js'); R.show('s-pick'); await wait(2200);
@@ -5646,13 +5638,13 @@ console.log('\nbuild 46 - batch 18, the unlock experience, sound and About');
 
   /* ---- 12. item 23: the About screen's eight slots ---- */
   {
-    await boot46({}, { unlock: ALL46 });
+    await boot({}, { unlock: ALL46 });
     await show46('s-about'); await sleep(600);
     const fresh = await page.evaluate(() => ({ rows: [...document.querySelectorAll('#msglist .msgrow')].map(r => ({ id: r.dataset.msg, locked: r.classList.contains('locked'),
       title: r.querySelector('.msgtxt b').textContent, state: r.querySelector('.msgtxt small').textContent, frame: !!r.querySelector('.msgframe'), video: !!r.querySelector('video') })),
       lede: document.getElementById('msg-lede').textContent }));
     // everything open: the four chests and the three keys, so every slot is unlocked
-    await boot46({ chests: { games: 1, key: 1, pro: 1, thorns: 1 } }, { unlock: ALL46, bars: tier46('clear', 'pro', 'author') });
+    await boot({ chests: { games: 1, key: 1, pro: 1, thorns: 1 } }, { unlock: ALL46, bars: tier46('clear', 'pro', 'author') });
     await show46('s-about'); await sleep(600);
     const all = await page.evaluate(() => [...document.querySelectorAll('#msglist .msgrow')].map(r => r.classList.contains('locked')));
     // a clip drops in with no code change: a row with a file renders the player, playsinline, with its captions track
@@ -5676,8 +5668,8 @@ console.log('\nbuild 46 - batch 18, the unlock experience, sound and About');
 
   /* ---- 13. items 20 / 22: every new sound is in the catalogue's list, and the card offers a message that has one ---- */
   {
-    const { soundsRef } = await import(pathToFileURL(path.join(root46, '..', '_review', 'scripts', 'catalogue.ref.mjs')).href);
-    await boot46({}, { unlock: ALL46 });
+    const { soundsRef } = await import(pathToFileURL(path.join(root, '..', '_review', 'scripts', 'catalogue.ref.mjs')).href);
+    await boot({}, { unlock: ALL46 });
     const snd = await page.evaluate(soundsRef);
     const rows = snd.groups.flatMap(g => g.rows);
     const srcs = rows.map(r => r.src).join(' ');
@@ -5685,7 +5677,7 @@ console.log('\nbuild 46 - batch 18, the unlock experience, sound and About');
     const missed = want.filter(x => !srcs.includes(x));
     const silent = rows.filter(r => !r.plays.length || r.plays.some(p => !p.ev || !p.ev.length)).map(r => r.id);
     // the card's message button appears only when the slot that unlock opens has a clip (item 23's tie-in with item 22)
-    const keyjs = strip46(read46('ui', 'screens', 'key.js'));
+    const keyjs = strip(read('ui', 'screens', 'key.js'));
     const tie = /msgFor\(/.test(keyjs) && /m\.file \? m\.id : ''/.test(keyjs) && /reveal-msg/.test(keyjs);
     (!missed.length && !silent.length && tie)
       ? ok(`items 20 / 22 every sound this build adds is in the catalogue's Every sound list with events off audio.js itself (${rows.length} rows now), and the congratulations card offers "A message from Aiden" only when the unlock opens a slot that has a clip`)
@@ -5696,9 +5688,4 @@ console.log('\nbuild 46 - batch 18, the unlock experience, sound and About');
 // ---- verdict ----
 await browser.close();
 if (srv) srv.close();
-console.log('\n' + '-'.repeat(60));
-if (errors.length) { console.log('UNCAUGHT ERRORS (' + errors.length + '):'); for (const e of [...new Set(errors)]) console.log('  ' + e); }
-if (fail.length) console.log('FAILED CHECKS:\n  ' + fail.join('\n  '));
-const pass = !errors.length && !fail.length;
-console.log(pass ? 'SMOKE TEST PASSED' : 'SMOKE TEST FAILED');
-process.exit(pass ? 0 : 1);
+process.exit(verdict() ? 0 : 1);
