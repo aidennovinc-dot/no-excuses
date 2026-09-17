@@ -82,6 +82,28 @@ Names, thresholds, copy, colours, lengths → `config/`. Predicates and formatte
 or the engine, keyed by the same id. A feedback line that changes a number touches `config/` only;
 if it also needs `rules.js`, the id links them. Nothing in `config/` imports anything.
 
+## Shape difficulty — the standard (A9, build 50)
+
+**A round's difficulty is its shape's tier plus its setting's tier, and every shape-dealing game keeps it level across runs.**
+Aiden, on the build 46 board (FEEDBACK-v26 §B2): *"Figure out a standard and let's stick with it."* This is that standard; a
+new game that deals shapes follows it, and changes to it quote A9.
+
+| Part | Rule | Where |
+|---|---|---|
+| One list | Every shape any game deals is in `SHAPES`, once, tagged `easy`, `medium` or `hard` — whatever game deals it. Its `word` and its `sym` flag live there too | `config/shapes.js` |
+| The tiers | **easy** — convex, one outline, nothing to find (circle, square, triangle). **medium** — one thing to read: an elongation, a hole, points, a notch or an unround curve (diamond, bar, plus, ring, star, crescent, heart, cat). **hard** — irregular, dealt differently each time, or an outline that folds back on itself (spiral, blob, tetris, stairs). Weights 1 / 2 / 3 | `SHAPES`, `TIER` |
+| One drawing | Each shape is drawn once, in `games/_shared/shapes.js`. Recognition games (Go / No-go, Count, Find, every rule bar) draw its fixed version as an SVG; Estimate deals varied instances. No shape is drawn in CSS | `Shapes.svg()`, `shapeI()` |
+| Bands | Each game has a row in `DEALS`, keyed `game:mode`: round bands, each with a `mix` (how many of each tier it deals, summing to the band's rounds) and a `load`. A Streak past the last band keeps dealing the last band | `DEALS` |
+| The deck | A band's mix is shuffled into a deck per run, so every run of a Set deals exactly that mix. Only the order and the particular shapes change. A shape is not dealt again until its tier has run out, and never twice running | `games/_shared/deal.js` |
+| The pairing | Each game names one **setting** — Grow the target's size, Cut the share asked, Go / No-go time on screen, Count the target count, Find the crowd — with an easy, medium and hard tier. A round's setting tier is `load − shape tier`, kept inside 1–3: **a harder shape gets an easier setting, and the reverse**. Where the clamp bites, the Round formats card says so | `DEALS[key].tiers`, `setTier()` |
+| Pass & play | A deal is cached by turn number, so both players' turn N is the same shape and setting | `makeDealer().at(k)` |
+| The board | The catalogue's Round formats cards read the bands, mixes, pairings and pools through the dealer's own helpers, so a card cannot show a deal the game does not make | `_review/scripts/catalogue.ref.mjs` |
+
+**Adding a shape:** geometry in `games/_shared/shapes.js`, one row in `SHAPES`, then put it in a pool. **Adding a game:** a `DEALS`
+row with a setting that has a real easy-to-hard direction, and an engine that asks `makeDealer(key).at(round)` for its shape.
+The gate asserts every pool shape has a tier and a drawing, every mix sums to its band and has shapes of each tier it names,
+and the deal is balanced over many runs.
+
 ## Storage
 
 One key `ne` holding `{ v, prefs, runs, ach, unlock, seen, intro }` — not seven keys. `store.load()`
@@ -117,6 +139,7 @@ Change one only when the FEEDBACK line quotes its ID.
 | A6 | The build number lives in `config/build.js`; `npm run bump` writes it everywhere else. Hand-editing four places is over. |
 | A7 | The gate runs before every push and covers every engine, every screen, a tampered-storage fixture and the security rules S1–S3 as assertions. |
 | A8 | Native shell = Capacitor 8. The web tree is the app; `platform.js` is the only file that knows which shell it's in. |
+| A9 | Every game that deals shapes deals them by the shape difficulty standard above — one tiered list, bands with a mix and a load, a harder shape paired with an easier setting (build 50, v26 §B2). |
 
 ## The gate (A7) — what "passes" means
 

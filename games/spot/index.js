@@ -3,8 +3,11 @@
    Build 17 (refactor stage 3): the engine contract, on the round base. */
 
 import { SPOT as CP } from "../../config/copy.js";
-import { CFG, COUNT_ADD, COUNT_BUDGET, SHAPE_WORD, SPOT_FIND, SPOT_RAMP, VS_TARGET } from "../../config/games.js";
-import { $, $$, T, f2, minMax, pWho, shapeI, winner } from "../../core.js";
+import { CFG, COUNT_ADD, COUNT_BUDGET, SPOT_FIND, SPOT_RAMP, VS_TARGET } from "../../config/games.js";
+import { DEALS, SHAPES } from "../../config/shapes.js";
+import { $, $$, T, f2, minMax, pWho, winner } from "../../core.js";
+import { makeDealer, within } from "../_shared/deal.js";
+import { shapeI } from "../_shared/shapes.js";
 import * as hud from "../_shared/hud.js";
 import { roundShow } from "../_shared/tier.js";
 import { genRect, rnd, roundEngine, rxBar, scatter, shapeHtml } from "../_shared/round.js";
@@ -20,11 +23,14 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
   // v15 (4.6): Find gains versus — two odd shapes in one crowd, one each, first to find theirs takes the round
   /* v18 (B.10): the tier's colour for one round's own figure, as a ready-made style attribute. Solo only (L4) — a
      pass & play Count and a Find versus keep the player colours, so neither gets one. */
-  // v25 (item 21, build 45): the three shapes a solo Count and Find deal from — one place, read by both rounds and by the review catalogue
-  SHAPES:['circle','square','tri'],
+  /* v25 (item 21, build 45) kept the three shapes a solo Count and Find dealt from here. v26 §B2 (build 50): a solo Count and Find deal from the
+     dealer (config/shapes.js DEALS 'spot:count' / 'spot:find'), whose pools grow as the run goes; only Find versus keeps these three */
+  VS_SHAPES:['circle','square','triangle'],
+  // v26 §B2 (build 50): a shape's plural, for Count's "count the pluses"
+  many(s){ return SHAPES[s].many||SHAPES[s].word+'s'; },
   // v25 (item 17, build 45): the round's tier colour AND its short sound, in one call through games/_shared/tier.js — each caller builds its card once a round
   rcol(key,v){ const t=roundShow(this.ctx.audio,key,v,!(this.two||this.vs)); return t?` style="color:${t.col}"`:''; },
-  begin(){ this.round=0; this.right=0; this.wrong=0; this.times=[]; this.bestFlash=0; this.off=0; this.tot=0; this.two=this.ctx.players===1&&this.ctx.mode==='count'; this.vs=this.ctx.players===2&&this.find(); this.vsN=[0,0]; this.topF=.08; hud.score(this.find()?'0.00':'0'); hud.scoreVisible(!(this.two||this.vs)); if(this.vs) return this.vsDeal(); this.next(); },
+  begin(){ this.round=0; this.right=0; this.wrong=0; this.times=[]; this.bestFlash=0; this.off=0; this.tot=0; this.two=this.ctx.players===1&&this.ctx.mode==='count'; this.vs=this.ctx.players===2&&this.find(); this.vsN=[0,0]; this.topF=.08; this.dealer=makeDealer(this.find()?'spot:find':'spot:count'); this.spec=null; hud.score(this.find()?'0.00':'0'); hud.scoreVisible(!(this.two||this.vs)); if(this.vs) return this.vsDeal(); this.next(); },
   // v16 (1.5): a Set ramps over its last round, a Streak once its budget is 80% spent — 5 miscounts on Count, 10s on
   // Find (L5). Music only (A.1); a two-player run ramps on nothing, it has no budget of its own
   fin(){ if(this.two||this.vs) return 0; return this.streak()?this.finBud(this.find()?this.tot:this.off,this.find()?10:COUNT_BUDGET):this.finSet(); },
@@ -35,14 +41,17 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
      dipFrom deals the band's floor among half again as many decoys, which is the round that has FEWER targets in a much
      bigger crowd. Decoys, motion, rotation and size variation carry the rest. The old shape is in FEATURES.md as a table. */
   // v25 (item 21, build 45): `nIn` pins the dealt target count inside the band, so the review catalogue can ask what the flash is at each edge of it
-  ramp(r,nIn){ const R=SPOT_RAMP;
+  /* v26 §B2 (build 50): `S` is the round's deal — the target count is the SETTING its shape pairs with, a third of the band (the low third easy),
+     so a harder shape is counted in a smaller group. A dip round keeps its own rule and deals the floor. And later rounds stay up longer:
+     `flashRound` ms a round from `flashRoundFrom`, on top of the crowd's own time */
+  ramp(r,nIn,S){ const R=SPOT_RAMP;
     const lo=Math.min(R.nCap,Math.round(R.loBase+R.loPer*(r-1)));
     const hi=Math.min(R.nCap,Math.max(lo,Math.round(R.hiBase+R.hiPer*(r-1))));
     const dip=r>=R.dipFrom&&(r-R.dipFrom)%R.dipEvery===0;
-    const n=dip?lo:nIn!==undefined?Math.max(lo,Math.min(hi,nIn)):lo+rnd(hi-lo+1), decoys=Math.min(R.decoyCap,Math.round((R.decoyBase+R.decoyPer*(r-1))*(dip?R.dipDecoy:1)));
+    const n=dip?lo:nIn!==undefined?Math.max(lo,Math.min(hi,nIn)):S?lo+Math.round(within(DEALS['spot:count'].tiers[S.set],S.u)*(hi-lo)):lo+rnd(hi-lo+1), decoys=Math.min(R.decoyCap,Math.round((R.decoyBase+R.decoyPer*(r-1))*(dip?R.dipDecoy:1)));
     // v24 (F.4, build 44): the flash is read off the crowd this round actually deals — more shapes, more time (config/games.js)
     return { lo, hi, dip, n, decoys,
-      flash:Math.min(R.flashCap,R.flashBase+R.flashShape*Math.max(0,n+decoys-R.flashFree)),
+      flash:Math.min(R.flashCap,R.flashBase+R.flashShape*Math.max(0,n+decoys-R.flashFree)+R.flashRound*Math.max(0,r-R.flashRoundFrom+1)),
       drift:r>=R.driftFrom?R.driftBase+(r-R.driftFrom)*R.driftPer:0,
       spin:r>=R.spinFrom?R.spinBase+(r-R.spinFrom)*R.spinPer:0,
       sizeVar:r>=R.sizeFrom?Math.min(R.sizeCap,R.sizeBase+(r-R.sizeFrom)*R.sizePer):0 }; },
@@ -68,16 +77,16 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
     if(this.streak()){ if(this.off>=COUNT_BUDGET) return this.ctx.emit('finish',this.result()); hud.time(T(CP.hudCountStreak,{n:this.round,off:this.off,bud:COUNT_BUDGET})); }
     else { if(this.round>this.ctx.len) return this.ctx.emit('finish',this.result()); hud.time(T(CP.hudCount,{n:this.round,s:this.ctx.len,off:this.off})); }
     this.countRound(); },
-  countRound(){ const r=genRect(), R=this.ramp(this.round); const all=this.SHAPES.slice(); this.target=all[rnd(3)]; const rest=all.filter(s=>s!==this.target);
+  countRound(){ const r=genRect(), S=this.spec=this.dealer.at(this.round), R=this.ramp(this.round,undefined,S); this.target=S.shape; const rest=S.pool.filter(s=>s!==this.target);
     const n=R.n, decoys=R.decoys; this.flash=R.flash;
     this.size=Math.max(20,Math.min(r.width,r.height)*.1*Math.min(1,Math.sqrt(6/(n+decoys))));
     // the cells are laid out for the BIGGEST a shape can be dealt, or a large one would overlap its neighbour
-    const list=Array.from({length:n},()=>this.target).concat(Array.from({length:decoys},()=>rest[rnd(2)])); this.pts=scatter(list.length,[this.target],Math.round(this.size*(1+R.sizeVar)));
+    const list=Array.from({length:n},()=>this.target).concat(Array.from({length:decoys},()=>rest[rnd(rest.length)])); this.pts=scatter(list.length,[this.target],Math.round(this.size*(1+R.sizeVar)));
     this.pts.forEach((q,i)=>{ q.shape=list[i]||this.target; q.sz=this.vary(this.size,R.sizeVar,SPOT_RAMP.sizeMin); }); this.answer=this.pts.filter(q=>q.shape===this.target).length;
     for(let i=this.pts.length-1;i>0;i--){ const j=rnd(i+1); const t=this.pts[i].shape; this.pts[i].shape=this.pts[j].shape; this.pts[j].shape=t; }
     this.pts.forEach(q=>{ q.vx=(Math.random()-.5)*R.drift; q.vy=(Math.random()-.5)*R.drift; q.a=0; q.va=(Math.random()-.5)*R.spin; this.clamp(q,r); });
     // v17 (B.14): the whole rule arrives at once, so the 1500ms it sits there is 1500ms of looking at the shape
-    this.st='wait'; $('#gen').innerHTML=''; rxBar([...CP.count,shapeI(this.target),`<b>${SHAPE_WORD[this.target]}s</b>`],true);
+    this.st='wait'; $('#gen').innerHTML=''; rxBar([...CP.count,shapeI(this.target),`<b>${this.many(this.target)}</b>`],true);
     this.later(()=>{ this.st='flash'; $('#gen').innerHTML=this.pts.map(q=>shapeHtml(q,this.size)).join(''); if(R.drift||R.spin) this.move('flash'); this.later(()=>this.ask(),this.flash); },1500); },
   // drift and spin share one loop; it dies the moment the state moves on
   move(state){ const els=$$('#gen .fs'), r=genRect(); let last=performance.now(); const loop=now=>{ if(this.st!==state) return; const dt=(now-last)/1000; last=now;
@@ -94,16 +103,17 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
     $('#gen').innerHTML=`<div class="glbl top" style="top:14%">${CP.howMany}</div>${this.keypad()}`; },
   /* v25 (item 21, build 45): a Find round's crowd as numbers — the expressions findRound() deals from, so the review catalogue's Round formats table
      prints what the game plays. `p` runs 0 → 1 over rounds 1 → 10 and holds there; `sizeK` is the base size as a share of the field's short side */
-  findSpec(r){ const p=Math.min(1,(r-1)/9); return { p, n:SPOT_FIND.nBase+Math.round(p*SPOT_FIND.nSpan), drift:p*SPOT_FIND.drift, sizeVar:p*SPOT_FIND.sizeVar, overlap:SPOT_FIND.overlap+p*SPOT_FIND.overlapPer, sizeK:.085-p*.025 }; },
-  findRound(){ const F=this.findSpec(this.round), p=F.p, r=genRect(); this.size=Math.max(18,Math.min(r.width,r.height)*F.sizeK); this.pen=0;
-    const all=this.SHAPES.slice(); this.odd=all[rnd(3)]; const rest=all.filter(s=>s!==this.odd); const n=F.n, drift=F.drift;
+  // v26 §B2 (build 50): `S` is the round's deal — the crowd is the SETTING its odd shape pairs with, this round's count × its tier's factor
+  findSpec(r,S){ const p=Math.min(1,(r-1)/9); return { p, n:Math.round((SPOT_FIND.nBase+Math.round(p*SPOT_FIND.nSpan))*(S?DEALS['spot:find'].tiers[S.set]:1)), drift:p*SPOT_FIND.drift, sizeVar:p*SPOT_FIND.sizeVar, overlap:SPOT_FIND.overlap+p*SPOT_FIND.overlapPer, sizeK:.085-p*.025 }; },
+  findRound(){ const S=this.spec=this.dealer.at(this.round), F=this.findSpec(this.round,S), p=F.p, r=genRect(); this.size=Math.max(18,Math.min(r.width,r.height)*F.sizeK); this.pen=0;
+    this.odd=S.shape; const rest=S.pool.filter(s=>s!==this.odd); const n=F.n, drift=F.drift;
     // v17 (B.15): Find's crowd varies in size too, arriving with the motion. v17 (B.16): and every shape is clamped inside
     // the field from the moment it is dealt, not only once it has drifted out of it
     const sv=F.sizeVar;
     this.pts=scatter(n,rest,Math.round(this.size*(1+sv)),this.odd); this.pts.forEach(q=>{ q.sz=this.vary(this.size,sv,SPOT_FIND.sizeMin); q.vx=(Math.random()-.5)*drift; q.vy=(Math.random()-.5)*drift; q.va=0; });
     // v24 (F.7, build 44): some of the crowd starts ON a neighbour — the target included — and only then is everything clamped in
     this.pile(this.pts,SPOT_FIND.overlap+p*SPOT_FIND.overlapPer); this.pts.forEach(q=>this.clamp(q,r));
-    this.st='wait'; $('#gen').innerHTML=''; rxBar([...CP.find,shapeI(this.odd),`<b>${SHAPE_WORD[this.odd]}</b>`]);
+    this.st='wait'; $('#gen').innerHTML=''; rxBar([...CP.find,shapeI(this.odd),`<b>${SHAPES[this.odd].word}</b>`]);
     // v14 (6.31): the round's own clock runs in large grey type behind the crowd, so the cost of staring is visible while you stare
     this.later(()=>{ this.st='find'; this.t0=performance.now(); $('#gen').innerHTML=`<div class="spclock" id="spclock">0.00</div>`+this.pts.map(q=>shapeHtml(q,this.size)).join(''); this.move('find'); },1400); },
   /* v24 (F.7, build 44): SHAPES MAY START OVERLAPPED. scatter() deals one shape to a grid cell so nothing touches, and only drift ever pushed
@@ -150,10 +160,10 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
   vsTarget(){ return VS_TARGET[this.ctx.game]||5; },
   // 0..1 across a match that can run to 2*target-1 rounds. Motion arrives at round 2, rotation at 3, pulsing at 4
   vp(){ return Math.min(1,(this.round-1)/Math.max(1,this.vsTarget()*2-2)); },
-  vsDeal(){ const all=['circle','square','tri'], i=rnd(3); this.o1=all[i]; this.o2=all[(i+1)%3]; this.vsBase=all[(i+2)%3]; this.round=0; this.topF=.24; this.vsFindRound(); },
+  vsDeal(){ const all=this.VS_SHAPES, i=rnd(3); this.o1=all[i]; this.o2=all[(i+1)%3]; this.vsBase=all[(i+2)%3]; this.round=0; this.topF=.24; this.vsFindRound(); },
   vsLine(){ return `<span class="spvs"><b class="p1">${this.vsN[0]}</b> – <b class="p2">${this.vsN[1]}</b><small>${T(CP.vsRound,{n:this.round,t:this.vsTarget()})}</small></span>`; },
   // the rule bar says whose shape is whose and stays up for the whole match — the shapes never change now
-  vsBar(){ rxBar([pWho(0),shapeI(this.o1),`<b>${SHAPE_WORD[this.o1]}</b>`,'·',pWho(1),shapeI(this.o2),`<b>${SHAPE_WORD[this.o2]}</b>`]); },
+  vsBar(){ rxBar([pWho(0),shapeI(this.o1),`<b>${SHAPES[this.o1].word}</b>`,'·',pWho(1),shapeI(this.o2),`<b>${SHAPES[this.o2].word}</b>`]); },
   vsFindRound(){ this.clearT(); this.round++;
     if(this.vsN[0]>=this.vsTarget()||this.vsN[1]>=this.vsTarget()) return this.vsEnd();
     const v=this.vp(), r=genRect(); this.size=Math.max(18,Math.min(r.width,r.height)*(.085-v*.02));

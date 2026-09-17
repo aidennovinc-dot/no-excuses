@@ -565,6 +565,44 @@ anything new.**
   a round's sound its own list, `ROUND_FX`, one note shorter than the result's with bass under it; and the result's tier waits until End of run has
   landed (`Snd.endLeft()`) — it had been playing 250ms into it. Full text in `docs/MUSIC.md`.
 
+### Build 50 — v26 §B2 (the round formats: one shape difficulty standard)
+
+- **ADDED: A9, the shape difficulty standard (ARCHITECTURE.md).** Aiden: *"figure out a standard and let's stick with it."* `config/shapes.js`:
+  `SHAPES` is every shape any game deals, once, with its `word` (and `many` where an s is wrong), its tier (`easy` / `medium` / `hard`) and `sym` (the
+  old `ESTIMATE.SYM`, now on the shape). `TIER` weighs them 1 / 2 / 3. `DEALS`, keyed `game:mode`, gives each shape-dealing game its `pool`, its
+  round `bands` (`to`, a `mix` of tiers that fills the band's rounds, a `load`, and `add` for shapes that join the pool from that band on) and its
+  SETTING with a value per tier: Grow the target's size (a third of that shape's size range), Cut the share asked (50/45/40 · 35/30/25 · 20/15/10),
+  Go / No-go time on screen (a third of `NOGO_DWELL`'s ± spread, the long third easy), Count the target count (a third of the round's band, the
+  low third easy), Find the crowd (× 0.85 / 1 / 1.15). `games/_shared/deal.js` is the one dealer: a band's mix is a deck shuffled per run, so
+  every run of a Set deals exactly that mix; a shape is not dealt again until its tier has run out and never twice running (a tier whose only
+  shape was just dealt swaps with a later card); the setting's tier is `load − shape tier`, clamped to 1–3; a Streak past the last band deals
+  the last band again; and `at(k)` is cached, so both players of a pass & play run get the same deal for their turn N.
+- **ADDED: one drawing per shape.** `games/_shared/shapes.js` gained `svg(name)` — the FIXED version of a shape (a five-point star, a set ring and
+  spiral) as a 100-unit `evenodd` svg, made once — and `shapeI(name)`, the rule bar's mark, which replaces core.js's class-name `shapeI`. Go /
+  No-go's pane, Count's and Find's crowds (`shapeHtml` in `round.js`) and every rule bar draw it; Estimate still deals varied instances.
+  `styles/app.css` has no shape clip paths left; a found shape's ring is a stroke round its own outline, not a square box-shadow.
+- **AMENDED: Estimate · Grow.** Line and rects are gone ("too like tetris and stairs"); spiral, heart and cat are in (heart and cat are Claude's
+  "two more fun shapes", for Aiden to judge). The target's shape and size come from the dealer. An even round's own shape is a different one of
+  similar fill and the same tier where the pool has one, and can no longer fall back to the target's own shape. **Pass & play counts each
+  player's own turns** (`turn()`): it read the shared round counter, so Player 1 always grew the same shape and Player 2 always a different one.
+  Rounds 1, 3 and 5 were already the same-shape rounds of a solo run — the note is kept, nothing moved.
+- **AMENDED: Estimate · Cut.** `ESTIMATE.CUT_POOLS` and `CUT_SHARES` are retired into `DEALS 'hold:cut'`: five two-round bands, rounds 1–2 an
+  easy and a hard shape, the hard one asked about a half. 50% is asked again, and still never of a shape with an axis of symmetry (v13 6.4).
+- **AMENDED: Reaction · Go / No-go (#444), L5 amended at Aiden's direct request (his own board note, the way build 44 took F.1 / F.6).** L5's "on
+  five shapes (C.3)" is now the nine of `DEALS 'reaction:nogo'`: circle, square, triangle, diamond, bar, plus, ring, crescent, spiral. The hexagon
+  is gone; the square is never turned (at 45° it WAS the diamond), and `NOGO_TURNS` lives in `config/shapes.js`; the diamond is drawn 60% as wide
+  as it is tall. Rounds 1–2 deal an easy and a medium go shape, rounds 3–5 one of each tier; the dwell stays inside 980 ± 180 (Set) and
+  1330 ± 180 (Streak), in the third the deal pairs with the go shape. `SHAPE_WORD` is retired. In pass & play the dealer lives for the run.
+- **AMENDED: Spot · Count.** Rounds 1–2 deal circle, square and triangle; bar, plus and star join from round 3 (`add`); decoys are the rest of the
+  pool. The target count is dealt in the third of the band the shape pairs with; a dip round still deals the floor. Later rounds stay up longer:
+  `SPOT_RAMP.flashRound` (25ms) a round from `flashRoundFrom` (3), inside `flashCap` (guesses).
+- **AMENDED: Spot · Find.** The pool grows every two rounds — bar and plus, star and ring, crescent and diamond, then spiral — and the crowd is the
+  round's count × the odd shape's setting factor. Find versus keeps its own three shapes (`VS_SHAPES`). The triangle's id is `triangle` everywhere.
+- **ADDED: Timing · Hidden's 45° wall (part of #450).** A solo Streak deals `HIDDEN.diag` (0.5) of its rounds from `hiddenDiag()`: the wall is square
+  to one of the field's four diagonals and the ball travels that diagonal turned off it by no more than `HIDDEN.diagTilt` (10°), along a chord of
+  the field in its turned direction so it cannot leave the screen. The pace, the time behind the wall, the marker and the millisecond score are
+  `hidden()`'s own; both share `hiddenGo()`. A Set draws none of it (B.5).
+
 ## Structure — the full text as of build 30
 
 `CLAUDE.md` keeps the module map. This is the paragraph-by-paragraph description it carried at build 30: the DAG, the

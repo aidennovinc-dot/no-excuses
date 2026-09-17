@@ -117,6 +117,8 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
   hidden(){ const r=genRect(); const size=Math.max(28,Math.min(r.width,r.height)*.11); const dir=rnd(4), horiz=dir<2; const L=horiz?r.width:r.height;
     const vary=this.streak()&&!this.two.on;
     const R=this.hiddenRamp(this.round,vary);
+    // v26 §B2 (build 50, part of #450): a solo Streak turns the wall 45° on HIDDEN.diag of its rounds — hiddenDiag below
+    if(vary&&Math.random()<HIDDEN.diag) return this.hiddenDiag(r,size,R);
     const jit=(a)=>1+(Math.random()*2-1)*a;
     const v=L*HIDDEN.speed*(vary?jit(R.band):1);
     const ramp=R.ramp;
@@ -131,9 +133,33 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
     const sk=Math.tan(tilt), lim=(c,m)=>Math.max(0,Math.min(m-size,c));
     const pos=t=>dir===0?{x:t-size,y:lim(cross+t*sk,r.height)}:dir===1?{x:r.width-t,y:lim(cross+t*sk,r.height)}:dir===2?{x:lim(cross+t*sk,r.width),y:t-size}:{x:lim(cross+t*sk,r.width),y:r.height-t};
     const wall=dir===0?`left:${wallStart}px;right:0;top:0;bottom:0;border-left:1px solid var(--line)`:dir===1?`left:0;width:${r.width-wallStart}px;top:0;bottom:0;border-right:1px solid var(--line)`:dir===2?`top:${wallStart}px;bottom:0;left:0;right:0;border-top:1px solid var(--line)`:`top:0;height:${r.height-wallStart}px;left:0;right:0;border-bottom:1px solid var(--line)`;
-    const m=pos(markT), p0=pos(0);
+    this.hiddenGo({t:0,v,markT,size,pos,wall:wallStart},L,wall); },
+  /* v26 §B2 (build 50, part of #450): THE 45° WALL. Aiden: "the wall can be at 45 degrees, as long as the ball comes in roughly perpendicular to
+     it". The wall is square to one of the field's four diagonals, and the ball travels that diagonal turned off it by no more than
+     HIDDEN.diagTilt, so it always meets the wall within that angle of square on. The path is a chord of the field along the TURNED direction,
+     so no tilt can carry the ball off screen. The pace, the time behind the wall, the marker and the scoring are hidden()'s own, unchanged —
+     the miss is still the time between the ball and the marker. A solo Streak only: a Set draws none of it (B.5) */
+  hiddenDiag(r,size,R){ const w=r.width, h=r.height, half=size/2, jit=(a)=>1+(Math.random()*2-1)*a;
+    const a0=(45+90*rnd(4))*Math.PI/180, tilt=(Math.random()*2-1)*Math.min(R.tilt,HIDDEN.diagTilt)*Math.PI/180, a1=a0+tilt;
+    const vx=Math.cos(a1), vy=Math.sin(a1);
+    // the chord runs through the middle of the field, slid along its long side so one diagonal is not always the same line
+    const slide=(Math.random()*2-1)*Math.abs(h-w)/2*.7, cx=w/2+(w>h?slide:0), cy=h/2+(h>=w?slide:0);
+    const span=(c,d,lo,hi)=>d>1e-9?[(lo-c)/d,(hi-c)/d]:d<-1e-9?[(hi-c)/d,(lo-c)/d]:[-1e9,1e9];
+    const sx=span(cx,vx,half,w-half), sy=span(cy,vy,half,h-half), s0=Math.max(sx[0],sy[0])-size, L=Math.min(sx[1],sy[1])-s0;
+    const v=L*HIDDEN.speed*jit(R.band), spread=jit(R.spread);
+    let behind=Math.max(.6,(this.targets[this.round-1]||1.2)*R.ramp*spread);
+    const need=v*behind+size*1.5; const cover=Math.min(.86,Math.max(.6,need/L+.06)), wallStart=L*(1-cover);
+    if(wallStart+v*behind>L*HIDDEN.maxAt) behind=Math.max(.3,(L*HIDDEN.maxAt-wallStart)/v);
+    const markT=wallStart+v*behind;
+    const at=t=>({ x:cx+vx*(s0+t), y:cy+vy*(s0+t) }), pos=t=>{ const c=at(t); return { x:c.x-half, y:c.y-half }; };
+    // the wall: a box whose left edge lies on the line square to the diagonal through the ball's crossing point, reaching past the field
+    const wp=at(wallStart), big=w+h, deg=Math.round(a0*180/Math.PI);
+    const wall=`left:${wp.x}px;top:${wp.y}px;right:auto;bottom:auto;width:${big}px;height:${big*2}px;transform-origin:0 0;transform:rotate(${deg}deg) translate(0,-50%);border-left:1px solid var(--line)`;
+    this.hiddenGo({t:0,v,markT,size,pos,wall:wallStart,diag:deg,tilt:+(tilt*180/Math.PI).toFixed(2)},L,wall); },
+  // one Hidden round's field and its clock, whichever way the wall faces
+  hiddenGo(ball,L,wall){ const {v,markT,size,pos}=ball, wallStart=ball.wall; const m=pos(markT), p0=pos(0);
     $('#gen').innerHTML=`<div class="glbl top" id="tmsay" style="z-index:3">${CP.marker}</div><div id="tmball" style="--fsz:${size}px;transform:translate(${p0.x}px,${p0.y}px)"></div><div id="tmghost" style="--fsz:${size}px"></div><div id="tmwall" style="${wall}"></div><div id="tmmark" style="--fsz:${size}px;left:${m.x}px;top:${m.y}px"></div>`;
-    this.ball={t:0,v,markT,size,pos,wall:wallStart}; this.stopAt=0;
+    this.ball=ball; this.stopAt=0;
     this.later(()=>{ this.st='run'; this.t0=performance.now(); const el=$('#tmball');
       const loop=now=>{ if(this.st!=='run') return; let t=(now-this.t0)/1000*v;
         // v14 (6.20): the ball stops at the far edge of the screen. It used to keep going until it was well off it, which read as a bug

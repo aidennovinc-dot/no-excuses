@@ -6,6 +6,7 @@
 import { STREAK } from "../../config/games.js";
 import { $ } from "../../core.js";
 import * as hud from "./hud.js";
+import { Shapes } from "./shapes.js";
 /* ---------- v7 engines. All four share #gen, a round counter, and `later` timers that die with the run ---------- */
 /* the rule bar (v10): what to look for, top-middle, a word at a time, staying up for the whole attempt. null clears it.
    v17 (B.14): `atOnce` drops the stagger. Spot · Count puts the bar up for 1500ms and the last of its five words used to
@@ -43,7 +44,8 @@ function scatter(n,shapes,size,odd,top){ const r=genRect(); const t=top||.08, h=
   const ox=(r.width-cols*cell)/2, oy=r.height*t+(r.height*h-rows*cell)/2, jit=cell-size; return cells.slice(0,Math.min(n,cells.length)).map((c,i)=>({ x:ox+c.x*cell+Math.random()*jit, y:oy+c.y*cell+Math.random()*jit, shape:i===0&&odd?odd:shapes[rnd(shapes.length)] })); }
 // v17 (B.15): a point may carry its OWN size (`sz`). A crowd of identical marks is the thing the eye scans fastest, and
 // Spot's difficulty now comes from the crowd rather than from how long you get to look at it
-const shapeHtml=(p,size,extra='')=>`<i class="fs ${p.shape} ${extra}" style="left:${p.x}px;top:${p.y}px;--fsz:${p.sz||size}px"></i>`;
+// v26 §B2 (build 50): the shape inside is the one shared drawing (games/_shared/shapes.js) — the class still names it, and a CSS clip path no longer draws it
+const shapeHtml=(p,size,extra='')=>`<i class="fs ${p.shape} ${extra}" style="left:${p.x}px;top:${p.y}px;--fsz:${p.sz||size}px">${Shapes.svg(p.shape)}</i>`;
 
 
 export { genRect, rnd, roundEngine, rxBar, scatter, shapeHtml };

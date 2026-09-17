@@ -17,15 +17,18 @@ export const CFG = { lockout: 750, countStep: 300, holdRate: 38 /* vmin per seco
    how far either side of `speed` a round's pace may be drawn from (±25%), `tilt` the off-axis angle the path may take by
    `rampTo`, and `far` how much further behind the wall the marker sits each round. The Set draws none of them — it plays
    exactly as it did, in a new unit. */
-export const HIDDEN = { speed: 0.3, band: 0.25, tilt: 22, far: 0.10, spread: 0.05, rampTo: 12, maxAt: 0.94 };
+/* v26 §B2 (build 50, part of #450): "the wall can be at 45 degrees, as long as the ball comes in roughly perpendicular to it". A solo
+   Streak deals `diag` of its rounds (guess) with the wall and the ball's path turned 45° together — the ball travels a diagonal of the
+   field and the wall stays square to it — and the path's tilt off that square is held to `diagTilt` degrees (guess) on those rounds. A
+   Set still draws none of it (B.5). */
+export const HIDDEN = { speed: 0.3, band: 0.25, tilt: 22, far: 0.10, spread: 0.05, rampTo: 12, maxAt: 0.94, diag: 0.5, diagTilt: 10 };
 // sequence speed is not a choice any more (v9): it starts at 0.5s a key and tightens 15ms a round, floor 0.28s
 export const SEQ_STEP = { start: 500, step: 15, floor: 280 };
 // length faces (v11): the name everywhere, the seconds only on the pick sheet. 7 and 10 are the pass & play lengths (PASS_LEN)
 export const LEN_NAME = { 5:'Sprint', 7:'Duel', 10:'Duel', 15:'Dash', 30:'Marathon' };
 export const MODE_NAME = { two:'Two', blind:'Blind', four:'Four', lead:'Lead', grow:'Grow', cut:'Cut', solo:'', stopwatch:'Stopwatch', hidden:'Hidden', flash:'Flash', nogo:'Go / No-go', count:'Count', find:'Find' };
-// v19 (C.3, build 32): FIVE shapes — the pool a Go / No-go Set's five rounds draw their targets from, one each, and the
-// pool its decoys come from. games/reaction/index.js reads this list; nothing else names the shapes
-export const SHAPE_WORD = { circle:'circle', tri:'triangle', square:'square', diamond:'diamond', hex:'hexagon' };
+// v19 (C.3, build 32) had SHAPE_WORD here, Go / No-go's five shapes. v26 §B2 (build 50) retired it: every shape, its word and its
+// difficulty tier are in config/shapes.js, and each game's pool is its row in DEALS there
 // two-player lengths (v10): pass & play is a fixed 7s of Quick Tap or 10s of Dots; versus runs until one player leads by VS_LEAD, or VS_CAP seconds
 export const PASS_LEN = { 'quick-tap':7, 'dots':10 };
 export const VS_LEAD = 10, VS_CAP = 120;
@@ -131,19 +134,14 @@ export const SET_COPY = {
   'spot:find':        { rounds:10, set:'10 rounds, lowest total time wins — 0.5s free each find', streak:'Highest round wins!' },
 };
 
-// Estimate · Cut (v11 / v13 6.4): the shapes with an axis of symmetry never ask for 50%; the pools and the shares asked, by
-// level (min(8, round)) — the first entry whose level is >= the round applies. No pool past level 4 = every Cut shape
-// v14 (6.14): Cut is 10 rounds now, so the ramp runs to 10 — it starts easy on three plain shapes at gentle shares and the
-// pool widens every two rounds, which is the "more shape variation as it goes" Aiden asked for. No pool past level 8 = every Cut shape
+// Estimate · Cut's pools and shares, and the list of shapes with an axis of symmetry, moved to config/shapes.js at v26 §B2 (build 50):
+// the pools became DEALS 'hold:cut' (bands of shape tiers), the shares its setting's tiers, and SYM a flag on each shape
 // v15 (3.1): Grow's target never lands under MIN_AREA. It is a vmin² fraction, not raw pixels — the same mistake already
 // logged against Timing · Hidden's bars, which do not travel across screen sizes. 460 vmin² is 7,000 px² on a 390-wide
 // phone (Aiden's number, measured there) and stays the same share of the screen everywhere else. TMIN/TMAX are the
 // linear range in vmin; a shape too thin to reach the floor even at TMAX is re-dealt rather than shrunk to a reaction test.
 export const ESTIMATE = {
   MIN_AREA: 460, TMIN: 16, TMAX: 58,
-  SYM: ['square','circle','triangle','bar','ring','plus','star'],
-  CUT_POOLS: [[2,['square','circle','bar']],[4,['square','circle','triangle','bar','ring']],[6,['triangle','ring','star','plus','crescent']],[8,['ring','star','plus','stairs','tetris','crescent','blob']]],
-  CUT_SHARES: [[2,[40,45,35]],[4,[30,35,40,45]],[6,[25,30,35,45]],[8,[20,25,30,35,40]],[10,[10,15,20,25,30,35]]],
 };
 /* Spot · Count — REWORKED for v17 (B.15), and this is the difficulty review #366 asked for.
    Aiden's three complaints: it starts too easy (lots of time, few shapes), it ends too hard because the TIME is cut, and
@@ -165,9 +163,11 @@ export const ESTIMATE = {
    three rounds while the shapes went 10, 13, 15 (measured headless) — and Aiden asked for more time as more shapes are shown. A round
    now flashes for `flashBase` plus `flashShape` for every shape on screen past the first `flashFree`, up to `flashCap`: round 1 still
    1100ms, a thirty-five-shape round 10 about 1475ms (all guesses). The crowd stays the difficulty; the clock stops working against it. */
+/* v26 §B2 (build 50): "later rounds should last a bit longer" — on top of the crowd's own time, every round from `flashRoundFrom` adds
+   `flashRound` ms (guess), still inside `flashCap`: round 10 about 200ms longer than build 49 dealt it. */
 export const SPOT_RAMP = { loBase:5, loPer:0.45, hiBase:7, hiPer:1.0, nCap:14,
   decoyBase:3, decoyPer:2.2, decoyCap:34,
-  flashBase:1100, flashShape:15, flashFree:10, flashCap:1800,
+  flashBase:1100, flashShape:15, flashFree:10, flashCap:1800, flashRound:25, flashRoundFrom:3,
   dipFrom:5, dipEvery:3, dipDecoy:1.5,
   driftFrom:2, driftBase:8, driftPer:6, spinFrom:4, spinBase:14, spinPer:6,
   sizeFrom:3, sizeBase:0.12, sizePer:0.045, sizeCap:0.5, sizeMin:16 };

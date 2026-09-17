@@ -570,7 +570,8 @@ if (section('two-player (v15 section 4)')) {
     // the two odd shapes are the only two classes with a single member; tap one and its owner takes the round
     const pokeFind = () => page.evaluate(() => {
       const els = [...document.querySelectorAll('#gen .fs')]; if (!els.length) return false;
-      const cls = e => ['circle', 'square', 'tri'].find(c => e.classList.contains(c)) || '';
+      // AMENDED at build 50 (v26 §B2): one id per shape across every game — the triangle is 'triangle' in Spot now, as it always was in Estimate
+      const cls = e => ['circle', 'square', 'triangle'].find(c => e.classList.contains(c)) || '';
       const n = {}; els.forEach(e => { const c = cls(e); n[c] = (n[c] || 0) + 1; });
       const t = els.find(e => n[cls(e)] === 1); if (!t) return false;
       const r = t.getBoundingClientRect();
@@ -998,7 +999,9 @@ if (section('the runs (v15 section 3)')) {
     // 3.1: no Grow target lands under the floor, at any shape. Measured in vmin², which is the point of the item —
     // a raw-pixel floor would mean something different on every screen
     let worst = Infinity;
-    for (let i = 0; i < 4000; i++) { HD.shape = HD.pickTarget(); const t = HD.growTarget() * v; worst = Math.min(worst, HD.shape.coef * t * t / (v * v)); }
+    // AMENDED at build 50 (v26 §B2): the shape comes from the dealer by round now, so each of the 4,000 rounds gets a fresh dealer at a round of a Set
+    const DL = await import('./games/_shared/deal.js'); HD.two = { on: false };
+    for (let i = 0; i < 4000; i++) { HD.dealer = DL.makeDealer('hold:grow'); HD.round = 1 + i % 7; HD.shape = HD.pickTarget(); const t = HD.growTarget() * v; worst = Math.min(worst, HD.shape.coef * t * t / (v * v)); }
     out.floor = { want: ESTIMATE.MIN_AREA, worst: Math.round(worst), px: Math.round(ESTIMATE.MIN_AREA * v * v) };
     // 3.5: Flash's third currency, held apart from the other two exactly as C.1-C.3 hold theirs apart
     out.flash = { early: RX.FLASH_EARLY, free: RX.FLASH_FREE, bud: RX.FLASH_BUD, nogoFree: RX.NOGO_FREE, nogoWrong: RX.NOGO_WRONG_STREAK };
@@ -1066,6 +1069,150 @@ if (section('the runs (v15 section 3)')) {
     (set48.seen && !set48.seen.mode && !set48.seen.time && !set48.later.mode && !set48.later.time && /^\d+\/\d+$/.test(set48.later.score) && streak48.later.time)
       ? ok(`v26 item 1 Go / No-go · Set shows "${set48.later.score}" and the goal box alone - no round line, no mode label - and the Streak keeps "${streak48.later.time}"`)
       : bad('v26 item 1 the Go / No-go Set HUD', JSON.stringify({ set48, streak48 }));
+  }
+  /* build 50 (v26 §B2, ARCHITECTURE.md A9): THE SHAPE DIFFICULTY STANDARD and the round formats it deals. The data and the deal are
+     driven off config/shapes.js and the dealer over 300 runs, each engine's own dealing function is called for real, and one live round
+     of Go / No-go, Find and a Hidden Streak is played on the page. Nothing here reads how a source file is spelled */
+  {
+    const CS50 = await import(pathToFileURL(path.join(root, 'config', 'shapes.js')).href), G50 = await import(pathToFileURL(path.join(root, 'config', 'games.js')).href);
+    const TIERS50 = ['easy', 'medium', 'hard'];
+    const d50 = await page.evaluate(async () => {
+      const CS = await import('./config/shapes.js'); const DL = await import('./games/_shared/deal.js'); const SH = await import('./games/_shared/shapes.js');
+      const out = { drawn: {}, deals: {}, gone: ['line', 'rects', 'hex', 'tri'].filter(s => SH.Shapes.has(s) || CS.SHAPES[s]) };
+      // every shape: a drawing with a real outline, measured in its own 100-unit box
+      for (const s of Object.keys(CS.SHAPES)) { const host = document.createElement('div'); host.style.cssText = 'position:fixed;left:0;top:0;width:100px;height:100px';
+        host.innerHTML = SH.Shapes.svg(s); document.body.appendChild(host); const b = host.querySelector('path').getBBox(); host.remove();
+        out.drawn[s] = { w: Math.round(b.width), h: Math.round(b.height) }; }
+      // 300 runs of every deal: each band's tiers against its mix, the setting against load − shape, the pool, and repeats
+      for (const key of Object.keys(CS.DEALS)) { const D = CS.DEALS[key], end = D.bands[D.bands.length - 1].to;
+        const o = { mixOff: 0, pairOff: 0, outOfPool: 0, repeat: 0, cache: 0, streakOff: 0, seen: {} };
+        for (let run = 0; run < 300; run++) { const dl = DL.makeDealer(key); const got = D.bands.map(() => ({})); let prev = '', tail = {};
+          for (let k = 1; k <= end + 6; k++) { const S = dl.at(k), bi = D.bands.indexOf(S.band);
+            if (k <= end) got[bi][S.tier] = (got[bi][S.tier] || 0) + 1; else tail[S.tier] = (tail[S.tier] || 0) + 1;
+            if (S.set !== DL.setTier(S.band, S.tier)) o.pairOff++;
+            if (!DL.poolAt(D, k).includes(S.shape) || CS.SHAPES[S.shape].tier !== S.tier) o.outOfPool++;
+            if (S.shape === prev) o.repeat++; prev = S.shape; o.seen[S.shape] = (o.seen[S.shape] || 0) + 1;
+            if (dl.at(k) !== S) o.cache++; }
+          D.bands.forEach((b, i) => { for (const t of ['easy', 'medium', 'hard']) if ((got[i][t] || 0) !== (b.mix[t] || 0)) o.mixOff++; });
+          // a Streak past the last band deals the last band again — six rounds of a band that is N long hold its mix in whole decks
+          const lb = D.bands[D.bands.length - 1], len = end - (D.bands.length > 1 ? D.bands[D.bands.length - 2].to : 0);
+          if (6 % len === 0) for (const t of ['easy', 'medium', 'hard']) if ((tail[t] || 0) !== (lb.mix[t] || 0) * 6 / len) o.streakOff++; }
+        out.deals[key] = o; }
+      return out; });
+    // the list and the bands, as data
+    const pools50 = Object.fromEntries(Object.entries(CS50.DEALS).map(([k, D]) => [k, D.bands.map((b, i) => { const p = D.pool.slice(); for (const x of D.bands.slice(0, i + 1)) (x.add || []).forEach(s => { if (!p.includes(s)) p.push(s); }); return p; })]));
+    const untagged = Object.entries(CS50.SHAPES).filter(([, v]) => !TIERS50.includes(v.tier) || !v.word).map(([k]) => k);
+    const unknown = Object.values(pools50).flat(2).filter(s => !CS50.SHAPES[s]);
+    const undrawn = Object.entries(d50.drawn).filter(([, b]) => Math.max(b.w, b.h) < 95).map(([k]) => k);
+    const badBands = Object.entries(CS50.DEALS).flatMap(([k, D]) => D.bands.map((b, i) => { const len = b.to - (i ? D.bands[i - 1].to : 0), sum = Object.values(b.mix).reduce((a, c) => a + c, 0);
+      const noShape = Object.keys(b.mix).filter(t => !pools50[k][i].some(s => CS50.SHAPES[s].tier === t));
+      return (sum !== len || noShape.length || !TIERS50.every(t => D.tiers[t] !== undefined)) ? `${k} band ${i + 1}: ${sum} of ${len}${noShape.length ? ', no ' + noShape.join('/') + ' shape' : ''}` : ''; })).filter(Boolean);
+    (!untagged.length && !unknown.length && !undrawn.length && !badBands.length && !d50.gone.length)
+      ? ok(`v26 §B2 / A9 one shape list: ${Object.keys(CS50.SHAPES).length} shapes each tagged once (${TIERS50.map(t => Object.values(CS50.SHAPES).filter(v => v.tier === t).length + ' ' + t).join(', ')}) and each drawn by the one geometry; every pool shape is on it; every band's mix fills its rounds from shapes of the tiers it names; line, rects, hexagon and "tri" are gone`)
+      : bad('v26 §B2 / A9 the shape list', JSON.stringify({ untagged, unknown, undrawn, badBands, gone: d50.gone }));
+    const dealBad = Object.entries(d50.deals).filter(([, o]) => o.mixOff || o.pairOff || o.outOfPool || o.repeat || o.cache || o.streakOff);
+    (!dealBad.length)
+      ? ok(`v26 §B2 / A9 300 runs of each of the ${Object.keys(d50.deals).length} deals: every band deals exactly its mix, every setting is the band's load minus the shape's tier, every shape is from its band's pool and tier, none twice running, a Streak deals the last band in whole decks, and asking for a turn again is the same deal (the pass & play rule)`)
+      : bad('v26 §B2 / A9 the dealer', JSON.stringify(Object.fromEntries(dealBad.map(([k, o]) => [k, { ...o, seen: undefined }]))));
+    // the per-game notes, as data
+    const grow50 = pools50['hold:grow'].at(-1), nogo50 = pools50['reaction:nogo'].at(-1), count50 = pools50['spot:count'], find50 = pools50['spot:find'];
+    const dia = d50.drawn.diamond, RXT = CS50.NOGO_TURNS;
+    const notes50 = {
+      grow: ['spiral', 'heart', 'cat'].every(s => grow50.includes(s)) && !grow50.includes('line') && !grow50.includes('rects'),
+      cut: CS50.DEALS['hold:cut'].tiers.easy.includes(50) && Object.values(CS50.DEALS['hold:cut'].tiers).flat().every(v => v % 5 === 0),
+      nogo: ['spiral', 'crescent', 'plus', 'bar', 'ring'].every(s => nogo50.includes(s)) && !nogo50.includes('hex') && !RXT.square && dia.h > dia.w * 1.4,
+      count: count50[0].length === 3 && ['bar', 'plus', 'star'].every(s => count50[1].includes(s)),
+      find: find50.every((p, i) => !i || p.length > find50[i - 1].length) };
+    Object.values(notes50).every(Boolean)
+      ? ok(`v26 §B2 the round formats as data: Grow adds spiral, heart and cat and drops line and rects; Cut can ask 50%; Go / No-go deals ${nogo50.length} shapes with no hexagon and no turned square, the diamond ${dia.w}×${dia.h}; Count adds bar, plus and star from round 3; Find's pool grows every band (${find50.map(p => p.length).join(' → ')})`)
+      : bad('v26 §B2 the round formats', JSON.stringify(notes50));
+    // each engine's own dealing code, called for real on the page: the setting it plays is the tier the dealer paired
+    const e50 = await page.evaluate(async () => {
+      const CS = await import('./config/shapes.js'); const DL = await import('./games/_shared/deal.js'); const G = await import('./config/games.js');
+      const HD = (await import('./games/estimate/index.js')).default, RX = (await import('./games/reaction/index.js')).default, SP = (await import('./games/spot/index.js')).default;
+      const out = { cut: { off: 0, fiftySym: 0, fifty: 0, n: 0 }, grow: { off: 0, sameOff: 0, n: 0, p2same: null, p1diff: null }, nogo: { off: 0, n: 0, sameTurn: null }, count: { off: 0, n: 0 }, find: { off: 0 }, flash: null };
+      const keep = { ctx: HD.ctx, two: HD.two, hud: HD.hud, hint: HD.hint, icon: HD.icon, later: HD.later, bg: HD.bg, shareUp: HD.shareUp };
+      HD.hud = HD.hint = HD.icon = HD.later = HD.bg = HD.shareUp = () => {};
+      // Cut: HD.cutRound() itself, 300 runs of ten rounds
+      HD.ctx = { mode: 'cut', len: 10 }; HD.two = { on: false };
+      for (let run = 0; run < 300; run++) { HD.dealer = DL.makeDealer('hold:cut');
+        for (let k = 1; k <= 10; k++) { HD.round = k; HD.cutRound(); const S = HD.spec; out.cut.n++;
+          if (!CS.DEALS['hold:cut'].tiers[S.set].includes(HD.share)) out.cut.off++;
+          if (HD.share === 50) { out.cut.fifty++; if (CS.SHAPES[S.shape].sym) out.cut.fiftySym++; } } }
+      // Grow: the target's size sits in its setting's third of that shape's range, and odd turns grow the same shape, even a different one
+      HD.ctx = { mode: 'grow', len: 7 };
+      for (let run = 0; run < 200; run++) { HD.dealer = DL.makeDealer('hold:grow');
+        for (let k = 1; k <= 7; k++) { HD.round = k; HD.shape = HD.pickTarget(); const S = HD.spec, t = HD.growTarget(), E = G.ESTIMATE;
+          const lo = Math.max(E.TMIN, Math.min(E.TMAX, Math.sqrt(E.MIN_AREA / HD.shape.coef))), f = (t - lo) / (E.TMAX - lo), r = CS.DEALS['hold:grow'].tiers[S.set];
+          if (f < r[0] - 1e-9 || f > r[1] + 1e-9) out.grow.off++;
+          const mine = HD.pickMine(); if ((k % 2 === 1) !== (mine.name === HD.shape.name)) out.grow.sameOff++; out.grow.n++; } }
+      // pass & play: Player 2's first turn grows the same shape, Player 1's second a different one — each counts their own turns
+      HD.dealer = DL.makeDealer('hold:grow'); HD.round = 2; HD.two = { on: true, p: 1, taken: [1, 0] }; out.grow.p2same = !HD.est();
+      HD.round = 3; HD.two = { on: true, p: 0, taken: [1, 1] }; out.grow.p1diff = HD.est();
+      Object.assign(HD, keep);
+      // Go / No-go: the dwell is inside its setting's third, and both players' turn 1 is the same go shape
+      RX.ctx = { mode: 'nogo', len: 5 }; RX.two = { on: false };
+      for (let run = 0; run < 200; run++) { RX.dealer = null;
+        for (let k = 1; k <= 5; k++) { RX.round = k; RX.rule = RX.nextTarget(); const S = RX.spec, W = RX.NOGO_DWELL, r = CS.DEALS['reaction:nogo'].tiers[S.set];
+          const ms = RX.dwellMs(); out.nogo.n++; if (ms < Math.floor(W.set + r[0] * W.spread) || ms > Math.ceil(W.set + r[1] * W.spread)) out.nogo.off++; } }
+      RX.dealer = null; RX.two = { on: true, p: 0, taken: [0, 0] }; const a = RX.nextTarget(); RX.two = { on: true, p: 1, taken: [1, 0] }; const b = RX.nextTarget();
+      out.nogo.sameTurn = a === b; RX.ctx = null; RX.two = { on: false }; RX.dealer = null; RX.spec = null;
+      // Count: the target count sits in its setting's third of the band (a dip deals the floor); the flash gains flashRound a round
+      const DC = DL.makeDealer('spot:count');
+      for (let k = 1; k <= 14; k++) { const S = DC.at(k); for (let i = 0; i < 40; i++) { const R = SP.ramp(k, undefined, { ...S, u: Math.random() }), t = CS.DEALS['spot:count'].tiers[S.set];
+        const want = R.dip ? [R.lo, R.lo] : [R.lo + Math.round(t[0] * (R.hi - R.lo)), R.lo + Math.round(t[1] * (R.hi - R.lo))]; out.count.n++;
+        if (R.n < want[0] || R.n > want[1]) out.count.off++; } }
+      { const R = G.SPOT_RAMP, x = SP.ramp(10, 0), crowd = Math.min(R.flashCap, R.flashBase + R.flashShape * Math.max(0, x.n + x.decoys - R.flashFree));
+        out.flash = { r1: SP.ramp(1, 0).flash, r10: x.flash, crowd, extra: x.flash - crowd, want: R.flashRound * (10 - R.flashRoundFrom + 1) }; }
+      // Find: the crowd is the round's count times its setting's factor
+      for (let k = 1; k <= 11; k++) for (const set of ['easy', 'medium', 'hard']) { const base = SP.findSpec(k).n, n = SP.findSpec(k, { set }).n;
+        if (n !== Math.round(base * CS.DEALS['spot:find'].tiers[set])) out.find.off++; }
+      return out; });
+    (!e50.cut.off && !e50.cut.fiftySym && e50.cut.fifty > 0)
+      ? ok(`v26 §B2 Estimate · Cut's own cutRound(), ${e50.cut.n} rounds: every share is from its setting's tier, 50% was asked ${e50.cut.fifty} times and never of a shape with an axis of symmetry`)
+      : bad('v26 §B2 Cut deals its shares by the standard', JSON.stringify(e50.cut));
+    (!e50.grow.off && !e50.grow.sameOff && e50.grow.p2same && e50.grow.p1diff)
+      ? ok(`v26 §B2 Estimate · Grow's own pickTarget / growTarget / pickMine, ${e50.grow.n} rounds: every target's size is in its setting's third, rounds 1, 3, 5, 7 grow the same shape and 2, 4, 6 a different one — and in pass & play each player counts their own turns`)
+      : bad('v26 §B2 Grow deals by the standard', JSON.stringify(e50.grow));
+    (!e50.nogo.off && e50.nogo.sameTurn)
+      ? ok(`v26 §B2 Go / No-go's own nextTarget / dwellMs, ${e50.nogo.n} rounds: every dwell is inside its setting's third of ± spread, and both players' turn 1 is the same go shape`)
+      : bad('v26 §B2 Go / No-go deals by the standard', JSON.stringify(e50.nogo));
+    (!e50.count.off && e50.flash.extra === e50.flash.want && e50.flash.r10 > e50.flash.r1 && !e50.find.off)
+      ? ok(`v26 §B2 Spot: Count's own ramp() deals ${e50.count.n} target counts inside their setting's third, a round-10 flash is ${e50.flash.extra}ms longer than its crowd alone (${e50.flash.r10}ms), and Find's crowd is its round's count × the setting's factor`)
+      : bad('v26 §B2 Spot deals by the standard', JSON.stringify({ count: e50.count, flash: e50.flash, find: e50.find }));
+    // live: a Go / No-go beat and a Find crowd are the shared drawing on screen, and a Hidden Streak turns its wall 45° while a Set never does
+    const live50 = await page.evaluate(async () => {
+      const RUN = await import('./run/run.js'); const ST = await import('./core/state.js'); const G = await import('./config/games.js'); const SS = await import('./core/store.js');
+      for (const k of ['reaction', 'spot', 'timing', 'reaction:nogo', 'spot:find', 'timing:hidden']) SS.store.intro[k] = Date.now(); SS.save();
+      const RX = (await import('./games/reaction/index.js')).default, SP = (await import('./games/spot/index.js')).default, TM = (await import('./games/timing/index.js')).default;
+      const wait = async (f, ms = 15000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { const v = f(); if (v) return v; await new Promise(r => setTimeout(r, 60)); } return null; };
+      const go = sel => { Object.assign(ST.sel, { vs: 0, practice: 0 }, sel); RUN.start(); };
+      const box = el => { if (!el) return null; const b = el.getBoundingClientRect(); return { w: Math.round(b.width), h: Math.round(b.height) }; };
+      const out = {};
+      go({ game: 'reaction', diff: 'nogo', secs: 5 });
+      out.bar = box(await wait(() => document.querySelector('#rxbar i.shp svg path')));
+      out.beat = box(await wait(() => document.querySelector('#rxpane .rxshape svg path')));
+      out.beatShape = RX.shown; RUN.abort(); await new Promise(r => setTimeout(r, 400));
+      go({ game: 'spot', diff: 'find', secs: 10 });
+      await wait(() => SP.st === 'find'); const fs = [...document.querySelectorAll('#gen .fs')];
+      out.find = { n: fs.length, drawn: fs.filter(e => { const p = e.querySelector('svg path'); return p && p.getBoundingClientRect().width > 4; }).length, odd: fs.filter(e => e.classList.contains(SP.odd)).length };
+      RUN.abort(); await new Promise(r => setTimeout(r, 400));
+      const was = G.HIDDEN.diag; G.HIDDEN.diag = 1;
+      const hid = async secs => { TM.ball = null; document.getElementById('gen').innerHTML = ''; go({ game: 'timing', diff: 'hidden', secs });
+        if (!(await wait(() => TM.st === 'run' && TM.ball && document.getElementById('tmwall')))) { RUN.abort(); await new Promise(res => setTimeout(res, 400)); return { never: 1 }; }
+        const b = TM.ball, s = b.size, f = document.getElementById('gen').getBoundingClientRect(), c = t => { const p = b.pos(t); return [p.x + s / 2, p.y + s / 2]; };
+        const u = b.diag === undefined ? null : [Math.cos(b.diag * Math.PI / 180), Math.sin(b.diag * Math.PI / 180)];
+        const w = c(b.wall), m = c(b.markT), end = c(b.markT + (b.markT - b.wall));
+        const r = { diag: b.diag, tilt: b.tilt, markAhead: u ? (m[0] - w[0]) * u[0] + (m[1] - w[1]) * u[1] > 0 : null,
+          inField: [c(b.wall), m].every(([x, y]) => x >= 0 && x <= f.width && y >= 0 && y <= f.height), wall: getComputedStyle(document.getElementById('tmwall')).transform };
+        RUN.abort(); await new Promise(res => setTimeout(res, 400)); return r; };
+      out.streak = []; for (let i = 0; i < 4; i++) out.streak.push(await hid(-1));
+      out.set = await hid(10);
+      G.HIDDEN.diag = was; return out; });
+    const diagOk = live50.streak.every(r => [45, 135, 225, 315].includes(r.diag) && Math.abs(r.tilt) <= G50.HIDDEN.diagTilt && r.markAhead && r.inField && r.wall !== 'none') && live50.set.diag === undefined && live50.set.wall === 'none';
+    (live50.bar && live50.bar.w > 8 && live50.beat && live50.beat.w > 40 && live50.find.n > 10 && live50.find.drawn === live50.find.n && live50.find.odd === 1 && diagOk)
+      ? ok(`v26 §B2 on screen: the rule bar and a Go / No-go beat (${live50.beatShape}) are the shared svg, all ${live50.find.n} shapes of a Find crowd are drawn with one odd one, and a Hidden Streak turned its wall to ${live50.streak.map(r => r.diag + '°').join(', ')} with the ball within ${Math.max(...live50.streak.map(r => Math.abs(r.tilt)))}° of square and the marker behind it — a Set never did (#450)`)
+      : bad('v26 §B2 the shapes and the 45° wall on screen', JSON.stringify(live50));
   }
 }
 
@@ -2178,7 +2325,8 @@ if (section('build 28 - v17 sections B.1 to B.18')) {
     (r[2].sizeVar > 0 && r[9].sizeVar > r[2].sizeVar) ? ok(`B.15 size variation arrives at round ${G28.SPOT_RAMP.sizeFrom} and grows (±${Math.round(r[9].sizeVar * 100)}% by round 10)`)
       : bad('B.15 size variation', JSON.stringify(r.map(x => x.sizeVar)));
     // v24 (F.4, build 44): more shapes on screen, more time — every round's flash is exactly the crowd it deals, and never shorter than round 1's base
-    const flashOf = x => Math.min(R.flashCap, R.flashBase + R.flashShape * Math.max(0, x.n + x.decoys - R.flashFree));
+    // AMENDED at build 50 (v26 §B2): later rounds stay up longer as well — flashRound ms a round from flashRoundFrom, inside the same cap
+    const flashOf = x => Math.min(R.flashCap, R.flashBase + R.flashShape * Math.max(0, x.n + x.decoys - R.flashFree) + R.flashRound * Math.max(0, x.r - R.flashRoundFrom + 1));
     const grows = r.every(x => x.flash === flashOf(x) && x.flash >= R.flashBase) && r[9].flash > r[0].flash && !('flashPer' in R) && !('flashMin' in R);
     grows ? ok(`F.4 the Count flash grows with the crowd - round 1 ${r[0].flash}ms for ${r[0].n + r[0].decoys} shapes, round 10 ${r[9].flash}ms for ${r[9].n + r[9].decoys}, capped at ${R.flashCap}ms`)
       : bad('F.4 the flash must grow with the shapes shown', JSON.stringify(r.map(x => [x.n + x.decoys, x.flash])));
@@ -2890,10 +3038,8 @@ if (section('build 31 - v18 sections B.1 to B.14')) {
     (!d.first && !d.wrongCount && !d.thrice && !d.dup)
       ? ok(`B.1d 400 dealt rounds (dealRound since build 32): the target is never the first shape, always exactly 3 of them, no shape three running, no decoy repeated (lengths ${JSON.stringify(d.lens)})`)
       : bad('B.1d the dealing gate, amended', JSON.stringify(d));
-    // B.1a: the instruction arrives whole
-    /rxBar\(\[\.\.\.\(this\.round>1\?CP\.ruleNow:CP\.ruleTap\),shapeI\(this\.rule\),`<b>\$\{SHAPE_WORD\[this\.rule\]\}<\/b>`\],true\)/.test(rx31)
-      ? ok('B.1a the rule bar is drawn with atOnce — the words arrive together, not one every 220ms')
-      : bad('B.1a "tap only the square" arrives whole');
+    /* B.1a (the instruction arrives whole) was a source-text check spelling rulePause's rxBar call with SHAPE_WORD. DELETED at build 50 (site/CLAUDE.md →
+       The gate): SHAPE_WORD retired into config/shapes.js. The runs section drives the rule bar on the page since build 50 */
   }
   {
     // B.1b as behaviour: a Go / No-go Set is five rounds of three, and the HUD says which round you are in
@@ -3093,9 +3239,12 @@ if (section('build 32 - v19 section C and v18 sections B.15 to B.27')) {
     (D.set === 980 && D.streak === 1330 && D.spread === 180 && D.set - D.spread >= 800 && D.streak - D.spread >= 1150)
       ? ok(`C.4 (L5) dwell is ${D.set} ± ${D.spread} on a Set and ${D.streak} ± ${D.spread} on a Streak — never quicker than build 31's 800 / 1150, and variable`)
       : bad('C.4 the dwell', JSON.stringify(D));
-    (Object.keys(G32.SHAPE_WORD).length === 5 && /\.rxshape\.diamond\{/.test(css32) && /\.rxshape\.hex\{/.test(css32) && /#rxbar i\.diamond/.test(css32) && /\.rxrule i\.hex/.test(css32))
-      ? ok(`C.3 five shapes in SHAPE_WORD (${Object.keys(G32.SHAPE_WORD).join(', ')}), each drawn on the pane, the rule bar and the rule line`)
-      : bad('C.3 five shapes', Object.keys(G32.SHAPE_WORD).join(','));
+    /* AMENDED at build 50 (v26 §B2, #444): Go / No-go's pool is config/shapes.js DEALS 'reaction:nogo' — nine shapes, the hexagon gone — and every shape is
+       the shared svg. The stylesheet half of this check is DELETED (site/CLAUDE.md → The gate): it tested how app.css spelled the clip paths */
+    { const CS32 = await import(pathToFileURL(path.join(root, 'config', 'shapes.js')).href), pool32 = CS32.DEALS['reaction:nogo'].pool;
+      (pool32.length === 9 && !pool32.includes('hex') && pool32.every(s => CS32.SHAPES[s]))
+        ? ok('C.3 amended: Go / No-go deals ' + pool32.length + ' shapes (' + pool32.join(', ') + '), every one on the shape list, no hexagon')
+        : bad('C.3 the Go / No-go shapes', pool32.join(',')); }
     const s32 = strip(rx32);
     (/gated\(ms\)\{ return Math\.max\(0,ms-this\.NOGO_FREE\); \}/.test(s32) && /const add=this\.gated\(ms\); if\(this\.streak\(\)\) this\.over\+=add;/.test(s32) && /const all=this\.gatedAll\(\);/.test(s32) && !/this\.beatMs\(\)\)\.fill|fill\(this\.beatMs\(\)\)/.test(s32))
       ? ok('C.5 every tap goes through gated() — Streak spend and Set mean alike — and a skipped target is charged the dwell it was given')
@@ -3115,8 +3264,10 @@ if (section('build 32 - v19 section C and v18 sections B.15 to B.27')) {
   /* ---- §C as behaviour: 400 dealt rounds, the target order, the dwell draw, the arithmetic ---- */
   {
     const d = await page.evaluate(async () => { const M = await import('./games/reaction/index.js'); const R = M.default; const G = await import('./config/games.js');
-      R.ctx = { mode: 'nogo', len: 5 }; R.two = { on: false }; R.rule = 'circle'; R.pool = [];
-      const all = Object.keys(G.SHAPE_WORD);
+      // AMENDED at build 50 (v26 §B2): the pool is DEALS 'reaction:nogo', and a round's go shape comes from the dealer, keyed by the round
+      const CS = await import('./config/shapes.js');
+      R.ctx = { mode: 'nogo', len: 5 }; R.two = { on: false }; R.rule = 'circle'; R.spec = null; R.dealer = null;
+      const all = CS.DEALS['reaction:nogo'].pool;
       const out = { n: 0, first: 0, count: 0, adjacent: 0, thrice: 0, dup: 0, badDecoy: 0, gaps: {}, lens: {}, min: 99, max: 0, shapesSeen: new Set() };
       for (let i = 0; i < 400; i++) { const b = R.dealRound(); out.n++;
         out.lens[b.length] = (out.lens[b.length] || 0) + 1; out.min = Math.min(out.min, b.length); out.max = Math.max(out.max, b.length);
@@ -3126,8 +3277,9 @@ if (section('build 32 - v19 section C and v18 sections B.15 to B.27')) {
         for (let j = 2; j < b.length; j++) if (b[j] === b[j - 1] && b[j] === b[j - 2]) out.thrice++;
         for (let j = 1; j < b.length; j++) if (b[j] !== R.rule && b[j] === b[j - 1]) out.dup++; }
       // C.3: a Set's five targets are the five shapes, and a Streak never deals the same target twice running
-      R.rule = ''; R.pool = []; const setOrder = []; for (let i = 0; i < 5; i++) { R.rule = R.nextTarget(); setOrder.push(R.rule); }
-      let repeat = 0; R.rule = ''; R.pool = []; let prev = ''; for (let i = 0; i < 60; i++) { R.rule = R.nextTarget(); if (R.rule === prev) repeat++; prev = R.rule; }
+      R.rule = ''; R.dealer = null; const setOrder = []; for (let i = 0; i < 5; i++) { R.round = i + 1; R.rule = R.nextTarget(); setOrder.push(R.rule); }
+      let repeat = 0; R.rule = ''; R.dealer = null; let prev = ''; for (let i = 0; i < 60; i++) { R.round = i + 1; R.rule = R.nextTarget(); if (R.rule === prev) repeat++; prev = R.rule; }
+      R.spec = null; R.dealer = null;
       // C.4: the dwell draw, per length
       const dw = { set: [], streak: [] }; for (let i = 0; i < 300; i++) { R.ctx.len = 5; dw.set.push(R.dwellMs()); R.ctx.len = G.STREAK; dw.streak.push(R.dwellMs()); }
       const rng = a => ({ min: Math.min(...a), max: Math.max(...a), distinct: new Set(a).size });
@@ -3144,8 +3296,9 @@ if (section('build 32 - v19 section C and v18 sections B.15 to B.27')) {
     const gapTot = Object.values(d.gaps).reduce((a, b) => a + b, 0); const gapShare = Object.fromEntries(Object.entries(d.gaps).map(([k, v]) => [k, +(v / gapTot).toFixed(3)]));
     const gapOk = [1, 2, 3, 4, 5].every(k => (d.gaps[k] || 0) / gapTot >= 0.12) && !d.gaps[0] && !d.gaps[6];
     gapOk ? ok(`C.2 the target's position is spread — decoys before it, share of 1200 targets: ${JSON.stringify(gapShare)}`) : bad('C.2 the position is drawn uniformly from 1 to 5 decoys', JSON.stringify(gapShare));
-    (d.shapesSeen.length === 4 && d.distinctTargets === 5 && !d.repeat)
-      ? ok(`C.3 decoys come from the other four shapes (${d.shapesSeen.join(', ')}), a Set's five targets are five different shapes (${d.setOrder.join(' → ')}), and a Streak never repeats a target twice running`)
+    // AMENDED at build 50 (v26 §B2): decoys come from the other eight shapes of the nine
+    (d.shapesSeen.length === 8 && d.distinctTargets === 5 && !d.repeat)
+      ? ok(`C.3 decoys come from the other eight shapes (${d.shapesSeen.join(', ')}), a Set's five targets are five different shapes (${d.setOrder.join(' → ')}), and a Streak never repeats a target twice running`)
       : bad('C.3 the five shapes', JSON.stringify({ seen: d.shapesSeen, order: d.setOrder, repeat: d.repeat }));
     (d.dwSet.min >= 800 && d.dwSet.max <= 1160 && d.dwSet.distinct > 20 && d.dwStreak.min >= 1150 && d.dwStreak.max <= 1510 && d.dwStreak.distinct > 20)
       ? ok(`C.4 300 dwell draws: a Set shape stays ${d.dwSet.min}–${d.dwSet.max}ms, a Streak shape ${d.dwStreak.min}–${d.dwStreak.max}ms, and the draw varies`)
@@ -5891,7 +6044,8 @@ if (section('build 45 - batch 18, fixes, state and the catalogue')) {
     const shaped = rf.every(g => g.bands.length && g.bands.every(b => b.rows.length && b.rows.every(r => r.length === g.cols.length)));
     const drawn = rf.every(g => g.id === 'rf-timing-hidden' || g.bands.every(b => (b.shapes || []).length && b.shapes.every(s => /^<svg /.test(s.svg))));
     const nogo = rf.find(g => g.id === 'rf-reaction-nogo');
-    const diamond = (nogo.bands[0].shapes || []).some(s => s.flag && /diamond/.test(s.name));
+    // AMENDED at build 50 (v26 §B2, #444): the amber "square turned 45° — drawn as a diamond" is gone with the turned square; the diamond is its own shape, on every band
+    const diamond = nogo.bands.every(b => (b.shapes || []).some(s => /^diamond/.test(s.name)) && !(b.shapes || []).some(s => s.flag));
     // the figures are the engine's own, not a copy of them: three spot checks against the modules
     const live21 = await page.evaluate(async () => { const SP = (await import('./games/spot/index.js')).SP, TM = (await import('./games/timing/index.js')).TM;
       return { decoys7: String(SP.ramp(7, 0).decoys), find5: String(SP.findSpec(5).n), hid5: TM.hiddenRamp(5, true).ramp.toFixed(2) }; });

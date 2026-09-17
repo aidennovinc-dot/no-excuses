@@ -984,15 +984,17 @@
   /* v15 (3.9 answer, build 25): Spot · Count flashes the right answer instead of holding the card. 0.6s, then the round goes */
   .glbl b.cflash{animation:cflash .6s cubic-bezier(.2,.9,.3,1.2) both}
   @keyframes cflash{0%{transform:scale(1.6);opacity:0}22%{transform:scale(1);opacity:1}100%{transform:scale(1);opacity:1}}
-  .fs{position:absolute;width:var(--fsz);height:var(--fsz);background:var(--sq-live);pointer-events:none;transition:opacity .2s}
-  .fs.circle{border-radius:50%}
-  .fs.tri{clip-path:polygon(50% 0,100% 100%,0 100%)}
-  .fs.bad{background:var(--miss)}
+  /* v26 §B2 (build 50): EVERY SHAPE IS THE SHARED SVG (games/_shared/shapes.js) — a clip path cannot draw a ring's hole, a spiral or a crescent.
+     The fill is the svg's; a found shape's ring is a stroke round its own outline (painted under the fill, so 4px shows outside), where a
+     box-shadow drew a square round every shape and nothing at all round a clipped triangle */
+  .shp-svg{display:block;width:100%;height:100%;overflow:visible;fill:var(--sq-live)}
+  .fs{position:absolute;width:var(--fsz);height:var(--fsz);pointer-events:none;transition:opacity .2s}
+  .fs.bad .shp-svg{fill:var(--miss)}
   .fs.dim{opacity:.18}
-  .fs.odd{box-shadow:0 0 0 4px var(--ok)}
+  .fs.odd path{stroke:var(--ok);stroke-width:8px;stroke-linejoin:round;paint-order:stroke;vector-effect:non-scaling-stroke}
   /* v16 (§4): the round's shape lights in the OWNER's colour, never green, so the two players can read a shared field (L4) */
-  .fs.odd.p1{box-shadow:0 0 0 4px var(--p1)}
-  .fs.odd.p2{box-shadow:0 0 0 4px var(--p2)}
+  .fs.odd.p1 path{stroke:var(--p1)}
+  .fs.odd.p2 path{stroke:var(--p2)}
   /* v16 (§4): the crowd starts static and gains a pulse as the match goes on. `scale` is its own transform property, so
      this never fights the rotation the drift loop writes to `rotate` */
   .fs.puls{animation:fspuls 1.35s ease-in-out infinite}
@@ -1277,13 +1279,8 @@
   .rxpane{position:absolute;inset:0;display:grid;place-items:center;transition:background .05s}
   .rxpane.lit{background:var(--sq-live)}
   .rxpane.bad{background:color-mix(in srgb,var(--miss) 55%,var(--ground))}
-  .rxpane .rxshape{width:34vmin;height:34vmin;background:var(--sq-live)}
-  .rxpane .rxshape.circle{border-radius:50%}
-  .rxpane .rxshape.tri{clip-path:polygon(50% 0,100% 100%,0 100%)}
-  /* v19 (C.3, build 32): two more shapes so a Set's five rounds draw on five. A diamond is a square on its point and is
-     never rotated (it would become the square); a hexagon is drawn flat-topped and may turn 30° */
-  .rxpane .rxshape.diamond{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
-  .rxpane .rxshape.hex{clip-path:polygon(25% 3%,75% 3%,100% 50%,75% 97%,25% 97%,0 50%)}
+  /* v26 §B2 (build 50, #444): the shape is the shared svg — the hexagon and the clip-path diamond (a square on its point) are gone */
+  .rxpane .rxshape{width:34vmin;height:34vmin}
   .rxmsg{position:absolute;left:0;right:0;top:16%;text-align:center;font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);line-height:1.8}
   .rxmsg b{display:block;font-size:clamp(48px,16vw,110px);color:var(--ink);letter-spacing:0;font-variant-numeric:tabular-nums;font-weight:700}
   .rxmsg b.fb{font-size:clamp(30px,9vw,60px);font-family:var(--title);letter-spacing:.08em;margin-bottom:10px;line-height:1.2}
@@ -1291,23 +1288,13 @@
   .rxpane.lit .rxmsg,.rxpane.lit .rxmsg b{color:var(--ground)}
   .rxrule{display:grid;grid-auto-flow:column;justify-content:center;gap:10px;align-items:center;margin-top:18px;color:var(--ink)}
   .rxpane .rxshape{transition:none}
-  .rxrule i{display:inline-block;width:18px;height:18px;background:var(--sq-live)}
-  .rxrule i.square{border-radius:1px}
-  .rxrule i.circle{border-radius:50%}
-  .rxrule i.tri{clip-path:polygon(50% 0,100% 100%,0 100%)}
-  .rxrule i.diamond{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
-  .rxrule i.hex{clip-path:polygon(25% 3%,75% 3%,100% 50%,75% 97%,25% 97%,0 50%)}
   /* v14 (6.22): white is the WHOLE screen again. The v10 square with burst lines was the preview screen's picture of Flash,
      not the game — the lines are gone and .rxbox with them, so the lit pane is the plain fill defined above */
   .rxpane.hit .rxmsg{z-index:2}
   /* the rule (v10) lives at the top-middle for the whole attempt, and arrives a word at a time */
   #rxbar{position:absolute;left:0;right:0;top:calc(16.5% + env(safe-area-inset-top));text-align:center;font-family:var(--mono);font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink);line-height:1.8;z-index:3;pointer-events:none}
   #rxbar .w{display:inline-block;opacity:0;animation:wordin .4s ease-out both;margin-right:.4em}
-  #rxbar i{display:inline-block;width:20px;height:20px;background:var(--sq-live);vertical-align:-4px;margin:0 4px}
-  #rxbar i.circle{border-radius:50%}
-  #rxbar i.tri{clip-path:polygon(50% 0,100% 100%,0 100%)}
-  #rxbar i.diamond{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
-  #rxbar i.hex{clip-path:polygon(25% 3%,75% 3%,100% 50%,75% 97%,25% 97%,0 50%)}
+  #rxbar i.shp{display:inline-block;width:20px;height:20px;vertical-align:-4px;margin:0 4px}
   #rxbar b{color:var(--ok);font-weight:700}
   .rxpane .rxmsg{top:22%}
 

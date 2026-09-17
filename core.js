@@ -15,11 +15,11 @@ const f2=n=>(Math.round(n*100)/100).toFixed(2);
 const pWho=p=>`<span class="${p?'p2':'p1'}">${T(PLAYER.who,{n:p+1})}</span>`;
 // sequence speed is not a choice any more (v9): it starts at 0.5s a key and tightens 15ms a round, floor 0.28s (SEQ_STEP)
 const seqStep=round=>Math.max(SEQ_STEP.floor,Math.round(SEQ_STEP.start-(round-1)*SEQ_STEP.step));
-const shapeI=s=>`<i class="${s}"></i>`;
+// v26 §B2 (build 50): shapeI moved to games/_shared/shapes.js, where it draws the shared shape instead of naming a CSS class
 const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
 const sum=a=>a.reduce((x,y)=>x+y,0);
 // build 17 (refactor stage 3): the two lines every engine had its own copy of. winner: 0 / 1 / -1 for a draw. minMax: [best, worst] of a list, [0, 0] when empty
 const winner=(a,b)=>a>b?0:b>a?1:-1;
 const minMax=a=>a.length?[Math.min(...a),Math.max(...a)]:[0,0];
 
-export { $, $$, T, esc, f2, mean, minMax, pWho, seqStep, shapeI, sum, vmin, winner };
+export { $, $$, T, esc, f2, mean, minMax, pWho, seqStep, sum, vmin, winner };
