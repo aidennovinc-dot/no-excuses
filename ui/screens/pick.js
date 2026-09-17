@@ -3,7 +3,7 @@
    walks them before it leaves the screen. show('s-pick', {g, d, s}) opens a game's sheet straight at its mode or length row
    (the result screen's Back, an achievement row, a challenge link). Locked things ask the lock box through lock:ask. */
 import { CHEST_SOON, GAUNTLET, GRID, SHEET } from "../../config/copy.js";
-import { CHESTS, GAUNTLETS, MAP_INTRO } from "../../config/chests.js";
+import { CHESTS, GAUNTLETS, MAP_INTRO, SPILL } from "../../config/chests.js";
 import { MODE_NAME, PASS_LEN, SEQ_VS, VS_LEAD, VS_TARGET } from "../../config/games.js";
 import { VS_ART } from "../../config/theme.js";
 import { VS_LINE } from "../../config/copy.js";
@@ -93,10 +93,14 @@ const gauntletOf=id=>GAUNTLETS.find(g=>g.id===id)||null;
 /* v26 (item 2, build 49): WHEN EACH TILE ARRIVES ON THE MAP'S FIRST OPEN — the seven games top to bottom, the two Gauntlets, then the four chests
    last, one at a time, drawn out to about 7 seconds (MAP_INTRO). The tile's animation-delay is this and nothing else, and its sound is read back off
    that animation (mapSounds below), so a re-time is one number in config/chests.js */
+/* v27 (item 2, build 51): AND ONLY THE GAUNTLETS THAT ARE THERE TAKE A BEAT. A shut Gauntlet is not on the map (R1), so counting its slot left a
+   silent hole in the sequence where the tile used to be — a gap, which is the one thing item 2 rules out. `shownGaunts` is how many are actually
+   drawn, so on a new profile the chests follow the seventh game with no pause but `chestAt`, and each Gauntlet that IS open takes its own beat. */
+const shownGaunts=n=>GAUNT_ORDER.slice(0,n===undefined?GAUNT_ORDER.length:n).filter(id=>{ const G=gauntletOf(id); return G&&chestOpen(G.chest); }).length;
 function introAt(t){ const I=MAP_INTRO, g=t.dataset.game, gt=t.dataset.gauntlet;
   if(g) return I.at+Math.max(0,GRID_ORDER.indexOf(g))*I.gap;
-  if(gt) return I.at+(GRID_ORDER.length+Math.max(0,GAUNT_ORDER.indexOf(gt)))*I.gap;
-  return I.at+(GRID_ORDER.length+GAUNT_ORDER.length)*I.gap+I.chestAt+Math.max(0,CHEST_ORDER.indexOf(t.dataset.chest))*I.chestGap; }
+  if(gt) return I.at+(GRID_ORDER.length+shownGaunts(Math.max(0,GAUNT_ORDER.indexOf(gt))))*I.gap;
+  return I.at+(GRID_ORDER.length+shownGaunts())*I.gap+I.chestAt+Math.max(0,CHEST_ORDER.indexOf(t.dataset.chest))*I.chestGap; }
 /* the tiles in CHAIN order, whatever order the markup is in, with the chests last. Sorting here rather than trusting the
    DOM means the order can only ever be wrong in config/games.js, which is the one place L6 allows it to be stated.
    v26 (item 13): a Gauntlet is not on the chain — it hangs off the side of its chest on a connector of its own, so it is not in this list */
@@ -110,7 +114,7 @@ function colCount(){ const g=$('#grid'); const t=getComputedStyle(g).gridTemplat
 function pageOff(el){ let x=0, y=0, n=el; while(n){ x+=n.offsetLeft; y+=n.offsetTop; n=n.offsetParent; } return { x, y }; }
 function centreIn(el,root){ const a=pageOff(el), b=pageOff(root); return { x:a.x-b.x+el.offsetWidth/2, y:a.y-b.y+el.offsetHeight/2 }; }
 /* v18 (B.19, build 32): THE CHESTS IN A COLUMN. v23 (L.10, build 40): FOUR of them. The Games chest is the snake's last stop; the Key,
-   Pro and Thorns chests sit directly under it in the same column, one row each, so the screen scrolls. v23 (L.11c): each opened chest's
+   Pro and Author chests sit directly under it in the same column, one row each, so the screen scrolls. v23 (L.11c): each opened chest's
    words take a free grid cell beside it — to its right, or to its left where the right is off the grid or taken (the 4-column layout
    puts the Games chest against the last game). One layout whatever state a chest is in, so nothing moves when one opens (L.11d, guess). */
 function layoutGrid(){ const cols=colCount(); let below=null; const taken=new Set();
@@ -118,8 +122,10 @@ function layoutGrid(){ const cols=colCount(); let below=null; const taken=new Se
     if(ci>0){ if(!below) return; t.style.gridRow=below.r+ci; t.style.gridColumn=below.c; taken.add((below.r+ci)+':'+below.c); return; }
     const {r,c}=cellOf(i,cols); t.style.gridRow=r; t.style.gridColumn=c; taken.add(r+':'+c); if(ci===0) below={r,c}; });
   /* v26 (item 13, build 49): EACH GAUNTLET SITS TO THE LEFT OF THE CHEST THAT OPENS IT, and the chest's words keep the cell on its right. Where there
-     is no cell on the left (the 4-column layout puts the chests in the first column) it takes the one past the words */
-  $$('#grid .tile[data-gauntlet]').forEach(t=>{ const G=gauntletOf(t.dataset.gauntlet), ci=G?CHEST_ORDER.indexOf(G.chest):-1;
+     is no cell on the left (the 4-column layout puts the chests in the first column) it takes the one past the words.
+     v27 (item 2, build 51): a Gauntlet whose chest is shut is already `hidden` (renderGauntlets, R1) and NO CELL IS RESERVED FOR IT — that is the
+     "no gap" half of item 2, and it is why this runs after renderGauntlets rather than deciding `hidden` for itself. */
+  $$('#grid .tile[data-gauntlet]').forEach(t=>{ if(t.hidden) return; const G=gauntletOf(t.dataset.gauntlet), ci=G?CHEST_ORDER.indexOf(G.chest):-1;
     if(!below||ci<0){ t.hidden=true; return; } const r=below.r+ci, free=c=>c>=1&&c<=cols&&!taken.has(r+':'+c);
     const c=free(below.c-1)?below.c-1:free(below.c+2)?below.c+2:0; t.hidden=!c; if(!c) return;
     t.style.gridRow=r; t.style.gridColumn=c; taken.add(r+':'+c); });
@@ -156,17 +162,25 @@ function drawLines(reveal){ const grid=$('#grid'), svg=$('#gridlines'); if(!svg)
     const d=reveal?Math.max(introAt(t),introAt(ch))+Math.round(MAP_INTRO.ms*.6)+MAP_INTRO.lineLag:0;
     out+=`<path class="gl gt${t.classList.contains('locked')?'':' open'}" data-gauntlet="${G.id}" d="M${x1.toFixed(1)} ${y1.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}" style="--len:${l.toFixed(1)};--gd:${d}ms"></path>`; });
   svg.innerHTML=out; }
-/* v26 (item 13, build 49): THE TWO GAUNTLET TILES. Open once the chest that opens each is open — chestOpen(), the one read every gate uses — and until then
-   crossed out with a padlock and what opens it, the way a locked chest is. The drawing is its symbol (config/chests.js SYMBOLS), in colour. A Gauntlet
-   newly open gets L8's green and arrives, with its own sound, the first time it is seen. Answers the tiles that are arriving */
+/* v26 (item 13, build 49): THE TWO GAUNTLET TILES, each hanging off the chest that opens it — chestOpen(), the one read every gate uses. The drawing
+   is its symbol (config/chests.js SYMBOLS), in colour.
+   v27 (item 2 / R1, build 51): UNTIL THAT CHEST HAS BEEN OPENED THERE IS NOTHING THERE. Build 50 drew the tile crossed out with a padlock and
+   "Open the Pro chest" under it, which told a player exactly what the second secret was and how many there were. R1: a secret may be known to
+   exist, never what it is — so a shut Gauntlet is `hidden`: no tile, no label, no lock, no connector (drawLines skips it) and no gap (layoutGrid
+   reserves it no cell). It arrives AS PART OF ITS CHEST'S REWARD MOMENT: the first paint that finds the chest open is the paint that spills its
+   words out, so the tile comes in on the spill's own beat — `arrive` delayed by SPILL.delay, the same delay the words wait for the scroll with —
+   and `newMark` is taken then so it is never announced twice. Seen later, it simply stands there. Answers the tiles that are arriving. */
 function renderGauntlets(reveal,fresh){ const arriving=[];
   $$('#grid .tile[data-gauntlet]').forEach(t=>{ const G=gauntletOf(t.dataset.gauntlet); if(!G) return; const open=chestOpen(G.chest);
-    t.classList.toggle('locked',!open); t.querySelector('.name').textContent=GAUNTLET.name[G.id]||G.id;
+    t.classList.remove('reveal','newthing','arrive','spillin'); t.style.animationDelay=''; t.style.removeProperty('--gin'); t.hidden=!open;
+    if(!open) return;
+    t.classList.remove('locked'); t.querySelector('.name').textContent=GAUNTLET.name[G.id]||G.id;
     const pic=t.querySelector('.pic'); if(!pic.querySelector('.sym')) pic.insertAdjacentHTML('afterbegin',symSvg(G.sym,'gsym',G.chest)+'<i class="gx"></i>');
-    pic.dataset.need=open?'':(GAUNTLET.need[G.id]||'');
-    t.classList.remove('reveal','newthing','arrive'); t.style.animationDelay='';
+    pic.dataset.need='';
+    // the chest this Gauntlet came out of is spilling on this very paint (renderChests writes prefs.spill after us) — arrive with its words
+    const spilling=!(prefs.spill||{})[G.chest];
     if(reveal){ t.classList.add('reveal'); t.style.animationDelay=introAt(t)+'ms'; }
-    else if(open&&newMark('gauntlet:'+G.id,fresh)){ t.classList.add('newthing','arrive'); arriving.push(t); } });
+    else if(newMark('gauntlet:'+G.id,fresh)){ t.classList.add('newthing','arrive'); if(spilling){ t.classList.add('spillin'); t.style.setProperty('--gin',SPILL.delay+'ms'); } arriving.push(t); } });
   return arriving; }
 /* THE CHESTS (B.24, build 29 → B.19 / B.20, build 32 → v21 G.1 / G.3, build 37 → v23 L.10, build 40). FOUR, named by what opens them
    (config/chests.js), every one on the map from the first visit. Each is in one of four states and progress/key.js decides which —
@@ -257,7 +271,8 @@ function mapSounds(){ mapT.forEach(clearTimeout); mapT=[];
       if(chest) Snd.mapFx('chest'); else if(g) Snd.mapFx(g,!gameOpen(g)); else if(t.dataset.gauntlet) Snd.mapFx('gauntlet',t.classList.contains('locked')); },d)); }); }
 /* v26 (§B1, build 49): AND THE SAME SOUND WHEN A GAME UNLOCKS. A game (or a Gauntlet) newly open ARRIVES on the map the first time it is seen (v15 6.3),
    and it lands with its own sound, read off its own arrival animation like the first open's */
-function arrivalSounds(tiles){ for(const t of tiles){ const an=(t.getAnimations?t.getAnimations():[]).find(a=>a.animationName==='tilearrive'); if(!an||!an.effect) continue;
+// v27 (item 2, build 51): a Gauntlet coming out of its chest runs `gauntarrive` on the spill's beat instead of `tilearrive` — one more name here
+function arrivalSounds(tiles){ for(const t of tiles){ const an=(t.getAnimations?t.getAnimations():[]).find(a=>a.animationName==='tilearrive'||a.animationName==='gauntarrive'); if(!an||!an.effect) continue;
     const d=an.effect.getComputedTiming().delay||0, g=t.dataset.game;
     mapT.push(setTimeout(()=>{ if(!$('#s-pick').classList.contains('on')) return; if(g) Snd.mapFx(g); else Snd.mapFx('gauntlet'); },d)); } }
 on('screen:change',({id})=>{ if(id!=='s-pick'){ mapT.forEach(clearTimeout); mapT=[]; } });
@@ -362,7 +377,9 @@ define({
   /* v26 (item 13, build 49): a Gauntlet tile. Locked, it says what opens it and stays put; open, its placeholder screen — what a Gauntlet is gets
      designed separately */
   gauntlet(b){ const id=b.dataset.gauntlet, G=gauntletOf(id); if(!G) return 'pick';
-    if(!chestOpen(G.chest)){ toast(T(GAUNTLET.toast,{need:GAUNTLET.need[id]||''}),'','',true); return 'pick'; }
+    // v27 (item 2): a shut Gauntlet is not on the map at all, so this only ever fires open. The toast is the belt for a tap that arrives
+    // mid-open (a chest word, a stale element), and it names its chest through GRID.chestOpenIt — no chest name is spelled twice (item 4)
+    if(!chestOpen(G.chest)){ toast(T(GAUNTLET.toast,{need:T(GRID.chestOpenIt,{chest:GRID.chest[G.chest]||G.chest})}),'','',true); return 'pick'; }
     show('s-gauntlet',{id}); return 'click'; },
   praclock(){ toast(TOAST.pracLocked); return 'pick'; },
   prac(b){ sel.practice=+b.dataset.prac; $$('[data-prac]').forEach(c=>c.classList.toggle('sel',c===b)); return 'pick'; },

@@ -12,23 +12,24 @@
 
    frame() draws the same stage paused at a fraction of its length and plays nothing — the review catalogue's frames (L.10d / L.11e). It
    lives here so the catalogue cannot photograph a ceremony the app does not play. */
-import { CEREMONY, CEREMONY_FX, CHESTS, CHEST_LOOK, METER_BANDS } from "../config/chests.js";
+import { CEREMONY, CEREMONY_FX, CHESTS } from "../config/chests.js";
 import { GRID, KEY } from "../config/copy.js";
 import { KEY_ART } from "../config/keys.js";
 import { Snd } from "../audio.js";
 import { T, esc } from "../core.js";
 import { countUp } from "../core/count.js";
 import { COMBOS } from "../progress/key.js";
-import { chestSvg, meterLook } from "./chest.js";
+import { chestCol, chestSvg, meterLook } from "./chest.js";
 
 const f1 = v => (+v).toFixed(1);
 // which named step lifts each chest's lid: its own `lid` step, or the moment the Pro chest bursts and the Thorns reveal widens
 const LID_STEP = { games: 'lid', key: 'lid', pro: 'burst', thorns: 'widen' };
 const stepOf = (id, name) => (CEREMONY[id].steps || []).find(s => s.name === name) || null;
 // the times, as custom properties. Nothing below writes a literal duration
-function stageVars(id) { const c = CEREMONY[id]; const band = METER_BANDS[(CHEST_LOOK[id] || {}).band] || METER_BANDS[1];
-  // --cc is the chest's own band colour (L.9a) — the cracks, the burst, the spikes and the split wear it, so the stylesheet names none
-  const v = [`--cms:${c.ms}ms`, `--reveal-at:${c.ms - CEREMONY_FX.meterMs}ms`, `--cc:${band.col}`];
+function stageVars(id) { const c = CEREMONY[id];
+  // --cc is the chest's own colour — the cracks, the burst, the spikes and the split wear it, so the stylesheet names none.
+  // v27 (item 13): that colour is the KEY'S, through ui/chest.js chestCol (R2), not the meter band's
+  const v = [`--cms:${c.ms}ms`, `--reveal-at:${c.ms - CEREMONY_FX.meterMs}ms`, `--cc:${chestCol(id)}`];
   for (const s of c.steps) v.push(`--st-${s.name}-at:${s.at}ms`, `--st-${s.name}-ms:${s.ms}ms`);
   const lid = stepOf(id, LID_STEP[id]); v.push(`--lid-at:${lid ? lid.at : 0}ms`);
   const ux = stepOf(id, 'uncross'); if (ux) v.push(`--ux-step:${Math.round(ux.ms / 8)}ms`);

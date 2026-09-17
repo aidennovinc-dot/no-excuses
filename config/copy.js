@@ -135,7 +135,17 @@ export const PROGRESS_SCREEN = { title:'progress', unl:'Game unlocks', cul:'Cust
    Author key"). The Games chest keeps its count of modes.
    v26 (Aiden's answers after build 48, built for build 49): not "Earn the key" — THE FIRST KEY IS THE SKILL KEY, beside the Pro key and the Author
    key, whose wording stays as it is. The name is `name` in config/keys.js; this line, the Games chest's word and the two headers above follow it. */
-export const GRID = { chest:{ games:'Games chest', key:'Key chest', pro:'Pro chest', thorns:'Thorns chest' },
+/* v27 (item 4, build 51): THE CHESTS ARE GAMES / SKILL / PRO / AUTHOR, and `chest` here is THE ONE SOURCE — the only place in config/ any of the
+   four names is spelled. "Skill chest" became SKILL chest (it is the Skill key that opens it, item 3) and "Author chest" became AUTHOR chest (the
+   Author key). R2: a chest matches the key that opens it, in name as well as in colour and design. Lantern, Circuit and Thorn stay the names of
+   each key's BACKGROUND and MUSIC and are never shown as a key or a chest. The ids do not move — `key` and `thorns` are store keys (core/store.js
+   v4 → v5) and config ids, and renaming them would retire every saved profile's chests for a copy change.
+   Everything a player or the catalogue can read comes from here: the map's tiles (ui/screens/pick.js fills them, so index.html carries no name),
+   the ceremony's line, the Keys screen, Customise, Testing, the Messages list (ui/screens/about.js composes it from `chestNeed`), the Gauntlet toast (`chestOpenIt`) and the
+   catalogue's chest cards. The gate drives the map and the Messages list and reads the names back off the page. */
+export const GRID = { chest:{ games:'Games chest', key:'Skill chest', pro:'Pro chest', thorns:'Author chest' },
+  // what a line that has to NAME a chest says — one template, filled with `chest` above, so no second spelling of a name exists anywhere
+  chestNeed:'the {chest}', chestOpenIt:'Open the {chest}',
   chestModes:'unlock every game · {open} of {total}', chestModesToast:'Unlock every game first<small>{open} of {total} modes unlocked</small>',
   chestEarn:{ key:'Earn the Skill key', pro:'Earn the Pro key', thorns:'Earn the Author key' }, chestOpen:'tap to open', chestOpened:'opened', tba:'tba',
   chestPrev:'open the previous chest', chestPrevToast:'Open the previous chest first' };
@@ -143,18 +153,18 @@ export const GRID = { chest:{ games:'Games chest', key:'Key chest', pro:'Pro che
    An opened chest shows them as a plain column to its right (L.11b animates them in build 41); nothing shows beside a chest that is
    not open. `tba` marks a placeholder reward — the 2026-09-10 cosmetic set and hard Gauntlet, reopened by L.11 — and none of these
    is a tap target yet (L.11b). §M.3 went unanswered, so this is the recommended set (guess): Author has waited for the Pro chest since
-   build 38, so the Key chest says PRO KEY rather than "PRO · AUTHOR REVEALED" and the Pro chest carries AUTHOR KEY; the Games chest
+   build 38, so the Skill chest says PRO KEY rather than "PRO · AUTHOR REVEALED" and the Pro chest carries AUTHOR KEY; the Games chest
    also names THE KEY, because opening it is what reveals key 1 (L.10a). */
 /* v23 (L.11b, build 41): EACH WORD IS A TAP TARGET to the thing it names — `to` is where: a screen id, `key:<n>` for that key's tab, or
    `soon` for a reward that is not built yet (Gauntlet, #382; the Pro and Thorns placeholders), which says so in a toast (guess). */
 /* v25 (items 6 / 7 / 15, build 46): EVERY WORD NOW CARRIES ITS SYMBOL — `sym`, an id in SYMBOLS (config/chests.js). The same drawing pops
    out of the chest as it opens (item 6), stands beside the word here on the map (item 7) and sits in the congratulations card's row
    (item 22), so the player connects the three. Item 15 adds the key backgrounds: finishing a key makes its chest ready, so the chest that
-   key opens is the one that gives its background away — the Key chest the Lantern's, the Pro chest the Circuit's, the Thorns chest the
+   key opens is the one that gives its background away — the Skill chest the Lantern's, the Pro chest the Circuit's, the Author chest the
    Thorn's, each landing in Customise (`ITEMS.bg` in config/theme.js, locked on keyFinished since build 43). SKY is a placeholder word like
    every other on this list — one line each to change. */
-/* v26 (items 5 / 13, build 49): THE GAUNTLETS ARE TILES NOW. The Key chest gives GAUNTLET and the Pro chest GAUNTLET II, and each word goes to its tile
-   on the map (`tile:<id>`, config/chests.js GAUNTLETS). The Thorns chest's "hard Gauntlet" is gone with the 2026-09-10 plan it came from, so its reward
+/* v26 (items 5 / 13, build 49): THE GAUNTLETS ARE TILES NOW. The Skill chest gives GAUNTLET and the Pro chest GAUNTLET II, and each word goes to its tile
+   on the map (`tile:<id>`, config/chests.js GAUNTLETS). The Author chest's "hard Gauntlet" is gone with the 2026-09-10 plan it came from, so its reward
    is open again. Every chest ALSO gives the About video it opens — that word is not listed here: ui/chest.js reads its title off config/messages.js, so
    renaming a slot renames it in the pop-out, on the map and on the card at once. */
 export const CHEST_WORDS = {
@@ -164,7 +174,10 @@ export const CHEST_WORDS = {
   thorns:[{ w:'THORN SKY', sym:'bg-thorn', to:'s-custom' }] };
 /* v26 (item 13, build 49): the two Gauntlet tiles and their placeholder screen — a title, "Coming soon" and Back, nothing else, because what a Gauntlet
    is gets designed separately. `need` is what a locked tile says, and its tap (guess on the words) */
-export const GAUNTLET = { name:{ g1:'Gauntlet', g2:'Gauntlet II' }, need:{ g1:'Open the Key chest', g2:'Open the Pro chest' }, toast:'{need} first', soon:'Coming soon' };
+/* v27 (items 2 / 4, build 51): a Gauntlet tile is INVISIBLE until its chest has opened (R1 — a secret shows nothing at all), so `need` is no longer
+   on the map. It is kept for the toast a tap on a tile can still raise while a chest is being opened, and it names its chest through GRID.chestOpenIt
+   rather than spelling one: `chest` is the id, filled at the callsite. */
+export const GAUNTLET = { name:{ g1:'Gauntlet', g2:'Gauntlet II' }, toast:'{need} first', soon:'Coming soon' };
 // v23 (L.11b, build 41): what a word whose reward is not built yet says when tapped (guess)
 export const CHEST_SOON = '{w}<small>not built yet · a later build</small>';
 export const SHEET = { mode:'Mode', toUnlock:'To unlock: {need}', tileUnlock:'to unlock: {need}', locked:'locked', noRun:'no run yet', best:'best', closest:'closest',
@@ -374,6 +387,9 @@ export const CARD = {
    Aiden records the clips and they drop in by filling a file name in — no code change (his decision, 2026-09-16). */
 export const MSG = { title:'messages', lede:'Short messages from Aiden, as you go.',
   locked:'opens with {need}', soon:'video coming soon', play:'play', watched:'watched', count:'{done} of {total}',
+  /* v27 (item 4, build 51): what a locked row's `{need}` is, composed from the slot's own `by` rather than written out per row. A chest fills
+     GRID.chestNeed with GRID.chest; a key fills `keyNeed` with that tier's `name` in config/keys.js. No chest or key name is spelled twice. */
+  keyNeed:'a whole {key}',
   noFile:'Not recorded yet — this slot is waiting for its clip.', capOff:'captions', capOn:'captions on',
   // v26 (item 5, build 49): how a video reads among a chest's rewards — its slot's own title. Add a word here ("Video: {title}") and every chest says it
   reward:'{title}' };

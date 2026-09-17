@@ -95,7 +95,10 @@ function play(host, o = {}) { stop(); if (!host) return false;
   const gifts = o.gifts || [], giftAt = ms + (quick ? 0 : REVEAL.giftAt), giftGap = quick ? 0 : REVEAL.giftGap;
   // v26 (item 6): the last reward lands at `landAt`; the chest's name and its count-up come then, and "tap to continue" after both
   const landAt = giftAt + (gifts.length ? (gifts.length - 1) * giftGap + (quick ? 0 : REVEAL.giftMs) : 0);
-  const ready = gifts.length ? landAt + Math.max(REVEAL.hold, quick ? 0 : (st.textMs || 0)) : giftAt;
+  /* v27 (item 14, build 51): a KEY hands over no rewards, so there is nothing for `giftAt`'s beat to wait for — it ends the frame its animation
+     does. It was `giftAt` (the stage plus REVEAL.giftAt) for every kind alike, which put 260ms of nothing on the end of an animation item 14
+     caps at two seconds. A chest is unchanged: it still waits for its last reward to land and for its own line after it. */
+  const ready = gifts.length ? landAt + Math.max(REVEAL.hold, quick ? 0 : (st.textMs || 0)) : (o.kind === 'key' ? ms : giftAt);
   const c = cur = { host, stage: st, timers: [], ready: false, card: o.card || null, onReady: o.onReady, onDone: o.onDone };
   host.className = 'cere rev' + (o.kind === 'key' ? ' clear' : '') + (quick ? ' quick' : '');
   host.dataset.kind = o.kind || 'chest'; host.dataset.rev = o.id || ''; host.dataset.step = '';
@@ -116,9 +119,12 @@ function play(host, o = {}) { stop(); if (!host) return false;
   if (!quick && st.step) for (const s of (st.steps || [])) at(s.at, () => { host.dataset.step = s.name; try { st.step(s.name, s); } catch (e) { } });
   /* 2. the gifts. Each leaves with a small pop and lands with its own sound a step above the one before (item 6) — both READ OFF THAT REWARD'S OWN
      ANIMATION, so re-timing the flight in config/chests.js moves the sounds with it. Under Reduce Motion there is no flight: each lands on the fade */
+  // v27 (item 6, build 51): the pop knows which chest it left and whether the reward is a KEY — audio.js popPlan lifts the Games chest's and
+  // brightens a key's (config/audio.js POP_FX.by / .bright). A key reward is one whose symbol draws a key, which ui/chest.js marks `symkey`
   if (!o.silent) [...host.querySelectorAll('.rgift')].forEach((g, i) => { const an = (g.getAnimations ? g.getAnimations() : []).find(x => x.animationName === 'rgiftfly');
     const tm = an && an.effect ? an.effect.getComputedTiming() : null;
-    if (tm && !quick) { at(tm.delay || 0, () => Snd.pop(i)); at((tm.delay || 0) + (+tm.duration || 0), () => Snd.gift(i)); }
+    const how = { chest: o.id || '', key: !!g.querySelector('.rsym.symkey') };
+    if (tm && !quick) { at(tm.delay || 0, () => Snd.pop(i, how)); at((tm.delay || 0) + (+tm.duration || 0), () => Snd.gift(i)); }
     else at(giftAt + i * giftGap, () => Snd.gift(i)); });
   /* 3. tap to continue, held until the last one has landed — or, for an `auto` reveal, the end. It comes the same beat after the SETTLE that it
      always did, and the settle waits for the stage's hold (v26 item 10): nothing after the stage can start while the stage is still drawing */
@@ -126,14 +132,26 @@ function play(host, o = {}) { stop(); if (!host) return false;
   const finish = () => { c.ready = true;
     if (o.auto) { stop(); if (c.onReady) c.onReady(); if (c.onDone) c.onDone(); return; }
     host.classList.add('tap'); host.dataset.step = 'tap'; if (c.onReady) c.onReady(); };
-  const settle = () => { if (cur !== c) return; host.dataset.step = 'settle'; if (st.settle) { try { st.settle(); } catch (e) { } } c.timers.push(setTimeout(() => { if (cur === c) finish(); }, after)); };
+  const settle = (now) => { if (cur !== c) return; host.dataset.step = 'settle'; if (st.settle) { try { st.settle(); } catch (e) { } }
+    c.timers.push(setTimeout(() => { if (cur === c) finish(); }, now ? 0 : after)); };
   at(settleAt, () => { let h = null; try { h = st.hold ? st.hold() : null; } catch (e) { }
     if (h && typeof h.then === 'function') { c.holding = true; h.then(() => { c.holding = false; settle(); }, () => { c.holding = false; settle(); }); } else settle(); });
+  /* v27 (item 14, build 51): what a SKIP does to the clock. The stage's own skip runs its drawing to the last frame, but the hold is not even
+     asked for until `settleAt` — so without this the reveal still sat out its full length with a finished picture on screen. Every pending
+     timer goes (the steps and the settle are all that is left for a stage that has just ended), and it settles and hands over at once. */
+  c.jump = () => { if (cur !== c) return; c.timers.forEach(clearTimeout); c.timers = []; c.holding = false; settle(true); };
   return true; }
 
 /* the tap. Before "tap to continue" it is NOTHING AT ALL — swallowed, not queued (item 11) — and after it the card comes up, or, with no
-   card, the reveal ends and hands over. The card's own Continue is a button with its own act, so a stray tap on the card does nothing. */
-function tap() { if (!cur || !cur.ready || cur.carded) return false; const c = cur;
+   card, the reveal ends and hands over. The card's own Continue is a button with its own act, so a stray tap on the card does nothing.
+   v27 (item 14, build 51): UNLESS THE STAGE OFFERS A SKIP. A chest's ceremony does not and is still unskippable; a KEY's does — item 14 asks
+   for a tap that jumps to the end at any point — and it answers whether it took the tap. This is the only route in while a reveal is up: the
+   host covers the screen and carries its own `data-act`, so `ui/actions.js` never reaches its captures. */
+function tap() { if (!cur) return false;
+  if (!cur.ready) { const st = cur.stage, c0 = cur;
+    if (st && st.skip) { let took = false; try { took = !!st.skip(); } catch (e) { took = false; } if (took) { c0.jump(); return true; } }
+    return false; }
+  if (cur.carded) return false; const c = cur;
   if (!c.card) { stop(); if (c.onDone) c.onDone(); return true; }
   c.carded = true; c.host.classList.remove('tap'); c.host.dataset.step = 'card';
   const wrap = c.host.querySelector('.rcardwrap'), row = c.host.querySelector('.rgifts.placed');

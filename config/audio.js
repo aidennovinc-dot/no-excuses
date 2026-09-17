@@ -337,18 +337,25 @@ export const FLOW_AT = 2.7, FLOW_RISE = .8, FLOW_FALL = 1.6;
    (Snd.click) — the gate holds all three apart, and the four chests apart from each other.
    CHEST_FX is the opening's EFFECTS, one event per sound in the VERDICT_FX shape plus an optional lowpass: [at s, f0, f1, ms, wave, gain,
    attackMs, lowpassHz]. They follow the ceremony's named steps in config/chests.js. Anything short is LOW — a click or a crack under
-   300 Hz — because a short high note reads as a tap (batch 12). CHEST_NOISE is the one noise the app makes: the Thorns chest's single hard
+   300 Hz — because a short high note reads as a tap (batch 12). CHEST_NOISE is the one noise the app makes: the Author chest's single hard
    cut on the split, [at s, ms, gain, highpassHz]. It is an effect, not a music role — the tracks still have no noise (§1).
    CHEST_STING is the MUSIC: a resolution phrase from that key's own theme, 3–6 s, long gradual notes, ending on the reveal (L.6). A note is
    [at s, semitones over the theme's root × 2 (its pad octave), ms, wave, gain, attackMs, lowpassHz]. The Games chest borrows Roots, the
-   theme of the key it reveals; the Key chest is Roots, the key that opens it; Pro is Frost; Thorns is Thorn (guess). The gate holds every
+   theme of the key it reveals; the Skill chest is Roots, the key that opens it; Pro is Frost; Thorns is Thorn (guess). The gate holds every
    note to 700 ms or longer and every note above C5 to 1200 ms or longer.
    CHEST_READY_FX is L.9c's one quiet sound the first time the map paints a READY chest: a low two-note rise, the same for all four, under
    the unlock sound's level (guess). HUSH is the full duck under a ceremony, as two setTarget time constants (L.6: "ducks fully").
    NOBODY HAS HEARD ANY OF THIS — a Claude Code session has no audio device (UNVERIFIED.md). */
+/* v27 (item 5, build 51): THE SEVEN SQUARES TICK, AND EACH ONE IS A STEP HIGHER. Aiden could not hear them and asked whether the sound had been
+   removed or never wired: NEITHER — all seven have been here since build 41, on the same beat as the strikes wiping off (the `uncross` step in
+   config/chests.js, 150ms apart), and all seven were the SAME 60ms note at the same pitch. Seven identical short knocks under a sting read as one
+   texture rather than as seven boxes being ticked, which is why they went unheard. They climb the Roots scale the sting is cut from now — F G A B
+   C D E, one square each — and the seventh is the FINISH: a longer note with a low body under it, so the last tick lands rather than simply
+   stopping. The times are unchanged, so they still land with the strikes. THE WHOLE RISE STAYS UNDER 400 Hz, because L.6's own rule is that a
+   chest effect shorter than 250ms is LOW — a short high note reads as a tap — and a tick is exactly the sound that rule was written about. */
 export const CHEST_FX = {
-  games: [[0, 330, 262, 60, 'triangle', .04, 4], [.15, 330, 262, 60, 'triangle', .04, 4], [.3, 330, 262, 60, 'triangle', .04, 4], [.45, 330, 262, 60, 'triangle', .04, 4],
-    [.6, 330, 262, 60, 'triangle', .04, 4], [.75, 330, 262, 60, 'triangle', .04, 4], [.9, 330, 262, 60, 'triangle', .04, 4],
+  games: [[0, 206, 174.6, 70, 'triangle', .042, 2], [.15, 231.3, 196, 70, 'triangle', .042, 2], [.3, 259.6, 220, 70, 'triangle', .043, 2], [.45, 291.3, 246.9, 70, 'triangle', .044, 2],
+    [.6, 308.7, 261.6, 70, 'triangle', .045, 2], [.75, 346.6, 293.7, 70, 'triangle', .046, 2], [.9, 388.9, 329.6, 150, 'triangle', .05, 2], [.9, 164.8, 164.8, 300, 'sine', .035, 3],
     [1.1, 196, 392, 700, 'sine', .03, 220], [1.8, 110, 82, 320, 'sine', .07, 10],
     [2.1, 392, 392, 1000, 'triangle', .045, 30], [2.1, 493.9, 493.9, 1000, 'triangle', .04, 30], [2.1, 587.3, 587.3, 1000, 'triangle', .035, 30]],
   /* v26 (§B1, build 49): KEY — "change it far more, much closer to the first key's theme". The scale that climbed G3 to G4 while the bars assembled was
@@ -381,7 +388,7 @@ export const CHEST_NOISE = { thorns: [[2.7, 180, .14, 1200]] };
    the cut rings on for STING_RING seconds and stops; one that would then break the theme rule (under 700 ms above 300 Hz, under 1200 ms above
    C5) is left out rather than clipped. Then `tail` — [at s, semitones over the theme's root × 2, ms, wave, gain, attackMs, lowpassHz] — lands
    the tonic on the reveal. ESCALATING Games → Key → Pro → Thorns in length, voices and notes a second (gated): the Games chest is key 1's
-   theme with its melody and chord only; the Key chest the whole of key 1's theme; Pro the whole of Pro's; Thorns the whole of Thorns'.
+   theme with its melody and chord only; the Skill chest the whole of key 1's theme; Pro the whole of Pro's; Thorns the whole of Thorns'.
    Built after C.2 / C.3, so the theme each is cut from is the one its key screen actually plays. Not heard (UNVERIFIED.md). */
 export const STING_RING = .45;
 export const CHEST_STING = {
@@ -401,6 +408,27 @@ export const HUSH = { down: .08, up: .4 };
    warm rising chord over its drone; Pro a driving bass pulse under a climbing arp, the melody and its answer, then the chord; Author the E
    drone, a sawtooth swell on the dark chord, a low figure circling under it, and the tonic landing with the melody over it. All (guess),
    and not heard (UNVERIFIED.md). */
+/* ---------- v27 (item 14, build 51): THE KEY-EARNED ANIMATION'S OWN STEPS ----------
+   KEY_EARN in config/keys.js is a list of named steps per tier, and each one lands with a sound of its own, in the same effect shape as every
+   other family here — [at s, f0, f1, ms, wave, gain, attackMs, lowpassHz] — through the one tone(), so all of them follow the tap-sound switch
+   and none of them is the unlock sound, the achievement click, a chest's or the key's own earn (gated).
+   ONE ROW PER STEP NAME, not per tier, because a name means the same thing wherever it is used: `spokes` is the whole ring firing at once (only
+   Pro does that — the Skill key's seven fire one at a time and each lands with its OWN GAME'S sound, MAP_FX, the family the map's first open
+   uses); `spin` the key turning and clicking upright; `snap` a key turning in a lock, a hard stop with a little overshoot behind it; `ring` the
+   Pro ring flashing; `drop` the Author key falling in from above; `slam` the hit; `crack` the ring breaking outward; `thorns` the spikes flicking
+   out round the rim. Anything short is LOW, as everything short here is. The key's own earn sound (KEY_EARN_FX below) lands on the FLASH.
+   All (guess), and heard by nobody (UNVERIFIED.md). */
+export const KEY_STEP_FX = {
+  spokes: [[0, 180, 90, 150, 'triangle', .05, 2], [0, 520, 260, 90, 'sine', .016, 2, 2600], [.04, 260, 130, 220, 'sine', .03, 6]],
+  spin: [[0, 240, 360, 260, 'triangle', .028, 30, 1800], [.2, 400, 200, 80, 'square', .022, 2, 1400], [.24, 150, 95, 240, 'sine', .04, 3]],
+  snap: [[0, 300, 120, 70, 'square', .05, 1, 1100], [.05, 120, 70, 260, 'sine', .06, 3], [.05, 190, 150, 180, 'triangle', .02, 4, 900]],
+  ring: [[0, 880, 880, 1300, 'sine', .014, 8], [0, 1318.5, 1318.5, 1250, 'sine', .01, 10], [0, 110, 66, 300, 'sine', .035, 3]],
+  drop: [[0, 90, 420, 380, 'sine', .022, 120, 1400], [0, 45, 210, 400, 'triangle', .02, 140, 700]],
+  slam: [[0, 200, 34, 420, 'sine', .1, 1], [0, 120, 28, 640, 'triangle', .07, 2, 420], [0, 700, 160, 90, 'sine', .018, 1, 2400]],
+  crack: [[0, 260, 70, 200, 'sawtooth', .035, 2, 1200], [.06, 140, 50, 340, 'sine', .045, 3], [.12, 190, 60, 260, 'sawtooth', .022, 2, 900]],
+  thorns: [[0, 620, 300, 120, 'triangle', .018, 2, 2200], [.07, 700, 330, 120, 'triangle', .016, 2, 2200], [.15, 560, 260, 140, 'triangle', .014, 2, 2000], [0, 100, 58, 300, 'sine', .03, 4]],
+};
+
 export const KEY_EARN_FX = {
   clear: { track: 'theme:key', notes: [[0, -12, 2600, 'sine', .045, 300], [0, 0, 1500, 'triangle', .022, 60], [.22, 7, 1400, 'triangle', .022, 60], [.44, 12, 1500, 'triangle', .022, 80], [.66, 14, 1800, 'sine', .022, 120], [1.1, 19, 1700, 'sine', .018, 300]] },
   pro: { track: 'theme:pro', notes: [[0, -12, 700, 'triangle', .05, 20, 420], [.27, -12, 700, 'triangle', .045, 20, 420], [.54, -12, 700, 'triangle', .05, 20, 420], [.8, -12, 700, 'triangle', .045, 20, 420],
@@ -452,16 +480,25 @@ export const VERDICT_FX = {
    sound, the achievement click, a chest's or a key's earn (gated). Nobody has heard any of it: a Claude Code session has no audio device
    (UNVERIFIED.md), so every level here is judged against the ones already written and not by ear.
 
-   TITLE_FX (item 1) — a low, soft whoosh under each line of the title as it fades in, the title line itself a little heavier. Tied to the
-   line's OWN animation (ui/screens/menu.js reads the CSS animation's delay rather than keeping a second set of numbers), so a timing edit in
-   the stylesheet cannot drift from the sound. A phone browser blocks audio until the player has tapped once, so on the web the very FIRST
-   title of a session is silent — accepted, as item 1 says, and never faked with a hidden tap. */
-/* v26 (§B1, build 49): "more spacey and wooshy and slightly longer", both. Each is about 40% longer with a slower swell, and over the low sweep a pair of
-   quiet high sines a few hertz apart glide up together — the slow beating between them is the space. The title line is still the heavier one. */
+   TITLE_FX (item 1) — ONE IMPACT per line of the title, on the frame the line starts (v27 item 1, build 51; it was a low swelling whoosh from
+   build 46 to build 50), the title line itself a little heavier. Tied to the line's OWN animation (ui/screens/menu.js reads the CSS animation's
+   start and delay rather than keeping a second set of numbers), so a timing edit in the stylesheet cannot drift from the sound. A phone browser
+   blocks audio until the player has tapped once, so on the web the very FIRST title of a session is silent — accepted, as item 1 says, and never
+   faked with a hidden tap. */
+/* v26 (§B1, build 49): "more spacey and wooshy and slightly longer", both. Each was about 40% longer with a slower swell, and over the low sweep a pair
+   of quiet high sines a few hertz apart glided up together — the slow beating between them was the space.
+   v27 (item 1, build 51): THE SWELL IS GONE AND EACH LINE GETS A SINGLE IMPACT — "fast attack, short tail, a boosh". Aiden heard the sound landing
+   AFTER its line, and the two faults were one: a 400–600ms attack means the loudest part of the sound arrives half a second after the trigger, so a
+   sound fired ON the frame the line starts still reads late. An impact has no attack to be late with — every layer opens in 1–3ms and falls away,
+   so the moment it is fired IS the moment it is heard. ui/screens/menu.js now schedules it off the animation's own start time on the document
+   timeline rather than off a setTimeout taken after the fact, which takes the last few milliseconds of drift out with it.
+   The shape, both beats: a low sine dropping fast (the body), a triangle an octave under it (the weight) and one very quiet high tick (the "b" of
+   the boosh, 90–110ms, well under the level that would read as a tap). The title line keeps a sub under it and a longer fall, so it is still the
+   heavier of the two. Nothing under 300 Hz is short enough to read as a tap; nothing above it lasts long enough to read as a note. */
 export const TITLE_FX = {
-  line: [[0, 60, 150, 1260, 'sine', .05, 400, 650], [0, 120, 300, 1150, 'triangle', .011, 440, 900], [.06, 440, 660, 1300, 'sine', .006, 560, 1600], [.09, 443.5, 665, 1300, 'sine', .006, 600, 1600]],
-  title: [[0, 48, 140, 1800, 'sine', .075, 480, 760], [0, 96, 280, 1600, 'triangle', .02, 520, 1000], [.12, 220, 330, 1500, 'sine', .014, 600, 1200],
-    [.1, 330, 520, 1800, 'sine', .007, 720, 1800], [.14, 333, 524.5, 1800, 'sine', .007, 760, 1800]],
+  line: [[0, 210, 58, 250, 'sine', .055, 2, 900], [0, 120, 42, 380, 'triangle', .04, 3, 480], [0, 640, 210, 90, 'sine', .012, 1, 2200]],
+  title: [[0, 260, 46, 420, 'sine', .075, 2, 1000], [0, 150, 34, 620, 'triangle', .055, 3, 460], [0, 74, 30, 900, 'sine', .045, 4],
+    [0, 880, 250, 110, 'sine', .016, 1, 2600]],
 };
 
 /* MAP_FX (item 2, and item 11's nodes) — ONE SOFT SOUND PER GAME, so the map's first open previews what each game sounds like as its tile
@@ -491,8 +528,16 @@ export const MAP_ON_UNLOCK_MS = 480;
    The reward moment is not silent (item 6) and it is not the unlock toast's sound either — this is its own (gated). */
 export const GIFT_FX = { step: 4, notes: [[0, 523.3, 523.3, 260, 'triangle', .05, 10], [.06, 1046.5, 1046.5, 420, 'sine', .022, 14], [0, 174.6, 261.6, 520, 'sine', .03, 90]] };
 /* POP_FX (v26 item 6, build 49) — the small pop as each reward LEAVES the chest, before GIFT_FX lands it: a short low bubble with a quiet click on top,
-   a step higher for each one after the first, so the rewards read as coming out one after another. Its own sound, not the landing (gated). */
-export const POP_FX = { step: 2, notes: [[0, 170, 430, 80, 'sine', .055, 3], [.01, 860, 1300, 40, 'triangle', .01, 2, 3000]] };
+   a step higher for each one after the first, so the rewards read as coming out one after another. Its own sound, not the landing (gated).
+   v27 (item 6, build 51): THE GAMES CHEST'S POPS ARE LIFTED, AND A KEY POPS BRIGHTER. Item 6 says Customise and the Skill Key need a pop-out sound
+   on the Games chest. They have fired since build 49 — the gate asserts one pop per reward on all four chests — but they are 170 Hz at .055 for
+   80ms and they land at 3.26s and 3.66s, straight under the Games chest's own closing chord (392 / 493.9 / 587.3 Hz, still ringing until 3.1s) and
+   its sting's tail (to 3.3s). Masked, not missing. `by` lifts one chest's pops clear of its own ceremony without touching any other chest's:
+   ONLY `games` has a row, because item 12 approved the Pro chest's sounds exactly as they are and the other two were not complained about.
+   `bright` is item 6's last line — "the key's slightly brighter" — applied to a reward whose symbol is a key, and only where `by` applies, for the
+   same reason. Both are multipliers on POP_FX itself, so re-tuning the pop re-tunes them with it. */
+export const POP_FX = { step: 2, notes: [[0, 170, 430, 80, 'sine', .055, 3], [.01, 860, 1300, 40, 'triangle', .01, 2, 3000]],
+  by: { games: { gain: 2.1, semi: 9 } }, bright: { gain: 1.25, semi: 5 } };
 
 /* WHOOSH_VARIANTS (v26 §B1, build 49) — "great, but add slight pitch and length variations, about 7 very similar versions played at random". The count-up
    whoosh keeps its shape; each time it plays it takes one of these at random, [pitch ×, length ×], none more than 6% from the original. The count it

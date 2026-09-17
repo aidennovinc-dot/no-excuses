@@ -2,7 +2,8 @@
    line, the tier box, Send feedback and the build hint — nothing else since build 21: v14 (8.10) moved Testing out to its
    own menu item directly below About, in ui/screens/testing.js, so it can be reviewed on its own. */
 import { BUILD } from "../../config/build.js";
-import { ABOUT, MSG, TOAST } from "../../config/copy.js";
+import { ABOUT, GRID, MSG, TOAST } from "../../config/copy.js";
+import { KEYS } from "../../config/keys.js";
 import { MESSAGES } from "../../config/messages.js";
 import { MODE_NAME } from "../../config/games.js";
 import { $, $$, T, esc } from "../../core.js";
@@ -66,11 +67,18 @@ function playMsg(id){ const m=MESSAGES.find(x=>x.id===id); if(!m||!msgOpen(m)||!
   if(!prefs.msgSeen||!prefs.msgSeen[id]){ prefs.msgSeen=Object.assign({},prefs.msgSeen,{[id]:1}); save();
     row.classList.add('seen'); row.classList.remove('unwatched'); const t=row.querySelector('.msgtxt small'); if(t) t.textContent=MSG.watched; }
   return true; }
+/* v27 (item 4, build 51): WHAT A LOCKED SLOT SAYS, composed rather than written out. Each row used to carry its own `need` string, which meant
+   every chest and key name was spelled a second time here — and three of them were still the 2026-09-16 names ("a whole Lantern key"). The line
+   is built from the slot's own `by`: a chest through GRID.chestNeed × GRID.chest (config/copy.js, the one source, item 4), a key through
+   MSG.keyNeed × that tier's `name` in config/keys.js. A slot with no lock has no line. */
+const needOf=m=>{ if(!m||!m.by) return '';
+  if(m.by.chest) return T(GRID.chestNeed,{chest:GRID.chest[m.by.chest]||m.by.chest});
+  const k=KEYS.find(x=>x.id===m.by.key); return k?T(MSG.keyNeed,{key:k.name}):''; };
 function renderMessages(){ const box=$('#msglist'); if(!box) return; const seen=prefs.msgSeen||{};
   const open=MESSAGES.filter(msgOpen).length;
   $('#msg-lede').textContent=MSG.lede+' · '+T(MSG.count,{done:open,total:MESSAGES.length});
   box.innerHTML=MESSAGES.map(m=>{ const o=msgOpen(m), has=o&&!!m.file, w=!!seen[m.id];
-    const state=!o?T(MSG.locked,{need:m.need}):has?(w?MSG.watched:MSG.play):MSG.soon;
+    const state=!o?T(MSG.locked,{need:needOf(m)}):has?(w?MSG.watched:MSG.play):MSG.soon;
     return `<button class="msgrow${o?'':' locked'}${has?' has':''}${w?' seen':''}${has&&!w?' unwatched':''}" data-act="msg" data-msg="${esc(m.id)}">`
       +`<span class="msgframe">${has?'':`<i>${esc(o?MSG.soon:'')}</i>`}</span>`
       +`<span class="msgtxt"><b class="${o?'':'x'}">${esc(m.title)}</b><small class="${o?'':'need'}">${esc(state)}</small></span></button>`; }).join(''); }
@@ -85,6 +93,6 @@ register('s-about',{ onShow({msg}={}){ renderTier(); renderFeedback(); renderMes
 define({ support(){ toast(prefs.supporter?TOAST.supAlready:TOAST.supLater); return 'click'; },
   // item 23: a locked row says what opens it where it stands; an open one with no clip yet says so; an open one with a clip plays in place
   msg(b){ const id=b.dataset.msg, m=MESSAGES.find(x=>x.id===id); if(!m) return 'click';
-    if(!msgOpen(m)){ toast(T(MSG.locked,{need:m.need})); return 'pick'; }
+    if(!msgOpen(m)){ toast(T(MSG.locked,{need:needOf(m)})); return 'pick'; }
     if(!m.file){ toast(MSG.noFile); return 'pick'; }
     playMsg(id); return 'click'; } });

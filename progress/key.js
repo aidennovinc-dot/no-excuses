@@ -32,7 +32,7 @@
 
    v23 (§L.8 / §L.10 / §L.12, build 40): FOUR CHESTS AND ONE METER. The chests are config/chests.js — Games, Key, Pro, Thorns, named
    by what opens them — and every tier opens with the chest that reveals it: key 1 with the Games chest (§L.10a — KEY 1 IS QUIET
-   UNTIL THEN), Pro with the Key chest, Author with the Pro chest. The meter is ONE function, meter(), 0–400, never reset; the menu
+   UNTIL THEN), Pro with the Skill chest, Author with the Pro chest. The meter is ONE function, meter(), 0–400, never reset; the menu
    card, the map's chests and the key screen all read it. B.15–B.17's frontPct() and its 30/70 re-base are RETIRED with the step
    into Pro (L.8b removed the "proceed to pro" confirmation), and v21 G.3's gate is retired into the Games chest itself. */
 import { KEY_ROSTER } from "../config/achievements.js";
@@ -75,7 +75,7 @@ const isShell = tier => tier !== 'clear' && !tierFull(tier);
    audio.js (Customise's defaults, L.11a) sit below this file in the module graph — and every gate on the map goes through it. */
 const chestOpen = id => opened(id);
 /* build 40 (v23 §L.10, amending build 38's "chest n opens tier n+1"): EACH TIER OPENS WITH THE CHEST THAT REVEALS IT — key 1 with the
-   Games chest, Pro with the Key chest, Author with the Pro chest (config/chests.js `opens`). Key 1 is QUIET until the Games chest
+   Games chest, Pro with the Skill chest, Author with the Pro chest (config/chests.js `opens`). Key 1 is QUIET until the Games chest
    (§L.10a, §M.2): no clear is banked, no number shown, no interlude, no outline fill, no key-1 achievement set — and the bars a saved
    best already beats bank silently when the chest opens (G.4, extended). Everything that asks whether a tier is open follows from this. */
 const tierOpen = tier => { const c = CHESTS.find(x => x.opens === tier); return !c || chestOpen(c.id); };
@@ -180,7 +180,7 @@ function keyState(tier = 'clear') { const games = Object.keys(GAMES).map(g => ga
    Band 1 is the MODES band: modes unlocked ÷ modes total, not counting the ones a new profile starts with (METER.freeStart, §M.4).
    Bands 2–4 are key 1, Pro and Author: each key's CLEARED bars ÷ its bars (METER.partial false, L.8a; true reads keyPct()'s
    partial credit instead, §M.1) — and A BAND COUNTS ONLY ONCE THE CHEST THAT REVEALS ITS TIER IS OPEN, so the meter cannot pass 100
-   before the Games chest or 200 before the Key chest; the gate asserts both. It never resets: nothing it reads goes down but a Testing
+   before the Games chest or 200 before the Skill chest; the gate asserts both. It never resets: nothing it reads goes down but a Testing
    reset. Supersedes B.15–B.17's frontPct() and its 30/70 re-base, retired with the step into Pro (L.8b). Shown as a whole number
    with its sign — 142% (L.8a).
    v26 (items 7 / 9 / 12, build 48): 0–300 — METER.modes is false, so the bands are the three keys alone and the Pro key lands on 200. AND
@@ -288,7 +288,7 @@ function checkKeyAch(run) { if (!run || run.chal || run.practice || run.demo) re
   if (fresh.length) save(); return fresh; }
 
 /* ---------- B.24: the Scores radar, measured against the three rungs ----------
-   One value per game, 0..RADAR_PAST. Before the Key chest the axis is key 1 alone: the best ratio of any of the game's
+   One value per game, 0..RADAR_PAST. Before the Skill chest the axis is key 1 alone: the best ratio of any of the game's
    combinations against its clearance bar, capped at 1 — one rung and nothing beyond it (A.1). After it the rungs sit at
    even steps: rung 1 is key 1's bar, rung 2 the Pro bar, rung 3 the Author time, and a score past the Author
    time pushes on to RADAR_PAST, which is where the flame lives. A shell tier is a rung with no value (A.2): a game cannot
@@ -362,7 +362,7 @@ function keyGoal(g, d, s) { const c = COMBOS.find(x => x.key === keyOf(g, d, s))
 /* ---------- v21 (G.8, build 37) → v26 (items 7 / 12, build 48): TESTING PLAYS THE GAME FORWARD (S5, dev only) ----------
    Build 37's per-key switch filled a key's bars wherever it stood and REMEMBERED what it held, so switching it off put exactly that back; build
    40 made the switches per chest and added "set meter to N%" as an override the meter read. Every one of those could leave a profile where real
-   play can never be: bars cleared on a key whose chest is shut, a Pro chest still open behind a Key chest a reset had shut, a meter reading a
+   play can never be: bars cleared on a key whose chest is shut, a Pro chest still open behind a Skill chest a reset had shut, a meter reading a
    figure nothing had earned. Aiden reviews the whole unlock flow through these buttons, so every one of those states was a misleading test
    (FEEDBACK-v26 items 7 and 12: the Games chest at 103%, the Pro chest locked at 203% "opens at 300%", the map and the Keys screen disagreeing).
    So Testing now does only what play does, through the functions play uses:
@@ -426,7 +426,7 @@ function devBack(id, modes) { const i = chestIx(id); if (i < 0) return;
   else { prefs.cusSeen = 0; prefs.keysSeen = 0; if (prefs.menuOpened) { delete prefs.menuOpened['s-key']; delete prefs.menuOpened['s-custom']; } if (modes) modes(false); }
   seenDown(); save(); }
 const devChestReset = (id, modes) => devBack(id, modes);
-/* "set meter to N%": every key backed out, then play forward to N — the Games chest opened (every mode first), key 1's bars, the Key chest
+/* "set meter to N%": every key backed out, then play forward to N — the Games chest opened (every mode first), key 1's bars, the Skill chest
    opened once key 1 is whole and there is more of N to go, Pro's bars, and so on. A figure that lands exactly on a whole key leaves that key's
    chest READY, as play does. A bar is 3⅓% of a band, so the meter reads the highest figure at or under N that bars can make; a chest opening
    can also credit bars a saved best already beats (G.4), which can carry it past. What it answers is meter(), which is the truth either way. */

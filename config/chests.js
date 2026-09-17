@@ -8,7 +8,7 @@
    `needs` is what opens it: 'modes' is every game mode in config/unlocks.js — the Games chest REPLACES v21 G.3's gate on the
    connector, because the all-modes condition became a chest of its own — and a tier id is that key whole. `opens` is the key tier
    whose bars it reveals: the Games chest reveals key 1 (and banks the bars a saved best already beats, silently — G.4 extended one
-   chest earlier), the Key chest Pro, the Pro chest Author (build 38). `screen` is the key screen tab a tap on the chest lands on.
+   chest earlier), the Skill chest Pro, the Pro chest Author (build 38). `screen` is the key screen tab a tap on the chest lands on.
    What each one GIVES, in words, is CHEST_WORDS in config/copy.js (L.11c). The sprites, idle states and ceremonies are build 41. */
 export const CHESTS = [
   { id: 'games', needs: 'modes', opens: 'clear', screen: 0 },
@@ -19,8 +19,8 @@ export const CHESTS = [
 
 /* THE METER (v23 §L.8a / §L.10b): one number, 0–400, never reset. Band 1 is the modes band (modes unlocked ÷ modes total); bands
    2–4 are the three keys, each counting only once the chest that reveals it is open — so the meter cannot pass 100 before the
-   Games chest or 200 before the Key chest, by construction. `band` is one band's width.
-   `modes: false` hides band 1 and makes the meter 0–300 — L.10b's "one config flag" if Aiden would rather it start at the Key chest.
+   Games chest or 200 before the Skill chest, by construction. `band` is one band's width.
+   `modes: false` hides band 1 and makes the meter 0–300 — L.10b's "one config flag" if Aiden would rather it start at the Skill chest.
    `partial` is §M.1 (unanswered, guess): false counts CLEARED bars ÷ bars, as L.8a and DECISIONS 2026-09-14 write it; true counts
    keyPct()'s partial credit inside each band instead, the way the per-key % worked from build 28 to 39.
    `freeStart` is §M.4 (unanswered, guess): the modes a new profile starts with (Quick Tap · Two) are not counted, so a new profile
@@ -28,7 +28,7 @@ export const CHESTS = [
    v26 (items 7 / 9 / 12, build 48): `modes` IS FALSE — THE METER IS 0–300, THE THREE KEYS AND NOTHING ELSE. Aiden's meter is "the continuous
    0–300% figure", and "the Pro chest opens when the Pro key is earned, which is 200%". With the modes band on, the Pro key landed at 300%, so
    the map said "203% · opens at 300%" on a Pro chest that was one key short, which read as a threshold off by a tier. Key 1 is 0–100 (the Key
-   chest opens at 100), Pro 100–200 (the Pro chest at 200), Author 200–300 (the Thorns chest at 300). The Games chest is not on the meter at
+   chest opens at 100), Pro 100–200 (the Pro chest at 200), Author 200–300 (the Author chest at 300). The Games chest is not on the meter at
    all — it opens on every game mode, which is a count of modes, not a percentage — so its screen shows no percentage (item 7). */
 export const METER = { band: 100, modes: false, partial: false, freeStart: true };
 
@@ -46,25 +46,44 @@ export const METER_BANDS = [
 ];
 
 /* ---------- v23 (§L.9a / §L.9b / §L.10d, build 41): THE FOUR CHEST SPRITES AND THEIR READY STATES ----------
-   Same silhouette family, rising weight (L.9a): Games a thin outline in --mute; Key clean --ink lines; Pro gold fittings and a heavier lid;
-   Thorns black with spikes and white accents. Paths are in a 40 × 32 box (drawn with a 2px margin so the spikes fit); `hinge` is where
-   the lid turns. `band` is the METER_BANDS row whose colour the chest wears. ui/chest.js draws every chest in the app from this row —
-   the map, the key screen's row of chests and the ceremony — so a colour or a path is one edit here.
-   LOCKED is crossed out; OPENED is lid up and still; READY runs `idle` and nothing else animates (L.9b). The idle rises with the chest:
-   Games the lightest breath, Key a breathing glow, Pro the glow plus a shimmer along its fittings, Thorns flexing spikes in a cold glow.
-   `ms` is one cycle, `px` the glow at its peak. All (guess) — Aiden will re-tune on the phone. */
+   Same silhouette family, rising weight (L.9a). Paths are in a 40 × 32 box (drawn with a 2px margin so the spikes fit); `hinge` is where
+   the lid turns. ui/chest.js draws every chest in the app from this row — the map, the key screen's row of chests and the ceremony — so a
+   colour or a path is one edit here.
+   LOCKED is crossed out; OPENED is lid up and still; READY runs `idle` and nothing else animates (L.9b). `ms` is one cycle, `px` the glow at
+   its peak, `shim` the colour a shimmer or a current runs in.
+
+   v27 (item 13 / R2, build 51): A CHEST MATCHES THE KEY THAT OPENS IT, AND `col` IS THAT COLOUR — L.9a's "one METER_BANDS row each" is AMENDED.
+   Until build 50 a chest wore the colour of the meter band it sat in, which put the GOLD chest at the Pro tier while the GOLD key (the Skill key,
+   #FFD08A) opened the one before it. R2 settles it the other way round: the chest takes the colour and the design language of its own key.
+     games   unchanged — a plain grey outline; no key opens it, so it matches nothing (item 13)
+     key     TAKES THE GOLD BANDED CHEST that was the Pro chest's — the heavier lid, the fittings, the shimmer — because the Skill key is gold
+     pro     NEW, drawn from the Pro key itself: the Circuit blue #BFE6FF (its `tint` in config/keys.js), the key's ring and its two antennae on
+             the lid, right-angled traces across the box with square nodes at the corners, and a current running the traces as its idle
+     thorns  unchanged — it already matched the Author key (item 13)
+   `band` still says which METER_BANDS row this chest's meter figure belongs to — the meter is not recoloured, and its gold band is the 100–200
+   stretch, not a chest. Everything that draws a CHEST reads `col` through chestCol() in ui/chest.js: the sprite, the ceremony's `--cc` (the
+   cracks, the burst, the spikes and the split), the spill's particles, the colour a reward symbol takes and the congratulations card's rule. */
 export const CHEST_LOOK = {
-  games: { band: 0, stroke: 'var(--mute)', fill: 'none', lock: 'none', sw: 1, lidSw: 1, hinge: [5, 14],
+  games: { band: 0, col: 'var(--mute)', stroke: 'var(--mute)', fill: 'none', lock: 'none', sw: 1, lidSw: 1, hinge: [5, 14],
     box: ['M5 14h30v14H5z'], lid: ['M5 14a15 9 0 0 1 30 0z'], lockp: ['M17.5 15.5h5v7h-5z'],
     idle: { kind: 'breath', ms: 3600, px: 4 } },
-  key: { band: 1, stroke: 'var(--ink)', fill: 'var(--panel)', lock: 'var(--ink)', sw: 1.4, lidSw: 1.4, hinge: [5, 14],
-    box: ['M5 14h30v14H5z', 'M5 20.5h30'], lid: ['M5 14a15 9 0 0 1 30 0z'], lockp: ['M17.5 15.5h5v7h-5z'],
-    idle: { kind: 'glow', ms: 2800, px: 8 } },
-  pro: { band: 2, stroke: '#E8B84A', fill: 'var(--panel)', lock: '#E8B84A', sw: 1.4, lidSw: 2.6, hinge: [4, 14],
+  // the gold chest, moved here from `pro` byte for byte (item 13): banded box, doubled dome lid, heavy fittings, a shimmer along them
+  key: { band: 1, col: '#E8B84A', shim: '#FFF3C4', stroke: '#E8B84A', fill: 'var(--panel)', lock: '#E8B84A', sw: 1.4, lidSw: 2.6, hinge: [4, 14],
     box: ['M4 14h32v15H4z'], lid: ['M4 14a16 10 0 0 1 32 0z', 'M8 10.6a12.5 6.6 0 0 1 24 0'], lockp: ['M17 15.5h6v8h-6z'],
     fit: ['M4 18.5h4.5v-4.5', 'M36 18.5h-4.5v-4.5', 'M4 24.5h4.5v4.5', 'M36 24.5h-4.5v4.5', 'M12.5 14v15', 'M27.5 14v15'],
     idle: { kind: 'shimmer', ms: 2400, px: 10 } },
-  thorns: { band: 3, stroke: '#FFFFFF', fill: '#000000', lock: '#FFFFFF', sw: 1.4, lidSw: 1.8, hinge: [5, 14],
+  /* the Pro key, built as a chest (item 13). `lid` after the first path is drawn unfilled, so the ring and the antennae ride on the lid and
+     swing up with it; `spikes` are the two square nodes at the antennae's tips, `fit` the traces and `boxSpikes` the square nodes on them. */
+  pro: { band: 2, col: '#BFE6FF', shim: '#EAF7FF', stroke: '#BFE6FF', fill: 'var(--panel)', lock: '#BFE6FF', sw: 1.4, lidSw: 2, hinge: [4, 14],
+    box: ['M4 14h32v15H4z'], lockp: ['M17 15.5h6v8h-6z'],
+    lid: ['M4 14a16 7.5 0 0 1 32 0z', 'M20 3.4a3.9 3.9 0 1 0 0 7.8 3.9 3.9 0 1 0 0-7.8', 'M20 5.9a1.4 1.4 0 1 0 0 2.8 1.4 1.4 0 1 0 0-2.8',
+      'M16.6 9.3L11.6 5.6', 'M23.4 9.3L28.4 5.6'],
+    spikes: ['M10.4 4.6h2.4v2.4h-2.4z', 'M27.2 4.6h2.4v2.4h-2.4z'],
+    fit: ['M4 18.4h5.4v-3.2h7.6', 'M36 18.4h-5.4v-3.2h-7.6', 'M4 25.4h5.4v3.2h21.2v-3.2H36', 'M20 15.2v13.4'],
+    boxSpikes: ['M8.5 17.5h1.8v1.8H8.5z', 'M29.7 17.5h1.8v1.8h-1.8z', 'M8.5 24.5h1.8v1.8H8.5z', 'M29.7 24.5h1.8v1.8h-1.8z'],
+    accent: ['M12.6 21.6h14.8'],
+    idle: { kind: 'circuit', ms: 2600, px: 11 } },
+  thorns: { band: 3, col: '#FFFFFF', stroke: '#FFFFFF', fill: '#000000', lock: '#FFFFFF', sw: 1.4, lidSw: 1.8, hinge: [5, 14],
     box: ['M5 14h30v14H5z'], lid: ['M5 14a15 9 0 0 1 30 0z'], lockp: ['M18 16.5l2-2 2 2v6h-4z'],
     spikes: ['M6.5 10.9L3.2 8.2L7.5 8.1z', 'M11.4 7.2L9.7 3.3L13.6 5.2z', 'M18.5 5L20 1L21.5 5z', 'M26.4 5.2L30.3 3.3L28.6 7.2z', 'M32.5 8.1L36.8 8.2L33.5 10.9z'],
     boxSpikes: ['M5 17l-4 1.5 4 1.5z', 'M5 23l-4 1.5 4 1.5z', 'M35 17l4 1.5-4 1.5z', 'M35 23l4 1.5-4 1.5z'],
@@ -153,7 +172,7 @@ export const GIFT_LOOK = {
 };
 
 /* ---------- v26 (item 13, build 49): THE TWO GAUNTLETS ----------
-   Game tiles on the map, each to the LEFT of the chest that opens it, joined to it by a connector: Gauntlet (a fair challenge) with the Key chest,
+   Game tiles on the map, each to the LEFT of the chest that opens it, joined to it by a connector: Gauntlet (a fair challenge) with the Skill chest,
    Gauntlet II (a lot harder) with the Pro chest. Until then the tile is crossed out with a padlock and what opens it. What a Gauntlet IS is designed
    separately — each tile opens a placeholder screen and nothing else. This replaces the 2026-09-10 plan (a Gauntlet from chest 1 and a hard author
    Gauntlet from chest 3). Names and words are GAUNTLET in config/copy.js; the drawings are SYMBOLS above. */

@@ -104,19 +104,26 @@ function paintPct(mk,pct){ const rc=readyChest();
 
 /* ---------- the title sequence (L1). Three beats: the first line at the top, the title in the middle, the second line under it.
    A tap anywhere ends it — that is the one capture in ui/actions.js — and the menu builds around the title that is already there ---------- */
-/* ---------- v25 (item 1, build 46): A LOW WHOOSH UNDER EACH LINE OF THE TITLE ----------
+/* ---------- v25 (item 1, build 46): A SOUND UNDER EACH LINE OF THE TITLE ----------
    Four beats, four sounds: the two story lines, NO EXCUSES itself (the heavier one) and "tap to begin". Each is scheduled off THAT LINE'S OWN
-   ANIMATION — `getComputedTiming().delay`, read after `.run` starts it — so the stylesheet keeps the only copy of the timing and a re-tune
-   cannot leave the sound behind. It follows the sound setting like every other effect (config/audio.js TITLE_FX through Snd.titleFx).
+   ANIMATION — the stylesheet keeps the only copy of the timing and a re-tune cannot leave the sound behind. It follows the sound setting like
+   every other effect (config/audio.js TITLE_FX through Snd.titleFx).
    THE BUILD CATCH, accepted as item 1 writes it: a phone browser blocks audio until the player has tapped once, so the very first title of a
-   web session plays silent. It works the second time the title is seen and in the App Store build, and it is NOT faked with a hidden tap. */
+   web session plays silent. It works the second time the title is seen and in the App Store build, and it is NOT faked with a hidden tap.
+   v27 (item 1, build 51): ON THE FRAME THE LINE APPEARS. Two things made it read late and they were one fault, as item 1 guessed. The sound was a
+   400–600ms swell, so its loudest moment arrived half a second after it was fired (config/audio.js TITLE_FX — an impact now); and the delay was
+   measured from the moment this function happened to run rather than from the animation's own start, so the style recalc and the first frame were
+   added on top. `startTime` is when the animation itself began on the document timeline, so `startTime + delay − now` is exactly how long is left
+   until that line moves, however long the work in between took. */
 const TITLE_BEATS=[['#st1','line'],['#s-menu .wmin','title'],['#st2','line'],['#storyhint','line']];
 let titleT=[];
 function titleSounds(){ titleT.forEach(clearTimeout); titleT=[];
+  const now=(document.timeline&&document.timeline.currentTime)||0;
   for(const [sel,kind] of TITLE_BEATS){ const el=$(sel); if(!el||!el.getAnimations) continue;
     const a=el.getAnimations()[0]; if(!a||!a.effect) continue;
     const d=a.effect.getComputedTiming().delay||0;
-    titleT.push(setTimeout(()=>{ if(storyOn) Snd.titleFx(kind); },d)); } }
+    const left=typeof a.startTime==='number'?(a.startTime+d)-now:d;
+    titleT.push(setTimeout(()=>{ if(storyOn) Snd.titleFx(kind); },Math.max(0,left))); } }
 const titleStop=()=>{ titleT.forEach(clearTimeout); titleT=[]; };
 function storyStart(){ const m=$('#s-menu'); storyOn=true; m.classList.remove('storyend','intro'); m.classList.add('story'); void m.offsetWidth; m.classList.add('run'); titleSounds(); }
 function storyEnd(){ if(!storyOn) return; storyOn=false; titleStop(); const m=$('#s-menu'); Snd.click(); prefs.story=1; save();

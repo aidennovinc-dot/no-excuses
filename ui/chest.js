@@ -21,8 +21,13 @@ import { meterBand } from "../progress/key.js";
 /* v26 (items 12 / 13, build 49): IN COLOUR, AND A KEY IS ITS REAL SHAPE. A key symbol (`key` on its SYMBOLS row) is that key's own KEY_ART glyph in
    that key's own tint — the drawing on the Keys screen, in its 48 × 48 box. Any other symbol takes its own `col`, or else the colour of the chest it
    came from, when the caller names one. The colour rides on the svg as `color`, which every stroke and fill reads (currentColor). */
+/* v27 (item 13 / R2, build 51): ONE CHEST COLOUR, read from the chest's own look. `col` on a CHEST_LOOK row is the colour of the KEY that opens
+   that chest (R2) — it is no longer the meter band's, which is what put the gold chest at the Pro tier. Everything that draws a chest asks this:
+   the sprite, the ceremony's `--cc`, the spill's particles, a reward symbol with no colour of its own, and the congratulations card's rule. A row
+   with no `col` falls back to its band, so nothing breaks if one is added without one. */
+export const chestCol = id => { const L = CHEST_LOOK[id] || {}; return L.col || (METER_BANDS[L.band] || METER_BANDS[1]).col; };
 const symCol = (id, chest) => { const S = SYMBOLS[id] || {}; if (S.key) return (KEYS.find(k => k.id === S.key) || {}).tint || '';
-  if (S.col) return S.col; const L = CHEST_LOOK[chest]; return L ? L.gift || (METER_BANDS[L.band] || {}).col || '' : ''; };
+  if (S.col) return S.col; return CHEST_LOOK[chest] ? chestCol(chest) : ''; };
 function symSvg(id, cls = '', chest = '') { const S = SYMBOLS[id]; if (!S) return ''; const col = symCol(id, chest), art = S.key ? KEY_ART[S.key] || [] : null;
   return `<svg class="sym${art ? ' symkey' : ''}${cls ? ' ' + cls : ''}" data-sym="${esc(id)}" viewBox="${art ? '0 0 48 48' : '0 0 24 24'}" aria-hidden="true"${col ? ` style="color:${col}"` : ''}>`
     + (art || S.p || []).map(d => `<path class="sp" d="${d}"></path>`).join('') + (art ? '' : (S.f || []).map(d => `<path class="sf" d="${d}"></path>`).join('')) + '</svg>'; }
@@ -38,8 +43,9 @@ const giftsOf = id => wordsOf(id).map(x => ({ w: x.w, sym: x.sym || '', tba: !!x
 const paths = (list, cls) => (list || []).map((d, i) => `<path class="${cls}" d="${d}" style="--i:${i}"></path>`).join('');
 /* the sprite. The lid and its spikes are one group turning on the look's own hinge; the cross is always drawn and only a locked chest
    shows it. The colours, weights and idle timing ride on the svg as custom properties, so the stylesheet names no chest's colour */
-function chestSvg(id, cls = '') { const L = CHEST_LOOK[id]; if (!L) return ''; const B = METER_BANDS[L.band] || {}; const [hx, hy] = L.hinge || [5, 14];
-  return `<svg class="chestart${cls ? ' ' + cls : ''}" data-look="${id}" data-idle="${L.idle.kind}" viewBox="-2 -2 44 36" aria-hidden="true" style="--cs:${L.stroke};--cf:${L.fill};--cl:${L.lock};--csw:${L.sw};--clsw:${L.lidSw};--bc:${B.col};--idle-ms:${L.idle.ms}ms;--idle-px:${L.idle.px}px">`
+// v27 (item 13): `--bc` is the chest's own colour now (chestCol), and `--shim` the colour its shimmer or its current runs in
+function chestSvg(id, cls = '') { const L = CHEST_LOOK[id]; if (!L) return ''; const col = chestCol(id); const [hx, hy] = L.hinge || [5, 14];
+  return `<svg class="chestart${cls ? ' ' + cls : ''}" data-look="${id}" data-idle="${L.idle.kind}" viewBox="-2 -2 44 36" aria-hidden="true" style="--cs:${L.stroke};--cf:${L.fill};--cl:${L.lock};--csw:${L.sw};--clsw:${L.lidSw};--bc:${col};--shim:${L.shim || col};--idle-ms:${L.idle.ms}ms;--idle-px:${L.idle.px}px">`
     + `<g class="boxg">${paths(L.box, 'box')}${paths(L.fit, 'fit')}${paths(L.boxSpikes, 'spk')}${paths(L.accent, 'acc')}</g>`
     + `<g class="lidg" style="transform-origin:${hx}px ${hy}px">${paths(L.lid, 'lid')}${paths(L.spikes, 'spk')}</g>`
     + `<g class="lockg">${paths(L.lockp, 'lock')}</g><path class="xl" d="M1 1L39 31"></path></svg>`; }
@@ -55,8 +61,8 @@ function wordsHtml(id) { return wordsOf(id).map((x, i) =>
   `<button class="cw${x.tba ? ' tba' : ''}${x.msg ? ' msg' : ''}" data-act="chestword" data-for="${id}" data-to="${esc(x.to || 'soon')}" data-w="${esc(x.w)}" style="--i:${i}">`
   + symSvg(x.sym, 'cwsym', id) + `<span class="cwt">${esc(x.w)}${x.tba ? `<small>${esc(GRID.tba)}</small>` : ''}</span></button>`).join(''); }
 // the particles that burst from the lid, in the chest's band colour, fanned up and to the right of the lid
-function burstHtml(id) { const L = CHEST_LOOK[id] || {}, B = METER_BANDS[L.band] || METER_BANDS[0], n = SPILL.particles;
-  return `<span class="pburst" aria-hidden="true" style="--pc:${B.col};${spillVars()}">` + Array.from({ length: n }, (_, i) =>
+function burstHtml(id) { const n = SPILL.particles;
+  return `<span class="pburst" aria-hidden="true" style="--pc:${chestCol(id)};${spillVars()}">` + Array.from({ length: n }, (_, i) =>
     `<i style="--a:${Math.round(-160 + i * (140 / Math.max(1, n - 1)))}deg;--r:${16 + (i % 3) * 8}px;--i:${i}"></i>`).join('') + `</span>`; }
 
 /* L.8d / L.8e: THE BAND A METER FIGURE IS IN, worn as `mb0`–`mb3` with its strength inside the band (`--mk`, 0..1), so 105% and 195% look

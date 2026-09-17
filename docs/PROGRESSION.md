@@ -278,8 +278,8 @@ of it, statically and by quitting a run mid-flight and reading storage back.
 
 **Supersedes the build-40 meter and the build-37 / build-40 Testing switches above — read those as history.**
 
-- **The meter is 0–300.** `METER.modes` false: key 1 0–100, Pro 100–200, Author 200–300, each band counting once its chest is open. The Key chest
-  is at 100, the Pro chest at 200, the Thorns chest at 300. The Games chest is not on the meter.
+- **The meter is 0–300.** `METER.modes` false: key 1 0–100, Pro 100–200, Author 200–300, each band counting once its chest is open. The Skill chest
+  is at 100, the Pro chest at 200, the Author chest at 300. The Games chest is not on the meter.
 - **No override.** `meter()` is `meterReal()`; `prefs.devMeter` is dropped on load. Chest state, key state and the meter are the bars and the
   chests in the store.
 - **Where each figure prints.** Menu: the total, the one place. Key card: its own share (`bandPct`). Keys screen line: `N of 30`. Map: locked key

@@ -7,7 +7,7 @@
    finish ramp that lands the last downbeat on the clock (B.28), an end cadence in the track's own key (B.30), a flow-state
    layer over the two tap games (B.27) and a duck for Sequence (B.30). Still no percussion. */
 
-import { CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, DUCK, DUCK_TAIL, FLOW_STEM, GIFT_FX, HUSH, KEY_EARN_FX, KEY_THEMES, MAP_FX, MAP_LOCKED, POP_FX, ROUND_FX, ROUND_VERDICT, SCALES, SET_SECS, STEMS, STING_RING, TITLE_FX, TRACKS, TRACK_PICK, VERDICT_FX, WHOOSH_VARIANTS } from "./config/audio.js";
+import { CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, DUCK, DUCK_TAIL, FLOW_STEM, GIFT_FX, HUSH, KEY_EARN_FX, KEY_STEP_FX, KEY_THEMES, MAP_FX, MAP_LOCKED, POP_FX, ROUND_FX, ROUND_VERDICT, SCALES, SET_SECS, STEMS, STING_RING, TITLE_FX, TRACKS, TRACK_PICK, VERDICT_FX, WHOOSH_VARIANTS } from "./config/audio.js";
 import { STREAK } from "./config/games.js";
 import { emit, on } from "./core/events.js";
 import { sel } from "./core/state.js";
@@ -184,7 +184,7 @@ const Snd = (()=>{
       for(const [at,f0,f1,ms,w,g,am] of this.roundVerdictPlan(id)) tone(f0,f1,ms,w,g,t+at,am); },
     plan(fn){ const a=AC(); if(!a) return []; const was=rec; rec=[]; rec.t0=a.currentTime; try{ fn(); }catch(e){} const out=rec; rec=was; return out.sort((x,y)=>x[0]-y[0]); },
     /* v23 (§L.6 / §L.9c / §L.10d, build 41): THE CHESTS. `fx` plays an event list in the VERDICT_FX shape plus an optional lowpass; `noise` is
-       the one noise in the app — the Thorns chest's cut, an effect and not a music role; `chest(id)` schedules a ceremony's effects AND its
+       the one noise in the app — the Author chest's cut, an effect and not a music role; `chest(id)` schedules a ceremony's effects AND its
        sting in one pass on the audio clock; `chestReady()` is the map's quiet two-note rise. None of them is unlockFx or click, and the gate
        holds all of them apart. The effects follow the tap-sound pack like every effect; the sting is MUSIC, so it follows the menu music
        switch and nothing else. `chestPlan(id)` is the same events flat — the review catalogue plays exactly what the app plays. */
@@ -206,6 +206,10 @@ const Snd = (()=>{
       return s.notes.map(([at,semi,ms,w,g,am,lp])=>{ const f=+(tr.root*2*Math.pow(2,semi/12)).toFixed(2); return [at,f,f,ms,w,g,am||0,lp||0]; }).sort((x,y)=>x[0]-y[0]); },
     keyEarn(tier){ const a=AC(); if(!a) return; const t=a.currentTime+.02;
       for(const [at,f0,f1,ms,w,g,am,lp] of this.keyEarnPlan(tier)) tone(f0,f1,ms,w,g,t+at,am,false,undefined,{lp:lp||0,hold:.45}); },
+    /* v27 (item 14, build 51): one sound per NAMED STEP of the key-earned animation — config/audio.js KEY_STEP_FX, played through the one fx() like
+       every other effect. `keyStepPlan(name)` is the same events flat, for the review catalogue's sound list. */
+    keyStepPlan(name){ return (KEY_STEP_FX[name]||[]).map(e=>e.slice()); },
+    keyStep(name){ this.fx(this.keyStepPlan(name)); },
     chest(id){ const a=AC(); if(!a) return; const t=a.currentTime+.02, sting=musicOn('menu');
       for(const [at,f0,f1,ms,w,g,am,lp,kind] of this.chestPlan(id)){
         if(w==='noise') this.noise(t+at,ms,g,lp);
@@ -227,10 +231,14 @@ const Snd = (()=>{
       return GIFT_FX.notes.map(([at,f0,f1,ms,w,g,am,lp])=>[at,+(f0*r).toFixed(2),+(f1*r).toFixed(2),ms,w,g,am||0,lp||0]); },
     gift(i){ this.fx(this.giftPlan(i)); },
     /* v26 (item 6, build 49): the small pop as a reward LEAVES the chest — POP_FX, a step higher for each one after the first. ui/reveal.js plays it at the
-       start of that reward's own flight, and gift(i) at its end */
-    popPlan(i){ const r=Math.pow(2,(POP_FX.step*(i||0))/12);
-      return POP_FX.notes.map(([at,f0,f1,ms,w,g,am,lp])=>[at,+(f0*r).toFixed(2),+(f1*r).toFixed(2),ms,w,g,am||0,lp||0]); },
-    pop(i){ this.fx(this.popPlan(i)); },
+       start of that reward's own flight, and gift(i) at its end.
+       v27 (item 6, build 51): `o` is which chest it came out of and whether the reward is a KEY. A chest with a POP_FX.by row lifts its pops (only
+       `games` has one — item 12 approved the Pro chest's sounds as they are) and, inside that chest, a key reward takes POP_FX.bright on top, which
+       is item 6's "the key's slightly brighter". Both are multipliers on POP_FX, so one edit there re-tunes every version. */
+    popPlan(i,o){ const B=POP_FX.by&&POP_FX.by[(o&&o.chest)||'']||null, K=B&&o&&o.key?POP_FX.bright:null;
+      const semi=POP_FX.step*(i||0)+(B?B.semi:0)+(K?K.semi:0), r=Math.pow(2,semi/12), gm=(B?B.gain:1)*(K?K.gain:1);
+      return POP_FX.notes.map(([at,f0,f1,ms,w,g,am,lp])=>[at,+(f0*r).toFixed(2),+(f1*r).toFixed(2),ms,w,+(g*gm).toFixed(4),am||0,lp||0]); },
+    pop(i,o){ this.fx(this.popPlan(i,o)); },
     // v13 (6.6): the counting whoosh — one voice sweeping low to high for the length of the count, so the pitch follows the fill
     // v25 (item 20): recorded as its two voices through one fixed lowpass — the page cannot sweep a filter, so the catalogue says it is approximate
     /* v26 (§B1, build 49): SEVEN VERY SIMILAR WHOOSHES, ONE AT RANDOM. `v` picks a WHOOSH_VARIANTS row — pitch × and length × — and without it one is drawn

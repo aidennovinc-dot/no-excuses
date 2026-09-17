@@ -118,7 +118,7 @@ VERDICT_FX) is in the `config/` paragraph of `RULES-HISTORY.md` → Structure, a
     `Snd.whoosh(ms, f0, f1, v)` draws one at random, or version `v` when asked (the catalogue plays each).
   · **Sigh** is held — off the sound pack row, Grand tour no longer earns it, the achievement is still to be chosen — and its miss starts at 520 Hz
     (it was 240 → 50 Hz, "too low-pitched to hear").
-  · **Key chest opening** "much closer to the first key's theme": the assemble chimes are the theme's first two chords arpeggiated (G · D · G · A,
+  · **Skill chest opening** "much closer to the first key's theme": the assemble chimes are the theme's first two chords arpeggiated (G · D · G · A,
     F · C · F · G over its root × 2), the spill is its opening chord held, and the sting runs to 3.3s of the theme before it lands.
   · **Pro chest opening** "far more epic": a doubled detuned rumble over a sub, a low hit under each crack, a riser into the burst, the burst a deeper
     boom under a five-note sawtooth D major with the octave, a five-note climb to D6 and a long shimmer; the sting runs to 3.9s and lands on seven notes.
@@ -164,7 +164,7 @@ VERDICT_FX) is in the `config/` paragraph of `RULES-HISTORY.md` → Structure, a
   Aiden's own number (v18 B.9) and the note does not quote it.
   **A key's screen plays its theme once its TIER is open — AMENDED at build 43 (v24 C.2 / C.3).** Build 42 waited for the chest the key OPENS
   (guess: "a locked key has no theme to hear"), which put the menu loop on the Pro tab until Pro was finished and on the Author tab until Author
-  was — the two themes Aiden reported as lost. Key 1 kept its theme only because its Key chest was already open. The themes themselves were
+  was — the two themes Aiden reported as lost. Key 1 kept its theme only because its Skill chest was already open. The themes themselves were
   never broken. Only the quiet screen before the Games chest plays the menu loop now; SET THIS MUSIC still waits for the chest, as a reward. **`audio.js`'s screen-change timer no longer touches the key screen.** The router emits `screen:change` before `onShow`, so
   since build 30 the timer asked for Roots 900ms after `key.js` had asked for the tab's own loop, and arriving on the Pro or Author tab
   heard Roots within a second. **`Music.probe()` reports `track`, `arc`, `arcBars`, `stems`, `flow` and `fin`**, which is what the gate

@@ -381,13 +381,20 @@
   /* L.9b: the READY idle, one per chest and rising — Games a faint breath, Key a breathing glow, Pro the glow and a shimmer running along its
      fittings, Thorns its spikes flexing in a cold glow. The period and the peak are the look's own (--idle-ms / --idle-px) */
   .tile.chest.ready .chestart[data-idle="breath"]{animation:idlebreath var(--idle-ms) ease-in-out infinite}
-  .tile.chest.ready .chestart[data-idle="glow"],.tile.chest.ready .chestart[data-idle="shimmer"]{animation:idleglow var(--idle-ms) ease-in-out infinite}
+  .tile.chest.ready .chestart[data-idle="glow"],.tile.chest.ready .chestart[data-idle="shimmer"],.tile.chest.ready .chestart[data-idle="circuit"]{animation:idleglow var(--idle-ms) ease-in-out infinite}
   .tile.chest.ready .chestart[data-idle="shimmer"] .fit{animation:idleshim var(--idle-ms) linear calc(var(--i) * 110ms) infinite}
+  /* v27 (item 13, build 51): the Pro chest's own idle — a CURRENT running its traces, the Circuit key's look rather than a metal shimmer.
+     Each trace is drawn as a dash walking its own length, so a longer trace takes longer, and the ring on the lid blinks with it */
+  .tile.chest.ready .chestart[data-idle="circuit"] .fit{stroke-dasharray:7 999;animation:idlecur var(--idle-ms) linear calc(var(--i) * 180ms) infinite}
+  .tile.chest.ready .chestart[data-idle="circuit"] .spk{animation:idlenode var(--idle-ms) ease-in-out calc(var(--i) * 180ms) infinite}
   .tile.chest.ready .chestart[data-idle="spikes"]{animation:idlecold var(--idle-ms) ease-in-out infinite}
   .tile.chest.ready .chestart[data-idle="spikes"] .spk{transform-box:fill-box;transform-origin:center;animation:idlespk var(--idle-ms) ease-in-out calc(var(--i) * 90ms) infinite}
   @keyframes idlebreath{50%{filter:drop-shadow(0 0 var(--idle-px) color-mix(in srgb,var(--bc) 60%,transparent))}}
   @keyframes idleglow{50%{filter:drop-shadow(0 0 var(--idle-px) var(--bc))}}
-  @keyframes idleshim{0%,60%,100%{stroke:var(--cs)}75%{stroke:#FFF3C4}}
+  /* v27 (item 13): the shimmer's bright colour is the look's own `shim` — it was a gold literal, and the gold chest moved */
+  @keyframes idleshim{0%,60%,100%{stroke:var(--cs)}75%{stroke:var(--shim,#FFF3C4)}}
+  @keyframes idlecur{0%{stroke-dashoffset:26;stroke:var(--shim,var(--cs))}55%,100%{stroke-dashoffset:-30;stroke:var(--cs)}}
+  @keyframes idlenode{0%,100%{fill:var(--cs)}50%{fill:var(--shim,var(--cs))}}
   @keyframes idlecold{50%{filter:drop-shadow(0 0 var(--idle-px) rgba(206,232,255,.85))}}
   @keyframes idlespk{50%{scale:1.4}}
   @media (prefers-reduced-motion:reduce){.tile.chest.ready .chestart,.tile.chest.ready .chestart .fit,.tile.chest.ready .chestart .spk{animation:none}}
@@ -431,6 +438,13 @@
      otherwise simply replace this. It arrives, THEN it is marked green; the green border on .pic stays after both */
   .tile.arrive{animation:tilearrive .72s cubic-bezier(.2,.85,.3,1.1) .1s both!important}
   .tile.arrive.newthing{animation:tilearrive .72s cubic-bezier(.2,.85,.3,1.1) .1s both,newthing .6s ease-out .9s forwards!important}
+  /* v27 (item 2, build 51): A GAUNTLET COMES OUT OF ITS CHEST. It has no tile at all until that chest is opened (R1), and the paint that finds
+     the chest open is the paint that spills its words — so the tile arrives on the spill's own beat (`animation-delay` is SPILL.delay, set by
+     ui/screens/pick.js) rather than the .1s every other arrival uses, and it comes in from the chest rather than from above. */
+  @keyframes gauntarrive{0%{opacity:0;translate:14px -4px;scale:.55}60%{opacity:1;translate:-3px 1px;scale:1.08}100%{opacity:1;translate:0 0;scale:1}}
+  .tile.arrive.spillin{animation:gauntarrive .62s cubic-bezier(.2,.9,.3,1.15) var(--gin,0ms) both!important}
+  .tile.arrive.spillin.newthing{animation:gauntarrive .62s cubic-bezier(.2,.9,.3,1.15) var(--gin,0ms) both,newthing .6s ease-out calc(var(--gin,0ms) + .72s) forwards!important}
+  @media (prefers-reduced-motion:reduce){.tile.arrive.spillin,.tile.arrive.spillin.newthing{animation:cfade .3s ease-out var(--gin,0ms) both!important}}
   /* v14 (3.1): the requirement under a locked mode is the way in, so it reads in the same green everything unlockable wears */
   .choice small.need{color:var(--ok)}
   /* v14 (3.4): "best" / "closest" is green on every best-of row, on the sheet and on the result screen */
@@ -680,11 +694,8 @@
   .kground{cursor:default}
   .khit2{fill:none;stroke:transparent;stroke-width:22;stroke-linecap:round;cursor:pointer;pointer-events:stroke}
   /* B.20: the whole-key moment. The hub glyph turns and flares, every root glows once, the count line lands */
-  @keyframes kwholeglyph{0%{rotate:0deg;scale:1}35%{rotate:-18deg;scale:1.25;filter:drop-shadow(0 0 14px var(--ktint))}70%{rotate:8deg;scale:1.12}100%{rotate:0deg;scale:1;filter:drop-shadow(0 0 8px color-mix(in srgb,var(--ktint) 60%,transparent))}}
-  #s-key.kwhole .kglyph{animation:kwholeglyph 2.2s cubic-bezier(.3,.9,.3,1.1) both;transform-box:fill-box;transform-origin:center}
-  #s-key.kwhole .khalo{animation:khaloglow 2.85s ease-out both;filter:blur(5px)}
-  #s-key.kwhole .keycount{animation:keyin .6s ease-out .9s both;color:var(--ktint)}
-  #s-key.kwhole .khub{animation:hubin 1.2s cubic-bezier(.2,.9,.3,1.2) both;transform-box:fill-box;transform-origin:center}
+  /* build 32's whole-key moment (`kwhole`: the glyph turns and flares, every root glows, the count lands) is RETIRED at build 51 — v27 item 14
+     replaces it, and build 43's C.5 moment that replaced it, with one animation per tier of two seconds at most (above) */
 
 /* ==================================================================
    customise — ui/screens/customise.js
@@ -1471,36 +1482,66 @@
   .kask .chestart{width:74px;height:60px}
   .kask h3{font-family:var(--title);font-size:14px;letter-spacing:.2em;text-transform:uppercase;color:var(--ok)}
   .kask .row{display:flex;gap:10px;justify-content:center}
-  /* C.5: EARNING A KEY, per tier. ui/screens/key.js earnMoment() puts `kwhole` and data-earn on the screen, draws the tier's elements from
-     config/keys.js KEY_EARN, and sets --earn-ms. Lantern keeps build 32's flare (above) with a warm bloom behind it; Circuit's squares run out
-     from the hub, a current runs down every trace, its corner dots blink and the glyph snaps; Thorn closes in dark, its thorns flex, a white
-     spiked burst opens round the hub and the glyph turns slowly. Every colour is the tier's tint (#426 A). Presentation only (L10) */
-  #s-key{--earn-ms:2900ms}
-  .kearn,.kearnbg{pointer-events:none}
-  .kebloom{fill:url(#kebloomg);opacity:0;transform-box:view-box;transform-origin:150px 150px}
-  #s-key.kwhole .kebloom{animation:kebloom var(--earn-ms) ease-out both}
-  @keyframes kebloom{0%{opacity:0;scale:.3}35%{opacity:1;scale:1}100%{opacity:0;scale:1.15}}
-  .kesq{fill:none;stroke:var(--ktint);stroke-width:1.4;opacity:0;transform-box:view-box;transform-origin:150px 150px}
-  #s-key.kwhole .kesq{animation:kesq calc(var(--earn-ms) * .42) cubic-bezier(.2,.7,.3,1) calc(var(--earn-ms) * .28 + var(--i) * 280ms) both}
-  @keyframes kesq{0%{opacity:.95;scale:.4}100%{opacity:0;scale:3.4}}
-  .kepulse{fill:none;stroke:var(--ktint);stroke-width:3.2;stroke-linecap:square;stroke-dasharray:.14 2;stroke-dashoffset:.14;opacity:0;filter:drop-shadow(0 0 4px var(--ktint))}
-  #s-key.kwhole .kepulse{animation:kepulse calc(var(--earn-ms) * .22) linear calc(var(--i) * 70ms + var(--k) * var(--earn-ms) * .24) both}
-  @keyframes kepulse{0%{opacity:1;stroke-dashoffset:.14}92%{opacity:1}100%{opacity:0;stroke-dashoffset:-1}}
-  #s-key.kwhole[data-earn="pro"] .kdot2{animation:kedot .24s steps(2,end) calc(var(--earn-ms) * .3) 6}
-  @keyframes kedot{50%{fill:#FFFFFF;stroke:#FFFFFF}}
-  #s-key.kwhole[data-earn="pro"] .kglyph{animation:kearnsnap calc(var(--earn-ms) * .6) steps(6,end) both;transform-box:fill-box;transform-origin:center}
-  @keyframes kearnsnap{0%{scale:1}20%{scale:1.4;filter:drop-shadow(0 0 12px var(--ktint))}100%{scale:1;filter:drop-shadow(0 0 8px color-mix(in srgb,var(--ktint) 60%,transparent))}}
-  .kevig{fill:url(#kevigg);opacity:0}
-  #s-key.kwhole .kevig{animation:kevig var(--earn-ms) ease-in-out both}
-  @keyframes kevig{0%{opacity:0}30%,72%{opacity:1}100%{opacity:0}}
-  .kespk{fill:var(--ktint);opacity:0;transform-box:view-box;transform-origin:150px 150px;rotate:var(--a)}
-  #s-key.kwhole .kespk{animation:kespk calc(var(--earn-ms) * .45) cubic-bezier(.3,0,.2,1) calc(var(--earn-ms) * .38 + var(--i) * 45ms) both}
-  @keyframes kespk{0%{opacity:0;scale:.3}45%{opacity:1;scale:1.05}100%{opacity:0;scale:1.6}}
-  #s-key.kwhole[data-earn="author"] .kthorn{animation:kthornflex calc(var(--earn-ms) * .55) ease-in-out calc(var(--earn-ms) * .18) both;transform-box:fill-box;transform-origin:center}
-  @keyframes kthornflex{0%,100%{scale:1}45%{scale:1.9}}
-  #s-key.kwhole[data-earn="author"] .kglyph{animation:kearnslow var(--earn-ms) cubic-bezier(.45,0,.2,1) both;transform-box:fill-box;transform-origin:center}
-  @keyframes kearnslow{0%{rotate:0deg;scale:1}42%{rotate:-34deg;scale:1.35;filter:drop-shadow(0 0 16px #FFFFFF)}100%{rotate:0deg;scale:1;filter:drop-shadow(0 0 8px color-mix(in srgb,var(--ktint) 60%,transparent))}}
-  @media (prefers-reduced-motion:reduce){#s-key.kwhole .kebloom,#s-key.kwhole .kesq,#s-key.kwhole .kepulse,#s-key.kwhole .kevig,#s-key.kwhole .kespk,#s-key.kwhole[data-earn] .kthorn,#s-key.kwhole[data-earn] .kglyph,#s-key.kwhole[data-earn] .kdot2{animation:none}}
+  /* ---------- v27 (item 14, build 51): EARNING A KEY — ONE ANIMATION PER TIER, TWO SECONDS AT MOST ----------
+     ui/screens/key.js keyStage() puts `kearning` and `data-earn` on the screen and writes every time out of config/keys.js KEY_EARN as a custom
+     property — `--earn-ms`, and `--st-<step>-at` / `--st-<step>-ms` per NAMED STEP — so this file names no duration and a re-tune is a number edit
+     there. Every step but `flash` is MOVEMENT (item 14: at least three quarters of it), and the flash is a flash, never a hold.
+     This replaces build 43's `kwhole` moment and build 46's `krev` reveal, which nested to 6.3s / 8.0s / 10.5s.
+     `.kr`, `.kglyph`, `.kring`, `.kecrk` and `.kethn` carry NO transform attribute, so a CSS transform on them is safe; `.knode` DOES carry one,
+     so its `.kdot` is what moves (the build-41 lesson, twice learned). Presentation only (L10): the key is banked before a frame plays. */
+  #s-key{--earn-ms:1700ms}
+  .kearn{pointer-events:none}
+  /* the ring starts unlit whatever the tier; what lights it is that tier's own first step */
+  #s-key.kearning .kr,#s-key.kearning .knode,#s-key.kearning .klabels text,#s-key.kearning .kring,#s-key.kearning .kground{opacity:0}
+  /* SKILL and PRO — THE SEVEN SPOKES FIRE INWARD, each segment drawing from its node down to the hub with the halo running ahead of it as the
+     fire. `--spoke-gap` is the beat between them: 130ms on the Skill key, so they walk round the ring one at a time, and 0 on the Pro key, whose
+     whole idea is that all seven go at once. The Author key has no spokes step — its ring arrives on the crack. */
+  #s-key.kearning[data-earn="clear"]:not(.kearnquick) .kr,#s-key.kearning[data-earn="pro"]:not(.kearnquick) .kr{animation:cfade 70ms linear calc(var(--st-spokes-at,0ms) + var(--h,0) * var(--spoke-gap,0ms)) both}
+  #s-key.kearning[data-earn="clear"]:not(.kearnquick) .kroot,#s-key.kearning[data-earn="pro"]:not(.kearnquick) .kroot{stroke-dasharray:1 1;animation:kespoke var(--spoke-ms,300ms) cubic-bezier(.2,.85,.25,1) calc(var(--st-spokes-at,0ms) + var(--h,0) * var(--spoke-gap,0ms)) both}
+  #s-key.kearning[data-earn="clear"]:not(.kearnquick) .kr .khalo,#s-key.kearning[data-earn="pro"]:not(.kearnquick) .kr .khalo{filter:blur(4px);animation:kefire var(--spoke-ms,300ms) ease-out calc(var(--st-spokes-at,0ms) + var(--h,0) * var(--spoke-gap,0ms)) both}
+  #s-key.kearning[data-earn="clear"]:not(.kearnquick) .knode,#s-key.kearning[data-earn="pro"]:not(.kearnquick) .knode{animation:cfade 160ms ease-out calc(var(--st-spokes-at,0ms) + var(--h,0) * var(--spoke-gap,0ms)) both}
+  #s-key.kearning[data-earn="clear"]:not(.kearnquick) .kdot,#s-key.kearning[data-earn="pro"]:not(.kearnquick) .kdot{transform-box:fill-box;transform-origin:center;animation:kepop var(--spoke-ms,300ms) cubic-bezier(.2,1.4,.4,1) calc(var(--st-spokes-at,0ms) + var(--h,0) * var(--spoke-gap,0ms)) both}
+  #s-key.kearning[data-earn="clear"]:not(.kearnquick) .klabels text,#s-key.kearning[data-earn="pro"]:not(.kearnquick) .klabels text{animation:cfade 200ms ease-out calc(var(--st-spokes-at,0ms) + var(--h,0) * var(--spoke-gap,0ms) + 120ms) both}
+  @keyframes kespoke{0%{stroke-dashoffset:1}100%{stroke-dashoffset:0}}
+  @keyframes kefire{0%{opacity:0}30%{opacity:.6}100%{opacity:0}}
+  @keyframes kepop{0%{opacity:0;scale:.2}60%{opacity:1;scale:1.4}100%{opacity:1;scale:1}}
+  /* SKILL · spin — the key spins once and CLICKS UPRIGHT as the last spoke lands: past the mark, back, and settled */
+  #s-key.kearning[data-earn="clear"]:not(.kearnquick) .kglyph{transform-box:fill-box;transform-origin:center;animation:kespin var(--st-spin-ms,510ms) cubic-bezier(.3,.85,.25,1.05) var(--st-spin-at,820ms) both}
+  @keyframes kespin{0%{rotate:0deg;scale:1;opacity:.4}70%{rotate:396deg;scale:1.2}86%{rotate:352deg;scale:1.05}100%{rotate:360deg;scale:1;opacity:1;filter:drop-shadow(0 0 10px var(--ktint))}}
+  /* PRO · snap — a key turning in a lock: nothing, then a quarter turn with a hard stop and a little overshoot behind it; then the RING FLASHES */
+  #s-key.kearning[data-earn="pro"]:not(.kearnquick) .kglyph{transform-box:fill-box;transform-origin:center;animation:kesnap var(--st-snap-ms,560ms) cubic-bezier(.9,0,.1,1) var(--st-snap-at,300ms) both}
+  @keyframes kesnap{0%{rotate:0deg;scale:1;opacity:.4}52%{rotate:0deg;opacity:1}72%{rotate:101deg;scale:1.14}86%{rotate:86deg;scale:1.02}100%{rotate:90deg;scale:1;filter:drop-shadow(0 0 12px var(--ktint))}}
+  #s-key.kearning[data-earn="pro"]:not(.kearnquick) .kring{transform-box:view-box;transform-origin:150px 150px;animation:kering var(--st-ring-ms,630ms) ease-out var(--st-ring-at,820ms) both}
+  @keyframes kering{0%{opacity:0;scale:1.07;stroke-width:4}26%{opacity:1;scale:1;stroke-width:3}100%{opacity:var(--kringop,.6);scale:1;stroke-width:var(--kringw,1.6)}}
+  #s-key.kearning[data-earn="pro"]:not(.kearnquick) .kdot2{animation:kedot2 calc(var(--st-ring-ms,630ms) / 3) steps(2,end) var(--st-ring-at,820ms) 3}
+  @keyframes kedot2{50%{fill:#FFFFFF;stroke:#FFFFFF}}
+  /* AUTHOR · drop then slam — the key falls in from above and hits the centre; the ring CRACKS outward with a screen shake and thorns flick out */
+  #s-key.kearning[data-earn="author"]:not(.kearnquick) .kglyph{transform-box:fill-box;transform-origin:center;animation:kedrop calc(var(--st-drop-ms,430ms) + var(--st-slam-ms,250ms)) cubic-bezier(.6,0,.8,.25) var(--st-drop-at,0ms) both}
+  @keyframes kedrop{0%{opacity:0;translate:0 -150px;scale:1.5}40%{opacity:1}62%{translate:0 0;scale:1.5}72%{scale:.8}84%{scale:1.16}100%{translate:0 0;scale:1;opacity:1;filter:drop-shadow(0 0 16px #FFFFFF)}}
+  #s-key.kearning[data-earn="author"]:not(.kearnquick) #key-ring{animation:keshake var(--st-slam-ms,250ms) cubic-bezier(.3,.9,.2,1) var(--st-slam-at,410ms) both}
+  @keyframes keshake{0%,100%{translate:0 0}20%{translate:calc(var(--earn-shake,5px) * -1) calc(var(--earn-shake,5px) * .6)}45%{translate:var(--earn-shake,5px) calc(var(--earn-shake,5px) * -.5)}72%{translate:calc(var(--earn-shake,5px) * -.5) 0}}
+  #s-key.kearning[data-earn="author"]:not(.kearnquick) .kr,#s-key.kearning[data-earn="author"]:not(.kearnquick) .knode,#s-key.kearning[data-earn="author"]:not(.kearnquick) .klabels text{animation:cfade 300ms ease-out var(--st-crack-at,620ms) both}
+  #s-key.kearning[data-earn="author"]:not(.kearnquick) .kring{animation:kringin var(--st-crack-ms,620ms) ease-out var(--st-crack-at,620ms) both}
+  .kecrk{fill:none;stroke:var(--ktint);stroke-width:1.6;stroke-linecap:round;opacity:0;transform-box:view-box;transform-origin:150px 150px;rotate:var(--a)}
+  #s-key.kearning[data-earn="author"]:not(.kearnquick) .kecrk{stroke-dasharray:1 1;animation:kecrack calc(var(--st-crack-ms,620ms) * .8) cubic-bezier(.2,.8,.3,1) calc(var(--st-crack-at,620ms) + var(--i) * 28ms) both}
+  @keyframes kecrack{0%{opacity:0;stroke-dashoffset:1}14%{opacity:1}100%{opacity:.8;stroke-dashoffset:0}}
+  .kethn{fill:var(--ktint);opacity:0;transform-box:view-box;transform-origin:150px 150px;rotate:var(--a)}
+  #s-key.kearning[data-earn="author"]:not(.kearnquick) .kethn{animation:kethorn calc(var(--st-thorns-ms,690ms) * .6) cubic-bezier(.3,1.5,.4,1) calc(var(--st-thorns-at,880ms) + var(--i) * 26ms) both}
+  @keyframes kethorn{0%{opacity:0;scale:.2}55%{opacity:1;scale:1.15}100%{opacity:.9;scale:1}}
+  /* THE FLASH — the one step that is not movement, and it is a flash: a bloom out of the hub in the tier's tint, 240–280ms, gone. The key's own
+     earn sound is fired on this beat (ui/screens/key.js), and the radial ground arrives with it, which is the finished key's own glow */
+  .keflash{fill:var(--ktint);opacity:0;transform-box:view-box;transform-origin:150px 150px;pointer-events:none}
+  #s-key.kearning:not(.kearnquick) .keflash{animation:keflash var(--st-flash-ms,240ms) cubic-bezier(.1,.8,.3,1) var(--st-flash-at,1330ms) both}
+  @keyframes keflash{0%{opacity:0;scale:.35}22%{opacity:.5}100%{opacity:0;scale:2.4}}
+  #s-key.kearning:not(.kearnquick) .kground{animation:cfade var(--st-flash-ms,240ms) ease-out var(--st-flash-at,1330ms) both}
+  /* Reduce Motion: nothing animates and the finished state is simply there — the settle lands it, as it always did (v25 item 11) */
+  #s-key.kearning.kearnquick .kr,#s-key.kearning.kearnquick .knode,#s-key.kearning.kearnquick .klabels text,#s-key.kearning.kearnquick .kground{opacity:1}
+  #s-key.kearning.kearnquick .kring{opacity:var(--kringop,.5)}
+  #s-key.kearning.kearnquick .kecrk,#s-key.kearning.kearnquick .kethn,#s-key.kearning.kearnquick .keflash{opacity:0}
+  @media (prefers-reduced-motion:reduce){
+    #s-key.kearning .kr,#s-key.kearning .knode,#s-key.kearning .klabels text,#s-key.kearning .kground,#s-key.kearning .kroot,#s-key.kearning .kdot,#s-key.kearning .kglyph,#s-key.kearning #key-ring,#s-key.kearning .kdot2{animation:none;opacity:1}
+    #s-key.kearning .kring{animation:none;opacity:var(--kringop,.5)}
+    #s-key.kearning .kecrk,#s-key.kearning .kethn,#s-key.kearning .keflash,#s-key.kearning .kr .khalo{animation:none;opacity:0}}
   /* L.8f: Testing grew a row of chests and a meter field, so it scrolls like About (and clears the build stamp, L.5) */
   #s-testing{overflow-y:auto;justify-content:flex-start;padding-top:max(18px,env(safe-area-inset-top))}
   #dev-meter{width:8ch;background:var(--panel);color:var(--ink);border:1px solid var(--line);font-family:var(--mono);font-size:12px;padding:6px 8px;border-radius:0}
@@ -1657,37 +1698,18 @@
   .cere.quick .rgift,.cere.quick .ctxt{opacity:1}
   @media (prefers-reduced-motion:reduce){.cere.play .rgift{animation:none;opacity:1}}
 
-  /* ---------- item 11: THE FIRST-OPEN REVEAL OF A KEY, drawn on the ring itself ----------
-     The ring starts unlit; the seven games arrive CLOCKWISE FROM QUICK TAP AT 12, each on its own hour (`--h`, the index ui/screens/key.js
-     already draws them in), at `--node-at` + hour × `--node-gap`. Then the hub lights (the build-43 earn moment, `kwhole`), then it SETTLES
-     into the finished state below. A `.kdot` is scaled, never a `.knode` — a node group carries a transform attribute and a CSS scale would
-     compose inside it (the build-41 lesson, twice learned). */
-  #s-key.krev .kr,#s-key.krev .knode,#s-key.krev .klabels text,#s-key.krev .kring{opacity:0}
-  /* the hub is held dim UNTIL the key lights — `kwhole` is that beat (build 43's earn, inside the reveal), and from it the glyph is the earn's own */
-  #s-key.krev:not(.kwhole) .kglyph{opacity:.22;filter:none}
-  #s-key.krev .kground{opacity:0}
-  #s-key.krev:not(.krevquick) .kr{animation:krevarm .55s ease-out calc(var(--node-at) + var(--h) * var(--node-gap)) both}
-  #s-key.krev:not(.krevquick) .knode{animation:cfade .5s ease-out calc(var(--node-at) + var(--h) * var(--node-gap)) both}
-  #s-key.krev:not(.krevquick) .kdot{animation:krevdot .55s cubic-bezier(.2,1.3,.4,1) calc(var(--node-at) + var(--h) * var(--node-gap)) both;transform-box:fill-box;transform-origin:center}
-  #s-key.krev:not(.krevquick) .klabels text{animation:cfade .45s ease-out calc(var(--node-at) + var(--h) * var(--node-gap) + 200ms) both}
-  @keyframes krevarm{0%{opacity:0;translate:0 0;scale:1}100%{opacity:1}}
-  /* v26 (items 10 / 11, build 48): the one instruction under the key — "tap the key to open the Key chest" — waits for the reveal to finish. `kdue` is on
-     from the draw that schedules the reveal, so the words never show for the beat before it starts; both come off when it ends by itself */
-  #s-key.kdue #key-hint,#s-key.krev #key-hint{visibility:hidden}
-  @keyframes krevdot{0%{opacity:0;scale:.2}62%{opacity:1;scale:1.35}100%{opacity:1;scale:1}}
-  /* what escalates without a clock: sparks round the ring (Circuit and Thorn) and rings running out of the hub, more of each per tier */
-  .kmote{fill:var(--ktint);opacity:0}
-  #s-key.krev:not(.krevquick) .kmote{animation:kmote 1.8s ease-out calc(var(--node-at) + var(--i) * 110ms) both}
-  @keyframes kmote{0%{opacity:0;translate:0 0}28%{opacity:.85}100%{opacity:0;translate:0 -24px}}
-  .kripple{fill:none;stroke:var(--ktint);stroke-width:1.2;opacity:0;transform-box:view-box;transform-origin:150px 150px}
-  #s-key.krev:not(.krevquick) .kripple{animation:kripple 2.4s ease-out calc(var(--node-at) + var(--i) * 320ms) infinite}
-  @keyframes kripple{0%{opacity:.45;scale:1}100%{opacity:0;scale:2.8}}
-  /* the reveal settles: the glow, the ring and the pulse arrive together, and from then on it is simply the finished key */
+  /* ---------- item 11's FIRST-OPEN REVEAL — RETIRED AT BUILD 51 (v27 item 14) ----------
+     `krev` introduced the seven games one at a time round the ring over 4–6.6s and then ran build 43's earn moment inside it. Item 14 replaces the
+     pair with ONE animation of two seconds at most, above. What is kept is the two rules the rest of the screen still needs: the hint under the
+     ring waits for the animation to finish, and the settle brings the finished key's ground and ring in behind it. `kmote`, `kripple`, `kebloom`,
+     `kesq`, `kepulse`, `kevig` and `kespk` are gone with the elements that drew them. */
+  /* v26 (items 10 / 11, build 48): the one instruction under the key — "tap the key to open the Skill chest" — waits for the animation to finish.
+     `kdue` is on from the draw that schedules it, so the words never show for the beat before it starts; both come off when it ends */
+  #s-key.kdue #key-hint,#s-key.kearning #key-hint{visibility:hidden}
+  /* the settle: the glow and the ring arrive together, and from then on it is simply the finished key */
   #s-key.ksettle .kground{animation:cfade .9s ease-out both}
   #s-key.ksettle .kring{animation:kringin .9s ease-out both}
   @keyframes kringin{from{opacity:0}to{opacity:var(--kringop,.5)}}
-  @media (prefers-reduced-motion:reduce){#s-key.krev .kr,#s-key.krev .knode,#s-key.krev .klabels text,#s-key.krev .kdot{animation:none;opacity:1}
-    #s-key.krev .kmote,#s-key.krev .kripple{animation:none}}
 
   /* ---------- item 13: AN UNFINISHED KEY AND A FINISHED ONE ----------
      Both wore the same golden glow, so 3% looked like earned. UNFINISHED (`#s-key` without `.kdone`): no radial ground, no drop shadow
@@ -1702,15 +1724,14 @@
   #s-key:not(.kdone)[data-style] .kroot.on,#s-key:not(.kdone)[data-style] .karc{filter:none}
   #s-key:not(.kdone) .knode.lit:not(.home) .kdot{stroke:var(--kdim,var(--line))}
   .kring{fill:none;stroke:var(--ktint);stroke-width:var(--kringw,1.4);opacity:var(--kringop,.5)}
-  /* :not(.kwhole) — the earn beat inside the reveal (build 43's C.5 moment) keeps the glyph for itself; the finished look takes over after it */
-  #s-key.kdone:not(.kwhole) .kglyph{stroke:var(--ktint);scale:var(--kscale,1.2);transform-box:fill-box;transform-origin:center;
+  /* :not(.kearning) — the earned animation keeps the glyph for itself; the finished look takes over the moment it settles (v27 item 14) */
+  #s-key.kdone:not(.kearning) .kglyph{stroke:var(--ktint);scale:var(--kscale,1.2);transform-box:fill-box;transform-origin:center;
     filter:drop-shadow(0 0 var(--kglow,10px) color-mix(in srgb,var(--ktint) 70%,transparent));animation:kbreathe var(--kpulse,3000ms) ease-in-out infinite}
   @keyframes kbreathe{0%,100%{opacity:.82}50%{opacity:1}}
   #s-key.kdone .kkey.whole .kgl path{stroke:var(--ktint);filter:drop-shadow(0 0 6px color-mix(in srgb,var(--ktint) 60%,transparent));animation:kbreathe var(--kpulse,3000ms) ease-in-out infinite}
-  /* while the reveal is running the finished look is held back — it is what the reveal settles INTO (item 13's last line). It does NOT reach the
-     earn (`kwhole`): that is the beat inside the reveal where the key lights, and its animation is the one thing the glyph should be running then */
-  #s-key.krev.kdone:not(.kwhole) .kglyph{scale:1;filter:none;animation:none}
-  #s-key.krev.kdone .kkey.whole .kgl path{animation:none;filter:none}
+  /* while the key is being earned the finished look is held back — it is what the animation settles INTO (item 13's last line), and the earned
+     animation's own keyframes are the one thing the glyph should be running until then */
+  #s-key.kearning.kdone .kkey.whole .kgl path{animation:none;filter:none}
   @media (prefers-reduced-motion:reduce){#s-key.kdone .kglyph,#s-key.kdone .kkey.whole .kgl path{animation:none}}
 
   /* ---------- item 23: the messages on About ----------

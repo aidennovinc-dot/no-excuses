@@ -20,7 +20,7 @@
 </head><body>
 <canvas id="stars"></canvas>
 <!-- v25 (items 4 / 8, build 45): the build stamp comes BEFORE every screen, so each paints over it (styles/app.css #build) -->
-<div id="build">v0.50</div>
+<div id="build">v0.51</div>
 
 <section class="screen on" id="s-menu">
   <div class="nextup" id="nextup" data-act="nextup" hidden></div>
@@ -63,19 +63,23 @@
     <button data-act="game" class="tile" data-game="timing"><span class="name glow">Timing</span><span class="pic"><span class="mini tm"><i class="h"></i><i class="w"></i><i class="h"></i></span></span></button>
     <button data-act="game" class="tile" data-game="reaction"><span class="name glow">Reaction</span><span class="pic"><span class="mini rx"></span></span></button>
     <button data-act="game" class="tile" data-game="spot"><span class="name glow">Spot</span><span class="pic"><span class="mini fd"><i></i><i class="t"></i><i></i><i class="w c"></i><i class="t"></i><i></i></span></span></button>
-    <!-- v23 (L.10, build 40): FOUR chests down the path, named by what opens them - Games, Key, Pro, Thorns - never numbered
-         (config/chests.js). The Games chest is the snake's last stop and REPLACES v21 G.3's gate on the connector into it; the
-         Key, Pro and Thorns chests stack under it, on the map from the start (G.1). ui/screens/pick.js places them and owns
-         their states. An opened chest shows what it gave as a column of words beside it (L.11c). v23 (L.9a, build 41): each chest's
-         sprite is drawn into its .pic by ui/chest.js from config/chests.js - no art lives in this markup -->
-    <button data-act="chest" class="tile chest" data-chest="games"><span class="name glow">Games chest</span><span class="pic"></span></button>
-    <button data-act="chest" class="tile chest" data-chest="key"><span class="name glow">Key chest</span><span class="pic"></span></button>
-    <button data-act="chest" class="tile chest" data-chest="pro"><span class="name glow">Pro chest</span><span class="pic"></span></button>
-    <button data-act="chest" class="tile chest" data-chest="thorns"><span class="name glow">Thorns chest</span><span class="pic"></span></button>
+    <!-- v23 (L.10, build 40): FOUR chests down the path, named by what opens them - never numbered (config/chests.js). The Games chest is the
+         snake's last stop and REPLACES v21 G.3's gate on the connector into it; the other three stack under it, on the map from the start (G.1).
+         ui/screens/pick.js places them and owns their states. An opened chest shows what it gave as a column of words beside it (L.11c).
+         v23 (L.9a, build 41): each chest's sprite is drawn into its .pic by ui/chest.js from config/chests.js - no art lives in this markup.
+         v27 (item 4, build 51): AND NO NAME LIVES IN IT EITHER. The four labels were spelled here as well as in config/copy.js, which is a
+         second source for a name item 4 wants in ONE place; ui/screens/pick.js fills every .name from GRID.chest on the render that runs before
+         the screen is shown, so an empty span here is never painted. The Gauntlet tiles were already filled that way. -->
+    <button data-act="chest" class="tile chest" data-chest="games"><span class="name glow"></span><span class="pic"></span></button>
+    <button data-act="chest" class="tile chest" data-chest="key"><span class="name glow"></span><span class="pic"></span></button>
+    <button data-act="chest" class="tile chest" data-chest="pro"><span class="name glow"></span><span class="pic"></span></button>
+    <button data-act="chest" class="tile chest" data-chest="thorns"><span class="name glow"></span><span class="pic"></span></button>
     <!-- v26 (item 13, build 49): the two Gauntlets, game tiles to the LEFT of the chest that opens each, on a connector of their own. ui/screens/pick.js
-         places them, names them and draws their symbols (config/chests.js GAUNTLETS); crossed out with a padlock until that chest is open -->
-    <button data-act="gauntlet" class="tile gauntlet" data-gauntlet="g1"><span class="name glow">Gauntlet</span><span class="pic"></span></button>
-    <button data-act="gauntlet" class="tile gauntlet" data-gauntlet="g2"><span class="name glow">Gauntlet II</span><span class="pic"></span></button>
+         places them, names them and draws their symbols (config/chests.js GAUNTLETS).
+         v27 (item 2, build 51): HIDDEN OUTRIGHT until that chest has been opened - no tile, no label, no lock, no connector and no gap (R1) - and
+         brought in as part of the chest's own reward moment. `hidden` here is the state they boot in; pick.js takes it off when the chest is open -->
+    <button data-act="gauntlet" class="tile gauntlet" data-gauntlet="g1" hidden><span class="name glow"></span><span class="pic"></span></button>
+    <button data-act="gauntlet" class="tile gauntlet" data-gauntlet="g2" hidden><span class="name glow"></span><span class="pic"></span></button>
     <!-- L.11c: what an opened chest gave, one word per line, in the grid cell beside it. Empty and hidden for a chest that is not open -->
     <div class="chestwords" data-for="games" hidden></div>
     <div class="chestwords" data-for="key" hidden></div>
@@ -233,7 +237,7 @@
   <div class="eyebrow msgtitle" id="msg-title">messages</div>
   <div class="hint" id="msg-lede"></div>
   <div class="msglist" id="msglist"></div>
-  <div class="hint">v0.50 · round formats · 17 sept 2026</div>
+  <div class="hint">v0.51 · chests, keys and sounds · 18 sept 2026</div>
 </section>
 
 <section class="screen" id="s-testing" data-back="s-menu" data-dev>
@@ -333,7 +337,7 @@
 <script>
 // build check: version.json is fetched with no-store, so a stale cached page still learns a newer build exists
 (function(){
-  const BUILD="50";
+  const BUILD="51";
   async function check(){
     try{
       const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});

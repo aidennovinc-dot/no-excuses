@@ -221,8 +221,8 @@ function up4(raw){ const p=isObj(raw.prefs)?raw.prefs:null; let n=0;
     p.col={}; }
   raw.v=4; if(n&&p) p.mig35=n; return raw; }
 
-/* v4 → v5 (build 40, v23 §L.10): THE CHESTS ARE NAMED. `chest1` (key 1 whole) is the Key chest, `chest2` (Pro whole) the Pro chest,
-   `chest3` (Author whole) the Thorns chest — and a profile that had chest 1 open gets the new Games chest open too, silently, because
+/* v4 → v5 (build 40, v23 §L.10): THE CHESTS ARE NAMED. `chest1` (key 1 whole) is the Skill chest, `chest2` (Pro whole) the Pro chest,
+   `chest3` (Author whole) the Author chest — and a profile that had chest 1 open gets the new Games chest open too, silently, because
    v21 G.3 already made chest 1 wait for every game mode (§M default). `pro` (B.16's step into Pro), `gateOff` (G.3's gate) and
    `pctSeen` (the per-key front figure) are retired with the things they stored. Nothing is banked or taken away here: bars, runs and
    achievements are untouched, and a key-1 clear banked before the Games chest existed stays banked. */

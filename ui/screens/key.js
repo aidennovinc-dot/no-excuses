@@ -49,18 +49,20 @@
 
    BUILD 43 (v24 §B.2, §B.3, §C.1, §C.2, §C.3, §C.5, §C.6):
    · C.2 / C.3 THE PRO AND AUTHOR KEYS HAD LOST THEIR MUSIC, and it was one line, not the build-42 rewrite of the themes. Build 42 (L.7b,
-     guess) played a key's theme on its screen only once the chest THAT KEY OPENS was open — the Pro chest for Pro, the Thorns chest for
-     Author — so a player on the Pro tab heard the menu loop until Pro was finished. Key 1 kept its theme because its Key chest was already
+     guess) played a key's theme on its screen only once the chest THAT KEY OPENS was open — the Pro chest for Pro, the Author chest for
+     Author — so a player on the Pro tab heard the menu loop until Pro was finished. Key 1 kept its theme because its Skill chest was already
      open. A key's theme now plays on its screen the moment its TIER is open; SET THIS MUSIC still waits for the chest it opens (a reward).
    · C.1 THIS SCREEN NEVER OPENS A CHEST BY ITSELF. L.8b's open-on-arrival and the interlude's open are gone. A READY chest is opened by a
      deliberate tap: the key (the hub glyph of a whole key, or the quiet screen's key while the Games chest waits), or the chest itself in
-     the row — it ASKS ("Open the Key chest?"), then it opens. Batch 16's removal of the mid-flow "proceed to Pro" step stands; this is a
+     the row — it ASKS ("Open the Skill chest?"), then it opens. Batch 16's removal of the mid-flow "proceed to Pro" step stands; this is a
      trigger the player asks for.
    · B.2 / B.3 A READY CHEST TAPPED ON THE MAP never flashes this screen and never cuts a key animation short. With nothing unseen it opens on
      the frame the screen is shown — the ceremony covers the screen before it is ever painted. With the arrival (5.4) or the key's earn
      moment (C.5) not yet seen, that animation plays IN FULL, input held, and the chest opens after it. Never started and interrupted.
-   · C.5 EARNING A KEY is its own moment per tier, apart from opening a chest: earnMoment(tier), drawn from config/keys.js KEY_EARN, with
-     its sound from that key's theme (Snd.keyEarn). Inside a result interlude it follows the segment and the hand-back waits for it.
+   · C.5 EARNING A KEY is its own animation per tier — keyStage(tier), drawn from config/keys.js KEY_EARN as named steps, its sound from that
+     key's theme (Snd.keyEarn) on the last beat, and a step's own sound from KEY_STEP_FX. TWO SECONDS AT MOST since build 51 (v27 item 14), at
+     least three quarters of it movement, a tap skips it, and it is the chest PROMPT that waits for it rather than the player. Inside a result
+     interlude it follows the segment and the hand-back waits for it.
    · C.6 each key's screen draws its own background over the live one — ui/atmosphere.js setKeyLayer(), the tier's `style` — once its tier
      is open.
 
@@ -69,10 +71,10 @@
    shows up on this screen the same day. A combination with no bar renders as "no bar set" rather than vanishing (C.6). */
 import { Music, Snd } from "../../audio.js";
 import { HIDE_UNRECORDED } from "../../config/build.js";
-import { CHESTS, METER_BANDS, CHEST_LOOK } from "../../config/chests.js";
+import { CHESTS } from "../../config/chests.js";
 import { CARD, GRID, KEY, SHEET } from "../../config/copy.js";
 import { KEY_NOTE } from "../../config/key-bars.js";
-import { KEY_ART, KEY_EARN, KEY_FINISH, KEY_REVEAL } from "../../config/keys.js";
+import { KEY_ART, KEY_EARN, KEY_FINISH } from "../../config/keys.js";
 import { MESSAGES } from "../../config/messages.js";
 import { MODE_NAME } from "../../config/games.js";
 import { $, $$, T, esc } from "../../core.js";
@@ -83,10 +85,10 @@ import { Scores, isOpen, lenOpen, modeCount } from "../../progress.js";
 import { bandPct, barOf, barsFaked, barsMissing, chestOpen, chestState, gameKey, isCleared, keyChest, keyFinished, keyState, keyTiers, meter, openChest, retroTier, skey, tierOpen } from "../../progress/key.js";
 import { goWhere } from "../../run/run.js";
 import { scoreTxt } from "../format.js";
-import { define, lock } from "../actions.js";
+import { capture, define, lock } from "../actions.js";
 import { setKeyLayer } from "../atmosphere.js";
 import { chestStage } from "../ceremony.js";
-import { chestSvg, giftsOf, symSvg } from "../chest.js";
+import { chestCol, chestSvg, giftsOf, symSvg } from "../chest.js";
 import { playReveal, revealGo, revealOn, revealTap, stopReveal } from "../reveal.js";
 import { register, show } from "../router.js";
 import { toast } from "../toast.js";
@@ -333,94 +335,96 @@ function advance(a) { if (!a) return; const el = $(`[data-seg="${a.g}:${a.was}"]
   const rt = $(`.kr[data-rg="${a.g}"]`); if (rt) { rt.classList.remove('glow'); void rt.getBoundingClientRect(); rt.classList.add('glow'); }
   const row = $('#krow-' + a.key.replace(/[:.]/g, '_')); if (row) row.classList.add('newthing'); }
 
-/* ---------- B.20 → v24 (C.5, build 43): EARNING A KEY, per tier ----------
-   Build 32's whole-key moment — the hub glyph turns and flares, every root glows once, the count line lands — was the same for all three keys,
-   and it had no sound. Earning a key is its own moment, apart from opening a chest, and it escalates in the key's own theme: config/keys.js
-   KEY_EARN says how long and how much is drawn, the stylesheet animates it on `kwhole` + data-earn, and Snd.keyEarn(tier) plays its sound
-   from that key's theme. Lantern keeps the flare with a warm bloom behind it; Circuit's squares run out from the hub, a current runs down
-   every trace and its corner dots blink; Thorn closes in dark, its thorns flex and a white spiked burst opens round the hub while the glyph
-   turns slowly. It plays over the ring already drawn, nothing is redrawn, and it comes off by itself. Testing plays each on demand (S5). */
+/* ---------- v27 (item 14, build 51): EARNING A KEY — ONE ANIMATION, TWO SECONDS AT MOST ----------
+   This replaces build 43's earn moment (C.5, `kwhole` over the ring) AND build 46's first-open reveal (item 11, the games introduced one at a time
+   round the key). Nested, they ran 6.3s / 8.0s / 10.5s with nothing tappable, which is the "~5s of pulsing with the player unable to move on" Aiden
+   played on build 50. What he asked for on 2026-09-15 was that the CHEST must not open midway through the key's animation; the fix for that is the
+   prompt waiting, not a longer animation.
+
+   config/keys.js KEY_EARN is `ms` and a list of NAMED STEPS. This file knows how to draw a step BY ITS NAME and nothing else — every time goes on
+   the screen as a custom property the stylesheet reads (`--earn-ms`, `--st-<name>-at`, `--st-<name>-ms`) — so a re-tune is a number edit there and
+   the gate holds the names to the ones item 14 wrote. The step names, across the three tiers:
+     spokes  the seven game spokes fire INWARD. `spokes.gap` is the beat between them (0 = all at once, which is the Pro key's whole idea)
+     spin    the key spins once and clicks upright as the last spoke lands (Skill)
+     snap    the key snaps a quarter turn like a key in a lock — hard stop, slight overshoot (Pro)
+     ring    the outer ring flashes (Pro)
+     drop    the key falls in from above (Author)   ·   slam  it hits the centre, and the screen shakes `shake` px
+     crack   `cracks` cracks run outward from the ring   ·   thorns  `thorns` spikes flick out round the rim
+     flash   THE CLOSING GLOW, and the only step that is not movement — a flash, never a hold (EARN_GLOW in config/keys.js names it)
+   Each step lands with its own sound (Snd.keyStep, config/audio.js KEY_STEP_FX), except a spoke firing alone, which lands with ITS OWN GAME'S
+   sound — Snd.mapFx, the family the map's first open uses, and the one thing of build 46's reveal worth keeping. The key's own earn sound
+   (Snd.keyEarn) is fired ON THE FLASH so it lands on the last beat (item 14); it rings on past the animation the way music does, and nothing
+   waits for it.
+
+   A TAP SKIPS TO THE END AND THE SCREEN NEVER LOCKS: the capture below finishes every animation the stage started and lets the reveal settle at
+   once. ui/reveal.js swallows a tap before the stage is done, so the skip is registered here, on the same capture the title sequence uses. */
 const ARRIVE_MS = 2600, EARN_AT = 260, OPEN_GAP = 250;   // the arrival's own length; when a due earn starts after the screen draws; the beat between an animation ending and a chest opening (guess)
 let earnAt = EARN_AT, earnT = 0, earnPlan = null;
 const earnOf = tier => KEY_EARN[tier] || KEY_EARN.clear;
-function earnLayers(tier) { const E = earnOf(tier), back = [], front = [];
-  if (E.bloom) back.push(`<defs><radialGradient id="kebloomg"><stop offset="0" stop-color="var(--ktint)" stop-opacity=".5"/><stop offset="1" stop-color="var(--ktint)" stop-opacity="0"/></radialGradient></defs><circle class="kebloom" cx="${CX}" cy="${CY}" r="${R_RING}"></circle>`);
-  if (E.spikes) back.push(`<defs><radialGradient id="kevigg"><stop offset=".3" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".85"/></radialGradient></defs><circle class="kevig" cx="${CX}" cy="${CY}" r="${R_RING + 70}"></circle>`);
-  for (let i = 0; i < (E.rings || 0); i++) front.push(`<rect class="kesq" x="${CX - R_HUB}" y="${CY - R_HUB}" width="${R_HUB * 2}" height="${R_HUB * 2}" style="--i:${i}"></rect>`);
-  if (E.pulses) $$('#key-ring .khalo').forEach((h, i) => { for (let k = 0; k < E.pulses; k++) front.push(`<path class="kepulse" pathLength="1" d="${h.getAttribute('d')}" style="--i:${i};--k:${k}"></path>`); });
-  for (let i = 0; i < (E.spikes || 0); i++) front.push(`<path class="kespk" d="M${CX - 3} ${CY - R_HUB - 4}L${CX} ${CY - R_HUB - 30 - (i % 2) * 16}L${CX + 3} ${CY - R_HUB - 4}z" style="--i:${i};--a:${Math.round(i * 360 / E.spikes)}deg"></path>`);
-  return { back: back.length ? `<g class="kearnbg">${back.join('')}</g>` : '', front: front.length ? `<g class="kearn">${front.join('')}</g>` : '' }; }
+/* the extra layers a tier draws, on top of the ring that is already there: the Author key's cracks running out of the rim and the thorns flicking
+   out round it. The counts are config/keys.js (`cracks`, `thorns`); nothing else in the app knows these paths */
+function earnLayers(tier) { const E = earnOf(tier), out = [];
+  // the closing flash, on every tier: a bloom out of the hub in the key's own tint on the `flash` step, 240-280ms and gone (item 14)
+  out.push(`<circle class="keflash" cx="${CX}" cy="${CY}" r="${R_HUB}"></circle>`);
+  for (let i = 0; i < (E.cracks || 0); i++) { const a = i * 360 / E.cracks;
+    out.push(`<path class="kecrk" pathLength="1" d="M${CX} ${CY - R_RING}l-7 -26l5 -13l-3 -15" style="--i:${i};--a:${Math.round(a)}deg"></path>`); }
+  for (let i = 0; i < (E.thorns || 0); i++) { const a = i * 360 / E.thorns;
+    out.push(`<path class="kethn" d="M${CX - 4} ${CY - R_RING}L${CX} ${CY - R_RING - 22 - (i % 2) * 9}L${CX + 4} ${CY - R_RING}z" style="--i:${i};--a:${Math.round(a)}deg"></path>`); }
+  return `<g class="kearn">${out.join('')}</g>`; }
 const earnClear = () => { const r = $('#key-ring'); if (r) r.querySelectorAll('.kearn,.kearnbg').forEach(n => n.remove()); };
-function earnMoment(tier) { const el = $('#s-key'), ringEl = $('#key-ring'), E = earnOf(tier); clearTimeout(earnT); earnClear();
-  if (!ringEl || !el.classList.contains('on') || $('#key-main').hidden) return;
-  const L = earnLayers(tier); const ground = ringEl.querySelector('.kground');
-  if (L.back) { if (ground) ground.insertAdjacentHTML('afterend', L.back); else ringEl.insertAdjacentHTML('afterbegin', L.back); }
-  if (L.front) ringEl.insertAdjacentHTML('beforeend', L.front);
-  el.classList.remove('kwhole'); el.dataset.earn = tier; el.style.setProperty('--earn-ms', E.ms + 'ms'); void el.getBoundingClientRect(); el.classList.add('kwhole');
-  Snd.keyEarn(tier);
-  earnT = setTimeout(() => { el.classList.remove('kwhole'); delete el.dataset.earn; earnClear(); }, E.ms + 150); }
 
-/* ---------- v25 (items 11 / 13 / 22, build 46): THE FIRST-OPEN REVEAL OF A KEY ----------
-   Item 11: "the current intro is too flat". The games are introduced one by one AROUND the key, CLOCKWISE FROM QUICK TAP AT 12 — which is
-   the order this file already draws them in, so a node's index is its hour and nothing here orders anything — each landing with a soft
-   version of its OWN game's sound (Snd.mapFx, the same family the map's first open plays, item 2). Then the key itself lights: build 43's
-   earn moment (C.5) and Snd.keyEarn, inside the reveal rather than beside it. Then it SETTLES into item 13's finished state, which is the
-   whole of item 13's last line. About 4s / 5s / 6–7s, escalating, and what is drawn escalates with it (KEY_REVEAL in config/keys.js).
-   It is a STAGE handed to the one shared reveal (ui/reveal.js): that file owns the clock, swallows every tap, holds "tap to continue" and
-   ends on the congratulations card. It plays ONCE per tier per profile (`prefs.revealed`), and Testing's per-chest reset clears it.
-   v26 (items 10 / 11, build 48): IT IS NEVER CUT OFF, AND IT ENDS ON THE KEY. What cut it (FEEDBACK-v24 and v26 item 10, "breaks partway and jumps
-   to the finished state") was this stage's own settle: the key lit at `hubAt` (2.7s on key 1) and the reveal settled at `settleAt` (3.3s), which
-   takes `kwhole` off — 600ms into a 2.9s earn moment (800ms of 3.8s on Pro, 900ms of 4.8s on Author). So the settle now waits for the earn
-   moment's OWN END: `hold()` hands the reveal the finished promise of every animation `kwhole` started, read off the elements at the moment it
-   starts (the build-46 rule — a time tied to an animation reads the animation, never a second list of times), and `settleAt` / `ms` can only
-   move later to make room for it. No tap, Back or hand-over is taken before then: ui/reveal.js swallows every tap until the stage is done. And the
-   reveal no longer holds on "tap to continue" or ends on a card (item 11) — it ends by itself, and the screen under it says the one thing to do. */
-function keyStage(tier) { const R = KEY_REVEAL[tier] || KEY_REVEAL.clear, el = $('#s-key');
-  const list = games(), ids = [];
+/* the stage the one shared reveal (ui/reveal.js) runs: it owns the clock and the taps, this owns the drawing. `hold()` is what keeps the settle
+   from landing inside the animation — the finished promise of every animation the start beat put on the screen, read off the document so a
+   re-tune in config/keys.js moves it without a second list of times (the build-46 rule). */
+let earnSkip = null;
+function keyStage(tier) { const E = earnOf(tier), el = $('#s-key'), ids = [];
   const at = (t, fn) => { const h = setTimeout(() => { if (revealOn()) fn(); }, Math.max(0, t)); ids.push(h); return h; };
-  // the earn moment inside the reveal, whole: it starts at hubAt and lasts its own length, so the settle can never land inside it
-  const settleAt = Math.max(R.settleAt, R.hubAt + earnOf(tier).ms), ms = settleAt + Math.max(0, R.ms - R.settleAt);
-  let earnAnims = null, quick = false;
-  return { ms, settleAt,
-    steps: [{ name: 'dim', at: 0, ms: R.dim }, { name: 'games', at: R.nodeAt, ms: (list.length - 1) * R.nodeGap }, { name: 'hub', at: R.hubAt, ms: R.settleAt - R.hubAt }],
+  let anims = null, quick = false, done = null;
+  return { ms: E.ms, settleAt: E.ms,
+    steps: (E.steps || []).map(x => ({ name: x.name, at: x.at, ms: x.ms })),
     start(host, k = {}) { const ringEl = $('#key-ring'); if (!ringEl) return;
-      el.dataset.rev = tier; el.style.setProperty('--rev-ms', R.ms + 'ms'); el.style.setProperty('--dim-ms', R.dim + 'ms');
-      el.style.setProperty('--node-at', R.nodeAt + 'ms'); el.style.setProperty('--node-gap', R.nodeGap + 'ms');
-      // each root, node and label carries its own hour, so the stylesheet walks the ring clockwise with no second list of times
+      el.dataset.earn = tier; el.style.setProperty('--earn-ms', E.ms + 'ms');
+      for (const x of (E.steps || [])) { el.style.setProperty(`--st-${x.name}-at`, x.at + 'ms'); el.style.setProperty(`--st-${x.name}-ms`, x.ms + 'ms'); }
+      el.style.setProperty('--spoke-gap', ((E.spokes && E.spokes.gap) || 0) + 'ms');
+      el.style.setProperty('--spoke-ms', ((E.spokes && E.spokes.each) || 300) + 'ms');
+      el.style.setProperty('--earn-shake', (E.shake || 0) + 'px');
+      // each spoke, node and label carries its own index, so the stylesheet walks the ring with no second list of times
       ringEl.querySelectorAll('.kr').forEach((g, i) => g.style.setProperty('--h', String(i)));
       ringEl.querySelectorAll('.knode').forEach((g, i) => g.style.setProperty('--h', String(i)));
       ringEl.querySelectorAll('.klabels text').forEach((t, i) => t.style.setProperty('--h', String(i)));
-      // the escalation that is drawn, not timed (item 11): sparks round the ring, and a ring running out from the hub as each game lands
-      const extra = [];
-      for (let i = 0; i < (R.motes || 0); i++) { const a = i * (360 / Math.max(1, R.motes)) * Math.PI / 180;
-        extra.push(`<circle class="kmote" cx="${f1(CX + Math.cos(a) * (R_RING - 8))}" cy="${f1(CY + Math.sin(a) * (R_RING - 8))}" r="1.8" style="--i:${i}"></circle>`); }
-      for (let i = 0; i < (R.ripple || 0); i++) extra.push(`<circle class="kripple" cx="${CX}" cy="${CY}" r="${R_HUB}" style="--i:${i}"></circle>`);
-      if (extra.length) ringEl.insertAdjacentHTML('beforeend', `<g class="krevfx">${extra.join('')}</g>`);
-      el.classList.add('krev'); if (k.quick) el.classList.add('krevquick'); quick = !!k.quick;
+      const extra = earnLayers(tier); if (extra) ringEl.insertAdjacentHTML('beforeend', extra);
+      el.classList.add('kearning'); if (k.quick) el.classList.add('kearnquick'); quick = !!k.quick;
       if (k.quick) return;   // Reduce Motion: the short fade is the whole of it, and settle() lands the finished state
-      // each game lands with its own sound, on the same beat the stylesheet lights it
-      list.forEach((g, i) => at(R.nodeAt + i * R.nodeGap, () => { if (!k.silent) Snd.mapFx(g); }));
-      at(R.hubAt, () => { if (!k.silent) Snd.keyEarn(tier); const rEl = $('#key-ring'); if (!rEl) return;
-        const L = earnLayers(tier), ground = rEl.querySelector('.kground');
-        if (L.back) { if (ground) ground.insertAdjacentHTML('afterend', L.back); else rEl.insertAdjacentHTML('afterbegin', L.back); }
-        if (L.front) rEl.insertAdjacentHTML('beforeend', L.front);
-        el.dataset.earn = tier; el.style.setProperty('--earn-ms', (earnOf(tier).ms) + 'ms'); void el.getBoundingClientRect(); el.classList.add('kwhole');
-        // every animation the key lighting just started, read off the document (which brings styles up to date first) — the moment's own clock
-        earnAnims = document.getAnimations().filter(a => { const tg = a.effect && a.effect.target, tm = a.effect && a.effect.getComputedTiming();
-          return tg && el.contains(tg) && !tg.closest('#key-cere') && tm && Number.isFinite(tm.endTime) && a.playState !== 'finished'; }); }); },
-    /* the reveal settles when this resolves: the end event of every animation the earn moment started. A cancelled one resolves it too (a hold that
-       could never end would strand the screen), and so does a ceiling at twice the moment's length, for a phone that stops painting in the background */
+      if (!k.silent) for (const x of (E.steps || [])) {
+        if (x.name === 'flash') { at(x.at, () => Snd.keyEarn(tier)); continue; }
+        // the Skill key's seven fire one at a time, each with its own game's sound; Pro's fire together, so the step has one sound of its own
+        if (x.name === 'spokes' && E.spokes && E.spokes.gap > 0) { games().forEach((g, i) => at(x.at + i * E.spokes.gap, () => Snd.mapFx(g))); continue; }
+        at(x.at, () => Snd.keyStep(x.name)); }
+      // every animation this beat started, read off the document (which brings styles up to date first) — the animation's own clock
+      anims = document.getAnimations().filter(a => { const tg = a.effect && a.effect.target, tm = a.effect && a.effect.getComputedTiming();
+        return tg && el.contains(tg) && !tg.closest('#key-cere') && tm && Number.isFinite(tm.endTime) && a.playState !== 'finished'; });
+      /* item 14: A TAP SKIPS IT. Finishing every animation the beat started runs each to its last frame at once — so the key ends UPRIGHT and
+         lit rather than frozen part-way — and resolves hold(), which is what lets the reveal settle immediately. */
+      earnSkip = () => { earnSkip = null; ids.forEach(clearTimeout); ids.length = 0;
+        for (const a of (anims || [])) { try { a.finish(); } catch (e) { } }
+        if (!k.silent) Snd.keyEarn(tier); if (done) done(); return true; }; },
+    /* the settle waits for this: the end of every animation the start beat put up. A cancelled one resolves it too (a hold that could never end
+       would strand the screen), and so does a ceiling at twice the animation's length, for a phone that stops painting in the background. A tap
+       resolves it through `done` — the skip's whole job. */
     hold() { if (quick) return null;
-      const all = (earnAnims || []).map(a => a.finished.then(() => 1, () => 0));
-      return Promise.race([Promise.all(all), new Promise(r => setTimeout(r, earnOf(tier).ms * 2 + 1000))]); },
+      const all = (anims || []).map(a => a.finished.then(() => 1, () => 0));
+      return Promise.race([Promise.all(all), new Promise(r => { done = r; setTimeout(r, E.ms * 2 + 1000); })]); },
     step() { },
-    /* the reveal SETTLES into the finished state — item 13's "the reveal ends by settling into the pulsing finished state". It does not SET
-       `kdone`: ring() already put it on for a key that is whole, and Testing's replay on a key that is not whole must not leave the screen
-       claiming it is finished. All settle does is stop holding it back. */
-    settle() { el.classList.remove('krev', 'krevquick', 'kwhole'); delete el.dataset.earn; el.classList.add('ksettle');
-      setTimeout(() => el.classList.remove('ksettle'), 900); },
-    clear() { ids.forEach(clearTimeout); el.classList.remove('krev', 'krevquick', 'kwhole', 'ksettle', 'kdue'); delete el.dataset.rev; delete el.dataset.earn; earnClear();
-      const rEl = $('#key-ring'); if (rEl) rEl.querySelectorAll('.krevfx').forEach(g => g.remove()); } }; }
+    // item 14: a tap skips to the end. ui/reveal.js asks this before the hold; answering true is what takes the tap
+    skip() { return earnSkip ? earnSkip() : false; },
+    /* SETTLES into the finished state (v25 item 13) — it does not SET `kdone`: ring() already put it on for a key that is whole, and Testing's
+       replay on a key that is not whole must not leave the screen claiming it is finished. All settle does is stop holding it back. */
+    settle() { earnSkip = null; el.classList.remove('kearning', 'kearnquick'); delete el.dataset.earn; el.classList.add('ksettle');
+      setTimeout(() => el.classList.remove('ksettle'), 600); },
+    clear() { earnSkip = null; ids.forEach(clearTimeout); el.classList.remove('kearning', 'kearnquick', 'ksettle', 'kdue'); delete el.dataset.earn; earnClear(); } }; }
+/* item 14: the belt. The reveal's own tap (ui/reveal.js, through `skip()` above) is the route that actually fires — its host covers the screen
+   and carries a `data-act`, so ui/actions.js hands the tap to that action and never reaches a capture. This catches a tap that lands outside it. */
+capture(() => { if (!earnSkip || !revealOn()) return false; return earnSkip(); });
 
 /* ---------- v25 (item 22, build 46): WHAT THE CONGRATULATIONS CARD SAYS ----------
    Every line is read off the same functions the rest of the screen reads, so the card cannot claim something the key screen disagrees with; a
@@ -434,15 +438,15 @@ const msgFor = by => { const m = MESSAGES.find(x => x.by && ((by.chest && x.by.c
 const nextChest = () => { const c = CHESTS.find(x => !chestOpen(x.id)); return c ? T(CARD.next, { chest: GRID.chest[c.id] }) : CARD.nDone; };
 /* v26 (item 8, build 49): SHORTER AND CELEBRATORY — "Congratulations" in the chest's own colour, the chest's one "You …" line (config/copy.js CARD.you),
    "Next: can you open the … chest?", and the video it opened. No list of what you did or got, no headings, no percentage (item 7) */
-// the chest's own colour: a `gift` colour on its CHEST_LOOK row if it has one, else its band's — the card, the rings and sparks its rewards land with, and its rewards' symbols (ui/chest.js)
-const chestCol = id => { const L = CHEST_LOOK[id] || {}; return L.gift || (METER_BANDS[L.band] || METER_BANDS[1]).col; };
+// the chest's own colour — ui/chest.js chestCol: the card, the rings and sparks its rewards land with, and its rewards' symbols
+// v27 (item 13): one chest colour, ui/chest.js chestCol — the colour of the key that opens it (R2), no longer the meter band's
 function chestCard(id) { const m = modeCount();
   return { title: CARD.title, col: chestCol(id), you: T((CARD.you || {})[id] || '', { total: m.total }), next: nextChest(), msg: msgFor({ chest: id }) }; }
 
 /* the reveal itself. `demo` is Testing replaying it with nothing stored (S5); everything else plays it once per tier (`prefs.revealed`) and
    writes that the moment it starts, so a reload mid-reveal never replays it.
    v26 (item 11, build 48): IT ENDS BY ITSELF, ON THE KEY. No "tap to continue", no card: once the earn moment has played to its last frame the
-   reveal takes itself off and the screen says only what to do next — "tap the key to open the Key chest" — and a tap on the key opens it. Inside a
+   reveal takes itself off and the screen says only what to do next — "tap the key to open the Skill chest" — and a tap on the key opens it. Inside a
    result interlude the key waits for that tap (or Back) instead of handing itself back on a timer, and the chest's own card hands back to the
    result screen. A chest tapped on the map while this was unseen still opens after it: the player already asked. */
 let keyWait = false;
@@ -457,10 +461,16 @@ function keyReveal(tier, o = {}) {
      tap, so the reveal takes the lock off itself the moment it starts holding, and its Continue is what hands over: back to the result screen,
      or on to the chest that was waiting. Outside both, they are no-ops. */
   const t = keyTiers().find(k => k.id === tier) || keyTiers()[openKey];
-  return playReveal($('#key-cere'), { kind: 'key', id: tier, col: t.tint, stage: keyStage(tier), auto: true,
+  /* v27 (item 14, build 51): THE SCREEN NEVER LOCKS while a key is being earned. An interlude or a waiting chest holds the input lock over this
+     screen, and `onClick` drops every tap while it is on — which would swallow the skip item 14 asks for. The lock comes off the moment the
+     animation starts instead: what it was protecting is still protected, because the reveal's host covers the screen, Back is refused while a
+     reveal is on (onBack), and a waiting chest opens from `onDone` whether the animation ended by itself or was tapped through. */
+  const started = playReveal($('#key-cere'), { kind: 'key', id: tier, col: t.tint, stage: keyStage(tier), auto: true,
     onReady: () => lock(false),
     onDone: () => { $('#s-key').classList.remove('kdue');
-      if (pendingOpen) { const id = pendingOpen; pendingOpen = null; setTimeout(() => { if ($('#s-key').classList.contains('on')) openNow(id); }, OPEN_GAP); } } }); }
+      if (pendingOpen) { const id = pendingOpen; pendingOpen = null; setTimeout(() => { if ($('#s-key').classList.contains('on')) openNow(id); }, OPEN_GAP); } } });
+  if (started) lock(false);
+  return started; }
 
 /* ---------- v24 (C.1 / B.2 / B.3, build 43): OPENING A CHEST ----------
    Nothing on this screen opens a chest by itself any more. A chest opens because the player asked: the map's tap on a READY chest (B.2 — it
@@ -482,7 +492,7 @@ function openNow(id) { if (chestState(id) !== 'ready') return false; askClose();
   if (c && typeof c.screen === 'number') openKey = c.screen;
   render(); Music.menu(themeOf(keyTiers()[openKey]));
   return true; }
-/* C.1: THE ASK. The lock box's own shape, in green: the chest, "Open the Key chest?", Open / Not yet. Bare ground behind it is Back, which closes
+/* C.1: THE ASK. The lock box's own shape, in green: the chest, "Open the Skill chest?", Open / Not yet. Bare ground behind it is Back, which closes
    it; the panel itself swallows a stray tap */
 function askOpen(id) { if (chestState(id) !== 'ready') return false; const box = $('#key-ask');
   box.innerHTML = `<div class="kask" data-act="key-ground">${chestSvg(id)}<h3>${esc(T(KEY.ask, { chest: GRID.chest[id] }))}</h3><div class="row"><button class="item" data-act="key-ask-yes" data-chest="${id}">${esc(KEY.askYes)}</button><button class="item sub" data-act="key-ask-no">${esc(KEY.askNo)}</button></div></div>`;
@@ -502,8 +512,9 @@ function interlude(a, back) { const el = $('#s-key'); el.classList.add('auto'); 
   const arrive = firstIn() ? ARRIVE_MS : 0;
   setTimeout(() => advance(a), arrive);
   // an earn moment render() scheduled runs from the screen's draw, 320ms before this; the hand-back waits past its end
-  // v25 (item 11): the wait is the REVEAL's length now — and if one is still playing when the timer comes round, it owns the hand-back instead
-  const earnWait = earnPlan ? Math.max(0, earnAt - 320 + (KEY_REVEAL[earnPlan] || KEY_REVEAL.clear).ms + OPEN_GAP - 3900 - arrive) : 0;
+  // v25 (item 11): the wait is the earned animation's own length — and if one is still playing when the timer comes round, it owns the hand-back
+  // v27 (item 14, build 51): that length is KEY_EARN's now, 1.7–2.0s rather than 6.3–10.5s, so the interlude waits a fraction of what it did
+  const earnWait = earnPlan ? Math.max(0, earnAt - 320 + earnOf(earnPlan).ms + OPEN_GAP - 3900 - arrive) : 0;
   // v17 (B.33): the animations run at 1.5x their old length, so the interlude has to wait 1.5x as long or it would hand
   // itself back over the top of the halo it just lit. One number, and it is the only place either length is written.
   // v26 (item 11, build 48): and once a key's reveal has played here, the key waits for its tap — Back, or its chest's card, hands back instead
@@ -558,7 +569,7 @@ register('s-key', { onShow({ advance: a, from, auto: to, tier, whole, arrive, ce
   onBack() { if (revealOn() || openT) return true; if (askClose()) return true; if (auto) { if (keyWait) handBack(); return true; } if (!cameFrom) return false; const to = cameFrom; cameFrom = null; show(to); return true; } });
 // a ceremony, the ask, a waiting open and this key's background belong to this screen: leaving it any other way ends them and gives the music back
 on('screen:change', ({ id }) => { if (id === 's-key') return; stopReveal(); askClose(); setKeyLayer(null);
-  clearTimeout(earnT); earnPlan = null; keyWait = false; const el = $('#s-key'); el.classList.remove('kwhole', 'krev', 'krevquick', 'ksettle', 'kdue'); delete el.dataset.earn; delete el.dataset.rev; earnClear();
+  clearTimeout(earnT); earnPlan = null; keyWait = false; const el = $('#s-key'); el.classList.remove('kearning', 'kearnquick', 'ksettle', 'kdue'); delete el.dataset.earn; delete el.dataset.rev; earnClear();
   if (openT) { clearTimeout(openT); openT = 0; } pendingOpen = null; lock(false); });
 const keyTierIx = id => Math.max(0, keyTiers().findIndex(k => k.id === id));
 define({
@@ -582,7 +593,7 @@ define({
   /* v23 (L.12, build 40): a whole key goes to its chest on the map when that chest is open, with its words beside it.
      v24 (C.1, build 43): when that chest is READY the tap ASKS — and so does a ready chest in the row, and the quiet screen's key */
   /* v26 (item 11, build 48) opened a ready chest straight from the key, with no ask. REVERSED (Aiden's answer to build 48's open questions, built for
-     build 49): tapping a whole key — or the quiet screen's key — ASKS again, as C.1 had it. "tap the key to open the Key chest" still leads to it */
+     build 49): tapping a whole key — or the quiet screen's key — ASKS again, as C.1 had it. "tap the key to open the Skill chest" still leads to it */
   'key-chest'(el) { const id = el.dataset.chest; if (chestState(id) === 'ready') { askOpen(id); return 'pick'; }
     if (keyWait) return undefined; show('s-pick', { chest: id }); return 'click'; },
   'key-ask-yes'(el) { return openNow(el.dataset.chest) ? 'click' : (askClose(), undefined); },

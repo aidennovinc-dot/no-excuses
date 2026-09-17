@@ -22,7 +22,7 @@
 
    NEITHER CIRCUIT NOR THORN IS SEEN BEFORE ITS CHEST (§A.1, as narrowed by v21 G.1 / G.2: the keys are on the strip, their
    numbers are not). Since build 40 (v23 §L.10) each tier opens with the chest config/chests.js says reveals it — key 1 with the
-   Games chest, Pro with the Key chest, Author with the Pro chest — through tierOpen() (#411: the chest, OR Testing's OPEN
+   Games chest, Pro with the Skill chest, Author with the Pro chest — through tierOpen() (#411: the chest, OR Testing's OPEN
    EVERYTHING, OR Supporter — both dev-only, stripped from release by BUILD_FLAGS.dev).
 
    KEY_ART is the glyph per tier, and it gets progressively more elaborate as the difficulty rises (5.3): a plain bow
@@ -44,17 +44,41 @@ export const KEYS = [
     lede: "The author's own times. The last thing left to beat." },
 ];
 
-/* ---------- v24 (C.5, build 43): EARNING A KEY — its own moment per tier, apart from opening a chest ----------
-   Build 32's whole-key moment was one glyph flare for all three. Earning a key and opening a chest are two different moments (C.5), so each
-   tier's earn is its own: Lantern a warm bloom behind the flare; Circuit square pulses running out from the hub, a current down every trace
-   and the corner dots blinking; Thorn a dark closing-in, the thorns flexing and a white spiked burst while the glyph turns slowly. `ms` is
-   the whole moment; the counts are how many of each drawn element (ui/screens/key.js earnHtml). The sound is KEY_EARN_FX in
-   config/audio.js, from the key's own theme. Escalating in length and in what is drawn (gated). All (guess). */
+/* ---------- v27 (item 14, build 51): EARNING A KEY — ONE ANIMATION PER TIER, TWO SECONDS AT MOST ----------
+   THIS REPLACES BOTH build 43's KEY_EARN (the moment over the ring: 2.9 / 3.8 / 4.8s) AND build 46's KEY_REVEAL (the first-open reveal that
+   wrapped it: 4 / 5 / 6.6s). Nested, they ran 6.3s, 8.0s and 10.5s, none of it skippable — which is what Aiden played on build 50 and described
+   as "a weak movement, then ~5s of pulsing with the player unable to move on". What he asked for on 2026-09-15 was only that the chest must not
+   open midway through the key's animation; the fix for that is the chest PROMPT WAITING, not a longer animation.
+
+   Item 14's four rules, and where each one lives:
+     · the whole thing is 2.0s at most            — `ms`, and the gate fails a tier over 2000
+     · movement is at least three quarters of it  — every step but `flash` is movement; the gate measures the span and fails under .75
+     · the closing glow is a FLASH, not a hold    — `flash` is the last step, 240–280ms, and the screen is free the moment `ms` is up
+     · a tap skips to the end, the screen never locks — ui/screens/key.js `skipEarn()`, on the same capture the title sequence uses
+   And the chest prompt waits for it to finish, which is the original complaint's actual fix.
+
+   EACH KEY IS ITS OWN ANIMATION, escalating (item 14, Claude's proposals — Aiden has not seen these in motion yet):
+     clear   the seven spokes fire INWARD one after another; the key spins once and clicks upright as the last lands
+     pro     all seven fire at once; the key snaps a quarter turn like a key in a lock, hard stop, slight overshoot; the ring flashes
+     author  the key drops from above and slams into the centre; the ring cracks outward with a screen shake; thorns flick out round the rim
+
+   The shape is the CEREMONY shape (config/chests.js) on purpose: `ms` and a list of NAMED steps, each with its own `at` and `ms`. ui/screens/key.js
+   knows how to draw a step by its name and nothing else, and every time is a custom property the stylesheet reads — so a re-tune is a number edit
+   here. `spokes.gap` is the beat between spokes (0 = all at once, which is Pro's whole idea) and `spokes.each` one spoke's own flight; `cracks`,
+   `thorns` and `shake` are how many of each are drawn and how far the screen moves, the escalation that is drawn rather than timed.
+   The sound is KEY_EARN_FX in config/audio.js, fired on the FLASH so it lands on the last beat (item 14); each step has its own sound as well —
+   KEY_STEP_FX, except a spoke that fires alone, which lands with its own game's sound the way the map's tiles do. All (guess), and heard by nobody
+   (UNVERIFIED.md). */
 export const KEY_EARN = {
-  clear: { ms: 2900, bloom: 1, rings: 0, pulses: 0, spikes: 0 },
-  pro: { ms: 3800, bloom: 0, rings: 3, pulses: 2, spikes: 0 },
-  author: { ms: 4800, bloom: 0, rings: 0, pulses: 0, spikes: 14 },
+  clear: { ms: 1700, spokes: { gap: 130, each: 300 }, cracks: 0, thorns: 0, shake: 0,
+    steps: [{ name: 'spokes', at: 0, ms: 1080 }, { name: 'spin', at: 820, ms: 510 }, { name: 'flash', at: 1330, ms: 240 }] },
+  pro: { ms: 1850, spokes: { gap: 0, each: 340 }, cracks: 0, thorns: 0, shake: 0,
+    steps: [{ name: 'spokes', at: 0, ms: 340 }, { name: 'snap', at: 300, ms: 560 }, { name: 'ring', at: 820, ms: 630 }, { name: 'flash', at: 1450, ms: 260 }] },
+  author: { ms: 2000, spokes: null, cracks: 10, thorns: 12, shake: 5,
+    steps: [{ name: 'drop', at: 0, ms: 430 }, { name: 'slam', at: 410, ms: 250 }, { name: 'crack', at: 620, ms: 620 }, { name: 'thorns', at: 880, ms: 690 }, { name: 'flash', at: 1570, ms: 280 }] },
 };
+// the one step that is not movement — the closing flash. The gate measures every tier's movement against it, so there is no second list of names
+export const EARN_GLOW = 'flash';
 
 /* ---------- v24 (C.6, build 43): THE THREE KEY-SCREEN BACKGROUNDS, drawn in code ----------
    One per key, drawn by ui/atmosphere.js OVER the live background (C.4) while that key's screen is up, and a Customise background once that
@@ -77,24 +101,12 @@ export const KEY_ART = {
   author: ['M24 5l2.7 4.4 5 1-3.5 3.7.6 5-4.8-2.2-4.8 2.2.6-5-3.5-3.7 5-1z', 'M24 21a5 5 0 1 0 0 10 5 5 0 1 0 0-10', 'M24 31v11', 'M24 33h7', 'M24 36h6', 'M24 39h5', 'M17 26h-4', 'M35 26h-4', 'M24 42l-4 5', 'M24 42l4 5', 'M13 26l-3-4', 'M35 26l3-4'],
 };
 
-/* ---------- v25 (item 11, build 46): THE FIRST-OPEN REVEAL OF A KEY ----------
-   Build 43's KEY_EARN was a moment over a ring already lit. Item 11 asks for an EVENT: the games introduced one by one AROUND the key,
-   clockwise like a clock face from Quick Tap at 12 — which is the order ui/screens/key.js already draws them in, so the index IS the
-   hour — each landing with a soft version of its own game's sound (MAP_FX in config/audio.js, the same family the map's first open
-   plays, item 2), finishing on the key settling into its finished state (item 13). It plays ONCE, the first time that key is whole
-   (`prefs.revealed`), it cannot be tapped out of, and Testing's per-chest reset makes it a first time again.
-     `ms`       the whole reveal, before "tap to continue" — about 4s / 5s / 6–7s, escalating (item 11)
-     `dim`      how long the ring holds unlit before the first game arrives
-     `nodeAt`   when the first game lands, `nodeGap` the beat between them — seven games, so nodeAt + 6 × nodeGap is the last
-     `hubAt`    when the key itself lights: KEY_EARN's own layers and Snd.keyEarn(tier) (build 43's moment, inside the reveal now)
-     `settleAt` when it settles into the finished state — the 120% bright pulsing key item 13 asks for
-   The escalation is in what is drawn as well as in length (item 11): `motes` sparks rising round the ring, `ripple` rings running out
-   from the hub as each game lands. All (guess), and heard by nobody (UNVERIFIED.md). */
-export const KEY_REVEAL = {
-  clear: { ms: 4000, dim: 280, nodeAt: 520, nodeGap: 330, hubAt: 2700, settleAt: 3300, motes: 0, ripple: 1 },
-  pro: { ms: 5000, dim: 340, nodeAt: 600, nodeGap: 420, hubAt: 3400, settleAt: 4200, motes: 10, ripple: 2 },
-  author: { ms: 6600, dim: 420, nodeAt: 700, nodeGap: 560, hubAt: 4900, settleAt: 5800, motes: 18, ripple: 3 },
-};
+/* ---------- v25 (item 11, build 46): THE FIRST-OPEN REVEAL OF A KEY — RETIRED AT BUILD 51 ----------
+   KEY_REVEAL was the four-to-seven-second reveal that introduced the seven games one at a time round the ring and then lit the key with build 43's
+   earn moment inside it. v27 item 14 replaces the pair with ONE animation of two seconds at most (KEY_EARN above), so there is nothing left for a
+   second table to time: the seven spokes are the `spokes` step, and the key lighting is `spin` / `snap` / `slam`. The row is gone rather than left
+   unread — a config table nothing reads is the kind of thing that gets re-wired by accident. `prefs.revealed` is unchanged and still means "this
+   key's earn has played", so no profile replays one it has already seen. */
 
 /* ---------- v25 (item 13, build 46): WHAT AN UNFINISHED KEY LOOKS LIKE, AND WHAT A FINISHED ONE LOOKS LIKE ----------
    Both states were the same golden glow, so a key that was 3% done looked like a key that was earned. They are pushed apart from both

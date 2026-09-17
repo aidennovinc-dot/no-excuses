@@ -603,6 +603,58 @@ anything new.**
   the field in its turned direction so it cannot leave the screen. The pace, the time behind the wall, the marker and the millisecond score are
   `hidden()`'s own; both share `hiddenGo()`. A Set draws none of it (B.5).
 
+### Amended at build 51 (batch 20, names, chests, keys and sounds: FEEDBACK-v27 items 1, 2, 3, 4, 5, 6, 12, 13, 14), 2026-09-18
+
+Nothing before this entry is rewritten: the earlier entries keep the names they were written with, and "Key chest" and
+"Thorns chest" in them mean what are now the Skill and Author chests.
+
+- **AMENDED (v23 L.10's "Games, Key, Pro, Thorns"): THE FOUR CHESTS ARE GAMES / SKILL / PRO / AUTHOR (v27 items 3 / 4).** The Skill key opens the
+  Skill chest and the Author key the Author chest, which is R2 below in copy. `GRID.chest` in `config/copy.js` is now the ONE place any of the four
+  is spelled: `index.html` carries no label (`ui/screens/pick.js` fills every `.name` from it), a locked Messages row composes its line from its own
+  `by` (`needOf()` in `ui/screens/about.js`, through `GRID.chestNeed` and `MSG.keyNeed`), and the Gauntlet toast fills `GRID.chestOpenIt`. The ids
+  `key` and `thorns` do NOT move — they are store keys (`core/store.js` v4 → v5) and config ids, and renaming them would retire every saved
+  profile's chests for a copy change. Three Messages titles that still called the backgrounds keys ("The Lantern is whole") name their key instead;
+  item 8 drops those three rows at build 52 regardless.
+- **R2, ADDED (v27 items 4 / 13), amending L.9a's one-METER_BANDS-row-per-chest: A CHEST MATCHES THE KEY THAT OPENS IT — name, colour and design
+  language.** `col` on a `CHEST_LOOK` row is the chest's colour, read through `chestCol()` in `ui/chest.js` by the sprite, the ceremony's `--cc`,
+  the spill's particles, a reward symbol with no colour of its own and the congratulations card; the meter keeps its own bands and is not
+  recoloured. The gold banded chest — heavier lid, six fittings, the shimmer along them — moves from Pro to **Skill**, because the Skill key is
+  gold; the **Pro** chest is redrawn from the Pro key: its `tint` `#BFE6FF`, the key's ring and its two antennae on the lid, right-angled traces
+  with square nodes across the box, and a current running the traces as its idle (`circuit`, new). A look's `shim` is the colour a shimmer or a
+  current runs in, so the stylesheet no longer names a gold. Author already matched its key; Games has no key and keeps its plain grey outline.
+- **R1, ADDED (v27 item 2), narrowing 2026-09-16's "the tiles are on the map from the start, locked": A SECRET MAY BE KNOWN TO EXIST, NEVER WHAT IT
+  IS.** A hidden thing shows nothing at all — no row, no tile, no lock, no "???", no connector and no gap — while a total that includes it still
+  says so. Applied to the two Gauntlets: until its chest is opened a tile is `hidden`, `layoutGrid` reserves it no cell, `drawLines` draws it no
+  connector, and `introAt` counts only the Gauntlets actually drawn, so the map's first open has no silent beat where one would have been (eleven
+  tiles on a new profile, not thirteen). Each ARRIVES as part of its chest's own reward moment: the paint that finds the chest open is the paint
+  that spills its words, so the tile comes in on the spill's beat (`gauntarrive`, `--gin` = `SPILL.delay`) rather than the .1s every other arrival
+  uses. `GAUNTLET.need` is retired with the padlock it was written for.
+- **AMENDED (B.20 → v24 C.5 → v25 item 11): EARNING A KEY IS ONE ANIMATION PER TIER, TWO SECONDS AT MOST (v27 item 14).** Build 43's earn moment
+  (2.9 / 3.8 / 4.8s) and build 46's first-open reveal around it (4 / 5 / 6.6s) nested to 6.3s, 8.0s and 10.5s with nothing tappable; `KEY_REVEAL` is
+  retired and `KEY_EARN` replaces both. It is `ms` and a list of NAMED STEPS in the ceremony's shape — `spokes` / `spin` / `snap` / `ring` / `drop`
+  / `slam` / `crack` / `thorns` / `flash` — `keyStage()` in `ui/screens/key.js` draws a step by its name and nothing else, and every time goes on
+  the screen as `--st-<name>-at` / `--st-<name>-ms`. **At least three quarters of it is movement**: `flash` (`EARN_GLOW`) is the only step that is
+  not, it is 240–280ms, and the gate fails a tier over 2000ms or under .75. **A tap skips to the end** — the stage offers `skip()`, `ui/reveal.js`
+  takes it on a tap before the hold (a chest's ceremony offers none and is still unskippable), and every animation the start beat registered is run
+  to its last frame at once, so the key finishes upright and lit. **The screen never locks**: `keyReveal()` drops the input lock as the animation
+  starts, and Back is still refused by `onBack` while a reveal is on. **The chest prompt waits for it**, which is the whole of the 2026-09-15
+  complaint. Each step lands its own sound (`KEY_STEP_FX`, `Snd.keyStep`) except a spoke firing alone, which takes its own game's `MAP_FX`; the
+  key's own `Snd.keyEarn` lands on the flash. Skill: the seven spokes fire inward one at a time, then the key spins and clicks upright. Pro: all
+  seven at once, then a quarter-turn snap with a hard stop and a little overshoot, and the ring flashes. Author: the key drops and slams into the
+  centre, the ring cracks outward with a screen shake, thorns flick out round the rim. A key's reveal also ends the frame its animation does —
+  `REVEAL.giftAt`'s beat was for rewards a key hands over none of.
+- **AMENDED (v25 item 1): EACH TITLE LINE IS ONE IMPACT, ON THE FRAME IT STARTS (v27 item 1).** The low swelling whoosh builds 46–50 played had a
+  400–600ms attack, so its loudest moment arrived half a second after it was fired and read late however it was triggered. `TITLE_FX` is now an
+  impact per beat — every layer opens in 1–4ms and falls away, a low body with one quiet high tick, the title line heavier with a sub under it —
+  and `titleSounds()` in `ui/screens/menu.js` schedules off the animation's own `startTime` on the document timeline rather than off a timer taken
+  after the style recalc.
+- **AMENDED (v23 L.6's chest sounds): the Games chest's seven squares tick a step higher each (v27 item 5), and its rewards pop clear of its own
+  chord (v27 item 6).** The ticks were never removed and never missing — all seven have fired since build 41, on the `uncross` step's own beat, and
+  all seven were the same short note at one pitch, which under the sting read as one texture. They climb the Roots scale now and the seventh is a
+  finish. The pops were firing too (the gate has asserted one per reward since build 49) and were masked: 170 Hz for 80ms, landing under that
+  chest's closing chord and its sting's tail. `POP_FX.by` lifts one chest's pops and `POP_FX.bright` brightens a KEY reward's, and **only `games`
+  has a row** — v27 item 12 approved the Pro chest's sounds exactly as they are, so a shared-code change is scoped to the chest item 6 names.
+
 ## Structure — the full text as of build 30
 
 `CLAUDE.md` keeps the module map. This is the paragraph-by-paragraph description it carried at build 30: the DAG, the
