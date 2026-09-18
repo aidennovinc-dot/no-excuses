@@ -42,9 +42,12 @@ function stageVars(id) { const c = CEREMONY[id];
 /* ---------- the layers, by step name. Behind the chest, then the chest, then in front of it; stage units are a 300 × 520 box ---------- */
 /* v28 (item 13, build 53): the Games chest is the one that BURSTS — the burst circle moved here from the Pro chest — and the three key
    chests share one beam, each in its own `--cc`, because all three now open the same way (assemble · turn · lid · spill). */
+/* v29 (item 5, build 54): and the AUTHOR chest draws its own two layers UNDER that beam — the black wash that swallows the stage on `black`,
+   and the white panel that splits and widens out of the middle on `widen`. Both are behind the chest, so the lid still lifts in front of them. */
 function behind(id) {
   if (id === 'games') return '<circle class="cglow" cx="150" cy="300" r="80"></circle><circle class="cburst" cx="150" cy="300" r="20"></circle>';
-  return '<defs><linearGradient id="cbeam" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#FFFFFF" stop-opacity=".85"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient></defs>'
+  const thorn = id === 'thorns' ? '<rect class="cblack" x="-60" y="-60" width="420" height="640"></rect><rect class="cwide" x="40" y="0" width="220" height="520"></rect>' : '';
+  return thorn + '<defs><linearGradient id="cbeam" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#FFFFFF" stop-opacity=".85"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient></defs>'
     + '<polygon class="cbeam" points="122,300 178,300 270,0 30,0"></polygon>'; }
 // which key opens a chest — the tier whose glyph and colour its ceremony is drawn in (item 13). The Games chest has none
 const tierOfChest = id => { const c = CHESTS.find(x => x.id === id); return c && c.needs !== 'modes' ? c.needs : null; };
@@ -62,6 +65,11 @@ function inFront(id) { const out = [];
       bars.push(`<line class="cbar" x1="${f1(150 + c * 30)}" y1="${f1(170 + s * 30)}" x2="${f1(150 + c * 40)}" y2="${f1(170 + s * 40)}" style="--i:${i};--dx:${f1(c * far)}px;--dy:${f1(s * far)}px"></line>`); }
     // the animated group carries NO transform attribute — a CSS translate on an element that has one composes inside it, and the key missed the lock
     out.push(`<g class="cbarsg">${bars.join('')}</g>`, `<g class="ckeyg"><g transform="translate(116 136) scale(1.4)">${(KEY_ART[tier] || KEY_ART.clear).map(d => `<path d="${d}"></path>`).join('')}</g></g>`); }
+  /* v29 (item 5, build 54): AUTHOR · the spikes grow in from both edges on `spikes` and pull back on `recede`; the split is one white line down
+     the middle, opening on `split`. Build 52's own paths and counts, restored from git — they are in front of the chest because they frame it. */
+  if (id === 'thorns') { for (let i = 0; i < 6; i++) { const y = 18 + i * 84;
+      out.push(`<path class="cspk l" d="M0 ${y}L72 ${y + 26}L0 ${y + 52}z" style="--i:${i}"></path><path class="cspk r" d="M300 ${y}L228 ${y + 26}L300 ${y + 52}z" style="--i:${i}"></path>`); }
+    out.push('<rect class="csplit" x="149" y="0" width="2" height="520"></rect>'); }
   return out.join(''); }
 // v25 (build 46): `tapLine` is the review catalogue's frames only — in the app the shared reveal (ui/reveal.js) owns "tap to continue"
 /* v26 (item 7, build 48): THE GAMES CHEST'S SCREEN SHOWS NO PERCENTAGE. It opens on every game mode — a count, not a place on the key meter — and

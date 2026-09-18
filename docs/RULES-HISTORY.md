@@ -781,6 +781,54 @@ Items 11 and 18 — the Gauntlets as real runs — are build 54 and nothing here
   toast and the sheet's locked chip all compose off it. The words chosen, Cowork's and one line to change: **"Practice from a later note"** — the
   sheet offers off / 5 / 10 / 15, so that is what the unlock gives.
 
+### Amended at build 54 (batch 21, the five decided items from the foot of FEEDBACK-v28), 2026-09-18
+
+Aiden's answers to the build 53 outcome's "what you have to do" list. Two of the five were **no change** and are recorded
+here so they are not reopened: **"Practice from a later note"** is the name of the Sequence unlock, kept as built; and
+**"YOU'VE SEEN THEM ALL!"** stays the Games chest's reward caption, because it is his own message title and reads the way
+he meant it. Items 11 and 18 — the Gauntlets as real runs — are still unbuilt and move to build 55.
+
+- **AMENDED (v28 item 15's "the earn music is the clock"): THE PRO AND AUTHOR STINGS ARE SHORTER, AND THE SKIP WAITS 1.5
+  SECONDS (v29 item 3).** The mechanism is untouched: the music still starts the clock, `ms` is still the music's own
+  length, and the trim is still at the TRACK'S TAIL and never at the motion. What changed is the target — Aiden played
+  build 53's 2.39 / 4.10 / 6.70s and asked for roughly 2.4 / 3.0 / 4.0. Skill was already there. Pro and Author are cut by
+  moving their closing gestures earlier rather than shortening them, because **L.7a's key-theme rule sets a floor** —
+  nothing under 700ms above 300 Hz, nothing above C5 under 1200ms — so a high voice cannot be trimmed to fit and has to
+  arrive sooner. The assemblies do not move (Pro 1900ms, Author 1996ms), so the whole of the shortening lands on `rise`:
+  1900 → 800 and 4300 → 1600. Both still clear the gate's assembly floor at 63% and 50% against the quarter it asks for.
+  **AND THE SKIP NOW HAS A WINDOW.** Build 51's tap-to-skip took a tap at any point, including one landing in the first
+  frames of a moment the player has just earned. `EARN_SKIP_AT` (1500ms, `config/keys.js`) is how long `earnSkip` answers
+  false for; `ui/reveal.js` then swallows that tap the way it swallows every tap before a stage is done — it is not
+  queued and it does not end the moment — and a tap after the window jumps straight to the finished state. The screen
+  still never locks, and the longest anyone is now held by is 1.5s on any of the three.
+
+- **AMENDED (v28 item 2's "a key track is the menu's music too"): ONE RULE FOR BOTH KINDS OF TRACK (v29 item 4).** Build 53
+  read item 2 as being about key themes and left the menu on its own loop for a game's track, reasoning that a game's
+  track belongs to that game and the menu is not a game. Aiden's item 4 overrules the reasoning: **the track picked in
+  Customise, or by a key screen's SET THIS MUSIC, plays on the menu whether it is a key theme or one of a game's three.**
+  A GAME SCREEN IS UNCHANGED and still plays its own — that is `pickRun` in `audio.js`, which reads `everywhere` and
+  never this. Two fields, one writer each time: `everywhere` is still what every RUN plays and still gates a key theme on
+  its key; **`prefs.menuTrack`** (`core/store.js`) is the resolved TRACKS id of whatever was last picked, written in the
+  same breath by the same two controls, so the Music row and the front of the app cannot disagree. It is a preference, so
+  Fresh game keeps it, and it took **no ladder step** — an absent field means "nothing picked yet" and `menuTrack()` falls
+  back to the menu's own loop, which is what every existing profile plays today. A stored key theme is still read through
+  `everywhere()`, so a key that is no longer earned can never play there either.
+
+- **AMENDED (v28 item 13's "a chest opened by a key unlocks; it never breaks"): THE AUTHOR CHEST WEARS ITS OWN LANGUAGE
+  OVER THAT MECHANISM (v29 item 5).** Item 13 was right about the Pro chest — the Pro key opens it, so jagged cracks were
+  the wrong metaphor — but it also took the Author chest's black wash, spikes, split and widen out, and with them the one
+  thing that made that chest match the Thorns key the way the other two match theirs. Item 5 puts them back **as a theme
+  on top of the shared four steps, not instead of them**. `thorns` is now the one nine-step ceremony: `assemble` · `turn`
+  · `lid` · `spill` first and in order, then `black` (the wash, on the assembly), `spikes` (growing in from both edges),
+  `split` (the white line, on the lid) and `widen` / `recede` (carrying the spill). Every rule and path is build 52's,
+  restored verbatim from git (`18a0858`), with **two deliberate differences**: `.cere[data-chest="thorns"] .cchestg
+  {opacity:0}` and its late fade are NOT restored, because the chest has to be on screen for the bars to assemble onto it
+  and the lid to lift; and `cwiden`'s middle keyframe is .55 rather than .9, because the panel now widens BEHIND a chest
+  instead of replacing the scene and .9 white washed it out. `recede` came back with the spikes because it is the back
+  half of the same animation. **Skill and Pro draw none of it** and are untouched, which is what item 5 asks for. The
+  breaking (`shake` / `cracks` / `scatter` / `burst`) stays the Games chest's alone.
+
+
 ## Structure — the full text as of build 30
 
 `CLAUDE.md` keeps the module map. This is the paragraph-by-paragraph description it carried at build 30: the DAG, the

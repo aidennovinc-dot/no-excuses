@@ -473,40 +473,52 @@ export const KEY_EARN_FX = {
      bass pulse, the climbing arp, the melody and its answer, the chord. Around it now: a sub an octave under the pulse from the first beat, two
      more pulses so the drive runs the whole length instead of stopping at 0.8s, a filtered sawtooth swell rising into the landing, a counter-line
      answering the melody, three more notes in the final chord with a high bell over it, and a low resolution to close on. It also has to stay
-     UNDER the Author key, which item 14's escalation and the gate both ask, so every one of these lands again bigger in Thorn below. */
+     UNDER the Author key, which item 14's escalation and the gate both ask, so every one of these lands again bigger in Thorn below.
+     v29 (item 3, build 54): SHORTER, AT THE TAIL. Aiden played build 53's 4.10s and asked for 3.00s. Every note, every wave and every gain is
+     build 52's — what moved is WHEN the closing gestures land and how long they ring: the final chord from 2.20/2.45 to 1.80 and the low
+     resolution from 2.90 to 2.30, both now finishing ON 3.000s together instead of ringing a second past it. Nothing was deleted, so the
+     escalation the gate measures (notes, layers, length: Skill < Pro < Author) is untouched. THE FLOOR THAT SHAPES THIS IS L.7a's KEY-THEME
+     RULE — nothing under 700ms above 300 Hz, nothing above C5 under 1200ms — so a high voice CANNOT be trimmed to fit, it has to start
+     earlier: that is why the chord moved rather than being cut short, and why the bells sit at 1.80 and ring across the landing. */
   pro: { track: 'theme:pro', notes: [[0, -12, 700, 'triangle', .05, 20, 420], [.27, -12, 700, 'triangle', .045, 20, 420], [.54, -12, 700, 'triangle', .05, 20, 420], [.8, -12, 700, 'triangle', .045, 20, 420],
     [1.06, -12, 700, 'triangle', .045, 20, 420], [1.32, -12, 700, 'triangle', .04, 20, 420],
     [0, -24, 1400, 'sine', .055, 20], [1.6, -24, 900, 'sine', .045, 20],
     [0, -5, 800, 'triangle', .02, 60], [.27, 2, 900, 'triangle', .02, 70], [.54, 7, 1000, 'triangle', .02, 80], [.8, 14, 1300, 'sine', .018, 110],
-    [1.35, 19, 1500, 'sine', .018, 160], [1.62, 12, 1400, 'triangle', .016, 150, 1600],
+    [1.35, 19, 1500, 'sine', .018, 160], [1.62, 12, 1380, 'triangle', .016, 150, 1600],
     [1.5, 0, 1100, 'sawtooth', .012, 700, 900], [1.5, 7, 1100, 'sawtooth', .01, 700, 900],
-    [1.88, 17, 1300, 'triangle', .014, 140, 1600],
-    [2.2, -7, 1600, 'triangle', .016, 120], [2.2, 0, 1600, 'triangle', .016, 120], [2.2, 7, 1600, 'triangle', .016, 120], [2.25, 14, 1500, 'sine', .014, 200],
-    [2.2, 12, 1700, 'triangle', .015, 130], [2.2, 19, 1700, 'sine', .013, 180], [2.25, 24, 1600, 'sine', .011, 240],
-    [2.45, 26, 1600, 'sine', .008, 60],
-    [2.9, -24, 1200, 'sine', .05, 25], [2.9, -12, 1200, 'triangle', .03, 30, 500], [2.95, 7, 1150, 'triangle', .012, 220]] },
+    [1.7, 17, 1300, 'triangle', .014, 140, 1600],
+    [1.85, -7, 1150, 'triangle', .016, 120], [1.85, 0, 1150, 'triangle', .016, 120], [1.85, 7, 1150, 'triangle', .016, 120], [1.8, 14, 1200, 'sine', .014, 200],
+    [1.8, 12, 1200, 'triangle', .015, 130], [1.8, 19, 1200, 'sine', .013, 180], [1.8, 24, 1200, 'sine', .011, 240],
+    [1.8, 26, 1200, 'sine', .008, 60],
+    [2.3, -24, 700, 'sine', .05, 25], [2.3, -12, 700, 'triangle', .03, 30, 500], [2.3, 7, 700, 'triangle', .012, 220]] },
   /* v26 (§B1, build 49): THORN — "make it better, with more sounds". Build 43's five layers are all still there; around them now: a sub pulse on every
      second, like a slow heartbeat under the drone; a filtered sawtooth rising out of the dark chord; the low figure answered once more after the
      tonic; three high bells over the landing (each held long, to the theme rule); and the dark chord's answer, low, to close it.
      v27 (Aiden's answer to build 51, build 52): "the author should be epic super duper music" — the biggest of the three, by a clear margin, and
      everything build 52 gave the Pro key has to be beaten here or the escalation the whole set is built on stops meaning anything. Added: a deeper
      opening hit under the drone; a slow sawtooth CHOIR holding three notes of the dark chord from 0.9s; two more bells; the low figure walked a
-     third time; and a final tonic held with its octave and fifth over a closing sub, so it ENDS rather than fades. */
-  author: { track: 'theme:thorns', notes: [[0, -12, 4600, 'sine', .07, 1500], [.6, -6, 2000, 'sawtooth', .012, 700, 800], [.6, 1, 2000, 'sawtooth', .012, 700, 800], [.6, 6, 2000, 'sawtooth', .01, 700, 800],
-    [0, -24, 900, 'sine', .05, 20], [1.0, -24, 900, 'sine', .045, 20], [2.0, -24, 900, 'sine', .05, 20], [3.0, -24, 1400, 'sine', .055, 30],
+     third time; and a final tonic held with its octave and fifth over a closing sub, so it ENDS rather than fades.
+     v29 (item 3, build 54): SHORTER, AT THE TAIL — 6.70s to 4.00s, the biggest cut of the three and still the longest of the three. All 47
+     notes are here and no wave or gain moved; the drone, the dark chord, the choir, the heartbeat subs and the first two walks of the low
+     figure are untouched. What moved is the CLOSE: the final tonic with its octave and fifth comes in at 2.80 instead of 4.60, the dark
+     chord's answer and the closing sub at 3.30 instead of 3.60/5.20, and the third walk of the low figure steps 3.25 · 3.50 · 3.75 into it
+     rather than trailing off after the ending. Everything lands ON 4.000s. Same floor as Pro above: a high voice needs 1200ms of ring
+     (L.7a), so the bells and the top of the chord had to move EARLIER — they could not be shortened. */
+  author: { track: 'theme:thorns', notes: [[0, -12, 4000, 'sine', .07, 1500], [.6, -6, 2000, 'sawtooth', .012, 700, 800], [.6, 1, 2000, 'sawtooth', .012, 700, 800], [.6, 6, 2000, 'sawtooth', .01, 700, 800],
+    [0, -24, 900, 'sine', .05, 20], [1.0, -24, 900, 'sine', .045, 20], [2.0, -24, 900, 'sine', .05, 20], [3.0, -24, 1000, 'sine', .055, 30],
     [1.2, 12, 1100, 'sawtooth', .006, 900, 900],
     [1.0, -5, 320, 'triangle', .022, 20, 700], [1.25, 0, 320, 'triangle', .022, 20, 700], [1.5, 3, 320, 'triangle', .022, 20, 700], [1.75, 0, 320, 'triangle', .022, 20, 700], [2.0, -5, 320, 'triangle', .022, 20, 700], [2.25, -1, 320, 'triangle', .022, 20, 700],
-    [2.3, 0, 2400, 'sawtooth', .013, 200, 1100], [2.3, 7, 2400, 'sawtooth', .013, 200, 1100], [2.3, 15, 2400, 'sawtooth', .011, 200, 1100], [2.5, 19, 2200, 'sine', .016, 500], [3.2, 24, 1500, 'sine', .012, 400],
+    [2.3, 0, 1700, 'sawtooth', .013, 200, 1100], [2.3, 7, 1700, 'sawtooth', .013, 200, 1100], [2.3, 15, 1700, 'sawtooth', .011, 200, 1100], [2.5, 19, 1500, 'sine', .016, 500], [2.8, 24, 1200, 'sine', .012, 400],
     [2.7, 3, 320, 'triangle', .018, 20, 700], [2.95, 0, 320, 'triangle', .018, 20, 700], [3.2, -5, 360, 'triangle', .018, 20, 700],
-    [2.4, 31, 1700, 'sine', .006, 30], [2.75, 27, 1600, 'sine', .006, 40], [3.4, 36, 1800, 'sine', .005, 60],
-    [3.6, -5, 1600, 'triangle', .014, 200], [3.6, 3, 1600, 'triangle', .012, 200], [3.6, 7, 1600, 'triangle', .012, 200],
+    [2.4, 31, 1600, 'sine', .006, 30], [2.75, 27, 1250, 'sine', .006, 40], [2.8, 36, 1200, 'sine', .005, 60],
+    [3.3, -5, 700, 'triangle', .014, 200], [3.3, 3, 700, 'triangle', .012, 200], [3.3, 7, 700, 'triangle', .012, 200],
     [0, -24, 1800, 'sine', .075, 10],
     [.9, -12, 2600, 'sawtooth', .014, 900, 700], [.9, -5, 2600, 'sawtooth', .012, 900, 700], [.9, 3, 2600, 'sawtooth', .011, 900, 700],
-    [1.9, 31, 1900, 'sine', .006, 50], [4.0, 36, 1700, 'sine', .005, 70],
-    [3.9, 3, 360, 'triangle', .017, 20, 700], [4.15, 0, 360, 'triangle', .017, 20, 700], [4.4, -5, 400, 'triangle', .017, 20, 700],
-    [4.0, -24, 900, 'sine', .05, 20], [5.0, -24, 1000, 'sine', .05, 20],
-    [4.6, 0, 2100, 'sawtooth', .014, 300, 1100], [4.6, 12, 2100, 'sawtooth', .012, 300, 1100], [4.6, 19, 2000, 'sine', .014, 400], [4.7, 24, 1900, 'sine', .01, 500],
-    [4.6, -24, 1900, 'sine', .06, 30], [5.2, -24, 1200, 'sine', .05, 30], [5.2, -12, 1490, 'triangle', .026, 200, 500]] },
+    [1.9, 31, 1900, 'sine', .006, 50], [2.8, 36, 1200, 'sine', .005, 70],
+    [3.25, 3, 360, 'triangle', .017, 20, 700], [3.5, 0, 360, 'triangle', .017, 20, 700], [3.75, -5, 250, 'triangle', .017, 20, 700],
+    [3.3, -24, 700, 'sine', .05, 20], [3.55, -24, 450, 'sine', .05, 20],
+    [2.8, 0, 1200, 'sawtooth', .014, 300, 1100], [2.8, 12, 1200, 'sawtooth', .012, 300, 1100], [2.8, 19, 1200, 'sine', .014, 400], [2.8, 24, 1200, 'sine', .01, 500],
+    [2.8, -24, 1200, 'sine', .06, 30], [3.3, -24, 700, 'sine', .05, 30], [3.3, -12, 700, 'triangle', .026, 200, 500]] },
 };
 
 /* v25 (item 17, build 45): A ROUND'S TIER SOUND is VERDICT_FX played shorter and quieter — every start, length and attack × `time`, every gain ×

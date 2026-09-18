@@ -104,6 +104,14 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
        SET THIS MUSIC and Customise's Everywhere row write it. A preference, so Fresh game keeps it; a theme whose chest is shut is KEPT and
        not applied — everywhere() below reads it as 'game' — the L.11a pattern. Anything that is not one of the four becomes 'game'. */
     everywhere:Object.keys(KEY_THEMES).includes(p.everywhere)?p.everywhere:'game',
+    /* v29 (item 4, build 54): `menuTrack` is WHAT THE FRONT OF THE APP PLAYS, and it is written by the same two controls as `everywhere`
+       above — Customise's one Music row and a key screen's SET THIS MUSIC. Build 53 gave the menu a key theme and left it on its own loop
+       for a game track; Aiden's item 4 is ONE RULE FOR BOTH: whatever was picked plays on the menu, key theme or game track alike, while a
+       GAME SCREEN still plays its own (`pickRun` reads `everywhere`, not this). It holds a resolved TRACKS id ('dots:tide', 'theme:pro'),
+       so audio.js needs no second table to turn it into a track. A preference, so Fresh game keeps it; NO LADDER STEP, because an absent
+       field means "nothing picked yet" and menuTrack() in audio.js falls back to the menu's own loop, which is what every profile plays
+       today. A value that is not a track any more is dropped at the point of use, never at load. */
+    menuTrack:typeof p.menuTrack==='string'&&/^[\w-]+:[\w-]+$/.test(p.menuTrack)?p.menuTrack:'',
     /* v21 / v20 (build 37): shape-checked the day they arrived. `retro` is G.4's retroactive clears not yet seen on the keys screen —
        progress. `devKeys` is G.8's per-key snapshot — a dev switch, so it exists only while BUILD_FLAGS.dev is on (S5).
        BUILD 40: `gateOff` (G.3's gate) and `pctSeen` (D.4's per-key figure) are retired with the gate and the per-key front number;

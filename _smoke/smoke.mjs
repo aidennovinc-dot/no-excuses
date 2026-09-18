@@ -2217,8 +2217,15 @@ if (section('chests')) {
      the seventh bursts it. Driven: the cracks are counted off the map's own sprite as games are unlocked. ---- */
   {
     const CER = CH48.CEREMONY, TURN = ['assemble', 'turn', 'lid', 'spill'];
-    const keyTurn = ['key', 'pro', 'thorns'].every(id => CER[id].steps.map(x => x.name).join() === TURN.join());
-    const BREAK = ['shake', 'cracks', 'scatter', 'spikes', 'split', 'widen', 'recede', 'black'];
+    /* AMENDED at build 54 (v29 item 5): the four turn steps are still the MECHANISM every key chest runs, and still first and in order — what
+       Aiden's item 5 changes is that the Author chest wears its own language over them again, so `thorns` carries five theme steps after the
+       four. `spikes` / `split` / `widen` / `recede` / `black` therefore move out of the forbidden list and into a list of their own, allowed on
+       the Author chest and on nothing else; the BREAKING (shake, cracks, scatter, burst) stays forbidden on all three, which is item 13. */
+    const keyTurn = ['key', 'pro', 'thorns'].every(id => CER[id].steps.map(x => x.name).slice(0, 4).join() === TURN.join());
+    const THEME54 = ['black', 'spikes', 'split', 'widen', 'recede'];
+    const authorTheme = CER.thorns.steps.map(x => x.name).slice(4).join() === THEME54.join()
+      && ['key', 'pro'].every(id => !CER[id].steps.some(x => THEME54.includes(x.name)));
+    const BREAK = ['shake', 'cracks', 'scatter', 'burst'];
     const noBreak = ['key', 'pro', 'thorns'].every(id => !CER[id].steps.some(x => BREAK.includes(x.name)));
     const grows = CER.key.ms < CER.pro.ms && CER.pro.ms < CER.thorns.ms;
     const gamesBreaks = CER.games.steps.some(x => x.name === 'crack') && CER.games.steps.some(x => x.name === 'burst');
@@ -2233,9 +2240,9 @@ if (section('chests')) {
     const c0 = await crackAt(0), c3 = await crackAt(6), c7 = await crackAt(MODES53.length);
     const counts = c0.drawn === c0.n && c3.drawn === c3.n && c7.drawn === c7.n && c7.n === 7 && c3.n > c0.n && c3.n < 7;
     const fixed = c3.d.every((d, i) => d === c7.d[i]);
-    (keyTurn && noBreak && grows && gamesBreaks && noSwatch && onlyGames && counts && fixed)
-      ? ok(`v28 items 13 / 16 a chest opened by a KEY unlocks and never breaks: ${CP48.GRID.chest.key}, ${CP48.GRID.chest.pro} and ${CP48.GRID.chest.thorns} all run ${TURN.join(' \u00b7 ')} in their own key's colour and glyph, ${CER.key.ms}/${CER.pro.ms}/${CER.thorns.ms}ms, with no shake, cracks, scatter or spikes left between them and no coloured swatches anywhere; the breaking is the ${CP48.GRID.chest.games}'s alone - ${c3.n} of its 7 cracks on the map at ${c3.n} games finished and all 7 at the last, the same cracks in the same order every time, and its ceremony draws the seventh in and bursts it`)
-      : bad('v28 items 13 / 16 the chest openings', JSON.stringify({ keyTurn, noBreak, grows, gamesBreaks, noSwatch, onlyGames, counts, fixed, c0, c3, c7 }));
+    (keyTurn && authorTheme && noBreak && grows && gamesBreaks && noSwatch && onlyGames && counts && fixed)
+      ? ok(`v28 items 13 / 16 / v29 item 5 a chest opened by a KEY unlocks and never breaks: ${CP48.GRID.chest.key}, ${CP48.GRID.chest.pro} and ${CP48.GRID.chest.thorns} all run ${TURN.join(' \u00b7 ')} in their own key's colour and glyph, ${CER.key.ms}/${CER.pro.ms}/${CER.thorns.ms}ms, with no shake, cracks, scatter or burst left between them and no coloured swatches anywhere; the ${CP48.GRID.chest.thorns} chest alone dresses that mechanism in ${THEME54.join(' \u00b7 ')}, which the other two never draw; the breaking is the ${CP48.GRID.chest.games}'s alone - ${c3.n} of its 7 cracks on the map at ${c3.n} games finished and all 7 at the last, the same cracks in the same order every time, and its ceremony draws the seventh in and bursts it`)
+      : bad('v28 items 13 / 16 the chest openings', JSON.stringify({ keyTurn, authorTheme, noBreak, grows, gamesBreaks, noSwatch, onlyGames, counts, fixed, c0, c3, c7 }));
   }
 
   /* ---- 8. v28 items 12 / 17 (build 53): THE CONGRATULATIONS SCREEN IS STAGED AND CELEBRATED. The title lands first, then each block in turn,
@@ -5698,8 +5705,9 @@ if (section('build 41 - batch 16, the moments')) {
   /* ---- 4. L.6 / L.10d: the four ceremonies as named steps, their effects and stings, and none of it the unlock or achievement sound ---- */
   {
     /* AMENDED AT BUILD 53 (v28 items 13 / 16): a chest opened by a KEY unlocks and never breaks, so all three key chests run the one key-turn
-       sequence; the breaking moved to the Games chest, which no key opens, as `crack` then `burst`. */
-    const C = CH41.CEREMONY, want = { games: 'uncross,path,crack,burst,lid,chord', key: 'assemble,turn,lid,spill', pro: 'assemble,turn,lid,spill', thorns: 'assemble,turn,lid,spill' };
+       sequence; the breaking moved to the Games chest, which no key opens, as `crack` then `burst`.
+       AMENDED AGAIN AT BUILD 54 (v29 item 5): the Author chest keeps that sequence and lays its own five theme steps over it. */
+    const C = CH41.CEREMONY, want = { games: 'uncross,path,crack,burst,lid,chord', key: 'assemble,turn,lid,spill', pro: 'assemble,turn,lid,spill', thorns: 'assemble,turn,lid,spill,black,spikes,split,widen,recede' };
     const names = IDS.every(id => C[id].steps.map(s => s.name).join() === want[id]);
     const lens = IDS.map(id => C[id].ms), rising = lens.every((v, i) => !i || v > lens[i - 1]) && Math.abs(lens[0] - 3500) <= 500 && Math.abs(lens[3] - 6000) <= 500;
     const inside = IDS.every(id => C[id].steps.every(s => s.at >= 0 && s.at + s.ms <= C[id].ms));
@@ -5931,7 +5939,7 @@ if (section('build 42 - batch 16, the key themes')) {
     const tier42b = (...ts) => Object.fromEntries(Object.keys(KB42b.KEY_BARS).flatMap(k => ts.map(t => [t === 'clear' ? k : k + '|' + t, NOW])));
     await boot({ chests: { games: 1, key: 1 } }, { bars: tier42b('clear') }, { plain: PLAIN42 });
     await click('[data-go="s-custom"]'); await sleep(500);
-    const cu = await page.evaluate(async () => { const wait = ms => new Promise(r => setTimeout(r, ms)); const S = await import('./core/store.js');
+    const cu = await page.evaluate(async () => { const wait = ms => new Promise(r => setTimeout(r, ms)); const S = await import('./core/store.js'); const M = await import('./audio.js');
       const row = () => [...document.querySelectorAll('#c-track button')].map(b => ({ v: b.dataset.v, txt: b.textContent.trim(), sel: b.classList.contains('sel'), locked: b.classList.contains('locked') }));
       const out = { gone: !document.getElementById('c-everywhere') && !document.getElementById('g-everywhere'),
         label: document.getElementById('c-track').closest('.cgroup').querySelector('.clabel').textContent, before: row(), line0: document.getElementById('lk-track').textContent };
@@ -5939,10 +5947,12 @@ if (section('build 42 - batch 16, the key themes')) {
       document.querySelector(`#c-track [data-v="${shut.v}"]`).click(); await wait(250);
       out.shutTap = { stored: S.prefs.everywhere, line: document.getElementById('lk-track').textContent };
       document.querySelector('#c-track [data-v="key:key"]').click(); await wait(300);
-      out.on = { stored: JSON.parse(localStorage.getItem('ne')).prefs.everywhere, sel: (row().find(b => b.sel) || {}).v };
+      // v29 (item 4, build 54): and what the MENU plays, for both kinds of pick — the stored id and what audio.js resolves it to
+      out.on = { stored: JSON.parse(localStorage.getItem('ne')).prefs.everywhere, sel: (row().find(b => b.sel) || {}).v, menu: S.prefs.menuTrack, plays: M.Music.menuTrack() };
       const t = row().filter(b => !b.v.startsWith('key:'))[1];
       document.querySelector(`#c-track [data-v="${t.v}"]`).click(); await wait(300);
-      out.back = { v: t.v, stored: S.prefs.everywhere, track: S.prefs.track[document.getElementById('pv').dataset.g], sel: (row().find(b => b.sel) || {}).v };
+      out.g = document.getElementById('pv').dataset.g;
+      out.back = { v: t.v, stored: S.prefs.everywhere, track: S.prefs.track[out.g], sel: (row().find(b => b.sel) || {}).v, menu: S.prefs.menuTrack, plays: M.Music.menuTrack() };
       return out; });
     const names = cu.before.map(x => x.txt.toUpperCase());
     const keyRows = cu.before.filter(x => x.v.startsWith('key:'));
@@ -5952,8 +5962,12 @@ if (section('build 42 - batch 16, the key themes')) {
       && keyRows.filter(x => x.locked).length === 2 && cu.line0 === ''
       && cu.shutTap.stored === 'game' && KY42.KEYS.some(k => cu.shutTap.line.includes(k.name))
       && cu.on.stored === 'key' && cu.on.sel === 'key:key'
-      && cu.back.stored === 'game' && cu.back.track === cu.back.v.replace('key:', '') && cu.back.sel === cu.back.v)
-      ? ok(`v28 items 2 / 3 Customise has ONE Music row and no Everywhere row: ${cu.before.length} options - this game's three tracks and one per key (${keyRows.map(x => x.txt).join(' \u00b7 ')}) - each key track locked until its own KEY is earned and saying so under the row ("${cu.shutTap.line}"), never over it; a locked one chooses nothing; the Skill key's track is chosen and stored in the same field the key screen writes; and a tap on one of this game's tracks goes back to Per game with that track chosen`)
+      && cu.back.stored === 'game' && cu.back.track === cu.back.v.replace('key:', '') && cu.back.sel === cu.back.v
+      /* v29 (item 4, build 54): ONE RULE FOR BOTH \u2014 whatever is picked plays on the MENU, key theme or game track alike, where build 53 sent
+         the menu back to its own loop for a game's track. `prefs.menuTrack` is the resolved id and menuTrack() in audio.js is what plays. */
+      && cu.on.menu === 'theme:key' && cu.on.plays === 'theme:key'
+      && cu.back.menu === cu.g + ':' + cu.back.v && cu.back.plays === cu.g + ':' + cu.back.v)
+      ? ok(`v28 items 2 / 3 / v29 item 4 Customise has ONE Music row and no Everywhere row: ${cu.before.length} options - this game's three tracks and one per key (${keyRows.map(x => x.txt).join(' \u00b7 ')}) - each key track locked until its own KEY is earned and saying so under the row ("${cu.shutTap.line}"), never over it; a locked one chooses nothing; the Skill key's track is chosen and stored in the same field the key screen writes; a tap on one of this game's tracks goes back to Per game with that track chosen; and EITHER KIND becomes the menu's music - the key theme plays "${cu.on.plays}" on the front of the app and the game track "${cu.back.plays}", one rule for both`)
       : bad('v28 items 2 / 3 the one Music row', JSON.stringify(cu));
   }
 
@@ -6012,7 +6026,12 @@ if (section('build 42 - batch 16, the key themes')) {
     /* AMENDED AT BUILD 53 (v28 item 2): the menu loop reads the setting too - Aiden's line is "whatever is picked plays in the menu from then
        on", and build 42's "the menu loop ignores it" was marked a guess. Music.menu resolves through menuTrack(), which is that key's theme or
        the menu's own loop, so a key track chosen in Customise is the front of the app's music as well as every run's. */
-    const one = /const t=pickRun\(g\); run\(t,g,shapeFor\(t,g,d,len\)\)/.test(srcAud) && (srcAud.match(/pickRun\(/g) || []).length === 1 && /const menuTrack=\(\)=>KEY_THEMES\[everywhere\(\)\]/.test(srcAud);
+    /* DELETED AT BUILD 54 (v29 item 4), NOT RE-SPELLED: the third clause here was `/const menuTrack=\(\)=>KEY_THEMES\[everywhere\(\)\]/` — a
+       source-text check on how one line of audio.js is written. Item 4 gives menuTrack a second branch for a game's track, so the line is
+       spelled differently and the check failed on the refactor; the repo rule is to delete such a check and name it, never to adjust it to the
+       new spelling. Nothing is lost: `rm.menu.track` below DRIVES the page and proves the same fact harder (the menu really plays the theme),
+       and the build-42 Customise check proves the other half — a game's track picked in the Music row is what menuTrack() then resolves to. */
+    const one = /const t=pickRun\(g\); run\(t,g,shapeFor\(t,g,d,len\)\)/.test(srcAud) && (srcAud.match(/pickRun\(/g) || []).length === 1;
     (one && rm.timed.track === 'theme:pro' && rm.timed.arc && rm.timed.fin && rm.timed.flow && !rm.timed.stems
       && rm.set.track === 'theme:pro' && rm.set.arc && Math.abs(rm.set.arcBars - rm.set.want) < .02 && !rm.set.flow
       && rm.open.track === 'theme:pro' && !rm.open.arc && rm.vs.track === 'theme:pro' && rm.vs.stems && !rm.vs.flow && rm.menu.track === 'theme:pro')
@@ -6851,12 +6870,24 @@ if (section('build 46 - batch 18, the unlock experience, sound and About')) {
       seen.push({ tier, st, took, start, heard, after, cfg: KY46.KEY_EARN[tier] });
       await revealDone(); await sleep(300);
     }
-    // item 14: A TAP SKIPS TO THE END and the screen never locks - taken a third of the way through the longest of the three
+    /* item 14: A TAP SKIPS TO THE END and the screen never locks.
+       AMENDED AT BUILD 54 (v29 item 3): THE SKIP WAITS EARN_SKIP_AT MS FIRST. A tap inside that window does NOTHING — it is not taken, not
+       queued, and the ceremony carries on — and a tap after it jumps straight to the finished state. Both halves are driven here, because the
+       old drive tapped a third of the way through the Author key and a third of 4000ms is now inside the window. */
     await boot({ chests: { games: 1, key: 1, pro: 1 } }, { unlock: ALL46, bars: tier46('clear', 'pro', 'author') });
-    await show46('s-key', { tier: 2 }); await sleep(Math.round(KY46.KEY_EARN.author.ms / 3));
-    const tapT0 = Date.now();
-    await page.evaluate(() => document.getElementById('key-cere').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })));
-    const skipSt = await revealReady(); const skipTook = Date.now() - tapT0 + Math.round(KY46.KEY_EARN.author.ms / 3);
+    await show46('s-key', { tier: 2 });
+    /* THE CLOCK IS THE CEREMONY'S, NOT show()'s. The screen's ARRIVAL plays first (`ARRIVE_MS`, and a due earn starts `EARN_AT` after the screen
+       draws), so timing the taps off show() put the "late" tap ~1460ms into a 4000ms ceremony — still inside the window — and it correctly did
+       nothing. Wait for `kearning` and measure from there. */
+    for (let i = 0; i < 80; i++) { if (await page.evaluate(() => document.getElementById('s-key').classList.contains('kearning'))) break; await sleep(50); }
+    const onAt54 = Date.now();
+    const cereTap54 = () => page.evaluate(() => document.getElementById('key-cere').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })));
+    const early54At = Math.round(KY46.EARN_SKIP_AT * .4);
+    await sleep(Math.max(0, early54At - (Date.now() - onAt54))); await cereTap54();
+    const early54 = await page.evaluate(() => ({ on: document.getElementById('s-key').classList.contains('kearning'), cere: !document.getElementById('key-cere').hidden }));
+    await sleep(Math.max(0, KY46.EARN_SKIP_AT + 250 - (Date.now() - onAt54)));
+    await cereTap54();
+    const skipSt = await revealReady(); const skipTook = Date.now() - onAt54;   // measured from the first frame of the ceremony
     const skipped = await page.evaluate(() => ({ kdone: document.getElementById('s-key').classList.contains('kdone'), on: document.getElementById('s-key').classList.contains('kearning'),
       cere: !document.getElementById('key-cere').hidden, ring: !!document.querySelector('#key-ring .kring') }));
     await revealDone(); await sleep(300);
@@ -6872,10 +6903,11 @@ if (section('build 46 - batch 18, the unlock experience, sound and About')) {
     const spokeSounds = seen.every(x => x.heard.map.join() === (walksSpokes(x.tier) ? order : ''));
     const grander = seen[0].cfg.ms <= seen[1].cfg.ms && seen[1].cfg.ms <= seen[2].cfg.ms
       && !seen[0].start.crk && !seen[1].start.crk && seen[2].start.crk > 0 && seen[2].start.thn > 0;
-    const skipOk = skipSt === 'off' && skipTook < KY46.KEY_EARN.author.ms - 200 && skipped.kdone && !skipped.on && !skipped.cere && skipped.ring;
+    const skipOk = skipSt === 'off' && skipTook < KY46.KEY_EARN.author.ms - 200 && skipped.kdone && !skipped.on && !skipped.cere && skipped.ring
+      && early54.on && early54.cere;   // v29 item 3: the tap inside the window left the ceremony running
     (!bad11.length && grander && spokeSounds && skipOk)
-      ? ok(`item 11 / v27 item 14 all three keys get their own earned animation: the Skill AND Pro keys' seven spokes fire clockwise from Quick Tap at 12 (${order.replace(/,/g, ' → ')}), each with its own game's sound, and the Author key has its own; ${seen.map(s => s.tier + ' ' + s.cfg.ms / 1000 + 's (took ' + s.took + 'ms)').join(' · ')}, none over 2.5s, each ending by itself in the finished key with no tap and no card — and A TAP SKIPS IT: taken a third of the way through the Author key's ${KY46.KEY_EARN.author.ms}ms it ended in ${skipTook}ms, on the finished key with its ring drawn`)
-      : bad('item 11 / v27 item 14 the earned animations', JSON.stringify({ bad11, grander, spokeSounds, skipOk, skipTook, skipped, seen: seen.map(s => ({ t: s.tier, st: s.st, took: s.took, heard: s.heard, after: s.after })) }));
+      ? ok(`item 11 / v27 item 14 / v29 item 3 all three keys get their own earned animation: the Skill AND Pro keys' seven spokes fire clockwise from Quick Tap at 12 (${order.replace(/,/g, ' → ')}), each with its own game's sound, and the Author key has its own; ${seen.map(s => s.tier + ' ' + s.cfg.ms / 1000 + 's (took ' + s.took + 'ms)').join(' · ')}, each ending by itself in the finished key with no tap and no card — and THE SKIP WAITS ${KY46.EARN_SKIP_AT}ms: a tap ${early54At}ms into the Author key's ${KY46.KEY_EARN.author.ms}ms did nothing and it played on, a tap after the window ended it in ${skipTook}ms, on the finished key with its ring drawn`)
+      : bad('item 11 / v27 item 14 the earned animations', JSON.stringify({ bad11, grander, spokeSounds, skipOk, skipTook, skipped, early54, seen: seen.map(s => ({ t: s.tier, st: s.st, took: s.took, heard: s.heard, after: s.after })) }));
   }
 
   /* ---- 6. items 11 / 22: FIRST TIME ONLY, and a Testing chest reset makes it a first time again ---- */

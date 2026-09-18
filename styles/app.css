@@ -1649,6 +1649,28 @@
   .cere .cbeam{fill:url(#cbeam);opacity:0;transform-box:view-box;transform-origin:150px 300px}
   .cere.play .cbeam{animation:cbeam var(--st-spill-ms) ease-out var(--st-spill-at) both}
   @keyframes cbeam{0%{opacity:0;scale:1 .1}40%{opacity:.9;scale:1 1}100%{opacity:.45;scale:1 1}}
+  /* v29 (item 5, build 54): THE AUTHOR CHEST'S OWN OPENING, BACK FROM BUILD 52 — AS A THEME OVER THE SHARED KEY TURN, NOT INSTEAD OF IT.
+     Every rule below is build 52's, restored verbatim from git (18a0858), with ONE removed: `.cere[data-chest="thorns"] .cchestg{opacity:0}`
+     and its late fade, which hid the chest until the widen. The chest has to be there for the bars to assemble onto it and the lid to lift,
+     which is item 13's mechanism and is what the other two keys match; so the black wash, the spikes, the split and the widen dress that
+     ceremony instead of replacing it. `recede` comes back with the spikes because it is the back half of the same animation — the spikes
+     growing in and pulling back are one gesture, and Aiden named the gesture. Skill and Pro are untouched: nothing here is drawn for them. */
+  .cere.play[data-chest="thorns"]{animation:cblackbg var(--st-black-ms) ease-in var(--st-black-at) both}
+  @keyframes cblackbg{to{background:#000}}
+  .cere .cblack{fill:#000;opacity:0}
+  .cere.play .cblack{animation:cfade var(--st-black-ms) ease-in var(--st-black-at) both}
+  .cere .cspk{fill:var(--cc);transform-box:fill-box;scale:0 1}
+  .cere .cspk.l{transform-origin:left center}
+  .cere .cspk.r{transform-origin:right center}
+  .cere.play .cspk{animation:cspk var(--st-spikes-ms) cubic-bezier(.3,0,.2,1) calc(var(--st-spikes-at) + var(--i) * 80ms) both,crecede var(--st-recede-ms) ease-in var(--st-recede-at) forwards}
+  @keyframes cspk{from{scale:0 1}to{scale:1 1}}
+  @keyframes crecede{from{scale:1 1}to{scale:0 1}}
+  .cere .csplit{fill:var(--cc);transform-box:view-box;transform-origin:150px 260px;scale:1 0}
+  .cere.play .csplit{animation:csplit var(--st-split-ms) cubic-bezier(.7,0,.3,1) var(--st-split-at) both,cout .6s ease-in calc(var(--st-widen-at) + 600ms) forwards}
+  @keyframes csplit{from{scale:1 0}to{scale:1 1}}
+  .cere .cwide{fill:var(--cc);opacity:0;transform-box:view-box;transform-origin:150px 260px}
+  .cere.play .cwide{animation:cwiden var(--st-widen-ms) cubic-bezier(.3,0,.2,1) var(--st-widen-at) both}
+  @keyframes cwiden{0%{opacity:1;scale:.01 1}45%{opacity:.55;scale:1 1}100%{opacity:.1;scale:1 1}}
   /* v28 (item 13 / 16, build 53): THE BREAKING IS THE GAMES CHEST'S NOW. The Pro chest's shake, its four crack lines and the coloured
      cosmetics that scattered out of it are gone — the Pro key opens the Pro chest, so it unlocks like the Skill chest (the assemble / turn
      rules above carry all three), and item 16 takes the colour out with the scatter. What is left of the breaking moved to the chest with no

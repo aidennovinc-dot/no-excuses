@@ -24,6 +24,11 @@ VERDICT_FX) is in the `config/` paragraph of `RULES-HISTORY.md` → Structure, a
   per-game on / off switch went with the row** — `musicOn(g)` is still read by `Music.start` and a profile that stored
   `false` for a game before build 33 is still silent there with no way back, which is logged in `UNVERIFIED.md` and is
   the open question on the item. The menu loop keeps its own on / off row.
+  **BUILD 54 (v29 item 4): THE MENU PLAYS WHATEVER WAS PICKED, KEY THEME OR GAME TRACK.** `menuTrack()` in `audio.js` resolves
+  `prefs.menuTrack` — the resolved TRACKS id written by Customise's Music row and by a key screen's SET THIS MUSIC, in the same breath as
+  `everywhere`. A key theme still goes through `everywhere()`, so one whose key is not earned can never play there; a game's track is taken as
+  given once `TRACKS` still has it; nothing picked falls back to the menu's own loop. **A RUN is unchanged** — `pickRun` reads `everywhere`
+  and never this, so a game screen still plays that game's track.
   **A preview cuts what is playing (v18 B.29, build 33).** `loop()` schedules a bar at a time, so clearing the interval
   left the outgoing track ringing over the incoming one — "both playing gets confusing". `cut()` retires the bed's gain
   node and the stem and flow nodes with it, and `run()` and `stop()` both call it, so no two tracks can overlap
@@ -110,6 +115,14 @@ VERDICT_FX) is in the `config/` paragraph of `RULES-HISTORY.md` → Structure, a
   **`Music.hush(on)` ducks the bed FULLY under a ceremony** (`HUSH`: 0.08s down, 0.4s back on the tap) — a flag as well as a ramp, so a bed
   built mid-ceremony starts silent. **The levels are not measured:** `_smoke/loudness.mjs` renders tracks, not effects, and these gains were set
   beside `unlockFx` and the verdict sounds by eye. That is the first thing to re-tune on the phone.
+- **AMENDED AT BUILD 52** (Aiden: "even more epic for the pro", "epic super duper" for the author) — Pro grew to 28 notes and Author to 47 — and
+  **AMENDED AGAIN AT BUILD 54 (v29 item 3): THE LENGTHS ARE 2.39 / 3.00 / 4.00s.** Aiden played build 53's 2.39 / 4.10 / 6.70 and asked for
+  roughly 2.4 / 3.0 / 4.0. Nothing was deleted and no wave or gain moved — every cut is at the TAIL, and it is made by bringing the closing
+  gestures FORWARD rather than shortening them, **because the theme rule is a floor**: nothing under 700ms above 300 Hz, nothing above C5 under
+  1200ms, so a high voice cannot be trimmed to fit and has to arrive earlier. Pro's final chord moved from 2.20/2.45 to 1.80 and its low
+  resolution from 2.90 to 2.30; Author's final tonic moved from 4.60 to 2.80, its dark-chord answer and closing sub to 3.30, and its third
+  low-figure walk steps 3.25 · 3.50 · 3.75 into the ending instead of trailing off after it. `KEY_EARN` in `config/keys.js` follows, because
+  the music IS the clock (v28 item 15) — so the whole of the shortening lands on `rise`, and the assemblies do not move.
 - **BUILD 49 — THE SOUND NOTES FROM THE BUILD 46 BOARD (v26 §B1) AND THE UNLOCK EXPERIENCE (items 2, 6).** All in `config/audio.js`; nobody has heard any of
   it (UNVERIFIED.md). Aiden's words are the brief; what was built:
   · **Title (`TITLE_FX`)** "more spacey and wooshy and slightly longer": each ~40% longer with a slower swell, and a pair of quiet sines a few hertz apart
@@ -160,7 +173,7 @@ VERDICT_FX) is in the `config/` paragraph of `RULES-HISTORY.md` → Structure, a
   **`Music.start` resolves it once, in `pickRun(g)`, before `shapeFor`.** So a theme playing as run music gets every rule a game's track
   gets, and none of those rules knows about themes: the arc on a clock or a Set (B.29), the last five seconds (B.28), the versus stems
   (1.4), the flow hum on solo Quick Tap and Dots (B.27), Sequence's duck (keyed on the game, not the track) and the end cadence in the
-  theme's key. **The menu loop does not read the setting (guess, L.7d).** **`FLOW_AT` stays 2.7:** L.7d says "above 3.0 taps/s", but 2.7 is
+  theme's key. **The menu loop does not read the setting (guess, L.7d — WRONG, and settled the other way at build 53 for a key theme and at build 54 for a game track: see `menuTrack()` above).** **`FLOW_AT` stays 2.7:** L.7d says "above 3.0 taps/s", but 2.7 is
   Aiden's own number (v18 B.9) and the note does not quote it.
   **A key's screen plays its theme once its TIER is open — AMENDED at build 43 (v24 C.2 / C.3).** Build 42 waited for the chest the key OPENS
   (guess: "a locked key has no theme to hear"), which put the menu loop on the Pro tab until Pro was finished and on the Author tab until Author

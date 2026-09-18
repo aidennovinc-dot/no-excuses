@@ -186,10 +186,12 @@ define({
     if(k==='bg'){ prefs.bg=b.dataset.v; prefs.tint=''; }
     else if(k==='sq'||k==='lead'||k==='cut') prefs.col[F.g][k]=b.dataset.v;
     /* B.28: the music row IS the track, and a tap plays it. v28 (item 2): the row holds the key tracks too — one of those is
-       prefs.everywhere, this theme for every run and for the menu; one of this game's three puts it back to Per game and stores the track. */
+       prefs.everywhere, this theme for every run and for the menu; one of this game's three puts it back to Per game and stores the track.
+       v29 (item 4, build 54): EITHER KIND ALSO BECOMES THE MENU'S. `prefs.menuTrack` is the resolved id of whatever was just picked — the key
+       theme, or this game's track as TRACKS spells it — written in the same breath, so the row and the front of the app cannot disagree. */
     else if(k==='track'){ const v=b.dataset.v;
-      if(v.startsWith('key:')){ prefs.everywhere=v.slice(4); save(); applyPrefs(F.g); renderCustom(); Music.preview(F.g,4200,KEY_THEMES[v.slice(4)]); return 'pick'; }
-      prefs.everywhere='game'; prefs.track[F.g]=v; Music.preview(F.g,4200,v); }
+      if(v.startsWith('key:')){ prefs.everywhere=v.slice(4); prefs.menuTrack=KEY_THEMES[v.slice(4)]; save(); applyPrefs(F.g); renderCustom(); Music.preview(F.g,4200,KEY_THEMES[v.slice(4)]); return 'pick'; }
+      prefs.everywhere='game'; prefs.track[F.g]=v; prefs.menuTrack=F.g+':'+v; Music.preview(F.g,4200,v); }
     // v28 (item 2): still the master switch — on plays whatever the Music row is set to (Music.menuTrack), off stops it
     else if(k==='menumusic'){ prefs.musicG.menu=b.dataset.v==='true'; if(b.dataset.v==='true') Music.menu(Music.menuTrack()); else Music.stop(); }
     // v13 (7.1): the scale left the pick sheet — one choice, applied to every Sequence run

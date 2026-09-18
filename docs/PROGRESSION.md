@@ -232,6 +232,7 @@ of it, statically and by quitting a run mid-flight and reading storage back.
   - Lantern 2.9s, a warm bloom behind build 32's flare;
   - Circuit 3.8s, three square pulses out from the hub, a current twice down every trace, corner dots blinking, the glyph snapping;
   - Thorn 4.8s, a closing dark, the thorns flexing, fourteen white spikes and a slow turn.
+  **Those three lengths are build 43 values and are history, not current** — v27 item 14 (build 51) replaced the moment with one named-step animation per tier, v28 item 15 (build 53) made each tier’s earn MUSIC its clock, and v29 item 3 (build 54) cut them to **2.39 / 3.00 / 4.00s**, with a 1.5s window before a tap skips (`EARN_SKIP_AT`). `KEY_EARN` in `config/keys.js` is the one place the numbers live; full text in `../CLAUDE.md` and `RULES-HISTORY.md`.
   The glyph's animated group carries no `transform` attribute; a first draft that animated the translated group threw it off the hub.
   Inside an interlude the moment starts after the segment and the hand-back waits for it (`earnWait`). Sound: `Snd.keyEarn`, from the
   key's theme. Testing: one button per key.

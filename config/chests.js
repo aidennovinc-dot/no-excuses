@@ -115,15 +115,23 @@ export const CHEST_LOOK = {
    already says a chest matches the key that opens it; item 13 extends it to the OPENING itself. So Skill, Pro and Author now run the SAME four
    named steps — assemble, turn, lid, spill: the cleared bars fly in and become that key, the key turns in the lock, the lid lifts, light
    spills up — each drawn in its own key's colour and its own key's glyph (ui/ceremony.js reads the tier off CHESTS `needs`), each longer and
-   grander than the one before. `shake` / `cracks` / `burst` / `scatter` and `black` / `spikes` / `split` / `widen` / `recede` are RETIRED.
+   grander than the one before. `shake` / `cracks` / `burst` / `scatter` are RETIRED.
    The Games chest is the one with no key, so it is the one that breaks: `crack` is the seventh crack landing (the other six arrived on the map
    as games were finished) and `burst` is it giving way. Item 16 retires `swatch` with the Pro chest's scatter — "a bunch of colours that don't
-   need to be there"; every chest opens in the page's ink and its own key's colour and nothing else. */
+   need to be there"; every chest opens in the page's ink and its own key's colour and nothing else.
+   v29 (item 5, build 54): THE AUTHOR CHEST GETS ITS OWN LANGUAGE BACK, ON TOP OF THAT MECHANISM. Build 53 retired `black` / `spikes` / `split`
+   / `widen` / `recede` along with the Pro chest's breaking, and Aiden's item 5 takes that half back: the black wash, the spikes growing in
+   from the edges, the white line splitting the middle and widening into the reveal are the AUTHOR CHEST'S THEME — the thing that makes it
+   match the Thorns key the way the Skill and Pro chests match theirs — and they are dressing over the shared four steps, not a replacement
+   for them. So `thorns` is the one ceremony with nine steps: the four every key chest runs, and five of its own laid across them. `black`
+   comes up first, `spikes` grow across the assembly, `split` opens on the lid, and `widen` and `recede` carry the spill. The other three
+   chests are untouched, which is the whole of what item 5 asks for. */
 export const CEREMONY = {
   games: { ms: 3650, steps: [{ name: 'uncross', at: 0, ms: 1200 }, { name: 'path', at: 1150, ms: 600 }, { name: 'crack', at: 1600, ms: 1000 }, { name: 'burst', at: 2500, ms: 520 }, { name: 'lid', at: 2650, ms: 500 }, { name: 'chord', at: 2900, ms: 750 }] },
   key: { ms: 4000, steps: [{ name: 'assemble', at: 0, ms: 1800 }, { name: 'turn', at: 1800, ms: 600 }, { name: 'lid', at: 2400, ms: 500 }, { name: 'spill', at: 2700, ms: 1300 }] },
   pro: { ms: 5000, steps: [{ name: 'assemble', at: 0, ms: 2300 }, { name: 'turn', at: 2300, ms: 700 }, { name: 'lid', at: 3000, ms: 600 }, { name: 'spill', at: 3400, ms: 1600 }] },
-  thorns: { ms: 6000, steps: [{ name: 'assemble', at: 0, ms: 2800 }, { name: 'turn', at: 2800, ms: 800 }, { name: 'lid', at: 3600, ms: 700 }, { name: 'spill', at: 4100, ms: 1900 }] },
+  thorns: { ms: 6000, steps: [{ name: 'assemble', at: 0, ms: 2800 }, { name: 'turn', at: 2800, ms: 800 }, { name: 'lid', at: 3600, ms: 700 }, { name: 'spill', at: 4100, ms: 1900 },
+    { name: 'black', at: 0, ms: 700 }, { name: 'spikes', at: 400, ms: 2200 }, { name: 'split', at: 3600, ms: 400 }, { name: 'widen', at: 4000, ms: 1600 }, { name: 'recede', at: 4000, ms: 1400 }] },
 };
 export const CEREMONY_FX = { meterMs: 900 };
 

@@ -355,10 +355,16 @@ const Music=(()=>{
      seconds landing on the finish (B.28), the versus stems (1.4), the flow hum on solo Quick Tap and Dots (B.27), Sequence's duck (B.30)
      and the end cadence in its key. The menu loop does not read it (guess, L.7d). */
   const pickRun=g=>{ const th=KEY_THEMES[everywhere()]; return (th&&TR[th])||pick(g); };
-  /* v28 (item 2, build 53): AND WHAT THE MENU PLAYS. Build 42's guess was that the menu loop ignores the setting; Aiden's item 2 line is
-     "whatever is picked plays in the menu from then on", so a key track chosen in Customise's one Music row is the front of the app's music
-     too. A game's own track is not — it belongs to that game, and the menu is not a game — so the menu keeps its own loop for those three. */
-  const menuTrack=()=>KEY_THEMES[everywhere()]||'menu';
+  /* v28 (item 2, build 53) → v29 (item 4, build 54): AND WHAT THE MENU PLAYS — ONE RULE FOR BOTH KINDS OF TRACK. Build 42's guess was that
+     the menu loop ignores the setting; build 53 gave it a key theme but kept the menu's own loop for a game track, on the reasoning that a
+     game's track belongs to that game. Aiden's item 4 overrules that reasoning: the track picked in Customise OR by a key screen's SET THIS
+     MUSIC plays on the menu whether it is a key theme or one of a game's three. A GAME SCREEN IS UNCHANGED and still plays its own — that is
+     `pickRun` above, which reads `everywhere` and never this.
+     TWO FIELDS, ONE WRITER EACH TIME. `everywhere` is still what every RUN plays and still gates a key theme on its chest; `prefs.menuTrack`
+     (core/store.js) is the resolved id of whatever was last picked, written in the same breath by the same two controls. A key theme is read
+     through everywhere() so a locked key can never play here either; a game track is taken as given once TRACKS still has it. */
+  const menuTrack=()=>{ const ev=everywhere(); if(ev!=='game') return KEY_THEMES[ev];
+    const m=prefs.menuTrack; return (m&&TR[m]&&!Object.values(KEY_THEMES).includes(m))?m:'menu'; };
   let tr=null, timer=0, next=0, bar=0, hits=[], sHits=[[],[]], fHits=[], mode='', mg=null, sg=[null,null], fg=null;
   let st=null, secs=0, stems=false, flow=false, shape=null, fin=null, duckT=0, hushed=false;
   /* v21 (F.2 c): A REBUILT CONTEXT STRANDS EVERYTHING BUILT ON THE OLD ONE. The bed, the two stems and the flow layer are

@@ -65,6 +65,18 @@ export const KEYS = [
    which is what makes a six-second moment acceptable at all. `finale` is how grand the settle is per tier: `scale` how far the key grows,
    `glow` its halo in px, `halo` how far the ring of light spreads. All (guess).
 
+   v29 (item 3, build 54): AIDEN PLAYED BUILD 53 AND SHORTENED TWO OF THE THREE. Item 15's mechanism is kept exactly — the music still starts
+   the clock, `ms` is still the music's own length, and the trim is still at the TRACK'S TAIL and never at the motion — but the Pro and Author
+   stings are cut to 3.00s and 4.00s (Skill's 2.39s was already what he asked for and is untouched). The assemblies do not move: Pro still
+   assembles for 1900ms and Author for 1996ms, so what shortened is the FINALE — `rise` from 1900ms to 800ms on Pro and from 4300ms to 1600ms
+   on Author. Both still clear the assembly floor comfortably (63% and 50% of the whole, against the quarter the gate asks for).
+     Skill   2.39s → 2.39s, unchanged      Pro  4.10s → 3.00s (rise 1900 → 800)      Author  6.70s → 4.00s (rise 4300 → 1600)
+   AND THE SKIP NOW WAITS 1.5 SECONDS. Build 51's tap-to-skip took a tap at any point, including one landing in the first frames of a moment
+   the player has just earned; on all three keys a tap now does nothing for the first EARN_SKIP_AT ms and then jumps straight to the finished
+   state (ui/screens/key.js). The screen still never locks — the wait is on the SKIP, not on the player. */
+// item 3 (build 54): how long a key-earn ceremony ignores a tap before a tap skips it. One number, all three tiers
+export const EARN_SKIP_AT = 1500;
+
 /* ---------- v27 (item 14, build 51): EARNING A KEY — ONE ANIMATION PER TIER, TWO SECONDS AT MOST ----------
    THIS REPLACES BOTH build 43's KEY_EARN (the moment over the ring: 2.9 / 3.8 / 4.8s) AND build 46's KEY_REVEAL (the first-open reveal that
    wrapped it: 4 / 5 / 6.6s). Nested, they ran 6.3s, 8.0s and 10.5s, none of it skippable — which is what Aiden played on build 50 and described
@@ -110,10 +122,10 @@ export const KEYS = [
 export const KEY_EARN = {
   clear: { ms: 2390, spokes: { gap: 130, each: 300 }, cracks: 0, crackGap: 0, thorns: 0, thornGap: 0, shake: 0, finale: { scale: 1.05, glow: 16, halo: 1.35 },
     steps: [{ name: 'spokes', at: 0, ms: 1080 }, { name: 'spin', at: 820, ms: 510 }, { name: 'flash', at: 1330, ms: 240 }, { name: 'rise', at: 1330, ms: 830 }, { name: 'land', at: 2160, ms: 230 }] },
-  pro: { ms: 4100, spokes: { gap: 120, each: 280, trace: 85 }, cracks: 0, crackGap: 0, thorns: 0, thornGap: 0, shake: 0, finale: { scale: 1.07, glow: 24, halo: 1.5 },
-    steps: [{ name: 'spokes', at: 0, ms: 1000 }, { name: 'trace', at: 40, ms: 685 }, { name: 'snap', at: 980, ms: 480 }, { name: 'ring', at: 1420, ms: 480 }, { name: 'flash', at: 1900, ms: 260 }, { name: 'rise', at: 1900, ms: 1900 }, { name: 'land', at: 3800, ms: 300 }] },
-  author: { ms: 6700, spokes: null, cracks: 10, crackGap: 48, thorns: 12, thornGap: 46, shake: 5, finale: { scale: 1.09, glow: 34, halo: 1.7 },
-    steps: [{ name: 'drop', at: 0, ms: 430 }, { name: 'slam', at: 410, ms: 250 }, { name: 'crack', at: 620, ms: 712 }, { name: 'thorns', at: 1290, ms: 706 }, { name: 'flash', at: 1996, ms: 280 }, { name: 'rise', at: 1996, ms: 4300 }, { name: 'land', at: 6296, ms: 404 }] },
+  pro: { ms: 3000, spokes: { gap: 120, each: 280, trace: 85 }, cracks: 0, crackGap: 0, thorns: 0, thornGap: 0, shake: 0, finale: { scale: 1.07, glow: 24, halo: 1.5 },
+    steps: [{ name: 'spokes', at: 0, ms: 1000 }, { name: 'trace', at: 40, ms: 685 }, { name: 'snap', at: 980, ms: 480 }, { name: 'ring', at: 1420, ms: 480 }, { name: 'flash', at: 1900, ms: 260 }, { name: 'rise', at: 1900, ms: 800 }, { name: 'land', at: 2700, ms: 300 }] },
+  author: { ms: 4000, spokes: null, cracks: 10, crackGap: 48, thorns: 12, thornGap: 46, shake: 5, finale: { scale: 1.09, glow: 34, halo: 1.7 },
+    steps: [{ name: 'drop', at: 0, ms: 430 }, { name: 'slam', at: 410, ms: 250 }, { name: 'crack', at: 620, ms: 712 }, { name: 'thorns', at: 1290, ms: 706 }, { name: 'flash', at: 1996, ms: 280 }, { name: 'rise', at: 1996, ms: 1600 }, { name: 'land', at: 3596, ms: 404 }] },
 };
 // the one step that is not movement — the closing flash. The gate measures every tier's movement against it, so there is no second list of names
 export const EARN_GLOW = 'flash';

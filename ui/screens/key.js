@@ -74,7 +74,7 @@ import { HIDE_UNRECORDED } from "../../config/build.js";
 import { CHESTS } from "../../config/chests.js";
 import { CARD, GRID, KEY, SHEET } from "../../config/copy.js";
 import { KEY_NOTE } from "../../config/key-bars.js";
-import { KEY_ART, KEY_EARN, KEY_FINISH } from "../../config/keys.js";
+import { EARN_SKIP_AT, KEY_ART, KEY_EARN, KEY_FINISH } from "../../config/keys.js";
 import { MESSAGES } from "../../config/messages.js";
 import { MODE_NAME } from "../../config/games.js";
 import { $, $$, T, esc } from "../../core.js";
@@ -395,10 +395,12 @@ const earnClear = () => { const r = $('#key-ring'); if (r) r.querySelectorAll('.
 let earnSkip = null;
 function keyStage(tier) { const E = earnOf(tier), el = $('#s-key'), ids = [];
   const at = (t, fn) => { const h = setTimeout(() => { if (revealOn()) fn(); }, Math.max(0, t)); ids.push(h); return h; };
-  let anims = null, quick = false, done = null;
+  // v29 (item 3, build 54): when this ceremony started, so a tap inside the first EARN_SKIP_AT ms can be turned away rather than taken
+  let anims = null, quick = false, done = null, began = 0;
   return { ms: E.ms, settleAt: E.ms,
     steps: (E.steps || []).map(x => ({ name: x.name, at: x.at, ms: x.ms })),
     start(host, k = {}) { const ringEl = $('#key-ring'); if (!ringEl) return;
+      began = performance.now();
       el.dataset.earn = tier; el.style.setProperty('--earn-ms', E.ms + 'ms');
       for (const x of (E.steps || [])) { el.style.setProperty(`--st-${x.name}-at`, x.at + 'ms'); el.style.setProperty(`--st-${x.name}-ms`, x.ms + 'ms'); }
       el.style.setProperty('--spoke-gap', ((E.spokes && E.spokes.gap) || 0) + 'ms');
@@ -430,8 +432,11 @@ function keyStage(tier) { const E = earnOf(tier), el = $('#s-key'), ids = [];
       anims = document.getAnimations().filter(a => { const tg = a.effect && a.effect.target, tm = a.effect && a.effect.getComputedTiming();
         return tg && el.contains(tg) && !tg.closest('#key-cere') && tm && Number.isFinite(tm.endTime) && a.playState !== 'finished'; });
       /* item 14: A TAP SKIPS IT. Finishing every animation the beat started runs each to its last frame at once — so the key ends UPRIGHT and
-         lit rather than frozen part-way — and resolves hold(), which is what lets the reveal settle immediately. */
-      earnSkip = () => { earnSkip = null; ids.forEach(clearTimeout); ids.length = 0;
+         lit rather than frozen part-way — and resolves hold(), which is what lets the reveal settle immediately.
+         v29 (item 3, build 54): NOT FOR THE FIRST EARN_SKIP_AT MS. Answering false hands the tap back to ui/reveal.js, which swallows it the way
+         it swallows every tap before a stage is done — so an early tap does NOTHING, it is not queued and it does not end the moment. */
+      earnSkip = () => { if (performance.now() - began < EARN_SKIP_AT) return false;
+        earnSkip = null; ids.forEach(clearTimeout); ids.length = 0;
         for (const a of (anims || [])) { try { a.finish(); } catch (e) { } }
         if (done) done(); return true; }; },
     /* the settle waits for this: the end of every animation the start beat put up. A cancelled one resolves it too (a hold that could never end
@@ -607,8 +612,9 @@ define({
   'key-tier'(el) { const i = +el.dataset.kt; if (!tierOpen(keyTiers()[i].id)) { toast(i === 0 ? KEY.gamesToast : KEY.lockedToast); return 'pick'; }
     openKey = i; openGame = null; render(); Music.menu(themeOf(keyTiers()[openKey])); return 'pick'; },
   // v23 (L.7b, build 42): this key's theme becomes every run's music. Once it is, a second tap changes nothing (guess)
+  // v29 (item 4, build 54): SET THIS MUSIC writes the menu's track beside `everywhere`, exactly as Customise's Music row does — one rule, two surfaces
   'key-music'() { const t = keyTiers()[openKey]; if (!t.music || !keyFinished(t.id)) return undefined;
-    if (everywhere() !== t.music) { prefs.everywhere = t.music; save(); } musicBtn(t); return 'pick'; },
+    if (everywhere() !== t.music) { prefs.everywhere = t.music; prefs.menuTrack = t.track; save(); } musicBtn(t); return 'pick'; },
   'key-game'(el) { const g = el.dataset.kg; openGame = openGame === g ? null : g; render(); return 'pick'; },
   // B.23: a tap on the ring's own ground is nothing — not Back, not a sound
   'key-ground'() { return undefined; },
