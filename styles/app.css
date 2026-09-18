@@ -147,7 +147,7 @@
   #storyhint{position:absolute;left:0;right:0;bottom:max(30vh,calc(env(safe-area-inset-bottom) + 44px));opacity:0;display:none;margin:0;
     font-family:var(--title);font-size:clamp(13px,4.4vw,19px);letter-spacing:.3em;color:var(--ink);line-height:1.6;text-align:center}
   #s-menu.story .stline,#s-menu.story #storyhint{display:block}
-  #s-menu.story .nextup,#s-menu.story .menu-tag,#s-menu.story .item,#s-menu.story .menu-key{visibility:hidden}
+  #s-menu.story .nextup,#s-menu.story .item,#s-menu.story .menu-key{visibility:hidden}
   /* 1.1 — three beats: the first line at the top, NO EXCUSES in the middle, the second line under it. The title's own
      arrival is on .wmin, never on .wordmark, so breathe and float are never restarted underneath it */
   #s-menu.story .wmin{opacity:0}
@@ -191,8 +191,7 @@
      is a figure that moves rather than a standing instruction — and it is a control: tapping it opens the keys screen */
   .menu-key{cursor:pointer;font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:var(--ink);text-align:center;margin-top:2px}
   #s-menu.intro .menu-key{animation:menufade .7s ease-out 1.5s both}
-  .menu-tag{font-family:var(--title);font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--mute);margin-top:-6px}
-  #s-menu.intro .menu-tag{animation:menufade .7s ease-out .8s both}
+  /* v28 (item 8, build 53): .menu-tag went with "unlock them all" — the one subtitle under NO EXCUSES */
   /* crossed out (v11): a line drawn across a locked item, wiping off when it opens */
   .x,.item.dim{position:relative}
   .x::after,.item.dim::after,.item.unx::after{content:"";position:absolute;left:-4px;right:-4px;top:50%;height:2px;background:var(--cue);transform-origin:left center;pointer-events:none}
@@ -291,7 +290,16 @@
   /* bottom sheet: mode row stays, dims to the unpicked one, and the length row builds on it */
   /* v25 (item 5, build 45): the sheet is ABOVE everything the map layers — the lines (z 1), the key fill (1), the padlock (2) and a chest's words (2) all
      painted over it, which is the connector running down through Two and Go and "Gauntlet / Pro key" sitting on the Two card */
-  .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);padding:18px 22px max(28px,env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .32s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;gap:12px;align-items:center;z-index:5}
+  /* v28 (item 14, build 53): A BOTTOM SHEET, ANCHORED TO THE SCREEN. It was `position:absolute; bottom:0` inside #s-pick, WHICH IS A SCROLLER — so
+     "the bottom" was the bottom of the map's content, not of the phone, and the sheet landed wherever the map happened to be scrolled to. That is
+     what Aiden photographed: Spot tapped with the map scrolled to the chests, and the sheet sitting mid-screen with map above and below it. Fixed
+     to the viewport it is in the same place every time, in thumb reach, and its height can differ per game without the anchor moving. #s-pick has
+     a clip-path, which clips a fixed descendant but does not reposition one, and the screen is inset:0 anyway. */
+  .sheet{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);padding:18px 22px max(28px,env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .32s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;gap:12px;align-items:center;z-index:5}
+  /* the map behind dims, and a tap on the dim closes the sheet — which is what "tap empty space to go back" used to have to say in words */
+  .mapdim{position:fixed;inset:0;background:color-mix(in srgb,var(--ground) 62%,transparent);opacity:0;transition:opacity .28s ease-out;z-index:4;border:0;padding:0}
+  .mapdim[hidden]{display:none}
+  .mapdim.on{opacity:1}
   .sheet.up{transform:none}
   .diffs{display:flex;flex-direction:column;gap:10px;width:min(88vw,400px);transition:gap .18s}
   .diffs.single{display:none}
@@ -517,7 +525,6 @@
   /* v23 (L.2, build 39): a label is white until it is earned and green once it is — on every tab, never red */
   .unl .lock em{color:var(--ink)}
   .unl .urow:active{background:color-mix(in srgb,var(--ink) 6%,transparent)}
-  #unl-lede{width:min(92vw,440px);margin:0 auto 4px;text-align:left;line-height:1.5}
 
 /* ==================================================================
    achievements — the second tab of ui/screens/progress.js
@@ -527,9 +534,13 @@
   .ach{display:flex;flex-direction:column;width:min(92vw,440px);font-family:var(--mono);font-size:12px;overflow-x:hidden}
   /* and nothing inside a row may widen it: a grid child's default min-width is its content, which is what let it grow */
   .ach .a>span:first-child,.ach .a small,.ach em{min-width:0;overflow-wrap:anywhere}
-  .ach h4{font-weight:500;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink);padding:18px 4px 6px;display:flex;justify-content:space-between;align-items:baseline}
-  .ach h4 span{color:var(--mute);letter-spacing:.06em;text-transform:none;font-size:11px}
-  .ach h4.secret{color:var(--cue)}
+  /* v28 (item 1, build 53): THE HEADING STACKS. It was `display:flex; justify-content:space-between`, so on a phone "PRO KEY · 7/7" sat left
+     and its description was pushed hard against the right edge and clipped by the list's own overflow-x:hidden — which is what Aiden
+     photographed and asked about. It is not a mid-slide artefact; the row settles like that. Title and count on one line, the description
+     under it, full width, wrapping. */
+  .ach h4{font-weight:500;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink);padding:18px 4px 6px}
+  .ach h4 span{display:block;color:var(--mute);letter-spacing:.06em;text-transform:none;font-size:11px;margin-top:3px;line-height:1.4}
+  /* item 1: Secret loses the red — the heading and its rows are drawn like any other locked row (L.2) */
   .ach button.a{display:grid;grid-template-columns:1fr auto;gap:3px 12px;padding:10px 4px;border-bottom:1px solid var(--line);text-align:left;width:100%;font:inherit;color:inherit}
   .ach button.a.jump:active{background:color-mix(in srgb,var(--ink) 6%,transparent)}
   .ach .a small{grid-column:1/-1;color:var(--mute);letter-spacing:.04em;line-height:1.4}
@@ -544,21 +555,28 @@
      its criterion sit under it, the game name leading them the way it leads a title (8.3) */
   .ach .a.cu.lock>span.rw{color:var(--ink)}
   .ach .a.cu small i{font-style:normal;color:var(--mute);font-size:9px;letter-spacing:.16em;margin-right:8px;text-transform:uppercase}
-  .ach .a.cu .rw i.sw{display:inline-block;width:10px;height:10px;vertical-align:-1px;margin:0 0 0 6px;border:1px solid var(--line)}
+  /* v28 (item 6, build 53): EVERY CUSTOMISE-UNLOCK ROW SHOWS THE THING IT UNLOCKS. `.sw` was a 10px colour chip and only the target and lead
+     colours had one. `.rwsw` is the one chip for all of them — a colour, a background tile (the same `bg-<v>` art the Customise screen's
+     Background row draws, reused below rather than redrawn), the colour wheel, or a speaker for a sound pack or a scale. */
+  .ach .a.cu .rw i.rwsw{display:inline-block;width:14px;height:14px;vertical-align:-3px;margin:0 0 0 8px;border:1px solid var(--line);background-size:cover;position:relative}
+  .ach .a.cu .rw i.rwsw.wheel{background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);border-radius:50%;border-color:transparent}
+  .ach .a.cu .rw i.rwsw.hear{border:0;width:15px;height:15px;color:inherit}
+  .ach .a.cu .rw i.rwsw.hear svg{width:15px;height:15px;display:block;fill:currentColor}
+  .ach .a.cu.lock .rw i.rwsw{opacity:.4}
+
   .ach .done>span:first-child,.ach .done em{color:var(--ok)}
   .ach .done .pbar i{background:var(--ok)}
   .ach .a small.go{color:var(--ink);opacity:.7}
   .pbar{grid-column:1/-1;height:3px;background:var(--line);margin-top:4px;position:relative}
   .pbar i{position:absolute;left:0;top:0;bottom:0;background:var(--ink)}
-  .pbar.s i{background:var(--cue)}
   .ach .a.flash{animation:achflash 1.6s ease-out}
-  /* earned rows slide in on every visit; ones earned since the last visit come in green (v8) */
-  .ach .a.done{animation:achin .5s ease-out both}
+  /* v28 (item 1 / R3, build 53): A LIST APPEARS THE MOMENT IT IS ASKED FOR. The earned rows slid in from the left on every visit (`achin`,
+     staggered 70ms apart in ui/screens/progress.js) and the L8 first-seen mark slid in with them; the headings and the locked rows took the
+     shared `rise`. Motion belongs to rewards, not to menus, so the rows are drawn where they are. L8's green is a FACT, not an entry, so the
+     new mark keeps its fade from green — it just no longer travels. */
   .ach .a.new{animation:achnew 1.6s ease-out both}
-  @keyframes achin{0%{opacity:0;translate:-10px 0}100%{opacity:1;translate:0 0}}
-  @keyframes achnew{0%{background:color-mix(in srgb,var(--ok) 40%,transparent);translate:-14px 0;opacity:0}25%{opacity:1;translate:0 0;background:color-mix(in srgb,var(--ok) 40%,transparent)}100%{background:none}}
+  @keyframes achnew{0%{background:color-mix(in srgb,var(--ok) 40%,transparent)}25%{background:color-mix(in srgb,var(--ok) 40%,transparent)}100%{background:none}}
   @keyframes achflash{0%{background:color-mix(in srgb,var(--ink) 18%,transparent)}100%{background:none}}
-  .ach .a.done{animation:achin .5s ease-out both}
 
 /* ==================================================================
    the key — ui/screens/key.js (build 22, v14 9.2-9.7)
@@ -784,14 +802,14 @@
   .sw button.wheel{background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);border-radius:50%}
   .sw button.wheel::before{content:"";position:absolute;inset:11px;border-radius:50%;background:var(--ground)}
   .sw button.wheel.locked::after{border-radius:50%}
-  .sw button.bg-stars{background-image:radial-gradient(circle at 20% 30%,#fff 1px,transparent 1.5px),radial-gradient(circle at 70% 60%,#fff 1px,transparent 1.5px),radial-gradient(circle at 45% 80%,#fff .8px,transparent 1.3px)}
-  .sw button.bg-grid{background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.18) 0 1px,transparent 1px 9px),repeating-linear-gradient(90deg,rgba(255,255,255,.18) 0 1px,transparent 1px 9px)}
-  .sw button.bg-rain{background-image:repeating-linear-gradient(90deg,transparent 0 6px,rgba(255,255,255,.22) 6px 7px,transparent 7px 13px)}
-  .sw button.bg-orbs{background-image:radial-gradient(circle at 30% 35%,rgba(255,255,255,.25),transparent 55%),radial-gradient(circle at 75% 70%,rgba(255,255,255,.18),transparent 50%)}
+  .sw button.bg-stars,.rwsw.bg-stars{background-image:radial-gradient(circle at 20% 30%,#fff 1px,transparent 1.5px),radial-gradient(circle at 70% 60%,#fff 1px,transparent 1.5px),radial-gradient(circle at 45% 80%,#fff .8px,transparent 1.3px)}
+  .sw button.bg-grid,.rwsw.bg-grid{background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.18) 0 1px,transparent 1px 9px),repeating-linear-gradient(90deg,rgba(255,255,255,.18) 0 1px,transparent 1px 9px)}
+  .sw button.bg-rain,.rwsw.bg-rain{background-image:repeating-linear-gradient(90deg,transparent 0 6px,rgba(255,255,255,.22) 6px 7px,transparent 7px 13px)}
+  .sw button.bg-orbs,.rwsw.bg-orbs{background-image:radial-gradient(circle at 30% 35%,rgba(255,255,255,.25),transparent 55%),radial-gradient(circle at 75% 70%,rgba(255,255,255,.18),transparent 50%)}
   /* v24 (C.6, build 43): the three key backgrounds' swatches — a warm glow, a trace with a corner, white spikes on black */
-  .sw button.bg-lantern{background-image:radial-gradient(circle at 35% 40%,rgba(255,208,138,.5),transparent 45%),radial-gradient(circle at 72% 72%,rgba(255,208,138,.28),transparent 40%)}
-  .sw button.bg-circuit{background-image:linear-gradient(90deg,transparent 30%,rgba(191,230,255,.6) 30% 36%,transparent 36%),linear-gradient(0deg,transparent 58%,rgba(191,230,255,.6) 58% 64%,transparent 64%)}
-  .sw button.bg-thorn{background-image:conic-gradient(from 165deg at 50% 0,transparent 0 15deg,rgba(255,255,255,.75) 15deg 30deg,transparent 30deg),conic-gradient(from -15deg at 50% 100%,transparent 0 15deg,rgba(255,255,255,.75) 15deg 30deg,transparent 30deg)}
+  .sw button.bg-lantern,.rwsw.bg-lantern{background-image:radial-gradient(circle at 35% 40%,rgba(255,208,138,.5),transparent 45%),radial-gradient(circle at 72% 72%,rgba(255,208,138,.28),transparent 40%)}
+  .sw button.bg-circuit,.rwsw.bg-circuit{background-image:linear-gradient(90deg,transparent 30%,rgba(191,230,255,.6) 30% 36%,transparent 36%),linear-gradient(0deg,transparent 58%,rgba(191,230,255,.6) 58% 64%,transparent 64%)}
+  .sw button.bg-thorn,.rwsw.bg-thorn{background-image:conic-gradient(from 165deg at 50% 0,transparent 0 15deg,rgba(255,255,255,.75) 15deg 30deg,transparent 30deg),conic-gradient(from -15deg at 50% 100%,transparent 0 15deg,rgba(255,255,255,.75) 15deg 30deg,transparent 30deg)}
   .opt{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;padding:9px 13px;border:1px solid var(--line);color:var(--mute)}
   .opt.sel{color:var(--ink);border-color:var(--ink)}
   .opt.locked{opacity:.35;text-decoration:line-through}
@@ -1224,7 +1242,7 @@
      same shape as the target */
   #hfield #hicon{position:absolute;left:50%;right:auto;bottom:auto;top:4px;width:13vmin;height:13vmin;margin-left:-6.5vmin}
   #hfield #hicon.big{width:22vmin;height:22vmin;right:auto;left:50%;top:1%;margin-left:-11vmin}
-  .sheet.len #lenwrap,.choice,#vsart.on,#vs-sub:not([hidden]),#lockwrap.on #lockbox,#wheelwrap.on #wheelbox,.mch,#over-vs .chip,#over-chips2 .chip,#over-chips3 .chip,.ach .a.lock,.ach h4,.lockline:not(:empty),#hcalc.on,#adbreak.on>div,.tbtn,#s-pass.on>*,#nextup:not([hidden]){animation:rise .18s ease-out both}
+  #vsart.on,#vs-sub:not([hidden]),#lockwrap.on #lockbox,#wheelwrap.on #wheelbox,.mch,#over-vs .chip,#over-chips2 .chip,#over-chips3 .chip,.lockline:not(:empty),#hcalc.on,#adbreak.on>div,.tbtn,#s-pass.on>*,#nextup:not([hidden]){animation:rise .18s ease-out both}
   /* Estimate (v11): the target's outline stays up while you grow */
   #hfield #hg path{stroke:var(--cue)}
 
@@ -1540,6 +1558,19 @@
   @keyframes kethorn{0%{opacity:0;scale:.2}55%{opacity:1;scale:1.15}100%{opacity:.9;scale:1}}
   /* THE FLASH — the one step that is not movement, and it is a flash: a bloom out of the hub in the tier's tint, 240–280ms, gone. The key's own
      earn sound is fired on this beat (ui/screens/key.js), and the radial ground arrives with it, which is the finished key's own glow */
+  /* ---------- v28 (item 15, build 53): THE FINALE — the key settles for the length of the music's back half, then one last hit ----------
+     `rise` is continuous motion, not a hold: a halo spreading out of the ring, the ring itself growing to `--earn-rise` and its glow to
+     `--earn-glow`, each tier a step grander (config/keys.js `finale`). `land` is the hit on the final note. Both are drawn elements of their own,
+     so neither competes with the assembly's animation on the same property. Author keeps its slam shake and takes the rise beside it. */
+  .kerise{fill:none;stroke:var(--ktint);stroke-width:0;opacity:0;transform-box:view-box;transform-origin:150px 150px;pointer-events:none}
+  #s-key.kearning:not(.kearnquick) .kerise{animation:kehalo var(--st-rise-ms,0ms) cubic-bezier(.25,.6,.3,1) var(--st-rise-at,0ms) both}
+  @keyframes kehalo{0%{opacity:0;scale:.62;stroke-width:0}26%{opacity:.4;stroke-width:2}100%{opacity:.14;scale:var(--earn-halo,1.4);stroke-width:1}}
+  #s-key.kearning:not(.kearnquick) #key-ring{animation:kerise var(--st-rise-ms,0ms) cubic-bezier(.25,.6,.3,1) var(--st-rise-at,0ms) both}
+  #s-key.kearning[data-earn="author"]:not(.kearnquick) #key-ring{animation:keshake var(--st-slam-ms,250ms) cubic-bezier(.3,.9,.2,1) var(--st-slam-at,410ms) both,kerise var(--st-rise-ms,0ms) cubic-bezier(.25,.6,.3,1) var(--st-rise-at,0ms) both}
+  @keyframes kerise{from{scale:1;filter:none}to{scale:var(--earn-rise,1.05);filter:drop-shadow(0 0 var(--earn-glow,16px) color-mix(in srgb,var(--ktint) 55%,transparent))}}
+  .keland{fill:var(--ktint);opacity:0;transform-box:view-box;transform-origin:150px 150px;pointer-events:none}
+  #s-key.kearning:not(.kearnquick) .keland{animation:keland var(--st-land-ms,300ms) cubic-bezier(.1,.85,.3,1) var(--st-land-at,0ms) both}
+  @keyframes keland{0%{opacity:0;scale:.45}16%{opacity:.62}100%{opacity:0;scale:3.4}}
   .keflash{fill:var(--ktint);opacity:0;transform-box:view-box;transform-origin:150px 150px;pointer-events:none}
   #s-key.kearning:not(.kearnquick) .keflash{animation:keflash var(--st-flash-ms,240ms) cubic-bezier(.1,.8,.3,1) var(--st-flash-at,1330ms) both}
   @keyframes keflash{0%{opacity:0;scale:.35}22%{opacity:.5}100%{opacity:0;scale:2.4}}
@@ -1547,11 +1578,11 @@
   /* Reduce Motion: nothing animates and the finished state is simply there — the settle lands it, as it always did (v25 item 11) */
   #s-key.kearning.kearnquick .kr,#s-key.kearning.kearnquick .knode,#s-key.kearning.kearnquick .klabels text,#s-key.kearning.kearnquick .kground{opacity:1}
   #s-key.kearning.kearnquick .kring{opacity:var(--kringop,.5)}
-  #s-key.kearning.kearnquick .kecrk,#s-key.kearning.kearnquick .kethn,#s-key.kearning.kearnquick .kecur,#s-key.kearning.kearnquick .keflash{opacity:0}
+  #s-key.kearning.kearnquick .kecrk,#s-key.kearning.kearnquick .kethn,#s-key.kearning.kearnquick .kecur,#s-key.kearning.kearnquick .keflash,#s-key.kearning.kearnquick .kerise,#s-key.kearning.kearnquick .keland{opacity:0}
   @media (prefers-reduced-motion:reduce){
     #s-key.kearning .kr,#s-key.kearning .knode,#s-key.kearning .klabels text,#s-key.kearning .kground,#s-key.kearning .kroot,#s-key.kearning .kdot,#s-key.kearning .kglyph,#s-key.kearning #key-ring,#s-key.kearning .kdot2{animation:none;opacity:1}
     #s-key.kearning .kring{animation:none;opacity:var(--kringop,.5)}
-    #s-key.kearning .kecrk,#s-key.kearning .kethn,#s-key.kearning .kecur,#s-key.kearning .keflash,#s-key.kearning .kr .khalo{animation:none;opacity:0}}
+    #s-key.kearning .kecrk,#s-key.kearning .kethn,#s-key.kearning .kecur,#s-key.kearning .keflash,#s-key.kearning .kerise,#s-key.kearning .keland,#s-key.kearning .kr .khalo{animation:none;opacity:0}}
   /* L.8f: Testing grew a row of chests and a meter field, so it scrolls like About (and clears the build stamp, L.5) */
   #s-testing{overflow-y:auto;justify-content:flex-start;padding-top:max(18px,env(safe-area-inset-top))}
   #dev-meter{width:8ch;background:var(--panel);color:var(--ink);border:1px solid var(--line);font-family:var(--mono);font-size:12px;padding:6px 8px;border-radius:0}
@@ -1618,36 +1649,20 @@
   .cere .cbeam{fill:url(#cbeam);opacity:0;transform-box:view-box;transform-origin:150px 300px}
   .cere.play .cbeam{animation:cbeam var(--st-spill-ms) ease-out var(--st-spill-at) both}
   @keyframes cbeam{0%{opacity:0;scale:1 .1}40%{opacity:.9;scale:1 1}100%{opacity:.45;scale:1 1}}
-  /* Pro — shake (whole pixels, stepped); cracks: four lines of light; burst; scatter: the cosmetics fly out, settle, slide off toward Customise */
-  .cere.play[data-chest="pro"] .cchestg{animation:cshake var(--st-shake-ms) steps(20,end) var(--st-shake-at) both}
-  @keyframes cshake{0%{translate:0 0}10%{translate:1px 0}20%{translate:-1px 1px}30%{translate:2px -1px}40%{translate:-2px 1px}50%{translate:2px 0}60%{translate:-3px -1px}70%{translate:3px 1px}80%{translate:-3px 0}90%{translate:4px -1px}100%{translate:0 0}}
-  .cere .ccrack{fill:none;stroke:var(--cc);stroke-width:1.8;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 0 3px var(--cc))}
-  .cere.play .ccrack{animation:cdraw .4s ease-out calc(var(--st-cracks-at) + var(--i) * var(--crack-step)) both}
+  /* v28 (item 13 / 16, build 53): THE BREAKING IS THE GAMES CHEST'S NOW. The Pro chest's shake, its four crack lines and the coloured
+     cosmetics that scattered out of it are gone — the Pro key opens the Pro chest, so it unlocks like the Skill chest (the assemble / turn
+     rules above carry all three), and item 16 takes the colour out with the scatter. What is left of the breaking moved to the chest with no
+     key: the seven cracks are on the SPRITE (ui/chest.js, so the map keeps them), and the ceremony draws the seventh in and bursts it. */
+  .chestart .crk{fill:none;stroke:var(--bc);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;opacity:.9}
+  /* a crack that has just arrived draws itself on — the map only, and only the one that is new (ui/screens/pick.js) */
+  .chestart .crk.fresh{stroke-dasharray:1;stroke-dashoffset:1;animation:cdraw .5s ease-out both}
+  .cere .cbig .crk{stroke-dasharray:1;stroke-dashoffset:1}
+  .cere.play .cbig .crk{animation:cdraw .34s ease-out calc(var(--st-crack-at) + var(--i) * var(--crack-step)) both}
   .cere .cburst{fill:var(--cc);opacity:0;transform-box:view-box;transform-origin:150px 300px}
   .cere.play .cburst{animation:cburst var(--st-burst-ms) ease-out var(--st-burst-at) both}
   @keyframes cburst{0%{opacity:0;scale:.2}15%{opacity:.95}100%{opacity:0;scale:9}}
-  .cere .cswatch{opacity:0}
-  .cere.play .cswatch{animation:cscatter var(--st-scatter-ms) cubic-bezier(.2,.9,.3,1) calc(var(--st-scatter-at) + var(--i) * 40ms) both}
-  @keyframes cscatter{0%{opacity:0;translate:0 0}12%{opacity:1}55%{opacity:1;translate:var(--tx) var(--ty)}75%{opacity:1;translate:var(--tx) var(--ty)}100%{opacity:0;translate:calc(var(--tx) + 150px) var(--ty)}}
-  /* Thorns — black; spikes grow in from both edges and later recede; split: one white line; widen: it opens into the reveal */
-  .cere.play[data-chest="thorns"]{animation:cblackbg var(--st-black-ms) ease-in var(--st-black-at) both}
-  @keyframes cblackbg{to{background:#000}}
-  .cere .cblack{fill:#000;opacity:0}
-  .cere.play .cblack{animation:cfade var(--st-black-ms) ease-in var(--st-black-at) both}
-  .cere .cspk{fill:var(--cc);transform-box:fill-box;scale:0 1}
-  .cere .cspk.l{transform-origin:left center}
-  .cere .cspk.r{transform-origin:right center}
-  .cere.play .cspk{animation:cspk var(--st-spikes-ms) cubic-bezier(.3,0,.2,1) calc(var(--st-spikes-at) + var(--i) * 80ms) both,crecede var(--st-recede-ms) ease-in var(--st-recede-at) forwards}
-  @keyframes cspk{from{scale:0 1}to{scale:1 1}}
-  @keyframes crecede{from{scale:1 1}to{scale:0 1}}
-  .cere .csplit{fill:var(--cc);transform-box:view-box;transform-origin:150px 260px;scale:1 0}
-  .cere.play .csplit{animation:csplit var(--st-split-ms) cubic-bezier(.7,0,.3,1) var(--st-split-at) both,cout .6s ease-in calc(var(--st-widen-at) + 600ms) forwards}
-  @keyframes csplit{from{scale:1 0}to{scale:1 1}}
-  .cere .cwide{fill:var(--cc);opacity:0;transform-box:view-box;transform-origin:150px 260px}
-  .cere.play .cwide{animation:cwiden var(--st-widen-ms) cubic-bezier(.3,0,.2,1) var(--st-widen-at) both}
-  @keyframes cwiden{0%{opacity:1;scale:.01 1}45%{opacity:.9;scale:1 1}100%{opacity:.1;scale:1 1}}
-  .cere[data-chest="thorns"] .cchestg{opacity:0}
-  .cere.play[data-chest="thorns"] .cchestg{animation:cfade .8s ease-out calc(var(--st-widen-at) + 500ms) both}
+  .cere.play[data-chest="games"] .cchestg{animation:cshake var(--st-crack-ms) steps(20,end) var(--st-crack-at) both}
+  @keyframes cshake{0%{translate:0 0}10%{translate:1px 0}20%{translate:-1px 1px}30%{translate:2px -1px}40%{translate:-2px 1px}50%{translate:2px 0}60%{translate:-3px -1px}70%{translate:3px 1px}80%{translate:-3px 0}90%{translate:4px -1px}100%{translate:0 0}}
   @media (prefers-reduced-motion:reduce){.cere.tap .ctap{animation:none}}
 
 /* ==================================================================
@@ -1752,7 +1767,11 @@
   #msg-lede{margin-bottom:2px}
   .msglist{display:flex;flex-direction:column;gap:2px;width:100%;max-width:420px}
   .msgrow{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:12px;width:100%;padding:9px 2px;background:none;border:0;border-bottom:1px solid var(--line);border-radius:0;text-align:left;cursor:pointer}
-  .msgframe{position:relative;width:74px;aspect-ratio:16/9;border:1px solid var(--line);background:#0B0B0C;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  /* v28 (item 12, build 53): the row's picture is the player powered off, the same frame the card shows — a thin white rounded border at the
+     player's own 1px weight, glowing in the colour of the chest that unlocked it, with a play mark in it once the slot has a clip */
+  .msgframe{position:relative;width:74px;aspect-ratio:16/9;border:1px solid #FFFFFF;border-radius:5px;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;
+    box-shadow:0 0 12px -4px color-mix(in srgb,var(--vg,#FFFFFF) 55%,transparent)}
+  .msgrow.has .msgframe .mpplay{width:0;height:0;border-style:solid;border-width:7px 0 7px 12px;border-color:transparent transparent transparent #FFFFFF;opacity:.9;margin-left:2px}
   .msgframe i{font-style:normal;font-family:var(--mono);font-size:7px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);text-align:center;line-height:1.3;padding:0 3px}
   .msgrow.locked .msgframe{filter:blur(2px);opacity:.5}
   .msgtxt b{display:block;font-weight:500;font-size:13px;letter-spacing:.04em;color:var(--ink)}
@@ -1815,6 +1834,14 @@
   .chestwords .cwsym{width:18px;height:18px;opacity:1}
   .chestwords .cw.tba .cwsym{opacity:.6}
   .chestwords .cw.msg{white-space:normal;max-width:100%}
+  /* v28 (item 10, build 53): GAUNTLET became GAUNTLET MINI and GAUNTLET II became GAUNTLET MEGA, so two reward words are two words wide. A word
+     wraps to a second line rather than running out of its cell; L.11d still holds every one of them to its cell, to the phone and to two lines */
+  .chestwords .cw{white-space:normal;max-width:100%}
+  .chestwords .cwt{white-space:normal;min-width:0}
+  /* v28 (item 10, build 53): GAUNTLET became GAUNTLET MINI and GAUNTLET II became GAUNTLET MEGA, so two reward words are two words wide. A word
+     wraps to a second line rather than running out of its cell; L.11d still holds every one of them to its cell, to the phone and to two lines */
+  .chestwords .cw{white-space:normal;max-width:100%}
+  .chestwords .cwt{white-space:normal;min-width:0}
   /* v27 (items 7 / 8, build 52): the video word is now one of AIDEN'S OWN MESSAGE TITLES, and his new eight are sentences rather than the
      one-word reward names beside them — "The skill chest is open" against "PRO KEY". In the column's spaced capitals that ran to three lines and
      broke out of the cell (L.11d, gated at 44px). It is set as a title instead: sentence case, the tight tracking of a line of prose, and it
@@ -1863,8 +1890,31 @@
   .rcard h3{font-family:var(--title);font-weight:700;font-size:clamp(16px,5.4vw,24px);letter-spacing:.02em;text-transform:none;line-height:1.15;color:var(--rc,var(--ink));text-shadow:0 0 18px color-mix(in srgb,var(--rc,var(--ink)) 45%,transparent)}
   .rcard .ryou{font-size:15px;line-height:1.4;color:var(--ink)}
   .rcard .rnext{font-size:13px;line-height:1.4;color:var(--mute)}
-  .rcard .rmsg{display:flex;align-items:center;justify-content:center;gap:8px}
-  .rcard .rmsgsym{width:18px;height:18px}
+  /* ---------- v28 (items 12 / 17, build 53): THE STAGED CARD, THE MESSAGE AS A SCREEN, AND THE CONFETTI ----------
+     item 12: the card arrived all at once. Every block now carries its own index and lands --card-step after the one before it, in order: the
+     title, each line, the message, Continue last. Under Reduce Motion they all land together with the card's own fade, as build 46's rule asks. */
+  .rcard>*{opacity:0;animation:cardin var(--card-block,260ms) cubic-bezier(.2,.8,.25,1) calc(var(--card-ms,240ms) + var(--ci,0) * var(--card-step,170ms)) both}
+  @keyframes cardin{from{opacity:0;translate:0 8px}to{opacity:1;translate:0 0}}
+  /* item 12: the message is the build-52 player, powered off — a picture in a thin white rounded frame with a play mark, its title under it.
+     The same drawing serves the Messages list (ui/chest.js msgPreview), so a message looks the same wherever it appears. */
+  .rcard .rmsg{background:none;border:0;padding:0;cursor:pointer;display:block;width:100%}
+  .mprev{display:flex;flex-direction:column;align-items:center;gap:7px;width:100%}
+  .mpframe{position:relative;width:100%;aspect-ratio:16/9;border:1px solid #FFFFFF;border-radius:6px;background:#000;overflow:hidden;
+    box-shadow:0 0 16px -4px color-mix(in srgb,var(--vg,#FFFFFF) 55%,transparent)}
+  .mppic{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+  .mpplay{width:0;height:0;border-style:solid;border-width:9px 0 9px 15px;border-color:transparent transparent transparent #FFFFFF;opacity:.9;margin-left:3px}
+  .mpsoon{font-style:normal;font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);text-align:center;padding:0 8px}
+  .mptitle{font-weight:500;font-size:12px;letter-spacing:.04em;color:var(--ink);text-align:center}
+  .rcard .rmsg:active .mpframe{box-shadow:0 0 22px -2px color-mix(in srgb,var(--vg,#FFFFFF) 75%,transparent)}
+  /* item 17: the confetti — geometric, monochrome, in the chest's own colour, denser and longer each tier. Never rainbow paper: item 16 has
+     just taken colour out of the Pro chest and this would put it straight back. The games chest throws seven squares, one per game. */
+  .rconf{position:absolute;inset:-6px -6px auto -6px;height:0;pointer-events:none;overflow:visible;z-index:2}
+  .rconf .cf{position:absolute;left:var(--x);top:0;width:var(--cf-sz);height:var(--cf-sz);background:var(--rc,var(--ink));opacity:0;
+    animation:cfall var(--cf-ms) cubic-bezier(.25,.6,.45,1) calc(var(--card-ms,240ms) + var(--d)) both}
+  .rconf .cf.shard{width:calc(var(--cf-sz) * .42);height:calc(var(--cf-sz) * 1.5)}
+  @keyframes cfall{0%{opacity:0;translate:0 -14px;rotate:0deg}8%{opacity:1}
+    100%{opacity:0;translate:calc(var(--sw) * 26px) 190px;rotate:var(--cf-spin)}}
+  @media (prefers-reduced-motion:reduce){.rcard>*{animation:cfade var(--card-ms,240ms) ease-out both}.rconf{display:none}}
   /* item 4: AN UNWATCHED CLIP PULSES AND GLOWS, in the green every other "not seen yet" wears, until it is played. Placeholders and locked slots never do */
   .msgrow.unwatched .msgframe{border-color:var(--ok);animation:msgpulse 1.8s ease-in-out infinite}
   .msgrow.unwatched .msgtxt small{color:var(--ok)}

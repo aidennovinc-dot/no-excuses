@@ -41,11 +41,11 @@ import { MESSAGES } from "../config/messages.js";
 import { MODE_NAME } from "../config/games.js";
 import { KEY_BARS } from "../config/key-bars.js";
 import { KEYS } from "../config/keys.js";
-import { KEY, KEY_ACH } from "../config/copy.js";
+import { GAUNTLET, KEY, KEY_ACH } from "../config/copy.js";
 import { T } from "../core.js";
-import { opened, prefs, save, store } from "../core/store.js";
+import { opened, prefs, save, setKeyDone, store } from "../core/store.js";
 import { GAMES, GC } from "../games/registry.js";
-import { Scores, modeCount } from "../progress.js";
+import { Scores, gamesDone, modeCount } from "../progress.js";
 import { scoreTxt } from "../ui/format.js";
 
 const keyOf = (g, d, s) => `${g}:${d}:${s}`;
@@ -197,6 +197,16 @@ function meterBands() { const m = modeCount(), free = METER.freeStart ? m.free :
 const meterReal = () => Math.floor(METER.band * meterBands().reduce((n, v) => n + v, 0) + 1e-9);
 const meter = () => meterReal();
 const meterMax = () => METER.band * (TIERS.length + (METER.modes ? 1 : 0));
+/* ---------- v28 (item 9, build 53): WHAT A PLAYER IS SHOWN IS 0–100, AND IT CANNOT PASS 100 ----------
+   The meter itself is unchanged: three bands of 100, one per key, and every chest threshold, every band colour and all of Testing's
+   arithmetic still read it. What was wrong is what was PRINTED. Aiden saw "300% complete" on the front of the app and his line is
+   "whatever it counts cannot exceed 100" — a percentage that runs to 300 is not a percentage. meterPct() is the shown figure: the meter
+   over the top of the meter, rounded, clamped. It is the ONE thing any surface prints; meter() is what the app reasons with.
+   WHERE THE 300 CAME FROM — not real play. devReach('thorns') (Testing's Author-chest switch) fills every bar of all three keys and opens
+   the three chests before it, which is 300 by construction, and it leaves the Author chest READY rather than open — so the old figure could
+   read its own maximum with a chest still shut. The 103% / 203% of build 46 are the same arithmetic three bars into the next band.
+   100 shown therefore means every bar on every key is cleared; the last chest is a reward for that, not more of it. */
+const meterPct = v => Math.max(0, Math.min(100, Math.round((typeof v === 'number' ? v : meter()) / Math.max(1, meterMax()) * 100)));
 /* v23 (§L.8d / §L.8e, build 41): WHICH BAND a meter figure is in, and how far through it — presentation only (L10). A band starts at its
    lower figure (100% is band 1, guess) and the top of the meter is the top of the last band, so 400% is band 3 at full strength. ui/chest.js
    turns this into the look; nothing here knows a colour. */
@@ -247,6 +257,9 @@ const keyTiers = () => KEYS.map((_, i) => keyTier(i));
    in Customise. Read here, not off the `key_<tier>_all` achievement, so a key filled by Testing's switch opens it the moment it is whole, as
    the key screen already shows it; and like every progression gate it honours the two dev escapes (#411). */
 const keyFinished = tier => !!(prefs.allOpen || prefs.supporter) || (tierOpen(tier) && !isShell(tier) && keyState(tier).whole);
+/* v28 (item 2, build 53): core/store.js everywhere() has to ask whether a key is EARNED — Customise's Music row gates the three key tracks
+   on the key, not on the chest it opens — and core/ sits below progress/ in the graph. One binding, at import, so the store reads the same test. */
+setKeyDone(keyFinished);
 /* v25 (item 23, build 46): IS THIS MESSAGE OPEN? One test, here, because both the About screen and the congratulations card ask it and a
    screen may not import a screen (A4). `msgDot` is the small mark on the About menu row: an open slot that HAS A CLIP and has not been watched.
    v27 (item 8, build 52): FOUR KINDS OF LOCK, one shape each (config/messages.js has the table). `{ key:… }` is gone with the three rows that
@@ -270,7 +283,14 @@ const msgOpen = m => { if (!m) return false; const b = m.by; if (!b) return true
    open, including the support thank-you, which says what opens it. THE COUNTER IS NOT NARROWED BY THIS — ui/screens/about.js counts against
    MESSAGES.length, so it always reads "N of 8" and a player knows two secrets are there without knowing what they are (Aiden, item 8). */
 const msgShown = m => !m ? false : m.by && m.by.gauntlet ? !!(prefs.allOpen || prefs.supporter) || chestOpen(gauntChest(m.by.gauntlet)) : true;
+/* v28 (item 13, build 53): the cracks on the Games chest, as the sprite wants them — one per finished game, never past the seven it draws.
+   Nothing stores it: it is derived, so the map shows the same chest on the next visit and on a different device with the same profile. */
+const crackCount = () => Math.min(7, gamesDone());
 const msgDot = () => MESSAGES.some(m => m.file && msgShown(m) && msgOpen(m) && !(prefs.msgSeen || {})[m.id]);
+/* v28 (item 10, build 53): A MESSAGE'S TITLE, AND A GAUNTLET'S IS ITS GAUNTLET'S NAME. The two Gauntlet slots carry `gaunt` instead of a title,
+   so renaming a Gauntlet in config/copy.js renames its row on the Messages list, its video title in the player and its word on the chest — one
+   spelling, which is what item 10 asks for. Every other slot keeps its own `title`. */
+const msgTitle = m => !m ? '' : m.gaunt ? T(GAUNTLET.msgTitle, { name: GAUNTLET.name[m.gaunt] || m.gaunt }) : (m.title || '');
 
 /* ---------- B.25: the three achievement sets tied to the keys ----------
    One row per game per tier — clear every one of that game's bars at that tier — and one per tier for the whole key:
@@ -460,4 +480,4 @@ function devMeterTo(n, modes) { const want = Math.max(0, Math.min(meterMax(), Ma
     const c = CHESTS.find(x => x.needs === tier); if (!c || chestState(c.id) !== 'ready' || !devOpen(c.id)) break; }
   seenDown(); save(); return meter(); }
 
-export { COMBOS, RADAR_PAST, TIERS, msgDot, msgOpen, msgShown, bandPct, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, checkKeyAch, chestAt, chestOpen, chestState, cleared, combos, credit, devBack, devChestReset, devClearTo, devMeterTo, devOpen, devReach, fillBars, gameKey, isCleared, isPlaceholder, isShell, keyAch, keyChest, keyFinished, keyGoal, keyOf, keyPct, keyState, keyTier, keyTiers, meter, meterBand, meterMax, modesOpen, openChest, placeholderCount, radarOf, radarRungs, readyChest, retroArrived, retroBank, retroTier, skey, tierFull, tierOpen };
+export { COMBOS, RADAR_PAST, TIERS, crackCount, msgDot, msgOpen, msgShown, msgTitle, bandPct, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, checkKeyAch, chestAt, chestOpen, chestState, cleared, combos, credit, devBack, devChestReset, devClearTo, devMeterTo, devOpen, devReach, fillBars, gameKey, isCleared, isPlaceholder, isShell, keyAch, keyChest, keyFinished, keyGoal, keyOf, keyPct, keyState, keyTier, keyTiers, meter, meterBand, meterMax, meterPct, modesOpen, openChest, placeholderCount, radarOf, radarRungs, readyChest, retroArrived, retroBank, retroTier, skey, tierFull, tierOpen };

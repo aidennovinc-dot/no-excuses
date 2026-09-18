@@ -282,7 +282,8 @@ function panel() { const box = $('#key-list'); $('#s-key').classList.toggle('kpa
    button and one field, so the other two keys read SET THIS MUSIC again the moment they are on screen. Customise's Everywhere row writes the
    same field through the same store, and neither screen imports the other (A4). */
 const themeOf = t => tierOpen(t.id) ? t.track : 'menu';
-function musicBtn(t) { const b = $('#key-music'), open = !!t.music && chestOpen(t.music), on = open && everywhere() === t.music;
+// v28 (item 2, build 53): the button waits for the KEY, not for the chest that key opens — the same line Customise's Music row now takes
+function musicBtn(t) { const b = $('#key-music'), open = !!t.music && keyFinished(t.id), on = open && everywhere() === t.music;
   b.hidden = !open; b.classList.toggle('on', on); b.textContent = on ? KEY.musicOn : KEY.setMusic; }
 
 /* ---------- which key is on screen ---------- */
@@ -365,8 +366,12 @@ const earnOf = tier => KEY_EARN[tier] || KEY_EARN.clear;
 /* the extra layers a tier draws, on top of the ring that is already there: the Author key's cracks running out of the rim and the thorns flicking
    out round it. The counts are config/keys.js (`cracks`, `thorns`); nothing else in the app knows these paths */
 function earnLayers(tier) { const E = earnOf(tier), out = [];
-  // the closing flash, on every tier: a bloom out of the hub in the key's own tint on the `flash` step, 240-280ms and gone (item 14)
+  // the closing flash of the ASSEMBLY: a bloom out of the hub in the key's own tint on the `flash` step, 240-280ms and gone (item 14)
   out.push(`<circle class="keflash" cx="${CX}" cy="${CY}" r="${R_HUB}"></circle>`);
+  /* v28 (item 15, build 53): THE FINALE. `rise` is the whole key settling up into its finished state while the music runs out — a halo of light
+     spreading out of the hub for the whole of the step, with the ring itself growing and its glow strengthening (the stylesheet, off `finale`) —
+     and `land` is one last hit on the final note. Two drawn elements, so neither has to share an animation with the assembly's own. */
+  out.push(`<circle class="kerise" cx="${CX}" cy="${CY}" r="${R_RING}"></circle>`, `<circle class="keland" cx="${CX}" cy="${CY}" r="${R_HUB}"></circle>`);
   /* v27 (Aiden's answer to build 51, build 52): THE PRO KEY'S CIRCUITRY BETWEEN THE SPOKES. "One by one around like a clock, but have a
      circuitry type animation between each one." One link per PAIR of adjacent spokes — six for seven spokes — and each is drawn the way the
      Circuit style draws everything else: a radial stub out of the node it leaves, an arc round the outside of the ring, a radial stub back
@@ -402,6 +407,8 @@ function keyStage(tier) { const E = earnOf(tier), el = $('#s-key'), ids = [];
       // build 52: the beat between one crack and the next, and one thorn and the next — config's, not the stylesheet's (Aiden: "one by one")
       el.style.setProperty('--crack-gap', (E.crackGap || 0) + 'ms'); el.style.setProperty('--thorn-gap', (E.thornGap || 0) + 'ms');
       el.style.setProperty('--earn-shake', (E.shake || 0) + 'px');
+      // item 15: how grand this tier's settle is — how far the key grows, its halo in px, how far the ring of light spreads
+      const F = E.finale || {}; el.style.setProperty('--earn-rise', String(F.scale || 1)); el.style.setProperty('--earn-glow', (F.glow || 0) + 'px'); el.style.setProperty('--earn-halo', String(F.halo || 1.4));
       // each spoke, node and label carries its own index, so the stylesheet walks the ring with no second list of times
       ringEl.querySelectorAll('.kr').forEach((g, i) => g.style.setProperty('--h', String(i)));
       ringEl.querySelectorAll('.knode').forEach((g, i) => g.style.setProperty('--h', String(i)));
@@ -409,8 +416,11 @@ function keyStage(tier) { const E = earnOf(tier), el = $('#s-key'), ids = [];
       const extra = earnLayers(tier); if (extra) ringEl.insertAdjacentHTML('beforeend', extra);
       el.classList.add('kearning'); if (k.quick) el.classList.add('kearnquick'); quick = !!k.quick;
       if (k.quick) return;   // Reduce Motion: the short fade is the whole of it, and settle() lands the finished state
+      /* v28 (item 15, build 53): THE MUSIC STARTS THE CLOCK. It used to be fired on the `flash`, which is why it rang on for seconds after the
+         animation had finished — the whole of what item 15 is about. It is the first thing that happens now, and `ms` is its own length. */
+      if (!k.silent) Snd.keyEarn(tier);
       if (!k.silent) for (const x of (E.steps || [])) {
-        if (x.name === 'flash') { at(x.at, () => Snd.keyEarn(tier)); continue; }
+        if (x.name === 'flash') continue;
         // the Skill key's seven fire one at a time, each with its own game's sound; Pro's fire together, so the step has one sound of its own
         if (x.name === 'spokes' && E.spokes && E.spokes.gap > 0) { games().forEach((g, i) => at(x.at + i * E.spokes.gap, () => Snd.mapFx(g))); continue; }
         // build 52: the Pro key's current runs once per link, so `trace` sounds once per link and not once per step
@@ -423,7 +433,7 @@ function keyStage(tier) { const E = earnOf(tier), el = $('#s-key'), ids = [];
          lit rather than frozen part-way — and resolves hold(), which is what lets the reveal settle immediately. */
       earnSkip = () => { earnSkip = null; ids.forEach(clearTimeout); ids.length = 0;
         for (const a of (anims || [])) { try { a.finish(); } catch (e) { } }
-        if (!k.silent) Snd.keyEarn(tier); if (done) done(); return true; }; },
+        if (done) done(); return true; }; },
     /* the settle waits for this: the end of every animation the start beat put up. A cancelled one resolves it too (a hold that could never end
        would strand the screen), and so does a ceiling at twice the animation's length, for a phone that stops painting in the background. A tap
        resolves it through `done` — the skip's whole job. */
@@ -450,14 +460,17 @@ capture(() => { if (!earnSkip || !revealOn()) return false; return earnSkip(); }
 // item 23: the message this unlock opens, if that slot has a clip. No clip, no button — the slot is still there on About
 /* v26 (item 5, build 49): the button stands while the slot is still a placeholder, so Aiden can review it; config/build.js HIDE_UNRECORDED is the
    before-release switch that takes it off a slot with no clip — the same switch the reward in the pop-out and on the map reads (ui/chest.js) */
-const msgFor = by => { const m = MESSAGES.find(x => x.by && ((by.chest && x.by.chest === by.chest) || (by.key && x.by.key === by.key))); return m && (m.file || !HIDE_UNRECORDED) ? m.id : ''; };
+const msgOf = by => MESSAGES.find(x => x.by && ((by.chest && x.by.chest === by.chest) || (by.key && x.by.key === by.key))) || null;
+const msgFor = by => { const m = msgOf(by); return m && (m.file || !HIDE_UNRECORDED) ? m.id : ''; };
 const nextChest = () => { const c = CHESTS.find(x => !chestOpen(x.id)); return c ? T(CARD.next, { chest: GRID.chest[c.id] }) : CARD.nDone; };
 /* v26 (item 8, build 49): SHORTER AND CELEBRATORY — "Congratulations" in the chest's own colour, the chest's one "You …" line (config/copy.js CARD.you),
    "Next: can you open the … chest?", and the video it opened. No list of what you did or got, no headings, no percentage (item 7) */
 // the chest's own colour — ui/chest.js chestCol: the card, the rings and sparks its rewards land with, and its rewards' symbols
 // v27 (item 13): one chest colour, ui/chest.js chestCol — the colour of the key that opens it (R2), no longer the meter band's
-function chestCard(id) { const m = modeCount();
-  return { title: CARD.title, col: chestCol(id), you: T((CARD.you || {})[id] || '', { total: m.total }), next: nextChest(), msg: msgFor({ chest: id }) }; }
+/* v28 (items 12 / 17, build 53): the card carries its CHEST now — the staged reveal's confetti and its celebration sound are per chest — and the
+   message's own SLOT, so the row can be drawn as the powered-off player with that clip's title under it rather than as one grey line for all eight. */
+function chestCard(id) { const m = modeCount(), mid = msgFor({ chest: id });
+  return { title: CARD.title, chest: id, col: chestCol(id), you: T((CARD.you || {})[id] || '', { total: m.total }), next: nextChest(), msg: mid, msgObj: mid ? msgOf({ chest: id }) : null }; }
 
 /* the reveal itself. `demo` is Testing replaying it with nothing stored (S5); everything else plays it once per tier (`prefs.revealed`) and
    writes that the moment it starts, so a reload mid-reveal never replays it.
@@ -594,7 +607,7 @@ define({
   'key-tier'(el) { const i = +el.dataset.kt; if (!tierOpen(keyTiers()[i].id)) { toast(i === 0 ? KEY.gamesToast : KEY.lockedToast); return 'pick'; }
     openKey = i; openGame = null; render(); Music.menu(themeOf(keyTiers()[openKey])); return 'pick'; },
   // v23 (L.7b, build 42): this key's theme becomes every run's music. Once it is, a second tap changes nothing (guess)
-  'key-music'() { const t = keyTiers()[openKey]; if (!t.music || !chestOpen(t.music)) return undefined;
+  'key-music'() { const t = keyTiers()[openKey]; if (!t.music || !keyFinished(t.id)) return undefined;
     if (everywhere() !== t.music) { prefs.everywhere = t.music; save(); } musicBtn(t); return 'pick'; },
   'key-game'(el) { const g = el.dataset.kg; openGame = openGame === g ? null : g; render(); return 'pick'; },
   // B.23: a tap on the ring's own ground is nothing — not Back, not a sound

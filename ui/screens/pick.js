@@ -13,7 +13,7 @@ import { VS, sel } from "../../core/state.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, SHARED2, lenName, lenSub, versusAny, versusOf } from "../../games/registry.js";
 import { Scores, gameOpen, isOpen, lenLock, lenOpen, lensOf, markSeen, modeCount, needFor, newMark, newPlay, practiceOpen } from "../../progress.js";
-import { chestOpen, chestState, gameKey, tierOpen } from "../../progress/key.js";
+import { chestOpen, chestState, crackCount, gameKey, tierOpen } from "../../progress/key.js";
 import { Snd } from "../../audio.js";
 import { start } from "../../run/run.js";
 import { define } from "../actions.js";
@@ -22,7 +22,7 @@ import { goLabel, picOf, scoreTxt } from "../format.js";
 import { register, show } from "../router.js";
 import { applyPrefs, colOf } from "../theme.js";
 import { toast } from "../toast.js";
-import { TOAST } from "../../config/copy.js";
+import { PROGRESS, TOAST } from "../../config/copy.js";
 
 let stage='grid';
 const ask=(g,d,s)=>emit('lock:ask',{g,d,s});
@@ -51,24 +51,39 @@ function renderVsRow(){ const g=sel.game; const vsOk=stage==='mode'?versusAny(g)
    off before the slide up and goes back on once the slide down has run, so the animation Aiden passed is untouched, and
    hiding it clears what it held — a sheet with no game selected renders nothing. */
 const SHEET_OUT=340;   // the sheet's own .32s slide, and a frame
+const SHEET_GAP=14;   // v28 (item 14): the gap left between the tapped tile and the top of the bottom sheet, so its outline is clear of it
 let sheetT=0;
-function hideSheet(){ const sh=$('#sheet'); sh.hidden=true; sh.classList.remove('up','len','two');
+function hideSheet(){ const sh=$('#sheet'), dim=$('#mapdim'); sh.hidden=true; sh.classList.remove('up','len','two'); if(dim){ dim.classList.remove('on'); dim.hidden=true; }
   $('#diff-row').innerHTML=''; $('#time-row').innerHTML=''; $('#sheet-title').textContent=''; $('#vsart').innerHTML=''; $('#vsart').classList.remove('on','vs2'); }
 /* build 38 (Aiden, 2026-09-14, amending v22 §K): THE TILE KEEPS ITS AMBER UNTIL A MODE IS CHOSEN. `chosen` is on once a mode on
    the sheet is actually selected — a game with more than one mode, and a `.choice.sel` present — and only then does the pressed
    tile demote. With the mode row up and nothing tapped the tile is still what the player chose; a one-mode game (Sequence) has
    no mode row to tap, so its tile keeps the amber on its length row. Exactly one amber thing on screen either way. */
-function setStage(st){ stage=st; clearTimeout(sheetT); const sh=$('#sheet'); $('#diff-row').classList.remove('picking'); $('#grid').classList.toggle('dim',st!=='grid');
+function setStage(st){ stage=st; clearTimeout(sheetT); const sh=$('#sheet'), dim=$('#mapdim'); $('#diff-row').classList.remove('picking'); $('#grid').classList.toggle('dim',st!=='grid');
   $('#grid').classList.toggle('chosen',st!=='grid'&&GAMES[sel.game].modes.length>1&&!!$('#diff-row .choice.sel'));
-  if(st==='grid'){ $$('.tile').forEach(t=>t.classList.remove('keep')); if(sh.hidden) return;
+  if(st==='grid'){ $$('.tile').forEach(t=>t.classList.remove('keep')); if(dim){ dim.classList.remove('on'); setTimeout(()=>{ if(stage==='grid') dim.hidden=true; },SHEET_OUT); }
+    if(sh.hidden) return;
     if(!sh.classList.contains('up')){ hideSheet(); return; }
     sh.classList.remove('up','len'); sheetT=setTimeout(()=>{ if(stage==='grid') hideSheet(); },SHEET_OUT); return; }
   if(sh.hidden){ sh.hidden=false; void sh.offsetWidth; }
+  // item 14: the map behind dims and the dim is the way out — one tap, anywhere on it
+  if(dim&&dim.hidden){ dim.hidden=false; void dim.offsetWidth; }
+  if(dim) dim.classList.add('on');
   const g=GAMES[sel.game]; sh.classList.add('up'); sh.classList.toggle('len',st==='len');
   $('#diff-row').classList.toggle('single',g.modes.length===1);
   $('#seq-opts').style.display='none'; $('#vs-wrap').style.display=st==='mode'||(st==='len'&&g.modes.length===1)?'':'none'; renderVsRow();
   if(st==='grid'){ $$('.tile').forEach(t=>t.classList.remove('keep')); } $('#sheet-title').textContent=g.name+(sel.vs===1?SHEET.passTitle:sel.vs===2?SHEET.versusTitle:''); $('#len-title').textContent=SHEET.mode;
-  renderVsArt(); $('#lvl-mode').textContent=MODE_NAME[sel.diff]||''; $('#lvl-back').style.display=g.modes.length>1?'':'none'; }
+  renderVsArt(); $('#lvl-mode').textContent=MODE_NAME[sel.diff]||''; $('#lvl-back').style.display=g.modes.length>1?'':'none';
+  tileAboveSheet(); }
+/* v28 (item 14, build 53): THE TAPPED TILE SITS JUST ABOVE THE SHEET, with its own amber outline showing — so the player can still see what they
+   chose after the sheet has taken the bottom of the screen. Measured off the sheet's own box after it is laid out, so a taller sheet (Sequence
+   has more rows) scrolls the map further rather than covering the tile. One frame later, because the sheet's height is only known once it is
+   in the layout; the scroll is smooth, and a map that is already clear of the sheet is left where it is. */
+function tileAboveSheet(){ const sc=$('#s-pick'), sh=$('#sheet'), t=$(`#grid .tile[data-game="${sel.game}"]`); if(!sc||!sh||!t||t.hidden) return;
+  requestAnimationFrame(()=>{ if(stage==='grid') return; const top=sh.getBoundingClientRect().top, r=t.getBoundingClientRect();
+    const want=top-SHEET_GAP, delta=r.bottom-want; if(delta<=0&&r.top>=0) return;
+    const to=Math.max(0,Math.min(sc.scrollHeight-sc.clientHeight,sc.scrollTop+delta));
+    sc.scrollTo({top:to,behavior:'smooth'}); }); }
 /* ---------- v17 (B.23 / B.24, build 29): the unlock order, drawn — and the chests the order ends at ----------
 
    B.23 asked for thin lines joining the games in the order they open, with Sequence moved directly under Estimate so
@@ -196,12 +211,18 @@ function renderGauntlets(reveal,fresh){ const arriving=[];
    the column simply stands. Every word is a tap target (`chestword`). A locked key chest's meter line wears its band's colour (L.8d). */
 // the spill's timings, as the custom properties ui/chest.js names — set on an element without touching its grid placement
 const setVars=(el,s)=>s.split(';').forEach(kv=>{ const i=kv.indexOf(':'); if(i>0) el.style.setProperty(kv.slice(0,i),kv.slice(i+1)); });
-function renderChests(){ const m=modeCount(), rang=[];
+function renderChests(){ const m=modeCount(), rang=[], newCracks=[];
   $$('#grid .chest').forEach(el=>{ const id=el.dataset.chest, st=chestState(id), c=CHESTS.find(x=>x.id===id); if(!st||!c) return;
     el.hidden=false;
     el.classList.toggle('locked',st==='locked'||st==='before'); el.classList.toggle('ready',st==='ready'); el.classList.toggle('open',st==='open');
     el.querySelector('.name').textContent=GRID.chest[id]||id;
-    const pic=el.querySelector('.pic'); if(!pic.querySelector('.chestart')) pic.insertAdjacentHTML('afterbegin',chestSvg(id));
+    /* v28 (item 13, build 53): THE GAMES CHEST CRACKS AS THE GAMES ARE FINISHED. The sprite is redrawn whenever its crack count has moved, so
+       the cracks stand on the map between sessions (they are derived from the store, not saved). A crack that has just ARRIVED draws itself on
+       and ticks; the seventh bursts the chest, which is the same frame the chest goes ready — seven games finished IS the chest's own need. */
+    const pic=el.querySelector('.pic'); const crk=id==='games'?crackCount():0, art=pic.querySelector('.chestart');
+    if(!art) pic.insertAdjacentHTML('afterbegin',chestSvg(id));
+    else if(id==='games'&&+art.dataset.cracks!==crk){ art.remove(); pic.insertAdjacentHTML('afterbegin',chestSvg(id)); }
+    if(id==='games') newCracks.push([el,crk]);
     /* v26 (item 12, build 48): A LOCKED KEY CHEST SAYS WHAT OPENS IT IN WORDS — "Earn the Pro key" — with no percentage, and so does one whose
        chest ahead is still shut, because what opens it is the same key either way. It said "203% · opens at 300%": a figure the Keys screen and
        the menu also print, in a second place where it could disagree with them. The Games chest keeps its count of modes, which is not a
@@ -216,7 +237,21 @@ function renderChests(){ const m=modeCount(), rang=[];
     const w=$(`#grid .chestwords[data-for="${id}"]`); if(w){ w.hidden=st!=='open'; w.innerHTML=st==='open'?wordsHtml(id):''; setVars(w,spillVars()); w.classList.toggle('spill',spill); }
     if(spill){ prefs.spill=Object.assign({},prefs.spill,{[id]:1}); save(); } });
   // L.9c: one quiet sound the first time the map paints a chest READY — once, however many became ready together (guess)
-  if(rang.length){ prefs.readySeen=Object.assign({},prefs.readySeen,Object.fromEntries(rang.map(id=>[id,1]))); save(); Snd.chestReady(); } }
+  if(rang.length){ prefs.readySeen=Object.assign({},prefs.readySeen,Object.fromEntries(rang.map(id=>[id,1]))); save(); Snd.chestReady(); }
+  /* item 13: any crack past the last one this map has shown arrives now — drawn on, one tick each, the seventh with the chest's own burst.
+     `prefs.cracked` is the only thing stored about them, and only so the same crack never arrives twice. */
+  for(const [el,n] of newCracks){ const seen=Math.min(7,Math.max(0,prefs.cracked|0)); if(n<=seen){ if(n<seen){ prefs.cracked=n; save(); } continue; }
+    // an OPEN chest has already been broken open: its cracks are history, not an arrival, so they are recorded and never played (L.9b)
+    if(chestOpen('games')){ prefs.cracked=n; save(); continue; }
+    // an OPEN chest has already been broken open: its cracks are history, not an arrival, so they are recorded and never played (L.9b)
+    if(chestOpen('games')){ prefs.cracked=n; save(); continue; }
+    const crks=[...el.querySelectorAll('.crackg .crk')];
+    crks.slice(seen).forEach((c,i)=>{ c.classList.add('fresh'); c.style.animationDelay=(i*260)+'ms'; setTimeout(()=>Snd.crack(seen+i),i*260);
+      // the class comes off when it has drawn: L.9b says nothing on a settled map animates but a READY chest's idle
+      setTimeout(()=>{ c.classList.remove('fresh'); c.style.animationDelay=''; },i*260+700); });
+    if(n>=7){ const pic=el.querySelector('.pic'); const old=pic.querySelector('.pburst'); if(old) old.remove();
+      pic.insertAdjacentHTML('beforeend',burstHtml('games')); el.classList.add('spill'); setTimeout(()=>Snd.crackBurst(),(7-seen-1)*260+180); }
+    prefs.cracked=n; save(); } }
 /* v18 (B.18, build 32): each game tile's outline fills with its KEY-1 progress — 5 of 8 requirements met is the outline
    drawn five eighths of the way round, clockwise from the top, in the lilac named KEYFILL in config/theme.js. A game whose
    key-1 combinations are all cleared is COMPLETE: the outline closes and the picture takes a wash of the same colour, so
@@ -349,6 +384,8 @@ define({
        it is tapped and the sheet's own transition carries it; this is the only picker in the app that waited on its highlight. */
     $$('.choice').forEach(c=>c.classList.toggle('sel',c===b)); setStage('len'); fillTimes(); return 'pick'; },
   'lvl-back'(){ setStage('mode'); return 'click'; },
+  // item 14: a tap on the dimmed map closes the sheet outright — not one stage back, which is what Back still does
+  sheetclose(){ setStage('grid'); return 'pick'; },
   time(b){ const v=+b.dataset.time; if(b.classList.contains('locked')){ ask(sel.game,sel.diff,v); return 'pick'; } sel.secs=v; $$('[data-time]').forEach(c=>c.classList.toggle('sel',c===b)); return 'pick'; },
   'go-btn'(){ if(sel.game!=='sequence') sel.practice=0; VS.reset(); start(); return 'click'; },
   vs(b){ sel.vs=b.dataset.vs==='0'?0:(sel.vs||1); renderVsRow(); $('#sheet-title').textContent=GAMES[sel.game].name+(sel.vs===1?' · pass & play':sel.vs===2?' · versus':''); renderVsArt(); if(stage==='len') fillTimes(); return 'pick'; },
@@ -381,7 +418,8 @@ define({
     // mid-open (a chest word, a stale element), and it names its chest through GRID.chestOpenIt — no chest name is spelled twice (item 4)
     if(!chestOpen(G.chest)){ toast(T(GAUNTLET.toast,{need:T(GRID.chestOpenIt,{chest:GRID.chest[G.chest]||G.chest})}),'','',true); return 'pick'; }
     show('s-gauntlet',{id}); return 'click'; },
-  praclock(){ toast(TOAST.pracLocked); return 'pick'; },
+  // v28 (item 5, build 53): the toast composes off the one full name, so it can never read as a title cut in half
+  praclock(){ toast(T(TOAST.pracLocked,{name:PROGRESS.practiceFrom})); return 'pick'; },
   prac(b){ sel.practice=+b.dataset.prac; $$('[data-prac]').forEach(c=>c.classList.toggle('sel',c===b)); return 'pick'; },
   // v15 (4.5): how many notes a Sequence versus opens with
   opens(b){ sel.opens=+b.dataset.opens; $$('[data-opens]').forEach(c=>c.classList.toggle('sel',c===b)); return 'pick'; },

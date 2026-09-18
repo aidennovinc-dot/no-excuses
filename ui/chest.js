@@ -8,11 +8,11 @@
    screen, so the key screen and the map may both import it (A4). Presentation only (L10). */
 import { HIDE_UNRECORDED } from "../config/build.js";
 import { CHEST_LOOK, GAUNTLETS, METER_BANDS, SPILL, SYMBOLS } from "../config/chests.js";
-import { CHEST_WORDS, GRID, MSG } from "../config/copy.js";
+import { CHEST_WORDS, GAUNTLET, GRID, MSG } from "../config/copy.js";
 import { KEYS, KEY_ART } from "../config/keys.js";
 import { MESSAGES } from "../config/messages.js";
 import { T, esc } from "../core.js";
-import { meterBand } from "../progress/key.js";
+import { crackCount, meterBand, msgTitle } from "../progress/key.js";
 
 /* v25 (items 6 / 7 / 22, build 46): ONE SYMBOL DRAWER. A symbol is paths in a 24 × 24 box (SYMBOLS in config/chests.js) — `p` stroked,
    `f` filled — and this is the only thing in the app that turns one into markup, so the drawing that pops out of a chest, the one beside
@@ -42,18 +42,24 @@ const msgOfChest = id => MESSAGES.find(m => m.by && m.by.chest === id) || null;
 const msgCol = m => { const b = (m && m.by) || {}; if (b.chest) return chestCol(b.chest);
   if (b.gauntlet) { const g = GAUNTLETS.find(x => x.id === b.gauntlet); return g ? chestCol(g.chest) : ''; }
   return ''; };
-const videoWord = id => { const m = msgOfChest(id); return !m || (HIDE_UNRECORDED && !m.file) ? [] : [{ w: T(MSG.reward, { title: m.title }), sym: 'video', to: 'msg:' + m.id, msg: m.id }]; };
-const wordsOf = id => (CHEST_WORDS[id] || []).concat(videoWord(id));
+const videoWord = id => { const m = msgOfChest(id); return !m || (HIDE_UNRECORDED && !m.file) ? [] : [{ w: T(MSG.reward, { title: msgTitle(m) }), sym: 'video', to: 'msg:' + m.id, msg: m.id, msgObj: m }]; };
+/* v28 (item 10, build 53): a chest word that GIVES A GAUNTLET carries `gaunt`, not a word — its name is composed off GAUNTLET.name here, in
+   capitals like every other chest word, so Gauntlet Mini and Gauntlet Mega are spelled in exactly one place. */
+const wordsOf = id => (CHEST_WORDS[id] || []).map(x => x.gaunt ? Object.assign({}, x, { w: (GAUNTLET.name[x.gaunt] || x.gaunt).toUpperCase() }) : x).concat(videoWord(id));
 // what one chest gives, as the reveal and the map want it: the word, its symbol, where it goes and whether it is a placeholder reward
-const giftsOf = id => wordsOf(id).map(x => ({ w: x.w, sym: x.sym || '', tba: !!x.tba, to: x.to || 'soon', msg: x.msg || '' }));
+const giftsOf = id => wordsOf(id).map(x => ({ w: x.w, sym: x.sym || '', tba: !!x.tba, to: x.to || 'soon', msg: x.msg || '', msgObj: x.msgObj || null }));
 
 const paths = (list, cls) => (list || []).map((d, i) => `<path class="${cls}" d="${d}" style="--i:${i}"></path>`).join('');
 /* the sprite. The lid and its spikes are one group turning on the look's own hinge; the cross is always drawn and only a locked chest
    shows it. The colours, weights and idle timing ride on the svg as custom properties, so the stylesheet names no chest's colour */
 // v27 (item 13): `--bc` is the chest's own colour now (chestCol), and `--shim` the colour its shimmer or its current runs in
-function chestSvg(id, cls = '') { const L = CHEST_LOOK[id]; if (!L) return ''; const col = chestCol(id); const [hx, hy] = L.hinge || [5, 14];
-  return `<svg class="chestart${cls ? ' ' + cls : ''}" data-look="${id}" data-idle="${L.idle.kind}" viewBox="-2 -2 44 36" aria-hidden="true" style="--cs:${L.stroke};--cf:${L.fill};--cl:${L.lock};--csw:${L.sw};--clsw:${L.lidSw};--bc:${col};--shim:${L.shim || col};--idle-ms:${L.idle.ms}ms;--idle-px:${L.idle.px}px">`
-    + `<g class="boxg">${paths(L.box, 'box')}${paths(L.fit, 'fit')}${paths(L.boxSpikes, 'spk')}${paths(L.accent, 'acc')}</g>`
+/* v28 (item 13, build 53): AND ITS CRACKS. Only the Games chest has any (CHEST_LOOK.games.cracks): the first `n` of the seven, in a fixed
+   order, so every player's chest looks the same at 4 of 7. `n` defaults to what the store says is finished, which is what makes the map keep
+   them between sessions; the ceremony asks for all seven and draws the last one in as its `crack` step. */
+function chestSvg(id, cls = '', o = {}) { const L = CHEST_LOOK[id]; if (!L) return ''; const col = chestCol(id); const [hx, hy] = L.hinge || [5, 14];
+  const nCrack = L.cracks ? Math.max(0, Math.min(L.cracks.length, typeof o.cracks === 'number' ? o.cracks : crackCount())) : 0;
+  return `<svg class="chestart${cls ? ' ' + cls : ''}" data-look="${id}" data-idle="${L.idle.kind}" data-cracks="${nCrack}" viewBox="-2 -2 44 36" aria-hidden="true" style="--cs:${L.stroke};--cf:${L.fill};--cl:${L.lock};--csw:${L.sw};--clsw:${L.lidSw};--bc:${col};--shim:${L.shim || col};--idle-ms:${L.idle.ms}ms;--idle-px:${L.idle.px}px">`
+    + `<g class="boxg">${paths(L.box, 'box')}${paths(L.fit, 'fit')}${paths(L.boxSpikes, 'spk')}${paths(L.accent, 'acc')}<g class="crackg" data-n="${nCrack}">${paths((L.cracks || []).slice(0, nCrack), 'crk')}</g></g>`
     + `<g class="lidg" style="transform-origin:${hx}px ${hy}px">${paths(L.lid, 'lid')}${paths(L.spikes, 'spk')}</g>`
     + `<g class="lockg">${paths(L.lockp, 'lock')}</g><path class="xl" d="M1 1L39 31"></path></svg>`; }
 
@@ -72,6 +78,18 @@ function burstHtml(id) { const n = SPILL.particles;
   return `<span class="pburst" aria-hidden="true" style="--pc:${chestCol(id)};${spillVars()}">` + Array.from({ length: n }, (_, i) =>
     `<i style="--a:${Math.round(-160 + i * (140 / Math.max(1, n - 1)))}deg;--r:${16 + (i % 3) * 8}px;--i:${i}"></i>`).join('') + `</span>`; }
 
+/* ---------- v28 (item 12, build 53): A MESSAGE READS AS A SCREEN YOU TAP, WHEREVER IT APPEARS ----------
+   On the congratulations card it was a grey line with a small icon and Aiden did not know it was tappable. It is the build-52 player, POWERED OFF:
+   the same 16:9 picture in the same thin white rounded frame at the same 1px weight, glowing in the colour of the chest that unlocked the slot
+   (msgCol), with a play mark in the middle and the slot's own title under it. One drawer, here beside chestCol() and msgCol(), because the card
+   (ui/reveal.js) and the Messages list (ui/screens/about.js) are a screen and a module and neither may import the other (A4).
+   A slot with no clip yet shows the same frame with its "video coming soon" line in it, so the placeholder reads the same way. */
+function msgPreview(m, o = {}) { if (!m) return '';
+  const col = msgCol(m) || '', has = !!m.file && !o.soon;
+  return `<span class="mprev${o.big ? ' big' : ''}${has ? ' has' : ''}" style="${col ? `--vg:${col}` : ''}">`
+    + `<span class="mpframe"><span class="mppic">${has ? '<i class="mpplay"></i>' : `<i class="mpsoon">${esc(o.soon || MSG.soon)}</i>`}</span></span>`
+    + (o.title === false ? '' : `<b class="mptitle">${esc(msgTitle(m))}</b>`) + '</span>'; }
+
 /* L.8d / L.8e: THE BAND A METER FIGURE IS IN, worn as `mb0`–`mb3` with its strength inside the band (`--mk`, 0..1), so 105% and 195% look
    different. Glow and spike heights scale across the band; the shake is a whole number of pixels, so it never blurs the figure. `vars`
    alone takes the colour and nothing else — the map's chest line, whose figure is a pseudo-element. Green is never a band colour (B.22). */
@@ -84,4 +102,4 @@ function meterLook(el, v, vars) { if (!el) return; const { i, k } = meterBand(v)
   el.style.setProperty('--mground', B.ground || 'transparent'); el.style.setProperty('--mcold', B.cold || 'transparent');
   el.style.setProperty('--shp', String(B.shake && B.shake[1] ? (k < .5 ? B.shake[0] : B.shake[1]) : 0)); }
 
-export { burstHtml, chestSvg, giftsOf, meterLook, msgCol, msgOfChest, spillVars, symSvg, wordsHtml };
+export { burstHtml, chestSvg, giftsOf, meterLook, msgCol, msgOfChest, msgPreview, spillVars, symSvg, wordsHtml };

@@ -231,14 +231,14 @@ export const TRACKS = {
      NOBODY HAS HEARD THESE. No audio device in a Claude Code session (UNVERIFIED.md). `vol` came out of _smoke/loudness.mjs: at 1.0 the
      three rendered −35.1 / −35.3 / −37.6 dB against about −40 for the game tracks, so 0.57 / 0.58 / 0.76 bring each to −40. ---------- */
   // Key: G, the Roots chords, a chord a bar. One melody, two long notes a bar, over a held triangle chord, a drone and a slow bass
-  'theme:key':{ name:'Key', vol:0.57, root:98, bpm:88, beats:4, form:16, ch:[[0,7,12,14],[-2,5,10,12],[-4,3,8,12],[-2,5,10,14]], bass:[0,-2,-4,-2],
+  'theme:key':{ name:'Lantern', vol:0.57, root:98, bpm:88, beats:4, form:16, ch:[[0,7,12,14],[-2,5,10,12],[-4,3,8,12],[-2,5,10,14]], bass:[0,-2,-4,-2],
     voices:[ { v:'lead', w:'sine', pat:'x.x.', seq:[24,19, 22,24, 20,24, 17,14, 24,26, 24,22, 19,15, 17,14, 26,24, 22,26, 27,24, 22,17, 19,24, 26,22, 20,19, 17,14], sus:1.9, hold:.35, at:.12, g:.02, lv:'xxxxxxx9' },
              { v:'pad', w:'triangle', pat:'x', sus:1.02, hold:.7, at:.1, g:.011, lv:'x9xx9xx8xx9x' },
              { v:'drone', w:'sine', pat:'x', sus:1, hold:.8, at:.1, g:.04 },
              { v:'bass', w:'triangle', o:1, pat:'x...x...', sus:3.6, hold:.5, at:.08, g:.026, lp:340 },
              { v:'pad', w:'sine', add:12, pat:'x', sus:1.02, hold:.6, at:.12, g:.004, lv:'8999xx99' } ] },
   // Pro: D, the Frost chords, faster and a chord a bar. The melody, a second voice answering it off the beat, a bass pulse and a low arp
-  'theme:pro':{ name:'Pro', vol:0.58, root:146.8, bpm:112, beats:4, form:16,
+  'theme:pro':{ name:'Circuit', vol:0.58, root:146.8, bpm:112, beats:4, form:16,
     ch:[[0,7,14,19],[-2,5,12,17],[-5,2,9,14],[-3,4,11,16],[0,7,14,21],[3,10,17,22],[-2,5,12,19],[-7,0,7,14]], bass:[0,-2,-5,-3,0,3,-2,-7],
     voices:[ { v:'lead', w:'sine', o:-1, pat:'x...x...', seq:[19,14, 17,12, 14,21, 16,11, 21,19, 22,17, 19,17, 14,12, 21,19, 17,19, 21,14, 16,23, 19,21, 22,17, 19,12, 14,7], sus:5, hold:.4, at:.1, g:.016, lv:'xxxx9xxx' },
              { v:'lead', w:'triangle', o:-1, pat:'..x...x.', seq:[12,7, 10,5, 9,14, 11,4, 14,12, 15,10, 12,7, 7,2, 14,9, 12,10, 9,2, 11,16, 12,14, 10,15, 7,12, 2,7], sus:5, hold:.4, at:.1, g:.012, lp:1600, lv:'x9xxx9xx' },
@@ -290,6 +290,9 @@ export const TRACKS = {
    'game' (every game its own track) is the one value that is not here. The key screen's SET THIS MUSIC and Customise's Everywhere row both
    write that one field; core/store.js everywhere() reads it back, and a theme whose chest is shut reads as 'game'. RETIRED is the build-30
    theme each one replaced, which only the review board plays (L.7e). */
+/* v28 (item 3, build 53): the three key tracks are titled LANTERN / CIRCUIT / THORNS — the key's own `theme` in config/keys.js, never the
+   key's NAME. Customise's Everywhere row printed the track name for the key and those names were Key / Pro / Thorns, which is exactly the
+   Key / Pro / Thorns Aiden saw on that screen. The key is named Skill key / Pro / Author and only ever off config/keys.js `name`. */
 export const KEY_THEMES = { key:'theme:key', pro:'theme:pro', thorns:'theme:thorns' };
 export const KEY_THEMES_RETIRED = { key:'key:roots', pro:'key:frost', thorns:'key:thorn' };
 
@@ -399,6 +402,33 @@ export const CHEST_STING = {
   thorns: { track: 'theme:thorns', cut: 4.2, tail: [[4.2, -12, 1800, 'sine', .04, 400], [4.2, 0, 1800, 'sawtooth', .009, 220, 1100], [4.2, 7, 1800, 'sawtooth', .009, 220, 1100], [4.2, 15, 1800, 'sawtooth', .007, 220, 1100], [4.25, 19, 1750, 'sine', .012, 500]] },
 };
 export const CHEST_READY_FX = [[0, 146.8, 146.8, 460, 'sine', .03, 50], [.24, 220, 220, 700, 'sine', .03, 80]];
+
+/* ---------- v28 (item 13, build 53): THE GAMES CHEST CRACKING OPEN, ONE GAME AT A TIME ----------
+   REUSED, NOT WRITTEN NEW, which is what item 13 asks. CRACK_FX is the Games chest's own tick — the first event of CHEST_FX.games, the triangle
+   fall that already plays seven times while its ceremony un-crosses the seven tiles — with a short low thump under it so it reads as something
+   giving way rather than as a menu tick. `step` lifts it a tone for each crack after the first, the way GIFT_FX climbs, so the seven cracks are
+   audibly a sequence going somewhere. CRACK_BURST is the Games chest's own pop and chord, the 1.8s hit and the 2.1s triad of CHEST_FX.games,
+   played together: the seventh crack on the map is the same sound the chest's opening lands on. */
+export const CRACK_FX = { step: 2, notes: [[0, 206, 174.6, 70, 'triangle', .042, 2], [0, 96, 62, 190, 'sine', .05, 4]] };
+export const CRACK_BURST = [[0, 110, 82, 320, 'sine', .075, 10],
+  [.06, 392, 392, 1000, 'triangle', .045, 30], [.06, 493.9, 493.9, 1000, 'triangle', .04, 30], [.06, 587.3, 587.3, 1000, 'triangle', .035, 30]];
+
+/* ---------- v28 (item 17, build 53): THE CELEBRATION ON THE CONGRATULATIONS SCREEN, ONE PER CHEST ----------
+   Item 17: confetti and a celebratory sound on the screen the player taps through to after a chest opens, DIFFERENT FOR EACH CHEST and escalating
+   Games → Skill → Pro → Author. Built from the palette that is already there, as the item asks: the Games chest's tick (CHEST_FX.games), the
+   reward pop (POP_FX) and the gift landing (GIFT_FX), stacked thicker and lower each tier over that key's own root — G for Skill, D for Pro, E for
+   Author, the roots their themes are written on. Nothing here is a new instrument; each is the same three voices arranged bigger.
+   It fires ONCE, with the staged card's title (item 12), before the message row appears. An effect, so it follows the tap-sound switch. */
+export const CHEER_FX = {
+  games: [[0, 392, 392, 90, 'triangle', .05, 2], [.07, 523.3, 523.3, 320, 'triangle', .042, 8], [.14, 784, 784, 460, 'sine', .03, 12], [0, 130.8, 98, 260, 'sine', .05, 4]],
+  key: [[0, 392, 392, 110, 'triangle', .055, 2], [.06, 587.3, 587.3, 420, 'triangle', .048, 8], [.12, 784, 784, 620, 'sine', .04, 12], [.18, 987.8, 987.8, 700, 'sine', .028, 16],
+    [0, 98, 73.4, 420, 'sine', .07, 6], [.3, 196, 392, 820, 'sine', .026, 220]],
+  pro: [[0, 293.7, 293.7, 120, 'triangle', .058, 2], [.05, 440, 440, 460, 'triangle', .05, 8], [.1, 587.3, 587.3, 700, 'triangle', .044, 10], [.16, 880, 880, 820, 'sine', .034, 14],
+    [.22, 1174.7, 1174.7, 900, 'sine', .024, 18], [0, 73.4, 55, 520, 'sine', .085, 6], [.34, 146.8, 587.3, 1000, 'sawtooth', .016, 260, 2200]],
+  thorns: [[0, 164.8, 164.8, 130, 'triangle', .06, 2], [.05, 246.9, 246.9, 500, 'triangle', .054, 8], [.1, 329.6, 329.6, 760, 'triangle', .048, 10], [.16, 493.9, 493.9, 900, 'sine', .04, 14],
+    [.22, 659.3, 659.3, 1000, 'sine', .03, 18], [.28, 987.8, 987.8, 1100, 'sine', .022, 22], [0, 41.2, 32.7, 640, 'sine', .095, 6],
+    [.36, 164.8, 659.3, 1250, 'sawtooth', .018, 300, 2600], [.6, 82.4, 82.4, 1400, 'sine', .05, 120]],
+};
 export const HUSH = { down: .08, up: .4 };
 
 /* ---------- v24 (C.5, build 43): EARNING A KEY — its own sound per tier, from that key's theme ----------
@@ -431,10 +461,14 @@ export const KEY_STEP_FX = {
   slam: [[0, 200, 34, 420, 'sine', .1, 1], [0, 120, 28, 640, 'triangle', .07, 2, 420], [0, 700, 160, 90, 'sine', .018, 1, 2400]],
   crack: [[0, 260, 70, 200, 'sawtooth', .035, 2, 1200], [.06, 140, 50, 340, 'sine', .045, 3], [.12, 190, 60, 260, 'sawtooth', .022, 2, 900]],
   thorns: [[0, 620, 300, 120, 'triangle', .018, 2, 2200], [.07, 700, 330, 120, 'triangle', .016, 2, 2200], [.15, 560, 260, 140, 'triangle', .014, 2, 2000], [0, 100, 58, 300, 'sine', .03, 4]],
+  /* v28 (item 15, build 53): `land` is the last hit of the finale, on the earn music's final note — one low thud with a bright edge on it, quiet,
+     because the music is already landing its own last chord underneath. `rise` has no row on purpose: it is three to four seconds of continuous
+     settling and a sound held under it would only fight the track. */
+  land: [[0, 150, 62, 340, 'sine', .045, 2], [0, 520, 240, 130, 'triangle', .014, 1, 2600]],
 };
 
 export const KEY_EARN_FX = {
-  clear: { track: 'theme:key', notes: [[0, -12, 2600, 'sine', .045, 300], [0, 0, 1500, 'triangle', .022, 60], [.22, 7, 1400, 'triangle', .022, 60], [.44, 12, 1500, 'triangle', .022, 80], [.66, 14, 1800, 'sine', .022, 120], [1.1, 19, 1700, 'sine', .018, 300]] },
+  clear: { track: 'theme:key', notes: [[0, -12, 2380, 'sine', .045, 300], [0, 0, 1500, 'triangle', .022, 60], [.22, 7, 1400, 'triangle', .022, 60], [.44, 12, 1500, 'triangle', .022, 80], [.66, 14, 1700, 'sine', .022, 120], [1.1, 19, 1290, 'sine', .018, 300]] },
   /* v27 (Aiden's answer to build 51, build 52): "let's make the music even more epic for the pro". Build 51's is all still here — the driving
      bass pulse, the climbing arp, the melody and its answer, the chord. Around it now: a sub an octave under the pulse from the first beat, two
      more pulses so the drive runs the whole length instead of stopping at 0.8s, a filtered sawtooth swell rising into the landing, a counter-line
@@ -449,8 +483,8 @@ export const KEY_EARN_FX = {
     [1.88, 17, 1300, 'triangle', .014, 140, 1600],
     [2.2, -7, 1600, 'triangle', .016, 120], [2.2, 0, 1600, 'triangle', .016, 120], [2.2, 7, 1600, 'triangle', .016, 120], [2.25, 14, 1500, 'sine', .014, 200],
     [2.2, 12, 1700, 'triangle', .015, 130], [2.2, 19, 1700, 'sine', .013, 180], [2.25, 24, 1600, 'sine', .011, 240],
-    [2.45, 26, 1800, 'sine', .008, 60],
-    [2.9, -24, 1500, 'sine', .05, 25], [2.9, -12, 1500, 'triangle', .03, 30, 500], [2.95, 7, 1500, 'triangle', .012, 220]] },
+    [2.45, 26, 1600, 'sine', .008, 60],
+    [2.9, -24, 1200, 'sine', .05, 25], [2.9, -12, 1200, 'triangle', .03, 30, 500], [2.95, 7, 1150, 'triangle', .012, 220]] },
   /* v26 (§B1, build 49): THORN — "make it better, with more sounds". Build 43's five layers are all still there; around them now: a sub pulse on every
      second, like a slow heartbeat under the drone; a filtered sawtooth rising out of the dark chord; the low figure answered once more after the
      tonic; three high bells over the landing (each held long, to the theme rule); and the dark chord's answer, low, to close it.
@@ -468,11 +502,11 @@ export const KEY_EARN_FX = {
     [3.6, -5, 1600, 'triangle', .014, 200], [3.6, 3, 1600, 'triangle', .012, 200], [3.6, 7, 1600, 'triangle', .012, 200],
     [0, -24, 1800, 'sine', .075, 10],
     [.9, -12, 2600, 'sawtooth', .014, 900, 700], [.9, -5, 2600, 'sawtooth', .012, 900, 700], [.9, 3, 2600, 'sawtooth', .011, 900, 700],
-    [1.9, 31, 1900, 'sine', .006, 50], [4.0, 36, 2000, 'sine', .005, 70],
+    [1.9, 31, 1900, 'sine', .006, 50], [4.0, 36, 1700, 'sine', .005, 70],
     [3.9, 3, 360, 'triangle', .017, 20, 700], [4.15, 0, 360, 'triangle', .017, 20, 700], [4.4, -5, 400, 'triangle', .017, 20, 700],
     [4.0, -24, 900, 'sine', .05, 20], [5.0, -24, 1000, 'sine', .05, 20],
-    [4.6, 0, 2600, 'sawtooth', .014, 300, 1100], [4.6, 12, 2600, 'sawtooth', .012, 300, 1100], [4.6, 19, 2400, 'sine', .014, 400], [4.7, 24, 2200, 'sine', .01, 500],
-    [4.6, -24, 2000, 'sine', .06, 30], [5.2, -24, 1400, 'sine', .05, 30], [5.2, -12, 1800, 'triangle', .026, 200, 500]] },
+    [4.6, 0, 2100, 'sawtooth', .014, 300, 1100], [4.6, 12, 2100, 'sawtooth', .012, 300, 1100], [4.6, 19, 2000, 'sine', .014, 400], [4.7, 24, 1900, 'sine', .01, 500],
+    [4.6, -24, 1900, 'sine', .06, 30], [5.2, -24, 1200, 'sine', .05, 30], [5.2, -12, 1490, 'triangle', .026, 200, 500]] },
 };
 
 /* v25 (item 17, build 45): A ROUND'S TIER SOUND is VERDICT_FX played shorter and quieter — every start, length and attack × `time`, every gain ×

@@ -7,7 +7,7 @@
    finish ramp that lands the last downbeat on the clock (B.28), an end cadence in the track's own key (B.30), a flow-state
    layer over the two tap games (B.27) and a duck for Sequence (B.30). Still no percussion. */
 
-import { CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, DUCK, DUCK_TAIL, FLOW_STEM, GIFT_FX, HUSH, KEY_EARN_FX, KEY_STEP_FX, KEY_THEMES, MAP_FX, MAP_LOCKED, POP_FX, ROUND_FX, ROUND_VERDICT, SCALES, SET_SECS, STEMS, STING_RING, TITLE_FX, TRACKS, TRACK_PICK, VERDICT_FX, VIDEO_FX, WHOOSH_VARIANTS } from "./config/audio.js";
+import { CHEER_FX, CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, CRACK_BURST, CRACK_FX, DUCK, DUCK_TAIL, FLOW_STEM, GIFT_FX, HUSH, KEY_EARN_FX, KEY_STEP_FX, KEY_THEMES, MAP_FX, MAP_LOCKED, POP_FX, ROUND_FX, ROUND_VERDICT, SCALES, SET_SECS, STEMS, STING_RING, TITLE_FX, TRACKS, TRACK_PICK, VERDICT_FX, VIDEO_FX, WHOOSH_VARIANTS } from "./config/audio.js";
 import { STREAK } from "./config/games.js";
 import { emit, on } from "./core/events.js";
 import { sel } from "./core/state.js";
@@ -128,7 +128,8 @@ const Snd = (()=>{
   return { unlock:AC, tone,
     // 'sigh' (v8): a breathy fall on every tap. Earned by the Grand tour. It is a joke, and it is meant to be
     // v11 loudness pass: hit ≈ .07, miss ≈ .08 in every pack, nothing above the game-end sound (.10)
-    hit(){ look('snd')==='click' ? tone(1800,1200,25,'square',.06) : look('snd')==='wood' ? tone(900,500,45,'triangle',.08) : look('snd')==='sigh' ? (tone(560,190,300,'sine',.07,0,40),tone(2200,900,220,'sawtooth',.012,0,30)) : tone(700,1500,70,'sine',.07); },
+    // v28 (item 6, build 53): a pack may be named — Progress's Customise-unlocks rows play the pack the ROW unlocks, not the one in use
+    hit(pack){ const p=pack||look('snd'); p==='click' ? tone(1800,1200,25,'square',.06) : p==='wood' ? tone(900,500,45,'triangle',.08) : p==='sigh' ? (tone(560,190,300,'sine',.07,0,40),tone(2200,900,220,'sawtooth',.012,0,30)) : tone(700,1500,70,'sine',.07); },
     miss(){ look('snd')==='click' ? tone(300,120,60,'square',.08) : look('snd')==='wood' ? tone(180,90,140,'triangle',.08) : look('snd')==='sigh' ? (tone(520,200,520,'sine',.08,0,60),tone(1040,420,380,'sine',.012,0,50)) : tone(220,70,180,'triangle',.08); },
     /* a key rings out on its own (v5): the tone decays over `ms`, it is never cut by the key being let go.
        v17 (B.30): a ringing key DUCKS the Sequence bed. It is both halves of the complaint in one line — the game
@@ -138,7 +139,7 @@ const Snd = (()=>{
     // run up the scale — hearing it on select, and under the countdown
     scaleRun(step,keys,ms){ const a=AC(); if(!a) return; const sc=SCALES[sel.scale]||SCALES.penta; const n=Math.min(keys||sc.n.length,sc.n.length); for(let i=0;i<n;i++) this.note(i,ms||step*2.2,a.currentTime+i*step/1000); },
     // picking a scale (v7): slower, louder, and it comes back down so the whole shape of it is heard — ~2.3s
-    scaleHear(){ const a=AC(); if(!a) return; const sc=SCALES[sel.scale]||SCALES.penta; const n=sc.n.length, step=.17; const order=[...Array(n).keys()].concat([...Array(n-1).keys()].reverse()); order.forEach((k,i)=>{ const f=261.6*Math.pow(2,sc.n[k]/12); tone(f,f,380,'triangle',.08,a.currentTime+i*step); }); },
+    scaleHear(which){ const a=AC(); if(!a) return; const sc=SCALES[which]||SCALES[sel.scale]||SCALES.penta; const n=sc.n.length, step=.17; const order=[...Array(n).keys()].concat([...Array(n-1).keys()].reverse()); order.forEach((k,i)=>{ const f=261.6*Math.pow(2,sc.n[k]/12); tone(f,f,380,'triangle',.08,a.currentTime+i*step); }); },
     // sequence: "your turn" — two quick rising notes, on top of the visual (v7)
     turn(){ const a=AC(); if(!a) return; const t=a.currentTime; tone(660,660,90,'sine',.07,t); tone(990,990,160,'sine',.08,t+.09); },
     // one click family (v11): every menu tap is click(); picking an option is select() — the same tone, a step higher (×1.12)
@@ -220,6 +221,18 @@ const Snd = (()=>{
         else if(kind==='sting'){ if(sting) tone(f0,f1,ms,w,g,t+at,am,true,undefined,{lp:lp||0,hold:.55}); }
         else tone(f0,f1,ms,w,g,t+at,am,false,undefined,lp?{lp}:undefined); } },
     chestReady(){ this.fx(CHEST_READY_FX); },
+    /* v28 (item 13, build 53): the Games chest cracking. `crackPlan(i)` is CRACK_FX a tone higher for each crack after the first — the chest's
+       own tick with a thump under it — and `crackBurst()` is the pop and chord its opening already lands on, played as the seventh gives way.
+       Both are recorded by plan() for the review catalogue's sound list, like every other effect. */
+    crackPlan(i){ const r=Math.pow(2,(CRACK_FX.step*(i||0))/12);
+      return CRACK_FX.notes.map(([at,f0,f1,ms,w,g,am,lp])=>[at,+(f0*r).toFixed(2),+(f1*r).toFixed(2),ms,w,g,am||0,lp||0]); },
+    crack(i){ this.fx(this.crackPlan(i)); },
+    crackBurstPlan(){ return CRACK_BURST.map(e=>e.slice()); },
+    crackBurst(){ this.fx(CRACK_BURST); },
+    /* v28 (item 17, build 53): the celebration on the congratulations screen, one per chest, escalating Games → Skill → Pro → Author. Built out of
+       the tick, the pop and the gift landing that are already in the app (config/audio.js CHEER_FX). Fires once, with the card's title. */
+    cheerPlan(id){ return (CHEER_FX[id]||CHEER_FX.games).map(e=>e.slice()); },
+    cheer(id){ this.fx(this.cheerPlan(id)); },
     /* v25 (items 1 / 2 / 6 / 11, build 46): THE FOUR NEW FAMILIES. Each is an event list in config/audio.js played through the one tone(), so
        each follows the tap-sound switch like every other effect and each is recorded by plan() for the review catalogue's sound list (item 20).
        None of them is unlockFx, click, a chest's or a key's earn (gated).
@@ -342,6 +355,10 @@ const Music=(()=>{
      seconds landing on the finish (B.28), the versus stems (1.4), the flow hum on solo Quick Tap and Dots (B.27), Sequence's duck (B.30)
      and the end cadence in its key. The menu loop does not read it (guess, L.7d). */
   const pickRun=g=>{ const th=KEY_THEMES[everywhere()]; return (th&&TR[th])||pick(g); };
+  /* v28 (item 2, build 53): AND WHAT THE MENU PLAYS. Build 42's guess was that the menu loop ignores the setting; Aiden's item 2 line is
+     "whatever is picked plays in the menu from then on", so a key track chosen in Customise's one Music row is the front of the app's music
+     too. A game's own track is not — it belongs to that game, and the menu is not a game — so the menu keeps its own loop for those three. */
+  const menuTrack=()=>KEY_THEMES[everywhere()]||'menu';
   let tr=null, timer=0, next=0, bar=0, hits=[], sHits=[[],[]], fHits=[], mode='', mg=null, sg=[null,null], fg=null;
   let st=null, secs=0, stems=false, flow=false, shape=null, fin=null, duckT=0, hushed=false;
   /* v21 (F.2 c): A REBUILT CONTEXT STRANDS EVERYTHING BUILT ON THE OLD ONE. The bed, the two stems and the flow layer are
@@ -441,7 +458,9 @@ const Music=(()=>{
     /* v16 (1.2 / 1.3): the front of the app has music too — one menu loop, and one per key tier. Called from the screen
        change below and from ui/screens/key.js when a tier is selected. Idempotent: asking for the loop that is already
        playing does nothing, so moving between menu screens never restarts it. */
-    menu(id){ if(mode===id&&tr) return; st=null; secs=0; stems=false; flow=false; if(!musicOn('menu')){ this.stop(); return; } const t=TR[id]; if(!t) return; run(t,id,{p:phaseOf(t)}); },
+    menu(id){ const want=id==='menu'?menuTrack():id; if(mode===want&&tr) return; st=null; secs=0; stems=false; flow=false; if(!musicOn('menu')){ this.stop(); return; } const t=TR[want]; if(!t) return; run(t,want,{p:phaseOf(t)}); },
+    // what the menu loop resolves to — Customise's master switch asks it so ON plays what the Music row is set to (item 2)
+    menuTrack,
     // preview one track on its own — Customise (12.1 / B.32), and the option a game is set to play
     // a preview ends by handing the menu loop back — walking away from Customise into silence would be worse than not previewing
     preview(g,ms,o){ st=null; stems=false; flow=false; const t=o?(TR[g+':'+o]||TR[o]||pick(g)):pick(g); run(t,'preview',{p:phaseOf(t)}); setTimeout(()=>{ if(mode==='preview'){ this.stop(); this.menu('menu'); } },ms||4200); },

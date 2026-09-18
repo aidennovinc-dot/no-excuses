@@ -8,7 +8,7 @@
    rendered before the sequence starts, so nothing about the layout can change while it plays. */
 import { GRID, KEY, MENU, TOAST } from "../../config/copy.js";
 import { $, $$, T, esc } from "../../core.js";
-import { chestOpen, meter, msgDot, readyChest } from "../../progress/key.js";
+import { chestOpen, meter, meterPct, msgDot, readyChest } from "../../progress/key.js";
 import { meterLook } from "../chest.js";
 import { countUp } from "../../core/count.js";
 import { emit, on } from "../../core/events.js";
@@ -63,7 +63,7 @@ function renderMenu(){ const first=firstRun(); const opening=menuWasFirst&&!firs
      v15 (2.2): it does NOT appear on a fresh profile's first menu open — a player who has not run anything yet is being
      told to play, not handed a target — and it labels itself Next unlock or Next achievement depending on which of the
      two nextGoal() found. Unlocks outrank achievements: the chain is offered until there is none of it left. */
-  const ng=first?null:nextGoal(); const nx=$('#nextup'); $('#menu-tag').hidden=!ng;
+  const ng=first?null:nextGoal(); const nx=$('#nextup');
   if(ng){ nx.innerHTML=T(ng.ach?MENU.nextAch:MENU.next,{need:ng.need,name:ng.name}); nx.hidden=false; nextWhere=Object.assign({need:ng.need},ng.where); } else { nx.hidden=true; nextWhere=null; } }
 
 /* v23 (L.11a, build 40): CUSTOMISE IS LOCKED UNTIL THE GAMES CHEST OPENS. Crossed out — v17's crossed, not greyed — with "open the
@@ -93,8 +93,11 @@ const PCT_UP_MS=900;   // (guess)
 /* v23 (L.8d / L.8e, build 41): THE FIGURE WEARS ITS BAND — mute, ink, gold with a glow that strengthens across it, Thorns white on black with a
    spiked edge, a cold glow and a whole-pixel shake — through ui/chest.js meterLook(), and the pulse on a rise is in the band's colour. The
    words around the figure are untouched. Green is never a band colour (B.22). */
+/* v28 (item 9, build 53): THE FIGURE PRINTED IS meterPct() — 0–100 — AND THE LOOK IS STILL THE RAW METER. Aiden saw "300% complete" here.
+   The count-up still walks the raw meter, because that is what `prefs.meterSeen` holds and what the bands are measured in; only the text it
+   draws is converted, so a rise of one bar still counts up and still wears its band. */
 function paintPct(mk,pct){ const rc=readyChest();
-  const line=v=>Math.round(v)===pct&&rc?T(KEY.menuReady,{pct:Math.round(v),chest:GRID.chest[rc]}):T(KEY.menu,{pct:Math.round(v)});
+  const line=v=>Math.round(v)===pct&&rc?T(KEY.menuReady,{pct:meterPct(v),chest:GRID.chest[rc]}):T(KEY.menu,{pct:meterPct(v)});
   const draw=v=>{ const n=Math.round(v); mk.innerHTML=esc(line(n)).replace(/(\d+%)/,'<b class="meterv">$1</b>'); meterLook(mk.querySelector('.meterv'),n); meterLook(mk,n,true); };
   const seen=prefs.meterSeen; prefs.meterSeen=pct; save();
   const id=mk._up=(mk._up||0)+1; mk.classList.remove('up');

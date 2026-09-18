@@ -40,9 +40,30 @@ export const KEYS = [
     lede: 'A harder bar on every combination, for a second pass at a game you already know.' },
   /* v24 (C.4, build 43): Thorn's ground was rgba(0,0,0,.55) under a solid black #key-main, so the live background never showed. Keys 1 and 2
      let it through and keep their own elements; Thorn does now too — a faint white wash, the spikes and white accents drawn over it */
-  { id: 'author', name: 'Author', theme: 'Thorn', style: 'thorn', track: 'theme:thorns', music: 'thorns', tint: '#FFFFFF', dim: '#4D4D4D', ground: 'rgba(255,255,255,.04)',
+  { id: 'author', name: 'Author', theme: 'Thorns', style: 'thorn', track: 'theme:thorns', music: 'thorns', tint: '#FFFFFF', dim: '#4D4D4D', ground: 'rgba(255,255,255,.04)',
     lede: "The author's own times. The last thing left to beat." },
 ];
+
+/* ---------- v28 (item 15, build 53): THE EARN MUSIC IS THE CLOCK, AND THE ANIMATION FILLS IT ----------
+   THIS AMENDS ITEM 14's "2.5 SECONDS AT MOST", and item 15 is Aiden's own answer to the question build 52 put on the board: the Pro and Author
+   animations are NOT too long — "they are too short for their music". What he played was a key that finished and then ~70% of the wait staring
+   at it while the music ran on, and the cause was arithmetic: Snd.keyEarn fired on the FLASH, so the music STARTED near the end of the animation
+   and rang on for seconds after it. Author was 2.30s of motion against 7.20s of music beginning at 2.00s — a 9.20s moment, 25% of it moving.
+   So, as item 15 asks: the music starts the clock (ui/screens/key.js fires Snd.keyEarn on the FIRST step, not the flash), `ms` IS the music's own
+   length, and two named steps carry the finale — `rise`, the whole key settling up into its finished state with its glow growing, continuous for
+   the whole of the music's back half, and `land`, a last hit on the final note. The assembly is untouched: the Skill key's seven spokes and spin,
+   the Pro key's one-by-one spokes with the current running the ring between them, the Author key's drop, slam, cracks and thorns, all exactly as
+   Aiden approved them on 2026-09-18. Nothing was trimmed from the MOTION; what was trimmed is the track's TAIL, which is the order item 15 sets.
+   LENGTHS, animation = music, against build 52's:
+     Skill   1.70s of motion inside a 4.13s moment  →  2.39s, and the moment IS 2.39s  (music 2.80s → 2.39s)
+     Pro     2.16s inside 6.35s                     →  4.10s                           (music 4.45s → 4.10s)
+     Author  2.30s inside 9.20s                     →  6.70s                           (music 7.20s → 6.70s)
+   Skill was not named in item 15; it had the same gap, so it is built the same way and said so in the outcome.
+   THE GATE now asks three things instead of a ceiling: `ms` matches that tier's KEY_EARN_FX length within 150ms (the music IS the clock); every
+   step but `flash` is movement and the movement span is at least .75 of `ms` (unchanged); and the ASSEMBLY — everything before `rise` — is at
+   least a quarter of `ms`, so a finale can never swamp the thing it is a finale to. A TAP STILL SKIPS TO THE END and the screen never locks,
+   which is what makes a six-second moment acceptable at all. `finale` is how grand the settle is per tier: `scale` how far the key grows,
+   `glow` its halo in px, `halo` how far the ring of light spreads. All (guess).
 
 /* ---------- v27 (item 14, build 51): EARNING A KEY — ONE ANIMATION PER TIER, TWO SECONDS AT MOST ----------
    THIS REPLACES BOTH build 43's KEY_EARN (the moment over the ring: 2.9 / 3.8 / 4.8s) AND build 46's KEY_REVEAL (the first-open reveal that
@@ -87,12 +108,12 @@ export const KEYS = [
    KEY_STEP_FX, except a spoke that fires alone, which lands with its own game's sound the way the map's tiles do. All (guess), and heard by nobody
    (UNVERIFIED.md). */
 export const KEY_EARN = {
-  clear: { ms: 1700, spokes: { gap: 130, each: 300 }, cracks: 0, crackGap: 0, thorns: 0, thornGap: 0, shake: 0,
-    steps: [{ name: 'spokes', at: 0, ms: 1080 }, { name: 'spin', at: 820, ms: 510 }, { name: 'flash', at: 1330, ms: 240 }] },
-  pro: { ms: 2160, spokes: { gap: 120, each: 280, trace: 85 }, cracks: 0, crackGap: 0, thorns: 0, thornGap: 0, shake: 0,
-    steps: [{ name: 'spokes', at: 0, ms: 1000 }, { name: 'trace', at: 40, ms: 685 }, { name: 'snap', at: 980, ms: 480 }, { name: 'ring', at: 1420, ms: 480 }, { name: 'flash', at: 1900, ms: 260 }] },
-  author: { ms: 2300, spokes: null, cracks: 10, crackGap: 48, thorns: 12, thornGap: 46, shake: 5,
-    steps: [{ name: 'drop', at: 0, ms: 430 }, { name: 'slam', at: 410, ms: 250 }, { name: 'crack', at: 620, ms: 712 }, { name: 'thorns', at: 1290, ms: 706 }, { name: 'flash', at: 1996, ms: 280 }] },
+  clear: { ms: 2390, spokes: { gap: 130, each: 300 }, cracks: 0, crackGap: 0, thorns: 0, thornGap: 0, shake: 0, finale: { scale: 1.05, glow: 16, halo: 1.35 },
+    steps: [{ name: 'spokes', at: 0, ms: 1080 }, { name: 'spin', at: 820, ms: 510 }, { name: 'flash', at: 1330, ms: 240 }, { name: 'rise', at: 1330, ms: 830 }, { name: 'land', at: 2160, ms: 230 }] },
+  pro: { ms: 4100, spokes: { gap: 120, each: 280, trace: 85 }, cracks: 0, crackGap: 0, thorns: 0, thornGap: 0, shake: 0, finale: { scale: 1.07, glow: 24, halo: 1.5 },
+    steps: [{ name: 'spokes', at: 0, ms: 1000 }, { name: 'trace', at: 40, ms: 685 }, { name: 'snap', at: 980, ms: 480 }, { name: 'ring', at: 1420, ms: 480 }, { name: 'flash', at: 1900, ms: 260 }, { name: 'rise', at: 1900, ms: 1900 }, { name: 'land', at: 3800, ms: 300 }] },
+  author: { ms: 6700, spokes: null, cracks: 10, crackGap: 48, thorns: 12, thornGap: 46, shake: 5, finale: { scale: 1.09, glow: 34, halo: 1.7 },
+    steps: [{ name: 'drop', at: 0, ms: 430 }, { name: 'slam', at: 410, ms: 250 }, { name: 'crack', at: 620, ms: 712 }, { name: 'thorns', at: 1290, ms: 706 }, { name: 'flash', at: 1996, ms: 280 }, { name: 'rise', at: 1996, ms: 4300 }, { name: 'land', at: 6296, ms: 404 }] },
 };
 // the one step that is not movement — the closing flash. The gate measures every tier's movement against it, so there is no second list of names
 export const EARN_GLOW = 'flash';

@@ -655,6 +655,132 @@ Nothing before this entry is rewritten: the earlier entries keep the names they 
   chest's closing chord and its sting's tail. `POP_FX.by` lifts one chest's pops and `POP_FX.bright` brightens a KEY reward's, and **only `games`
   has a row** — v27 item 12 approved the Pro chest's sounds exactly as they are, so a shared-code change is scoped to the chest item 6 names.
 
+### Amended at build 53 (batch 21, the bugs, the screens and the reward moments: FEEDBACK-v28 items 1–10 and 12–17), 2026-09-18
+
+Items 11 and 18 — the Gauntlets as real runs — are build 54 and nothing here touches them beyond the rename.
+
+- **AMENDED (v23 L.8a / L.10b's "ONE METER, 0–300"): WHAT A PLAYER IS SHOWN IS 0–100, AND IT CANNOT PASS 100 (v28 item 9).** The meter itself is
+  untouched — three bands of 100, one per key, and every chest threshold, band colour and Testing figure still reads it. What was wrong is what was
+  PRINTED. `meterPct()` beside `meter()` in `progress/key.js` is the meter over the top of the meter, rounded and clamped, and it is the one thing
+  any surface prints; `meter()` is what the app reasons with. WHERE THE 300 CAME FROM: not real play. `devReach('thorns')` — Testing's Author-chest
+  switch — fills every bar of all three keys and opens the three chests before it, which is 300 by construction, and it leaves the Author chest
+  READY rather than open, so the old figure could read its own maximum with a chest still shut. Build 46's 103% / 203% are the same arithmetic
+  three bars into the next band. 100 shown now means every bar on every key is cleared; the last chest is a reward for that, not more of it. The
+  LOOK still reads the raw figure, so the bands and their glows are unchanged. Testing is the one screen working in the raw meter and says so
+  ("250 of 300 raw · 83% shown").
+
+- **AMENDED (v18 B.28's "Customise's music is ONE row, and it is the track"): THE ROW IS THE WHOLE MUSIC CHOICE, AND THE EVERYWHERE ROW IS RETIRED
+  (v28 items 2 / 3).** Build 42 put an EVERYWHERE row above the tracks for the same decision said a second way; Aiden's line was "I don't know why
+  they're separate". One row now: this game's three tracks, then one track per key. Picking a game track is per game exactly as before; picking a
+  key track is that theme for every run AND for the MENU LOOP — `menuTrack()` in `audio.js`, which retires build 42's "the menu loop ignores it
+  (guess)". It is the SAME field build 42 wrote, `prefs.everywhere`, so the key screen's SET THIS MUSIC and this row still cannot disagree.
+  WHAT OPENS A KEY TRACK IS THE KEY, NOT ITS CHEST: `keyFinished()`, strictly earlier than the chest that key opens, and `everywhere()` in
+  `core/store.js` asks it through a setter bound from `progress/key.js` (`setKeyDone`), because core/ sits below progress/ in the graph and ESM
+  imports are read-only. A locked key track says what opens it UNDER its row (B.30) — which it may now do, because v21 G.1 put all three keys on
+  screen from the first visit, so naming one hides nothing (A.1). ITEM 3: the KEY is named Skill key / Pro / Author from `config/keys.js` and the
+  TRACK is titled Lantern / Circuit / Thorns from that key's `theme`. Before this build the Everywhere row printed the TRACK'S OWN NAME for the key
+  and those names were Key / Pro / Thorns, which is exactly what Aiden read on that screen. `CUSTOM.perGame`, `openChest` and `themeOn` are retired.
+
+- **NEW — R3: A LIST APPEARS THE MOMENT IT IS ASKED FOR (v28 item 1).** No entry animation on any tab or filter of Progress. `achin`'s slide and its
+  70ms stagger are gone, the shared `rise` came off `.ach .a.lock` and `.ach h4`, and L8's green first-seen mark keeps its fade but no longer
+  travels — the green is a FACT, not an entrance. Motion belongs to rewards, not to menus. **SECRET SITS BELOW EVERY OTHER TIER in every filter**
+  (the key order of `TIERS` in `config/copy.js` IS the render order, so there is no second list) **and is drawn like a locked ordinary row, never in
+  the cue red** — L.2's rule finally applied to the one group that broke it. **A tier heading STACKS its description under its title:** it was
+  `display:flex; justify-content:space-between`, so on a phone the title sat left and a long description was pushed hard against the right edge and
+  clipped by the list's own `overflow-x:hidden`. Aiden photographed it mid-list and asked whether it was a mid-slide artefact; it is not — it
+  settles like that every time.
+
+- **NEW: EACH PROGRESS TAB SAYS HOW MUCH OF ITSELF IS DONE (v28 item 4).** One `N of M unlocked` line where four lines of grey helper text were —
+  `unlHint`, `culHint`, `achHint`, `culLocked` and `UNLOCKS_SCREEN.lede`, all retired, because none of them said anything a row does not say by
+  being a row. Customise unlocks already counted per section ("Target colours · 1/3") and its tab line is the sum. On Achievements the total
+  LEAVES SECRET OUT until one has been found (R1 — the line may never say how many secrets exist) and the count follows the filter, because it
+  sits under the filter row.
+
+- **NEW: EVERY CUSTOMISE-UNLOCK ROW SHOWS THE THING IT UNLOCKS (v28 item 6).** `unlockArt()` in `progress.js`: a colour its swatch (the cut-piece
+  colour joins them — it is a colour and had none), a background the SAME `bg-<v>` tile the Customise screen's Background row draws (no new art),
+  a sound pack or a scale a speaker, the colour wheel its wheel. **Tapping an earned sound row plays THAT pack or THAT scale once** — `Snd.hit(pack)`
+  and `Snd.scaleHear(which)` take an id now — before it opens Customise with the item ringed. A locked row is silent: the sound is the reward. The
+  rule generalises — anything that unlocks a usable thing shows it, Gauntlets and cosmetic sets included when they exist.
+
+- **AMENDED (v15 3.10's "Lead only, Blind untouched by intent"): EVERY QUICK TAP AND DOTS MODE SHOWS ITS FIRST TARGET DURING THE COUNTDOWN
+  (v28 item 7).** `precount()` on both engines deals and shows it on "1" of the 3-2-1, and `begin()` honours a `preset` flag so `start()` never
+  re-deals it out from under the player. Every length. THERE ARE NO EXCEPTIONS and the two the feedback guessed at are both wrong: Blind hides the
+  lead RING, not the dot ("Tap the dots as they appear" is its own line), and Quick Tap's "eyes shut" is the achievement `qt_eyes`, not a mode.
+  Nothing can be tapped early — `armed` is false until `start()`.
+
+- **NEW: THE SUBTITLE UNDER NO EXCUSES IS GONE (v28 item 8).** `#menu-tag` ("unlock them all") on the MENU, with its `menufade`. It was never part
+  of the title SEQUENCE, so L1 is untouched by it; the title line keeps its build-51 impact.
+
+- **AMENDED (v26 item 13's GAUNTLET / GAUNTLET II): THE TWO ARE GAUNTLET MINI AND GAUNTLET MEGA (v28 item 10).** Aiden dictated "from Gauntlet Mini
+  and Gauntlet Mega" and it is read as "to". `GAUNTLET.name` in `config/copy.js` is the ONE spelling: the map tiles, the chest word that brings each
+  one in (`gaunt` on its `CHEST_WORDS` row, composed in `ui/chest.js` in capitals like every other word), the Messages rows and their video titles
+  (`gaunt` on the slot, composed by `msgTitle()` in `progress/key.js`), the placeholder screen, Testing and the catalogue all read it. **The ids
+  `g1` / `g2` do not move** — they are store keys (`prefs.gauntSeen`) and a saved profile must not reset. One consequence: two reward words are two
+  words wide, so a chest word may WRAP to a second line; L.11d's one-line requirement goes and its real constraint stays — every word fits its cell,
+  stays on the phone, and takes at most two lines (three where a `tba` row carries its own "not built yet").
+
+- **NEW, extending R2: A CHEST OPENED BY A KEY UNLOCKS; IT NEVER BREAKS — AND THE GAMES CHEST IS THE ONE THAT BREAKS (v28 items 13 / 16).** Aiden
+  played build 51 and saw the PRO chest open on jagged crack symbols and a scatter of coloured swatches: the wrong metaphor twice over, because the
+  Pro KEY is what opens it. R2 already says a chest matches the key that opens it; item 13 extends it to the OPENING itself. Skill, Pro and Author
+  now run ONE ceremony — `assemble` · `turn` · `lid` · `spill`, the cleared bars flying in to become that key, the key turning in the lock, the lid
+  lifting, light rising — each in its own key's colour (`chestCol`) and its own key's glyph (`KEY_ART`, read off `CHESTS.needs` so nothing is named
+  twice), 4.0 / 5.0 / 6.0s. `shake` / `cracks` / `burst` / `scatter` and `black` / `spikes` / `split` / `widen` / `recede` are RETIRED, and
+  `CEREMONY_FX.swatch` with them: item 16's "a bunch of colours that don't need to be there" — no chest opens in any colour but the page's ink and
+  its key's. THE BREAKING MOVED TO THE CHEST NO KEY OPENS: `CHEST_LOOK.games.cracks` is seven crack paths in the sprite's own 40 × 32 box,
+  `crackCount()` in `progress/key.js` is how many GAMES are finished (every mode of that game unlocked — the same count the chest itself waits for,
+  so seven games finished and the chest ready are the same moment by construction), and `ui/chest.js` draws the first N on every surface the sprite
+  appears on, so **the map keeps them between sessions without storing them**. A crack that has just ARRIVED draws itself on with the chest's own
+  tick (`prefs.cracked` exists only so one never arrives twice; an OPEN chest records and never replays them — L.9b says nothing on a settled map
+  animates but a READY chest's idle). The seventh bursts it, and the Games chest's own ceremony draws the seventh in and bursts it the same way.
+  WHAT WAS REUSED, as item 13 asks: the crack ART is the Pro chest's own jagged hand, re-placed rather than redrawn; the crack SOUND is
+  `CHEST_FX.games`'s first event — the tick that already ticks off its seven squares — with a low thump under it, a tone higher each crack
+  (`CRACK_FX`); the BURST is that chest's own 1.8s pop and 2.1s triad played together (`CRACK_BURST`). Nothing new was written for either.
+
+- **NEW: THE CONGRATULATIONS SCREEN IS STAGED AND CELEBRATED (v28 items 12 / 17).** The card arrived all at once. Every block carries its own index
+  and lands `REVEAL.cardStep` (170ms) after the one before — title, each line, the message, **Continue LAST** so it cannot be tapped before the
+  message is on screen, five blocks and 940ms from the card arriving, inside item 12's "under a second". Item 22's dead second on Continue is
+  unchanged and now starts after the blocks. **THE MESSAGE IS THE BUILD-52 PLAYER, POWERED OFF**: `msgPreview()` in `ui/chest.js` — the same 16:9
+  picture in the same thin white rounded frame at the same 1px weight, glowing in the colour of the chest that unlocked the slot (`msgCol`), with a
+  play mark in the middle and the slot's own title under it. It lives beside `chestCol()` because the card (`ui/reveal.js`) and the Messages list
+  (`ui/screens/about.js`) are a module and a screen and neither may import the other (A4). It reached the congratulations card after all four chests
+  and every row of the Messages list, placeholders included; the reward that FLIES out of the chest and the word beside the chest on the map are
+  unchanged — those are one symbol in a row of symbols, not a moment carrying a message. **CONFETTI AND ONE CELEBRATION SOUND** fire on the title's
+  beat, before the message row: `CONFETTI` in `config/chests.js` and `CHEER_FX` in `config/audio.js`, different per chest and escalating Games →
+  Skill → Pro → Author. Monochrome geometric pieces in that chest's own colour — the seven game squares for Games, shards of the key for the other
+  three, 7 / 16 / 26 / 36, falling longer and spinning further each tier — never rainbow paper, which would put back the colour item 16 has just
+  taken out. The four sounds are built from the tick, the reward pop and the gift landing already in the app, each over that key's own root, and the
+  gate holds them apart from the unlock sound, the achievement click and a key's earn.
+
+- **AMENDED (v27 item 14's 2.0s, raised to 2.5s at build 52): THE CEILING IS GONE AND THE EARN MUSIC IS THE CLOCK (v28 item 15).** Item 15 is Aiden's
+  own answer to the question build 52 put on the board: the Pro and Author animations are NOT too long — "they are too short for their music". The
+  cause was arithmetic. `Snd.keyEarn` was fired on the closing FLASH, so the music STARTED near the end of the animation and rang on for seconds
+  after it: Author was 2.30s of motion inside a 9.20s moment, 25% of it moving, which is the "roughly 30% of the wait" he played. Now the music is
+  fired on the FIRST step, each tier's `ms` IS its own earn music's length, and two named steps carry the finale — `rise`, the whole key settling up
+  into its finished state with its glow growing, continuous for the back half, and `land`, one hit on the final note (`KEY_STEP_FX.land`; `rise` has
+  no row on purpose — a sound held under three seconds of settling would only fight the track). The ASSEMBLY is untouched: the Skill key's seven
+  spokes and spin, the Pro key's one-by-one spokes with the current running the ring, the Author key's drop, slam, cracks and thorns, all exactly as
+  Aiden approved them on 2026-09-18. Nothing was cut from the MOTION; what was trimmed is the track's TAIL, which is the order item 15 sets.
+  LENGTHS, animation = music, against build 52's: Skill 1.70s of motion inside a 4.13s moment → **2.39s and the moment IS 2.39s** (music 2.80 →
+  2.39); Pro 2.16s inside 6.35s → **4.10s** (4.45 → 4.10); Author 2.30s inside 9.20s → **6.70s** (7.20 → 6.70). Skill was not named in item 15; it
+  had the same gap, so it is built the same way and said so in the outcome. THE GATE now asks three things instead of a ceiling: `ms` matches that
+  tier's `KEY_EARN_FX` length within 150ms, every step but `flash` is movement and the movement span is at least .75 of `ms`, and the ASSEMBLY —
+  everything before `rise` — is at least a quarter of `ms`, so a finale can never swamp the thing it is a finale to. A TAP STILL SKIPS TO THE END
+  and the screen never locks, which is what makes a six-second moment acceptable at all.
+
+- **NEW: THE MODE PICKER IS A BOTTOM SHEET, ANCHORED TO THE SCREEN (v28 item 14).** It was `position:absolute; bottom:0` inside `#s-pick`, WHICH IS A
+  SCROLLER — so "the bottom" was the bottom of the map's CONTENT, not of the phone, and the sheet landed wherever the map happened to be scrolled
+  to. That is what Aiden photographed: Spot tapped with the map scrolled to the chests, and the sheet sitting mid-screen with map above and below
+  it. `fixed` now: the same place every time, in thumb reach, and a taller sheet (Sequence has more rows) does not move the anchor. `#s-pick` carries
+  a `clip-path`, which clips a fixed descendant but does not reposition one, and the screen is `inset:0` anyway. Opening it scrolls the map so the
+  tapped tile sits `SHEET_GAP` above the sheet with its amber outline showing (`tileAboveSheet()`, measured off the sheet's own box one frame after
+  it is laid out), dims the map behind (`#mapdim`, `data-act="sheetclose"` — a tap closes the sheet OUTRIGHT rather than one stage back, which is
+  what Back still does), and "tap empty space to go back" is gone with the hint that had to say it. One short slide-up, no per-row animation (R3).
+
+- **NEW: ONE FULL NAME FOR THE SEQUENCE PRACTICE-FROM UNLOCK (v28 item 5).** It was not truncated by a layout — "Practice from" WAS the whole name
+  in the code, in four places. `PROGRESS.practiceFrom` is the one spelling now and the Game unlocks row, the title screen's Next unlock box, the
+  toast and the sheet's locked chip all compose off it. The words chosen, Cowork's and one line to change: **"Practice from a later note"** — the
+  sheet offers off / 5 / 10 / 15, so that is what the unlock gives.
+
 ## Structure — the full text as of build 30
 
 `CLAUDE.md` keeps the module map. This is the paragraph-by-paragraph description it carried at build 30: the DAG, the

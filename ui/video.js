@@ -31,6 +31,7 @@ import { $, esc } from "../core.js";
 import { prefs, save } from "../core/store.js";
 import { define } from "./actions.js";
 import { msgCol } from "./chest.js";
+import { msgTitle } from "../progress/key.js";
 
 let host = null, vid = null, closing = 0, ids = [], onSeen = null;
 const at = (t, fn) => { const h = setTimeout(fn, Math.max(0, t)); ids.push(h); return h; };
@@ -69,7 +70,7 @@ function playVideo(m) { if (!m || !m.file) return false;
   build(); clearAt(); closing = 0;
   host.hidden = false; host.classList.remove('voff', 'vlit'); host.dataset.msg = m.id;
   host.style.setProperty('--vg', msgCol(m) || '#FFFFFF');
-  host.querySelector('.vtitle').textContent = m.title || '';
+  host.querySelector('.vtitle').textContent = msgTitle(m);
   host.querySelector('.vcc').textContent = '';
   const pic = host.querySelector('.vpic');
   pic.innerHTML = `<video playsinline preload="metadata"${m.cc ? ' crossorigin="anonymous"' : ''}><source src="${esc(m.file)}" type="video/mp4">`

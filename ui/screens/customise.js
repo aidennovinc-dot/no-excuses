@@ -15,6 +15,7 @@
    did, and a locked line opens Progress at the row that pays for the item (it was a tab change on the same screen). */
 import { Music, Snd } from "../../audio.js";
 import { KEY_THEMES, SCALES, TRACKS, TRACK_OPTS, TRACK_PICK } from "../../config/audio.js";
+import { KEYS } from "../../config/keys.js";
 import { CUSTOM, GRID, ITEM_WORD } from "../../config/copy.js";
 import { DESIGNS, ITEMS } from "../../config/theme.js";
 import { $, $$, T, esc } from "../../core.js";
@@ -50,10 +51,13 @@ const pvSeen={};  // the last unlocked item tapped, so what earned it shows on t
    under the row it is about. Each group owns its own line, at most one is ever filled, and the toast is gone from this
    path — nothing about a locked cosmetic is drawn over anything now. The track row is not in this list on purpose: a
    locked track carries a padlock and says nothing about what opens it (A.1). */
-const LOCK_SETS=['sq','lead','cut','bg','snd','scale','rate'];
+// v28 (item 2, build 53): `track` joins the list — a key track locked until its key is earned says so under its own row, B.30's one line
+const LOCK_SETS=['sq','lead','cut','bg','snd','scale','rate','track'];
+/* v28 (item 2, build 53): a lock line may now stand for something that is NOT an achievement — a key track, opened by earning its key. It
+   carries no `id`, so it is not a way in to Progress and drops the "show me" tail; everything else about the line is unchanged. */
 function lockLine(set,L){ const el=$('#lk-'+set); if(!el) return;
   if(!L){ el.innerHTML=''; el.dataset.ach=''; return; }
-  el.innerHTML=T(CUSTOM.lockLine,{name:L.name,how:L.how}); el.dataset.ach=L.id; }
+  el.innerHTML=T(L.id?CUSTOM.lockLine:CUSTOM.lockPlain,{name:L.name,how:L.how}); el.dataset.ach=L.id||''; }
 // which groups a game shows — the same four tests renderCustom applies to the group rows below
 const shows=(g,set)=>set==='lead'?!!GAMES[g].lead:set==='cut'?g==='hold':set==='scale'?g==='sequence':set==='rate'?!!GAMES[g].timed:true;
 function renderCustom(){
@@ -66,26 +70,22 @@ function renderCustom(){
     const style=set==='bg'?`background-color:${DESIGNS[it.v]?.tint||'transparent'}`:isWheel?'':`background:${it.v}`;
     return `<button data-act="item" data-v="${it.v}" class="${cls}" data-lock="${L?L.id:''}" style="${style}" aria-label="${it.v}${L?' locked':''}"></button>`; }).join('');
   for(const set of ['snd','scale','rate']) $('#c-'+set).innerHTML = itemsOf(set).map(it=>{ const L=lockedBy(it); const nw=L?'':newMark('cos:'+set+':'+it.v,fresh); return `<button data-act="item" data-v="${it.v}" class="opt ${String(prefs[set])===String(it.v)?'sel':''} ${L?'locked':''}${nw}" data-lock="${L?L.id:''}">${it.label}</button>`; }).join('');
-  /* v18 (B.28): ONE music row, and it is the track. It was four controls — on / off, a Preview button, which track, and
-     a second Preview button — for a thing Aiden describes in one word: "Music". So the row is this game's track, named,
-     and a tap plays it. Free choice is a chest 2 reward (A.3), so until then the row is the single track it is set to
-     with a padlock, and NOT a word about what opens it (A.1 forbids the pro and author tiers existing on any screen
-     before chest 1). A locked row still previews — hearing what you have is not the reward. Dev unlock-all opens it,
-     which is how Aiden compares the three on his phone before either chest is reachable. TRACK_PICK is still the
-     default; `prefs.track` is only what he chose. */
-  // v23 (L.10, build 40): "chest 2" is the Pro chest by name — chestOpen() honours the two dev escapes, as every gate does (#411)
-  /* v23 (L.7c, build 42): EVERYWHERE, one row above the tracks — Per game, or a key theme as every run's music. The SAME field the key
-     screen's SET THIS MUSIC writes (prefs.everywhere), read through everywhere(), so a theme whose chest is shut reads as Per game. A shut
-     theme is crossed out with the chest that opens it under it, on its own chip, and a tap on it chooses nothing (gated). While a theme
-     plays everywhere the tracks below grey out with one line saying so — a note, not a lockline, so B.30's "at most one filled" holds —
-     and tapping one of them goes back to Per game with that track chosen. */
-  const ev=everywhere();
-  $('#c-everywhere').innerHTML = ['game'].concat(Object.keys(KEY_THEMES)).map(o=>{ const shut=o!=='game'&&!chestOpen(o), name=o==='game'?CUSTOM.perGame:(TRACKS[KEY_THEMES[o]]||{}).name||o;
-    return `<button data-act="item" data-v="${o}" class="opt theme ${ev===o?'sel':''} ${shut?'shut':''}">${shut?`<s>${esc(name)}</s><small>${esc(T(CUSTOM.openChest,{chest:GRID.chest[o]}))}</small>`:esc(name)}</button>`; }).join('');
-  const free=chestOpen('pro'), opts=TRACK_OPTS[F.g]||[], cur=prefs.track[F.g]||TRACK_PICK[F.g];
-  $('#c-track').innerHTML = (free?opts:[cur]).map(o=>{ const t=TRACKS[F.g+':'+o]||{};
-    return `<button data-act="item" data-v="${o}" class="opt ${o===cur?'sel':''} ${free?'':'locked plain'} ${ev!=='game'?'grey':''}">${esc(t.name||o)}</button>`; }).join('');
-  $('#cn-track').textContent = ev!=='game' ? CUSTOM.themeOn : '';
+  /* v18 (B.28) → v28 (items 2 / 3, build 53): ONE MUSIC ROW, AND IT IS THE WHOLE OF THE MUSIC CHOICE. B.28 made the row the track;
+     build 42 put an EVERYWHERE row above it (Per game / Key / Pro / Thorns) for the same decision said a second way, and Aiden's line was
+     "I don't know why they're separate". So the two rows are one: this game's three tracks, then one track per KEY. Picking a game track is
+     per game, exactly as before; picking a key track is that theme everywhere — every run AND the menu loop (item 2) — and it is the SAME
+     field build 42 wrote, prefs.everywhere, so the key screen's SET THIS MUSIC and this row still cannot disagree.
+     WHAT OPENS A KEY TRACK IS THE KEY, NOT ITS CHEST (item 2: "each key track locked until that key is earned"). keyFinished() is the test,
+     the same one the three key backgrounds take, and it honours both dev escapes. A locked key track says what opens it UNDER the row (B.30)
+     — which it may now do, because v21 G.1 put all three keys on screen from the first visit, so naming one hides nothing (A.1).
+     ITEM 3: the KEY is named Skill key / Pro / Author, read off config/keys.js, and the TRACK is titled Lantern / Circuit / Thorns. Before this
+     build the Everywhere row printed the track's own name for the key and those names were Key / Pro / Thorns, which is what Aiden saw. */
+  const ev=everywhere(), opts=TRACK_OPTS[F.g]||[], cur=prefs.track[F.g]||TRACK_PICK[F.g];
+  const gameRows=opts.map(o=>({ v:o, name:(TRACKS[F.g+':'+o]||{}).name||o, key:null, sel:ev==='game'&&o===cur }));
+  const keyRows=KEYS.filter(k=>k.music&&KEY_THEMES[k.music]).map(k=>({ v:'key:'+k.music, name:(TRACKS[KEY_THEMES[k.music]]||{}).name||k.theme, key:k, sel:ev===k.music }));
+  // L8's first-seen green is for the KEY tracks: the three game tracks are not new, they have been on this row since build 33
+  $('#c-track').innerHTML = gameRows.concat(keyRows).map(r=>{ const L=r.key&&!keyFinished(r.key.id); const nw=(L||!r.key)?'':newMark('cos:track:'+r.v,fresh);
+    return `<button data-act="item" data-v="${r.v}" class="opt ${r.sel?'sel':''} ${L?'locked':''}${nw}" data-keyname="${r.key?esc(r.key.name):''}">${esc(r.name)}</button>`; }).join('');
   // the menu loop is not a game's, so it gets its own switch rather than hiding inside one game's row
   $('#c-menumusic').innerHTML = itemsOf('music').map(it=>`<button data-act="item" data-v="${it.v}" class="opt ${musicOn('menu')===it.v?'sel':''}">${it.label}</button>`).join('');
   $('#pv-g').innerHTML=Object.entries(GAMES).map(([id,x])=>`<button class="chip" data-act="chip-pv" data-chip="pv-g" data-v="${id}">${x.name}</button>`).join(''); chips('pv','g',F.g);
@@ -97,7 +97,9 @@ function renderCustom(){
   const pv=$('#pv').style; pv.setProperty('--sq-live',colOf(F.g).sq); pv.setProperty('--cue',colOf(F.g).lead); pv.setProperty('--cutp',colOf(F.g).cut||colOf(F.g).sq); pv.removeProperty('background');
   // B.30: at most one group says anything, and it says it under its own row
   for(const s of LOCK_SETS) lockLine(s,null);
-  if(pvTry.set){ const L=lockById(pvTry.by); const map={sq:'--sq-live',lead:'--cue',cut:'--cutp'}; if(map[pvTry.set]&&pvTry.v!=='wheel') pv.setProperty(map[pvTry.set],pvTry.v); if(pvTry.set==='bg'&&DESIGNS[pvTry.v]) pv.background=DESIGNS[pvTry.v].tint; lockLine(pvTry.set,L); }
+  // v28 (item 2): a locked key track tapped says what opens it under the Music row — its KEY, by name (item 3), never its chest
+  if(pvTry.set==='track'){ const k=KEYS.find(x=>'key:'+x.music===pvTry.v); if(k) lockLine('track',{ name:k.name, how:GRID.chestEarn[k.music]||k.name }); }
+  else if(pvTry.set){ const L=lockById(pvTry.by); const map={sq:'--sq-live',lead:'--cue',cut:'--cutp'}; if(map[pvTry.set]&&pvTry.v!=='wheel') pv.setProperty(map[pvTry.set],pvTry.v); if(pvTry.set==='bg'&&DESIGNS[pvTry.v]) pv.background=DESIGNS[pvTry.v].tint; lockLine(pvTry.set,L); }
   // v11: an unlocked colour says nothing when tapped — the requirement line is for locked ones only
   else if(pvSeen.by&&!got()[pvSeen.by]&&!prefs.allOpen&&!prefs.supporter) lockLine(pvSeen.set,lockById(pvSeen.by));
   markSeen(fresh);
@@ -173,20 +175,23 @@ define({
   'wheel-done'(){ Wheel.close(); return 'click'; },
   // a Customise item: colour, background, sound pack, scale, the track, the menu loop — the group is the closest [data-set]
   item(b){ const set=b.closest('[data-set]'); if(!set) return 'pick'; const k=set.dataset.set;
-    // v23 (L.7c, build 42): Everywhere. A theme whose chest is shut chooses nothing; anything else is stored and heard
-    if(k==='everywhere'){ const v=b.dataset.v; if(v!=='game'&&!(KEY_THEMES[v]&&chestOpen(v))) return 'pick';
-      prefs.everywhere=v; pvTry.set=null; save(); renderCustom(); if(v==='game') Music.preview(F.g,4200); else Music.preview(F.g,4200,KEY_THEMES[v]); return 'pick'; }
     /* B.30: a locked item previews itself and says what opens it UNDER ITS OWN ROW. The toast that used to carry this is
        gone from here — it is an overlay, and an overlay is the one place a requirement about a row must not be drawn */
-    if(b.classList.contains('locked')&&k!=='track'){ const L=lockById(b.dataset.lock); if(!L) return 'pick'; Object.assign(pvTry,{set:k,v:b.dataset.v,by:L.id}); renderCustom(); return 'pick'; }
+    /* v28 (item 2, build 53): a locked KEY TRACK behaves like every other locked item — it previews (hearing it is not the reward, B.28)
+       and says what opens it under its row. It has no achievement id, so it takes this path on its own. */
+    if(b.classList.contains('locked')&&k==='track'){ Object.assign(pvTry,{set:'track',v:b.dataset.v,by:null}); renderCustom();
+      const t=b.dataset.v.slice(4); Music.preview(F.g,4200,KEY_THEMES[t]); return 'pick'; }
+    if(b.classList.contains('locked')){ const L=lockById(b.dataset.lock); if(!L) return 'pick'; Object.assign(pvTry,{set:k,v:b.dataset.v,by:L.id}); renderCustom(); return 'pick'; }
     pvTry.set=null; const it=(itemsOf(k)||[]).find(i=>String(i.v)===b.dataset.v); pvSeen.set=k; pvSeen.by=it&&it.by||null; if(b.dataset.v==='wheel'){ Wheel.open(k); return 'pick'; }
     if(k==='bg'){ prefs.bg=b.dataset.v; prefs.tint=''; }
     else if(k==='sq'||k==='lead'||k==='cut') prefs.col[F.g][k]=b.dataset.v;
-    /* B.28: the music row IS the track. A tap plays it, whether or not it can be chosen — a locked row is the one this
-       game already plays, and hearing it is the whole of what the row is for. */
-    // v23 (L.7c, build 42): a track tapped while a key theme plays everywhere goes back to Per game, with that track chosen
-    else if(k==='track'){ if(everywhere()!=='game') prefs.everywhere='game'; if(!b.classList.contains('locked')) prefs.track[F.g]=b.dataset.v; Music.preview(F.g,4200,b.dataset.v); }
-    else if(k==='menumusic'){ prefs.musicG.menu=b.dataset.v==='true'; if(b.dataset.v==='true') Music.menu('menu'); else Music.stop(); }
+    /* B.28: the music row IS the track, and a tap plays it. v28 (item 2): the row holds the key tracks too — one of those is
+       prefs.everywhere, this theme for every run and for the menu; one of this game's three puts it back to Per game and stores the track. */
+    else if(k==='track'){ const v=b.dataset.v;
+      if(v.startsWith('key:')){ prefs.everywhere=v.slice(4); save(); applyPrefs(F.g); renderCustom(); Music.preview(F.g,4200,KEY_THEMES[v.slice(4)]); return 'pick'; }
+      prefs.everywhere='game'; prefs.track[F.g]=v; Music.preview(F.g,4200,v); }
+    // v28 (item 2): still the master switch — on plays whatever the Music row is set to (Music.menuTrack), off stops it
+    else if(k==='menumusic'){ prefs.musicG.menu=b.dataset.v==='true'; if(b.dataset.v==='true') Music.menu(Music.menuTrack()); else Music.stop(); }
     // v13 (7.1): the scale left the pick sheet — one choice, applied to every Sequence run
     else if(k==='scale'){ prefs.scale=b.dataset.v; sel.scale=b.dataset.v; }
     else prefs[k]=b.dataset.v;

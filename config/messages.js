@@ -46,8 +46,8 @@ export const MESSAGES = [
   { id: 'skill', title: 'The skill chest is open', by: { chest: 'key' }, file: 'video/test-card.mp4', cc: 'video/test-card.vtt' },
   { id: 'pro', title: 'Have you gone pro?', by: { chest: 'pro' }, file: 'video/test-card.mp4', cc: 'video/test-card.vtt' },
   { id: 'author', title: 'Much better than me', by: { chest: 'thorns' }, file: 'video/test-card.mp4', cc: 'video/test-card.vtt' },
-  { id: 'g1', title: 'The Gauntlet', by: { gauntlet: 'g1' }, file: 'video/test-card.mp4', cc: 'video/test-card.vtt' },
-  { id: 'g2', title: 'The Gauntlet II', by: { gauntlet: 'g2' }, file: 'video/test-card.mp4', cc: 'video/test-card.vtt' },
+  { id: 'g1', gaunt: 'g1', by: { gauntlet: 'g1' }, file: 'video/test-card.mp4', cc: 'video/test-card.vtt' },
+  { id: 'g2', gaunt: 'g2', by: { gauntlet: 'g2' }, file: 'video/test-card.mp4', cc: 'video/test-card.vtt' },
   { id: 'thanks', title: 'Massive thank you', by: { support: 1 }, file: 'video/test-card.mp4', cc: 'video/test-card.vtt' },
 ];
 

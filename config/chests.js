@@ -64,8 +64,16 @@ export const METER_BANDS = [
    stretch, not a chest. Everything that draws a CHEST reads `col` through chestCol() in ui/chest.js: the sprite, the ceremony's `--cc` (the
    cracks, the burst, the spikes and the split), the spill's particles, the colour a reward symbol takes and the congratulations card's rule. */
 export const CHEST_LOOK = {
+  /* v28 (item 13, build 53): THE GAMES CHEST CRACKS. It is the one chest no key opens — the player breaks it open by finishing games — so each of
+     the seven games, completed, adds one of these to the box, in this order, and the seventh bursts it. They are drawn by ui/chest.js on every
+     surface the sprite appears on, so the map carries them between sessions by construction (the count is derived from the store, not stored).
+     The jagged hand is the Pro chest's old `ccrack` art, moved here rather than drawn new, as item 13 asks; the seventh is the long one down the
+     middle, so 7/7 reads as the chest giving way rather than as one more scratch. */
   games: { band: 0, col: 'var(--mute)', stroke: 'var(--mute)', fill: 'none', lock: 'none', sw: 1, lidSw: 1, hinge: [5, 14],
     box: ['M5 14h30v14H5z'], lid: ['M5 14a15 9 0 0 1 30 0z'], lockp: ['M17.5 15.5h5v7h-5z'],
+    cracks: ['M9 14.6l1.8 2.4-1.2 1.6 2 2.2', 'M31 14.6l-1.8 2.6 1.4 1.5-2.2 2', 'M14.6 28l1.4-2.4-1.7-1.6 1.9-2.2',
+      'M25.4 28l-1.5-2.5 1.8-1.5-2-2.3', 'M5 19.6l2.6 1.1-.6 2 2.6 1.3', 'M35 19.6l-2.6 1.2.7 2-2.7 1.2',
+      'M20 14.4l-1.5 3 2 1.5-1.2 3.2 1.7 2.4-1.3 3.5'],
     idle: { kind: 'breath', ms: 3600, px: 4 } },
   // the gold chest, moved here from `pro` byte for byte (item 13): banded box, doubled dome lid, heavy fittings, a shimmer along them
   key: { band: 1, col: '#E8B84A', shim: '#FFF3C4', stroke: '#E8B84A', fill: 'var(--panel)', lock: '#E8B84A', sw: 1.4, lidSw: 2.6, hinge: [4, 14],
@@ -102,13 +110,22 @@ export const CHEST_LOOK = {
      Thorns ~6s  black, spikes grow in from the edges, one white line splits the middle and widens into the reveal, the spikes recede
    `meterMs` is the D.4 count-up in the reveal's last beat (L.8b); `swatch` the scattered cosmetics on the Pro chest — decoration, and no
    player colour among them (L4). */
+/* v28 (items 13 / 16, build 53): A CHEST OPENED BY A KEY UNLOCKS; IT NEVER BREAKS — and the breaking is the Games chest's.
+   Aiden played build 51 and saw the PRO chest open on jagged crack symbols: the wrong metaphor, because the Pro key is what opens it. R2
+   already says a chest matches the key that opens it; item 13 extends it to the OPENING itself. So Skill, Pro and Author now run the SAME four
+   named steps — assemble, turn, lid, spill: the cleared bars fly in and become that key, the key turns in the lock, the lid lifts, light
+   spills up — each drawn in its own key's colour and its own key's glyph (ui/ceremony.js reads the tier off CHESTS `needs`), each longer and
+   grander than the one before. `shake` / `cracks` / `burst` / `scatter` and `black` / `spikes` / `split` / `widen` / `recede` are RETIRED.
+   The Games chest is the one with no key, so it is the one that breaks: `crack` is the seventh crack landing (the other six arrived on the map
+   as games were finished) and `burst` is it giving way. Item 16 retires `swatch` with the Pro chest's scatter — "a bunch of colours that don't
+   need to be there"; every chest opens in the page's ink and its own key's colour and nothing else. */
 export const CEREMONY = {
-  games: { ms: 3000, steps: [{ name: 'uncross', at: 0, ms: 1200 }, { name: 'path', at: 1100, ms: 700 }, { name: 'lid', at: 1800, ms: 500 }, { name: 'chord', at: 2100, ms: 900 }] },
+  games: { ms: 3650, steps: [{ name: 'uncross', at: 0, ms: 1200 }, { name: 'path', at: 1150, ms: 600 }, { name: 'crack', at: 1600, ms: 1000 }, { name: 'burst', at: 2500, ms: 520 }, { name: 'lid', at: 2650, ms: 500 }, { name: 'chord', at: 2900, ms: 750 }] },
   key: { ms: 4000, steps: [{ name: 'assemble', at: 0, ms: 1800 }, { name: 'turn', at: 1800, ms: 600 }, { name: 'lid', at: 2400, ms: 500 }, { name: 'spill', at: 2700, ms: 1300 }] },
-  pro: { ms: 5000, steps: [{ name: 'shake', at: 0, ms: 1600 }, { name: 'cracks', at: 1200, ms: 1600 }, { name: 'burst', at: 2800, ms: 500 }, { name: 'scatter', at: 3200, ms: 1800 }] },
-  thorns: { ms: 6000, steps: [{ name: 'black', at: 0, ms: 700 }, { name: 'spikes', at: 500, ms: 2200 }, { name: 'split', at: 2700, ms: 400 }, { name: 'widen', at: 3100, ms: 1600 }, { name: 'recede', at: 4500, ms: 1500 }] },
+  pro: { ms: 5000, steps: [{ name: 'assemble', at: 0, ms: 2300 }, { name: 'turn', at: 2300, ms: 700 }, { name: 'lid', at: 3000, ms: 600 }, { name: 'spill', at: 3400, ms: 1600 }] },
+  thorns: { ms: 6000, steps: [{ name: 'assemble', at: 0, ms: 2800 }, { name: 'turn', at: 2800, ms: 800 }, { name: 'lid', at: 3600, ms: 700 }, { name: 'spill', at: 4100, ms: 1900 }] },
 };
-export const CEREMONY_FX = { meterMs: 900, swatch: ['#FFB020', '#FFD1DC', '#E8B84A', '#B39DDB', '#8AB4F8', '#FF8A65'] };
+export const CEREMONY_FX = { meterMs: 900 };
 
 /* ---------- v23 (§L.11b / §L.11d, build 41): THE SPILL ----------
    After a chest opens, the map shows its words shooting out to the right, one per line, `stagger` ms apart, each taking `ms`, starting
@@ -158,7 +175,25 @@ export const SYMBOLS = {
 /* v26 (items 6 / 8, build 49): `giftGap` is 400 — "about 0.4s between each reward leaving the chest" — and `giftMs` is the whole flight, out of the lid,
    down to the right, round and home. `under` is the gap between the chest's foot and the row the rewards settle in, `cardGap` the gap between that
    row and the congratulations card below it. The chest's name (and a key chest's count-up) waits for the last reward to land. */
-export const REVEAL = { giftAt: 260, giftGap: 400, giftMs: 1150, hold: 420, cardAt: 240, cardGo: 1000, fadeMs: 700, under: 10, cardGap: 18 };
+/* v28 (item 12, build 53): `cardStep` and `cardBlockMs` STAGE the congratulations card. It arrived all at once; item 12 wants the title first,
+   then each block in turn, the message row, then Continue — "it can be fairly quick", read as ~170ms apart with the whole reveal under a second
+   (five blocks at 170 is 680ms plus one block's own 260). Continue is last, so it cannot be tapped before the message row is on screen, and it
+   stays dead for `cardGo` after that on top (item 22's rule, unchanged). */
+export const REVEAL = { giftAt: 260, giftGap: 400, giftMs: 1150, hold: 420, cardAt: 240, cardGo: 1000, fadeMs: 700, under: 10, cardGap: 18, cardStep: 170, cardBlockMs: 260 };
+
+/* ---------- v28 (item 17, build 53): THE CONFETTI ON THE CONGRATULATIONS SCREEN, ONE PER CHEST ----------
+   Item 17: "confetti plus a celebratory sound, so it makes the player feel like they've accomplished something", DIFFERENT FOR EACH CHEST and
+   escalating Games → Skill → Pro → Author. It stays in the game's language — no rainbow paper, which would put back the colour item 16 has just
+   taken out of the Pro chest: the pieces are geometric and monochrome, in that chest's own colour (chestCol, so a chest and its confetti are the
+   same colour as its key, R2). `n` is how many pieces, `shape` what they are — the GAMES chest throws the seven game squares, one per game, and
+   the three key chests throw shards of their key — `ms` how long one falls, `spread` how wide in % of the card, `spin` a turn in degrees and
+   `size` the piece in px. Denser and longer each tier. Fires once with the card's title beat (before the message row). All (guess). */
+export const CONFETTI = {
+  games: { n: 7, shape: 'square', ms: 1500, spread: 62, spin: 180, size: 9 },
+  key: { n: 16, shape: 'shard', ms: 1900, spread: 74, spin: 360, size: 10 },
+  pro: { n: 26, shape: 'shard', ms: 2300, spread: 86, spin: 540, size: 11 },
+  thorns: { n: 36, shape: 'shard', ms: 2700, spread: 96, spin: 720, size: 12 },
+};
 
 /* v26 (item 6, build 49): HOW EACH CHEST'S REWARDS FLY — the same motion for all four, each in its chest's own colour and each grander than the one
    before. `arc` is how far the flight swings out to the right and down past its resting place, in px; `pop` how big a reward swells mid-flight;

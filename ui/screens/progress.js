@@ -29,8 +29,9 @@ import { emit } from "../../core/events.js";
 import { sel } from "../../core/state.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, lenName } from "../../games/registry.js";
-import { Scores, UNLOCKS, achAll, achById, achTab, gameOpen, got, isOpen, lenLock, lenOpen, markSeen, newMark, setPendingAim, unlockHtml, unlockName, unlocked } from "../../progress.js";
+import { Scores, UNLOCKS, achAll, achById, achTab, gameOpen, got, isOpen, lenLock, lenOpen, markSeen, newMark, setPendingAim, unlockHear, unlockHtml, unlockName, unlocked } from "../../progress.js";
 import { chestOpen, keyAch, keyState, tierOpen } from "../../progress/key.js";
+import { Snd } from "../../audio.js";
 import { toast } from "../toast.js";
 import { TOAST } from "../../config/copy.js";
 
@@ -54,13 +55,15 @@ const row=(cls,name,need,state,data)=>`<button data-act="unl" class="urow ${cls}
 function renderUnlocks(){
   const u=unlocked(); const fresh=[];
   // the chain, in the order it is earned. A row is open when its key is in the store or its game is open from the start
-  const chain=UNLOCKS.map(x=>{ const [g,d]=x.key.split(':'); const open=x.key==='sequence:practice'?!!u[x.key]:isOpen(g,d);
-    const nw=open?newMark('mode:'+g+':'+d,fresh):'';
-    return row('u'+(open?' done':' lock')+nw,unlockName(x.key),open?'':x.need,open?UNLOCKS_SCREEN.done:UNLOCKS_SCREEN.locked,` data-g="${g}" data-d="${d}"`); }).join('');
+  let open=0, total=0;                         // item 4: what the tab's one count line reports
+  const chain=UNLOCKS.map(x=>{ const [g,d]=x.key.split(':'); const isO=x.key==='sequence:practice'?!!u[x.key]:isOpen(g,d);
+    const nw=isO?newMark('mode:'+g+':'+d,fresh):''; total++; if(isO) open++;
+    return row('u'+(isO?' done':' lock')+nw,unlockName(x.key),isO?'':x.need,isO?UNLOCKS_SCREEN.done:UNLOCKS_SCREEN.locked,` data-g="${g}" data-d="${d}"`); }).join('');
   // every length of every mode, from lenLock — the same call the pick sheet's crossed-out rows make
   const lens=[];
   for(const g in GAMES){ if(!gameOpen(g)) continue; for(const d of GAMES[g].modes) for(const s of GC(g,d).lens){ const L=lenLock(g,d,s); if(!L&&GC(g,d).lens.indexOf(s)===0) continue;
     const name=`${GAMES[g].name}${MODE_NAME[d]?' · '+MODE_NAME[d]:''} · ${lenName(g,s,d)}`;
+    total++; if(!L) open++;
     lens.push(row('u'+(L?' lock':' done'),name,L?L.need:'',L?UNLOCKS_SCREEN.locked:UNLOCKS_SCREEN.done,` data-g="${g}" data-d="${d}" data-s="${s}"`)); } }
   // v23 (L.10a, build 40): key 1 is quiet until the Games chest — the key row says what opens it, with no count
   const k=keyState(), kq=!tierOpen('clear');
@@ -71,6 +74,9 @@ function renderUnlocks(){
     // v17 (B.9): the count in the key line is read from the same keyState() the row's own figure comes from — a literal
     // would have gone stale the day Sequence lost 5 keys, which is the day it did
     row('u key'+(!kq&&k.done>=k.total?' done':' lock'),UNLOCKS_SCREEN.keys,kq?PROGRESS_SCREEN.keyLocked:T(UNLOCKS_SCREEN.keyLine,{n:k.total}),kq?UNLOCKS_SCREEN.locked:`${k.done}/${k.total}`,' data-key="1"');
+  /* item 4: the chain rows and the length rows, open against the lot. The key row is not counted — it is a way in to another screen with
+     its own count on it (`19/30`), not a thing this tab unlocks. */
+  tabCount('unl',open,total);
   markSeen(fresh);
 }
 
@@ -86,7 +92,8 @@ function achRow(a,tab,{g,all,fsGame,fresh,c}){
   // the rows that have no game of their own ("Every game", "Full set") or that name no mode and no length to point at
   const wg=a.g==='all'?fsGame:a.g;
   const gname=a.g==='all'?'':`<i>${GAMES[a.g].name}</i>`;
-  const bar=p!==null?`<div class="pbar ${secret?'s':''}"><i style="width:${Math.round(p*100)}%"></i></div>`:'';
+  // v28 (item 1, build 53): a Secret row's bar is the ordinary one — `s` was the red cue bar, and red means a miss everywhere else (L.2)
+  const bar=p!==null?`<div class="pbar"><i style="width:${Math.round(p*100)}%"></i></div>`:'';
   const jump=a.g!=='all'||a.id==='fullset';
   const wbits=[]; if(a.at?.d) wbits.push(MODE_NAME[a.at.d]); if(a.at?.s!==undefined) wbits.push(lenName(a.g,a.at.s,a.at?.d||GAMES[wg].modes[0]));
   if(a.g==='all'||!wbits.length) wbits.unshift(GAMES[wg].name);
@@ -97,7 +104,9 @@ function achRow(a,tab,{g,all,fsGame,fresh,c}){
   // v14 (8.5): a secret row is described. The name stays ???; the hint says what kind of thing earns it, never the number
   const line=secret?(a.hint||ACH_SCREEN.stretch)+(p!==null?T(ACH_SCREEN.progress,{p:Math.round(p*100)}):'')
                    :a.how+(a.id==='fullset'?T(ACH_SCREEN.inGame,{game:GAMES[fsGame].name}):'')+leftTxt;
-  const nw=isDone?newMark('ach:'+a.id,fresh):''; const dl=isDone?` style="animation-delay:${Math.min(c.k++,14)*70}ms"`:'';
+  /* v28 (item 1 / R3, build 53): NO ENTRY ANIMATION ON A LIST. The earned rows used to slide in on a 70ms stagger, so a tab or a filter
+     tap painted over about a second. `c` is kept only because renderCul / renderAch still hand one in; nothing reads it now. */
+  const nw=isDone?newMark('ach:'+a.id,fresh):''; const dl='';
   const cls=`${isDone?'done':'lock'}${nw} ${jump?'jump':''}`, name=secret?ACH_SCREEN.hidden:a.name;
   // v23 (L.4d): what it unlocks first, white until earned and green once (L.2); the achievement and its criterion under it
   if(tab==='cul') return `<button data-act="ach" class="a cu ${cls}" data-ach="${a.id}" id="cul-${a.id}"${dl}><span class="rw">${isDone?'✓ ':''}${unlockHtml(a)}</span><em>${isDone?ACH_SCREEN.done:''}</em><small>${gname}${name} · ${line}</small>${where}${bar}</button>`;
@@ -118,6 +127,8 @@ function renderCul(){
   const sets=[...new Set(list.map(a=>a.unlocks[0]))].sort((x,y)=>at(x)-at(y));
   $('#cul-list').innerHTML=sets.map(set=>{ const items=list.filter(a=>a.unlocks[0]===set), done=items.filter(a=>g[a.id]).length;
     return `<h4>${PROGRESS_SCREEN.culGroup[set]||ITEM_WORD[set]||set} · ${done}/${items.length}</h4>`+items.map(a=>achRow(a,'cul',ctx)).join(''); }).join('');
+  // item 4: the tab line is the sum of the per-section counts this tab already prints
+  tabCount('cul',list.filter(a=>g[a.id]).length,list.length);
   markSeen(fresh);
 }
 
@@ -133,10 +144,23 @@ function renderAch(){
     const items=list.filter(a=>a.tier===t), done=items.filter(a=>g[a.id]).length;
     if(!items.length) return '';
     return `<h4 class="${t}">${TIERS[t][0]} · ${done}/${items.length}<span>${TIERS[t][1]}</span></h4>`+items.map(a=>achRow(a,'ach',ctx)).join(''); }).join('');
+  /* v28 (item 4, build 53): ONE COUNT LINE FOR THE TAB, where the grey "tap one to go play it" was. R1 narrows the total: a SECRET row is not
+     counted until at least one has been found, so the line can never say how many secrets there are. Once one is found they all count — the
+     player knows the kind of thing exists by then, which is exactly what R1 allows. The count follows the filter, because it sits under it. */
+  const secretFound=allAch().some(a=>a.tier==='secret'&&g[a.id]);
+  const counted=list.filter(a=>a.tier!=='secret'||secretFound||g[a.id]);
+  tabCount('ach',counted.filter(a=>g[a.id]).length,counted.length);
   markSeen(fresh);
 }
 // a locked row: straight to the sheet it is earned on, at the mode and length it names; a locked mode or length asks the box first
 function jumpTo(a){ const g=a.g==='all'?(A.g==='all'?sel.game:A.g):a.g; const d=a.at?.d||GAMES[g].modes[0]; if(!isOpen(g,d)) return emit('lock:ask',{g,d}); if(a.at?.s!==undefined&&!lenOpen(g,d,a.at.s)) return emit('lock:ask',{g,d,s:a.at.s}); setPendingAim(a.how); show('s-pick',{g,d:a.at?.d,s:a.at?.s}); }
+
+/* ---------- v28 (item 4, build 53): ONE COUNT LINE PER TAB, WHERE THE GREY HELPER TEXT WAS ----------
+   Three lines went: "tap a locked row to see what it takes" and the paragraph under it on Game unlocks, "tap an earned one to use it" /
+   "open the Games chest to use them" on Customise unlocks, and "tap one to go play it" on Achievements. None of them said anything a row
+   does not say by being a row. In their place the tab says how much of ITSELF is done — the same shape Customise unlocks already prints per
+   section ("Target colours · 1/3"), summed. Each render works its own count out and hands it here. */
+const tabCount=(tab,done,total)=>{ const el=$('#'+tab+'-hint'); if(el) el.textContent=T(PROGRESS_SCREEN.count,{done,total}); };
 
 /* ---------- the three tabs ---------- */
 // only the tab that is up is rendered: the achievements list is the longest markup in the app and the unlocks list walks
@@ -149,9 +173,6 @@ function setTab(t,opts){ const tab=tabOf(t); prefs.progTab=tab; save(); opts=opt
   if(opts.ach&&tab!=='unl'){ const r=$(`#${tab}-${opts.ach}`); if(r){ r.scrollIntoView({block:'center'}); r.classList.add('flash'); } } }
 
 register('s-prog',{ onShow(o){ const a=o.ach?findAch(o.ach):null; if(a&&achTab(a)==='ach') A.g=a.g==='all'?'all':a.g;
-  // v23 (L.11a, build 40): the Customise unlocks tab is NOT gated — it is the list of what can be earned — but it says what opens Customise until it opens (guess)
-  $('#unl-hint').textContent=PROGRESS_SCREEN.unlHint; $('#cul-hint').textContent=chestOpen('games')?PROGRESS_SCREEN.culHint:PROGRESS_SCREEN.culLocked; $('#ach-hint').textContent=PROGRESS_SCREEN.achHint;
-  $('#unl-lede').textContent=UNLOCKS_SCREEN.lede;
   setTab(a?achTab(a):o.tab,o); } });
 define({
   ptab(b){ setTab(b.dataset.tab); return 'pick'; },
@@ -167,7 +188,11 @@ define({
      row with no payout to the Customise tab with nothing to show, and that tab is gone (guess: to play it, as the hint says) */
   /* v23 (L.11a, build 40): Customise is locked until the Games chest — an earned row still banks and still shows green, and a tap on it
      says what opens Customise instead of opening a screen that is not open yet */
+  /* v28 (item 6, build 53): AN EARNED ROW THAT UNLOCKS A SOUND PLAYS IT ONCE. Aiden: "a small icon, and tapping an earned row plays the sound
+     once." It plays the pack or the scale THAT ROW unlocks, not the one in use, and the tap still goes on to Customise with the item ringed —
+     hearing it and seeing where it lives are the same tap. A locked row is silent: the sound is the reward. */
   ach(b){ const a=findAch(b.dataset.ach); if(!a) return 'click';
-    if(got()[a.id]&&a.unlocks){ if(!chestOpen('games')){ toast(TOAST.cusLocked,'','',true); return 'pick'; } show('s-custom',{g:a.g==='all'?null:a.g,unlocks:a.unlocks}); return 'click'; }
+    if(got()[a.id]&&a.unlocks){ const h=unlockHear(a); if(h){ if(h.k==='scale') Snd.scaleHear(h.v); else { Snd.hit(h.v); setTimeout(()=>Snd.hit(h.v),150); } }
+      if(!chestOpen('games')){ toast(TOAST.cusLocked,'','',true); return 'pick'; } show('s-custom',{g:a.g==='all'?null:a.g,unlocks:a.unlocks}); return 'click'; }
     if((a.g!=='all'||a.id==='fullset')&&a.tier!=='secret') jumpTo(a); return 'click'; },
 });

@@ -20,12 +20,13 @@
 </head><body>
 <canvas id="stars"></canvas>
 <!-- v25 (items 4 / 8, build 45): the build stamp comes BEFORE every screen, so each paints over it (styles/app.css #build) -->
-<div id="build">v0.52</div>
+<div id="build">v0.53</div>
 
 <section class="screen on" id="s-menu">
   <div class="nextup" id="nextup" data-act="nextup" hidden></div>
   <div class="titlewrap"><div class="stline" id="st1">games of pure skill</div><div class="wmin"><div class="wordmark" id="wordmark">No Excuses</div></div><div class="stline" id="st2">the only thing to blame is yourself</div></div>
-  <div class="menu-tag" id="menu-tag">unlock them all</div>
+  <!-- v28 (item 8, build 53): "unlock them all" is gone. It was the one line under NO EXCUSES that made a promise the game does not keep
+       any more, and with the build-51 title impact firing once per line its own fade-in went with it. The title line keeps the heavier hit -->
   <div style="height:6px"></div>
   <button data-act="go" class="item glow" data-go="s-pick">Play</button>
   <button data-act="go" class="item glow" data-go="s-board">Scores</button>
@@ -89,7 +90,8 @@
          boxes in ui/screens/pick.js, so it survives the 4-column breakpoint and any change to the gap -->
     <svg class="gridlines" id="gridlines" aria-hidden="true"></svg>
   </div>
-  <div class="hint">tap empty space to go back</div>
+  <!-- v28 (item 14, build 53): "tap empty space to go back" is gone - the dim over the map says it, and a tap on the dim closes the sheet -->
+  <div class="mapdim" id="mapdim" data-act="sheetclose" hidden></div>
   <!-- v21 (F.1, build 35): hidden until a game is picked — a sheet with nothing selected is out of the layout, not just off screen -->
   <div class="sheet" id="sheet" hidden>
     <div class="eyebrow" id="sheet-title"></div>
@@ -132,9 +134,10 @@
     <button data-act="ptab" class="chip" data-tab="cul">Customise unlocks</button>
     <button data-act="ptab" class="chip" data-tab="ach">Achievements</button>
   </div>
+  <!-- v28 (item 4, build 53): the grey helper line on each tab is now the tab's own count - "N of M unlocked". The Game unlocks paragraph
+       under it (UNLOCKS_SCREEN.lede) went with the helper text it explained -->
   <div class="ptab" id="p-unl">
     <div class="eyebrow" id="unl-hint"></div>
-    <div class="hint" id="unl-lede"></div>
     <div class="unl scroll" id="unl-list"></div>
   </div>
   <!-- v23 (L.4c / L.4d, build 39): every achievement that pays out a cosmetic, grouped by the Customise row it pays into -->
@@ -176,13 +179,11 @@
     <div class="cgroup" id="g-scale"><div class="clabel">Scale</div><div class="chips" data-set="scale" id="c-scale"></div><div class="lockline" data-act="pvlock" id="lk-scale"></div></div>
     <div class="cgroup" id="g-rate"><div class="clabel">Taps per second</div><div class="chips" data-set="rate" id="c-rate"></div><div class="lockline" data-act="pvlock" id="lk-rate"></div></div>
     <!-- v18 (B.28): ONE music row, and it is the track this game plays. Not on / off, not a Preview button, not a
-         second row for which one — the row IS the track, named, and a tap plays it. Padlocked until chest 2 (A.3),
-         saying nothing about what opens it (A.1); dev unlock-all opens it so the three can be compared on the phone -->
-    <!-- v23 (L.7c, build 42): EVERYWHERE - Per game / Key / Pro / Thorns, one row above the tracks, and the same field (prefs.everywhere) the
-         key screen's SET THIS MUSIC writes. A theme whose chest is shut is crossed out with that chest under it. #cn-track is the one line
-         under the tracks while a key theme plays everywhere - a note, not a lockline, so B.30's "at most one filled" is untouched -->
-    <div class="cgroup" id="g-everywhere"><div class="clabel">Everywhere</div><div class="chips" data-set="everywhere" id="c-everywhere"></div></div>
-    <div class="cgroup"><div class="clabel">Music</div><div class="chips" data-set="track" id="c-track"></div><div class="cnote" id="cn-track"></div></div>
+         second row for which one — the row IS the track, named, and a tap plays it -->
+    <!-- v28 (items 2 / 3, build 53): ONE MUSIC ROW. The Everywhere row is gone - this row is this game's three tracks AND the three key
+         tracks, and a key track chosen is the music every run and the menu play. A key track is locked until its KEY is earned and says so
+         under the row, the one lockline B.30 allows -->
+    <div class="cgroup"><div class="clabel">Music</div><div class="chips" data-set="track" id="c-track"></div><div class="lockline" data-act="pvlock" id="lk-track"></div></div>
     <div class="cgroup"><div class="clabel">Menu music</div><div class="chips" data-set="menumusic" id="c-menumusic"></div></div>
 </section>
 
@@ -237,7 +238,7 @@
   <div class="eyebrow msgtitle" id="msg-title">messages</div>
   <div class="hint" id="msg-lede"></div>
   <div class="msglist" id="msglist"></div>
-  <div class="hint">v0.52 · messages and the video player · 18 sept 2026</div>
+  <div class="hint">v0.53 · the reward moments · 18 sept 2026</div>
 </section>
 
 <section class="screen" id="s-testing" data-back="s-menu" data-dev>
@@ -337,7 +338,7 @@
 <script>
 // build check: version.json is fetched with no-store, so a stale cached page still learns a newer build exists
 (function(){
-  const BUILD="52";
+  const BUILD="53";
   async function check(){
     try{
       const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});

@@ -33,7 +33,7 @@ import { $, $$, T } from "../../core.js";
 import { prefs, reset, save } from "../../core/store.js";
 import { GAMES } from "../../games/registry.js";
 import { ACH, Scores, UNLOCKS, devModesAll, devModesReset, got, seedSeen, unlocked } from "../../progress.js";
-import { barsFaked, chestState, devBack, devMeterTo, devReach, fillBars, keyAch, meter, meterMax } from "../../progress/key.js";
+import { barsFaked, chestState, devBack, devMeterTo, devReach, fillBars, keyAch, meter, meterMax, meterPct } from "../../progress/key.js";
 import { define } from "../actions.js";
 import { register, show } from "../router.js";
 import { toast } from "../toast.js";
@@ -66,7 +66,7 @@ function devState(){ if(!BUILD_FLAGS.dev) return; devAudio(); const u=Object.key
   $('#dev-open').classList.toggle('sel',!!prefs.allOpen); $('#dev-sup').classList.toggle('sel',!!prefs.supporter);
   const b=$('#dev-bars'); if(b) b.classList.toggle('sel',barsFaked());
   $$('#dev-keys [data-act="dev-chestall"]').forEach(x=>x.classList.toggle('sel',chestOn(x.dataset.chest)));
-  const m=$('#dev-meter-now'); if(m) m.textContent=T(ABOUT.devMeter,{n:meter()});
+  const m=$('#dev-meter-now'); if(m) m.textContent=T(ABOUT.devMeter,{n:meter(),max:meterMax(),pct:meterPct()});
   const h=$('#dev-anim-hint'); if(h) h.textContent=ABOUT.devAnim; }
 // Fresh game: progress goes, the look and the name stay, and the title sequence plays again (L1)
 function freshGame(){ reset(); seedSeen(); show('s-menu',{story:true}); }

@@ -35,11 +35,11 @@
    with a small pop as it leaves and the "an unlock lands" sound as it lands — both read off that reward's own animation, never a second list of
    times. The chest's name and a key chest's count-up wait for the last one to land, and "tap to continue" waits for both. The card is placed BELOW
    the row, clear of the chest; if the phone is too short for it, the chest and its rewards lift up by exactly what the card needs. */
-import { GIFT_LOOK, REVEAL } from "../config/chests.js";
+import { CONFETTI, GIFT_LOOK, REVEAL } from "../config/chests.js";
 import { CARD, KEY } from "../config/copy.js";
 import { Music, Snd } from "../audio.js";
 import { esc } from "../core.js";
-import { symSvg } from "./chest.js";
+import { msgPreview, symSvg } from "./chest.js";
 
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -50,14 +50,26 @@ const giftHtml = (gifts, chest) => { const L = GIFT_LOOK[chest] || GIFT_LOOK.gam
   return `<div class="rgifts">${(gifts || []).map((g, i) =>
     `<span class="rgift${g.tba ? ' tba' : ''}" style="--i:${i}"><span class="rfly">${symSvg(g.sym, 'rsym', chest)}${extras}</span><b>${esc(g.w)}</b></span>`).join('')}</div>`; };
 /* v26 (item 8, build 49): the card. A big "Congratulations" in the chest's own colour, one "You …" line, one "Next: can you …?" line, the video this
-   chest opened as "A message from Aiden" (item 5), and Continue. No "what you got", no headings, no percentage. */
+   chest opened as "A message from Aiden" (item 5), and Continue. No "what you got", no headings, no percentage.
+   v28 (items 12 / 17, build 53): STAGED, AND CELEBRATED. Every block carries its own index (`--ci`) and the stylesheet lands it REVEAL.cardStep after
+   the one before — the title, then each line, then the message, then Continue, the whole of it inside a second (item 12: "it can be fairly quick").
+   Continue is last on purpose, so it cannot be tapped before the message row is on screen. The MESSAGE is no longer a grey line with a small icon:
+   it is the build-52 player powered off (msgPreview in ui/chest.js), a framed picture with a play mark and the clip's own title under it, which is
+   the same thing the Messages list shows — Aiden did not know the old line was tappable. And the confetti (item 17) is thrown on the title's beat,
+   in the chest's own colour and in the game's own shapes, escalating with the chest. */
+function confettiHtml(chest) { const C = CONFETTI[chest]; if (!C) return '';
+  return `<span class="rconf" aria-hidden="true" style="--cf-ms:${C.ms}ms;--cf-spin:${C.spin}deg;--cf-sz:${C.size}px">`
+    + Array.from({ length: C.n }, (_, i) => { const x = C.n < 2 ? 50 : 50 + (i / (C.n - 1) - .5) * C.spread;
+      return `<i class="cf ${C.shape}" style="--x:${x.toFixed(1)}%;--i:${i};--d:${(i % 5) * 70}ms;--sw:${(i % 3) - 1}"></i>`; }).join('') + '</span>'; }
 function cardHtml(c) { if (!c) return '';
+  let i = 0; const at = () => `style="--ci:${i++}"`;
   return `<div class="rcard" style="${c.col ? `--rc:${c.col}` : ''}">`
-    + `<h3>${esc(c.title || '')}</h3>`
-    + (c.you ? `<p class="ryou">${esc(c.you)}</p>` : '')
-    + (c.next ? `<p class="rnext">${esc(c.next)}</p>` : '')
-    + (c.msg ? `<button class="item sub rmsg" data-act="reveal-msg" data-msg="${esc(c.msg)}">${symSvg('video', 'rmsgsym')}<span>${esc(CARD.msg)}</span></button>` : '')
-    + `<button class="item rgo" data-act="reveal-go" disabled>${esc(CARD.go)}</button></div>`; }
+    + confettiHtml(c.chest)
+    + `<h3 ${at()}>${esc(c.title || '')}</h3>`
+    + (c.you ? `<p class="ryou" ${at()}>${esc(c.you)}</p>` : '')
+    + (c.next ? `<p class="rnext" ${at()}>${esc(c.next)}</p>` : '')
+    + (c.msg ? `<button class="rmsg" data-act="reveal-msg" data-msg="${esc(c.msg)}" ${at()}>${msgPreview(c.msgObj || null) || `<span class="mprev"><span class="mpframe"><span class="mppic"><i class="mpplay"></i></span></span><b class="mptitle">${esc(CARD.msg)}</b></span>`}</button>` : '')
+    + `<button class="item rgo" data-act="reveal-go" ${at()} disabled>${esc(CARD.go)}</button></div>`; }
 
 /* v26 (item 6, build 49): lay the rewards out under the chest and draw each one's flight backwards from where it rests. Offsets, not rects — the
    rewards are about to animate, and a rect taken now would include wherever the first keyframe puts them. Answers the chest's anchor, or null. */
@@ -99,12 +111,12 @@ function play(host, o = {}) { stop(); if (!host) return false;
      does. It was `giftAt` (the stage plus REVEAL.giftAt) for every kind alike, which put 260ms of nothing on the end of an animation item 14
      caps at two seconds. A chest is unchanged: it still waits for its last reward to land and for its own line after it. */
   const ready = gifts.length ? landAt + Math.max(REVEAL.hold, quick ? 0 : (st.textMs || 0)) : (o.kind === 'key' ? ms : giftAt);
-  const c = cur = { host, stage: st, timers: [], ready: false, card: o.card || null, onReady: o.onReady, onDone: o.onDone };
+  const c = cur = { host, stage: st, timers: [], ready: false, silent: !!o.silent, card: o.card || null, onReady: o.onReady, onDone: o.onDone };
   host.className = 'cere rev' + (o.kind === 'key' ? ' clear' : '') + (quick ? ' quick' : '');
   host.dataset.kind = o.kind || 'chest'; host.dataset.rev = o.id || ''; host.dataset.step = '';
   host.style.setProperty('--rev-ms', ms + 'ms'); host.style.setProperty('--gift-ms', (quick ? 0 : REVEAL.giftMs) + 'ms');
   host.style.setProperty('--gift-at', giftAt + 'ms'); host.style.setProperty('--gift-gap', giftGap + 'ms');
-  host.style.setProperty('--card-ms', REVEAL.cardAt + 'ms'); if (o.col) host.style.setProperty('--rc', o.col);
+  host.style.setProperty('--card-ms', REVEAL.cardAt + 'ms'); host.style.setProperty('--card-step', REVEAL.cardStep + 'ms'); host.style.setProperty('--card-block', REVEAL.cardBlockMs + 'ms'); if (o.col) host.style.setProperty('--rc', o.col);
   host.innerHTML = `<div class="rstage"></div>${giftHtml(gifts, o.id)}<i class="ctap">${esc(KEY.tapOn)}</i><div class="rcardwrap"></div>`;
   host.hidden = false; void host.offsetWidth;
   Music.hush(true);
@@ -163,7 +175,12 @@ function tap() { if (!cur) return false;
     const lift = Math.round(Math.max(0, Math.min(c.anchor.top - pad, need - room)));
     c.host.style.setProperty('--lift', lift + 'px'); wrap.classList.add('below'); wrap.style.top = (top - lift) + 'px'; }
   c.host.classList.add('card');
-  // item 22: Continue is dead for about a second, so a tap left over from the animation cannot close the card unseen
+  /* v28 (item 17, build 53): the celebration — confetti (in the markup above) and one sound, different per chest and escalating, on the card's
+     TITLE beat and before the message row, which is where item 17 puts it: "the screen the player taps through to after a chest opens", never on
+     the map and never during the chest animation. A key's reveal is `auto` and has no card, so it never reaches this. */
+  if (!c.silent && c.card.chest) c.timers.push(setTimeout(() => { if (cur === c) Snd.cheer(c.card.chest); }, REVEAL.cardAt));
+  // item 22: Continue is dead for about a second, so a tap left over from the animation cannot close the card unseen. Item 12 puts it last of the
+  // staged blocks, so its own wait now starts after the blocks have landed
   c.timers.push(setTimeout(() => { if (cur !== c) return; const b = c.host.querySelector('.rgo'); if (b) { b.disabled = false; b.classList.add('on'); } }, REVEAL.cardAt + REVEAL.cardGo));
   return true; }
 // the card's Continue. Answers whether it ended one

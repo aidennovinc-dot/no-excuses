@@ -132,6 +132,9 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
      so nothing ever counts up from nothing. Progress: Fresh game clears it. v26 (items 7 / 12, build 48): `devMeter`, Testing's override
      (L.8f), is RETIRED — the meter reads only what the profile holds, and a stored one is dropped on the next load. */
   if(Number.isInteger(p.meterSeen)&&p.meterSeen>=0&&p.meterSeen<=400) o.meterSeen=p.meterSeen;
+  // v28 (item 13, build 53): how many of the Games chest's seven cracks the map has already shown ARRIVING. The cracks themselves are derived
+  // from the store (progress/key.js crackCount) and need nothing saved; this is only so a crack animates in once. No ladder step — absent means none
+  if(Number.isInteger(p.cracked)&&p.cracked>=0&&p.cracked<=7) o.cracked=p.cracked;
   return o; }
 const validRun=r=>isObj(r)&&!!GAMES[r.g]&&GAMES[r.g].modes.includes(r.d)&&typeof r.s==='number'&&typeof r.hits==='number'&&typeof r.t==='number';
 /* v18 (B.14): THE CAP NEVER DROPS A ROW THAT IS IN A TOP TEN. It did — the cap was `slice(0, 600)` here and
@@ -272,10 +275,16 @@ if(save()&&legacy) LEGACY.forEach(drop);
 const opened=id=>!!((prefs.chests&&prefs.chests[id])||prefs.allOpen||prefs.supporter);
 const LOOK={ bg:'stars', tint:'', snd:'space', scale:'penta', rate:'live', track:{}, everywhere:'game' };
 const look=k=>opened('games')?prefs[k]:LOOK[k];
-/* v23 (L.7b / L.7c, build 42): THE MUSIC EVERY RUN PLAYS, as the app reads it — the stored key theme only while the chest that opens it is
-   open (or a dev escape, like every gate), otherwise 'game'. A locked theme can therefore never be selected by any route, stored or tapped;
-   audio.js, the key screen and Customise all read this one function. */
-const everywhere=()=>{ const v=look('everywhere'); return Object.keys(KEY_THEMES).includes(v)&&opened(v)?v:'game'; };
+/* v23 (L.7b / L.7c, build 42): THE MUSIC EVERY RUN PLAYS, as the app reads it — otherwise 'game'. A locked theme can therefore never be
+   selected by any route, stored or tapped; audio.js, the key screen and Customise all read this one function.
+   v28 (item 2, build 53): WHAT OPENS A KEY TRACK IS ITS KEY, NOT ITS CHEST. Customise's Music row holds the three key tracks now and Aiden's
+   line is "each key track locked until that key is earned", which is strictly earlier than the chest that key opens. Whether a key is whole is
+   derived from the bars in progress/key.js, which sits ABOVE core/ in the graph, so it is bound in from there (setKeyDone) rather than imported
+   — the setter pattern, because ESM imports are read-only. Before it is bound nothing reads as earned, which is the safe way round. */
+let keyDone=()=>false;
+const setKeyDone=fn=>{ if(typeof fn==='function') keyDone=fn; };
+const tierOfChest=id=>{ const c=CHESTS.find(x=>x.id===id); return c&&c.needs!=='modes'?c.needs:null; };
+const everywhere=()=>{ const v=look('everywhere'); const t=Object.keys(KEY_THEMES).includes(v)&&tierOfChest(v); return t&&keyDone(t)?v:'game'; };
 const lookCol=g=>opened('games')?(prefs.col[g]||prefs.col['quick-tap']):{ sq:SQ, lead:LEAD, cut:SQ };
 const musicOn=g=>!opened('games')||prefs.musicG[g]!==false;
 /* Fresh game (the Testing screen's dev switch): progress goes, the look and the name stay.
@@ -286,6 +295,6 @@ const musicOn=g=>!opened('games')||prefs.musicG[g]!==false;
    profile showed all 27 of them open. Supporter is a dev switch today (S5 gates it out of a release build entirely) and
    Fresh game is the switch for seeing the app as a new player does, so it belongs in this list. When it becomes a real
    purchase at the native build it will be restored from the store rather than from prefs, and this line stays correct. */
-function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,keysSeen:0,chests:cleanChests(null),cusSeen:0,readySeen:cleanChests(null),spill:cleanChests(null),keyWhole:{},revealed:{},msgSeen:{},gauntSeen:{},paid:0,menuOpened:{},retro:{},retroCol:{},devKeys:{}}); delete prefs.mig11; delete prefs.mig31; delete prefs.mig32; delete prefs.mig35; delete prefs.meterSeen; delete prefs.devMeter; save(); emit('store:reset'); }
+function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,keysSeen:0,chests:cleanChests(null),cusSeen:0,readySeen:cleanChests(null),spill:cleanChests(null),keyWhole:{},revealed:{},msgSeen:{},gauntSeen:{},paid:0,cracked:0,menuOpened:{},retro:{},retroCol:{},devKeys:{}}); delete prefs.mig11; delete prefs.mig31; delete prefs.mig32; delete prefs.mig35; delete prefs.meterSeen; delete prefs.devMeter; save(); emit('store:reset'); }
 
-export { RUNS_CAP, everywhere, look, lookCol, musicOn, opened, prefs, reset, save, store, trimRuns };
+export { RUNS_CAP, everywhere, look, lookCol, musicOn, opened, prefs, reset, save, setKeyDone, store, trimRuns };

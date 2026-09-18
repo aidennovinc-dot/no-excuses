@@ -7,10 +7,12 @@ import { timedEngine } from "../_shared/timed.js";
 // a miss holds the dot where it is for half a second (v8); the dot is never hidden on a miss
 const DT=Object.assign(timedEngine(),{ id:'dots', lockMs:500, hideOnMiss:false, sz:80, pos:null, nextPos:null, prevPos:null, demoOn:false, preset:false,
   reset(){ this.pos=null; this.nextPos=null; this.prevPos=null; this.demoOn=false; this.preset=false; },
-  // v15 (3.10): Lead only. The first dot and its lead ring arrive on "1" of the 3-2-1 — two of the three steps in — so the
-  // player is already looking at the right place when the run starts. They cannot be tapped: `armed` is false until
-  // start(), so timedEngine.input turns every tap away before it reaches the field. Blind is untouched, by intent
-  precount(ctx){ if(ctx.mode!=='lead') return; this.begin(); this.preset=true; ctx.timers.later(()=>this.render(true),CFG.countStep*2); },
+  /* v15 (3.10) → v28 (item 7, build 53): EVERY MODE, NOT JUST LEAD. The first dot (and, in Lead, its lead ring) arrives on "1" of the
+     3-2-1 — two of the three steps in — so the player is already looking at the right place when the run starts. Build 26 did this for
+     Lead only and left Blind "untouched, by intent"; item 7 asks for it on every mode of Quick Tap and Dots, and BLIND IS NOT AN EXCEPTION:
+     blind means no lead ring, not no dot ("Tap the dots as they appear"), and render() only draws the ring in Lead anyway. Every length.
+     It cannot be tapped early: `armed` is false until start(), so timedEngine.input turns every tap away before it reaches the field. */
+  precount(ctx){ this.begin(); this.preset=true; ctx.timers.later(()=>this.render(true),CFG.countStep*2); },
   // v14 (6.9): the dots are random. The v9 quadrant pity — three in a row in the same quarter forced the next one elsewhere,
   // and the count carried across runs — was the one thing making the placement predictable, so it is gone. The only rule left
   // is separation (v14 section B.4): a new dot never lands on the one before it. B.4 asks for a floor of one dot RADIUS;

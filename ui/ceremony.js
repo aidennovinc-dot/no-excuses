@@ -20,10 +20,12 @@ import { T, esc } from "../core.js";
 import { countUp } from "../core/count.js";
 import { COMBOS } from "../progress/key.js";
 import { chestCol, chestSvg, meterLook } from "./chest.js";
+import { meterPct } from "../progress/key.js";
 
 const f1 = v => (+v).toFixed(1);
 // which named step lifts each chest's lid: its own `lid` step, or the moment the Pro chest bursts and the Thorns reveal widens
-const LID_STEP = { games: 'lid', key: 'lid', pro: 'burst', thorns: 'widen' };
+// v28 (item 13, build 53): every chest lifts its lid on its own `lid` step now — the Pro chest's burst and the Thorns widen are retired
+const LID_STEP = { games: 'lid', key: 'lid', pro: 'lid', thorns: 'lid' };
 const stepOf = (id, name) => (CEREMONY[id].steps || []).find(s => s.name === name) || null;
 // the times, as custom properties. Nothing below writes a literal duration
 function stageVars(id) { const c = CEREMONY[id];
@@ -34,47 +36,45 @@ function stageVars(id) { const c = CEREMONY[id];
   const lid = stepOf(id, LID_STEP[id]); v.push(`--lid-at:${lid ? lid.at : 0}ms`);
   const ux = stepOf(id, 'uncross'); if (ux) v.push(`--ux-step:${Math.round(ux.ms / 8)}ms`);
   const as = stepOf(id, 'assemble'); if (as) v.push(`--bar-step:${Math.round(as.ms * .55 / Math.max(1, COMBOS.length))}ms`);
-  const cr = stepOf(id, 'cracks'); if (cr) v.push(`--crack-step:${Math.round(cr.ms / 4)}ms`);
+  const cr = stepOf(id, 'crack'); if (cr) v.push(`--crack-step:${Math.round(cr.ms / 8)}ms`);
   return v.join(';'); }
 
 /* ---------- the layers, by step name. Behind the chest, then the chest, then in front of it; stage units are a 300 × 520 box ---------- */
+/* v28 (item 13, build 53): the Games chest is the one that BURSTS — the burst circle moved here from the Pro chest — and the three key
+   chests share one beam, each in its own `--cc`, because all three now open the same way (assemble · turn · lid · spill). */
 function behind(id) {
-  if (id === 'games') return '<circle class="cglow" cx="150" cy="300" r="80"></circle>';
-  if (id === 'key') return '<defs><linearGradient id="cbeam" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#FFFFFF" stop-opacity=".85"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient></defs>'
-    + '<polygon class="cbeam" points="122,300 178,300 270,0 30,0"></polygon>';
-  if (id === 'pro') return '<circle class="cburst" cx="150" cy="300" r="20"></circle>';
-  if (id === 'thorns') return '<rect class="cblack" x="-60" y="-60" width="420" height="640"></rect><rect class="cwide" x="40" y="0" width="220" height="520"></rect>';
-  return ''; }
+  if (id === 'games') return '<circle class="cglow" cx="150" cy="300" r="80"></circle><circle class="cburst" cx="150" cy="300" r="20"></circle>';
+  return '<defs><linearGradient id="cbeam" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#FFFFFF" stop-opacity=".85"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient></defs>'
+    + '<polygon class="cbeam" points="122,300 178,300 270,0 30,0"></polygon>'; }
+// which key opens a chest — the tier whose glyph and colour its ceremony is drawn in (item 13). The Games chest has none
+const tierOfChest = id => { const c = CHESTS.find(x => x.id === id); return c && c.needs !== 'modes' ? c.needs : null; };
 function inFront(id) { const out = [];
   // Games · uncross: the seven locked tiles, each struck through, the strikes wiping off one by one; path: the line down to the chest
   if (id === 'games') { for (let i = 0; i < 7; i++) { const x = 150 + (i - 3) * 34 - 11;
       out.push(`<rect class="ctile" x="${x}" y="110" width="22" height="22" style="--i:${i}"></rect><path class="cx" pathLength="1" d="M${x - 3} 107L${x + 25} 135" style="--i:${i}"></path>`); }
     out.push('<path class="cpath" pathLength="1" d="M150 140V254"></path>'); }
-  // Key · assemble: one bar per combination flies in to ring the key's bow; turn: the key drops into the lock and turns
-  if (id === 'key') { const n = COMBOS.length, bars = [];
+  /* v28 (item 13, build 53): EVERY KEY CHEST, not just the Skill one — assemble: one bar per combination flies in to ring that key's bow;
+     turn: the key drops into the lock and turns. The glyph is the key that OPENS this chest (KEY_ART, the Keys screen's own paths) and it is
+     stroked in `--cc`, which is that key's colour (R2), so Pro opens in Circuit blue and Author in white with nothing else added. */
+  const tier = tierOfChest(id);
+  if (tier) { const n = COMBOS.length, bars = [];
     for (let i = 0; i < n; i++) { const a = i * (360 / n) * Math.PI / 180, c = Math.cos(a), s = Math.sin(a), far = 170 + (i % 4) * 22;
       bars.push(`<line class="cbar" x1="${f1(150 + c * 30)}" y1="${f1(170 + s * 30)}" x2="${f1(150 + c * 40)}" y2="${f1(170 + s * 40)}" style="--i:${i};--dx:${f1(c * far)}px;--dy:${f1(s * far)}px"></line>`); }
     // the animated group carries NO transform attribute — a CSS translate on an element that has one composes inside it, and the key missed the lock
-    out.push(`<g class="cbarsg">${bars.join('')}</g>`, `<g class="ckeyg"><g transform="translate(116 136) scale(1.4)">${KEY_ART.clear.map(d => `<path d="${d}"></path>`).join('')}</g></g>`); }
-  // Pro · cracks: four lines of light across the chest; scatter: the cosmetics fly out, settle in a row, slide off toward Customise
-  if (id === 'pro') {
-    ['M104 286l14 6-5 9 16 5', 'M196 276l-12 10 7 7-15 9', 'M122 318l12-8 9 6 12-7', 'M170 262l4 12-8 6 6 11'].forEach((d, i) => out.push(`<path class="ccrack" pathLength="1" d="${d}" style="--i:${i}"></path>`));
-    CEREMONY_FX.swatch.forEach((c, i) => out.push(`<rect class="cswatch" x="143" y="293" width="14" height="14" fill="${c}" style="--i:${i};--tx:${(i - (CEREMONY_FX.swatch.length - 1) / 2) * 30}px;--ty:110px"></rect>`)); }
-  // Thorns · spikes: grow in from both edges (and recede); split: one white line down the middle
-  if (id === 'thorns') { for (let i = 0; i < 6; i++) { const y = 18 + i * 84;
-      out.push(`<path class="cspk l" d="M0 ${y}L72 ${y + 26}L0 ${y + 52}z" style="--i:${i}"></path><path class="cspk r" d="M300 ${y}L228 ${y + 26}L300 ${y + 52}z" style="--i:${i}"></path>`); }
-    out.push('<rect class="csplit" x="149" y="0" width="2" height="520"></rect>'); }
+    out.push(`<g class="cbarsg">${bars.join('')}</g>`, `<g class="ckeyg"><g transform="translate(116 136) scale(1.4)">${(KEY_ART[tier] || KEY_ART.clear).map(d => `<path d="${d}"></path>`).join('')}</g></g>`); }
   return out.join(''); }
 // v25 (build 46): `tapLine` is the review catalogue's frames only — in the app the shared reveal (ui/reveal.js) owns "tap to continue"
 /* v26 (item 7, build 48): THE GAMES CHEST'S SCREEN SHOWS NO PERCENTAGE. It opens on every game mode — a count, not a place on the key meter — and
    the figure it showed ("103%") was the meter reading through. The three key chests keep their count-up: each one is a key's worth of meter */
 const metered = id => (CHESTS.find(c => c.id === id) || {}).needs !== 'modes';
 function stageHtml(id, name, was, tapLine) {
-  const chest = chestSvg(id, 'cbig').replace('<svg ', '<svg x="90" y="250" width="120" height="98" ');
+  // item 13: the Games chest arrives at its ceremony with all seven cracks in the markup — the stylesheet draws the seventh in on `crack`
+  const chest = chestSvg(id, 'cbig', { cracks: 7 }).replace('<svg ', '<svg x="90" y="250" width="120" height="98" ');
   return `<svg class="cstage" viewBox="0 0 300 520" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${behind(id)}<g class="cchestg">${chest}</g>${inFront(id)}</svg>`
-    + `<div class="ctxt"><b>${esc(name)}</b>${metered(id) ? `<u class="meterv">${esc(T(KEY.pct, { n: was }))}</u>` : ''}${tapLine ? `<i class="ctap">${esc(KEY.tapOn)}</i>` : ''}</div>`; }
+    + `<div class="ctxt"><b>${esc(name)}</b>${metered(id) ? `<u class="meterv">${esc(T(KEY.pct, { n: meterPct(was) }))}</u>` : ''}${tapLine ? `<i class="ctap">${esc(KEY.tapOn)}</i>` : ''}</div>`; }
 const nameOf = id => T(KEY.opened, { chest: GRID.chest[id] });
-const setMeter = (m, v) => { if (!m) return; m.textContent = T(KEY.pct, { n: v }); meterLook(m, v); };
+// v28 (item 9, build 53): the count-up walks the raw meter and PRINTS meterPct() — one scale on every surface, and it cannot pass 100
+const setMeter = (m, v) => { if (!m) return; m.textContent = T(KEY.pct, { n: meterPct(v) }); meterLook(m, v); };
 
 /* ---------- v25 (items 6 / 22, build 46): A CHEST OPENING IS NOW A STAGE INSIDE THE ONE SHARED REVEAL ----------
    Build 41's playCeremony() owned its own clock, its own "tap to continue" and its own hand-over. Items 6, 11 and 22 put chests and keys

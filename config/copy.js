@@ -12,7 +12,10 @@ export const TOAST = {
   // build 38 (#426): the columns carry generated placeholders now, so the test fill only ever finds EMPTY cells to fill
   barsOn:'Test fill · empty Pro / Author bars derived in memory, never saved, gone on reload', barsOff:'Test fill off · the cells it filled are empty again',
   barsNone:'Nothing to fill · every Pro and Author bar has a number (placeholders since build 38)',
-  pracLocked:'Locked · Practice from · 8 notes in 7 keys', locked:'Locked · {name}',
+  /* v28 (item 5, build 53): ONE FULL NAME FOR THE PRACTICE-FROM UNLOCK. `Practice from` read as a sentence cut in half wherever it
+     was printed — the Game unlocks row, the title screen's Next unlock box, this toast and the sheet's locked chip. PROGRESS.practiceFrom
+     below is the one spelling and every one of them composes off it. */
+  pracLocked:'Locked · {name} · 8 notes in 7 keys', locked:'Locked · {name}',
   supAlready:'Already a supporter · thank you', supLater:'Purchases arrive in the app build · About → testing → supporter to try it',
   achievement:'Achievement · {name}', copied:'Copied · paste it anywhere',
   mig11:'Build 11 · {n} old Estimate / Timing / Reaction / Count run{s} retired — the scoring changed',
@@ -21,7 +24,7 @@ export const TOAST = {
   // v19 (C.5 / C.6): Go / No-go scores over the 180ms gate and its Streak counts targets, so records in the old units go
   mig32:'Build 32 · {n} old Go / No-go run{s} retired — every tap scores over the 180ms gate now and a Streak counts targets',
   // unlock wording (v11): "Unlock game: Dots" for a game, "Unlock: Dash" for a mode or length
-  unlock:'Unlock: {name}', unlockGame:'Unlock game: {name}', unlockPractice:'Unlock: Practice from',
+  unlock:'Unlock: {name}', unlockGame:'Unlock game: {name}',
   // v21 (G.8, build 37): Testing's per-key switches (S5). v23 (L.8f, build 40): per CHEST now — four of them — and the meter field
   // v26 (items 7 / 12, build 48): Testing plays forward the way play does, and backs out every chest after the one it resets
   devReach:'{key} · ready · played forward the way a player gets there', devReachOpen:'{key} · already open · reset it to play it again',
@@ -44,14 +47,19 @@ export const BG_NAME = { stars:'stars', grid:'grid', rain:'rain', orbs:'orbs', l
    Achievements screen and another on the Unlocks screen two menu items above it. B.11 settles which is which: an unlock
    opens something you could not play before and lives in config/unlocks.js; everything here is a mark on something you
    already have, and a few of them happen to come with a colour. The tier id moved with the name (`earned`). */
-export const TIERS = { earned:['Earned','Picked up as you play. Some come with a colour, a background or a sound pack.'], pro:['Pro','harder. bragging rights, a few unlock things'], secret:['Secret','they exist. what earns them is not written down'],
+/* v28 (item 1, build 53): SECRET SITS BELOW EVERY OTHER TIER. This object's key order IS the order the Achievements tab draws its groups in
+   (ui/screens/progress.js walks Object.keys), so moving `secret` to the end moves it under Earned, Pro and the three key sets in every filter
+   — Aiden's reason: they were getting in the way of the ones you can chase. It also loses its red: a Secret row and its heading are drawn like
+   a locked ordinary row now, which is L.2's rule (white until earned, green once, never red) finally applied to the one group that broke it. */
+export const TIERS = { earned:['Earned','Picked up as you play. Some come with a colour, a background or a sound pack.'], pro:['Pro','harder. bragging rights, a few unlock things'],
   // v18 (B.25, build 32): three sets tied to the keys — one row per game per key and one for the whole key. The second
   // and third sets are not shown before chest 1 (A.1); ui/screens/progress.js filters them on tierOpen
   // v24 (D.2, build 44): each key set now opens with one row on every clearance bar — 30 of them — before a game's set and the whole key
-  key1:['Skill key','one on every clearance bar, then a game, then all of them'], key2:['Pro key','the same, at the Pro bars'], key3:['Author key','the same, against the author'] };
+  key1:['Skill key','one on every clearance bar, then a game, then all of them'], key2:['Pro key','the same, at the Pro bars'], key3:['Author key','the same, against the author'],
+  secret:['Secret','they exist. what earns them is not written down'] };
 export const KEY_ACH = { game:'{game} · {key}', gameHow:'Clear every {game} bar on {key}', whole:'{key} · whole', wholeHow:'Clear every bar on {key}', shut:'on {key} · revealed by an earlier chest' };
 // the progress rules' own wording: length locks without a rule, the practice row, the Author rows
-export const PROGRESS = { finishOne:'finish one {game} {prev}', finishA:'finish a {game} {prev}', streak:'Streak', practiceFrom:'Practice from', beat:'Beat Aiden — {rec}', none:'—' };
+export const PROGRESS = { finishOne:'finish one {game} {prev}', finishA:'finish a {game} {prev}', streak:'Streak', practiceFrom:'Practice from a later note', beat:'Beat Aiden — {rec}', none:'—' };
 
 // the one-liner under the ghost demo, the first time a mode is played
 /* v16 (§5 / A.3): ONE LINE, and nothing under it. The subtitle is gone from every row — it is the second line Aiden
@@ -100,8 +108,8 @@ export const MENU = { next:'<em>Next unlock</em><span>{need} → {name}</span>',
 /* v15 (2.4): the Unlocks screen — the chain on its own page, split off from Achievements. Everything that OPENS something
    lives here; Achievements keeps the rest. What sits behind keys 2 and 3 is register #372 and is not decided, so the key
    line below says only what is true today. */
-export const UNLOCKS_SCREEN = { title:'unlocks', hint:'tap a locked row to see what it takes',
-  lede:'Everything that opens something. The chain first — each game and mode earned in the one before it — then every length of every mode.',
+// v28 (item 4, build 53): `hint` and `lede` retired with the grey helper text — PROGRESS_SCREEN.count is the one line on this tab now
+export const UNLOCKS_SCREEN = { title:'unlocks',
   games:'Games and modes', lens:'Lengths', keys:'Skill key', done:'open', locked:'locked',
   // v17 (B.9): the number is a placeholder now. The count moved when Sequence lost 5 keys and it will move again the next
   // time a mode is added, and a written-out "thirty-one" is exactly the second copy of a fact L6 forbids everywhere else
@@ -118,9 +126,11 @@ export const UNLOCKS_SCREEN = { title:'unlocks', hint:'tap a locked row to see w
    there — CUSTOMISE UNLOCKS (guess; "Rewards" retired because it does not say unlock). A cosmetic's requirement is on that
    tab and nowhere else. `culGroup` heads its groups, one per Customise row a payout lands in (guess on the words). */
 export const PROGRESS_SCREEN = { title:'progress', unl:'Game unlocks', cul:'Customise unlocks', ach:'Achievements',
-  unlHint:'tap a locked row to see what it takes', culHint:'tap an earned one to use it', achHint:'tap one to go play it',
-  // v23 (L.11a, build 40): the tab is not gated, but until the Games chest it says what opens Customise (guess); the key row there waits for it too
-  culLocked:'open the Games chest to use them', keyLocked:'open the Games chest',
+  /* v28 (item 4, build 53): `unlHint`, `culHint`, `achHint` and `culLocked` are RETIRED — four lines of grey helper text saying what tapping a
+     row does, on a screen made of rows. One line replaces all of them, per tab: how much of that tab is unlocked. On Achievements the total
+     leaves Secret out until one has been found (R1) — the line may never say how many secrets there are. */
+  count:'{done} of {total} unlocked',
+  keyLocked:'open the Games chest',
   culGroup:{ sq:'Target colours', lead:'Lead colours', cut:'Cut pieces', bg:'Backgrounds', snd:'Tap sounds', scale:'Scales', rate:'Taps per second', wheel:'Colour wheel' } };
 /* v17 (B.23 / B.24, build 29): the game-select grid says what order the games open in, and where that order ENDS.
    The chest needs key 1 — every clearance bar cleared — and A.1 forbids anything about pro or author appearing before
@@ -169,15 +179,19 @@ export const GRID = { chest:{ games:'Games chest', key:'Skill chest', pro:'Pro c
    renaming a slot renames it in the pop-out, on the map and on the card at once. */
 export const CHEST_WORDS = {
   games:[{ w:'CUSTOMISE', sym:'palette', to:'s-custom' }, { w:'SKILL KEY', sym:'key', to:'key:0' }],
-  key:[{ w:'GAUNTLET', sym:'gauntlet', to:'tile:g1' }, { w:'PRO KEY', sym:'keypro', to:'key:1' }, { w:'LANTERN SKY', sym:'bg-lantern', to:'s-custom' }],
-  pro:[{ w:'AUTHOR KEY', sym:'keyauthor', to:'key:2' }, { w:'GAUNTLET II', sym:'gauntlet2', to:'tile:g2' }, { w:'COSMETIC SET', sym:'cosmetic', tba:1, to:'soon' }, { w:'CIRCUIT SKY', sym:'bg-circuit', to:'s-custom' }],
+  key:[{ gaunt:'g1', sym:'gauntlet', to:'tile:g1' }, { w:'PRO KEY', sym:'keypro', to:'key:1' }, { w:'LANTERN SKY', sym:'bg-lantern', to:'s-custom' }],
+  pro:[{ w:'AUTHOR KEY', sym:'keyauthor', to:'key:2' }, { gaunt:'g2', sym:'gauntlet2', to:'tile:g2' }, { w:'COSMETIC SET', sym:'cosmetic', tba:1, to:'soon' }, { w:'CIRCUIT SKY', sym:'bg-circuit', to:'s-custom' }],
   thorns:[{ w:'THORN SKY', sym:'bg-thorn', to:'s-custom' }] };
 /* v26 (item 13, build 49): the two Gauntlet tiles and their placeholder screen — a title, "Coming soon" and Back, nothing else, because what a Gauntlet
    is gets designed separately. `need` is what a locked tile says, and its tap (guess on the words) */
 /* v27 (items 2 / 4, build 51): a Gauntlet tile is INVISIBLE until its chest has opened (R1 — a secret shows nothing at all), so `need` is no longer
    on the map. It is kept for the toast a tap on a tile can still raise while a chest is being opened, and it names its chest through GRID.chestOpenIt
    rather than spelling one: `chest` is the id, filled at the callsite. */
-export const GAUNTLET = { name:{ g1:'Gauntlet', g2:'Gauntlet II' }, toast:'{need} first', soon:'Coming soon' };
+/* v28 (item 10, build 53): GAUNTLET MINI AND GAUNTLET MEGA. Aiden dictated "from Gauntlet Mini and Gauntlet Mega" and it is read as "to"
+   — confirmed in the outcome. This object is the ONE spelling of either name: the map tiles, the chest word that brings each one in, the
+   Messages rows and their video titles, the placeholder screen and Testing all compose off it. The ids g1 / g2 do NOT move — they are store
+   keys (prefs.gauntSeen) and a saved profile must not reset. `msgTitle` in progress/key.js is how a message row spells its Gauntlet. */
+export const GAUNTLET = { name:{ g1:'Gauntlet Mini', g2:'Gauntlet Mega' }, msgTitle:'The {name}', toast:'{need} first', soon:'Coming soon' };
 // v23 (L.11b, build 41): what a word whose reward is not built yet says when tapped (guess)
 export const CHEST_SOON = '{w}<small>not built yet · a later build</small>';
 export const SHEET = { mode:'Mode', toUnlock:'To unlock: {need}', tileUnlock:'to unlock: {need}', locked:'locked', noRun:'no run yet', best:'best', closest:'closest',
@@ -230,7 +244,8 @@ export const ABOUT = { tier:['No ads, ever.','Every colour, background and sound
   devAudio:'audio · {state} · clock {clock} · context {gen}{why}', devClock:'+{dt}s in {wall}s', devClockStopped:'+0.000s in {wall}s · STOPPED', devClockWait:'measuring',
   devAnim:'animations · nothing is stored', devKeyIn:'key arrival', devSeg:'segment advance', devWhole:'key complete', devChest:'chest {n} opening',
   // v23 (L.8f, build 40): the meter as the app reads it right now, and whether Testing's override is what it is reading
-  devMeter:'meter · {n}% of 300 · read off what is stored',
+  // v28 (item 9, build 53): Testing is the one screen that works in the RAW meter (three bands of 100); everywhere a player looks it is meterPct(), 0–100
+  devMeter:'meter · {n} of {max} raw · {pct}% shown · read off what is stored',
   /* build 33: Send feedback, the beta channel's missing half. GitHub Pages was already the way a tester gets the build;
      what was missing was the way back. It is a mailto and nothing more — no form, no endpoint, no third party — with
      the build, the device and the last run filled in, because those are the three things a bug report is useless
@@ -247,9 +262,10 @@ export const ABOUT = { tier:['No ads, ever.','Every colour, background and sound
    the three controls they labelled — the row is the track's own name and a tap plays it. `lockLine` is B.30's line,
    which now sits under the row it is about instead of over it. */
 export const CUSTOM = { menu:'Menu music', lockLine:'Locked · {name} — {how} · <u>show me</u>', wheel:'{word} · {game} · drag to pick',
-  // v23 (L.7c, build 42): the Everywhere row — Per game, or a key theme by its track's name; a shut theme names its chest under it
-  // (GRID.chest); and the one line under the tracks while a key theme plays everywhere
-  perGame:'Per game', openChest:'open the {chest}', themeOn:'key theme playing everywhere' };
+  /* v28 (items 2 / 3, build 53): the Everywhere row is gone — `perGame`, `openChest` and `themeOn` went with it. The Music row holds the key
+     tracks now, and a locked one names the KEY that opens it (config/keys.js `name` — Skill key / Pro / Author, item 3), not its chest. There is
+     no "show me" on that line: a key is not an achievement row and there is nothing on Progress to show. */
+  lockPlain:'Locked · {how}' };
 // v14 (8.1): a row whose requirement is a SET of things says which are left, not just how far along the bar is.
 // v14 (8.5): a secret row shows its own `hint` where an ordinary row shows `how`; `stretch` is the fallback for one without
 export const ACH_SCREEN = { all:'All', done:'done', secret:'secret', hidden:'???', progress:' · {p}% of the way there', stretch:'A stretch past the stretch. You will know.', inGame:' · in {game}', left:' · still to play: {names}' };

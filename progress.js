@@ -7,7 +7,7 @@
 
 import { ACH as ACH_ROWS } from "./config/achievements.js";
 import { SCALES } from "./config/audio.js";
-import { ITEMS } from "./config/theme.js";
+import { DESIGNS, ITEMS } from "./config/theme.js";
 import { BG_NAME, ITEM_WORD, PROGRESS, TOAST, UNLOCK_WORD, VERDICT } from "./config/copy.js";
 import { VERDICTS, VERDICT_FAIL_TIER, VERDICT_TIERS } from "./config/verdicts.js";
 import { MODE_NAME, STREAK } from "./config/games.js";
@@ -124,7 +124,7 @@ const gameOpen=g=>GAMES[g].modes.some(d=>isOpen(g,d));
 const needFor=(g,d)=>{ const u=UNLOCKS.find(u=>u.key===g+':'+d); return u?u.need:''; };
 const unlockName=key=>{ if(key==='sequence:practice') return PROGRESS.practiceFrom; const [g,d,s]=key.split(':'); if(s!==undefined) return lenName(g,+s,d); return GAMES[g].name+(MODE_NAME[d]?' · '+MODE_NAME[d]:''); };
 // toast wording (v11): "Unlock game: Dots" for a game, "Unlock: Dash" for a mode or length
-function unlockToast(key){ if(key==='sequence:practice') return TOAST.unlockPractice; const [g,d,s]=key.split(':'); if(s!==undefined) return T(TOAST.unlock,{name:lenName(g,+s,d)}); const first=!GAMES[g].modes.some(m=>m!==d&&unlocked()[g+':'+m])&&!(g==='quick-tap'); return first?T(TOAST.unlockGame,{name:GAMES[g].name}):T(TOAST.unlock,{name:MODE_NAME[d]||GAMES[g].name}); }
+function unlockToast(key){ if(key==='sequence:practice') return T(TOAST.unlock,{name:PROGRESS.practiceFrom}); const [g,d,s]=key.split(':'); if(s!==undefined) return T(TOAST.unlock,{name:lenName(g,+s,d)}); const first=!GAMES[g].modes.some(m=>m!==d&&unlocked()[g+':'+m])&&!(g==='quick-tap'); return first?T(TOAST.unlockGame,{name:GAMES[g].name}):T(TOAST.unlock,{name:MODE_NAME[d]||GAMES[g].name}); }
 // v15 (2.5): the guards that used to sit at the call site in ui/screens/result.js live here now, because the call moved
 // into run/run.js and has to bank the moment the run record exists — a practice or challenge run still earns nothing
 // v17 (B.4): and neither does a DEMO. The first-play ghost drives the real engine on the real ctx, so it reaches both of
@@ -178,7 +178,21 @@ const got=()=>store.ach;
 function checkAch(run,live){ if(run.chal||run.practice||run.demo) return []; const g=got(); const all=Scores.runs(); const fresh=[]; for(const a of ACH){ if(live&&!a.live) continue; if(!g[a.id]&&a.test(run,all)){ g[a.id]=Date.now(); fresh.push(a); } } if(fresh.length) save(); return fresh; }
 function unlockWord(a){ if(!a.unlocks) return ''; const [k,v]=a.unlocks; if(k==='wheel') return UNLOCK_WORD.wheel; if(k==='bg') return T(UNLOCK_WORD.bg,{bg:BG_NAME[v]}); if(k==='snd') return T(UNLOCK_WORD.snd,{v}); return T(UNLOCK_WORD.item,{word:ITEM_WORD[k]}); }
 // the same, with the actual colour as a swatch (v8) — "unlocks lead colour" on its own said nothing
-function unlockHtml(a){ if(!a.unlocks) return ''; const [k,v]=a.unlocks; return unlockWord(a)+((k==='sq'||k==='lead')&&v!=='wheel'?`<i class="sw" style="background:${v}"></i>`:''); }
+/* v28 (item 6, build 53): EVERY CUSTOMISE-UNLOCK ROW SHOWS THE THING IT UNLOCKS. Colours already carried a swatch and everything else carried
+   nothing, so a background and a sound pack read as words about nothing. Aiden: "show that there is something that they are tangibly unlocking
+   that they can use." A colour is its swatch (the cut-piece colour joins them — it is a colour and it had none); a background is the SAME tile
+   the Customise screen's Background row draws, off the same `bg-<v>` class and the same DESIGNS tint, so there is no new art; a sound pack and a
+   scale are a speaker, and tapping an earned row plays THAT pack or THAT scale once (ui/screens/progress.js). The colour wheel is its own wheel.
+   The rule generalises: anything that unlocks a usable thing shows it, so a Gauntlet or a cosmetic set adds one line here when it arrives. */
+function unlockArt(k,v){ if(k==='wheel'||v==='wheel') return '<i class="rwsw wheel"></i>';
+  if(k==='sq'||k==='lead'||k==='cut') return `<i class="rwsw" style="background:${v}"></i>`;
+  if(k==='bg') return `<i class="rwsw bg-${v}" style="background-color:${(DESIGNS[v]||{}).tint||'transparent'}"></i>`;
+  if(k==='snd'||k==='scale') return '<i class="rwsw hear"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M1.5 5.2h2.6L7 2.6v8.8L4.1 8.8H1.5z"/><path d="M9.2 4.9a3.2 3.2 0 0 1 0 4.2M11.1 3.3a5.6 5.6 0 0 1 0 7.4" fill="none" stroke="currentColor" stroke-width="1.1"/></svg></i>';
+  return ''; }
+// what a row unlocks, as words plus the thing itself
+function unlockHtml(a){ if(!a.unlocks) return ''; const [k,v]=a.unlocks; return unlockWord(a)+unlockArt(k,v); }
+// the sound an earned row plays when it is tapped: the pack or the scale it unlocks, nothing else
+const unlockHear=a=>{ if(!a||!a.unlocks) return null; const [k,v]=a.unlocks; return (k==='snd'||k==='scale')&&v!=='wheel'?{k,v}:null; };
 
 /* ---------- verdicts: four tiers over a per-game quality 0..1 (progress/rules.js QUALITY) ----------
    v17 (B.25, build 29). Three things changed and only one of them is the count. The THRESHOLDS were a ternary here
@@ -231,6 +245,11 @@ function setPendingGoal(v){ pendingGoal=v; }
    chest. progress/key.js asks this through modesOpen(); nothing reads store.unlock for the chest itself. */
 // build 40 (§M.4): `free` is how many of them a brand-new profile already has — the meter's modes band counts past those
 function modeCount(){ let open=0, total=0, free=0; for(const g in GAMES) for(const d of GAMES[g].modes){ total++; if(freeMode(g,d)) free++; if(modeOpen(g,d,true)) open++; } return { open, total, free }; }
+/* v28 (item 13, build 53): HOW MANY GAMES ARE FINISHED — one crack on the Games chest each. A game is finished when every mode of it is
+   unlocked, which is the same count the chest itself waits for, so seven games finished and the chest ready are the same moment by
+   construction. Read the strict way modeCount() reads, so a challenge link that opened one mode for one run cracks nothing. */
+const gameDone=g=>!!GAMES[g]&&GAMES[g].modes.every(d=>modeOpen(g,d,true));
+const gamesDone=()=>Object.keys(GAMES).filter(gameDone).length;
 
 /* v23 (L.8f / G.8, build 40): Testing's GAMES CHEST switch and reset (S5, dev only). The Games chest opens on every mode in the chain,
    so its switch writes every mode row of UNLOCKS into the store and remembers what the store held — switching off puts exactly that
@@ -245,4 +264,4 @@ function devModesAll(on){ const u=unlocked(), dk=Object.assign({},prefs.devKeys)
   prefs.devKeys=dk; save(); return devModesOn(); }
 function devModesReset(){ const u=unlocked(); for(const k of modeRows()) delete u[k]; if(prefs.devKeys) delete prefs.devKeys.games; save(); }
 
-export { ACH, Scores, UNLOCKS, achAll, achById, achTab, bankLen, chalRun, checkAch, checkUnlocks, devModesAll, devModesOn, devModesReset, freeMode, gameOpen, goalFor, got, isNew, isOpen, lenLock, lenNeed, lenNextLive, lenNextOf, lenOpen, lensOf, markSeen, modeCount, needFor, newMark, newPlay, nextAch, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, tierMin, tierOf, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict, verdictKey };
+export { ACH, Scores, UNLOCKS, achAll, achById, achTab, bankLen, chalRun, checkAch, checkUnlocks, devModesAll, devModesOn, devModesReset, freeMode, gameDone, gameOpen, gamesDone, goalFor, got, isNew, isOpen, lenLock, lenNeed, lenNextLive, lenNextOf, lenOpen, lensOf, markSeen, modeCount, needFor, newMark, newPlay, nextAch, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, tierMin, tierOf, unlockArt, unlockHear, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict, verdictKey };

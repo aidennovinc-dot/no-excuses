@@ -7,12 +7,13 @@ import { MESSAGES } from "../../config/messages.js";
 import { MODE_NAME } from "../../config/games.js";
 import { $, T, esc } from "../../core.js";
 import { prefs, save } from "../../core/store.js";
-import { msgOpen, msgShown } from "../../progress/key.js";
+import { msgOpen, msgShown, msgTitle } from "../../progress/key.js";
 import { GAMES, lenName } from "../../games/registry.js";
 import { Scores } from "../../progress.js";
 import { define } from "../actions.js";
 import { register } from "../router.js";
 import { toast } from "../toast.js";
+import { msgCol } from "../chest.js";
 import { onVideoSeen, playVideo } from "../video.js";
 
 // what supporting gets (v13, 13.1): no comparison table — a thank-you line and three lines of what is included. Pro lengths are gone (0.3)
@@ -83,8 +84,9 @@ function renderMessages(){ const box=$('#msglist'); if(!box) return; const seen=
   box.innerHTML=MESSAGES.filter(msgShown).map(m=>{ const o=msgOpen(m), has=o&&!!m.file, w=!!seen[m.id];
     const state=!o?needOf(m):has?(w?MSG.watched:MSG.play):MSG.soon;
     return `<button class="msgrow${o?'':' locked'}${has?' has':''}${w?' seen':''}${has&&!w?' unwatched':''}" data-act="msg" data-msg="${esc(m.id)}">`
-      +`<span class="msgframe">${has?'':`<i>${esc(o?MSG.soon:'')}</i>`}</span>`
-      +`<span class="msgtxt"><b class="${o?'':'x'}">${esc(m.title)}</b><small class="${o?'':'need'}">${esc(state)}</small></span></button>`; }).join(''); }
+      // v28 (item 12, build 53): the row's picture carries the play mark and the chest's glow — the same powered-off player the congratulations card shows
+      +`<span class="msgframe" style="${msgCol(m)?`--vg:${msgCol(m)}`:''}">${has?'<i class="mpplay"></i>':`<i>${esc(o?MSG.soon:'')}</i>`}</span>`
+      +`<span class="msgtxt"><b class="${o?'':'x'}">${esc(msgTitle(m))}</b><small class="${o?'':'need'}">${esc(state)}</small></span></button>`; }).join(''); }
 
 /* `msg` is the congratulations card's "A message from Aiden" button arriving here (item 22 × item 23): the screen opens with that row
    scrolled to and, if it has a clip, playing. A row that is still locked is never opened this way — the card only offers one that is open. */
