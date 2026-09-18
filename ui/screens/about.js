@@ -2,18 +2,18 @@
    line, the tier box, Send feedback and the build hint — nothing else since build 21: v14 (8.10) moved Testing out to its
    own menu item directly below About, in ui/screens/testing.js, so it can be reviewed on its own. */
 import { BUILD } from "../../config/build.js";
-import { ABOUT, GRID, MSG, TOAST } from "../../config/copy.js";
-import { KEYS } from "../../config/keys.js";
+import { ABOUT, GAUNTLET, GRID, MSG, TOAST } from "../../config/copy.js";
 import { MESSAGES } from "../../config/messages.js";
 import { MODE_NAME } from "../../config/games.js";
-import { $, $$, T, esc } from "../../core.js";
+import { $, T, esc } from "../../core.js";
 import { prefs, save } from "../../core/store.js";
-import { msgOpen } from "../../progress/key.js";
+import { msgOpen, msgShown } from "../../progress/key.js";
 import { GAMES, lenName } from "../../games/registry.js";
 import { Scores } from "../../progress.js";
 import { define } from "../actions.js";
 import { register } from "../router.js";
 import { toast } from "../toast.js";
+import { onVideoSeen, playVideo } from "../video.js";
 
 // what supporting gets (v13, 13.1): no comparison table — a thank-you line and three lines of what is included. Pro lengths are gone (0.3)
 function renderTier(){ $('#tierbox').innerHTML=ABOUT.tier.map(t=>`<div><span>${t}</span></div>`).join('');
@@ -54,31 +54,34 @@ function renderFeedback(){ const a=$('#feedback'); if(!a) return; const build='v
    `prefs.msgSeen`, in the same green every other "not seen yet" wears. Tapping play is watched, and the row goes back to exactly how it looked. A
    placeholder ("video coming soon") and a locked slot never pulse — there is nothing to watch. The About menu row stays green while any such clip is
    waiting (ui/screens/menu.js, msgDot), which is the one signal for it; there is no separate dot. */
-// the player, built in place. One at a time: opening a second closes the first, so nothing plays behind anything
-function playMsg(id){ const m=MESSAGES.find(x=>x.id===id); if(!m||!msgOpen(m)||!m.file) return false;
-  $$('#msglist .msgrow').forEach(r=>{ if(r.dataset.msg!==id) r.classList.remove('playing'); const v=r.querySelector('video'); if(v&&r.dataset.msg!==id){ v.pause(); v.remove(); } });
-  const row=$(`#msglist .msgrow[data-msg="${id}"]`); if(!row) return false;
-  if(!row.querySelector('video')){ const frame=row.querySelector('.msgframe');
-    frame.innerHTML=`<video playsinline preload="metadata" controls${m.cc?' crossorigin="anonymous"':''}><source src="${esc(m.file)}" type="video/mp4">`
-      +(m.cc?`<track kind="captions" srclang="en" label="English" src="${esc(m.cc)}" default>`:'')+`</video>`; }
-  row.classList.add('playing');
-  const v=row.querySelector('video'); if(v){ const p=v.play(); if(p&&p.catch) p.catch(()=>{}); }
-  // watched, without rebuilding the list under the player that is now running: the row says so and the dot on the menu comes off
-  if(!prefs.msgSeen||!prefs.msgSeen[id]){ prefs.msgSeen=Object.assign({},prefs.msgSeen,{[id]:1}); save();
-    row.classList.add('seen'); row.classList.remove('unwatched'); const t=row.querySelector('.msgtxt small'); if(t) t.textContent=MSG.watched; }
-  return true; }
-/* v27 (item 4, build 51): WHAT A LOCKED SLOT SAYS, composed rather than written out. Each row used to carry its own `need` string, which meant
-   every chest and key name was spelled a second time here — and three of them were still the 2026-09-16 names ("a whole Lantern key"). The line
-   is built from the slot's own `by`: a chest through GRID.chestNeed × GRID.chest (config/copy.js, the one source, item 4), a key through
-   MSG.keyNeed × that tier's `name` in config/keys.js. A slot with no lock has no line. */
-const needOf=m=>{ if(!m||!m.by) return '';
-  if(m.by.chest) return T(GRID.chestNeed,{chest:GRID.chest[m.by.chest]||m.by.chest});
-  const k=KEYS.find(x=>x.id===m.by.key); return k?T(MSG.keyNeed,{key:k.name}):''; };
+/* v27 (items 8 / 9 / 10, build 52): THE PLAYER IS NOT IN THE ROW ANY MORE. Build 46 built a <video> inside the row that was tapped, which
+   made the picture as wide as the list and left the native control bar over it — both of which item 9 rules out. A tap now opens the ONE
+   SHARED PLAYER (ui/video.js): a 16:9 picture in a drawn frame over the dimmed game, title above, captions below, tap outside to close, with
+   the power-on and power-off item 10 asks for. This screen's job is the LIST; the player is the player's.
+   The row still repaints itself the moment its clip is watched — `onVideoSeen` — rather than rebuilding the list, because the list must not
+   move under a player that is already up. */
+function playMsg(id){ const m=MESSAGES.find(x=>x.id===id); if(!m||!msgOpen(m)||!m.file) return false; return playVideo(m); }
+onVideoSeen(id=>{ const row=$(`#msglist .msgrow[data-msg="${id}"]`); if(!row) return;
+  row.classList.add('seen'); row.classList.remove('unwatched'); const t=row.querySelector('.msgtxt small'); if(t) t.textContent=MSG.watched; });
+
+/* v27 (items 4 / 8, build 51-52): WHAT A LOCKED SLOT SAYS, composed rather than written out. Each row used to carry its own `need` string, which
+   meant every chest and key name was spelled a second time here. The line is built from the slot's own `by`, one branch per kind of lock, and
+   every name comes from the one place that owns it — GRID.chest for a chest, GAUNTLET.name for a Gauntlet, the game's own name and length for a
+   run. A slot with no lock has no line. (`by.key` is gone with the three key rows item 8 deleted.) */
+const needOf=m=>{ const b=(m&&m.by)||null; if(!b) return '';
+  if(b.chest) return T(MSG.locked,{need:T(GRID.chestNeed,{chest:GRID.chest[b.chest]||b.chest})});
+  if(b.run){ const g=GAMES[b.run.g]; return g?T(MSG.lockedRun,{game:g.name,len:lenName(b.run.g,b.run.s,b.run.d)}):''; }
+  if(b.gauntlet) return T(MSG.lockedGaunt,{name:GAUNTLET.name[b.gauntlet]||b.gauntlet});
+  if(b.support) return MSG.lockedPaid;
+  return ''; };
+/* R1 (item 8): the list draws only the slots that are SHOWN — a Gauntlet's row is not there at all until its Gauntlet has come out of its chest,
+   no row and no gap — but the COUNTER COUNTS ALL EIGHT, both ends, so it always reads "N of 8" and a player knows two secrets exist without
+   knowing what they are. msgShown() in progress/key.js is that test; MESSAGES.length is the total, so the two cannot drift apart. */
 function renderMessages(){ const box=$('#msglist'); if(!box) return; const seen=prefs.msgSeen||{};
   const open=MESSAGES.filter(msgOpen).length;
   $('#msg-lede').textContent=MSG.lede+' · '+T(MSG.count,{done:open,total:MESSAGES.length});
-  box.innerHTML=MESSAGES.map(m=>{ const o=msgOpen(m), has=o&&!!m.file, w=!!seen[m.id];
-    const state=!o?T(MSG.locked,{need:needOf(m)}):has?(w?MSG.watched:MSG.play):MSG.soon;
+  box.innerHTML=MESSAGES.filter(msgShown).map(m=>{ const o=msgOpen(m), has=o&&!!m.file, w=!!seen[m.id];
+    const state=!o?needOf(m):has?(w?MSG.watched:MSG.play):MSG.soon;
     return `<button class="msgrow${o?'':' locked'}${has?' has':''}${w?' seen':''}${has&&!w?' unwatched':''}" data-act="msg" data-msg="${esc(m.id)}">`
       +`<span class="msgframe">${has?'':`<i>${esc(o?MSG.soon:'')}</i>`}</span>`
       +`<span class="msgtxt"><b class="${o?'':'x'}">${esc(m.title)}</b><small class="${o?'':'need'}">${esc(state)}</small></span></button>`; }).join(''); }
@@ -93,6 +96,6 @@ register('s-about',{ onShow({msg}={}){ renderTier(); renderFeedback(); renderMes
 define({ support(){ toast(prefs.supporter?TOAST.supAlready:TOAST.supLater); return 'click'; },
   // item 23: a locked row says what opens it where it stands; an open one with no clip yet says so; an open one with a clip plays in place
   msg(b){ const id=b.dataset.msg, m=MESSAGES.find(x=>x.id===id); if(!m) return 'click';
-    if(!msgOpen(m)){ toast(T(MSG.locked,{need:needOf(m)})); return 'pick'; }
+    if(!msgOpen(m)){ toast(needOf(m)); return 'pick'; }
     if(!m.file){ toast(MSG.noFile); return 'pick'; }
     playMsg(id); return 'click'; } });

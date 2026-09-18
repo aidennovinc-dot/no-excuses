@@ -7,7 +7,7 @@
    finish ramp that lands the last downbeat on the clock (B.28), an end cadence in the track's own key (B.30), a flow-state
    layer over the two tap games (B.27) and a duck for Sequence (B.30). Still no percussion. */
 
-import { CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, DUCK, DUCK_TAIL, FLOW_STEM, GIFT_FX, HUSH, KEY_EARN_FX, KEY_STEP_FX, KEY_THEMES, MAP_FX, MAP_LOCKED, POP_FX, ROUND_FX, ROUND_VERDICT, SCALES, SET_SECS, STEMS, STING_RING, TITLE_FX, TRACKS, TRACK_PICK, VERDICT_FX, WHOOSH_VARIANTS } from "./config/audio.js";
+import { CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, DUCK, DUCK_TAIL, FLOW_STEM, GIFT_FX, HUSH, KEY_EARN_FX, KEY_STEP_FX, KEY_THEMES, MAP_FX, MAP_LOCKED, POP_FX, ROUND_FX, ROUND_VERDICT, SCALES, SET_SECS, STEMS, STING_RING, TITLE_FX, TRACKS, TRACK_PICK, VERDICT_FX, VIDEO_FX, WHOOSH_VARIANTS } from "./config/audio.js";
 import { STREAK } from "./config/games.js";
 import { emit, on } from "./core/events.js";
 import { sel } from "./core/state.js";
@@ -210,6 +210,10 @@ const Snd = (()=>{
        every other effect. `keyStepPlan(name)` is the same events flat, for the review catalogue's sound list. */
     keyStepPlan(name){ return (KEY_STEP_FX[name]||[]).map(e=>e.slice()); },
     keyStep(name){ this.fx(this.keyStepPlan(name)); },
+    /* v27 (item 10, build 52): the shared video player's power-on and power-off — config/audio.js VIDEO_FX, one pair for all eight clips because
+       item 10 builds them into the player rather than the files. `videoPlan(k)` is the same events flat, for the review catalogue's sound list. */
+    videoPlan(k){ return (VIDEO_FX[k]||[]).map(e=>e.slice()); },
+    videoFx(k){ this.fx(this.videoPlan(k)); },
     chest(id){ const a=AC(); if(!a) return; const t=a.currentTime+.02, sting=musicOn('menu');
       for(const [at,f0,f1,ms,w,g,am,lp,kind] of this.chestPlan(id)){
         if(w==='noise') this.noise(t+at,ms,g,lp);

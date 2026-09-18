@@ -57,25 +57,42 @@ export const KEYS = [
      · a tap skips to the end, the screen never locks — ui/screens/key.js `skipEarn()`, on the same capture the title sequence uses
    And the chest prompt waits for it to finish, which is the original complaint's actual fix.
 
-   EACH KEY IS ITS OWN ANIMATION, escalating (item 14, Claude's proposals — Aiden has not seen these in motion yet):
-     clear   the seven spokes fire INWARD one after another; the key spins once and clicks upright as the last lands
-     pro     all seven fire at once; the key snaps a quarter turn like a key in a lock, hard stop, slight overshoot; the ring flashes
-     author  the key drops from above and slams into the centre; the ring cracks outward with a screen shake; thorns flick out round the rim
+   EACH KEY IS ITS OWN ANIMATION, escalating. Item 14 was Claude's proposal; AIDEN PLAYED BUILD 51 AND ANSWERED ON 2026-09-18, and build 52
+   rebuilds two of the three to what he said:
+     clear   APPROVED AS BUILT, unchanged ("the skill key is good"): the seven spokes fire INWARD one after another; the key spins once and
+             clicks upright as the last lands
+     pro     REBUILT. "The pro key should be one by one around like a clock, but have a circuitry type animation between each one." So the
+             seven no longer fire together — they go round the ring one at a time like the Skill key, and BETWEEN each spoke and the next a
+             CURRENT RUNS THE ARC OF THE RING from the one that just fired to the one about to, which is the Pro chest's own idle and the
+             Circuit key's own language. `spokes.trace` is how long one current takes; it is timed to ARRIVE as the next spoke fires, so the
+             sequence reads spoke → current → spoke and never as two things at once. The quarter-turn snap and the ring flash are KEPT — he
+             did not rule on them and they do not fight the sequence; they are now what the completed circuit turns.
+     author  KEPT IN STYLE, SEQUENCED. "The author key should also go one by one, but I like the animation style." The drop, the slam, the
+             crack and the thorns all stay; what changes is that the ten cracks and the twelve thorns were a 26–28ms stagger, which at that
+             speed is a burst and not a sequence. `crackGap` and `thornGap` are their own beats now (48ms and 46ms), the thorns wait until the
+             cracks are done rather than overlapping them, and each arrives on its own. (Cowork's reading of "one by one" for this key, not a
+             quote — flagged on the build 52 board.)
+   LENGTH. One-by-one pushes Pro and Author past item 14's 2.0s: they are 2.16s and 2.30s. Aiden's answer did not mention length, and Cowork's
+   note with it says to keep tap-to-skip and FLAG the length rather than cut the sequence if either runs past ~2.5s. So the gate's ceiling moves
+   from 2000ms to 2500ms for build 52 and the length goes on the board as a question. The movement rule is unchanged and both are well over it
+   (88% and 87%). Skill stays 1.70s.
 
    The shape is the CEREMONY shape (config/chests.js) on purpose: `ms` and a list of NAMED steps, each with its own `at` and `ms`. ui/screens/key.js
    knows how to draw a step by its name and nothing else, and every time is a custom property the stylesheet reads — so a re-tune is a number edit
-   here. `spokes.gap` is the beat between spokes (0 = all at once, which is Pro's whole idea) and `spokes.each` one spoke's own flight; `cracks`,
-   `thorns` and `shake` are how many of each are drawn and how far the screen moves, the escalation that is drawn rather than timed.
+   here. `spokes.gap` is the beat between spokes and `spokes.each` one spoke's own flight; `spokes.trace` (build 52) is how long the current takes
+   to run the ring between two of them. `cracks` / `crackGap` and `thorns` / `thornGap` are how many of each are drawn and the beat between them —
+   build 51 held those beats in the stylesheet, which is exactly the second list of times this table exists to prevent — and `shake` is how far the
+   screen moves; together they are the escalation that is drawn rather than timed.
    The sound is KEY_EARN_FX in config/audio.js, fired on the FLASH so it lands on the last beat (item 14); each step has its own sound as well —
    KEY_STEP_FX, except a spoke that fires alone, which lands with its own game's sound the way the map's tiles do. All (guess), and heard by nobody
    (UNVERIFIED.md). */
 export const KEY_EARN = {
-  clear: { ms: 1700, spokes: { gap: 130, each: 300 }, cracks: 0, thorns: 0, shake: 0,
+  clear: { ms: 1700, spokes: { gap: 130, each: 300 }, cracks: 0, crackGap: 0, thorns: 0, thornGap: 0, shake: 0,
     steps: [{ name: 'spokes', at: 0, ms: 1080 }, { name: 'spin', at: 820, ms: 510 }, { name: 'flash', at: 1330, ms: 240 }] },
-  pro: { ms: 1850, spokes: { gap: 0, each: 340 }, cracks: 0, thorns: 0, shake: 0,
-    steps: [{ name: 'spokes', at: 0, ms: 340 }, { name: 'snap', at: 300, ms: 560 }, { name: 'ring', at: 820, ms: 630 }, { name: 'flash', at: 1450, ms: 260 }] },
-  author: { ms: 2000, spokes: null, cracks: 10, thorns: 12, shake: 5,
-    steps: [{ name: 'drop', at: 0, ms: 430 }, { name: 'slam', at: 410, ms: 250 }, { name: 'crack', at: 620, ms: 620 }, { name: 'thorns', at: 880, ms: 690 }, { name: 'flash', at: 1570, ms: 280 }] },
+  pro: { ms: 2160, spokes: { gap: 120, each: 280, trace: 85 }, cracks: 0, crackGap: 0, thorns: 0, thornGap: 0, shake: 0,
+    steps: [{ name: 'spokes', at: 0, ms: 1000 }, { name: 'trace', at: 40, ms: 685 }, { name: 'snap', at: 980, ms: 480 }, { name: 'ring', at: 1420, ms: 480 }, { name: 'flash', at: 1900, ms: 260 }] },
+  author: { ms: 2300, spokes: null, cracks: 10, crackGap: 48, thorns: 12, thornGap: 46, shake: 5,
+    steps: [{ name: 'drop', at: 0, ms: 430 }, { name: 'slam', at: 410, ms: 250 }, { name: 'crack', at: 620, ms: 712 }, { name: 'thorns', at: 1290, ms: 706 }, { name: 'flash', at: 1996, ms: 280 }] },
 };
 // the one step that is not movement — the closing flash. The gate measures every tier's movement against it, so there is no second list of names
 export const EARN_GLOW = 'flash';

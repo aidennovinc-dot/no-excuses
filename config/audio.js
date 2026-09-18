@@ -412,14 +412,18 @@ export const HUSH = { down: .08, up: .4 };
    KEY_EARN in config/keys.js is a list of named steps per tier, and each one lands with a sound of its own, in the same effect shape as every
    other family here — [at s, f0, f1, ms, wave, gain, attackMs, lowpassHz] — through the one tone(), so all of them follow the tap-sound switch
    and none of them is the unlock sound, the achievement click, a chest's or the key's own earn (gated).
-   ONE ROW PER STEP NAME, not per tier, because a name means the same thing wherever it is used: `spokes` is the whole ring firing at once (only
-   Pro does that — the Skill key's seven fire one at a time and each lands with its OWN GAME'S sound, MAP_FX, the family the map's first open
-   uses); `spin` the key turning and clicking upright; `snap` a key turning in a lock, a hard stop with a little overshoot behind it; `ring` the
-   Pro ring flashing; `drop` the Author key falling in from above; `slam` the hit; `crack` the ring breaking outward; `thorns` the spikes flicking
-   out round the rim. Anything short is LOW, as everything short here is. The key's own earn sound (KEY_EARN_FX below) lands on the FLASH.
+   ONE ROW PER STEP NAME, not per tier, because a name means the same thing wherever it is used: `spin` the key turning and clicking upright;
+   `snap` a key turning in a lock, a hard stop with a little overshoot behind it; `ring` the Pro ring flashing; `drop` the Author key falling in
+   from above; `slam` the hit; `crack` the ring breaking outward; `thorns` the spikes flicking out round the rim. A SPOKE FIRING ALONE has no row:
+   it lands with its OWN GAME'S sound, MAP_FX, the family the map's first open uses. Anything short is LOW, as everything short here is. The key's
+   own earn sound (KEY_EARN_FX below) lands on the FLASH.
+   v27 (Aiden's answer to build 51, build 52): `spokes` — the whole ring firing at once — IS GONE, because no key does that any more: the Pro key's
+   seven now go round one at a time like the Skill key's, so both walk their games' own sounds and nothing was left playing the row. `trace` is new
+   with them: the current running the ring from one spoke to the next, six times, quiet and short so it sits between the seven game sounds rather
+   than over them — a filtered blip rising as it travels, with a thin high edge on it, which is the Circuit key's own language.
    All (guess), and heard by nobody (UNVERIFIED.md). */
 export const KEY_STEP_FX = {
-  spokes: [[0, 180, 90, 150, 'triangle', .05, 2], [0, 520, 260, 90, 'sine', .016, 2, 2600], [.04, 260, 130, 220, 'sine', .03, 6]],
+  trace: [[0, 620, 1180, 60, 'triangle', .012, 1, 3400], [.01, 210, 330, 70, 'sine', .018, 2, 1800]],
   spin: [[0, 240, 360, 260, 'triangle', .028, 30, 1800], [.2, 400, 200, 80, 'square', .022, 2, 1400], [.24, 150, 95, 240, 'sine', .04, 3]],
   snap: [[0, 300, 120, 70, 'square', .05, 1, 1100], [.05, 120, 70, 260, 'sine', .06, 3], [.05, 190, 150, 180, 'triangle', .02, 4, 900]],
   ring: [[0, 880, 880, 1300, 'sine', .014, 8], [0, 1318.5, 1318.5, 1250, 'sine', .01, 10], [0, 110, 66, 300, 'sine', .035, 3]],
@@ -431,13 +435,29 @@ export const KEY_STEP_FX = {
 
 export const KEY_EARN_FX = {
   clear: { track: 'theme:key', notes: [[0, -12, 2600, 'sine', .045, 300], [0, 0, 1500, 'triangle', .022, 60], [.22, 7, 1400, 'triangle', .022, 60], [.44, 12, 1500, 'triangle', .022, 80], [.66, 14, 1800, 'sine', .022, 120], [1.1, 19, 1700, 'sine', .018, 300]] },
+  /* v27 (Aiden's answer to build 51, build 52): "let's make the music even more epic for the pro". Build 51's is all still here — the driving
+     bass pulse, the climbing arp, the melody and its answer, the chord. Around it now: a sub an octave under the pulse from the first beat, two
+     more pulses so the drive runs the whole length instead of stopping at 0.8s, a filtered sawtooth swell rising into the landing, a counter-line
+     answering the melody, three more notes in the final chord with a high bell over it, and a low resolution to close on. It also has to stay
+     UNDER the Author key, which item 14's escalation and the gate both ask, so every one of these lands again bigger in Thorn below. */
   pro: { track: 'theme:pro', notes: [[0, -12, 700, 'triangle', .05, 20, 420], [.27, -12, 700, 'triangle', .045, 20, 420], [.54, -12, 700, 'triangle', .05, 20, 420], [.8, -12, 700, 'triangle', .045, 20, 420],
+    [1.06, -12, 700, 'triangle', .045, 20, 420], [1.32, -12, 700, 'triangle', .04, 20, 420],
+    [0, -24, 1400, 'sine', .055, 20], [1.6, -24, 900, 'sine', .045, 20],
     [0, -5, 800, 'triangle', .02, 60], [.27, 2, 900, 'triangle', .02, 70], [.54, 7, 1000, 'triangle', .02, 80], [.8, 14, 1300, 'sine', .018, 110],
     [1.35, 19, 1500, 'sine', .018, 160], [1.62, 12, 1400, 'triangle', .016, 150, 1600],
-    [2.2, -7, 1600, 'triangle', .016, 120], [2.2, 0, 1600, 'triangle', .016, 120], [2.2, 7, 1600, 'triangle', .016, 120], [2.25, 14, 1500, 'sine', .014, 200]] },
+    [1.5, 0, 1100, 'sawtooth', .012, 700, 900], [1.5, 7, 1100, 'sawtooth', .01, 700, 900],
+    [1.88, 17, 1300, 'triangle', .014, 140, 1600],
+    [2.2, -7, 1600, 'triangle', .016, 120], [2.2, 0, 1600, 'triangle', .016, 120], [2.2, 7, 1600, 'triangle', .016, 120], [2.25, 14, 1500, 'sine', .014, 200],
+    [2.2, 12, 1700, 'triangle', .015, 130], [2.2, 19, 1700, 'sine', .013, 180], [2.25, 24, 1600, 'sine', .011, 240],
+    [2.45, 26, 1800, 'sine', .008, 60],
+    [2.9, -24, 1500, 'sine', .05, 25], [2.9, -12, 1500, 'triangle', .03, 30, 500], [2.95, 7, 1500, 'triangle', .012, 220]] },
   /* v26 (§B1, build 49): THORN — "make it better, with more sounds". Build 43's five layers are all still there; around them now: a sub pulse on every
      second, like a slow heartbeat under the drone; a filtered sawtooth rising out of the dark chord; the low figure answered once more after the
-     tonic; three high bells over the landing (each held long, to the theme rule); and the dark chord's answer, low, to close it. */
+     tonic; three high bells over the landing (each held long, to the theme rule); and the dark chord's answer, low, to close it.
+     v27 (Aiden's answer to build 51, build 52): "the author should be epic super duper music" — the biggest of the three, by a clear margin, and
+     everything build 52 gave the Pro key has to be beaten here or the escalation the whole set is built on stops meaning anything. Added: a deeper
+     opening hit under the drone; a slow sawtooth CHOIR holding three notes of the dark chord from 0.9s; two more bells; the low figure walked a
+     third time; and a final tonic held with its octave and fifth over a closing sub, so it ENDS rather than fades. */
   author: { track: 'theme:thorns', notes: [[0, -12, 4600, 'sine', .07, 1500], [.6, -6, 2000, 'sawtooth', .012, 700, 800], [.6, 1, 2000, 'sawtooth', .012, 700, 800], [.6, 6, 2000, 'sawtooth', .01, 700, 800],
     [0, -24, 900, 'sine', .05, 20], [1.0, -24, 900, 'sine', .045, 20], [2.0, -24, 900, 'sine', .05, 20], [3.0, -24, 1400, 'sine', .055, 30],
     [1.2, 12, 1100, 'sawtooth', .006, 900, 900],
@@ -445,7 +465,14 @@ export const KEY_EARN_FX = {
     [2.3, 0, 2400, 'sawtooth', .013, 200, 1100], [2.3, 7, 2400, 'sawtooth', .013, 200, 1100], [2.3, 15, 2400, 'sawtooth', .011, 200, 1100], [2.5, 19, 2200, 'sine', .016, 500], [3.2, 24, 1500, 'sine', .012, 400],
     [2.7, 3, 320, 'triangle', .018, 20, 700], [2.95, 0, 320, 'triangle', .018, 20, 700], [3.2, -5, 360, 'triangle', .018, 20, 700],
     [2.4, 31, 1700, 'sine', .006, 30], [2.75, 27, 1600, 'sine', .006, 40], [3.4, 36, 1800, 'sine', .005, 60],
-    [3.6, -5, 1600, 'triangle', .014, 200], [3.6, 3, 1600, 'triangle', .012, 200], [3.6, 7, 1600, 'triangle', .012, 200]] },
+    [3.6, -5, 1600, 'triangle', .014, 200], [3.6, 3, 1600, 'triangle', .012, 200], [3.6, 7, 1600, 'triangle', .012, 200],
+    [0, -24, 1800, 'sine', .075, 10],
+    [.9, -12, 2600, 'sawtooth', .014, 900, 700], [.9, -5, 2600, 'sawtooth', .012, 900, 700], [.9, 3, 2600, 'sawtooth', .011, 900, 700],
+    [1.9, 31, 1900, 'sine', .006, 50], [4.0, 36, 2000, 'sine', .005, 70],
+    [3.9, 3, 360, 'triangle', .017, 20, 700], [4.15, 0, 360, 'triangle', .017, 20, 700], [4.4, -5, 400, 'triangle', .017, 20, 700],
+    [4.0, -24, 900, 'sine', .05, 20], [5.0, -24, 1000, 'sine', .05, 20],
+    [4.6, 0, 2600, 'sawtooth', .014, 300, 1100], [4.6, 12, 2600, 'sawtooth', .012, 300, 1100], [4.6, 19, 2400, 'sine', .014, 400], [4.7, 24, 2200, 'sine', .01, 500],
+    [4.6, -24, 2000, 'sine', .06, 30], [5.2, -24, 1400, 'sine', .05, 30], [5.2, -12, 1800, 'triangle', .026, 200, 500]] },
 };
 
 /* v25 (item 17, build 45): A ROUND'S TIER SOUND is VERDICT_FX played shorter and quieter — every start, length and attack × `time`, every gain ×
@@ -543,3 +570,15 @@ export const POP_FX = { step: 2, notes: [[0, 170, 430, 80, 'sine', .055, 3], [.0
    whoosh keeps its shape; each time it plays it takes one of these at random, [pitch ×, length ×], none more than 6% from the original. The count it
    sits under is not touched — only the sound's own sweep. */
 export const WHOOSH_VARIANTS = [[1, 1], [.97, 1.05], [1.03, .96], [.95, 1.08], [1.05, .93], [.985, 1.03], [1.02, 1.06]];
+
+/* ---------- v27 (item 10, build 52): THE VIDEO PLAYER'S POWER ON AND POWER OFF ----------
+   One pair for all eight clips, because item 10 puts them in the PLAYER and not in the files. A television switching on: a soft thunk with a
+   short rise over it, landing on the frame `open`ing to the picture; and its reverse on the way out, landing on the line going to a dot.
+   Same effect shape as every other family here — [at s, f0, f1, ms, wave, gain, attackMs, lowpassHz] — through the one tone(), so both follow
+   the tap-sound switch and neither is the unlock sound, the achievement click, a chest's or a key's earn (gated).
+   SOFT is the word in the item, so both sit well under a chest's pop: the thunk is a low body with a short filtered click on top, and the
+   power-off is the same body falling instead of rising, a little quieter. All (guess), and heard by nobody (UNVERIFIED.md). */
+export const VIDEO_FX = {
+  on: [[0, 150, 62, 190, 'sine', .05, 2], [0, 70, 44, 300, 'triangle', .035, 3, 420], [.02, 900, 1600, 60, 'triangle', .012, 1, 3200], [.06, 320, 520, 110, 'sine', .014, 6, 2200]],
+  off: [[0, 520, 300, 80, 'triangle', .012, 1, 2400], [.03, 120, 48, 260, 'sine', .04, 2], [.03, 62, 36, 330, 'triangle', .026, 4, 380]],
+};

@@ -36,7 +36,7 @@
    card, the map's chests and the key screen all read it. B.15–B.17's frontPct() and its 30/70 re-base are RETIRED with the step
    into Pro (L.8b removed the "proceed to pro" confirmation), and v21 G.3's gate is retired into the Games chest itself. */
 import { KEY_ROSTER } from "../config/achievements.js";
-import { CHESTS, METER, METER_BANDS } from "../config/chests.js";
+import { CHESTS, GAUNTLETS, METER, METER_BANDS } from "../config/chests.js";
 import { MESSAGES } from "../config/messages.js";
 import { MODE_NAME } from "../config/games.js";
 import { KEY_BARS } from "../config/key-bars.js";
@@ -248,11 +248,29 @@ const keyTiers = () => KEYS.map((_, i) => keyTier(i));
    the key screen already shows it; and like every progression gate it honours the two dev escapes (#411). */
 const keyFinished = tier => !!(prefs.allOpen || prefs.supporter) || (tierOpen(tier) && !isShell(tier) && keyState(tier).whole);
 /* v25 (item 23, build 46): IS THIS MESSAGE OPEN? One test, here, because both the About screen and the congratulations card ask it and a
-   screen may not import a screen (A4). A row in config/messages.js has no `by` (open from the first load), a `chest` (that chest opened) or
-   a `key` (that key finished) — never two — so this is the whole rule. `msgDot` is the small mark on the About menu row: an open slot that
-   HAS A CLIP and has not been watched. With no clips recorded yet it is never on, which is right — a dot pointing at "coming soon" is noise. */
-const msgOpen = m => !m ? false : !m.by ? true : m.by.chest ? chestOpen(m.by.chest) : m.by.key ? keyFinished(m.by.key) : false;
-const msgDot = () => MESSAGES.some(m => m.file && msgOpen(m) && !(prefs.msgSeen || {})[m.id]);
+   screen may not import a screen (A4). `msgDot` is the small mark on the About menu row: an open slot that HAS A CLIP and has not been watched.
+   v27 (item 8, build 52): FOUR KINDS OF LOCK, one shape each (config/messages.js has the table). `{ key:… }` is gone with the three rows that
+   used it. Every one honours the two dev escapes, like every other gate here (#411) — Testing's OPEN EVERYTHING is how Aiden reviews locked
+   content on his phone, so a test that reads its own flag alone is a lock he cannot see past.
+     run       that combination finished SOLO — Scores.runs() holds only submitted runs, and run/run.js never submits a two-player, practice or
+               demo one (L10), so the array is already the right set and the mode is not named: any Quick Tap · Sprint counts
+     chest     that chest opened            — chestOpen(), the one read every surface uses
+     gauntlet  that Gauntlet PLAYED for the first time — prefs.gauntSeen, written by ui/screens/gauntlet.js when the screen is opened. NOT the
+               chest it came out of: the chest only makes the Gauntlet exist, and item 8 is explicit that the message is for playing it
+     support   A SUPPORT PAYMENT HAS GONE THROUGH — prefs.paid, and NOTHING IN THE APP SETS IT. Item 8: "not a tap on the support button".
+               This is the named hook and the whole of it; the day there is a payment route, that route writes prefs.paid and this row opens. */
+// which chest a Gauntlet comes out of — config/chests.js GAUNTLETS is the one place that pairing lives (item 13, build 49)
+const gauntChest = id => { const g = GAUNTLETS.find(x => x.id === id); return g ? g.chest : ''; };
+const msgRun = r => !!r && Scores.runs().some(x => x.g === r.g && (r.d === undefined || x.d === r.d) && (r.s === undefined || x.s === r.s));
+const msgOpen = m => { if (!m) return false; const b = m.by; if (!b) return true;
+  if (prefs.allOpen || prefs.supporter) return true;
+  return b.chest ? chestOpen(b.chest) : b.gauntlet ? !!(prefs.gauntSeen || {})[b.gauntlet] : b.support ? !!prefs.paid : b.run ? msgRun(b.run) : false; };
+/* R1 (item 2 extended by item 8, build 52): IS THIS MESSAGE EVEN IN THE LIST? A secret may be known to exist, never what it is — so a Gauntlet's
+   row is not drawn at all until that Gauntlet has come out of its chest: no row, no gap, no "???". Everything else is always listed, locked or
+   open, including the support thank-you, which says what opens it. THE COUNTER IS NOT NARROWED BY THIS — ui/screens/about.js counts against
+   MESSAGES.length, so it always reads "N of 8" and a player knows two secrets are there without knowing what they are (Aiden, item 8). */
+const msgShown = m => !m ? false : m.by && m.by.gauntlet ? !!(prefs.allOpen || prefs.supporter) || chestOpen(gauntChest(m.by.gauntlet)) : true;
+const msgDot = () => MESSAGES.some(m => m.file && msgShown(m) && msgOpen(m) && !(prefs.msgSeen || {})[m.id]);
 
 /* ---------- B.25: the three achievement sets tied to the keys ----------
    One row per game per tier — clear every one of that game's bars at that tier — and one per tier for the whole key:
@@ -442,4 +460,4 @@ function devMeterTo(n, modes) { const want = Math.max(0, Math.min(meterMax(), Ma
     const c = CHESTS.find(x => x.needs === tier); if (!c || chestState(c.id) !== 'ready' || !devOpen(c.id)) break; }
   seenDown(); save(); return meter(); }
 
-export { COMBOS, RADAR_PAST, TIERS, msgDot, msgOpen, bandPct, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, checkKeyAch, chestAt, chestOpen, chestState, cleared, combos, credit, devBack, devChestReset, devClearTo, devMeterTo, devOpen, devReach, fillBars, gameKey, isCleared, isPlaceholder, isShell, keyAch, keyChest, keyFinished, keyGoal, keyOf, keyPct, keyState, keyTier, keyTiers, meter, meterBand, meterMax, modesOpen, openChest, placeholderCount, radarOf, radarRungs, readyChest, retroArrived, retroBank, retroTier, skey, tierFull, tierOpen };
+export { COMBOS, RADAR_PAST, TIERS, msgDot, msgOpen, msgShown, bandPct, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, checkKeyAch, chestAt, chestOpen, chestState, cleared, combos, credit, devBack, devChestReset, devClearTo, devMeterTo, devOpen, devReach, fillBars, gameKey, isCleared, isPlaceholder, isShell, keyAch, keyChest, keyFinished, keyGoal, keyOf, keyPct, keyState, keyTier, keyTiers, meter, meterBand, meterMax, modesOpen, openChest, placeholderCount, radarOf, radarRungs, readyChest, retroArrived, retroBank, retroTier, skey, tierFull, tierOpen };

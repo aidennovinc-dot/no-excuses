@@ -1,0 +1,15 @@
+WEBVTT
+
+NOTE
+v27 item 11 (build 52) — captions for the test card, so the strip UNDER the frame can be judged on the phone as well as
+the picture itself. Item 9 puts captions below the frame and nothing over the picture, and a caption strip with nothing
+in it is not something you can judge. Two cues, one short and one long enough to wrap onto a second line. A real clip
+replaces this file and the mp4 beside it on that slot's row in config/messages.js; nothing else changes.
+
+1
+00:00:00.200 --> 00:00:04.000
+Test card — captions sit here, under the frame.
+
+2
+00:00:04.000 --> 00:00:08.000
+This one is deliberately long enough to wrap onto a second line, so the space under the picture can be judged too.

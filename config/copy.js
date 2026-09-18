@@ -387,9 +387,14 @@ export const CARD = {
    Aiden records the clips and they drop in by filling a file name in — no code change (his decision, 2026-09-16). */
 export const MSG = { title:'messages', lede:'Short messages from Aiden, as you go.',
   locked:'opens with {need}', soon:'video coming soon', play:'play', watched:'watched', count:'{done} of {total}',
-  /* v27 (item 4, build 51): what a locked row's `{need}` is, composed from the slot's own `by` rather than written out per row. A chest fills
-     GRID.chestNeed with GRID.chest; a key fills `keyNeed` with that tier's `name` in config/keys.js. No chest or key name is spelled twice. */
-  keyNeed:'a whole {key}',
+  /* v27 (item 4, build 51): what a locked row says, composed from the slot's own `by` rather than written out per row. No chest, Gauntlet or game
+     name is spelled twice — a chest fills `locked` with GRID.chestNeed × GRID.chest, and the three below take their own names the same way.
+     v27 (item 8, build 52): FOUR KINDS OF LOCK, so four lines. `keyNeed` is gone with the three key rows it was written for.
+     `lockedPaid` is Aiden's own sentence from item 8 ("Opens when you support the game"), lower-cased to sit in a column of lower-case lines. */
+  lockedRun:'opens when you finish a {game} · {len}', lockedGaunt:'opens when you play {name}', lockedPaid:'opens when you support the game',
   noFile:'Not recorded yet — this slot is waiting for its clip.', capOff:'captions', capOn:'captions on',
+  /* v27 (items 9 / 10, build 52): THE SHARED VIDEO PLAYER (ui/video.js). `close` is the line in dim grey at the foot of the screen — the whole of how
+     the player is dismissed, because item 9 wants nothing over the picture and no knobs; a tap on the picture itself pauses and plays. */
+  close:'tap outside to close',
   // v26 (item 5, build 49): how a video reads among a chest's rewards — its slot's own title. Add a word here ("Video: {title}") and every chest says it
   reward:'{title}' };

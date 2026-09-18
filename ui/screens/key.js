@@ -344,7 +344,8 @@ function advance(a) { if (!a) return; const el = $(`[data-seg="${a.g}:${a.was}"]
    config/keys.js KEY_EARN is `ms` and a list of NAMED STEPS. This file knows how to draw a step BY ITS NAME and nothing else — every time goes on
    the screen as a custom property the stylesheet reads (`--earn-ms`, `--st-<name>-at`, `--st-<name>-ms`) — so a re-tune is a number edit there and
    the gate holds the names to the ones item 14 wrote. The step names, across the three tiers:
-     spokes  the seven game spokes fire INWARD. `spokes.gap` is the beat between them (0 = all at once, which is the Pro key's whole idea)
+     spokes  the seven game spokes fire INWARD, one at a time, `spokes.gap` apart (Skill and — since build 52, Aiden's answer — Pro)
+     trace   a CURRENT runs the ring from each spoke to the next, arriving as that one fires (Pro; `spokes.trace` is one current's flight)
      spin    the key spins once and clicks upright as the last spoke lands (Skill)
      snap    the key snaps a quarter turn like a key in a lock — hard stop, slight overshoot (Pro)
      ring    the outer ring flashes (Pro)
@@ -366,6 +367,16 @@ const earnOf = tier => KEY_EARN[tier] || KEY_EARN.clear;
 function earnLayers(tier) { const E = earnOf(tier), out = [];
   // the closing flash, on every tier: a bloom out of the hub in the key's own tint on the `flash` step, 240-280ms and gone (item 14)
   out.push(`<circle class="keflash" cx="${CX}" cy="${CY}" r="${R_HUB}"></circle>`);
+  /* v27 (Aiden's answer to build 51, build 52): THE PRO KEY'S CIRCUITRY BETWEEN THE SPOKES. "One by one around like a clock, but have a
+     circuitry type animation between each one." One link per PAIR of adjacent spokes — six for seven spokes — and each is drawn the way the
+     Circuit style draws everything else: a radial stub out of the node it leaves, an arc round the outside of the ring, a radial stub back
+     into the node it arrives at, so the corners are right angles and it reads as a trace and not as a swoosh. The current runs it as a dash
+     (`kecur` below), timed to LAND as the next spoke fires. Only a tier with a spoke gap and a `trace` time draws these. */
+  if (E.spokes && E.spokes.gap > 0 && E.spokes.trace) { const n = games().length, RO = R_RING + 12;
+    for (let i = 0; i < n - 1; i++) { const a0 = angleOf(i), a1 = angleOf(i + 1);
+      const p = (a, r) => [CX + Math.cos(a) * r, CY + Math.sin(a) * r];
+      const [x0, y0] = p(a0, R_RING), [x1, y1] = p(a0, RO), [x2, y2] = p(a1, RO), [x3, y3] = p(a1, R_RING);
+      out.push(`<path class="kecur" pathLength="1" d="M${f1(x0)} ${f1(y0)}L${f1(x1)} ${f1(y1)}A${RO} ${RO} 0 0 1 ${f1(x2)} ${f1(y2)}L${f1(x3)} ${f1(y3)}" style="--h:${i}"></path>`); } }
   for (let i = 0; i < (E.cracks || 0); i++) { const a = i * 360 / E.cracks;
     out.push(`<path class="kecrk" pathLength="1" d="M${CX} ${CY - R_RING}l-7 -26l5 -13l-3 -15" style="--i:${i};--a:${Math.round(a)}deg"></path>`); }
   for (let i = 0; i < (E.thorns || 0); i++) { const a = i * 360 / E.thorns;
@@ -387,6 +398,9 @@ function keyStage(tier) { const E = earnOf(tier), el = $('#s-key'), ids = [];
       for (const x of (E.steps || [])) { el.style.setProperty(`--st-${x.name}-at`, x.at + 'ms'); el.style.setProperty(`--st-${x.name}-ms`, x.ms + 'ms'); }
       el.style.setProperty('--spoke-gap', ((E.spokes && E.spokes.gap) || 0) + 'ms');
       el.style.setProperty('--spoke-ms', ((E.spokes && E.spokes.each) || 300) + 'ms');
+      el.style.setProperty('--trace-ms', ((E.spokes && E.spokes.trace) || 0) + 'ms');
+      // build 52: the beat between one crack and the next, and one thorn and the next — config's, not the stylesheet's (Aiden: "one by one")
+      el.style.setProperty('--crack-gap', (E.crackGap || 0) + 'ms'); el.style.setProperty('--thorn-gap', (E.thornGap || 0) + 'ms');
       el.style.setProperty('--earn-shake', (E.shake || 0) + 'px');
       // each spoke, node and label carries its own index, so the stylesheet walks the ring with no second list of times
       ringEl.querySelectorAll('.kr').forEach((g, i) => g.style.setProperty('--h', String(i)));
@@ -399,6 +413,8 @@ function keyStage(tier) { const E = earnOf(tier), el = $('#s-key'), ids = [];
         if (x.name === 'flash') { at(x.at, () => Snd.keyEarn(tier)); continue; }
         // the Skill key's seven fire one at a time, each with its own game's sound; Pro's fire together, so the step has one sound of its own
         if (x.name === 'spokes' && E.spokes && E.spokes.gap > 0) { games().forEach((g, i) => at(x.at + i * E.spokes.gap, () => Snd.mapFx(g))); continue; }
+        // build 52: the Pro key's current runs once per link, so `trace` sounds once per link and not once per step
+        if (x.name === 'trace' && E.spokes && E.spokes.gap > 0) { for (let i = 0; i < games().length - 1; i++) at(x.at + i * E.spokes.gap, () => Snd.keyStep('trace')); continue; }
         at(x.at, () => Snd.keyStep(x.name)); }
       // every animation this beat started, read off the document (which brings styles up to date first) — the animation's own clock
       anims = document.getAnimations().filter(a => { const tg = a.effect && a.effect.target, tm = a.effect && a.effect.getComputedTiming();

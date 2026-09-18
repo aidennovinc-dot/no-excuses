@@ -16,7 +16,7 @@
    The storage adapter is the three one-liners read / write / drop. Stage 5's platform.js swaps them for Capacitor Preferences. */
 import { KEY_THEMES, SCALES, TRACK_OPTS } from "../config/audio.js";
 import { BUILD_FLAGS, RUN_SCHEMA } from "../config/build.js";
-import { CHESTS } from "../config/chests.js";
+import { CHESTS, GAUNTLETS } from "../config/chests.js";
 import { MESSAGES } from "../config/messages.js";
 import { DESIGNS, ITEMS } from "../config/theme.js";
 import { GAMES, GC } from "../games/registry.js";
@@ -86,6 +86,15 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
     /* v25 (item 23, build 46): which of the eight messages on About have been watched — the small dot beside the menu row comes off a slot
        once it has. Progress: Fresh game clears it. An id no longer in config/messages.js is dropped, so deleting a slot costs nothing. */
     msgSeen:isObj(p.msgSeen)?Object.fromEntries(Object.entries(p.msgSeen).filter(([k,v])=>MESSAGES.some(m=>m.id===k)&&v).map(([k])=>[k,1])):{},
+    /* v27 (item 8, build 52): WHICH GAUNTLETS HAVE BEEN PLAYED — written by ui/screens/gauntlet.js the first time that Gauntlet's screen is
+       opened, and what opens its message slot. Not the chest it came out of: the chest only makes the Gauntlet exist. Progress: Fresh game
+       clears it. No ladder step — an absent field means neither has been played, which is what it means. */
+    gauntSeen:isObj(p.gauntSeen)?Object.fromEntries(Object.entries(p.gauntSeen).filter(([k,v])=>GAUNTLETS.some(g=>g.id===k)&&v).map(([k])=>[k,1])):{},
+    /* v27 (item 8, build 52): A SUPPORT PAYMENT HAS GONE THROUGH. THE HOOK, AND NOTHING WRITES IT — item 8 is explicit that a tap on the
+       support button is not the trigger, so the day there is a real payment route, that route sets prefs.paid and the eighth message opens.
+       Nothing else in the app reads it and nothing fakes it (Testing's SUPPORTER is a dev escape and stores no progress). Progress: Fresh
+       game clears it. No ladder step — an absent field means nothing has been paid. */
+    paid:p.paid?1:0,
     /* v17 (build 30): `track` is which music option each game plays (B.32), a preference like `lastGame`, so Fresh game leaves
        it. A value that is not one of that game's own options is dropped, which means renaming an option costs a player their
        choice and never their boot. (`chest2`, shape-checked beside it until build 39, is the Pro chest in `chests` now.) */
@@ -277,6 +286,6 @@ const musicOn=g=>!opened('games')||prefs.musicG[g]!==false;
    profile showed all 27 of them open. Supporter is a dev switch today (S5 gates it out of a release build entirely) and
    Fresh game is the switch for seeing the app as a new player does, so it belongs in this list. When it becomes a real
    purchase at the native build it will be restored from the store rather than from prefs, and this line stays correct. */
-function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,keysSeen:0,chests:cleanChests(null),cusSeen:0,readySeen:cleanChests(null),spill:cleanChests(null),keyWhole:{},revealed:{},msgSeen:{},menuOpened:{},retro:{},retroCol:{},devKeys:{}}); delete prefs.mig11; delete prefs.mig31; delete prefs.mig32; delete prefs.mig35; delete prefs.meterSeen; delete prefs.devMeter; save(); emit('store:reset'); }
+function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,keysSeen:0,chests:cleanChests(null),cusSeen:0,readySeen:cleanChests(null),spill:cleanChests(null),keyWhole:{},revealed:{},msgSeen:{},gauntSeen:{},paid:0,menuOpened:{},retro:{},retroCol:{},devKeys:{}}); delete prefs.mig11; delete prefs.mig31; delete prefs.mig32; delete prefs.mig35; delete prefs.meterSeen; delete prefs.devMeter; save(); emit('store:reset'); }
 
 export { RUNS_CAP, everywhere, look, lookCol, musicOn, opened, prefs, reset, save, store, trimRuns };

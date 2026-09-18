@@ -7,7 +7,7 @@
    band look (L.8d / L.8e) — the class and custom properties a figure wears for the band it is in. This is a module under ui/, not a
    screen, so the key screen and the map may both import it (A4). Presentation only (L10). */
 import { HIDE_UNRECORDED } from "../config/build.js";
-import { CHEST_LOOK, METER_BANDS, SPILL, SYMBOLS } from "../config/chests.js";
+import { CHEST_LOOK, GAUNTLETS, METER_BANDS, SPILL, SYMBOLS } from "../config/chests.js";
 import { CHEST_WORDS, GRID, MSG } from "../config/copy.js";
 import { KEYS, KEY_ART } from "../config/keys.js";
 import { MESSAGES } from "../config/messages.js";
@@ -35,6 +35,13 @@ function symSvg(id, cls = '', chest = '') { const S = SYMBOLS[id]; if (!S) retur
    title is read from there, so a renamed slot renames the reward everywhere. It stands while the slot is a placeholder, so the wording can be
    reviewed; config/build.js HIDE_UNRECORDED is the before-release switch that drops it while the slot has no clip. `to` is `msg:<slot>`. */
 const msgOfChest = id => MESSAGES.find(m => m.by && m.by.chest === id) || null;
+/* v27 (item 9, build 52): WHAT COLOUR A MESSAGE'S FRAME GLOWS IN — "the colour of the chest that unlocked the video". Read off the slot's own `by`,
+   so nothing is written twice: a chest slot takes that chest's colour, a GAUNTLET slot takes the colour of the chest the Gauntlet came out of (the
+   chest is what put it on the map), and a slot with no chest behind it at all — Welcome, and the support thank-you — glows white, the frame's own
+   colour, because there is no chest to borrow from. It lives here because chestCol() does, and ui/video.js is a module under ui/ like this one. */
+const msgCol = m => { const b = (m && m.by) || {}; if (b.chest) return chestCol(b.chest);
+  if (b.gauntlet) { const g = GAUNTLETS.find(x => x.id === b.gauntlet); return g ? chestCol(g.chest) : ''; }
+  return ''; };
 const videoWord = id => { const m = msgOfChest(id); return !m || (HIDE_UNRECORDED && !m.file) ? [] : [{ w: T(MSG.reward, { title: m.title }), sym: 'video', to: 'msg:' + m.id, msg: m.id }]; };
 const wordsOf = id => (CHEST_WORDS[id] || []).concat(videoWord(id));
 // what one chest gives, as the reveal and the map want it: the word, its symbol, where it goes and whether it is a placeholder reward
@@ -77,4 +84,4 @@ function meterLook(el, v, vars) { if (!el) return; const { i, k } = meterBand(v)
   el.style.setProperty('--mground', B.ground || 'transparent'); el.style.setProperty('--mcold', B.cold || 'transparent');
   el.style.setProperty('--shp', String(B.shake && B.shake[1] ? (k < .5 ? B.shake[0] : B.shake[1]) : 0)); }
 
-export { burstHtml, chestSvg, giftsOf, meterLook, msgOfChest, spillVars, symSvg, wordsHtml };
+export { burstHtml, chestSvg, giftsOf, meterLook, msgCol, msgOfChest, spillVars, symSvg, wordsHtml };
