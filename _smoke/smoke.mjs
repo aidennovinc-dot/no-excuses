@@ -2520,7 +2520,10 @@ if (section('chests')) {
       /* v28 (item 10, build 53): a chest word that GIVES a Gauntlet carries `gaunt`, not a word, so its name is composed off GAUNTLET.name — one
          spelling for Gauntlet Mini and Gauntlet Mega. A Gauntlet's MESSAGE slot has no title of its own for the same reason. */
       const title49 = m => m.gaunt ? fill49(CP48.GAUNTLET.msgTitle, { name: CP48.GAUNTLET.name[m.gaunt] }) : m.title;
-      const want = (CP48.CHEST_WORDS[id] || []).map(x => x.w || (CP48.GAUNTLET.name[x.gaunt] || '').toUpperCase()).concat(fill49(CP48.MSG.reward, { title: title49(slot) }));
+      /* v30 (59.3, build 59): the video's reward word now wears QUOTATION MARKS, so the name reads as the name of a clip rather than as a tab
+         label or a sentence. The marks come off MSG.quote here as they do in ui/chest.js, so this still spells no punctuation of its own. */
+      const q49 = s => CP48.MSG.quote[0] + s + CP48.MSG.quote[1];
+      const want = (CP48.CHEST_WORDS[id] || []).map(x => x.w || (CP48.GAUNTLET.name[x.gaunt] || '').toUpperCase()).concat(fill49(CP48.MSG.reward, { title: q49(title49(slot)) }));
       const g = s.start.gifts, n = g.length, pops = s.landed.log.filter(e => e[0] === 'pop'), gifts = s.landed.log.filter(e => e[0] === 'gift');
       const why = [];
       if (!s.start.placed) why.push('row not placed');
@@ -2811,6 +2814,52 @@ if (section('chests')) {
     (escal && gamesSquares && under1s && cheerGrows && staged && confDrawn && preview && cheerLook && card53.letters === 'Congratulations'.length && card53.big)
       ? ok(`v28 items 12 / 17 the congratulations screen: ${card53.blocks.length} blocks land one at a time ${RV53.cardStep}ms apart with Continue last (${Math.round(RV53.cardAt + (card53.blocks.length - 1) * RV53.cardStep + RV53.cardBlockMs)}ms end to end, inside a second); the message is the powered-off player - a framed picture with a play mark and "${card53.title}" under it; and ${card53.conf} confetti pieces throw with it, the seven game squares for this chest and ${CONF.key.n}/${CONF.pro.n}/${CONF.thorns.n} shards for the keys, each with its own celebration sound and none of them the unlock sound, the achievement click or a key's earn`)
       : bad('v28 items 12 / 17 / v29 57.3 the congratulations screen', JSON.stringify({ escal, gamesSquares, under1s, cheerGrows, staged, confDrawn, preview, cheerLook, card53, cheer }));
+
+    /* v30 (59.2, build 59): AND THE WORD FITS ON ONE LINE, WITH CONTINUE STILL ON SCREEN — ALL FOUR CHESTS.
+       57.3 rebuilt "Congratulations" letter by letter, which hands the browser a break opportunity between every letter, and
+       sized it up; at 375px it snapped as CONGRATULA / TIONS on every chest, the card grew a whole line and Continue went off
+       the bottom. The two invariants are asserted separately because they fail separately: the LETTERS all share one line
+       (the only honest test of "one line" when the h3 is full width either way), and the word's measured span fits inside the
+       card's content box — which is viewport-independent, so it holds at 375 and 390 alike. Then Continue's box is inside the
+       viewport. The gate has no safe-area inset; the frames in _review/_shots taken WITH one (34px) are 59.2's own evidence,
+       and there Continue's bottom lands 791-802 against a 810 floor on all four chests at both widths. */
+    const fitAll = await page.evaluate(async () => {
+      const RV = await import('./ui/reveal.js'), CE = await import('./ui/ceremony.js'), CH = await import('./ui/chest.js'),
+        K = await import('./progress/key.js'), R = await import('./ui/router.js'), MS = await import('./config/messages.js'),
+        CP = await import('./config/copy.js');
+      const host = document.getElementById('key-cere'), out = {};
+      for (const id of ['games', 'key', 'pro', 'thorns']) {
+        RV.stopReveal(); R.show('s-key'); await new Promise(r => setTimeout(r, 250));
+        const m = K.meter(), msg = MS.MESSAGES.find(x => x.by && x.by.chest === id);
+        RV.playReveal(host, { kind: 'chest', id, silent: true, stage: CE.chestStage(id, { was: m, now: m }), gifts: CH.giftsOf(id),
+          card: { title: CP.CARD.title, chest: id, col: CH.chestCol(id), you: CP.CARD.you[id] || 'y', next: CP.CARD.next,
+            msg: msg ? msg.id : '', msgObj: msg || null } });
+        for (let i = 0; i < 60; i++) { await new Promise(r => setTimeout(r, 300)); if (host.classList.contains('tap')) break; }
+        RV.revealTap(); await new Promise(r => setTimeout(r, 1200));
+        const c = document.querySelector('.rcard'), t = c && c.querySelector('.rtitle'), go = c && c.querySelector('.rgo');
+        if (!c || !t || !go) { out[id] = null; continue; }
+        const cl = [...t.querySelectorAll('.cl')];
+        // each letter drops in on its own beat, so wait for the last one to land before measuring anything about the word
+        await Promise.all(cl.flatMap(s => s.getAnimations().map(a => a.finished.catch(() => {}))));
+        // LINES off offsetTop, not off a client rect: a rect carries the drop-in's transform and would read a mid-flight
+        // letter as a second line. offsetTop is layout, which is the only thing "one line" is a claim about.
+        const ls = cl.map(s => s.getBoundingClientRect()), tops = cl.map(s => s.offsetTop);
+        const cs = getComputedStyle(c);
+        out[id] = { lines: new Set(tops).size, letters: ls.length,
+          wordW: Math.round(Math.max(...ls.map(r => r.right)) - Math.min(...ls.map(r => r.left))),
+          inner: Math.round(c.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)),
+          nowrap: getComputedStyle(t).whiteSpace === 'nowrap', goIn: go.getBoundingClientRect().bottom <= innerHeight + .5,
+          goBottom: Math.round(go.getBoundingClientRect().bottom), vh: innerHeight };
+      }
+      RV.stopReveal(); return out;
+    });
+    const F4 = ['games', 'key', 'pro', 'thorns'];
+    const oneLine = F4.every(id => fitAll[id] && fitAll[id].lines === 1 && fitAll[id].letters === 'Congratulations'.length);
+    const insideCard = F4.every(id => fitAll[id] && fitAll[id].nowrap && fitAll[id].wordW <= fitAll[id].inner);
+    const goOn = F4.every(id => fitAll[id] && fitAll[id].goIn);
+    (oneLine && insideCard && goOn)
+      ? ok(`v30 59.2 the congratulations word is ONE LINE and Continue is on screen, all four chests: 15 letters on a single line each, the word measuring ${F4.map(id => fitAll[id].wordW).join('/')}px inside card content boxes of ${F4.map(id => fitAll[id].inner).join('/')}px (white-space:nowrap plus a size taken off the CARD through container units, so it cannot outgrow what it sits in), and Continue's bottom at ${F4.map(id => fitAll[id].goBottom).join('/')} against a ${fitAll.games.vh}px viewport`)
+      : bad('v30 59.2 the congratulations word on one line with Continue visible', JSON.stringify({ oneLine, insideCard, goOn, fitAll }));
   }
 
   /* ---- v29 Section A (58.2, build 58, quoting L6): A FINISHED GAUNTLET OPENS THE NEXT CHEST ----
@@ -6422,7 +6471,9 @@ if (section('build 40 - batch 16, four chests and the meter')) {
     /* AMENDED AT BUILD 52 (v27 items 7 / 8): the chest's video word is the slot's title and Aiden renamed every slot, so the title is READ FROM
        config/messages.js here rather than written out. It had already been rewritten twice by hand; a literal in a gate check is a second place
        the name lives, which is exactly what build 51 item 4 took out of the app. */
-    const vidWord41 = MS40.MESSAGES.find(m => m.by && m.by.chest === 'games').title;
+    /* AMENDED AT BUILD 59 (v30 59.3): and the slot's title wears MSG.quote on the map too, so it reads as the name of a video. The marks
+       come off the config here exactly as ui/chest.js puts them on, so this check still spells neither the name nor the punctuation. */
+    const vidWord41 = CP40.MSG.quote[0] + MS40.MESSAGES.find(m => m.by && m.by.chest === 'games').title + CP40.MSG.quote[1];
     (/open/.test(after.cls) && after.need === 'opened' && after.words && after.words.join() === 'CUSTOMISE,SKILL KEY,' + vidWord41 && after.syms === after.words.length && after.wr === after.cr && after.wc !== after.cc && after.keyWords && after.key === 'Earn the Skill key' /* AMENDED at build 48 (v26 item 12); for build 49, the Skill key */)
       ? ok(`L.11c back on the map the Games chest is open with its words beside it (${after.words.join(' · ')}, row ${after.wr}, col ${after.wc} against the chest's ${after.cc}), each with its own symbol (item 7), and the Skill chest says "${after.key}" (v26 item 12)`) : bad('L.11c the opened chest and its words', JSON.stringify(after));
   }
@@ -6580,6 +6631,7 @@ if (section('build 41 - batch 16, the moments')) {
   const NOW41 = Date.now();
   const PLAIN41 = { story: 1, gridSeen: 1, played: 1, menuSeen: 1, keySeen: 1, snd: 'off', musicG: {} };
   const MS41 = await import(pathToFileURL(path.join(root, 'config', 'messages.js')).href);
+  const CP41 = await import(pathToFileURL(path.join(root, 'config', 'copy.js')).href);   // build 59 (v30 59.3): MSG.quote, for the video word
   const CH41 = await import(pathToFileURL(path.join(root, 'config', 'chests.js')).href);
   const AU41 = await import(pathToFileURL(path.join(root, 'config', 'audio.js')).href);
   const U41 = await import(pathToFileURL(path.join(root, 'config', 'unlocks.js')).href);
@@ -6704,7 +6756,9 @@ if (section('build 41 - batch 16, the moments')) {
     // AMENDED AT BUILD 53 (v28 item 13): `crack` and `burst` join them - the Games chest is the one that breaks open
     // AMENDED AT BUILD 57 (v29 Section A, 57.2): the cracking runs ON the uncross beat now, so `crack` comes before `path` in the step order
     (ready.tap && ready.steps.join() === 'uncross,crack,path,burst,lid,chord,settle,tap' && /GAMES CHEST OPENED/i.test(ready.txt) && /TAP TO CONTINUE/i.test(ready.txt) && /--st-uncross-at:\s?0ms/.test(ready.vars) /* AMENDED at build 49: the reveal sets --reveal-at on the host after the stage, and the browser re-serialises the attribute with a space */
-      && ready.gifts.join() === 'CUSTOMISE,SKILL KEY,' + MS41.MESSAGES.find(m => m.by && m.by.chest === 'games').title /* AMENDED at build 52 (v27 item 7): read from the slot, not spelled again */ && ready.syms.join() === 'palette,key,video')
+      /* AMENDED at build 52 (v27 item 7): read from the slot, not spelled again. AMENDED at build 59 (v30 59.3): and the slot's
+         title wears MSG.quote, so it reads as the name of a video rather than as a sentence — still read, never spelled. */
+      && ready.gifts.join() === 'CUSTOMISE,SKILL KEY,' + CP41.MSG.quote[0] + MS41.MESSAGES.find(m => m.by && m.by.chest === "games").title + CP41.MSG.quote[1] && ready.syms.join() === 'palette,key,video')
       ? ok(`L.6 its named steps play in order off the config's own times (${ready.steps.join(' → ')}); item 6: ${ready.gifts.length} unlocks rise out of it as symbols with their titles (${ready.gifts.join(' · ')}) and only then does it hold on "tap to continue"`) : bad('L.6 the steps and the reveal', JSON.stringify(ready));
     // AMENDED at build 49 (v26 item 5): the chest's words carry its About video too, which goes to that slot
     // AMENDED at build 52 (v27 item 8): the Games chest's slot id moved with Aiden's new line-up, so the word's target is read from the config

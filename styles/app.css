@@ -1954,7 +1954,12 @@
      one-word reward names beside them — "The skill chest is open" against "PRO KEY". In the column's spaced capitals that ran to three lines and
      broke out of the cell (L.11d, gated at 44px). It is set as a title instead: sentence case, the tight tracking of a line of prose, and it
      lands in two. The reward words either side of it are untouched, so the column still reads as caps with one title in it. */
-  .chestwords .cw.msg .cwt{white-space:normal;min-width:0;line-height:1.25;text-transform:none;letter-spacing:.02em}
+  /* v30 (59.3, build 59): AND IT IS IN QUOTATION MARKS NOW, which is two more characters on a line that build 52 had already
+     squeezed into exactly two. `“The skill chest is open”` went to three and broke the cell again (L.11d, gated at 44px). The
+     rule is not loosened to let it: the title takes 9px instead of 10, which buys back more width than the marks cost and
+     keeps it inside two lines. It sits beside 10px capitals and already reads as a different thing — sentence case, tight
+     tracking — so a point smaller reads as the caption it is rather than as a mistake. */
+  .chestwords .cw.msg .cwt{white-space:normal;min-width:0;font-size:9px;line-height:1.25;text-transform:none;letter-spacing:.02em}
   /* item 13: the Gauntlet tiles — the glove in colour, crossed out with the padlock and what opens it until its chest is open */
   .tile.gauntlet .pic{display:grid;place-items:center}
   .tile.gauntlet .gsym{width:58%;height:58%}
@@ -2060,6 +2065,8 @@
   .cere.card .ctxt{visibility:hidden}
   .cere .rcardwrap.below{inset:auto 0 0 0;align-items:flex-start;padding-top:0}
   .rcard{border-color:color-mix(in srgb,var(--rc,var(--line)) 40%,var(--line));gap:10px;padding:18px 16px 16px}
+  /* v30 (59.2, build 59): the last resort before Continue would go off the bottom — spacing, never words. ui/reveal.js adds it */
+  .rcard.tight{gap:6px;padding:12px 16px 10px}
   /* 57.3: the face, the weight and the tracking stay; the SIZE, the COLOUR and the glow move to `.rtitle` below, which is the celebration */
   .rcard h3{font-family:var(--title);font-weight:700;letter-spacing:.02em;text-transform:none;line-height:1.15}
   .rcard .ryou{font-size:15px;line-height:1.4;color:var(--ink)}
@@ -2073,7 +2080,13 @@
      The same drawing serves the Messages list (ui/chest.js msgPreview), so a message looks the same wherever it appears. */
   .rcard .rmsg{background:none;border:0;padding:0;cursor:pointer;display:block;width:100%}
   .mprev{display:flex;flex-direction:column;align-items:center;gap:7px;width:100%}
-  .mpframe{position:relative;width:100%;aspect-ratio:16/9;border:1px solid #FFFFFF;border-radius:6px;background:#000;overflow:hidden;
+  /* v30 (59.2, build 59): THE PICTURE GIVES WAY BEFORE CONTINUE DOES. 57.4 accepted that a card which does not fit "scrolls,
+     which it could always do"; 59.2 reverses that — Continue has to be on screen without scrolling. The frame is the tallest
+     block on the card, so it is the one that yields: `--mp-max` is a height cap measured by ui/reveal.js from the room the card
+     actually has, and the WIDTH is derived from it through the ratio, so a capped frame gets smaller rather than squashed.
+     `--mp-arw` / `--mp-arh` are the ratio in two numbers so 59.10's per-clip shape can drive this same calculation. */
+  .mpframe{position:relative;width:min(100%,calc(var(--mp-max,9999px) * var(--mp-arw,16) / var(--mp-arh,9)));margin-inline:auto;
+    aspect-ratio:var(--mp-arw,16)/var(--mp-arh,9);border:1px solid #FFFFFF;border-radius:6px;background:#000;overflow:hidden;
     box-shadow:0 0 16px -4px color-mix(in srgb,var(--vg,#FFFFFF) 55%,transparent)}
   .mppic{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
   .mpplay{width:0;height:0;border-style:solid;border-width:9px 0 9px 15px;border-color:transparent transparent transparent #FFFFFF;opacity:.9;margin-left:3px}
@@ -2099,7 +2112,19 @@
      letters land one at a time with a small bounce, in full-strength colour with a soft halo; one shine crosses the word once the last letter is
      down; then it settles into a slow pulse. It is `--cw-size` times the line under it — the Games chest's dim grey is bright white here. */
   .rcard>*:not(.rtitle){animation:cardin var(--card-block,260ms) cubic-bezier(.2,.8,.25,1) calc(var(--card-ms,240ms) + var(--ci,0) * var(--card-step,170ms)) both}
-  .rcard .rtitle{position:relative;opacity:1;color:var(--cwc,var(--rc,var(--ink)));font-size:calc(clamp(15px,4.6vw,19px) * var(--cw-size,1.7));
+  /* v30 (59.2, build 59): AND IT FITS ON ONE LINE. 57.3 rebuilt the word letter by letter, which hands the browser a break
+     opportunity between every letter, and sized it up — so at 375px "Congratulations" snapped as CONGRATULA / TIONS, the card
+     grew by a whole line and Continue went off the bottom. Two halves, both here.
+     `white-space:nowrap` stops the break. Then the SIZE has to come off the card rather than the viewport, so the word can
+     never be wider than the thing it sits in: `.rcard` becomes an inline-size container and 100cqw IS the card's content
+     width. The title face is Syncopate — the widest of the four we ship, and there is no font choice in Customise, so this is
+     the worst case by construction — and "Congratulations" measures 13.59x its own font-size in it. 100cqw / 13.59 = 7.36cqw
+     would touch both edges, so the fit is 7.1cqw for the largest chest with the rest in proportion: `--cw-fit` is that per
+     unit of `--cw-size`, which keeps 57.3's escalation (Games 1.7 -> Author 1.9) INSIDE the fit instead of flattening it.
+     `min()` means the design size still wins on a screen wide enough for it; this only ever shrinks. */
+  .rcard{container-type:inline-size}
+  .rcard .rtitle{position:relative;opacity:1;color:var(--cwc,var(--rc,var(--ink)));white-space:nowrap;--cw-fit:3.74cqw;
+    font-size:min(calc(clamp(15px,4.6vw,19px) * var(--cw-size,1.7)),calc(var(--cw-size,1.7) * var(--cw-fit)));
     text-shadow:0 0 calc(var(--cw-glow,20px) * .7) color-mix(in srgb,var(--cwc,var(--ink)) 60%,transparent);
     animation:cwpulse var(--cw-pulse,2600ms) ease-in-out calc(var(--card-ms,240ms) + var(--cw-last,0) * var(--cw-step,70ms) + var(--cw-drop,320ms)) infinite}
   @keyframes cwpulse{0%,100%{opacity:.9}50%{opacity:1}}

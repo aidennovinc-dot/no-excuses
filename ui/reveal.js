@@ -188,6 +188,24 @@ function tap() { if (!cur) return false;
     const headroom = Math.max(0, (typeof c.anchor.head === 'number' ? c.anchor.head : c.anchor.top) - padTop);
     const lift = Math.round(Math.max(0, Math.min(headroom, need - room)));
     c.host.style.setProperty('--lift', lift + 'px'); wrap.classList.add('below'); wrap.style.top = (top - lift) + 'px'; }
+  /* v30 (59.2, build 59): AND CONTINUE IS ON SCREEN WITHOUT SCROLLING. 57.4's last line accepted a card that "does not fit
+     scrolls, which it could always do" — on Aiden's phone that put Continue off the bottom of every chest. The lift above is
+     already capped by the top safe area, so when it is not enough the card itself has to get shorter, and the block that gives
+     way is the PICTURE: it is the tallest thing on the card and the only one that carries no words. Measured, not guessed —
+     the overflow is read off the laid-out card and taken off the frame's height cap, twice at most, and never below MP_MIN,
+     under which a picture stops reading as one. A card with no picture has nothing to give and scrolls as it did. */
+  { const card = wrap.firstElementChild, fr = card && card.querySelector('.mpframe');
+    const over = () => card.scrollHeight - card.clientHeight;
+    const squeeze = () => { for (let i = 0; fr && i < 3; i++) { const o = over(); if (o <= 0) return;
+      const h = fr.getBoundingClientRect().height;
+      const next = Math.max(REVEAL.cardPicMin, Math.round(h - o)); if (next >= Math.round(h)) return;
+      fr.style.setProperty('--mp-max', next + 'px'); } };
+    if (card) { squeeze();
+      /* and if the picture has given all it can, the card's own SPACING gives way next — the Pro chest's rewards row sits
+         lowest, so even at the picture's floor its card ran about 14px past the bottom. `tight` takes that out of the gaps
+         and the padding and nothing out of the words. The card stays BELOW the rewards either way: centring it instead was
+         tried and is worse, because the wrap then holds the card over the chest, the gift row and the spill's light. */
+      if (over() > 0) { card.classList.add('tight'); squeeze(); } } }
   c.host.classList.add('card');
   /* v28 (item 17, build 53): the celebration — confetti and one sound, different per chest and escalating, on the card's TITLE beat and before
      the message row, which is where item 17 puts it: "the screen the player taps through to after a chest opens", never on the map and never

@@ -166,6 +166,86 @@ scene('59.1', async (page, browser) => {
   console.log('      crack pixels as the squares land: ' + counts.join(' → '));
 });
 
+/* =======================================================================================================
+   59.2 — the congratulations word on ONE line, and Continue visible without scrolling, on all four chests
+   57.3 rebuilt the word letter by letter and sized it up (--cw-size 1.7 to 1.9). A per-letter span gives the browser a
+   break opportunity between every letter, so once the word is wider than the card it snaps mid-word — CONGRATULA / TIONS —
+   and the taller card pushes Continue off the bottom. Measured here, at both widths the item names, on every chest:
+   the word's line count and rendered width, and whether Continue's box is inside the viewport.
+   ======================================================================================================= */
+const CHESTS4 = ['games', 'key', 'pro', 'thorns'];
+// drive one chest's opening all the way to its congratulations card
+async function toCard(page, chest) {
+  await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-testing'); }); await sleep(320);
+  await page.evaluate(c => document.querySelector(`[data-act="dev-chest"][data-chest="${c}"]`).click(), chest);
+  // the stage, then the gifts, then "tap to continue" — tap it, then wait for the card's blocks to land
+  await page.evaluate(async () => { const w = ms => new Promise(r => setTimeout(r, ms));
+    for (let i = 0; i < 400; i++) { const t = document.querySelector('.cere .ctap');
+      if (t && getComputedStyle(t).opacity > .5) break; await w(50); } });
+  await page.evaluate(() => { const h = document.getElementById('key-cere'); h.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); h.click(); });
+  await page.evaluate(async () => { const w = ms => new Promise(r => setTimeout(r, ms));
+    for (let i = 0; i < 200; i++) { if (document.querySelector('.rcard')) break; await w(30); } });
+  await sleep(1700);   // cardAt + the staged blocks + cardGo, so Continue is live and everything has landed
+}
+const cardMetrics = page => page.evaluate(() => {
+  const card = document.querySelector('.rcard'), t = card && card.querySelector('.rtitle'), go = card && card.querySelector('.rgo');
+  if (!card || !t) return { card: false };
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:fixed;bottom:0;width:1px;height:env(safe-area-inset-bottom)'; document.body.appendChild(probe);
+  const sab = parseFloat(getComputedStyle(probe).height) || 0; probe.remove();
+  /* how many lines the word occupies, off offsetTop rather than a client rect: each letter drops in on its own beat and a
+     rect carries that transform, so a mid-flight letter reads as a second line. offsetTop is layout, which is what "one
+     line" is a claim about. */
+  const tops = [...t.querySelectorAll('.cl')].map(s => s.offsetTop);
+  const r = t.getBoundingClientRect(), cr = card.getBoundingClientRect(), gr = go && go.getBoundingClientRect();
+  return { lines: new Set(tops).size, letters: tops.length, wordW: Math.round(r.width), wordH: Math.round(r.height),
+    fontPx: Math.round(parseFloat(getComputedStyle(t).fontSize) * 10) / 10, wrap: getComputedStyle(t).whiteSpace,
+    cardW: Math.round(cr.width), cardTop: Math.round(cr.top), cardBottom: Math.round(cr.bottom),
+    cardScrolls: card.scrollHeight > card.clientHeight + 1, overflowPx: card.scrollHeight - card.clientHeight, lastBlockBottom: Math.round(card.lastElementChild.getBoundingClientRect().bottom), vh: innerHeight, safeBottom: sab,
+    picH: card.querySelector('.mpframe') ? Math.round(card.querySelector('.mpframe').getBoundingClientRect().height) : null,
+    // "visible without scrolling" means ABOVE the home indicator, not merely inside the viewport box
+    goBottom: gr ? Math.round(gr.bottom) : null, goVisible: !!gr && gr.bottom <= innerHeight - sab + .5 && gr.top >= 0 };
+});
+scene('59.2', async (page, browser) => {
+  for (const w of [375, 390]) {
+    await page.setViewport({ width: w, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    for (const chest of CHESTS4) {
+      await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture());
+      await page.reload({ waitUntil: 'networkidle0' }); await sleep(420);
+      await toCard(page, chest);
+      await frame(page, browser, `59.2-${chest}-${w}`, `Congratulations card, ${chest} chest at ${w}px — ONE line, Continue on screen`);
+      const m = await cardMetrics(page);
+      say('metrics', m);
+      if (m.lines > 1 || !m.goVisible) console.log('      ^^ FAILS: ' + (m.lines > 1 ? 'word on ' + m.lines + ' lines' : '') + (m.goVisible ? '' : ' Continue off screen'));
+    }
+  }
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+});
+
+/* =======================================================================================================
+   59.3 — the video's name in quotation marks on the chest words, all four chests
+   Aiden on the Games chest's third word: "You've seen them all!" read bare, like a tab label or a sentence rather than the
+   name of a clip. The marks are put on at render time from MSG.quote. The measurement that matters beside the picture is
+   L.11d — the word still fits its CELL and stays inside two lines — because two more characters is what broke it at build 52.
+   ======================================================================================================= */
+scene('59.3', async (page, browser) => {
+  await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture({ chests: { games: 1, key: 1, pro: 1, thorns: 1 }, spill: { games: 1, key: 1, pro: 1, thorns: 1 } }));
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(450);
+  await page.evaluate(async () => { const M = await import('./progress.js'), S = await import('./core/store.js'), R = await import('./ui/router.js');
+    if (M.devModesAll) M.devModesAll(); S.save(); R.show('s-pick'); }); await sleep(1100);
+  await frame(page, browser, '59.3-map-words', 'Progress map, all four chests open — every video name in quotation marks, each inside its cell');
+  say('words', await page.evaluate(() => Object.fromEntries(['games', 'key', 'pro', 'thorns'].map(id => {
+    const w = document.querySelector(`.chestwords[data-for="${id}"]`); if (!w || w.hidden) return [id, null];
+    const cell = w.getBoundingClientRect();
+    const msg = w.querySelector('.cw.msg');
+    return [id, { all: [...w.querySelectorAll('.cwt')].map(x => x.textContent),
+      videoWord: msg ? msg.textContent : null,
+      fitsCell: msg ? msg.getBoundingClientRect().right <= cell.right + 1 : null,
+      onPhone: msg ? msg.getBoundingClientRect().right <= innerWidth : null,
+      heightPx: msg ? Math.round(msg.getBoundingClientRect().height) : null }];
+  }))));
+});
+
 /* ---------- the runner ---------- */
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 if (ARGV.includes('--list')) { console.log(Object.keys(SCENES).join('\n')); process.exit(0); }

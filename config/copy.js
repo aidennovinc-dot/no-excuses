@@ -453,4 +453,9 @@ export const MSG = { title:'messages', lede:'Short messages from Aiden, as you g
   // outline that never lit - a missing file, a 404 or an iOS NotAllowedError all looked identical, and identical to a clip with no sound.
   unavailable:'Video unavailable — tap outside to close',
   // v26 (item 5, build 49): how a video reads among a chest's rewards — its slot's own title. Add a word here ("Video: {title}") and every chest says it
-  reward:'{title}' };
+  reward:'{title}',
+  /* v30 (59.3, build 59): AND THE TITLE IS IN QUOTATION MARKS. Aiden on the Games chest's third reward: "You've seen them all!" read as a tab
+     label or a sentence rather than the name of a video — "let's just put it in quotations so it's obvious, as that is the video name". The
+     marks are DATA here and the wrapping happens at render time (`quoted()` in ui/chest.js), so no title string in config/messages.js carries
+     punctuation it does not own and a slot renamed there needs no second edit. Typographic, not the straight ASCII pair. */
+  quote:['“','”'] };

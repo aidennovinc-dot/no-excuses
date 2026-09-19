@@ -47,7 +47,13 @@ const msgOfChest = id => MESSAGES.find(m => m.by && m.by.chest === id) || null;
 const msgCol = m => { const b = (m && m.by) || {}; if (b.chest) return chestCol(b.chest);
   if (b.gauntlet) { const g = GAUNTLETS.find(x => x.id === b.gauntlet); return g ? chestCol(g.chest) : ''; }
   return ''; };
-const videoWord = id => { const m = msgOfChest(id); return !m || (HIDE_UNRECORDED && !m.file) ? [] : [{ w: T(MSG.reward, { title: msgTitle(m) }), sym: 'video', to: 'msg:' + m.id, msg: m.id, msgObj: m }]; };
+/* v30 (59.3, build 59): A VIDEO'S NAME WEARS QUOTATION MARKS WHEREVER IT LABELS SOMETHING. On the Games chest's opened screen the third
+   reward read "You've seen them all!" bare, which looks like a tab label or a sentence rather than the name of a clip. The marks live in
+   config (MSG.quote) and are put on HERE, at render time, so no title in config/messages.js carries punctuation of its own — rename a slot
+   there and nothing else moves. Two callers, on purpose, and they are the two the item names: the chest's reward word and the caption under
+   the congratulations card's frame, so the two always match. The Messages list (ui/screens/about.js) builds its own row and is untouched. */
+const quoted = s => s ? MSG.quote[0] + s + MSG.quote[1] : '';
+const videoWord = id => { const m = msgOfChest(id); return !m || (HIDE_UNRECORDED && !m.file) ? [] : [{ w: T(MSG.reward, { title: quoted(msgTitle(m)) }), sym: 'video', to: 'msg:' + m.id, msg: m.id, msgObj: m }]; };
 /* v28 (item 10, build 53): a chest word that GIVES A GAUNTLET carries `gaunt`, not a word — its name is composed off GAUNTLET.name here, in
    capitals like every other chest word, so Gauntlet Mini and Gauntlet Mega are spelled in exactly one place. */
 const wordsOf = id => (CHEST_WORDS[id] || []).map(x => x.gaunt ? Object.assign({}, x, { w: (GAUNTLET.name[x.gaunt] || x.gaunt).toUpperCase() }) : x).concat(videoWord(id));
@@ -98,7 +104,7 @@ function msgPreview(m, o = {}) { if (!m) return '';
   const col = msgCol(m) || '', has = !!m.file && !o.soon;
   return `<span class="mprev${o.big ? ' big' : ''}${has ? ' has' : ''}" style="${col ? `--vg:${col}` : ''}">`
     + `<span class="mpframe"><span class="mppic">${has ? '<i class="mpplay"></i>' : `<i class="mpsoon">${esc(o.soon || MSG.soon)}</i>`}</span></span>`
-    + (o.title === false ? '' : `<b class="mptitle">${esc(msgTitle(m))}</b>`) + '</span>'; }
+    + (o.title === false ? '' : `<b class="mptitle">${esc(quoted(msgTitle(m)))}</b>`) + '</span>'; }
 
 /* L.8d / L.8e: THE BAND A METER FIGURE IS IN, worn as `mb0`–`mb3` with its strength inside the band (`--mk`, 0..1), so 105% and 195% look
    different. Glow and spike heights scale across the band; the shake is a whole number of pixels, so it never blurs the figure. `vars`
