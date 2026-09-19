@@ -54,7 +54,12 @@ const wordsOf = id => (CHEST_WORDS[id] || []).map(x => x.gaunt ? Object.assign({
 // what one chest gives, as the reveal and the map want it: the word, its symbol, where it goes and whether it is a placeholder reward
 const giftsOf = id => wordsOf(id).map(x => ({ w: x.w, sym: x.sym || '', tba: !!x.tba, to: x.to || 'soon', msg: x.msg || '', msgObj: x.msgObj || null }));
 
-const paths = (list, cls) => (list || []).map((d, i) => `<path class="${cls}" d="${d}" style="--i:${i}"></path>`).join('');
+/* v30 (59.1, build 59): `attr` is how a path carries an SVG attribute the class alone cannot — today only `pathLength="1"` on the
+   cracks. The stylesheet hides a drawn-on path with `stroke-dasharray:1;stroke-dashoffset:1`, which measures the path in ITS OWN
+   units unless pathLength normalises it to 1 — so without the attribute "1" is one user unit, the crack renders as a DASHED line
+   from frame zero and never hides. Every other drawn-on path in the app (ctrace, cx, cpath, the key's segments) carries it; the
+   cracks are the one emitter that did not, which is why 57.2 shipped twice. */
+const paths = (list, cls, attr = '') => (list || []).map((d, i) => `<path class="${cls}" d="${d}"${attr} style="--i:${i}"></path>`).join('');
 /* the sprite. The lid and its spikes are one group turning on the look's own hinge; the cross is always drawn and only a locked chest
    shows it. The colours, weights and idle timing ride on the svg as custom properties, so the stylesheet names no chest's colour */
 // v27 (item 13): `--bc` is the chest's own colour now (chestCol), and `--shim` the colour its shimmer or its current runs in
@@ -64,7 +69,7 @@ const paths = (list, cls) => (list || []).map((d, i) => `<path class="${cls}" d=
 function chestSvg(id, cls = '', o = {}) { const L = CHEST_LOOK[id]; if (!L) return ''; const col = chestCol(id); const [hx, hy] = L.hinge || [5, 14];
   const nCrack = L.cracks ? Math.max(0, Math.min(L.cracks.length, typeof o.cracks === 'number' ? o.cracks : crackCount())) : 0;
   return `<svg class="chestart${cls ? ' ' + cls : ''}" data-look="${id}" data-idle="${L.idle.kind}" data-cracks="${nCrack}" viewBox="-2 -2 44 36" aria-hidden="true" style="--cs:${L.stroke};--cf:${L.fill};--cl:${L.lock};--csw:${L.sw};--clsw:${L.lidSw};--bc:${col};--shim:${L.shim || col};--idle-ms:${L.idle.ms}ms;--idle-px:${L.idle.px}px">`
-    + `<g class="boxg">${paths(L.box, 'box')}${paths(L.fit, 'fit')}${paths(L.boxSpikes, 'spk')}${paths(L.accent, 'acc')}<g class="crackg" data-n="${nCrack}">${paths((L.cracks || []).slice(0, nCrack), 'crk')}</g></g>`
+    + `<g class="boxg">${paths(L.box, 'box')}${paths(L.fit, 'fit')}${paths(L.boxSpikes, 'spk')}${paths(L.accent, 'acc')}<g class="crackg" data-n="${nCrack}">${paths((L.cracks || []).slice(0, nCrack), 'crk', ' pathLength="1"')}</g></g>`
     + `<g class="lidg" style="transform-origin:${hx}px ${hy}px">${paths(L.lid, 'lid')}${paths(L.spikes, 'spk')}</g>`
     + `<g class="lockg">${paths(L.lockp, 'lock')}</g><path class="xl" d="M1 1L39 31"></path></svg>`; }
 

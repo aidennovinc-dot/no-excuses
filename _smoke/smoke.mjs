@@ -2728,6 +2728,42 @@ if (section('chests')) {
     (keyTurn && authorTheme && noBreak && grows && gamesBreaks && noSwatch && onlyGames && counts && fixed && covered)
       ? ok(`v28 items 13 / 16 / v29 item 5 a chest opened by a KEY unlocks and never breaks: ${CP48.GRID.chest.key}, ${CP48.GRID.chest.pro} and ${CP48.GRID.chest.thorns} all run ${TURN.join(' \u00b7 ')} in their own key's colour and glyph, ${CER.key.ms}/${CER.pro.ms}/${CER.thorns.ms}ms, with no shake, cracks, scatter or burst left between them and no coloured swatches anywhere; the ${CP48.GRID.chest.thorns} chest alone dresses that mechanism in ${THEME54.join(' \u00b7 ')}, which the other two never draw; the breaking is the ${CP48.GRID.chest.games}'s alone - ${c3.n} of its 7 cracks on the map at ${c3.n} games finished and all 7 at the last, the same cracks in the same order every time, and its ceremony draws the seventh in and bursts it`)
       : bad('v28 items 13 / 16 / v29 57.2 / 57.8 the chest openings', JSON.stringify({ keyTurn, authorTheme, noBreak, grows, gamesBreaks, noSwatch, onlyGames, counts, fixed, covered, coverArt, c0, c3, c7 }));
+
+    /* v30 (59.1, build 59): AND THE CRACKS ARE ACTUALLY HIDDEN ON THE FIRST FRAME — 57.2's THIRD go.
+       The check above asks how many crack paths are DRAWN, and it passed all through build 58 while Aiden's phone showed
+       seven dashed cracks from frame zero. The hide is `stroke-dasharray:1;stroke-dashoffset:1`, which only hides a path
+       whose pathLength is normalised to 1; the cracks came out of `paths()` with no pathLength, so "1" meant one USER UNIT,
+       the seven rendered as dashed lines immediately and stayed dashed after the draw-in. Counting paths could never see
+       that. So this asks the two things that are the mechanism: every ceremony crack declares pathLength="1", and its real
+       length is longer than 1 user unit — which is what makes the attribute load-bearing rather than decorative. Then it
+       drives the frozen frame at both ends: nothing showing at t=0, every crack whole by the end of the `crack` step.
+       Pixel evidence for the same three clauses is `_smoke/shots.mjs 59.1` (build 59's frames are in _review/_shots). */
+    /* Driven through Testing's own replay, not `ceremonyFrame` — the catalogue's frame helper renders the stage inside a
+       screen that is display:none, so no CSS animation is generated at all and every frame it makes reads as "not drawn".
+       That is exactly the blind spot 57.2 hid in, so this one plays the real opening and freezes ITS clock. */
+    await boot({ snd: 'off', chests: { games: 0 } }, {}, { plain: PLAIN48 });
+    await go('s-testing'); await sleep(300);
+    await page.evaluate(() => document.querySelector('[data-act="dev-chest"][data-chest="games"]').click());
+    await page.evaluate(async () => { const w = ms => new Promise(r => setTimeout(r, ms));
+      for (let i = 0; i < 80; i++) { if (document.querySelectorAll('.cere .crk').length) return; await w(15); } });
+    const crk = await page.evaluate(() => {
+      const ps = [...document.querySelectorAll('.cere .crk')];
+      const anims = ps.flatMap(p => p.getAnimations());
+      // the LAST crack's own end: the seven are staggered by `--crack-step` and each takes .34s, so the seventh finishes
+      // after the `crack` step's declared window closes. Read it off the animations rather than adding the numbers up.
+      const endAt = Math.round(Math.max(0, ...anims.map(a => a.effect.getComputedTiming().endTime || 0)));
+      const at = t => { for (const a of document.getAnimations()) { try { a.pause(); a.currentTime = t; } catch (e) {} }
+        return ps.map(p => ({ pl: p.getAttribute('pathLength'), len: Math.round(p.getTotalLength() * 100) / 100,
+          off: parseFloat(getComputedStyle(p).strokeDashoffset) || 0, arr: getComputedStyle(p).strokeDasharray })); };
+      return { first: at(0), done: at(endAt), endAt, anims: anims.length };
+    });
+    const declared = crk.first.length === 7 && crk.anims >= 7 && crk.first.every(p => p.pl === '1');
+    const loadBearing = crk.first.every(p => p.len > 1);          // a path shorter than 1 unit would hide with or without the attribute
+    const hiddenAtZero = crk.first.every(p => p.arr === '1px' && p.off >= .999);
+    const wholeAtEnd = crk.done.every(p => p.off <= .001);
+    (declared && loadBearing && hiddenAtZero && wholeAtEnd)
+      ? ok(`v30 59.1 (57.2, third time) the ${CP48.GRID.chest.games} chest's cracks are HIDDEN on frame one, not dashed: all 7 carry pathLength="1" over real lengths of ${Math.min(...crk.first.map(p => p.len))}-${Math.max(...crk.first.map(p => p.len))} user units, so dasharray 1 is the WHOLE path and not 8-16 dashes; at t=0 every one is fully offset and by ${crk.endAt}ms every one is whole`)
+      : bad('v30 59.1 the cracks are hidden until they are drawn', JSON.stringify({ declared, loadBearing, hiddenAtZero, wholeAtEnd, endAt: crk.endAt, first: crk.first, done: crk.done }));
   }
 
   /* ---- 8. v28 items 12 / 17 (build 53): THE CONGRATULATIONS SCREEN IS STAGED AND CELEBRATED. The title lands first, then each block in turn,
