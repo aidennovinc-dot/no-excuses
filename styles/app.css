@@ -26,11 +26,23 @@
   @font-face{font-family:"JetBrains Mono";font-style:normal;font-weight:500;font-display:swap;src:url(../fonts/jetbrains-mono-var.woff2) format("woff2")}
   @font-face{font-family:"JetBrains Mono";font-style:normal;font-weight:700;font-display:swap;src:url(../fonts/jetbrains-mono-var.woff2) format("woff2")}
   /* v29 Section A (57.9, build 57): A FOURTH FACE, and the only one that is not the app's own voice. Aiden asked for the Gauntlet
-     screens in "special text that looks scary — different font, different colour", so Creepster 400 (SIL Open Font License, the
-     same latin subset Google serves, 28KB) joins the three in ../fonts/. It is NOT preloaded: nothing on first paint uses it, and
-     the Gauntlet screens are four taps in. It is used on the Gauntlet title, the two map labels and the ENTER THE GAUNTLET button
-     and NOWHERE ELSE — the rows keep the mono face, because a roster has to be read rather than felt. */
-  @font-face{font-family:"Creepster";font-style:normal;font-weight:400;font-display:swap;src:url(../fonts/creepster-400.woff2) format("woff2")}
+     screens in "special text that looks scary — different font, different colour". It is used on the Gauntlet title, the two map
+     labels and the ENTER THE GAUNTLET button and NOWHERE ELSE — the rows keep the mono face, because a roster has to be read
+     rather than felt. Neither is preloaded: nothing on first paint uses them and the Gauntlet screens are four taps in.
+     v30 (59.5, build 59): THE FACE IS REJECTED AND CREEPSTER IS GONE. Aiden: "I hate this font, it looks like horror theme when
+     it should be serious theme, something like knightly or noble. But I like the flashing of the title." His 57.9 line was
+     "special text that looks scary" and Cowork read SCARY as horror; what he means is INTIMIDATING — a trial you take seriously,
+     a tournament, not a haunted house. This also answers build 57's question 3 (Creepster versus Nosifer for Mega): NEITHER —
+     Nosifer drips and is further into horror, not back out of it.
+     CINZEL is drawn from Roman carved inscriptions: noble, formal and serious at a glance, an all-capitals design, and these
+     titles are already all caps. CINZEL DECORATIVE is the same letters with flourishes, so Mega is visibly a step up from Mini
+     WITHOUT changing family — the job Nosifer was going to do. Both are SIL Open Font Licence and self-host exactly as Creepster
+     did, same latin subset: 25.9KB for the variable Cinzel (one file, 700–900) and 14.6KB for Decorative 900. Together they are
+     12KB more than Creepster's 28KB and neither is on the first-paint path.
+     NOT blackletter (UnifrakturCook, Pirata One): it is the literal "knightly" answer, but in deep red with a flicker it lands
+     back on heavy metal and horror, and it is hard to read at button size. Not MedievalSharp or Almendra: storybook, not serious. */
+  @font-face{font-family:"Cinzel";font-style:normal;font-weight:700 900;font-display:swap;src:url(../fonts/cinzel-var.woff2) format("woff2")}
+  @font-face{font-family:"Cinzel Decorative";font-style:normal;font-weight:900;font-display:swap;src:url(../fonts/cinzel-decorative-900.woff2) format("woff2")}
 
 /* ==================================================================
    shell — index.html, core/ — the root, type, buttons, chips, the screen frame, tables, the build bar
@@ -60,7 +72,7 @@
     --stamp:11px; --stampat:max(6px,env(safe-area-inset-bottom)); --stampclear:calc(var(--stampat) + var(--stamp) + 16px);
     --title:"Syncopate","Michroma",var(--display); --display:"Archivo",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
     /* 57.9: the Gauntlet's own face and its two reds — Mini deep, Mega a step hotter. Nothing outside the Gauntlet reads these */
-    --scare:"Creepster","Impact",var(--title); --gsc1:#A81C12; --gsc2:#D4180A;
+    --scare:"Cinzel","Trajan Pro",var(--title); --scare2:"Cinzel Decorative","Cinzel",var(--title); --gsc1:#A81C12; --gsc2:#D4180A;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   /* v13 (3.1): a `.chips` row set display:flex, which outranks the browser's own [hidden] rule — that is why Solo still showed Pass & play / Versus */
@@ -1989,25 +2001,31 @@
      and Mega's cycle is shorter, dips deeper and carries a second shadow. Reduce Motion holds it lit. */
   #s-gauntlet{--gsc:var(--gsc1);--gflick:5.4s;--gdip:.5}
   #s-gauntlet[data-g="g2"]{--gsc:var(--gsc2);--gflick:3.6s;--gdip:.3}
-  #s-gauntlet .gttitle{font-family:var(--scare);font-size:clamp(30px,10vw,44px);font-weight:400;letter-spacing:.06em;line-height:1.1;color:var(--gsc);
+  /* v30 (59.5, build 59): THE SIZES ARE MEASURED, NOT GUESSED. Cinzel is considerably wider than Creepster and Cinzel
+     Decorative wider again, and the item's own check is that "GAUNTLET MINI" and "ENTER THE GAUNTLET" each stay on ONE
+     line at 375px. Measured in the browser at 100px with this tracking, the three strings advance 8.70 / 10.24 / 11.96
+     times their font-size, and the screen leaves about 343px at 375. So the title tops out at 9.4vw (Mini) and 8vw
+     (Mega, in the wider Decorative cut) and the button at 5.6vw, each with room to spare. `white-space:nowrap` is the
+     belt to that braces: a future rename overflows and FAILS THE GATE rather than quietly wrapping to two lines. */
+  #s-gauntlet .gttitle{font-family:var(--scare);font-size:clamp(28px,9.4vw,42px);font-weight:700;letter-spacing:.06em;line-height:1.1;white-space:nowrap;color:var(--gsc);
     text-shadow:0 0 18px color-mix(in srgb,var(--gsc) 55%,transparent);animation:gflick var(--gflick) steps(1,end) infinite}
-  #s-gauntlet[data-g="g2"] .gttitle{font-size:clamp(34px,12vw,54px);letter-spacing:.09em;
+  #s-gauntlet[data-g="g2"] .gttitle{font-family:var(--scare2);font-weight:900;font-size:clamp(24px,8vw,36px);letter-spacing:.06em;
     text-shadow:0 0 10px color-mix(in srgb,var(--gsc) 80%,transparent),0 0 34px color-mix(in srgb,var(--gsc) 45%,transparent),0 2px 0 #1A0503}
   /* the rows: the normal face, the red as an accent — the number, the left edge and the length */
   #s-gauntlet .gtlist li{border-color:color-mix(in srgb,var(--gsc) 34%,var(--line));border-left-width:2px;border-left-color:var(--gsc)}
   #s-gauntlet .gtlist li b{color:var(--gsc)}
   #s-gauntlet[data-g="g2"] .gtlist li{border-color:color-mix(in srgb,var(--gsc) 52%,var(--line));border-left-width:3px}
   /* ENTER THE GAUNTLET: the same face, the same red, the same flicker as the title */
-  #s-gauntlet .gtgo{font-family:var(--scare);font-size:clamp(20px,6.4vw,28px);font-weight:400;letter-spacing:.06em;text-transform:none;
+  #s-gauntlet .gtgo{font-family:var(--scare);font-size:clamp(17px,5.6vw,24px);font-weight:700;letter-spacing:.06em;text-transform:none;white-space:nowrap;
     color:var(--gsc);border-color:color-mix(in srgb,var(--gsc) 62%,var(--line));animation:gflick var(--gflick) steps(1,end) infinite;animation-delay:-1.7s}
-  #s-gauntlet[data-g="g2"] .gtgo{border-width:2px;text-shadow:0 0 16px color-mix(in srgb,var(--gsc) 55%,transparent)}
+  #s-gauntlet[data-g="g2"] .gtgo{font-family:var(--scare2);font-weight:900;border-width:2px;text-shadow:0 0 16px color-mix(in srgb,var(--gsc) 55%,transparent)}
   @keyframes gflick{0%{opacity:1}7%{opacity:1}7.6%{opacity:var(--gdip)}8.4%{opacity:1}9%{opacity:var(--gdip)}9.4%{opacity:1}
     58%{opacity:1}58.5%{opacity:var(--gdip)}59.2%{opacity:1}100%{opacity:1}}
   /* the two MAP labels wear it too — a Gauntlet reads as a threat before it is opened (57.9). `.glow` is dropped for these two:
      its soft white pulse and the flicker are two animations for one property and the flicker is the one Aiden asked for. */
-  .tile.gauntlet .name{font-family:var(--scare);font-size:15px;font-weight:400;letter-spacing:.04em;text-transform:none;color:var(--gsc1);
+  .tile.gauntlet .name{font-family:var(--scare);font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:none;color:var(--gsc1);
     text-shadow:0 0 12px color-mix(in srgb,var(--gsc1) 50%,transparent);animation:gflick 5.4s steps(1,end) infinite;--gdip:.5}
-  .tile.gauntlet[data-gauntlet="g2"] .name{font-size:17px;color:var(--gsc2);animation-duration:3.6s;--gdip:.3;
+  .tile.gauntlet[data-gauntlet="g2"] .name{font-family:var(--scare2);font-weight:900;font-size:14px;color:var(--gsc2);animation-duration:3.6s;--gdip:.3;
     text-shadow:0 0 9px color-mix(in srgb,var(--gsc2) 75%,transparent),0 0 26px color-mix(in srgb,var(--gsc2) 40%,transparent)}
   @media (prefers-reduced-motion:reduce){#s-gauntlet .gttitle,#s-gauntlet .gtgo,.tile.gauntlet .name{animation:none;opacity:1}}
   #gt-body{width:100%;max-width:340px;display:flex;flex-direction:column;align-items:center;gap:14px}

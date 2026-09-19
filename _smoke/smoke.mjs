@@ -3409,6 +3409,10 @@ if (section('gauntlets')) {
     const two = sw.s === 2 && !('target' in sw) && Array.isArray(swBand) && swBand.join() === '5,6';
     const gone = !('oneWay' in G) && /enter the gauntlet/i.test(G.go);
     await boot({ chests: { games: 1, key: 1, pro: 1, thorns: 1 } }, {}, { plain: { ...PLAIN, spill: { games: 1, key: 1, pro: 1, thorns: 1 }, readySeen: { games: 1, key: 1, pro: 1, thorns: 1 } } });
+    /* v30 (59.5, build 59): MEASURED AT 375, not at the gate's own 390. Cinzel is wider than Creepster and Cinzel Decorative
+       wider again, and 59.5's acceptance is that the title and the button each stay on ONE LINE AT 375px — the narrower of the
+       two phones Aiden checks. The viewport goes back to 390 straight after, so nothing downstream sees a different screen. */
+    await page.setViewport({ width: 375, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
     const screens = [];
     for (const id of ['g1', 'g2']) screens.push(await page.evaluate(async id => { const R = await import('./ui/router.js'); const wait = ms => new Promise(r => setTimeout(r, ms));
       R.show('s-menu'); await wait(120); R.show('s-gauntlet', { id }); await wait(500);
@@ -3422,17 +3426,35 @@ if (section('gauntlets')) {
         hints: document.querySelectorAll('#gt-body .gtbrief .gthint').length,
         go: go ? go.textContent : '', titleFace: face(title), titleCol: col(title), goFace: face(go), goCol: col(go),
         rowFace: face(rows[0] ? rows[0].querySelector('span') : null),
+        /* v30 (59.5): one line, off the LAYOUT — a box taller than about 1.4 line-heights has wrapped — and still on the phone.
+           Both are what the new face has to earn, because it is wider than the one it replaces. */
+        lines: [title, go].map(el => { if (!el) return 0; const cs = getComputedStyle(el), r = el.getBoundingClientRect();
+          const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2;
+          return Math.max(1, Math.round((r.height - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)) / lh)); }),
+        onPhone: [title, go].every(el => { if (!el) return false; const r = el.getBoundingClientRect(); return r.left >= -.5 && r.right <= innerWidth + .5; }),
+        weights: [title, go].map(el => el ? getComputedStyle(el).fontWeight : ''),
+        vw: innerWidth,
         anim: title ? (title.getAnimations() || []).map(a => a.animationName).join() : '' }; }, id));
     const est = screens.map(s => (s.rows.find(r => /Estimate/.test(r[1])) || []));
-    const looks = screens.every(s => /creepster/i.test(s.titleFace) && /creepster/i.test(s.goFace) && /jetbrains/i.test(s.rowFace) && /gflick/.test(s.anim))
+    /* AMENDED AT BUILD 59 (v30 59.5): THE FACE IS CINZEL, NOT CREEPSTER. Aiden rejected Creepster outright — "it looks like
+       horror theme when it should be serious theme, something like knightly or noble" — and answered build 57's question 3
+       (Creepster or Nosifer for Mega) with NEITHER. Mini wears Cinzel 700 and Mega Cinzel Decorative 900: the same letters with
+       flourishes, so Mega is a visible step up WITHOUT changing family. The flicker, the deep red and the mono rows are
+       untouched, which is the other half of what he said — "but I like the flashing of the title" — so `gflick` and the two
+       different title colours are still asserted here. The width check is new and is the item's own: ONE LINE at 375px. */
+    const WANT_FACE = { g1: 'Cinzel', g2: 'Cinzel Decorative' };
+    const looks = screens.every(s => s.titleFace === WANT_FACE[s.id] && s.goFace === WANT_FACE[s.id] && /jetbrains/i.test(s.rowFace) && /gflick/.test(s.anim))
       && screens[0].titleCol !== screens[1].titleCol;
+    const oneLine = screens.every(s => s.vw === 375 && s.lines.every(n => n === 1) && s.onPhone)
+      && screens.every(s => s.weights.every(w => +w >= 700));
     const copy = screens.every((s, i) => s.rows.length === 8 && s.hints === 0 && /ENTER THE GAUNTLET/i.test(s.go)
         && s.soon === fill(G.intro[s.id], { n: 8 }) && /8/.test(s.soon))
       && est[0][0] === '3' && /Estimate · Grow \+ Cut/.test(est[0][1]) && est[0][2] === fill(G.roundsEach, { n: 2 })
       && est[1][0] === '3' && est[1][2] === fill(G.roundsPair, { a: 7, b: 10 });
-    (two && gone && copy && looks)
-      ? ok(`57.9 / 57.10 both Gauntlet screens read as Aiden wrote them: "${screens[0].soon}" and "${screens[1].soon}" with the 8 generated from the roster, EIGHT rows for eight games (Estimate is one — "${est[0][1]}", ${est[0][2]} on Mini and ${est[1][2]} on Mega), nothing under the list, ${screens[0].go} on both, and the scary face in a deep red with a slow flicker on the title and the button while the rows keep the mono face — Mega's red (${screens[1].titleCol}) a step past Mini's (${screens[0].titleCol}). Mini's Stopwatch is ${sw.s} rounds, still drawn from its ${swBand.join('-')}s window`)
-      : bad('57.9 / 57.10 the Gauntlet screens', JSON.stringify({ two, sw, swBand, gone, copy, looks, screens, est }));
+    (two && gone && copy && looks && oneLine)
+      ? ok(`57.9 / 57.10 / v30 59.5 both Gauntlet screens read as Aiden wrote them: "${screens[0].soon}" and "${screens[1].soon}" with the 8 generated from the roster, EIGHT rows for eight games (Estimate is one — "${est[0][1]}", ${est[0][2]} on Mini and ${est[1][2]} on Mega), nothing under the list, ${screens[0].go} on both, and a NOBLE face in a deep red with the slow flicker untouched on the title and the button while the rows keep the mono face — ${screens[0].titleFace} ${screens[0].weights[0]} on Mini and ${screens[1].titleFace} ${screens[1].weights[0]} on Mega, each on ONE line at ${screens[0].vw}px and inside the phone, Mega's red (${screens[1].titleCol}) a step past Mini's (${screens[0].titleCol}). Mini's Stopwatch is ${sw.s} rounds, still drawn from its ${swBand.join('-')}s window`)
+      : bad('57.9 / 57.10 / v30 59.5 the Gauntlet screens', JSON.stringify({ two, sw, swBand, gone, copy, looks, oneLine, screens, est }));
+    await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   }
 }
 
@@ -5232,12 +5254,17 @@ if (section('build 33 - v18 sections B.28 to B.32')) {
   {
     const off = reqs.filter(FONT_HOST);
     !off.length ? ok(`B.32 no font request left the origin in ${reqs.length} requests — Google Fonts is gone`) : bad('B.32 a font request left the origin', [...new Set(off)].join(', '));
-    const faces = [...css33.matchAll(/@font-face\{font-family:"([^"]+)";font-style:normal;font-weight:(\d+);font-display:swap;src:url\(\.\.\/fonts\/([\w.-]+)\)/g)];
+    /* AMENDED AT BUILD 59 (v30 59.5): a VARIABLE face declares a weight RANGE ("700 900"), which the old pattern could not
+       match — Cinzel would have gone uncounted and the file uncheckedly absent. The rest of the rule is unchanged. */
+    const faces = [...css33.matchAll(/@font-face\{font-family:"([^"]+)";font-style:normal;font-weight:([\d ]+);font-display:swap;src:url\(\.\.\/fonts\/([\w.-]+)\)/g)];
     const files = [...new Set(faces.map(f => f[3]))];
     const onDisk = files.filter(f => fs.existsSync(path.join(root, 'fonts', f)));
     const bytes = onDisk.reduce((a, f) => a + fs.statSync(path.join(root, 'fonts', f)).size, 0);
-    // AMENDED AT BUILD 57 (v29 Section A, 57.9): a SIXTH face from a FOURTH file — Creepster 400, the Gauntlet screens' scary face
-    (faces.length === 6 && onDisk.length === files.length && files.length === 4 && !/fonts\.googleapis\.com/.test(html33))
+    /* AMENDED AT BUILD 57 (v29 Section A, 57.9): a SIXTH face from a FOURTH file — Creepster 400, the Gauntlet screens' scary face.
+       AMENDED AT BUILD 59 (v30 59.5): Creepster is REJECTED and gone, and TWO faces replace it — Cinzel (variable, 700-900, one
+       file) and Cinzel Decorative 900. Seven faces from five files, and the check that every declared file is on disk is what
+       proves creepster-400.woff2 really went rather than merely stopping being referenced. */
+    (faces.length === 7 && onDisk.length === files.length && files.length === 5 && !fs.existsSync(path.join(root, 'fonts', 'creepster-400.woff2')) && !/fonts\.googleapis\.com/.test(html33))
       ? ok(`B.32 ${faces.length} faces from ${files.length} self-hosted files (${(bytes / 1024).toFixed(1)}KB), every one font-display:swap, and the <link> to Google is gone`)
       : bad('B.32 the @font-face block', JSON.stringify({ faces: faces.length, files, onDisk: onDisk.length }));
     const pre = [...html33.matchAll(/<link rel="preload" href="fonts\/([\w.-]+)" as="font" type="font\/woff2" crossorigin>/g)].map(m => m[1]);

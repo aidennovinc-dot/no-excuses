@@ -246,6 +246,51 @@ scene('59.3', async (page, browser) => {
   }))));
 });
 
+/* =======================================================================================================
+   59.5 — the Gauntlet face: Creepster out, Cinzel / Cinzel Decorative in, the flicker untouched
+   Aiden: "I hate this font, it looks like horror theme when it should be serious theme, something like knightly or noble. But I
+   like the flashing of the title." Cinzel is wider than Creepster, so the item's own check is the one measured here: the title
+   and ENTER THE GAUNTLET each stay on ONE line at 375px, on Mini and on Mega.
+   ======================================================================================================= */
+scene('59.5', async (page, browser) => {
+  for (const w of [375, 390]) {
+    await page.setViewport({ width: w, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    for (const g of ['g1', 'g2']) {
+      await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture({ chests: { games: 1, key: 1, pro: 1 }, gauntSeen: {} }));
+      await page.reload({ waitUntil: 'networkidle0' }); await sleep(420);
+      await page.evaluate(async id => { const R = await import('./ui/router.js'); R.show('s-gauntlet', { id }); }, g);
+      await sleep(700);
+      await page.evaluate(() => document.fonts.ready);
+      await sleep(250);
+      await frame(page, browser, `59.5-${g}-${w}`, `Gauntlet ${g === 'g1' ? 'Mini' : 'Mega'} at ${w}px — Cinzel${g === 'g2' ? ' Decorative' : ''}, one line each`);
+      say('text', await page.evaluate(() => {
+        // one line is measured off the LAYOUT: a box taller than about 1.4 line-heights has wrapped
+        const one = el => { if (!el) return null; const cs = getComputedStyle(el), r = el.getBoundingClientRect();
+          const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2;
+          const inner = r.height - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+          return { text: el.textContent.trim(), family: cs.fontFamily.split(',')[0].replace(/"/g, ''), weight: cs.fontWeight,
+            px: Math.round(parseFloat(cs.fontSize) * 10) / 10, lines: Math.max(1, Math.round(inner / lh)),
+            rightEdge: Math.round(r.right), vw: innerWidth, onPhone: r.right <= innerWidth + .5 && r.left >= -.5 }; };
+        const flick = el => el ? el.getAnimations().map(a => a.animationName).join(',') : '';
+        const t = document.querySelector('#s-gauntlet .gttitle'), b = document.querySelector('#s-gauntlet .gtgo');
+        return { title: one(t), button: one(b), titleAnim: flick(t), buttonAnim: flick(b) };
+      }));
+    }
+  }
+  // and the two map labels, which wear the same face
+  await page.setViewport({ width: 375, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture({ chests: { games: 1, key: 1, pro: 1 } }));
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(420);
+  await page.evaluate(async () => { const M = await import('./progress.js'), S = await import('./core/store.js'), R = await import('./ui/router.js');
+    if (M.devModesAll) M.devModesAll(); S.save(); R.show('s-pick'); }); await sleep(1100);
+  await frame(page, browser, '59.5-map-labels-375', 'Progress map at 375px — the two Gauntlet labels in the new face');
+  say('labels', await page.evaluate(() => [...document.querySelectorAll('.tile.gauntlet .name')].map(n => {
+    const cs = getComputedStyle(n), r = n.getBoundingClientRect(), tile = n.closest('.tile').getBoundingClientRect();
+    return { text: n.textContent.trim(), family: cs.fontFamily.split(',')[0].replace(/"/g, ''), weight: cs.fontWeight,
+      px: Math.round(parseFloat(cs.fontSize) * 10) / 10, fitsTile: r.right <= tile.right + 1 && r.left >= tile.left - 1 }; })));
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+});
+
 /* ---------- the runner ---------- */
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 if (ARGV.includes('--list')) { console.log(Object.keys(SCENES).join('\n')); process.exit(0); }
