@@ -291,6 +291,63 @@ scene('59.5', async (page, browser) => {
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 });
 
+/* =======================================================================================================
+   59.6 — the chest tile says ONE thing that fits, and the Gauntlet moves onto the key
+   Aiden: "the author chest text doesn't fit within it, so that doesn't look good. Let's just do earn the author key. And maybe
+   instead of having the gauntlet there, we should say in the key, it only can be wielded by the mega gauntlet or something like
+   that." The acceptance is at 375px: no chest tile's text touches its drawing, in any state, on any chest. That is measured here
+   as a box overlap between the tile's need text and the chest sprite — the pseudo-element is measured through a clone, because a
+   ::after has no rect of its own.
+   ======================================================================================================= */
+const tileOverlap = page => page.evaluate(() => {
+  const out = {};
+  for (const id of ['games', 'key', 'pro', 'thorns']) {
+    const c = document.querySelector(`#grid .chest[data-chest="${id}"]`); if (!c) { out[id] = null; continue; }
+    const pic = c.querySelector('.pic'), art = pic.querySelector('.chestart');
+    const need = pic.dataset.need || '';
+    /* the need text is drawn by `.pic::after`, which has no getBoundingClientRect. A clone of the pseudo-element's own computed
+       style, laid out in the same place with the same text, has the same box — so the overlap is measured rather than assumed. */
+    const cs = getComputedStyle(pic, '::after');
+    const probe = document.createElement('span');
+    probe.style.cssText = `position:absolute;visibility:hidden;font:${cs.font};letter-spacing:${cs.letterSpacing};line-height:${cs.lineHeight};white-space:${cs.whiteSpace};width:${cs.width};max-width:${cs.maxWidth};text-align:${cs.textAlign}`;
+    probe.textContent = need; pic.appendChild(probe);
+    const t = probe.getBoundingClientRect(); probe.remove();
+    const a = art ? art.getBoundingClientRect() : null;
+    out[id] = { state: c.classList.contains('open') ? 'open' : c.classList.contains('ready') ? 'ready' : 'locked',
+      need, lines: need ? need.split('\n').length : 0, textW: Math.round(t.width), textH: Math.round(t.height),
+      artW: a ? Math.round(a.width) : null, tileW: Math.round(c.getBoundingClientRect().width),
+      // the text is drawn under the sprite, so "touching" is the text being taller than the room left for it
+      fitsTile: t.width <= c.getBoundingClientRect().width + 1 };
+  }
+  return out; });
+scene('59.6', async (page, browser) => {
+  await page.setViewport({ width: 375, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  const states = [['no-bars', { games: 1 }, false], ['all-bars-no-gauntlet', { games: 1, key: 1 }, true], ['pro-open', { games: 1, key: 1, pro: 1 }, true]];
+  for (const [label, chests, fill] of states) {
+    await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture({ chests }));
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(420);
+    await page.evaluate(async f => { const M = await import('./progress.js'), P = await import('./progress/key.js'), S = await import('./core/store.js'), R = await import('./ui/router.js');
+      if (M.devModesAll) M.devModesAll();
+      if (f) { const bars = {}; for (const c of P.COMBOS) for (const t of ['', '|pro', '|author']) bars[c.key + t] = 1; S.store.bars = bars; }
+      S.save(); R.show('s-pick'); }, fill); await sleep(1000);
+    await frame(page, browser, `59.6-map-${label}-375`, `Progress map at 375px, ${label} — every chest tile's line fits its tile`);
+    say('tiles', await tileOverlap(page));
+  }
+  // and the key's own standing line, which is where the Gauntlet requirement went
+  await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture({ chests: { games: 1, key: 1, pro: 1 } }));
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(420);
+  await page.evaluate(async () => { const P = await import('./progress/key.js'), S = await import('./core/store.js');
+    const bars = {}; for (const c of P.COMBOS) for (const t of ['', '|pro', '|author']) bars[c.key + t] = 1; S.store.bars = bars; S.save(); });
+  for (const [i, tier] of ['clear', 'pro', 'author'].entries()) {
+    await page.evaluate(async n => { const R = await import('./ui/router.js'); R.show('s-menu'); await new Promise(r => setTimeout(r, 90)); R.show('s-key', { tier: n }); }, i);
+    await sleep(800);
+    await frame(page, browser, `59.6-key-${tier}-375`, `Keys screen at 375px, the ${tier} key — the Gauntlet line lives here now`);
+    say('wield', await page.evaluate(() => { const el = document.getElementById('key-wield');
+      return { shown: !!el && !el.hidden, text: el ? el.textContent.trim() : '', hint: (document.getElementById('key-hint') || {}).textContent }; }));
+  }
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+});
+
 /* ---------- the runner ---------- */
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 if (ARGV.includes('--list')) { console.log(Object.keys(SCENES).join('\n')); process.exit(0); }

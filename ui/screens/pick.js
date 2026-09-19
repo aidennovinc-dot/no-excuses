@@ -235,13 +235,21 @@ function renderChests(){ const m=modeCount(), rang=[];
        carries its own `done`, so the tile says what is left rather than only naming the first thing missing. A chest with one
        requirement prints exactly the line it printed before, unticked: a tick on a list of one says nothing. A chest whose
        chest ahead is still shut keeps "open the previous chest" and gives nothing away about either (A.1, as G.1 narrowed it). */
+    /* v30 (59.6, build 59): ONE LINE THAT FITS, FOLLOWING THE STATE. Aiden, on the locked Author chest: "the author chest text
+       doesn't fit within it, so that doesn't look good. Let's just do earn the author key." 58.2's two ticked requirements ran
+       to four lines and over the chest drawing and its red strike. So the tile prints the FIRST thing still missing and nothing
+       else: no key yet, "Earn the Author key"; key in hand and its Gauntlet unfinished, "Finish Gauntlet Mega to wield it"; both
+       done, the ordinary ready state. One line at a time, so it always fits at 375px.
+       The requirement has not gone anywhere — it is still listed on that chest's Progress tab, which has room for a list, and it
+       is now part of the KEY'S own story on the Keys screen ("Only Gauntlet Mega can wield it."), the other half of 59.6. */
     const rows=st==='locked'?chestNeeds(id):[];
-    const line=r=>r.k==='gaunt'?T(GRID.chestGaunt,{name:GAUNTLET.name[r.gaunt]||r.gaunt})
+    const todo=rows.find(r=>!r.done)||rows[0];
+    const line=r=>!r?'':r.k==='gaunt'?T(GRID.chestGauntWield,{name:GAUNTLET.name[r.gaunt]||r.gaunt})
       :r.k==='modes'?T(GRID.chestModes,{open:m.open,total:m.total}):(GRID.chestEarn[id]||GRID.chestPrev);
     const need=st==='open'?GRID.chestOpened:st==='ready'?GRID.chestOpen
-      :rows.length>1?rows.map(r=>T(r.done?GRID.chestTick:GRID.chestTodo,{line:line(r)})).join('\n')
+      :rows.length?line(todo)
       :c.needs==='modes'?(st==='before'?GRID.chestPrev:T(GRID.chestModes,{open:m.open,total:m.total})):(GRID.chestEarn[id]||GRID.chestPrev);
-    pic.dataset.need=need; el.classList.toggle('twoneed',rows.length>1); el.classList.remove('metered');
+    pic.dataset.need=need; el.classList.remove('twoneed'); el.classList.remove('metered');
     if(st==='ready'&&!(prefs.readySeen||{})[id]) rang.push(id);
     const spill=st==='open'&&!(prefs.spill||{})[id];
     const old=pic.querySelector('.pburst'); if(old) old.remove(); if(spill) pic.insertAdjacentHTML('beforeend',burstHtml(id));

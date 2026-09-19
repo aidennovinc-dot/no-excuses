@@ -175,6 +175,10 @@ export const GRID = { chest:{ games:'Games chest', key:'Skill chest', pro:'Pro c
      `white-space:pre-line`), so the tile says what is left rather than only what is missing first. A chest whose chest
      ahead is still shut keeps "open the previous chest" and says nothing about either (A.1 / G.1, untouched). */
   chestTick:'✓ {line}', chestTodo:'· {line}', chestGaunt:'Finish {name}',
+  /* v30 (59.6, build 59): what a chest tile says when its KEY is in hand and its Gauntlet is not. 58.2 had the tile list both
+     requirements and tick each, which on the Author chest wrapped to four lines and ran over the chest drawing and its red
+     strike. The tile carries ONE line now, following the state, so it always fits; this is the second of the three. */
+  chestGauntWield:'Finish {name} to wield it',
   chestGauntToast:'Finish {name} first' };
 /* v23 (L.11c, build 40): WHAT EACH CHEST GIVES, one entry per chest and a line per word, so Aiden can rewrite them on the next Desk.
    An opened chest shows them as a plain column to its right (L.11b animates them in build 41); nothing shows beside a chest that is
@@ -347,6 +351,12 @@ export const KEY = { title:'the key', hint:'tap a game · solo runs only',
      hint has to name the thing standing between the two rather than saying "tap the key to go to its chest" and sending
      the player to a chest that will not open. The tap still goes to the map, where the Gauntlet's own tile is. */
   completeGaunt:'{name} first · tap the key to find it',
+  /* v30 (59.6, build 59): THE GAUNTLET REQUIREMENT LIVES ON THE KEY NOW. Aiden, on the Author chest's tile running over its own
+     drawing: "let's just do earn the author key. And maybe instead of having the gauntlet there, we should say in the key, it
+     only can be wielded by the mega gauntlet or something like that." This is that line, on the Keys screen, standing from the
+     moment the tier is open rather than only once the key is whole. The Gauntlet's NAME comes from GAUNTLET.name, which is the
+     one place either is spelled (v28 item 10), so "the Mega Gauntlet" of his dictation reads "Gauntlet Mega" here. */
+  wield:'Only {name} can wield it.',
   ask:'Open the {chest}?', askYes:'Open', askNo:'Not yet', completeReady:'tap the key to open the {chest}',
   quietReady:'Every game mode is unlocked. Tap the key to open the Games chest.',
   // v23 (L.6, build 41): the ceremony holds on this until it is tapped — it is not skippable before it

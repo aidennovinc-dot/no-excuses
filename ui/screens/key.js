@@ -82,7 +82,7 @@ import { emit, on } from "../../core/events.js";
 import { everywhere, prefs, save } from "../../core/store.js";
 import { GAMES, lenFull, lenName } from "../../games/registry.js";
 import { isOpen, lenOpen, modeCount } from "../../progress.js";
-import { bandPct, barOf, barsFaked, barsMissing, chestOpen, chestState, gameKey, isCleared, keyChest, keyFinished, keyState, keyTiers, meter, openChest, retroTier, skey, tierOpen } from "../../progress/key.js";
+import { bandPct, barOf, barsFaked, barsMissing, chestOpen, chestState, gameKey, isCleared, keyChest, keyFinished, keyGaunt, keyState, keyTiers, meter, openChest, retroTier, skey, tierOpen } from "../../progress/key.js";
 import { goWhere } from "../../run/run.js";
 import { scoreTxt } from "../format.js";
 import { capture, define, lock } from "../actions.js";
@@ -317,6 +317,14 @@ function render() { const tiers = keyTiers();
     : kc && kc.state === 'ready' ? T(KEY.completeReady, { chest: GRID.chest[kc.id] })
     : kc && kc.state === 'gaunt' ? T(KEY.completeGaunt, { name: GAUNTLET.name[kc.gaunt] || kc.gaunt }) : KEY.completeSub;
   $('#key-hint').textContent = st.whole ? kcLine : openGame ? KEY.rowGo : KEY.hint;
+  /* v30 (59.6, build 59): AND THE KEY CARRIES ITS GAUNTLET. 59.6 takes the Gauntlet requirement off the chest's map tile, where
+     it did not fit, and gives it to the key as a standing line — "Only Gauntlet Mega can wield it." — shown from the moment the
+     tier is open rather than only once the key is whole, because a player holding the key with the Gauntlet unfinished is
+     exactly the person who needs the reason. `keyGaunt` is that standing fact; `keyChest` answers the live state and still
+     drives the hint above. It hides while a game's panel is open, which is the one time this screen is short of room. */
+  { const gid = keyGaunt(t.id), wi = $('#key-wield');
+    if (wi) { const on = !!gid && !openGame; wi.hidden = !on;
+      wi.textContent = on ? T(KEY.wield, { name: GAUNTLET.name[gid] || gid }) : ''; } }
   /* a real config mismatch outranks Testing's in-memory fill — one is a fault, the other a dev switch (S5).
      v25 (item 14, build 45, superseding #428 on this screen): THE RED "N OF THE 30 NUMBERS ON THIS KEY ARE PLACEHOLDERS" LINE IS GONE. This screen
      is written for the player; it covered the requirements under it, and which numbers are placeholders is Aiden's to know, not the player's —

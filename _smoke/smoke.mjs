@@ -2399,14 +2399,16 @@ if (section('chests')) {
     return out; });
   const why48 = s => { const st = s.store, w = [];
     s.map.forEach((m, i) => { const want = st.chests[i] === 'before' ? 'locked' : st.chests[i]; if (m.st !== want) w.push(`map ${i} ${m.st}≠${want}`); if (/%/.test(m.need)) w.push(`map ${i} prints "${m.need}"`);
-      /* AMENDED at build 58 (58.2): a chest that wants a finished Gauntlet as well lists BOTH requirements, one per line with its own tick, so the
-         line it must carry is its key line ticked or not plus its Gauntlet's. A chest with one requirement still says exactly what it said. */
+      /* AMENDED at build 58 (58.2): a chest that wants a finished Gauntlet as well lists BOTH requirements, one per line with its own tick.
+         REVERSED AT BUILD 59 (v30 59.6): it carries ONE LINE, FOLLOWING THE STATE. Aiden on the locked Author chest — "the author chest text
+         doesn't fit within it, so that doesn't look good. Let's just do earn the author key" — the two ticked lines wrapped to four and ran over
+         the chest drawing and its red strike. So a locked tile says the FIRST thing still missing and nothing else: its key line while the key is
+         not in hand, its Gauntlet line once it is. The requirement is not lost — it is still listed on that chest's Progress tab and it is now
+         part of the key's own story on the Keys screen, both of which this section asserts elsewhere. */
       if (i && want === 'locked') { const cid = ['games', 'key', 'pro', 'thorns'][i];
-        // only a chest that is genuinely LOCKED lists both — one whose chest ahead is still shut gives nothing away about either (A.1 / G.1)
-        const gid = st.chests[i] === 'locked' ? (CH48.CHESTS.find(c => c.id === cid) || {}).gaunt : null;
         const lines = String(m.need).split('\n');
-        const okNeed = gid ? lines.length === 2 && lines[0].slice(2) === EARN[cid] && /Gauntlet/.test(lines[1]) && lines.every(l => /^[✓·] /.test(l))
-                           : m.need === EARN[cid];
+        const okNeed = lines.length === 1 && !/^[✓·] /.test(m.need)
+          && (m.need === EARN[cid] || /Gauntlet/.test(m.need));
         if (!okNeed) w.push(`map ${i} says "${m.need}"`); } });
     s.keys.cards.forEach((k, i) => { if (k.theme) w.push(`card ${i} has a theme name`); if (k.locked !== !st.open[i]) w.push(`card ${i} locked ${k.locked}`); if (!k.locked && st.bars[i] < st.total[i] && k.u !== st.pct[i] + '%') w.push(`card ${i} "${k.u}"≠${st.pct[i]}%`); });
     if (/%/.test(s.keys.line)) w.push(`key line "${s.keys.line}"`);
@@ -2493,9 +2495,12 @@ if (section('chests')) {
     && t1.store.chests.join() === p3.chests.join() && t1.store.bars.join() === p3.bars.join() && t1.store.meter === p3.meter
     && t2.store.chests.join() === 'open,open,ready,before' && t2.store.meter === 200 && t2.menu === CP48.KEY.menuReady.replace('{pct}', t2.store.shown).replace('{chest}', CP48.GRID.chest.pro)
     && t3.store.chests.join() === 'open,locked,before,before' && t3.store.bars.join() === '0,0,0'
-    // AMENDED at build 58 (58.2): the Author chest is genuinely LOCKED here, so it lists both its requirements with a tick each
+    /* AMENDED at build 58 (58.2): the Author chest is genuinely LOCKED here, so it lists both its requirements with a tick each.
+       REVERSED AT BUILD 59 (v30 59.6): ONE line. At this step the Author key is one bar in, so the thing still missing is the KEY
+       and that is the whole of what the tile says — the Gauntlet's turn comes only once the key is in hand, and it is on the key's
+       own screen from the start either way. */
     && t4.store.chests.join() === 'open,open,open,locked' && t4.store.bars.join() === '30,30,1' && t4.store.meter === 203
-    && t4.map[3].need.split('\n').length === 2 && t4.map[3].need.split('\n')[0].slice(2) === EARN.thorns && /Gauntlet Mega/.test(t4.map[3].need)
+    && t4.map[3].need === EARN.thorns
     && t5.store.chests.join() === 'open,ready,before,before' && t5.store.meter === 100 && t5.map[2].need === EARN.pro
     && t5b.store.chests.join() === 'open,locked,before,before' && t5b.store.meter === 0
     && t6.store.chests.join() === 'open,open,open,ready' && t6.store.meter === 300
@@ -2908,6 +2913,45 @@ if (section('chests')) {
     (oneLine && insideCard && goOn)
       ? ok(`v30 59.2 the congratulations word is ONE LINE and Continue is on screen, all four chests: 15 letters on a single line each, the word measuring ${F4.map(id => fitAll[id].wordW).join('/')}px inside card content boxes of ${F4.map(id => fitAll[id].inner).join('/')}px (white-space:nowrap plus a size taken off the CARD through container units, so it cannot outgrow what it sits in), and Continue's bottom at ${F4.map(id => fitAll[id].goBottom).join('/')} against a ${fitAll.games.vh}px viewport`)
       : bad('v30 59.2 the congratulations word on one line with Continue visible', JSON.stringify({ oneLine, insideCard, goOn, fitAll }));
+
+    /* v30 (59.6, build 59): THE CHEST TILE CARRIES ONE LINE, AND THE GAUNTLET MOVED ONTO THE KEY.
+       Two halves, asserted separately because they are two places. (1) NO tile, on any chest, in any state, prints more than one
+       line — the thing that made the Author chest's text run over its own drawing was 58.2's two ticked requirements, and a
+       newline in `data-need` is exactly what produced them. Driven at 375, the narrower phone, because that is where it failed.
+       (2) The requirement is not lost: the Pro and Author KEYS now carry it as a standing line naming their Gauntlet, from the
+       moment the tier is open rather than only once the key is whole. The Skill key has no Gauntlet and must stay silent. */
+    await page.setViewport({ width: 375, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    const tiles59 = [];
+    /* three profiles, chosen so every line a locked tile can print is actually produced: no key at all (its key line), every
+       bar cleared with no Gauntlet finished (its Gauntlet line — the state 59.6 invents), and the chests behind it shut. */
+    for (const [label, chests, fill] of [['no bars cleared', { games: 1 }, false], ['every bar cleared, no Gauntlet finished', { games: 1, key: 1 }, true], ['Pro chest open, every bar cleared', { games: 1, key: 1, pro: 1 }, true]]) {
+      await boot({ snd: 'off', chests }, { unlock: ALL49 }, { plain: PLAIN48 });
+      if (fill) await page.evaluate(async () => { const P = await import('./progress/key.js'), S = await import('./core/store.js');
+        const bars = {}; for (const c of P.COMBOS) for (const t of ['', '|pro', '|author']) bars[c.key + t] = 1;
+        S.store.bars = bars; S.save(); });
+      await go('s-pick'); await sleep(800);
+      tiles59.push([label, await page.evaluate(() => Object.fromEntries(['games', 'key', 'pro', 'thorns'].map(id => {
+        const c = document.querySelector(`#grid .chest[data-chest="${id}"]`); if (!c) return [id, null];
+        return [id, { st: c.classList.contains('open') ? 'open' : c.classList.contains('ready') ? 'ready' : 'locked',
+          need: c.querySelector('.pic').dataset.need || '', twoneed: c.classList.contains('twoneed') }]; })))]);
+    }
+    const oneLineTile = tiles59.every(([, m]) => Object.values(m).every(t => t && !/\n/.test(t.need) && !t.twoneed));
+    const wield59 = await page.evaluate(async () => {
+      const R = await import('./ui/router.js'), K = await import('./progress/key.js'), CP = await import('./config/copy.js');
+      const out = {}; const wait = ms => new Promise(r => setTimeout(r, ms));
+      for (const [i, tier] of ['clear', 'pro', 'author'].entries()) {
+        R.show('s-menu'); await wait(90); R.show('s-key', { tier: i }); await wait(420);
+        const el = document.getElementById('key-wield');
+        out[tier] = { gaunt: K.keyGaunt(tier), shown: !!el && !el.hidden, text: el ? el.textContent.trim() : '',
+          want: K.keyGaunt(tier) ? CP.KEY.wield.replace('{name}', CP.GAUNTLET.name[K.keyGaunt(tier)]) : '' };
+      }
+      return out; });
+    const wieldOk = !wield59.clear.gaunt && !wield59.clear.shown
+      && ['pro', 'author'].every(t => wield59[t].gaunt && wield59[t].shown && wield59[t].text === wield59[t].want && /Gauntlet/.test(wield59[t].text));
+    await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    (oneLineTile && wieldOk)
+      ? ok(`v30 59.6 a chest tile says ONE thing at 375px — never two ticked requirements over its own drawing — in every state of every chest (${tiles59.map(([l, m]) => l + ': ' + Object.values(m).map(t => '"' + t.need + '"').join(' ')).join(' | ')}); and the Gauntlet requirement moved onto the KEY, standing from the moment its tier opens: ${['pro', 'author'].map(t => t + ' "' + wield59[t].text + '"').join(' · ')}, with the Skill key silent because no Gauntlet wields it`)
+      : bad('v30 59.6 the chest tile and the key wield line', JSON.stringify({ oneLineTile, wieldOk, tiles59, wield59 }));
   }
 
   /* ---- v29 Section A (58.2, build 58, quoting L6): A FINISHED GAUNTLET OPENS THE NEXT CHEST ----
@@ -3003,13 +3047,18 @@ if (section('chests')) {
       out.tileOn = { done: t2.classList.contains('done'), need: t2.querySelector('.pic').dataset.need };
       S.store.bars = {}; S.store.gaunt = []; S.save();
       return out; });
-    const two58 = map58.shut.split('\n');
-    (two58.length === 2 && /^\u2713 /.test(two58[0]) && /^\u00b7 /.test(two58[1]) && /Gauntlet Mini/.test(two58[1]) && map58.pre === 'pre-line'
+    /* AMENDED AT BUILD 59 (v30 59.6): the locked tile lists ONE requirement, not both. 58.2's two ticked lines wrapped to four on
+       the Author chest and ran over its drawing, which is what 59.6 is; the tile now says the first thing still missing. The
+       requirement itself is untouched \u2014 the chest still wants the key AND the Gauntlet, `chestNeeds` still returns both, the
+       chest's Progress tab still lists both, and the key's own screen now names the Gauntlet from the moment its tier opens.
+       So what this asserts is the SAME fact through the new wording: with the key in hand and Gauntlet Mini unfinished, the Pro
+       chest's one line is the GAUNTLET's, it is one line, it carries no tick marker, and finishing the run turns it to "tap to open". */
+    (map58.shut.indexOf('\n') < 0 && !/^[\u2713\u00b7] /.test(map58.shut) && /Gauntlet Mini/.test(map58.shut)
       && one58.indexOf('\n') < 0 && !/^[\u2713\u00b7] /.test(one58)
       && !map58.tile.done && !map58.tile.need && map58.tileOn.done && /93/.test(map58.tileOn.need)
       && map58.on === CP48.GRID.chestOpen)
-      ? ok(`58.2 the map says it: the locked Pro chest lists BOTH requirements and ticks each ("${two58.join(' / ')}"), a chest with one requirement keeps its one unticked line ("${one58}"), a finished Gauntlet Mini wears a tick on its own tile with its best score under it ("${map58.tileOn.need}"), and that same run turns the Pro chest's two lines into "${map58.on}"`)
-      : bad('58.2 the map tile', JSON.stringify({ one58, map58 }));
+      ? ok(`58.2 / v30 59.6 the map says it in ONE line: with the Pro key whole and Gauntlet Mini unfinished the Pro chest says "${map58.shut}" and nothing else, a chest whose key is still missing says only that ("${one58}"), a finished Gauntlet Mini wears a tick on its own tile with its best score under it ("${map58.tileOn.need}"), and that same run turns the Pro chest's line into "${map58.on}"`)
+      : bad('58.2 / v30 59.6 the map tile', JSON.stringify({ one58, map58 }));
 
     // the ceremony: the gauntlet hand carries the key in and turns it, on the two chests that want a Gauntlet and on neither of the others
     const hand58 = await page.evaluate(async () => { const CE = await import('./ui/ceremony.js');

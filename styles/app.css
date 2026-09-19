@@ -682,6 +682,10 @@
   .klbl.home .knum{fill:var(--ok);opacity:1}
   .keycount{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink)}
   #key-warn.warn{color:var(--miss);opacity:1;text-transform:none;letter-spacing:.08em;max-width:34ch}
+  /* v30 (59.6, build 59): the key's own standing line about the Gauntlet that must wield it. It is the KEY'S STORY, not a
+     warning and not a state, so it takes the muted ink rather than the miss red and sits a step under the hint above it. */
+  #key-wield{color:var(--mute);text-transform:none;letter-spacing:.06em;max-width:34ch;margin-top:2px}
+  #s-key.kdue #key-wield,#s-key.kearning #key-wield{visibility:hidden}
   /* v25 (item 16, build 45): THE GAME PANEL FITS ON THE PHONE. It was a 34vh box under a ring up to 46vh tall with the keys row above both, so the
      panel ran off the bottom — Sequence's second line under the stamp. The screen is the phone's height and no taller; the ring's column takes what
      is left, a game's panel shrinks to fit and scrolls inside itself, and opening one steps the ring down to 30vh (guess) to give it the room */
@@ -2023,7 +2027,13 @@
     58%{opacity:1}58.5%{opacity:var(--gdip)}59.2%{opacity:1}100%{opacity:1}}
   /* the two MAP labels wear it too — a Gauntlet reads as a threat before it is opened (57.9). `.glow` is dropped for these two:
      its soft white pulse and the flicker are two animations for one property and the flicker is the one Aiden asked for. */
-  .tile.gauntlet .name{font-family:var(--scare);font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:none;color:var(--gsc1);
+  /* v30 (59.5, build 59): the two map labels WRAP now. `.tile .name` is nowrap and the game names are 10px mono, which fits;
+     Cinzel is far wider than the Creepster it replaces and "Gauntlet Mega" in the Decorative cut ran out of its own tile and
+     across the PRO CHEST label beside it. Two words on two lines keeps both inside their tile AND keeps Mega a visible step
+     larger than Mini, which shrinking to fit would have inverted — the game labels are 10px, so Mega would have ended up
+     smaller than the tiles either side of it. */
+  .tile.gauntlet .name{white-space:normal;max-width:100%;line-height:1.08;
+    font-family:var(--scare);font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:none;color:var(--gsc1);
     text-shadow:0 0 12px color-mix(in srgb,var(--gsc1) 50%,transparent);animation:gflick 5.4s steps(1,end) infinite;--gdip:.5}
   .tile.gauntlet[data-gauntlet="g2"] .name{font-family:var(--scare2);font-weight:900;font-size:14px;color:var(--gsc2);animation-duration:3.6s;--gdip:.3;
     text-shadow:0 0 9px color-mix(in srgb,var(--gsc2) 75%,transparent),0 0 26px color-mix(in srgb,var(--gsc2) 40%,transparent)}
