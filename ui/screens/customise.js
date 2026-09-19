@@ -23,7 +23,7 @@ import { on } from "../../core/events.js";
 import { sel } from "../../core/state.js";
 import { everywhere, musicOn, prefs, save } from "../../core/store.js";
 import { GAMES } from "../../games/registry.js";
-import { ACH, achById, got, markSeen, newMark } from "../../progress.js";
+import { achById, got, markSeen, newMark } from "../../progress.js";
 import { chestOpen, keyAch, keyFinished } from "../../progress/key.js";
 import { define } from "../actions.js";
 import { chips } from "../chips.js";
@@ -132,7 +132,9 @@ function pvStep(){
   else if(g==='reaction'){ const p=$('#pvrx'), ph=k%6; if(ph===0){ p.classList.remove('lit'); p.textContent='wait for it'; pvG(50,86); } else if(ph===3){ p.classList.add('lit'); p.textContent='tap'; } else if(ph===4){ pvTap(); p.classList.remove('lit'); p.innerHTML=`<b>${180+(Math.random()*90|0)} ms</b>`; } }
   else if(g==='spot'){ const ks=$$('#pvsp i'), ph=k%5; if(!ks.length) return; if(ph===0){ ks.forEach(x=>x.classList.remove('odd','dim')); $('#pvg').classList.remove('on'); } else if(ph===2){ const o=ks[9], r=o.getBoundingClientRect(), b=$('#pv').getBoundingClientRect(); pvG((r.left+r.width/2-b.left)/b.width*100,(r.top+r.height/2-b.top)/b.height*100); } else if(ph===3){ pvTap(); ks[9].classList.add('odd'); ks.forEach((x,i)=>{ if(i!==9) x.classList.add('dim'); }); } }
 }
-setInterval(pvStep,520);
+// build 55 (in passing): the preview interval used to run for the whole session, mid-run included, with a class check as its only guard
+let pvT=0;
+on('screen:change',({id})=>{ clearInterval(pvT); pvT=0; if(id==='s-custom') pvT=setInterval(pvStep,520); });
 
 /* colour wheel: hue around, saturation outward. Writes straight into prefs[set] (bg → tint) */
 const Wheel=(()=>{ const cv=$('#wheel'), cx=cv.getContext('2d'); let set='sq', drawn=false, col='#ffffff';
@@ -197,7 +199,11 @@ define({
     // v13 (7.1): the scale left the pick sheet — one choice, applied to every Sequence run
     else if(k==='scale'){ prefs.scale=b.dataset.v; sel.scale=b.dataset.v; }
     else prefs[k]=b.dataset.v;
-    applyPrefs(F.g); renderCustom();
+    /* v29 (build 55): the SAVE is here now. Every branch above writes to `prefs` and none of them saved — the whole row relied on
+       ui/theme.js applyPrefs() ending in save(), which it did on every screen change as well, writing the whole record to
+       localStorage on every navigation. applyPrefs changes no store state, so the save belongs where the store actually changes:
+       here, at the tap. (Found by the gate, not by the review, which had noted the dependency for the track row alone.) */
+    save(); applyPrefs(F.g); renderCustom();
     if(k==='scale') Snd.scaleHear();
     // v13 (12.2): the pack is demonstrated with the app's own tap sounds, in the pack just picked — a select, then a hit
     if(k==='snd'){ Snd.select(); setTimeout(()=>Snd.hit(),150); } return 'pick'; },

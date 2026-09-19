@@ -246,11 +246,11 @@ function renderChests(){ const m=modeCount(), rang=[], newCracks=[];
     // an OPEN chest has already been broken open: its cracks are history, not an arrival, so they are recorded and never played (L.9b)
     if(chestOpen('games')){ prefs.cracked=n; save(); continue; }
     const crks=[...el.querySelectorAll('.crackg .crk')];
-    crks.slice(seen).forEach((c,i)=>{ c.classList.add('fresh'); c.style.animationDelay=(i*260)+'ms'; setTimeout(()=>Snd.crack(seen+i),i*260);
+    crks.slice(seen).forEach((c,i)=>{ c.classList.add('fresh'); c.style.animationDelay=(i*260)+'ms'; mapT.push(setTimeout(()=>Snd.crack(seen+i),i*260));   // build 55 (in passing): into mapT, so a crack does not tick over the next run's countdown
       // the class comes off when it has drawn: L.9b says nothing on a settled map animates but a READY chest's idle
       setTimeout(()=>{ c.classList.remove('fresh'); c.style.animationDelay=''; },i*260+700); });
     if(n>=7){ const pic=el.querySelector('.pic'); const old=pic.querySelector('.pburst'); if(old) old.remove();
-      pic.insertAdjacentHTML('beforeend',burstHtml('games')); el.classList.add('spill'); setTimeout(()=>Snd.crackBurst(),(7-seen-1)*260+180); }
+      pic.insertAdjacentHTML('beforeend',burstHtml('games')); el.classList.add('spill'); mapT.push(setTimeout(()=>Snd.crackBurst(),(7-seen-1)*260+180)); }
     prefs.cracked=n; save(); } }
 /* v18 (B.18, build 32): each game tile's outline fills with its KEY-1 progress — 5 of 8 requirements met is the outline
    drawn five eighths of the way round, clockwise from the top, in the lilac named KEYFILL in config/theme.js. A game whose

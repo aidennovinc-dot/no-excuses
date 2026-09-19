@@ -79,9 +79,22 @@ function playVideo(m) { if (!m || !m.file) return false;
   vid.addEventListener('play', () => glow(true));
   vid.addEventListener('pause', () => glow(false));
   vid.addEventListener('ended', () => glow(false));
+  /* v29 (item 10, build 55): A CLIP THAT WILL NOT PLAY SAYS SO, AND play() IS CALLED IN THE TAP'S OWN TASK.
+     Nothing listened for `error` and the play() rejection was swallowed by a bare catch, so a missing file, a 404 or an iOS
+     NotAllowedError all showed the same thing: a silent black rectangle inside a glowing frame that never lit, with "tap outside to
+     close" as the only way out. And play() was fired 320ms after the tap, from inside the power-on's `open` step - WebKit grants
+     un-muted playback through a transient-activation window that current iOS is generous with and iOS <= 16.3 and some WKWebView
+     configurations are not. It is called synchronously now; the frame is still clipped shut for those 320ms, so the picture still
+     OPENS, and the power-on sound still lands on its own beat. */
+  const failed = () => { if (!host || host.dataset.msg !== m.id) return; glow(false); host.classList.add('vfail');
+    const box = host.querySelector('.vcc'); if (box) box.textContent = MSG.unavailable; };
+  vid.addEventListener('error', failed);
+  const src = pic.querySelector('source'); if (src) src.addEventListener('error', failed);
+  host.classList.remove('vfail');
   // the power-on, by name: `outline` and `line` are the stylesheet's; `open` is the beat the picture arrives and the beat the thunk lands on
   void host.offsetWidth; host.classList.add('von');
-  for (const s of PLAYER.on.steps) if (s.name === 'open') at(s.at, () => { Snd.videoFx('on'); const p = vid && vid.play(); if (p && p.catch) p.catch(() => { }); });
+  try { vid.load(); const pl = vid.play(); if (pl && pl.catch) pl.catch(failed); } catch (e) { failed(); }
+  for (const s of PLAYER.on.steps) if (s.name === 'open') at(s.at, () => Snd.videoFx('on'));
   at(PLAYER.on.ms, () => host.classList.remove('von'));
   if (!prefs.msgSeen || !prefs.msgSeen[m.id]) { prefs.msgSeen = Object.assign({}, prefs.msgSeen, { [m.id]: 1 }); save(); }
   if (onSeen) onSeen(m.id);
@@ -94,7 +107,10 @@ function closeVideo() { if (!host || host.hidden || closing) return false;
   if (vid) { try { vid.pause(); } catch (e) { } }
   glow(false); host.classList.remove('von'); void host.offsetWidth; host.classList.add('voff');
   for (const s of PLAYER.off.steps) if (s.name === 'dot') at(s.at, () => Snd.videoFx('off'));
-  at(PLAYER.off.ms, () => { host.classList.remove('voff'); host.hidden = true; delete host.dataset.msg;
+  // v29 (item 10, build 55): the source is RELEASED before the frame is emptied. innerHTML='' alone leaves the iOS decoder alive until GC,
+  // so eight opens in a row held eight decoders. pause / removeAttribute('src') / load() is the documented way to let one go.
+  at(PLAYER.off.ms, () => { host.classList.remove('voff', 'vfail'); host.hidden = true; delete host.dataset.msg;
+    if (vid) { try { vid.pause(); vid.removeAttribute('src'); vid.load(); } catch (e) { } }
     host.querySelector('.vpic').innerHTML = ''; host.querySelector('.vcc').textContent = ''; vid = null; closing = 0; });
   return true; }
 

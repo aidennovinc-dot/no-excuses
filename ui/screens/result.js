@@ -117,7 +117,7 @@ on('run:finish',({run,isBest,two,fresh,ach,adv})=>{ const g=GC(run.g,run.d,run.s
     /* v26 (§B1, build 49): AND NOT ON TOP OF "END OF RUN" EITHER. Aiden asked whether the two overlap, and they did — this screen comes up 250ms after the
        finish and the tier played at once, over the last three notes of Snd.end(). The tier now waits until End of run has landed (Snd.endLeft()) */
     const rest=()=>{ const gap=lastTier?Snd.endLeft():0, d=(lastTier?600:0)+gap; if(lastTier){ const t=lastTier; if(gap) setTimeout(()=>Snd.verdict(t),gap); else Snd.verdict(t); }
-      msgs.forEach(([m,id,cls,html,go,g],i)=>setTimeout(()=>{ toast(m,id,cls,!!id,go); if(g) setTimeout(()=>Snd.mapFx(g),MAP_ON_UNLOCK_MS); },d+i*((id||go)?3400:2600))); renderOverChips(); };
+      msgs.forEach(([m,id,cls,html,go,g],i)=>tT.push(setTimeout(()=>{ toast(m,id,cls,!!id,go); if(g) tT.push(setTimeout(()=>Snd.mapFx(g),MAP_ON_UNLOCK_MS)); },d+i*((id||go)?3400:2600)))); renderOverChips(); };
     if(adv) keyBreak(adv,rest); else rest(); }),250); });
 /* v15 (5.1, build 26): a key unlock INTERRUPTS this screen. It was a green toast the player tapped, sitting behind
    however many unlock and achievement toasts came first, and only then did it offer the key — so the one thing the key
@@ -128,6 +128,14 @@ on('run:finish',({run,isBest,two,fresh,ach,adv})=>{ const g=GC(run.g,run.d,run.s
    key:done, and the toasts that were waiting run after it rather than in front of it. */
 function keyBreak(adv,then){ pendingRest=then; lock(true); $('#s-over').classList.add('fadeout');
   setTimeout(()=>show('s-key',{advance:adv,auto:'s-over'}),420); }
+/* v29 (item 9, build 55): THE TOAST TIMERS DIE WITH THE SCREEN. A run that earned two unlocks and an achievement queues toasts at about
+   0s, 3.4s and 6.8s with no handle kept and nothing cancelling them, so a player who tapped Go within three seconds got toast 2 and
+   toast 3 over the new run - and a tap on one called show('s-pick') straight out of a LIVE run, which left R.on true, the rAF ticking,
+   the engine's timers armed and the music playing under the pick sheet, until the run finished by itself and threw the result screen up
+   over it. run/run.js aborts a live run on any screen change now, which is the belt; this is the braces, and the right fix: a message
+   about the run that just ended has no business arriving during the next one. */
+let tT=[];
+on('screen:change',()=>{ tT.forEach(clearTimeout); tT=[]; });
 let pendingRest=null;
 on('key:done',()=>{ lock(false); $('#s-over').classList.remove('fadeout'); const f=pendingRest; pendingRest=null; if(f) setTimeout(f,320); });
 define({

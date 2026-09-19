@@ -79,6 +79,12 @@ const chestOpen = id => opened(id);
    (§L.10a, §M.2): no clear is banked, no number shown, no interlude, no outline fill, no key-1 achievement set — and the bars a saved
    best already beats bank silently when the chest opens (G.4, extended). Everything that asks whether a tier is open follows from this. */
 const tierOpen = tier => { const c = CHESTS.find(x => x.opens === tier); return !c || chestOpen(c.id); };
+/* v29 (item 13, build 55): WHAT MAY BE WRITTEN, AS OPPOSED TO WHAT MAY BE SEEN. chestOpen() honours OPEN EVERYTHING and SUPPORTER, which
+   is right for every READ - Testing's escapes are how Aiden reviews locked content on his phone (#411) - but checkKey and retroArrived
+   were banking real |pro and |author bars while a flag was on, and those bars STAY once the flag is off. CLAUDE.md's line is "OPEN
+   EVERYTHING and SUPPORTER stay flags that store no progress", and Testing's per-chest switches exist so a reviewer never has to.
+   tierEarned() reads the chest itself and nothing else, and only the two writers ask it. */
+const tierEarned = tier => { const c = CHESTS.find(x => x.opens === tier); return !c || !!(prefs.chests && prefs.chests[c.id]); };
 /* v21 (G.3, build 37): THE ONE PLACE THE TWO PROGRESSION SYSTEMS TOUCH — every game mode unlocked — reading the chain through
    progress.js's modeCount() and never store.unlock. BUILD 40 (L.10): it is no longer a gate on the connector into chest 1; it is what
    opens the Games chest. The chest cannot be stranded: every key-1 bar belongs to a mode the chain reaches without it (asserted in the
@@ -127,7 +133,8 @@ const cleared = () => store.bars;
 const isCleared = (key, tier = 'clear') => !!store.bars[skey(key, tier)];
 // L10 / 9.4: solo only. A practice run, a challenge run, a two-player run and a run that failed with nothing on it never count
 // v17 (B.4): a demo run is the fifth. The ghost plays the real engine, so without this a first-play demo could clear a bar
-const eligible = (run, two) => !!run && !run.practice && !run.chal && !run.demo && !two && !(run.fail && !run.hits);
+// build 55 (in passing): the `run.fail && !run.hits` clause promised a guard that does not exist — no engine has set `fail` since Go / No-go's run-ender was retired
+const eligible = (run, two) => !!run && !run.practice && !run.chal && !run.demo && !two;
 // direction is read from the data, never assumed (C.7): 'lower' is a ceiling, 'higher' is a floor
 function beats(run, bar, dir) { return dir === 'lower' ? run.hits <= bar : run.hits >= bar; }
 function barFor(run) { return KEY_BARS[keyOf(run.g, run.d, run.s)] || null; }
@@ -139,7 +146,7 @@ function barFor(run) { return KEY_BARS[keyOf(run.g, run.d, run.s)] || null; }
 function checkKey(run, two) { if (!eligible(run, two)) return null;
   const key = keyOf(run.g, run.d, run.s), c = COMBOS.find(x => x.key === key); if (!c || !c.bar) return null;
   let first = null, wrote = false;
-  for (const tier of TIERS) { if (!tierOpen(tier) || isShell(tier)) continue;
+  for (const tier of TIERS) { if (!tierOpen(tier) || !tierEarned(tier) || isShell(tier)) continue;   // item 13: a dev-opened tier is shown, never banked
     const bar = barOf(c, tier); if (bar === null || isCleared(key, tier) || !beats(run, bar, c.bar.dir)) continue;
     store.bars[skey(key, tier)] = Date.now(); wrote = true;
     if (!first) { const p = gameKey(run.g, tier); first = { key, tier, g: run.g, d: run.d, s: run.s, bar: { bar, dir: c.bar.dir, unit: c.bar.unit }, was: p.done - 1, done: p.done, total: p.total }; } }
@@ -206,7 +213,14 @@ const meterMax = () => METER.band * (TIERS.length + (METER.modes ? 1 : 0));
    the three chests before it, which is 300 by construction, and it leaves the Author chest READY rather than open — so the old figure could
    read its own maximum with a chest still shut. The 103% / 203% of build 46 are the same arithmetic three bars into the next band.
    100 shown therefore means every bar on every key is cleared; the last chest is a reward for that, not more of it. */
-const meterPct = v => Math.max(0, Math.min(100, Math.round((typeof v === 'number' ? v : meter()) / Math.max(1, meterMax()) * 100)));
+/* ---------- v29 (item 1, build 55): AND THE FIGURE IS 0-300 AGAIN ----------
+   Build 53 (v28 item 9) put meterPct() over the top of meter() and clamped it to 100, so the front of the app read 100% while two of
+   the three keys were still empty and every surface lost the difference between 100, 200 and 300. That is the 2026-09-14 decision
+   reversed, and the decision stands: ONE METER, 0-300, never reset, no override. meterPct() keeps its job - it is still the ONE thing
+   any surface prints, and the one place rounding happens - but what it prints is the meter itself, held between 0 and its own maximum.
+   meter() is unchanged: three bands of 100, a band counting only once the chest that reveals its tier is open, so key 1 whole is 100,
+   Pro whole is 200 and Author whole is 300. The gate asserts a store with key 1 and Pro cleared renders 200%. */
+const meterPct = v => Math.max(0, Math.min(meterMax(), Math.round(typeof v === 'number' ? v : meter())));
 /* v23 (§L.8d / §L.8e, build 41): WHICH BAND a meter figure is in, and how far through it — presentation only (L10). A band starts at its
    lower figure (100% is band 1, guess) and the top of the meter is the top of the last band, so 400% is band 3 at full strength. ui/chest.js
    turns this into the look; nothing here knows a colour. */
@@ -384,7 +398,8 @@ function retroBank(only) { const fresh = [], sig = Object.assign({}, prefs.retro
 /* v24 (E, build 44): KEY 1 IS CREDITED THE SAME WAY NOW. Build 40 left it out because its column was "Aiden's own numbers, never a
    placeholder that arrives" — and build 44 is exactly the day his numbers arrive, replacing Cowork's proposals. So a profile whose key 1
    is open credits every bar its saved best already beats, silently, once — Aiden's #426 answer applied to the column it now covers (guess). */
-const retroArrived = () => { const due = TIERS.filter(t => tierOpen(t) && !isShell(t) && (prefs.retroCol || {})[t] !== colSig(t));
+// v29 (item 13, build 55): tierEarned, not tierOpen - boot must not bank a Pro column into a profile whose Skill chest is only dev-open
+const retroArrived = () => { const due = TIERS.filter(t => tierEarned(t) && !isShell(t) && (prefs.retroCol || {})[t] !== colSig(t));
   return due.length ? retroBank(due) : []; };
 
 /* v24 (D.1, build 44): THE GOAL AT THE TOP, WHEN THE CHAIN HAS NOTHING FOR THIS RUN — this combination's nearest unearned key requirement:
@@ -480,4 +495,4 @@ function devMeterTo(n, modes) { const want = Math.max(0, Math.min(meterMax(), Ma
     const c = CHESTS.find(x => x.needs === tier); if (!c || chestState(c.id) !== 'ready' || !devOpen(c.id)) break; }
   seenDown(); save(); return meter(); }
 
-export { COMBOS, RADAR_PAST, TIERS, crackCount, msgDot, msgOpen, msgShown, msgTitle, bandPct, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, checkKeyAch, chestAt, chestOpen, chestState, cleared, combos, credit, devBack, devChestReset, devClearTo, devMeterTo, devOpen, devReach, fillBars, gameKey, isCleared, isPlaceholder, isShell, keyAch, keyChest, keyFinished, keyGoal, keyOf, keyPct, keyState, keyTier, keyTiers, meter, meterBand, meterMax, meterPct, modesOpen, openChest, placeholderCount, radarOf, radarRungs, readyChest, retroArrived, retroBank, retroTier, skey, tierFull, tierOpen };
+export { COMBOS, RADAR_PAST, TIERS, tierEarned, crackCount, msgDot, msgOpen, msgShown, msgTitle, bandPct, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, checkKeyAch, chestAt, chestOpen, chestState, cleared, combos, credit, devBack, devChestReset, devClearTo, devMeterTo, devOpen, devReach, fillBars, gameKey, isCleared, isPlaceholder, isShell, keyAch, keyChest, keyFinished, keyGoal, keyOf, keyPct, keyState, keyTier, keyTiers, meter, meterBand, meterMax, meterPct, modesOpen, openChest, placeholderCount, radarOf, radarRungs, readyChest, retroArrived, retroBank, retroTier, skey, tierFull, tierOpen };

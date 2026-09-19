@@ -29,6 +29,12 @@ const write=(k,v)=>{ try{ localStorage.setItem(k,v); return true; }catch(e){ ret
 const drop=k=>{ try{ localStorage.removeItem(k); }catch(e){} };
 const parse=s=>{ if(s==null) return undefined; try{ return JSON.parse(s); }catch(e){ return undefined; } };
 const isObj=x=>!!x&&typeof x==='object'&&!Array.isArray(x);
+/* v29 (item 5, build 55): THE ONE LOOKUP GUARD. `TABLE[x] ? x : default` is truthy for every Object.prototype member
+   name - 'constructor', '__proto__', 'toString', 'hasOwnProperty' ... - so a planted run with g:'constructor' reached
+   GAMES[r.g].modes.includes(r.d) and threw during module evaluation: blank app, nothing after core/store.js loaded,
+   and the record was never repaired because save() was never reached. Four sites used the pattern (GAMES twice,
+   DESIGNS, SCALES); every one of them goes through has() now, and the gate plants all four as corrupt fixtures. */
+const has=(t,k)=>typeof k==='string'&&Object.hasOwn(t,k);
 const HEX=/^#[0-9a-f]{6}$/i;
 const hex=(v,d)=>typeof v==='string'&&HEX.test(v)?v:d;
 // v26 (§B1, build 49): a HELD sound pack (Sigh) cannot stay chosen — a profile that had it plays the default until it is unlockable again
@@ -42,8 +48,8 @@ const MENU_SCREENS=['s-pick','s-board','s-prog','s-key','s-custom','s-about'];
 /* ---------- the shape of each field. Anything that is not what its default is becomes the default; the rest is kept ---------- */
 // S5: the two dev flags are read only while BUILD_FLAGS.dev is on — a `supporter: true` planted in storage is nothing in a release build
 function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev;
-  const o={ bg:DESIGNS[p.bg]?p.bg:'stars', tint:hex(p.tint,''), snd:SND.includes(p.snd)?p.snd:'space', musicG:{}, lastGame:GAMES[p.lastGame]?p.lastGame:'quick-tap',
-    name:typeof p.name==='string'?p.name.trim().toUpperCase().slice(0,10):'', scale:SCALES[p.scale]?p.scale:'penta',
+  const o={ bg:has(DESIGNS,p.bg)?p.bg:'stars', tint:hex(p.tint,''), snd:SND.includes(p.snd)?p.snd:'space', musicG:{}, lastGame:has(GAMES,p.lastGame)?p.lastGame:'quick-tap',
+    name:typeof p.name==='string'?p.name.trim().toUpperCase().slice(0,10):'', scale:has(SCALES,p.scale)?p.scale:'penta',
     allOpen:dev&&!!p.allOpen, supporter:dev&&!!p.supporter, adRuns:Number.isInteger(p.adRuns)&&p.adRuns>=0?p.adRuns:0,
     // v17 (build 28): `keySeen` was missing from this list since build 26 — reset() cleared a field load() never created,
     // so the keys screen's once-per-profile arrival was shape-checked by nothing. It is a flag like the three beside it
@@ -144,7 +150,23 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
   // from the store (progress/key.js crackCount) and need nothing saved; this is only so a crack animates in once. No ladder step — absent means none
   if(Number.isInteger(p.cracked)&&p.cracked>=0&&p.cracked<=7) o.cracked=p.cracked;
   return o; }
-const validRun=r=>isObj(r)&&!!GAMES[r.g]&&GAMES[r.g].modes.includes(r.d)&&typeof r.s==='number'&&typeof r.hits==='number'&&typeof r.t==='number';
+/* v29 (items 5 / 6, build 55): WHAT A STORED RUN HAS TO BE BEFORE ANYTHING DRAWS IT. Three things were wrong.
+   (a) `!!GAMES[r.g]` was the truthy-index pattern above - g:'constructor' crashed boot before the repairing save().
+   (b) `typeof x==='number'` accepts Infinity, and JSON carries it as 1e999: hits:Infinity sorted to rank 1 for ever,
+       Scores.best() returned Infinity so isBest could never be true again for that combination, and the board printed
+       'Infinity'. Every number a board, a key or a sort reads is Number.isFinite now.
+   (c) the board's two extra columns (ui/format.js COLS) read sc / practice / lim / yTxt / misses / x / y, none of which
+       were checked at all, and board.js put them straight into innerHTML. They are type-checked here AND escaped at
+       render - both, because the escape is the guard for whatever a future formatter reads and this is the guard for
+       what a sort or an arithmetic does with it. `sc` is whitelisted against the scale names an engine can write. */
+const SC_OK=new Set(Object.keys(SCALES).map(k=>String((SCALES[k]&&SCALES[k].name)||'').toLowerCase().slice(0,5)));
+const numOk=v=>v===undefined||(typeof v==='number'&&Number.isFinite(v));
+const txtOk=(v,n)=>v===undefined||(typeof v==='string'&&v.length<=n);
+const validRun=r=>isObj(r)&&has(GAMES,r.g)&&GAMES[r.g].modes.includes(r.d)
+  &&typeof r.s==='number'&&Number.isFinite(r.s)&&typeof r.t==='number'&&Number.isFinite(r.t)
+  &&typeof r.hits==='number'&&Number.isFinite(r.hits)&&r.hits>=0
+  &&numOk(r.misses)&&(r.misses===undefined||r.misses>=0)&&numOk(r.x)&&numOk(r.y)&&numOk(r.peak)&&numOk(r.rounds)&&numOk(r.practice)
+  &&(r.sc===undefined||(typeof r.sc==='string'&&SC_OK.has(r.sc)))&&txtOk(r.lim,24)&&txtOk(r.yTxt,24);
 /* v18 (B.14): THE CAP NEVER DROPS A ROW THAT IS IN A TOP TEN. It did — the cap was `slice(0, 600)` here and
    `runs.length=600` in Scores.submit, both of which cut the OLDEST rows, and the oldest rows are the only records a mode
    played once a year has. Measured before the fix on a 601-run store: 600 Quick Tap runs plus one Estimate run, submit
@@ -169,7 +191,14 @@ function trimRuns(runs){ if(runs.length<=RUNS_CAP) return runs;
   return out.length>RUNS_HARD?out.slice(0,RUNS_HARD):out; }
 const cleanRuns=raw=>trimRuns(Array.isArray(raw)?raw.filter(validRun):[]);
 // ach / unlock / intro / seen are maps of key → timestamp (or 1). A value that is not a number is not a record
-const cleanMap=raw=>{ const o={}; if(isObj(raw)) for(const k in raw){ const v=raw[k]; if((typeof v==='number'&&Number.isFinite(v))||v===true) o[k]=v; } return o; };
+/* v29 (item 5, build 55): AND A CAP ON HOW MANY KEYS ONE OF THEM MAY HOLD. A planted map of 200,000 keys loaded and was
+   written back - 2.3MB on every save() - until iOS's ~5MB quota made every later save fail silently and the player
+   played for weeks with nothing persisted. `msgSeen`, `gauntSeen` and `retro` already cap themselves; these four did not.
+   The cap is a ceiling, not a whitelist: the tables that name every legal key (ACH, UNLOCKS, the key-bar combos) sit
+   ABOVE core/ in the graph, and a key this file cannot name is not a key it may silently delete. MAP_CAP is far above
+   the real counts (114 key achievements + 90 bars + the chain + the lengths) and far below anything that fills a quota. */
+const MAP_CAP=4000;
+const cleanMap=raw=>{ const o={}; let n=0; if(isObj(raw)) for(const k in raw){ if(n>=MAP_CAP) break; const v=raw[k]; if(((typeof v==='number'&&Number.isFinite(v))||v===true)&&k.length<=120){ o[k]=v; n++; } } return o; };
 
 /* ---------- v0 → the one record: the seven build-13 keys, and the reshapes that used to run on every boot (v8–v11) ---------- */
 function fromLegacy(){

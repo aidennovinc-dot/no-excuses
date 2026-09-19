@@ -6,7 +6,7 @@ import { ABOUT, GAUNTLET, GRID, MSG, TOAST } from "../../config/copy.js";
 import { MESSAGES } from "../../config/messages.js";
 import { MODE_NAME } from "../../config/games.js";
 import { $, T, esc } from "../../core.js";
-import { prefs, save } from "../../core/store.js";
+import { prefs } from "../../core/store.js";
 import { msgOpen, msgShown, msgTitle } from "../../progress/key.js";
 import { GAMES, lenName } from "../../games/registry.js";
 import { Scores } from "../../progress.js";
@@ -93,8 +93,12 @@ function renderMessages(){ const box=$('#msglist'); if(!box) return; const seen=
 /* v26 (item 5, build 49): a chest's video reward — on the map, or the card's button — arrives here too, and it arrives while every slot is still a
    placeholder, so a row with no clip is scrolled to and picked out for a moment rather than played */
 register('s-about',{ onShow({msg}={}){ renderTier(); renderFeedback(); renderMessages();
-  if(msg) setTimeout(()=>{ const row=$(`#msglist .msgrow[data-msg="${msg}"]`); if(!row) return; row.scrollIntoView({block:'center'});
-    if(!playMsg(msg)){ row.classList.remove('flash'); void row.offsetWidth; row.classList.add('flash'); setTimeout(()=>row.classList.remove('flash'),1800); } },120); } });
+  /* v29 (item 10, build 55): the clip starts in the TAP'S OWN TASK, not 120ms later. A play() off a timer is outside WebKit's transient
+     activation on older iOS and in some WKWebView configurations, and it was refused there and swallowed. The scroll and the flash keep
+     their 120ms - they are presentation and the list has to be laid out first. */
+  if(msg){ const played=playMsg(msg);
+    setTimeout(()=>{ const row=$(`#msglist .msgrow[data-msg="${msg}"]`); if(!row) return; row.scrollIntoView({block:'center'});
+      if(!played){ row.classList.remove('flash'); void row.offsetWidth; row.classList.add('flash'); setTimeout(()=>row.classList.remove('flash'),1800); } },120); } } });
 define({ support(){ toast(prefs.supporter?TOAST.supAlready:TOAST.supLater); return 'click'; },
   // item 23: a locked row says what opens it where it stands; an open one with no clip yet says so; an open one with a clip plays in place
   msg(b){ const id=b.dataset.msg, m=MESSAGES.find(x=>x.id===id); if(!m) return 'click';

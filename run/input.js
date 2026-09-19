@@ -27,7 +27,8 @@ function bindInput(){
   window.addEventListener('keydown',e=>{ if(!active()||e.repeat) return;
     if(e.key==='Escape') return abort();
     const key={ type:'down', x:0, y:0, el:document.body };
-    if((sel.game==='timing'||sel.game==='reaction'||sel.game==='hold')&&e.key===' ') input(key);
+    // build 55 (in passing): on Estimate space is a TAP on Grow and a drag on Cut, and the drag started at (0,0) with no keyup bound to end it
+    if((sel.game==='timing'||sel.game==='reaction'||(sel.game==='hold'&&sel.diff==='grow'))&&e.key===' ') input(key);
     if(sel.game==='quick-tap'){ const m={ArrowLeft:0,ArrowRight:1,ArrowUp:2,ArrowDown:3}; if(e.key in m) input({...key,target:m[e.key]}); }
     if(sel.game==='sequence'&&/^[1-7]$/.test(e.key)) input({...key,target:+e.key-1}); });
   window.addEventListener('keyup',e=>{ if(sel.game==='hold'&&e.key===' ') input({ type:'up', x:0, y:0, el:document.body }); });

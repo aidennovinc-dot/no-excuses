@@ -4,6 +4,7 @@
 import { ESTIMATE as CP } from "../../config/copy.js";
 import { CFG, ESTIMATE as EST, STREAK } from "../../config/games.js";
 import { $, $$, T, f2, mean, minMax, vmin } from "../../core.js";
+import { haptic } from "../../core/platform.js";
 import * as hud from "../_shared/hud.js";
 import { roundShow, tierWord } from "../_shared/tier.js";
 import { Shapes } from "../_shared/shapes.js";
@@ -79,7 +80,15 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
   // v11: Set = 7 rounds, score the average % off (lower wins). Streak = the % differences add up; the run ends when the total reaches 100, score rounds
   // v15 (answer 2, build 24): `mx` says a hold ran all the way to its ceiling. It is what the Greedy achievement asks for
   // in words, and unlike a % threshold it is true at EVERY target size — see the note on capOf and FEATURES.md
-  result(){ const [best,worst]=minMax(this.errs); const r=this.streak()?{hits:this.errs.length,misses:0,x:best,y:worst,lim:'100%'}:{hits:Math.round(mean(this.errs)*100)/100,misses:0,x:best,y:worst}; if(this.maxed) r.mx=1; return r; },
+  /* v29 (item 2, build 55): NO ROUND MEANS NO BEST ROUND. minMax on an empty list answers [0,0] (core.js) - a display
+     convenience, never a best - and `x:0` satisfies every lower-is-better live test there is. Quitting a Grow run during
+     the 3-2-1, before the first reveal, therefore banked 'Unlock: Cut' (hold:cut is x<=15), and the same abort on Cut
+     banked Sequence (x<=3.5). x and y are left OUT while no round has landed, so a predicate reading them is false, and
+     run.js's abort() no longer runs liveCheck at all on a run with nothing on it - both halves, because either alone
+     leaves the other route open. */
+  result(){ const [best,worst]=minMax(this.errs); const none=!this.errs.length;
+    const r=this.streak()?{hits:this.errs.length,misses:0,x:best,y:worst,lim:'100%'}:{hits:Math.round(mean(this.errs)*100)/100,misses:0,x:best,y:worst};
+    if(none){ delete r.x; delete r.y; } if(this.maxed) r.mx=1; return r; },
   // v13 (6.2): "Round 2 of 7" in a Set; a Streak says "Round n" with the running total beside it
   hud(){ if(this.two.on) return hud.timeHtml(this.two.hudLine());
     hud.time(this.streak()?T(CP.hudStreak,{n:this.round,tot:f2(this.total)}):T(CP.hudSet,{n:this.round,s:this.ctx.len})+(this.ctx.mode==='grow'?(this.est()?CP.diff:CP.same):'')); },
@@ -144,7 +153,7 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
        then does the difference drain into the running total (the total counts up, the difference counts down). Grow and Cut
        take the same path, because calc() is the one path both reveals go through. */
     chain.then(()=>pause(300))
-      .then(()=>{ if(this.st!=='reveal') return; const v=$('#hres'); if(v){ v.innerHTML=typeof resultHtml==='function'?resultHtml():resultHtml; v.classList.add('on'); } err<=8?this.ctx.audio.hit():this.ctx.audio.miss(); if(err>8&&navigator.vibrate) navigator.vibrate(30); return pause(450); })
+      .then(()=>{ if(this.st!=='reveal') return; const v=$('#hres'); if(v){ v.innerHTML=typeof resultHtml==='function'?resultHtml():resultHtml; v.classList.add('on'); } err<=8?this.ctx.audio.hit():this.ctx.audio.miss(); if(err>8) haptic(30); return pause(450); })
       .then(()=>{ if(this.st!=='reveal') return; const d=$('#hdiff'); if(d&&diffHtml){ d.innerHTML=diffHtml(); d.style.opacity=1; d.classList.add('pop'); } return pause(diffHtml?800:100); })
       .then(()=>{ if(this.st!=='reveal') return;
         const was=this.errs.length?mean(this.errs):0; this.errs.push(err);
@@ -173,7 +182,7 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
     let shares=DEALS['hold:cut'].tiers[S.set]; if(SHAPES[S.shape].sym) shares=shares.filter(v=>v!==50);
     this.share=shares[Math.min(shares.length-1,S.u*shares.length|0)]; const v=vmin(); this.target=Math.min(54*v,$('#hfield').getBoundingClientRect().width*.7);
     // v13 (6.3): the drag hint plays once, on the first round of the run. After that the screen carries one instruction and one figure
-    this.hud(); const first=this.round===1; if(first) this.hint(this.shape); else this.icon(null); this.st='wait';
+    this.hud(); const first=this.turn()===1;   // build 55 (in passing): `round` is the SHARED counter, so in pass & play only Player 1 ever saw the drag hint if(first) this.hint(this.shape); else this.icon(null); this.st='wait';
     this.later(()=>{ $('#hcut path.a').setAttribute('d',this.path(this.shape,this.target)); $('#hcut path.a').classList.remove('b'); if(!first) this.icon(null); this.bg(CP.drag); this.shareUp(this.share); },first?1500:500); },
   fpt(ev){ const f=$('#hfield').getBoundingClientRect(); return [ev.x-f.left,ev.y-f.top]; },
   cutDown(ev){ if(this.st!=='wait'||!$('#hcut path.a').getAttribute('d')) return; this.st='draw'; this.p0=this.fpt(ev); this.p1=this.p0; const l=$('#hline'); l.setAttribute('x1',this.p0[0]); l.setAttribute('y1',this.p0[1]); l.setAttribute('x2',this.p0[0]); l.setAttribute('y2',this.p0[1]); l.style.opacity=1; this.bg(''); },

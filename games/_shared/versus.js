@@ -8,6 +8,7 @@
 import { HUD } from "../../config/copy.js";
 import { CFG, VS_CAP, VS_LEAD, VS_TARGET } from "../../config/games.js";
 import { $, T, pWho, vmin, winner } from "../../core.js";
+import { haptic } from "../../core/platform.js";
 import * as hud from "./hud.js";
 
 const VX={ id:'versus', noIntro:true, ctx:null, n:[0,0], tgt:[0,0], lock:[0,0], streak:[0,0], pos:[null,null], next:[null,null], raf:0, t0:0, done:false, target:100,
@@ -51,7 +52,7 @@ const VX={ id:'versus', noIntro:true, ctx:null, n:[0,0], tgt:[0,0], lock:[0,0], 
   padTap(p,i){ if(!this.ctx.timers.alive()||this.done||this.lock[p]) return; const n=this.pads(); if(i>=n) return;
     if(this.tgt[p]===i){ this.tapped(p,i); this.score(p); const prev=this.tgt[p]; let t=Math.random()*n|0; if(t===prev){ this.streak[p]++; if(this.streak[p]>=3){ t=(prev+1+(Math.random()*(n-1)|0))%n; this.streak[p]=0; } } else this.streak[p]=0; this.tgt[p]=t; this.renderQT(); }
     // 4.12: a wrong tap reads like it does in solo — a red flash over that player's half and a beat of lockout, not a blank screen
-    else { this.lock[p]=performance.now()+CFG.lockout; this.ctx.audio.miss(); this.renderQT(); this.flash(p); if(navigator.vibrate) navigator.vibrate(30); } },
+    else { this.lock[p]=performance.now()+CFG.lockout; this.ctx.audio.miss(); this.renderQT(); this.flash(p); haptic(30); } },
   flash(p){ const h=halfOf(p); h.classList.remove('miss'); void h.offsetWidth; h.classList.add('miss'); this.ctx.timers.later(()=>h.classList.remove('miss'),CFG.lockout); },
   fieldTap(ev){ if(!this.ctx.timers.alive()||this.done||this.qt()) return; const f=$('#vfield').getBoundingClientRect(); const x=ev.x-f.left, y=ev.y-f.top, sz=this.sz(), c=sz/2; let hitP=-1;
     for(let p=0;p<2;p++){ const q=this.pos[p]; if(Math.hypot(x-(q.x+c),y-(q.y+c))<=c*CFG.dotLeeway+8) hitP=p; } if(hitP<0) return;

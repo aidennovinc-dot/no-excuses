@@ -77,18 +77,18 @@ import { KEY_NOTE } from "../../config/key-bars.js";
 import { EARN_SKIP_AT, KEY_ART, KEY_EARN, KEY_FINISH } from "../../config/keys.js";
 import { MESSAGES } from "../../config/messages.js";
 import { MODE_NAME } from "../../config/games.js";
-import { $, $$, T, esc } from "../../core.js";
+import { $, T, esc } from "../../core.js";
 import { emit, on } from "../../core/events.js";
 import { everywhere, prefs, save } from "../../core/store.js";
 import { GAMES, lenFull, lenName } from "../../games/registry.js";
-import { Scores, isOpen, lenOpen, modeCount } from "../../progress.js";
+import { isOpen, lenOpen, modeCount } from "../../progress.js";
 import { bandPct, barOf, barsFaked, barsMissing, chestOpen, chestState, gameKey, isCleared, keyChest, keyFinished, keyState, keyTiers, meter, openChest, retroTier, skey, tierOpen } from "../../progress/key.js";
 import { goWhere } from "../../run/run.js";
 import { scoreTxt } from "../format.js";
 import { capture, define, lock } from "../actions.js";
 import { setKeyLayer } from "../atmosphere.js";
 import { chestStage } from "../ceremony.js";
-import { chestCol, chestSvg, giftsOf, symSvg } from "../chest.js";
+import { chestCol, chestSvg, giftsOf } from "../chest.js";
 import { playReveal, revealGo, revealOn, revealTap, stopReveal } from "../reveal.js";
 import { register, show } from "../router.js";
 import { toast } from "../toast.js";
@@ -393,6 +393,8 @@ const earnClear = () => { const r = $('#key-ring'); if (r) r.querySelectorAll('.
    from landing inside the animation — the finished promise of every animation the start beat put on the screen, read off the document so a
    re-tune in config/keys.js moves it without a second list of times (the build-46 rule). */
 let earnSkip = null;
+// v29 (item 8, build 55): the handle Snd.keyEarn() hands back, so a skip can silence the music it started. Cut in earnSkip and in clear().
+let earnMusic = null;
 function keyStage(tier) { const E = earnOf(tier), el = $('#s-key'), ids = [];
   const at = (t, fn) => { const h = setTimeout(() => { if (revealOn()) fn(); }, Math.max(0, t)); ids.push(h); return h; };
   // v29 (item 3, build 54): when this ceremony started, so a tap inside the first EARN_SKIP_AT ms can be turned away rather than taken
@@ -420,7 +422,7 @@ function keyStage(tier) { const E = earnOf(tier), el = $('#s-key'), ids = [];
       if (k.quick) return;   // Reduce Motion: the short fade is the whole of it, and settle() lands the finished state
       /* v28 (item 15, build 53): THE MUSIC STARTS THE CLOCK. It used to be fired on the `flash`, which is why it rang on for seconds after the
          animation had finished — the whole of what item 15 is about. It is the first thing that happens now, and `ms` is its own length. */
-      if (!k.silent) Snd.keyEarn(tier);
+      if (!k.silent) { try { earnMusic && earnMusic.stop(); } catch (e) { } earnMusic = Snd.keyEarn(tier); }
       if (!k.silent) for (const x of (E.steps || [])) {
         if (x.name === 'flash') continue;
         // the Skill key's seven fire one at a time, each with its own game's sound; Pro's fire together, so the step has one sound of its own
@@ -437,6 +439,8 @@ function keyStage(tier) { const E = earnOf(tier), el = $('#s-key'), ids = [];
          it swallows every tap before a stage is done — so an early tap does NOTHING, it is not queued and it does not end the moment. */
       earnSkip = () => { if (performance.now() - began < EARN_SKIP_AT) return false;
         earnSkip = null; ids.forEach(clearTimeout); ids.length = 0;
+        // item 8: the step sounds were already cancelled with their timers; the MUSIC was the one thing a skip could not stop
+        try { earnMusic && earnMusic.stop(); } catch (e) { } earnMusic = null;
         for (const a of (anims || [])) { try { a.finish(); } catch (e) { } }
         if (done) done(); return true; }; },
     /* the settle waits for this: the end of every animation the start beat put up. A cancelled one resolves it too (a hold that could never end
@@ -452,7 +456,8 @@ function keyStage(tier) { const E = earnOf(tier), el = $('#s-key'), ids = [];
        replay on a key that is not whole must not leave the screen claiming it is finished. All settle does is stop holding it back. */
     settle() { earnSkip = null; el.classList.remove('kearning', 'kearnquick'); delete el.dataset.earn; el.classList.add('ksettle');
       setTimeout(() => el.classList.remove('ksettle'), 600); },
-    clear() { earnSkip = null; ids.forEach(clearTimeout); el.classList.remove('kearning', 'kearnquick', 'ksettle', 'kdue'); delete el.dataset.earn; earnClear(); } }; }
+    clear() { earnSkip = null; try { earnMusic && earnMusic.stop(); } catch (e) { } earnMusic = null;
+      ids.forEach(clearTimeout); el.classList.remove('kearning', 'kearnquick', 'ksettle', 'kdue'); delete el.dataset.earn; earnClear(); } }; }
 /* item 14: the belt. The reveal's own tap (ui/reveal.js, through `skip()` above) is the route that actually fires — its host covers the screen
    and carries a `data-act`, so ui/actions.js hands the tap to that action and never reaches a capture. This catches a tap that lands outside it. */
 capture(() => { if (!earnSkip || !revealOn()) return false; return earnSkip(); });

@@ -5,6 +5,7 @@ import { SCALES } from "../../config/audio.js";
 import { SEQ as CP } from "../../config/copy.js";
 import { CFG, SEQ_VS } from "../../config/games.js";
 import { $, $$, T, pWho, seqStep } from "../../core.js";
+import { haptic } from "../../core/platform.js";
 import * as hud from "../_shared/hud.js";
 /* ---------- Sequence: streak. Watch, copy, one more each round; a wrong key ends it ---------- */
 const SQ={ id:'sequence', ctx:null, st:'idle', keys:0, seq:[], seqs:null, idx:0, round:0, p:0, rounds:[0,0], lives:[0,0], ans:0, badFirst:0,
@@ -70,7 +71,7 @@ const SQ={ id:'sequence', ctx:null, st:'idle', keys:0, seq:[], seqs:null, idx:0,
       /* v16 (2): the first note of the run, answered wrong — banked the INSTANT it happens, not at the finish. It is the
          Timing unlock and a run that ends here is one a player is very likely to quit out of. */
       if(first){ this.badFirst=1; if(this.mode()==='solo'&&!this.ctx.practice) this.ctx.emit('live',{hits:0,firstWrong:1}); }
-      const el=$(`.key[data-k="${k}"]`); el.classList.add('bad'); const right=$(`.key[data-k="${this.seq[this.idx]}"]`); right.classList.add('lit'); this.ctx.audio.miss(); if(navigator.vibrate) navigator.vibrate(40);
+      const el=$(`.key[data-k="${k}"]`); el.classList.add('bad'); const right=$(`.key[data-k="${this.seq[this.idx]}"]`); right.classList.add('lit'); this.ctx.audio.miss(); haptic(40);
       hud.shake();
       if(this.mode()==='vs') return this.vsTurn(false);
       if(this.mode()==='pass'){ const w=1-this.p; this.cue(T(CP.wins,{who:pWho(w)}),true,w); return this.later(()=>this.ctx.emit('finish',{hits:this.rounds[0],misses:0,vs2:{a:this.rounds[0],b:this.rounds[1],w,how:CP.missNote}}),1600); }

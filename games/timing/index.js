@@ -4,6 +4,7 @@
 import { TIMING as CP } from "../../config/copy.js";
 import { CFG, HIDDEN } from "../../config/games.js";
 import { $, T, f2, minMax, sum } from "../../core.js";
+import { haptic } from "../../core/platform.js";
 import { ROUND_AT } from "../../config/verdicts.js";
 import * as hud from "../_shared/hud.js";
 import { genRect, rnd, roundEngine } from "../_shared/round.js";
@@ -62,8 +63,11 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
   /* v18 (B.2, L5): THE STOPWATCH SET IS CUMULATIVE. It was the mean of the absolute differences; it is their SUM now -
      Aiden: "I might have said average before; I don't want that any more." Hidden already summed and still does, in
      milliseconds (B.4). Both Sets are therefore a total, which is also what SET_COPY's line says. */
-  result(){ const [x,y]=minMax(this.errs); const r=this.streak()?{hits:this.errs.length,misses:0,x,y,lim:this.budTxt()}:{hits:this.hid()?Math.round(sum(this.errs)):Math.round(sum(this.errs)*100)/100,misses:0,x,y};
-    if(this.ranOut) r.ov=1; return r; },
+  // v29 (item 2, build 55): as Estimate - no attempt means no best attempt. `x:0` from minMax([]) satisfied timing:hidden
+  // (x<=.3, live), so quitting a Stopwatch run before its first attempt banked the Hidden unlock. See estimate/index.js.
+  result(){ const [x,y]=minMax(this.errs); const none=!this.errs.length;
+    const r=this.streak()?{hits:this.errs.length,misses:0,x,y,lim:this.budTxt()}:{hits:this.hid()?Math.round(sum(this.errs)):Math.round(sum(this.errs)*100)/100,misses:0,x,y};
+    if(none){ delete r.x; delete r.y; } if(this.ranOut) r.ov=1; return r; },
   // v16 (1.5): a Set ramps over its last round, a Streak once the budget is 80% spent. Music only (A.1)
   fin(){ if(this.two.on) return 0; return this.streak()?this.finBud(this.tot,this.budget()):this.finSet(); },
   /* v18 (B.3d): a Stopwatch Streak's HUD line is "attempt N" and nothing else, because the big number above it now says
@@ -159,7 +163,7 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
   // one Hidden round's field and its clock, whichever way the wall faces
   hiddenGo(ball,L,wall){ const {v,markT,size,pos}=ball, wallStart=ball.wall; const m=pos(markT), p0=pos(0);
     $('#gen').innerHTML=`<div class="glbl top" id="tmsay" style="z-index:3">${CP.marker}</div><div id="tmball" style="--fsz:${size}px;transform:translate(${p0.x}px,${p0.y}px)"></div><div id="tmghost" style="--fsz:${size}px"></div><div id="tmwall" style="${wall}"></div><div id="tmmark" style="--fsz:${size}px;left:${m.x}px;top:${m.y}px"></div>`;
-    this.ball=ball; this.stopAt=0;
+    this.ball=ball; this.ball.L=L; this.stopAt=0;   // v29 (item 16): L so a tap's own time can be turned into a ball position and clamped
     this.later(()=>{ this.st='run'; this.t0=performance.now(); const el=$('#tmball');
       const loop=now=>{ if(this.st!=='run') return; let t=(now-this.t0)/1000*v;
         // v14 (6.20): the ball stops at the far edge of the screen. It used to keep going until it was well off it, which read as a bug
@@ -170,9 +174,18 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
         if(this.stopAt&&now-this.stopAt>700) return this.onDown(true);
         this.raf=requestAnimationFrame(loop); }; this.raf=requestAnimationFrame(loop); },600); },
   onDown(ev){ if(this.st!=='run') return;
+    /* v29 (item 16, build 55): A TAP IS SCORED FROM ITS OWN TIME, NEVER FROM THE LAST PAINTED FRAME. Hidden read `ball.t`, which
+       the rAF loop wrote on the frame it last drew, so a tap 15ms after that frame was judged as if it had landed on it - up to a
+       whole frame (16.7ms at 60Hz) of systematic EARLY bias, against round tiers 40 / 70 / 95ms wide. A third of a tier, every
+       round, in the player's disfavour. Stopwatch read performance.now() at handler run for the same reason. Both take ev.t - the
+       tap's own timestamp, core/timers.js tapTime - and the ball's position is derived from it rather than read off the frame.
+       The timeout path (ev === true) keeps the frame's value, which is the right answer for a round nobody tapped. */
+    const tapAt=(ev&&ev!==true&&typeof ev.t==='number'&&ev.t>0)?ev.t:0;
+    if(this.hid()&&this.ball&&tapAt&&this.t0){ const b=this.ball, lim=b.L===undefined?Infinity:b.L;
+      b.t=Math.max(0,Math.min(lim,(tapAt-this.t0)/1000*b.v)); }
     // v14 (6.19): nothing to judge until the ball is behind the wall, so a tap before that is ignored rather than scored
     if(this.hid()&&this.ball&&ev!==true&&this.ball.t<this.ball.wall) return;
-    this.st='show'; cancelAnimationFrame(this.raf); const now=performance.now(); let err, note;
+    this.st='show'; cancelAnimationFrame(this.raf); const now=(tapAt&&this.t0)?tapAt:performance.now(); let err, note;
     // hidden (v10): scored in pixels between the ball and the marker — dead on within 10px, close within 35px
     const hid=this.hid();
     // v18 (B.4): the error is the TIME between the ball and the marker - the pixels divided by this round's own pace -
@@ -188,7 +201,7 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
        tier's short sound plays with it. A shared run keeps dead on / close / early / late and no tier (L4) */
     const t=roundShow(this.ctx.audio,key,err,!this.two.on), col=t?t.col:'';
     $('#gen').insertAdjacentHTML('beforeend',`<div class="glbl bot" id="tmres"><b class="${good?'g':ok?'':'r'}" id="tmerr"${col?` style="color:${col}"`:''}>${hid?err+CP.msU:f2(err)+'s'}</b>${t?tierWord(t)+(t.id==='ace'?'':' · '+note):good?CP.dead:ok?CP.close:note}</div>`); const h=$('#tmhint'); if(h) h.remove();
-    ok?this.ctx.audio.hit():this.ctx.audio.miss(); if(!ok&&navigator.vibrate) navigator.vibrate(30);
+    ok?this.ctx.audio.hit():this.ctx.audio.miss(); if(!ok) haptic(30);
     if(this.two.on) return this.twoAdd(err,hid);
     if(this.streak()) return this.addUp(err,hid);
     // v14 (6.1 / 6.3) / v18 (B.2): BOTH Sets walk a running TOTAL now - Hidden's milliseconds and Stopwatch's seconds off

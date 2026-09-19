@@ -6,6 +6,7 @@ import { SPOT as CP } from "../../config/copy.js";
 import { CFG, COUNT_ADD, COUNT_BUDGET, SPOT_FIND, SPOT_RAMP, VS_TARGET } from "../../config/games.js";
 import { DEALS, SHAPES } from "../../config/shapes.js";
 import { $, $$, T, f2, minMax, pWho, winner } from "../../core.js";
+import { haptic } from "../../core/platform.js";
 import { makeDealer, within } from "../_shared/deal.js";
 import { shapeI } from "../_shared/shapes.js";
 import * as hud from "../_shared/hud.js";
@@ -188,7 +189,7 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
   vsTap(ev){ const best=this.hitAt(ev,q=>q.shape===this.o1||q.shape===this.o2);
     if(best===null) return; const els=$$('#gen .fs'); const sh=this.pts[best].shape;
     // neither player's shape: a wrong tap, and the round carries on
-    if(sh!==this.o1&&sh!==this.o2){ els[best].classList.add('bad'); this.ctx.audio.miss(); if(navigator.vibrate) navigator.vibrate(30); return; }
+    if(sh!==this.o1&&sh!==this.o2){ els[best].classList.add('bad'); this.ctx.audio.miss(); haptic(30); return; }
     const w=sh===this.o1?0:1; this.st='show'; cancelAnimationFrame(this.raf); this.vsN[w]++;
     // A.2: the round goes to the owner, and it lights in the owner's colour (L4)
     els[best].classList.remove('puls'); els[best].classList.add('odd',w?'p2':'p1'); els.forEach((el,i)=>{ if(i!==best) el.classList.add('dim'); });
@@ -212,7 +213,7 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
       // every other dropped cue got. `cflash` is the flash; the number is the only thing on the card that has to land
       // v18 (B.10): the round's own answer wears its tier colour — how far out this count was, not how the run is going
       $('#gen').innerHTML=this.pts.map(q=>shapeHtml(q,this.size,q.shape!==this.target?'dim':'')).join('')+`<div class="glbl bot"><b class="cflash ${ok?'g':'r'}"${this.rcol('spot:count',off)}>${this.answer}</b>${ok?CP.right:T(CP.said,{k,off})}${this.streak()?T(CP.of5,{off:this.off,bud:COUNT_BUDGET}):''}${done&&this.streak()?CP.over:''}</div>`;
-      ok?this.ctx.audio.hit():this.ctx.audio.miss(); if(!ok&&navigator.vibrate) navigator.vibrate(30);
+      ok?this.ctx.audio.hit():this.ctx.audio.miss(); if(!ok) haptic(30);
       // v14 (6.1 / 6.3): the round's miscount walks into the running total — the Set's score, the Streak's budget — and the
       // reveal then stays up until it is tapped
       /* v24 (F.5, build 44): "the score is added far too quickly". It was a 480ms walk straight after the answer, then the round moved on —
@@ -244,7 +245,7 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
         // the walk is floored the same way the total is, or the number would dip under zero on the way to a zero it lands on
         set:k=>{ const b=$('#spt'); if(b) b.textContent=f2(t*k)+'s'; const u=$('#sptot'); if(u){ const v=Math.max(0,was+add*k); u.textContent=this.streak()?T(CP.of10,{t:f2(v)}):T(CP.total,{t:f2(v)}); } },
         done:()=>{ hud.score(this.streak()?String(this.times.length):f2(this.tot)); hud.scorePop(); this.ctx.emit('live',this.result()); this.after(()=>this.next()); } }); }
-    else { this.wrong++; this.pen+=1; els[best].classList.add('bad'); this.ctx.audio.miss(); if(navigator.vibrate) navigator.vibrate(30); } } });
+    else { this.wrong++; this.pen+=1; els[best].classList.add('bad'); this.ctx.audio.miss(); haptic(30); } } });
 
 export default SP;
 export { SP };

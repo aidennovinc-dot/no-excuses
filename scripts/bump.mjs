@@ -1,8 +1,8 @@
 /* No Excuses — bump the build (A6).   npm run bump -- 16
- * With a number: rewrites BUILD in config/build.js. Then, always: writes the three places in index.html (the hint line
- * under the title and #build as `v0.N` since S.2, the update-check constant as the integer) and version.json from config/build.js. Fails loudly if
- * any of the three is not found exactly once — a mismatch between the constant and version.json pins the green
- * "new build" bar on every phone forever. */
+ * With a number: rewrites BUILD in config/build.js. Then, always: writes the TWO places in index.html (the hint line under the title
+ * and #build, both `v0.N` since S.2) and version.json from config/build.js. Fails loudly if either is not found exactly once — a
+ * mismatch between version.json and the running build pins the green "new build" bar on every phone forever.
+ * Build 55 (v29 item 7): the third place, the inline update-check constant, went with the inline script (S7 / the CSP). */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -36,7 +36,9 @@ let html = fs.readFileSync(htmlPath, 'utf8');
 // compared to each other). The regexes still accept the old `build N` form so the first run after S.2 rewrites it.
 html = once(html, /<div class="hint">(?:build |v0\.)\d+ · [^<]*<\/div>/, `<div class="hint">v0.${BUILD} · ${LABEL} · ${date}</div>`, 'hint line under the title');
 html = once(html, /<div id="build">(?:build |v0\.)\d+<\/div>/, `<div id="build">v0.${BUILD}</div>`, '<div id="build">');
-html = once(html, /const BUILD="\d+";/, `const BUILD="${BUILD}";`, 'update-check constant');
+/* v29 (item 7, build 55): the update-check constant is GONE. The poll moved to core/platform.js (S7 / the CSP) and imports BUILD from
+   config/build.js, so there is no fourth copy of the number to keep in step - index.html carries the build in TWO places now, both of
+   them things a person reads. A6 is stronger, not weaker: one source, two rendered copies, one version.json. The gate asserts x2. */
 fs.writeFileSync(htmlPath, html);
 fs.writeFileSync(path.join(root, 'version.json'), `{"build": "${BUILD}", "date": "${iso}"}`);
-console.log(`v0.${BUILD} · ${LABEL} · ${date} → config/build.js, index.html ×3, version.json`);
+console.log(`v0.${BUILD} · ${LABEL} · ${date} → config/build.js, index.html ×2, version.json`);

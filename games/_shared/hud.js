@@ -46,7 +46,12 @@ const flash=ms=>{ const f=$('#flash'); f.style.transition='none'; f.style.opacit
 function rate(game,hitT,now,runFrom){ const t=hitT; let r=0;
   if(runFrom){ const el=(now-runFrom)/1000; if(el<RATE_RUN_FLOOR) return; r=t.length/el; }
   else if(t.length>=2){ const k=Math.min(t.length-1,6); const avg=(t[t.length-1]-t[t.length-1-k])/k; const since=now-t[t.length-1]; r=1000/Math.max(avg,since>avg?since:avg); } else if(t.length===1){ r=Math.min(1,1000/Math.max(1,now-t[0])); } const k=Math.min(1,r/(RATE_MAX[game]||6));
-  $('#rate i').style.height=Math.round(k*100)+'%'; $('#rate b').textContent=r.toFixed(1)+'/s'; $('#edge').style.opacity=k>.4?((k-.4)/.6*.4).toFixed(2):0; }
+  /* v29 (item 14, build 55): THE NUMBER IS HELD TO THE SAME CEILING AS ITS BAR. The bar's height is k, clamped to RATE_MAX;
+     the printed figure was not, so two hits 100ms apart (avg 100, since ~0) read 10.0/s for the next tenth of a second and a
+     burst of fast alternating taps held 6-8/s on screen while the whole run averaged 2.5. This is the likeliest source of
+     the 2026-09-12 'per-second reads far too high' report; the result screen's hits/s and the whole-run reading are correct
+     and untouched. One reading, one ceiling: the bar and the number now say the same thing. */
+  $('#rate i').style.height=Math.round(k*100)+'%'; $('#rate b').textContent=Math.min(r,RATE_MAX[game]||6).toFixed(1)+'/s'; $('#edge').style.opacity=k>.4?((k-.4)/.6*.4).toFixed(2):0; }
 // v13 (6.7 / 8.2): a Streak's round figure counts down to 0 while the running total counts up by the same amount, together, with the whoosh.
 // el shows the round figure through fmt; each frame calls onFrame(total); alive() ends it early; done(total) runs at the end
 // v15 (3.7): `walk` moves ONE number from where the round landed to where it should have — 120% down to 100% — over the

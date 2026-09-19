@@ -57,7 +57,7 @@
   *{box-sizing:border-box;margin:0;padding:0}
   /* v13 (3.1): a `.chips` row set display:flex, which outranks the browser's own [hidden] rule — that is why Solo still showed Pass & play / Versus */
   [hidden]{display:none!important}
-  html,body{height:100%;background:var(--ground);color:var(--ink);font-family:var(--display);overflow:hidden;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;background:var(--ground);color:var(--ink);font-family:var(--display);overflow:hidden;touch-action:manipulation;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
   body{position:fixed;inset:0}
   .screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;padding-top:max(24px,env(safe-area-inset-top))}
   .screen.on{display:flex}
@@ -75,7 +75,7 @@
      and nothing else; without this it would arrive underlined and browser-blue */
   a.item{color:var(--ink);text-decoration:none;cursor:pointer;display:inline-block}
   .item{font-weight:500;font-size:20px;letter-spacing:.14em;text-transform:uppercase;padding:11px 18px;opacity:.85}
-  .item:hover,.item:focus-visible{opacity:1;outline:none;text-decoration:underline;text-underline-offset:8px}
+  .item:focus-visible{opacity:1;outline:none;text-decoration:underline;text-underline-offset:8px}
   .item.sub{font-size:17px}
   .item.big{font-size:22px;border:1px solid var(--ink);padding:14px 40px;opacity:1}
   .explain{max-width:36ch;text-align:center;color:var(--mute);font-size:15px;line-height:1.55}
@@ -308,7 +308,7 @@
   .choice .txt{display:flex;flex-direction:column;gap:6px;min-width:0}
   .choice b{font-family:var(--mono);font-weight:700;font-size:13px;letter-spacing:.22em;text-transform:uppercase}
   .choice small{color:var(--mute);font-size:14px;line-height:1.45;max-height:60px;overflow:hidden;transition:max-height .18s,opacity .18s}
-  .choice:hover,.choice:focus-visible,.choice.sel{border-color:var(--ink);outline:none}
+  .choice:focus-visible,.choice.sel{border-color:var(--ink);outline:none}
   .sheet.len .diffs{gap:6px}
   .sheet.len .choice:not(.sel){opacity:.3}
   .sheet.len .choice{padding:6px 12px}
@@ -322,7 +322,7 @@
   .tbtn b small{display:block;font-size:12px;color:var(--mute);letter-spacing:.06em;text-transform:none}
   .tbtn .lsub{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--mute);text-transform:none;line-height:1.35;text-align:center;max-width:15ch}
   .tbtn small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--mute);text-transform:uppercase}
-  .tbtn:hover,.tbtn:focus-visible,.tbtn.sel{border-color:var(--ink);outline:none}
+  .tbtn:focus-visible,.tbtn.sel{border-color:var(--ink);outline:none}
   /* the pick sheet: mode is one level, length is the next — the mode row leaves when the length row arrives (v6) */
   /* the picked mode keeps its picture while the length is chosen (v8); the other mode leaves */
   .sheet.len .diffs{display:flex}
@@ -432,9 +432,7 @@
   /* v14 (2.1): unseen to being seen — each tile pulses up from nothing rather than sliding in */
   @keyframes tilein{0%{opacity:0;scale:.15}65%{opacity:1;scale:1.08}100%{opacity:1;scale:1}}
   .tile .pic::before{content:"";position:absolute;top:6px;right:6px;width:14px;height:16px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 16'%3E%3Crect x='1' y='7' width='12' height='8' rx='1.5' fill='%23E8E6E1'/%3E%3Cpath d='M4 7V4.5a3 3 0 0 1 6 0V7' fill='none' stroke='%23E8E6E1' stroke-width='1.8'/%3E%3C/svg%3E") center/contain no-repeat;opacity:0;transition:opacity .3s;z-index:2}
-  .tile.locked .pic::before,.tile.unlocking .pic::before{opacity:.9}
-  .tile.unlocking .pic::before{animation:padoff .5s ease-in both}
-  @keyframes padoff{0%{opacity:.9;scale:1}100%{opacity:0;scale:.2}}
+  .tile.locked .pic::before{opacity:.9}
   .tile.unlocking .pic{animation:brightpic .5s ease-out both}
   @keyframes brightpic{0%{opacity:.4}100%{opacity:1}}
   .tile.newthing{border-color:transparent!important}
@@ -734,7 +732,6 @@
   .pvtxt b.r{color:var(--miss)}
   .pv>div{position:absolute;inset:0;display:none}
   .pv[data-g="quick-tap"] .pvqt,.pv[data-g="dots"] .pvdots,.pv[data-g="hold"] .pvhold,.pv[data-g="sequence"] .pvseq{display:block}
-  .pvgen{display:none;align-items:center;justify-content:center;gap:8%}
   /* v8 previews drawn from the real games: a ball and wall, a flash pane, a field of shapes */
   .pvtm{display:none}
   .pv[data-g="timing"] .pvtm{display:block}
@@ -789,9 +786,6 @@
   .opt.theme.shut{color:var(--mute)}
   .opt.theme.shut s{text-decoration:line-through;text-decoration-color:var(--cue)}
   .opt.theme small{font-size:9px;letter-spacing:.1em;text-transform:none;color:var(--mute)}
-  .opt.grey,.opt.grey.locked.plain{opacity:.4}
-  .cnote{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--mute);text-transform:uppercase;text-align:center;max-width:36ch}
-  .cnote:empty{display:none}
   .clabel{font-family:var(--mono);font-size:13px;letter-spacing:.24em;text-transform:uppercase;color:var(--ink)}
   .sw{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
   .sw button{width:38px;height:38px;border:1px solid var(--line);border-radius:2px;position:relative;background-size:cover}
@@ -816,9 +810,6 @@
   /* v17 (B.32): a locked TRACK row is not a struck-out option — it is the track this game plays, readable, with a
      padlock drawn beside it and no text about what opens it (A.1). The padlock is two boxes, so nothing is asked of a
      font that may not have the glyph */
-  .opt.locked.plain{opacity:.72;text-decoration:none;position:relative;padding-right:30px}
-  .opt.locked.plain::after{content:"";position:absolute;right:10px;top:50%;width:10px;height:7px;margin-top:-2px;border:1px solid var(--mute);border-radius:1px}
-  .opt.locked.plain::before{content:"";position:absolute;right:12.5px;top:50%;width:5px;height:4px;margin-top:-7px;border:1px solid var(--mute);border-bottom:0;border-radius:3px 3px 0 0}
   .earn{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--mute);text-transform:uppercase;text-align:center;max-width:40ch;line-height:1.7}
   .earn b{color:var(--ink);font-weight:500}
   #wheelwrap{position:absolute;inset:0;display:none;place-items:center;background:color-mix(in srgb,var(--ground) 82%,transparent);z-index:8}
@@ -934,7 +925,6 @@
   #over-vs .lbl{padding:0 2px}
   /* 3.4: Back sits at the top left of the result screen, not beside the share button */
   #over-back{position:absolute;left:6px;top:max(10px,env(safe-area-inset-top));margin:0;padding:12px 14px;font-family:var(--mono);font-size:12px;letter-spacing:.18em;color:var(--mute);z-index:5;animation:none!important}
-  #over-back:hover{color:var(--ink)}
   /* 3.6: Challenge a friend, with a share icon */
   .shicon{width:15px;height:15px;vertical-align:-3px;margin-right:9px;overflow:visible}
   .shicon *{stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round}
@@ -951,7 +941,7 @@
   #lockbox p b{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink);display:block;margin-top:8px}
   #lockbox .row{gap:10px}
   /* 3.7: the underline sits under "unlock" only */
-  #lock-go,#lock-go:hover,#lock-go:focus-visible{text-decoration:none}
+  #lock-go,#lock-go:focus-visible{text-decoration:none}
   #lock-go u{text-decoration:underline;text-underline-offset:7px}
 
 /* ==================================================================
@@ -1046,7 +1036,6 @@
   .hud>#score{flex:0 0 auto;padding:0 6px}
   #score{font-weight:700;font-size:clamp(32px,8vw,60px);color:var(--ink);letter-spacing:0}
   #quit{position:absolute;left:8px;top:max(8px,env(safe-area-inset-top));width:44px;height:44px;display:grid;place-items:center;font-family:var(--mono);font-size:22px;color:var(--mute);z-index:6}
-  #quit:hover{color:var(--ink)}
   #count{position:absolute;inset:0;display:none;place-items:center;font-family:var(--mono);font-weight:700;font-size:clamp(80px,26vw,180px);color:var(--ink);pointer-events:none;z-index:5;font-variant-numeric:tabular-nums}
   #count.on{display:grid}
   #count span{animation:cpop .3s ease-out}
@@ -1315,7 +1304,6 @@
   .rxmsg b.fb{font-size:clamp(30px,9vw,60px);font-family:var(--title);letter-spacing:.08em;margin-bottom:10px;line-height:1.2}
   .rxmsg .sub{display:block;font-size:14px;letter-spacing:.2em;color:var(--ink);margin-top:8px}
   .rxpane.lit .rxmsg,.rxpane.lit .rxmsg b{color:var(--ground)}
-  .rxrule{display:grid;grid-auto-flow:column;justify-content:center;gap:10px;align-items:center;margin-top:18px;color:var(--ink)}
   .rxpane .rxshape{transition:none}
   /* v14 (6.22): white is the WHOLE screen again. The v10 square with burst lines was the preview screen's picture of Flash,
      not the game — the lines are gone and .rxbox with them, so the lit pane is the plain fill defined above */
@@ -1817,7 +1805,7 @@
   .vwrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:10px;width:100%}
   .vtitle{font-family:var(--title);font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--ink);text-align:center;max-width:84vw;line-height:1.5}
   /* 16:9, inset from every edge — the width is what is left after `--vinset` a side, and the same inset caps the height on a wide screen */
-  .vframe{position:relative;width:calc(100vw - var(--vinset,8%) * 2);max-width:calc((100vh - var(--vinset,8%) * 2) * 16 / 9);aspect-ratio:16/9;
+  .vframe{position:relative;width:calc(100vw - var(--vinset,8%) * 2);max-width:calc((100svh - var(--vinset,8%) * 2) * 16 / 9)   /* build 55 (in passing): 100vh in a Safari tab is the toolbar-HIDDEN height, so the cap was ~10% too generous */;aspect-ratio:16/9;
     border:1px solid #FFFFFF;border-radius:6px;background:#000;overflow:hidden;padding:0;cursor:pointer;transition:box-shadow .3s}
   /* the glow: on while the clip is playing, in the unlocking chest's colour; dim the moment it is paused or ended (item 9) */
   #vplay.vlit .vframe{box-shadow:0 0 22px -2px color-mix(in srgb,var(--vg,#FFFFFF) 70%,transparent),0 0 60px -14px color-mix(in srgb,var(--vg,#FFFFFF) 55%,transparent)}
@@ -1825,6 +1813,8 @@
   .vpic video{width:100%;height:100%;object-fit:contain;background:#000;display:block}
   .vline{position:absolute;left:0;right:0;top:50%;height:2px;margin-top:-1px;background:#FFFFFF;opacity:0;transform:scaleX(0);pointer-events:none}
   .vcc{font-size:13px;line-height:1.5;color:var(--ink);text-align:center;min-height:2.6em;max-width:calc(100vw - var(--vinset,8%) * 2);padding:0 2px}
+  /* v29 (item 10, build 55): a clip that would not load - the caption strip carries the line and the frame does not light */
+  #vplay.vfail .vcc{color:var(--mute)}
   .vfoot{position:absolute;left:0;right:0;bottom:max(18px,calc(env(safe-area-inset-bottom) + 12px));font-family:var(--mono);font-size:10px;
     letter-spacing:.2em;text-transform:uppercase;color:var(--mute);text-align:center;pointer-events:none}
   /* POWER ON (item 10) — the outline draws out of the centre line, a white line snaps across it, and the line opens to the picture */
@@ -1856,10 +1846,6 @@
   .chestwords .cwsym{width:18px;height:18px;opacity:1}
   .chestwords .cw.tba .cwsym{opacity:.6}
   .chestwords .cw.msg{white-space:normal;max-width:100%}
-  /* v28 (item 10, build 53): GAUNTLET became GAUNTLET MINI and GAUNTLET II became GAUNTLET MEGA, so two reward words are two words wide. A word
-     wraps to a second line rather than running out of its cell; L.11d still holds every one of them to its cell, to the phone and to two lines */
-  .chestwords .cw{white-space:normal;max-width:100%}
-  .chestwords .cwt{white-space:normal;min-width:0}
   /* v28 (item 10, build 53): GAUNTLET became GAUNTLET MINI and GAUNTLET II became GAUNTLET MEGA, so two reward words are two words wide. A word
      wraps to a second line rather than running out of its cell; L.11d still holds every one of them to its cell, to the phone and to two lines */
   .chestwords .cw{white-space:normal;max-width:100%}
@@ -1943,3 +1929,20 @@
   @keyframes msgpulse{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 14px 2px color-mix(in srgb,var(--ok) 55%,transparent)}}
   .msgrow.flash .msgframe{outline:2px solid var(--ink);outline-offset:2px}
   @media (prefers-reduced-motion:reduce){.msgrow.unwatched .msgframe{animation:none;box-shadow:0 0 10px color-mix(in srgb,var(--ok) 45%,transparent)}}
+
+  /* ---------- v29 (item 16 / the build-54 review, build 55): HOVER IS FOR A POINTER ----------
+     On iOS a tapped element KEEPS its hover state, so the menu row the player came from stayed underlined after Back and a
+     tapped mode looked selected. Every :hover rule in the sheet lives here; the :focus-visible and .sel states it used to
+     share a selector with stay where they were, because those are real states and this is only a pointer's hint. */
+  @media (hover:hover){
+    .item:hover{opacity:1;outline:none;text-decoration:underline;text-underline-offset:8px}
+    .choice:hover,.tbtn:hover{border-color:var(--ink);outline:none}
+    #over-back:hover,#quit:hover{color:var(--ink)}
+    #lock-go:hover{text-decoration:none}
+  }
+  /* v29 (build 55, in passing): three looping animations the reduced-motion blocks had missed */
+  @media (prefers-reduced-motion:reduce){
+    #radar .flame path{animation:none}
+    #tapon.on{animation:none}
+    #hicon line,#hicon circle.fg{animation:none}
+  }

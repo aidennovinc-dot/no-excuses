@@ -23,7 +23,8 @@
 export const ACH = [
   // everywhere
   { id:'first',   g:'all', tier:'earned', name:'Showed up',   how:'Finish any run', unlocks:['sq','#FFE9C4'] },
-  { id:'named',   g:'all', tier:'earned', name:'Signed in',   how:'Put a name on your profile, top of the Scores screen', unlocks:['bg','grid'] },
+  // v29 (item 11, build 55): `noRun` - earned off a screen, never by playing, so the Next card never offers it and Try never pins it
+  { id:'named',   g:'all', tier:'earned', name:'Signed in',   how:'Put a name on your profile, top of the Scores screen', unlocks:['bg','grid'], noRun:1 },
   { id:'every',   g:'all', tier:'earned', name:'Every game',  how:'Finish a run in every game', unlocks:['lead','#FFB020'] },
   { id:'fullset', g:'all', tier:'pro',    name:'Full set',    how:'In one game, every mode at every length', unlocks:['wheel'] },
   // v8: the first "big" unlock — a sound pack that is mostly a joke
@@ -52,7 +53,9 @@ export const ACH = [
   // is explicitly the deliberate fails and the hidden finds (#350) — a Pro row would put it in a list of things to aim at
   { id:'hd_max',    g:'hold', tier:'secret', name:'Greedy',       how:'Grow · let the shape run all the way to its limit', hint:"Accuracy has nothing to do with this one. You were shown a size. Ask for very much more than that, and do not let go.", at:{d:'grow'}, live:1 },
   // sequence
-  { id:'sq_7x8',  g:'sequence', tier:'pro',    name:'Wide open',    how:'Round 8 on seven keys', at:{s:7}, live:1 },
+  // v29 (item 16, build 55): was 'Wide open', which is also KEY_ROSTER's name for Sequence · 7 keys at key 1 (below) - two rows, one name, on
+  // the Achievements tab and in toasts. The roster is Aiden's own list (#435), so this is the row that moves; 'Eight wide' names what it is.
+  { id:'sq_7x8',  g:'sequence', tier:'pro',    name:'Eight wide',   how:'Round 8 on seven keys', at:{s:7}, live:1 },
   // v17 (B.9): was 'Ten on five'. Five keys is gone, so the row was moved to three keys (guess)
   { id:'sq_5x10', g:'sequence', tier:'pro',    name:'Ten on three', how:'Round 10 on three keys', at:{s:3}, live:1 },
   { id:'sq_s20',  g:'sequence', tier:'secret', name:'Twenty',       how:'Round 20 on any keys', hint:"Twice as far as the Pro row goes. Say them out loud.", live:1 },

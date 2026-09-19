@@ -15,9 +15,8 @@ import { LEN_LIVE, LEN_RULES, UNLOCKS as UNLOCK_ROWS } from "./config/unlocks.js
 import { T } from "./core.js";
 import { CHAL } from "./core/platform.js";
 import { prefs, save, store, trimRuns } from "./core/store.js";
-import { GAMES, GC, N_GAMES, lenName } from "./games/registry.js";
+import { GAMES, GC, lenName } from "./games/registry.js";
 import { ACH_LEFT, ACH_PROGRESS, ACH_TEST, LEN_TEST, UNLOCK_TEST, quality } from "./progress/rules.js";
-import { scoreTxt } from "./ui/format.js";
 // the lengths on offer. v13 (0.3): pro lengths are gone — every player sees the same length row. Versus still has its own (Reaction best-of)
 const lensOf=(g,d,vs)=>{ const c=GC(g,d); if(vs===2&&c.vsLens) return c.vsLens; return c.lens; };
 /* ---------- progression (v6): modes open on easy milestones, each in the mode before it. Quick Tap Blind is open from the start ---------- */
@@ -138,11 +137,23 @@ function bankLen(key){ const u=unlocked(); if(u[key]) return false; u[key]=Date.
    the chain first (a mode, then a length), and only when there is nothing left to unlock does the card fall back to an
    achievement. `ach` on the answer is what tells the caller which of the two it got, so the card can label itself.
    Secret rows are never offered: what earns them is not written down (TIERS), so naming one would give it away. */
-function nextGoal(){ if(prefs.allOpen) return null; const u=unlocked(); const x=UNLOCKS.find(x=>!u[x.key]); if(x) return { need:x.need, name:unlockName(x.key), gname:GAMES[x.where.g].name, where:x.where };
+/* v29 (item 11, build 55): AND IT ONLY EVER OFFERS SOMETHING THIS PLAYER CAN EARN RIGHT NOW. The chain was walked in table order with no
+   test of whether the row's own `where` is reachable, so the moment Sequence opened the card read "8 notes in Sequence · 7 keys" - and 7
+   keys is always still locked at that point, because what opens it is "8 notes in 3 keys". Try then pinned it as the in-run goal of a
+   3-keys run, where it cannot be earned, and the correct offer (goalFor's "8 notes in Sequence · 3 keys") lost to the tapped aim. Every
+   player passes through that state. A row whose mode is locked or whose length is locked is skipped and the walk carries on - the length
+   rung that gates it is the next thing the loop below finds, which is the honest next step. */
+const canEarn=x=>{ const w=x&&x.where; if(!w||!w.g||!GAMES[w.g]) return false;
+  const d=w.d||GAMES[w.g].modes[0];
+  if(w.d&&!isOpen(w.g,w.d)) return false;
+  return w.s===undefined||!lenLock(w.g,d,w.s); };
+function nextGoal(){ if(prefs.allOpen) return null; const u=unlocked(); const x=UNLOCKS.find(x=>!u[x.key]&&canEarn(x)); if(x) return { need:x.need, name:unlockName(x.key), gname:GAMES[x.where.g].name, where:x.where };
   for(const g in GAMES) for(const d of GAMES[g].modes){ if(!isOpen(g,d)) continue; for(const sc of GC(g,d).lens){ const L=lenLock(g,d,sc); if(L) return { need:L.need, name:`${GAMES[g].name}${MODE_NAME[d]?' · '+MODE_NAME[d]:''} · ${L.name}`, gname:GAMES[g].name, where:{g,d,s:L.s} }; } }
   return nextAch(); }
 // second in the order, and only ever reached once the chain is finished
-function nextAch(){ const done=got(); const a=ACH.find(a=>a.tier!=='secret'&&a.id!=='egg'&&!done[a.id]); if(!a) return null;
+// v29 (item 11, build 55): and a row with no run predicate is not an offer either - `named` ('Put a name on your profile') was pinned as the
+// in-run goal of a Quick Tap run once the chain was finished. `noRun` marks them in config/achievements.js, where the rest of the row lives.
+function nextAch(){ const done=got(); const a=ACH.find(a=>a.tier!=='secret'&&a.id!=='egg'&&!a.noRun&&!done[a.id]); if(!a) return null;
   const g=a.g==='all'?prefs.lastGame:a.g; const d=a.at&&a.at.d, s=a.at&&a.at.s;
   if(!isOpen(g,d||GAMES[g].modes[0])) return null;
   return { need:a.how, name:a.name, gname:GAMES[g].name, where:{g,d,s}, ach:a.id }; }

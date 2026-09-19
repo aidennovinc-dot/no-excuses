@@ -15,7 +15,10 @@ import { on } from "../core/events.js";
 import { look } from "../core/store.js";
 
 const cv=$('#stars'), cx=cv.getContext('2d'); let W,H,pts=[],dpr=1, paused=false, running=false, over=null, geo=null;
-function size(){ dpr=devicePixelRatio||1; W=cv.width=innerWidth*dpr; H=cv.height=innerHeight*dpr; geo=null;
+// v29 (item 16, build 55): DPR IS CAPPED AT 2. It was uncapped, so a Pro / Pro Max drew this canvas at 3x - 1290x2796, 3.6 megapixels -
+// and the Thorn layer fills the whole of it four times a frame, about 14 megapixels of gradient fill per frame at 60fps on the menu.
+// Nothing here has a hard edge that 2x does not hold: stars, orbs and washes are all soft. Battery, not fidelity.
+function size(){ dpr=Math.min(2,devicePixelRatio||1); W=cv.width=innerWidth*dpr; H=cv.height=innerHeight*dpr; geo=null;
   pts=Array.from({length:70},()=>({x:Math.random()*W,y:Math.random()*H,r:(Math.random()*1.4+.4)*dpr,s:(Math.random()*.15+.05)*dpr,a:Math.random()*.5+.15,ph:Math.random()*6.28,l:(30+Math.random()*60)*dpr,v:(.6+Math.random()*1.2)*dpr,R:(120+Math.random()*160)*dpr})); }
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const DRAW={

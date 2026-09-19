@@ -15,7 +15,7 @@ import { HUD, INTRO, INTRO_READY, TOAST } from "../config/copy.js";
 import { MODE_NAME, PASS_LEN, PASS_TURNS, RATE_MAX } from "../config/games.js";
 import { P1C, P2C } from "../config/theme.js";
 import { $, T, pWho } from "../core.js";
-import { emit } from "../core/events.js";
+import { emit, on } from "../core/events.js";
 import { VS, sel } from "../core/state.js";
 import { look, prefs, save, store } from "../core/store.js";
 import { makeTimers, tapTime } from "../core/timers.js";
@@ -24,7 +24,7 @@ import { ENGINES, GAMES, GC, SHARED2, VERSUS, lenName, versusOf } from "../games
 import { Scores, UNLOCKS, bankLen, chalRun, checkAch, checkUnlocks, goalFor, isOpen, lenNextLive, lenNextOf, lenOpen, lensOf, pendingAim, pendingGoal, setPendingAim, setPendingGoal, unlockHtml, unlockName, unlockToast, unlocked } from "../progress.js";
 import { checkKey, checkKeyAch, keyGoal } from "../progress/key.js";
 import { scoreTxt } from "../ui/format.js";
-import { game as showGame } from "../ui/router.js";
+import { game as showGame, show } from "../ui/router.js";
 import { applyPrefs } from "../ui/theme.js";
 import { toast } from "../ui/toast.js";
 
@@ -82,7 +82,8 @@ function pbShow(){ const g=GAMES[sel.game], pb=Scores.best(sel.game,sel.diff,sel
   else { gh.textContent=T(HUD.best,{score:scoreTxt(sel.game,pb,sel.diff,sel.secs)}); gh.classList.add('on'); } }
 function makeCtx(){ const id=R.id; const timers=makeTimers(()=>R.on&&R.id===id);
   // v15 (4.5): `opens` joins practice and scale as a Sequence-only extra on the contract's set — how many notes a versus starts on
-  return { root:$('#game'), game:sel.game, cfg:GC(sel.game,sel.diff,sel.secs), mode:sel.diff, len:sel.secs, players:sel.vs, practice:sel.practice||0, opens:sel.opens||3, scale:sel.scale, rateMode:look('rate'), timers, audio:Snd, rand:Math.random,
+  return { root:$('#game'), game:sel.game, cfg:GC(sel.game,sel.diff,sel.secs), mode:sel.diff, len:sel.secs, players:sel.vs, practice:sel.practice||0, opens:sel.opens||3, scale:sel.scale, rateMode:look('rate'), timers, audio:Snd,   // build 55 (in passing): `rand` was dead - every engine and the dealer call Math.random directly, and there is no seeded path
+   
     /* v16 (1.5): a round-based engine says how far into its finish it is — the final round of a Set, a Streak budget past
        80% — and the music reads it. A timed run needs nothing here: the clock already tells audio.js. MUSIC ONLY (A.1). */
     emit(name,data){ if(R.id!==id) return; if(name==='finish') finish(data); else if(name==='live'){ if(eng&&eng.fin) R.fin=Math.max(0,Math.min(1,eng.fin()||0)); liveCheck(data); } } }; }
@@ -152,9 +153,41 @@ function start(){
 /* v15 (2.5): quitting must never cost a player something they already earned. The engine's own result() is the run so far,
    so one last live pass banks the round that has just landed — the one that may not have emitted 'live' yet — before the
    run is torn down. liveCheck writes to the store itself; this is not a toast, it is the save. */
-function abort(){ if(!R.on) return;
-  if(R.live&&eng&&ctx&&!VS.on&&!sel.vs){ try{ liveCheck(eng.result(ctx)); }catch(e){} }
+/* v29 (items 2 / 4, build 55): TWO GUARDS ON THE QUIT PASS.
+   `landed` - the engine's result() is the run so far, and on a run quit before its first round that is an EMPTY result.
+   liveCheck used to run it anyway, which is how three chain unlocks (Cut, Sequence, Hidden) were earned by quitting
+   during the 3-2-1. The engines no longer report a best round they do not have (see their result()); this is the other
+   half - a result with no hits, no misses and no rounds is not a run and banks nothing.
+   `quiet` - the phone going to sleep mid-run is not a quit and banks NOTHING, not even a round that landed. */
+function abort(quiet){ if(!R.on) return;
+  /* `landed` reads the engine's own report of whether a round exists, and a ROUND THAT SCORED ZERO is a real result -
+     0.00% off on Estimate, a clean Find - so a count is not enough on its own. Estimate and Timing leave `x` OUT while
+     no round has landed (their result()), which is the precise signal; the other engines always report an `x`, so for
+     them this is exactly the behaviour it always was. */
+  if(!quiet&&R.live&&eng&&ctx&&!VS.on&&!sel.vs){ try{ const res=eng.result(ctx);
+    const landed=!!res&&(res.x!==undefined||(+res.hits>0)||(+res.misses>0)||(+res.rounds>0));
+    if(landed) liveCheck(res); }catch(e){} }
   R.on=false; R.id++; VS.reset(); Intro.clear(); cancelAnimationFrame(R.raf); ctx.timers.clearT(); Music.stop(); eng.stop(ctx); $('#count').classList.remove('on'); $('#vwin').classList.remove('on'); $('#game').classList.remove('shake','live','flowon'); $('#seqdone')?.classList.remove('on'); $('#rxbar').innerHTML=''; emit('run:abort'); }
+/* ---------- v29 (item 4, build 55): THE PHONE GOING TO SLEEP ENDS THE RUN ----------
+   There was no visibilitychange handling for the run at all (audio.js had its own, for the context alone). Everything a
+   run measures kept running while the screen was off: R.end is absolute, so a 30s Marathon locked at 10s recorded the 10s
+   of hits as a Marathon and submitted it; Stopwatch's t0 kept its start while rAF paused, so the first frame back scored
+   the whole lock time as the attempt - 47 seconds - and set `ov`, which is what tm_s10 ('let it run 10 seconds') reads,
+   so locking the phone handed out a secret achievement. Reaction's setTimeouts kept firing throttled and scored a phantom
+   no-tap; Go / No-go beat through its whole block.
+   The answer is the honest one and the one the game is named after: the run is over. It is aborted QUIETLY - nothing is
+   banked, not even a round that had landed, because the player was not there for it - and the pick sheet is what comes
+   back, with one toast, on RETURN rather than into a screen nobody is looking at. A run that is not live yet (the 3-2-1)
+   is torn down the same way. */
+let lostRun=false;
+function onHide(){ if(document.hidden){ if(!R.on) return; lostRun=true; abort(true); return; }
+  if(!lostRun) return; lostRun=false; show('s-pick'); toast(TOAST.runLost); }
+document.addEventListener('visibilitychange',onHide);
+/* v29 (item 9, build 55): AND NAVIGATING AWAY FROM A LIVE RUN ENDS IT. Nothing did. A stray toast tap during a run called show('s-pick')
+   and the run went on ticking under the sheet - engine timers, music, the rAF, and a finish that threw the result screen up over
+   whatever the player had gone to. The finish and Quit both clear R.on before they navigate, and a pass & play hand-over does too, so
+   the only thing this catches is a route out of a run nobody asked to leave. Quiet: nothing that was not banked mid-run is banked here. */
+on('screen:change',({id})=>{ if(R.on&&id!=='game') abort(true); });
 function tick(now){
   if(!R.on) return;
   if(R.flowOn) flowTick(now);
@@ -176,7 +209,13 @@ function flowTick(now){ const tps=eng&&eng.tps?eng.tps(now):0;
   R.flow+=(want-R.flow)*(1-Math.exp(-dt/(want>R.flow?FLOW_RISE:FLOW_FALL)));
   const g=$('#game'); g.style.setProperty('--flow',R.flow.toFixed(3)); g.classList.toggle('flowon',R.flow>.02); }
 // every tap reaches the engine through here. ev = { type: 'down' | 'move' | 'up' | 'act', x, y, el, target, player, raw }; t is the tap's own time
-function input(ev){ if(!R.on) return; ev.t=tapTime(ev.raw); eng.input(ctx,ev); }
+/* v29 (item 3, build 55): A TAP REACHES THE ENGINE ONLY WHILE THE RUN IS LIVE. It was forwarded from R.on, which is set
+   the moment the screen is built - so every tap during the 3-2-1 went to the engine. On a fresh mount that is harmless
+   (nothing is armed); after an ABORTED round-based run it was not, because roundEngine.stop() left `st` on 'run' / 'wait'
+   / 'find', and a countdown tap ran the dead state's handler: Reaction Flash swallowed its first flash, Stopwatch banked
+   a 20-second attempt and its Set played four rounds against an askTot that promised five. The engines reset `st` now as
+   well (games/_shared/round.js); this is the belt. The intro's 'Ready?' tap does not come through here. */
+function input(ev){ if(!R.on||!R.live) return; ev.t=tapTime(ev.raw); eng.input(ctx,ev); }
 function finish(res){
   R.on=false; R.live=false; R.flow=0; cancelAnimationFrame(R.raf); ctx.timers.clearT(); Music.stop(); eng.stop(ctx); Snd.end(); $('#seqdone')?.classList.remove('on'); $('#game').classList.remove('flowon');
   const run=Object.assign({ t:Date.now(), g:sel.game, d:sel.diff, s:sel.secs, n:prefs.name||'', v:RUN_SCHEMA },res||eng.result(ctx)); if(chalRun(run.g,run.d,run.s)) run.chal=1; emit('run:record',{run}); if(!prefs.played){ prefs.played=1; save(); }
@@ -224,7 +263,12 @@ function liveCheck(part){ if(!R.on) return;
   /* v17 (B.4): the first-play ghost drives the real engine through the real ctx, so every emit it makes lands here.
      Estimate · Grow's demo plays a whole round and its reveal emits 'live' — which is how a ghost's guess earned Aiden
      "On the money". Same shape as the two-player return above: nothing the player did not do reaches the store. */
+  /* v29 (item 2, build 55): Object.assign copies an own property whose value is undefined, so an engine that reports no
+     best round would blank the 999 sentinel rather than leave it standing. Undefined fields are dropped instead - 999
+     fails every lower-is-better test, which is exactly what 'no round yet' should do. */
   if(VS.on||sel.vs||R.demo) return; const run=Object.assign({g:sel.game,d:sel.diff,s:sel.secs,hits:0,misses:0,x:999,y:0,practice:sel.practice||0},part);
+  for(const k in run) if(run[k]===undefined) delete run[k];
+  if(run.x===undefined) run.x=999; if(run.y===undefined) run.y=0;
   if(chalRun(run.g,run.d,run.s)) run.chal=1;
   const u=unlocked(); let ch=false;
   for(const x of UNLOCKS){ if(x.live&&!run.chal&&!run.practice&&!u[x.key]&&x.test(run)){ u[x.key]=Date.now(); ch=true; R.fresh.push(x.key); toast(unlockToast(x.key),'','ok'); } }

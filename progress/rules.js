@@ -91,7 +91,9 @@ const ACH_TEST = {
   dt_s:r=>r.g==='dots'&&r.d==='lead'&&r.s===30&&rate(r)>=4.5,
   dt_bs:r=>r.g==='dots'&&r.d==='blind'&&r.s===30&&rate(r)>=3.5,
   hd_run:r=>r.g==='hold'&&r.s===STREAK&&r.hits>=15,
-  hd_s:r=>r.g==='hold'&&r.s===7&&r.y<=4,
+  // v29 (item 16, build 55): 'Machine' says "Every round of a Set within 4.00%" and tested s===7, which is Grow's Set - a Cut Set (s===10)
+  // with every round under 4% could never earn it. The copy names no mode, so the test does not either: any Set, either mode.
+  hd_s:r=>r.g==='hold'&&r.s!==STREAK&&r.y<=4,
   /* v15 (build 24, Aiden's answer 2): Greedy asks for a hold that ran ALL THE WAY to its limit, and `mx` is the engine
      saying exactly that. The build-23 test was `r.y >= 600` — a % threshold derived from the cap arithmetic, not from
      play — and it is only reachable while the target is under 36.3vmin, because the cap is min(target × 2.8, 96vmin)
@@ -111,7 +113,9 @@ const ACH_TEST = {
 const ACH_LEFT = {
   every:all=>Object.entries(GAMES).filter(([g])=>!all.some(x=>x.g===g)).map(([,x])=>x.name),
 };
-const ACH_PROGRESS = {
+// build 55 (in passing): the contract is 0..1 and several rows answered 2.40 / 1.50 — harmless only because the Progress screen clamped it at the far end
+const clamp1 = f => (...a) => Math.max(0, Math.min(1, f(...a) || 0));
+const ACH_PROGRESS_RAW = {
   every:all=>Object.keys(GAMES).filter(g=>all.some(x=>x.g===g)).length/N_GAMES, fullset:(all,g)=>fullsetProg(all,g), tour:all=>tourProg(all),
   qt_r4:all=>bestRate(all,'quick-tap',0,'four')/3,
   qt_s5:all=>bestRate(all,'quick-tap',5,'four')/5, qt_s15:all=>bestRate(all,'quick-tap',15,'four')/5, qt_s30:all=>bestRate(all,'quick-tap',30,'four')/5, qt_bs5:all=>bestRate(all,'quick-tap',5,'two')/5,
@@ -143,4 +147,5 @@ const QUALITY = {
 };
 const quality=(g,d,s,r)=>GV(QUALITY,g,d,s,()=>0)(r);
 
+const ACH_PROGRESS = Object.fromEntries(Object.entries(ACH_PROGRESS_RAW).map(([k, f]) => [k, clamp1(f)]));
 export { ACH_LEFT, ACH_PROGRESS, ACH_TEST, LEN_TEST, QUALITY, UNLOCK_TEST, bestRate, bestRound, fullsetProg, lowProg, lowTotal, quality, rate, tourProg };

@@ -39,7 +39,7 @@ const REVIVE_MS=400;
    A stuck clock is rebuilt inside the gesture, the one moment iOS lets a new context start; a moving one clears the flag.
    No timer is ever started from a tap. */
 const LIVE_MS=150;
-let ac=null, acGen=0, acWhy='', acLast='', acChecks=0, acClock=null, reviving=null;
+let ac=null, acGen=0, acWhy='', acLast='', acChecks=0, acClock=null, reviving=null, pvT=0;
 const rebinds=[];
 const newCtx=()=>{ try{ return new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; } };
 /* S5: what Testing reads out — the state, how many times the context has been rebuilt, the last REBUILD and the last thing
@@ -58,7 +58,13 @@ function adopt(c,suspect){ if(!c) return null; if(c.state==='running') c._ran=1;
   if(c.addEventListener) c.addEventListener('statechange',()=>{ if(c!==ac) return; if(c.state==='running'){ c._ran=1; mark(c); } told('statechange · '+c.state);
     if(c.state!=='running'&&c.state!=='closed'&&!document.hidden) revive('statechange'); });
   return c; }
-const AC=()=>{ if(!ac){ ac=adopt(newCtx()); if(ac) told('created'); } if(ac&&ac.state!=='running'){ try{ ac.resume(); }catch(e){} } return ac; };
+/* v29 (item 12, build 55): AC() NO LONGER RESUMES BY ITSELF. F.2's rule is that every resume goes through revive() - one
+   single-flighted ladder that rebuilds a context which will not come back - and this line was the exact path F.2 said it
+   had removed. The music loop calls nodes() -> AC() every 80ms and every tone() calls AC(), so during an iOS interruption
+   resume() fired ~12 times a second, each returning an unobserved promise that rejected with InvalidStateError, and every
+   one of them bypassed the `reviving` guard. It asks revive() instead, which is a no-op while one is already in flight
+   and does nothing at all while the page is hidden. */
+const AC=()=>{ if(!ac){ ac=adopt(newCtx()); if(ac) told('created'); } if(ac&&ac.state!=='running'&&ac.state!=='closed'&&!reviving&&!document.hidden) revive('AC'); return ac; };
 // (c): a new context, the old one closed, and everything that held a node or a time on the old one told to let go.
 // v22 (§J.1): the replacement is suspect until its clock has been seen moving, so the first tap on it checks it
 function rebuild(why){ const old=ac, c=newCtx(); if(!c) return false; ac=adopt(c,true); acGen++;
@@ -205,8 +211,21 @@ const Snd = (()=>{
        with force false), like unlockFx — and it is not unlockFx, click or a chest's (gated). */
     keyEarnPlan(tier){ const s=KEY_EARN_FX[tier], tr=s&&TRACKS[s.track]; if(!tr) return [];
       return s.notes.map(([at,semi,ms,w,g,am,lp])=>{ const f=+(tr.root*2*Math.pow(2,semi/12)).toFixed(2); return [at,f,f,ms,w,g,am||0,lp||0]; }).sort((x,y)=>x[0]-y[0]); },
-    keyEarn(tier){ const a=AC(); if(!a) return; const t=a.currentTime+.02;
-      for(const [at,f0,f1,ms,w,g,am,lp] of this.keyEarnPlan(tier)) tone(f0,f1,ms,w,g,t+at,am,false,undefined,{lp:lp||0,hold:.45}); },
+    /* v29 (item 8, build 55): AND IT HANDS BACK A WAY TO STOP IT. Every note was scheduled straight to a.destination in one
+       pass with nothing keeping a handle, and Music.hush() only touches the music BED - so there was no code path anywhere
+       that could silence the earn music. A tap-to-skip at 1.5s therefore left up to 2.5s of it ringing over the settled key,
+       and on an Author key with its chest already tapped, over Snd.chest('thorns') 250ms later: two pieces of music at once,
+       which is the overlap cut() exists to prevent for beds. The notes go through a gain node of their own now and the
+       handle's stop() ramps it away; ui/screens/key.js cuts it in earnSkip and in the stage's clear(). */
+    keyEarn(tier){ const a=AC(); if(!a) return null; const t=a.currentTime+.02; let gn=null;
+      try{ gn=a.createGain(); gn.gain.value=1; gn.connect(a.destination); }catch(e){ gn=null; }
+      for(const [at,f0,f1,ms,w,g,am,lp] of this.keyEarnPlan(tier)) tone(f0,f1,ms,w,g,t+at,am,false,gn||undefined,{lp:lp||0,hold:.45});
+      if(!gn) return null;
+      let off=false;
+      // gain() and stopped() are the gate's read: it spies on Snd.keyEarn, taps the skip and proves THIS handle went quiet (item 8)
+      return { gain(){ try{ return gn.gain.value; }catch(e){ return 0; } }, stopped(){ return off; },
+        stop(){ off=true; try{ const n=a.currentTime; gn.gain.cancelScheduledValues(n); gn.gain.setValueAtTime(gn.gain.value,n); gn.gain.setTargetAtTime(0,n,.04);
+        setTimeout(()=>{ try{ gn.gain.value=0; gn.disconnect(); }catch(e){} },600); }catch(e){} } }; },
     /* v27 (item 14, build 51): one sound per NAMED STEP of the key-earned animation — config/audio.js KEY_STEP_FX, played through the one fx() like
        every other effect. `keyStepPlan(name)` is the same events flat, for the review catalogue's sound list. */
     keyStepPlan(name){ return (KEY_STEP_FX[name]||[]).map(e=>e.slice()); },
@@ -427,6 +446,12 @@ const Music=(()=>{
   function schedule(t,at,barSec,vol,dest,h,sh){ bars(t,bar,h,sh).forEach(e=>{ const ms=e.d*barSec*1000;
       Snd.tone(e.f,e.f1,ms,e.w,e.g*vol,at+e.p*barSec,e.am||Math.max(4,(e.a||.06)*ms),true,dest,{lp:e.lp,q:e.q,hold:e.h}); }); }
   function loop(){ const a=nodes(); if(!a||!tr) return;
+    /* v29 (item 12, build 55): RE-ANCHOR, DO NOT CATCH UP. `next` accumulates bar lengths on the audio clock, and the while
+       below schedules every bar between `next` and now. When the clock keeps rendering while the timer is throttled (a hidden
+       desktop tab, an Android WebView), `next` falls minutes behind and ONE tick then builds thousands of oscillator chains
+       with start and stop times already in the past - a main-thread stall for nothing audible. More than a bar behind is not
+       a gap to fill in, it is a gap to skip. iOS interrupts the context instead, so this never fired there. */
+    { const bs=barSecNow(a)||barSecOf(tr); if(bs&&next<a.currentTime-bs) next=a.currentTime+.05; }
     // the arc is re-anchored the moment the clock starts, so it spans the run and not the run plus its countdown
     if(shape&&shape.arc&&!shape.livened&&st&&st.live&&secs>0){ arcFrom(bar,secs); shape.livened=1; }
     while(next<a.currentTime+.25){ const barSec=barSecNow(a); if(!barSec) break;
@@ -469,7 +494,8 @@ const Music=(()=>{
     menuTrack,
     // preview one track on its own — Customise (12.1 / B.32), and the option a game is set to play
     // a preview ends by handing the menu loop back — walking away from Customise into silence would be worse than not previewing
-    preview(g,ms,o){ st=null; stems=false; flow=false; const t=o?(TR[g+':'+o]||TR[o]||pick(g)):pick(g); run(t,'preview',{p:phaseOf(t)}); setTimeout(()=>{ if(mode==='preview'){ this.stop(); this.menu('menu'); } },ms||4200); },
+    // build 55 (in passing): the timer is kept, so a second preview does not get cut short by the first one's clock
+    preview(g,ms,o){ st=null; stems=false; flow=false; clearTimeout(pvT); const t=o?(TR[g+':'+o]||TR[o]||pick(g)):pick(g); run(t,'preview',{p:phaseOf(t)}); pvT=setTimeout(()=>{ if(mode==='preview'){ this.stop(); this.menu('menu'); } },ms||4200); },
     /* B.30 — Sequence ducks while a key rings. The bed drops to DUCK and comes back over the note plus DUCK_TAIL; the
        hook is only armed while a Sequence track is playing, so nothing else in the app pays for it. */
     duck(sec,at){ const a=ac; if(!a||!mg||mode!=='sequence') return; const t0=Math.max(a.currentTime,at||a.currentTime), back=t0+sec+DUCK_TAIL;
@@ -478,7 +504,8 @@ const Music=(()=>{
     /* v23 (§L.6, build 41): a chest ceremony HUSHES the music fully and its tap brings it back. A flag as well as a ramp, because the key
        screen can ask for a different loop mid-ceremony and a bed built while hushed has to start silent (nodes()). No stem or flow layer
        plays on the key screen, so the bed is the whole of it. */
-    hush(on){ hushed=!!on; const a=ac; if(!a||!mg) return;
+    // build 55: the parameter was `on`, which shadowed the imported event helper — the phantom-import pattern the refactor removed
+    hush(v){ hushed=!!v; const a=ac; if(!a||!mg) return;
       try{ mg.gain.cancelScheduledValues(a.currentTime); mg.gain.setTargetAtTime(hushed?0:1,a.currentTime,hushed?HUSH.down:HUSH.up); }catch(e){ mg.gain.value=hushed?0:1; } },
     /* the review catalogue's Play button (v16 §1.1). One pass of a track as a flat list of tone events —
        [t, freq, freqEnd, ms, wave, gain, attackMs, lowpassHz, q, hold] — so the page plays exactly what the app plays and
@@ -528,6 +555,7 @@ document.addEventListener('pointerdown',()=>{ if(ac&&(ac.state!=='running'||ac._
 document.addEventListener('visibilitychange',()=>{ if(!ac) return; if(document.hidden){ ac._suspect=1; mark(ac); return; } revive('foreground'); });
 addEventListener('pagehide',()=>{ if(ac){ ac._suspect=1; mark(ac); } });
 addEventListener('pageshow',()=>{ if(ac) revive('pageshow'); });
-document.addEventListener('pointerdown',()=>Snd.unlock(),{once:true});
+// build 55 (in passing): keyboard-only desktop never unlocked, and older iOS counted touchend rather than pointerdown as the gesture
+for(const ev of ['pointerdown','touchend','keydown']) document.addEventListener(ev,()=>Snd.unlock(),{once:true});
 
 export { AC, Music, Snd, ac, audioClock, audioState, rebuild, revive };

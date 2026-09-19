@@ -16,44 +16,90 @@ the module graph in a cycle. Evaluation order matters even though `CLAUDE.md` sa
 feedback line like "Dots Lead's ring should push further" means reading `menu.js`, `app.js`,
 `progress.js` and `games/dots.js` to be sure.
 
-## Target layout
+## The layout — what is actually on disk (build 55)
+
+Build 18 finished the refactor; this was headed "Target layout" until build 55 and named seven files
+that were never written (`core/dom.js`, `core/audio.js`, `progress/progress.js`, `progress/scores.js`,
+`ui/screens/title.js`, `ui/screens/achievements.js`, `ui/screens/toast.js`, `_smoke/review/`). The
+build-54 review found every one of them still stated as fact. This is the tree as it is; what has
+NOT moved is named under **Deferred** at the foot of this section, with the reason.
 
 ```
 site/
   index.html          shell: markup + one <link> to styles/app.css + one <script type=module src=boot.js>
-  boot.js             creates the app: store → audio → router → menu. Nothing else at top level
+                      and the S4 Content-Security-Policy meta. No inline script of any kind (build 55)
+  boot.js             the first paint's order: seed seen, retro-credit, first screen, the click dispatcher, the canvas
+  core.js             $, $$, T, esc, f2, mean, minMax, pWho, seqStep, sum, vmin, winner — the leaf every file may import
+  audio.js            Snd (effects), Music (the arrangement player), and the iOS AudioContext revive ladder
+  progress.js         unlocked(), got(), checkUnlocks(run), checkAch(run), nextGoal(), Scores — over the store
   styles/app.css      all CSS, in sections that match the folders below
-  config/             DATA ONLY. No functions. Every number, name and string a feedback batch might change
-    build.js          export const BUILD = 14        ← the one place; a script writes version.json from it
+  fonts/              three woff2 files, self-hosted (B.32). Nothing is fetched from a font host
+  video/              the About messages' clips; test-card.mp4 + .vtt until the real ones are recorded
+  config/             DATA ONLY. No functions, no imports. Every number, name and string a batch might change
+    build.js          export const BUILD = N  ← the one place (A6); npm run bump writes index.html ×2 and version.json
     games.js          GAMES: name, modes, mode copy, lengths, length names/subtitles, units, versus flag, "lower is better"
-    unlocks.js        UNLOCKS + LEN_RULES: key, need copy, where — the L6 table
-    achievements.js   ACH: id, game, tier, name, how, at, unlocks
+    unlocks.js        UNLOCKS + LEN_RULES + LEN_LIVE: key, need copy, where — the L6 table
+    achievements.js   ACH and KEY_ROSTER: id, game, tier, name, how, at, unlocks
     copy.js           every user-facing string: toasts, verdicts, intro lines, tier blurbs, lock-box text
     theme.js          P1/P2 colours (L4), backgrounds, cosmetic items, wheel rules
+    audio.js          TRACKS, STEMS and every *_FX table            chests.js   the four chests, CEREMONY, METER, GAUNTLETS
+    keys.js           the three keys, KEY_EARN, KEY_LAYER          key-bars.js  the 30 combinations × three tiers
+    messages.js       the eight About message slots and PLAYER     shapes.js    SHAPES, DEALS, NOGO_TURNS (A9)
+    verdicts.js       VERDICTS, VERDICT_TIERS, ROUND_AT
   core/
-    store.js          versioned storage: one schema, one `ne.v`, migrations ladder, shape-checked load, capped runs
+    store.js          versioned storage: one schema, one `ne.v`, the migration ladder, shape-checked load, capped runs
+    state.js          sel and VS — what is selected, and the two-player stage
     events.js         emit/on. Screens and engines talk through events, never by importing each other
-    dom.js            $, $$, esc(), html`` (escapes every interpolation by default; raw() to opt out)
-    timers.js         later()/clearT() keyed by runId — the good idea from app.js, shared by everyone
-    audio.js          Snd, Music, unlock/resume handling, per-game music modules
-    platform.js       share, haptics, deep link, update check, storage adapter — web now, Capacitor later, same interface
+    timers.js         later()/clearT() keyed by runId, and tapTime() — shared by everyone
+    platform.js       the deep link, haptic() and the update poll — web now, Capacitor later, same interface (A8)
+    count.js          the shared count-up, used by the runs and the chest meter
   progress/
-    rules.js          the predicates, keyed by id: UNLOCK_TEST[key], LEN_TEST[game][i], ACH_TEST[id], ACH_PROGRESS[id]
-    progress.js       unlocked(), got(), checkUnlocks(run), checkAch(run), nextGoal() — pure functions over the store
-    scores.js         runs, submit, board queries, in-memory cache invalidated on submit
+    rules.js          the predicates, keyed by id: UNLOCK_TEST[key], LEN_TEST, ACH_TEST[id], ACH_PROGRESS[id], QUALITY
+    key.js            the three keys, the bars, the meter, the four chests, the key achievements, the radar, Testing's dev tools
   ui/
-    router.js         show(), back(), the screen stack — the only file that knows screen ids
-    actions.js        data-act="…" → handler. Replaces the click dispatcher. A handler returns 'pick' | 'click' for the sound
-    screens/          one file per screen, each owning its own DOM: title, menu, pick, board, achievements,
-                      customise, about, pass, result, lockbox, toast
+    router.js         show(), back(), game() — the only file that knows screen ids; the markup is the stack
+    actions.js        data-act="…" → handler. A handler returns 'pick' | 'click' for the sound
+    reveal.js         the ONE routine every unlock plays through (build 46) — stage, gifts, hold, card
+    ceremony.js chest.js  the chest drawings and their ceremonies      atmosphere.js  the background canvas
+    toast.js chips.js format.js theme.js ads.js video.js               (video.js is the one shared message player)
+    screens/          one file per screen, each owning its own DOM: menu, pick, board, progress, customise,
+                      key, about, testing, pass, result, lockbox, gauntlet (+ index.js, which imports them)
   run/
     run.js            start / tick / finish / abort. Owns run state. Calls the engine through the contract below
+    input.js          pointer and keyboard binding for the play surface
   games/
     registry.js       imports every engine, exports ENGINES by id. A new game = one folder + one line here + config rows
-    _shared/          round.js (Set/Streak loop), shapes.js, hud.js (countdown, rate bar, goal line, PB marker)
+    _shared/          round.js (the Set/Streak loop), timed.js, hud.js, two.js, versus.js, deal.js, shapes.js, tier.js
     quick-tap/index.js  dots/  estimate/  sequence/  timing/  reaction/  spot/
-  _smoke/             the gate (see below) + review/catalogue.mjs + review/progression.mjs
+  _smoke/             the gate: smoke.mjs, GATE.md, server.mjs, chrome.mjs, loudness.mjs, cssdiff.mjs, catalogue-load.mjs
+  scripts/            bump.mjs (A6), native.mjs (the Capacitor tree), placeholders.mjs (the key-bar generator)
+  docs/               RULES-HISTORY.md, MUSIC.md, PROGRESSION.md, GATE-HISTORY.md — the full text CLAUDE.md links to
 ```
+
+Two folders named in the old target never arrived and are not coming: `core/dom.js` (the `html``
+helper — `esc()` in `core.js` does the escaping by hand, and the build-54 review's S1 finding is
+closed by escaping at the board's render instead) and `_smoke/review/` (the review pipeline lives
+outside the site tree, in `../_review/scripts/`, and since build 55 the gate skips those checks by
+name rather than crashing when it is not there).
+
+### Deferred — named at the build-54 review, not built at build 55
+
+Full findings: `../_review/code-review-54/architecture.md`. Each is a refactor with no behaviour in
+it, and build 55 is a bug-fix build; each needs its own build so the gate can tell a move from a fix.
+
+- **`boot.js` assembles nothing.** The app is put together by import-order side effects — `core/store.js`
+  writes localStorage on import, `ui/theme.js` applies prefs and saves on import, `audio.js` binds six
+  document listeners on import, `ui/screens/customise.js` starts a permanent 520ms interval on import.
+  The fix is an `init()` that runs those in a stated order. Deferred: it touches every module's top level.
+- **One writer for `prefs`.** Fifteen files assign to `prefs` and call `save()`, so `cleanPrefs` has to
+  know every field every screen invents. The fix is one `setPrefs(patch)` in `core/store.js`. Deferred:
+  ~50 call sites, and the shape check has to move with them.
+- **The registry split.** `games/registry.js` sits under `games/` but is imported by `core/store.js` and
+  `core/state.js`, which is why `audio.js` and `progress.js` cannot move under `core/` and `progress/`.
+  The fix is to split the data half (`GAMES`, `GC`, `GV`) into `config/` and leave `ENGINES` in `games/`.
+  Deferred: it moves three root files, which is a build of its own.
+- Also listed and not built: `ui/screens/key.js` and `progress/key.js` each hold four concerns; the nine
+  never-called declarations and the 60 exports no app module imports; `sel` written from four files.
 
 ## The engine contract
 
@@ -120,10 +166,10 @@ capped at 600 (oldest first out). Under Capacitor the same interface writes thro
 | S1 | **No `innerHTML` with anything that isn't from `config/`.** Player name, URL params, run data go through `esc()` or `textContent`. The `html\`\`` helper escapes by default. | build 13 reflects `?score=` from a share link into the page unescaped; `prefs.name` is inserted raw in two places |
 | S2 | **One `parseChallenge(url)`** validates `g` against GAMES, `d` against modes, `s` against the mode's lengths (integers only), `score` as a number. Anything else → no challenge. A challenge opens the sheet once, tags the run `chal:1`, never opens a locked mode for scoring. | `s:+q.get('s')` currently accepts NaN, 1e308, −5; a challenge leaves a locked mode open for the whole session and submits to the board |
 | S3 | **Storage never crashes boot** — see Storage. | `ne.runs = {}` throws in `forEach`; `prefs.scale = "foo"` throws in sequence.js |
-| S4 | **No `eval`, `Function`, remote scripts, or runtime CDN.** Fonts ship in the bundle. `index.html` carries `<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'">`. | Capacitor runs the page beside a native bridge; a script injection there is worse than on the web. Google Fonts also fails the gate offline |
+| S4 | **No `eval`, `Function`, remote scripts, or runtime CDN.** Fonts ship in the bundle. `index.html` carries `<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'">` — **in force since build 55** (this rule was written at build 14 and stated here as fact; the meta did not exist until the build-54 review found it missing, and the gate asserts it now). `script-src` is not listed, so it falls to `default-src 'self'`: there is no inline script in `index.html` at all. | Capacitor runs the page beside a native bridge; a script injection there is worse than on the web. Google Fonts also fails the gate offline |
 | S5 | **Dev switches** (Everything open, Supporter, Fresh game) exist only when `BUILD_FLAGS.dev` is true; the release build strips them. | a supporter flag in localStorage is free no-ads the day ads exist |
 | S6 | **Money and ads never trust the client.** Supporter status comes from the store's entitlement (RevenueCat), ads from the native plugin. No shared leaderboard without a server that validates runs — not planned. | nothing leaves the phone today, so the stakes are the player's own scoreboard; that changes with the first purchase |
-| S7 | The update poll (`version.json`) runs only on `https:` and never inside the native shell. | in Capacitor it compares the bundle to itself, or pins the green bar on forever |
+| S7 | The update poll (`version.json`) runs only on `https:` and never inside the native shell. **In force since build 55** — `updatePoll()` in `core/platform.js`, gated on `location.protocol` and `TARGET`; until then it was an inline `<script>` in `index.html` with no gate at all, and it carried a fourth copy of the build number. | in Capacitor it compares the bundle to itself, or pins the green bar on forever |
 
 ## Code decisions — locked like the design ones
 
@@ -136,9 +182,9 @@ Change one only when the FEEDBACK line quotes its ID.
 | A3 | Engines implement the contract above and import only from `games/_shared/` and `core/`. |
 | A4 | Screens and engines communicate by events (`core/events.js`), never by importing each other. |
 | A5 | One storage key, one schema version, migrations forward only. |
-| A6 | The build number lives in `config/build.js`; `npm run bump` writes it everywhere else. Hand-editing four places is over. |
+| A6 | The build number lives in `config/build.js`; `npm run bump` writes it everywhere else — **two places in `index.html` since build 55** (the hint line and `#build`, both `v0.N`) plus `version.json`. The third, the inline update-check constant, went with the inline script (S7). Hand-editing any of them is over. |
 | A7 | The gate runs before every push and covers every engine, every screen, a tampered-storage fixture and the security rules S1–S3 as assertions. |
-| A8 | Native shell = Capacitor 8. The web tree is the app; `platform.js` is the only file that knows which shell it's in. |
+| A8 | Native shell = Capacitor 8. The web tree is the app; `platform.js` is the only file that knows which shell it's in — the deep link, `haptic()` (build 55: eleven direct `navigator.vibrate` calls across six engines are one call here, a no-op on iOS until the Capacitor Haptics plugin lands) and the update poll. |
 | A9 | Every game that deals shapes deals them by the shape difficulty standard above — one tiered list, bands with a mix and a load, a harder shape paired with an easier setting (build 50, v26 §B2). |
 
 ## The gate (A7) — what "passes" means
@@ -146,9 +192,12 @@ Change one only when the FEEDBACK line quotes its ID.
 Headless Chromium at 390×844, `npm test` spawns its own server. Zero uncaught errors across: title →
 menu → every pick sheet → one Set run and one Streak run per game → result → board → achievements →
 customise; a pass & play and a versus run of Quick Tap; boot on three storage fixtures (empty, build
-13 layout, deliberately corrupt); a challenge URL with a hostile `score`; the L-asserts from
-`CLAUDE.md`. Then `_smoke/review/*.mjs` regenerate the screen catalogue and the progression map into
-`../_review/` for Cowork to publish.
+13 layout, deliberately corrupt — including, since build 55, an inherited `Object.prototype` name in
+`runs[].g` and in `prefs.lastGame` / `scale` / `bg`, a non-finite `hits`, and a map of 9,000 keys); a
+challenge URL with a hostile `score`; the L-asserts from `CLAUDE.md`. The catalogue is a separate
+command — `npm run review` drives `../_review/scripts/`, which is outside the site tree, and since
+build 55 every gate check that reads it is SKIPPED BY NAME when it is not there, so `npm test` passes
+on a clone of `site` alone. A crash is a failure like any other: the verdict always prints.
 
 ## What a feedback line costs after the refactor
 

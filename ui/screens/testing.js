@@ -79,6 +79,7 @@ register('s-testing',{ onShow(){ clockPrev=null; clockTxt=''; devState(); if(BUI
 // B.26: the first game's first combination is the segment the advance demo lights — a real key, drawn over the ring as it is
 const firstKey=()=>{ const g=Object.keys(GAMES)[0]; const d=GAMES[g].modes[0]; return { g, d, key:`${g}:${d}:5`, tier:'clear', was:0, done:1, total:1 }; };
 define({
+  // build 55 (in passing): S5 — the handlers shipped in the release bundle, so a planted button with Web Inspector attached was supporter for the session
   'dev-open'(){ prefs.allOpen=!prefs.allOpen; save(); devState(); toast(prefs.allOpen?TOAST.devOpenOn:TOAST.devOpenOff); return 'pick'; },
   'dev-sup'(){ prefs.supporter=!prefs.supporter; save(); devState(); toast(prefs.supporter?TOAST.supOn:TOAST.supOff); return 'pick'; },
   /* build 34 (#371): fill Pro and Author IN MEMORY so the two rings could be played before any numbers existed. BUILD 38

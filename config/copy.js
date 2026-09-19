@@ -9,6 +9,8 @@ export const TOAST = {
   devOpenOn:'Everything open · modes and cosmetics', devOpenOff:'Progression back on · only what you earned',
   supOn:'Supporter ON · no ads, all cosmetics, pro length', supOff:'Free tier · ads back on',
   fresh:'Fresh game · runs, unlocks, achievements and intros wiped',
+  // v29 (item 4, build 55): the phone went to sleep mid-run. The run is over and nothing was banked; this is said on RETURN, not into a dark screen
+  runLost:'Run cancelled · the phone locked, so nothing was counted',
   // build 38 (#426): the columns carry generated placeholders now, so the test fill only ever finds EMPTY cells to fill
   barsOn:'Test fill · empty Pro / Author bars derived in memory, never saved, gone on reload', barsOff:'Test fill off · the cells it filled are empty again',
   barsNone:'Nothing to fill · every Pro and Author bar has a number (placeholders since build 38)',
@@ -412,5 +414,8 @@ export const MSG = { title:'messages', lede:'Short messages from Aiden, as you g
   /* v27 (items 9 / 10, build 52): THE SHARED VIDEO PLAYER (ui/video.js). `close` is the line in dim grey at the foot of the screen — the whole of how
      the player is dismissed, because item 9 wants nothing over the picture and no knobs; a tap on the picture itself pauses and plays. */
   close:'tap outside to close',
+  // v29 (item 10, build 55): a clip that will not load says so. It used to be a silent black rectangle with an empty caption strip and an
+  // outline that never lit - a missing file, a 404 or an iOS NotAllowedError all looked identical, and identical to a clip with no sound.
+  unavailable:'Video unavailable — tap outside to close',
   // v26 (item 5, build 49): how a video reads among a chest's rewards — its slot's own title. Add a word here ("Video: {title}") and every chest says it
   reward:'{title}' };

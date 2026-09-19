@@ -13,7 +13,8 @@ function applyPrefs(g){ const r=document.documentElement.style; const c=colOf(g|
   // v17 (B.22, build 29): the pressed game's outline. Named in config/theme.js (amber) so the stylesheet never picks a colour
   r.setProperty('--press',PRESS.v);
   // v18 (B.18, build 32): the key-progress outline on game select, named in config/theme.js (lilac)
-  r.setProperty('--keyfill',KEYFILL.v); save(); }
+  // build 55 (in passing): applyPrefs runs on EVERY screen change and nothing in it changes the store, so the save() wrote the whole record to localStorage on every navigation
+  r.setProperty('--keyfill',KEYFILL.v); }
 applyPrefs(prefs.lastGame);
 on('screen:change',({id})=>{ if(id!=='game') applyPrefs(sel.game); });
 

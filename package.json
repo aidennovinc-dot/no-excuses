@@ -9,6 +9,7 @@
     "native": "node scripts/native.mjs",
     "review": "node ../_review/scripts/catalogue.mjs && node ../_review/scripts/build-catalogue.mjs"
   },
+  "engines": { "node": ">=22" },
   "dependencies": {
     "puppeteer-core": "^25.10.0"
   }

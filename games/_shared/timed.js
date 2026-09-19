@@ -3,6 +3,7 @@
    engine-core.js. An engine built on this supplies reset / begin / advance / render / ring / check (the tap test that
    sat in boot.js and dots.js) and may override lockMs, hideOnMiss and unlock. */
 import { CFG } from "../../config/games.js";
+import { haptic } from "../../core/platform.js";
 import * as hud from "./hud.js";
 
 // the window the flow reading averages over (B.27). 1.5s is long enough that one fast pair does not trip it and short
@@ -27,11 +28,13 @@ const timedEngine=()=>({ ctx:null, hits:0, misses:0, hitT:[], row:0, rowNow:0, a
   arm(){ this.render(true); this.ring(); },
   // the lockout ending: the target comes back. Dots keeps its dot where it was, so it only re-shows it
   unlock(){ this.arm(); },
-  input(ctx,ev){ const now=performance.now(); if(!this.armed||now<this.lockUntil) return; this.check(ev)?this.hit():this.miss(now); },
-  hit(){ const ctx=this.ctx; this.hits++; this.rowNow++; if(this.rowNow>this.row) this.row=this.rowNow; this.hitT.push(performance.now()); hud.score(this.hits); ctx.audio.hit(); this.advance(); this.arm(); hud.bigcount(this.hits); ctx.emit('live',{hits:this.hits,misses:this.misses,row:this.row}); },
+  input(ctx,ev){ const now=performance.now(); if(!this.armed||now<this.lockUntil) return; this.check(ev)?this.hit(ev):this.miss(now); },
+  // build 55 (in passing): the hit's time is the TAP's (ev.t), not the handler's — a few ms of main-thread latency shifted the rate window
+  hit(ev){ const ctx=this.ctx; this.hits++; this.rowNow++; if(this.rowNow>this.row) this.row=this.rowNow; this.hitT.push((ev&&ev.t)||performance.now()); hud.score(this.hits); ctx.audio.hit(); this.advance(); this.arm(); hud.bigcount(this.hits); ctx.emit('live',{hits:this.hits,misses:this.misses,row:this.row}); },
   // dots (v8): a miss holds the dot where it is for half a second, then play goes on — it no longer vanishes
   // v17 (B.6): a miss RESETS the clean streak. The best one the run managed is what the chain reads
-  miss(now){ this.misses++; this.rowNow=0; this.lockUntil=now+this.lockMs; this.ctx.audio.miss(); if(this.hideOnMiss) this.render(false); hud.shake(); hud.flash(CFG.lockout); if(navigator.vibrate) navigator.vibrate(40); this.ctx.emit('live',{hits:this.hits,misses:this.misses,row:this.row}); },
+  // build 55 (in passing): the red flash was CFG.lockout (750ms) while Dots' own lockout is 500 — it outlasted the lockout and the dot re-showed under it
+  miss(now){ this.misses++; this.rowNow=0; this.lockUntil=now+this.lockMs; this.ctx.audio.miss(); if(this.hideOnMiss) this.render(false); hud.shake(); hud.flash(this.lockMs); haptic(40); this.ctx.emit('live',{hits:this.hits,misses:this.misses,row:this.row}); },
   tick(ctx,now){ if(now-this.meterAt>100){ this.meterAt=now; hud.rate(ctx.game,this.hitT,now,ctx.rateMode==='run'?this.runFrom:0); } if(this.lockUntil&&now>=this.lockUntil){ this.lockUntil=0; this.unlock(); } },
   stop(){ this.armed=false; },
   /* v17 (B.27): taps a second over the last FLOW_WIN, which is what the flow state is measured on. It is the engine's

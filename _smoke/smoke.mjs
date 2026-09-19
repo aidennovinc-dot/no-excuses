@@ -98,10 +98,36 @@ function verdict(stopped) {
   return pass;
 }
 
+/* ---- v29 (item 17, build 55): THE GATE ALWAYS PRINTS ITS VERDICT ----
+   Any thrown puppeteer error used to kill the process where it stood: the first full run of the build-54 review died on a detached
+   frame inside `two-player` and printed no verdict, no failure list and no section summary - 22 sections of work, 21 minutes, and
+   nothing to read. A crash is now a FAILURE like any other: it is named, the verdict runs, the exit code is 1, and everything that
+   passed before it is still on the page. A rejected top-level await surfaces here as an uncaughtException. */
+let finished = false;
+function crashed(e) { if (finished) return; finished = true;
+  const msg = (e && (e.stack || e.message)) || String(e);
+  fail.push('THE GATE CRASHED before it finished — ' + msg.split('\n')[0]);
+  console.log('\n  FAIL THE GATE CRASHED before it finished\n' + msg.split('\n').slice(0, 6).map(l => '    ' + l).join('\n'));
+  let pass = false; try { pass = verdict('CRASHED — the run did not finish'); } catch (e2) { console.log('verdict() also threw: ' + e2.message); }
+  try { browser && browser.close(); } catch (e2) { }
+  try { srv && srv.close(); } catch (e2) { }
+  process.exit(pass ? 1 : 1); }
+process.on('uncaughtException', crashed);
+process.on('unhandledRejection', crashed);
+
 /* ---- the shared helpers (build 47): one root, one read, one strip, one boot ----
    Until build 46 every build section carried its own copy of each (root28-root46, read32-read46, strip28-strip46, boot40-boot46). */
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (...p) => fs.readFileSync(path.join(root, ...p), 'utf8');
+/* v29 (item 17, build 55): ../_review IS OPTIONAL. Ten sections read the review pipeline, which lives OUTSIDE the site tree, with an
+   unguarded readFileSync - so `npm test` on a clone of `site` alone (which is what Codemagic gets) died on the first of them. REVIEW
+   says whether the directory is there; every read of it goes through rvRead, every assertion that needs it is skipped by name when it
+   is not, and the section keeps every other check it has. Nothing changes on a full checkout. */
+const REVIEW_DIR = path.resolve(root, '..', '_review');
+const REVIEW = fs.existsSync(REVIEW_DIR);
+const rvRead = (...p) => { try { return fs.readFileSync(path.join(REVIEW_DIR, ...p), 'utf8'); } catch (e) { return ''; } };
+const noReview = label => ok(label + ' — SKIPPED: ../_review is not in this checkout (site-only clone)');
+if (!REVIEW) console.log('../_review not found — the review-pipeline checks will be skipped by name');
 const strip = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
 /* boot writes a whole profile and reloads: `prefs` over `plain`, `extra` over the rest of the store, at store version `v` (a 5 walks
    the ladder's up6). PLAIN is build 46's profile — title, map, menu and key screen already seen, sound off, nothing spilled or ready */
@@ -115,10 +141,15 @@ if (section('static checks')) {
   const { BUILD } = await import(pathToFileURL(path.join(root, 'config', 'build.js')).href);
   const html = read('index.html'); const vj = JSON.parse(read('version.json'));
   // v18 (S.2, batch 14): the two places a person reads wear `v0.N`; the constant and version.json stay the bare integer (A6)
-  const places = [html.match(/<div class="hint">v0\.(\d+) ·/)?.[1], html.match(/<div id="build">v0\.(\d+)<\/div>/)?.[1], html.match(/const BUILD="(\d+)";/)?.[1], String(vj.build)];
-  places.every(p => p === String(BUILD)) ? ok(`A6 build ${BUILD} in config/build.js = index.html ×3 = version.json (visible two as v0.${BUILD})`) : bad('A6 one build number', JSON.stringify(places) + ' vs config ' + BUILD);
+  /* v29 (item 7, build 55): TWO PLACES, NOT THREE. The update-check constant went with the inline script it lived in — the poll is
+     core/platform.js now and imports BUILD from config/build.js, so A6's one place has one fewer copy to keep in step. */
+  const places = [html.match(/<div class="hint">v0\.(\d+) ·/)?.[1], html.match(/<div id="build">v0\.(\d+)<\/div>/)?.[1], String(vj.build)];
+  places.every(p => p === String(BUILD)) ? ok(`A6 build ${BUILD} in config/build.js = index.html ×2 = version.json (both visible as v0.${BUILD})`) : bad('A6 one build number', JSON.stringify(places) + ' vs config ' + BUILD);
+  !/const BUILD="\d+";/.test(html) ? ok('A6 no fourth copy of the build number in index.html') : bad('A6 the update-check constant is back in index.html');
   const oldForm = html.match(/<div class="hint">build \d+ ·|<div id="build">build \d+</g) || [];
-  (!oldForm.length && /'v0\.'\+j\.build/.test(html)) ? ok('S.2 v0.N on screen — hint line, #build and the update bar; no `build N` form left') : bad('S.2 v0.N on screen', oldForm.join(' | ') || 'update bar does not name v0.N');
+  /* DELETED at build 55 (v29 item 7): the half of this check that spelled `'v0.'+j.build` in index.html. The update bar's text is
+     written in core/platform.js now, and CLAUDE.md:204 says a source-text check that fails on a refactor is deleted, not re-spelled. */
+  (!oldForm.length) ? ok('S.2 v0.N on screen — the hint line and #build; no `build N` form left') : bad('S.2 v0.N on screen', oldForm.join(' | '));
   const cfg = fs.readdirSync(path.join(root, 'config')).filter(f => f.endsWith('.js'));
   const dirty = cfg.filter(f => /\bimport\b|=>|\bfunction\b/.test(strip(read('config', f))));
   dirty.length ? bad('A2 config/ is data only', dirty.join(', ')) : ok(`A2 config/ is data only (${cfg.length} files: no imports, no functions)`);
@@ -218,6 +249,31 @@ if (section('static checks')) {
   for (const f of screens) { const src = strip(read(f)); for (const m of src.matchAll(/from\s+["']([^"']+)["']/g)) { if (/^\.\/|\/games\/(?!registry)/.test(m[1])) cross.push(`${f} → ${m[1]}`); } }
   { const src = strip(read('run', 'run.js')); for (const m of src.matchAll(/from\s+["']([^"']+)["']/g)) if (/screens\//.test(m[1])) cross.push(`run/run.js → ${m[1]}`); }
   cross.length ? bad('A4 screens and the run talk by events, not imports', cross.join(', ')) : ok(`A4 no screen imports a screen or an engine, the run imports no screen (${screens.length} screens)`);
+  /* ---- v29 (items 7 / 15 / 16, build 55): S4, S7, A8 and one name per achievement ---- */
+  {
+    const CSP = "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'";
+    const meta = html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)">/);
+    (meta && meta[1] === CSP) ? ok('S4 index.html carries the Content-Security-Policy ARCHITECTURE.md has claimed since build 14 — and it is the S4 value') : bad('S4 the CSP meta', meta ? meta[1] : 'no meta at all');
+    const inline = html.replace(/<!--[\s\S]*?-->/g, '').match(/<script(?![^>]*\ssrc=)[^>]*>[\s\S]*?<\/script>/g) || [];
+    !inline.length ? ok("S4 no inline <script> left in index.html — `script-src` falls to `default-src 'self'`, which refuses one") : bad('S4 an inline script would be refused by the CSP', inline.length + ' left');
+    /* core/platform.js reads location.search at module load (CHAL), so it cannot be imported in node — the two facts about it are
+       read off the source the way A2-A4's boundaries are, and the page drives the poll itself in the section below. */
+    const PLSRC = strip(read('core', 'platform.js'));
+    (/export \{[^}]*\bupdatePoll\b/.test(PLSRC) && /location\.protocol!=='https:'/.test(PLSRC) && /TARGET==='native'/.test(PLSRC))
+      ? ok('S7 the update poll is core/platform.js, gated to https: and out of the native shell') : bad('S7 the update poll', 'not in platform.js, or not gated');
+    /* A8 / A3 import boundary (the CLAUDE.md:204 exception): eleven direct navigator.vibrate calls across six engines are one
+       platform.haptic() now. iOS WebKit implements none of the Vibration API, so this is where the Capacitor plugin lands. */
+    const HAPT = ['games/_shared/timed.js', 'games/_shared/versus.js', 'games/estimate/index.js', 'games/sequence/index.js', 'games/timing/index.js', 'games/reaction/index.js', 'games/spot/index.js'];
+    const direct = [...HAPT, 'run/run.js', 'run/input.js'].filter(f => /navigator\.vibrate/.test(strip(read(...f.split('/')))));
+    const routed = HAPT.filter(f => /haptic\s*\}\s*from\s*"[^"]*core\/platform\.js"/.test(read(...f.split('/'))));
+    (/export \{[^}]*\bhaptic\b/.test(PLSRC) && !direct.length && routed.length === HAPT.length)
+      ? ok(`A8 one haptic: core/platform.js haptic(), imported by all ${HAPT.length} engines that buzz, and no navigator.vibrate left in games/ or run/`)
+      : bad('A8 one haptic', JSON.stringify({ direct, routed: routed.length }));
+    const AC55 = await import(pathToFileURL(path.join(root, 'config', 'achievements.js')).href);
+    const nm = AC55.ACH.map(a => a.name).concat(Object.values(AC55.KEY_ROSTER).flatMap(r => ['clear', 'pro', 'author'].map(t => r[t] && r[t].name).filter(Boolean)));
+    const dup = [...new Set(nm.filter((n, i) => nm.indexOf(n) !== i))];
+    !dup.length ? ok(`v29 item 16 every achievement name is its own — ${nm.length} rows across ACH and KEY_ROSTER, no two alike`) : bad('two achievements with one name', dup.join(', '));
+  }
 }
 
 const browser = await launch();
@@ -227,7 +283,8 @@ const page = await phonePage(browser);
    item 23 check puts a clip at video/test.mp4 with captions at video/test.vtt to prove the player is built, and neither file exists.
    Every build-46 full run failed on those two 404s with all 591 checks passing. Any other 404 still fails the run. */
 const inSection = () => cur ? ' — in ' + cur.name : '';
-const PLANTED = u => /\/video\/test\.(mp4|vtt)$/.test(u || '');
+// v29 (item 10, build 55): and the clip the video-error check asks for on purpose, to prove the player says so instead of showing a black rectangle
+const PLANTED = u => /\/video\/(test\.(mp4|vtt)|no-such-clip-55\.mp4)$/.test(u || '');
 /* v27 (items 9 / 10, build 52): CLOSING THE PLAYER ABANDONS THE CLIP IT WAS STREAMING, and the browser reports that as net::ERR_ABORTED on
    the media request. It is not a failure and there is nothing to fix: a <video> the player tears down mid-buffer is exactly what "tap outside
    to close" does, on a phone as much as here. Only an ABORT, only under /video/, and every other request failure still fails the run. */
@@ -735,6 +792,71 @@ if (section('storage fixtures')) {
       : bad('v26 item 3 menuOpened in the store', JSON.stringify({ seeded: seeded.menuOpened, devMeter: seeded.devMeter, shaped, wiped }));
     await page.evaluate(() => localStorage.clear());
   }
+  /* ---- v29 (items 5 / 6 / 16, build 55): the corrupt fixtures the build-54 review executed, and one Machine ----
+     The gate's own corrupt fixtures covered runs="{}", scale="foo", col=42, name=12 and adRuns="x" — none of them an
+     INHERITED property name, so both S3 Highs passed the gate on the day they were found. `TABLE[x] ? x : default` is
+     truthy for every member of Object.prototype, and g:'constructor' threw inside validRun during module evaluation:
+     blank app, nothing after core/store.js loaded, and the record never repaired because save() was never reached. */
+  {
+    const PROTO = ['constructor', '__proto__', 'toString', 'hasOwnProperty'];
+    const broke = [];
+    for (const k of PROTO) {
+      await setStorage({ ne: { v: 6, prefs: { ...PLAIN }, runs: [{ g: k, d: 'two', s: 5, hits: 1, t: 1 }], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+      await page.reload({ waitUntil: 'networkidle0' }); await sleep(380);
+      const r1 = await page.evaluate(() => { const st = JSON.parse(localStorage.getItem('ne')) || {}; return { up: !!document.querySelector('.screen.on'), runs: (st.runs || []).length }; });
+      if (!r1.up || r1.runs) broke.push(`runs[].g=${k} (up ${r1.up}, ${r1.runs} kept)`);
+      await setStorage({ ne: { v: 6, prefs: { ...PLAIN, lastGame: k, scale: k, bg: k }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+      await page.reload({ waitUntil: 'networkidle0' }); await sleep(380);
+      const r2 = await page.evaluate(() => { const st = JSON.parse(localStorage.getItem('ne')) || {}, p = st.prefs || {}; return { up: !!document.querySelector('.screen.on'), lg: p.lastGame, sc: p.scale, bg: p.bg }; });
+      if (!r2.up || r2.lg === k || r2.sc === k || r2.bg === k) broke.push(`prefs=${k} (up ${r2.up}, ${r2.lg}/${r2.sc}/${r2.bg})`);
+    }
+    !broke.length
+      ? ok(`S3 the inherited-property names boot clean and are repaired — ${PROTO.join(', ')} in runs[].g and in prefs.lastGame / scale / bg (Object.hasOwn at all four sites)`)
+      : bad('S3 the truthy-index pattern', broke.join(' | '));
+
+    await setStorage({ ne: { v: 6, prefs: { ...PLAIN }, runs: [
+      { g: 'quick-tap', d: 'two', s: 5, hits: 1e999, t: 101 },
+      { g: 'quick-tap', d: 'two', s: 5, hits: 4, misses: -2, t: 102 },
+      { g: 'hold', d: 'grow', s: 7, hits: 3, x: 1e999, y: 0, t: 103 },
+      { g: 'sequence', d: 'solo', s: 3, hits: 3, t: 104, sc: '<img src=x onerror="window.__xss=1">' },
+      { g: 'quick-tap', d: 'two', s: 5, hits: 7, misses: 0, t: 105 } ], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(380);
+    const kept = await page.evaluate(() => ((JSON.parse(localStorage.getItem('ne')) || {}).runs || []).map(r => r.t));
+    (kept.length === 1 && kept[0] === 105)
+      ? ok('S3 a stored run is rejected outright when a number a board or a sort reads is not finite (hits 1e999, x 1e999), when misses is negative, or when a formatter field is not what its formatter expects — only the honest row survives')
+      : bad('S3 the run fields are type-checked', JSON.stringify(kept));
+
+    const many = {}; for (let i = 0; i < 9000; i++) many['junk' + i] = 1;
+    await setStorage({ ne: { v: 6, prefs: { ...PLAIN }, runs: [], ach: many, unlock: many, intro: SEEN_INTRO, seen: {}, bars: many } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(380);
+    const caps = await page.evaluate(() => { const st = JSON.parse(localStorage.getItem('ne')) || {}; return [Object.keys(st.ach || {}).length, Object.keys(st.unlock || {}).length, Object.keys(st.bars || {}).length]; });
+    caps.every(n => n > 0 && n <= 4000)
+      ? ok(`S3 ach / unlock / bars are capped — 9,000 planted keys load as ${caps.join(' / ')}, so a tampered map can no longer be written back on every save until the quota fails silently`)
+      : bad('S3 the map cap', JSON.stringify(caps));
+
+    /* item 6: and the cell itself is escaped. `lim` is a legal short string, so a record carrying markup in it survives
+       validRun by design — which is exactly why the board escapes every formatter cell rather than trusting the store. */
+    await setStorage({ ne: { v: 6, prefs: { ...PLAIN, lastGame: 'spot' }, runs: [{ g: 'spot', d: 'count', s: -1, hits: 4, misses: 0, x: 0, y: 0, lim: '<b id="xss55">x</b>', t: 106 }], ach: {}, unlock: { 'spot:count': 1, 'spot:count:-1': 1 }, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(380);
+    const esc55 = await page.evaluate(async () => { const R = await import('./ui/router.js'); const wait = t => new Promise(r => setTimeout(r, t));
+      R.show('s-board'); await wait(350);
+      const pick = (k, v) => { const el = [...document.querySelectorAll(`#s-board [data-chip="bd-${k}"]`)].find(x => x.dataset.v === String(v)); if (el) el.click(); return !!el; };
+      const picked = [pick('g', 'spot'), pick('d', 'count'), pick('s', -1)]; await wait(350);
+      const tb = document.querySelector('#s-board table');
+      return { picked, el: !!document.getElementById('xss55'), txt: (tb ? tb.textContent : '').includes('<b id='), rows: tb ? tb.querySelectorAll('tbody tr, tr').length : 0 }; });
+    (!esc55.el && esc55.txt && esc55.picked.every(Boolean))
+      ? ok('S1 / item 6 a board cell is escaped — markup planted in a run field that survives validRun is drawn as text, never parsed')
+      : bad('S1 the board escapes every formatter cell', JSON.stringify(esc55));
+
+    // item 16: 'Machine' says "every round of a Set within 4.00%" and tested s===7, so a Cut Set (s===10) could never earn it
+    const hd55 = await page.evaluate(async () => { const R = await import('./progress/rules.js'); const G = await import('./config/games.js');
+      return { cut: !!R.ACH_TEST.hd_s({ g: 'hold', d: 'cut', s: 10, y: 3 }), grow: !!R.ACH_TEST.hd_s({ g: 'hold', d: 'grow', s: 7, y: 3 }),
+        streak: !!R.ACH_TEST.hd_s({ g: 'hold', d: 'grow', s: G.STREAK, y: 3 }), over: !!R.ACH_TEST.hd_s({ g: 'hold', d: 'cut', s: 10, y: 5 }) }; });
+    (hd55.cut && hd55.grow && !hd55.streak && !hd55.over)
+      ? ok("item 16 'Machine' matches its own copy — every round of a SET within 4%, either mode; a Streak still cannot earn it")
+      : bad('item 16 hd_s reads any Set', JSON.stringify(hd55));
+    await page.evaluate(() => localStorage.clear());
+  }
 }
 
 // ---- 6. challenge links ----
@@ -886,6 +1008,10 @@ if (section('the key (v14 section 9)')) {
     off.length ? bad('C.7 a bar direction disagrees with the game it scores', off.map(d => d.key).join(', ')) : ok(`C.7 all ${k.dirs.length} directions match GC(g,d,s).lower — ${ceils} ceilings, ${k.dirs.length - ceils} floors`); }
   // 9.3 / 9.4 / 9.5: a bar clears once, from a solo run only. Re-clearing returns null, which is what plays nothing
   const clear = await page.evaluate(async () => { const K = await import('./progress/key.js'); const S = await import('./core/store.js');
+    /* v29 (item 13, build 55): the fixture OPENS the Games chest. It used to lean on OPEN EVERYTHING, and a dev flag no longer
+       banks a bar — "OPEN EVERYTHING and SUPPORTER stay flags that store no progress" (CLAUDE.md). What key 1 counting means
+       is that the Games chest is open, so that is what the fixture says. */
+    const wasCh = S.prefs.chests; S.prefs.chests = { games: 1, key: 0, pro: 0, thorns: 0 };
     S.store.bars = {}; const bar = K.COMBOS.find(c => c.g === 'quick-tap' && c.s === 5).bar;
     const base = { g: 'quick-tap', d: 'two', s: 5, misses: 0, t: Date.now(), hits: bar.bar + 5 };
     const under = { ...base, hits: bar.bar - 5 };
@@ -896,7 +1022,7 @@ if (section('the key (v14 section 9)')) {
     const two = K.checkKey({ ...base }, true);                 // versus / pass & play never contribute (9.4, L10)
     const prac = K.checkKey({ ...base, practice: 1 }, false);
     const chal = K.checkKey({ ...base, chal: 1 }, false);
-    const done = Object.keys(S.store.bars).length; S.store.bars = {};
+    const done = Object.keys(S.store.bars).length; S.store.bars = {}; S.prefs.chests = wasCh;
     return { a: !!a, b: b && b.key, c: !!c, two: !!two, prac: !!prac, chal: !!chal, done, was: b && b.was, total: b && b.total }; });
   (!clear.a && clear.b === 'quick-tap:two:5' && !clear.c) ? ok(`9.3 a clearance bar is a one-off: beaten -> cleared (segment ${clear.was + 1} of ${clear.total}), beaten again -> nothing`) : bad('9.3 a bar clears once', JSON.stringify(clear));
   (!clear.two && !clear.prac && !clear.chal && clear.done === 0) ? ok('9.4 pass & play, versus, practice and challenge runs never feed the key') : bad('9.4 solo runs only', JSON.stringify(clear));
@@ -936,9 +1062,12 @@ if (section('the chain and its screens (v15 sections 1 and 2)')) {
     const rn = read('run', 'run.js');
     const clean = /checkUnlocks|checkAch\(/.test(rs) === false;
     const banks = /checkUnlocks\(run\)/.test(rn) && /checkAch\(run\)/.test(rn) && rn.indexOf('checkUnlocks(run)') < rn.indexOf("emit('run:finish'");
-    const onAbort = /function abort\(\)[\s\S]{0,400}liveCheck\(/.test(rn);
-    (clean && banks && onAbort) ? ok('2.5 the run banks every earn before run:finish, and once more on abort; the result screen only shows them')
-      : bad('2.5 earns are banked by the run, not the result screen', `result clean ${clean} · run banks ${banks} · abort banks ${onAbort}`); }
+    /* DELETED at build 55 (v29 item 2): `/function abort\(\)[\s\S]{0,400}liveCheck\(/`. abort() takes a `quiet` argument now and
+       the live pass sits behind a `landed` test, so the regex fails on the new spelling — and CLAUDE.md:204 says a source-text
+       check that fails on a refactor is deleted and named, never re-spelled. What it stood for is DRIVEN instead, in `the runs`:
+       a quit before round 1 banks nothing, and a quit AFTER a round has landed still banks it. */
+    (clean && banks) ? ok('2.5 the run banks every earn before run:finish; the result screen only shows them (the abort half is driven in `the runs`)')
+      : bad('2.5 earns are banked by the run, not the result screen', `result clean ${clean} · run banks ${banks}`); }
 
   await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
   await setStorage({}); await page.reload({ waitUntil: 'networkidle0' }); await sleep(600);
@@ -1308,9 +1437,94 @@ if (section('the runs (v15 section 3)')) {
       out.set = await hid(10);
       G.HIDDEN.diag = was; return out; });
     const diagOk = live50.streak.every(r => [45, 135, 225, 315].includes(r.diag) && Math.abs(r.tilt) <= G50.HIDDEN.diagTilt && r.markAhead && r.inField && r.wall !== 'none') && live50.set.diag === undefined && live50.set.wall === 'none';
-    (live50.bar && live50.bar.w > 8 && live50.beat && live50.beat.w > 40 && live50.find.n > 10 && live50.find.drawn === live50.find.n && live50.find.odd === 1 && diagOk)
+    /* v29 (build 55): `beat.w > 40` assumed the dealt beat shape is a WIDE one. `bar` is 29x132 — tall and thin — so this
+       failed on the third full run of build 55 and passed on the first two, on nothing but which shape the dealer handed it.
+       What it means is that the beat shape is drawn at a real size, so it measures the larger side and not the width. */
+    (live50.bar && live50.bar.w > 8 && live50.beat && Math.max(live50.beat.w, live50.beat.h) > 40 && live50.find.n > 10 && live50.find.drawn === live50.find.n && live50.find.odd === 1 && diagOk)
       ? ok(`v26 §B2 on screen: the rule bar and a Go / No-go beat (${live50.beatShape}) are the shared svg, all ${live50.find.n} shapes of a Find crowd are drawn with one odd one, and a Hidden Streak turned its wall to ${live50.streak.map(r => r.diag + '°').join(', ')} with the ball within ${Math.max(...live50.streak.map(r => Math.abs(r.tilt)))}° of square and the marker behind it — a Set never did (#450)`)
       : bad('v26 §B2 the shapes and the 45° wall on screen', JSON.stringify(live50));
+  }
+  /* ---- v29 (items 2 / 3 / 4 / 9 / 14, build 55): the quit path, the stale state, the sleeping phone ----
+     Four of the build-54 review's findings meet on the same few lines of run/run.js, so they are driven together. */
+  {
+    // openSheet writes a profile with no `intro`, so a first run plays its ghost demo and ends on "Ready?" — the wait answers it
+    const liveNow = async (g) => { for (let i = 0; i < 140; i++) { if (await page.evaluate(() => document.getElementById('game').classList.contains('live'))) return true;
+      if (g) await clearReady(g); await sleep(100); } return false; };
+    const unlocksAfterQuit = async (g, mi, li) => { await openSheet(g, mi, li); await click('#go-btn');
+      if (!(await liveNow(g))) return ['NEVER-WENT-LIVE'];
+      await sleep(500); await click('#quit'); await sleep(500);
+      return page.evaluate(() => { try { return Object.keys((JSON.parse(localStorage.getItem('ne')) || {}).unlock || {}); } catch (e) { return ['UNREADABLE']; } }); };
+    /* item 2: minMax([]) answers [0,0] — a display convenience — and x:0 satisfies hold:cut (x<=15), sequence:solo (x<=3.5)
+       and timing:hidden (x<=.3), every one of them live:1. Quitting during round 1, before anything was played, therefore
+       banked a quarter of the L6 chain and turned two "within N%" skill rows into no-ops. */
+    const quits = { 'hold · grow': await unlocksAfterQuit('hold', 0, 0), 'hold · cut': await unlocksAfterQuit('hold', 1, 0),
+      'timing · stopwatch': await unlocksAfterQuit('timing', 0, 0), 'timing · hidden': await unlocksAfterQuit('timing', 1, 0) };
+    Object.values(quits).every(u => Array.isArray(u) && !u.length)
+      ? ok('item 2 quitting during round 1 of Grow, Cut, Stopwatch or Hidden banks NOTHING — the engines report no best round they do not have, and abort() runs no live pass on a result with nothing on it')
+      : bad('item 2 an aborted run with no round played banks an unlock', JSON.stringify(quits));
+
+    /* item 2, the other way round (and what the deleted source-text check in `the chain` stood for): a quit AFTER a round has
+       landed STILL banks it — v15 2.5, "quitting must never cost a player something they already earned". A Grow round scored
+       at 0.00% off is a real result whose `hits` is 0, which is why `landed` reads the engine's `x` and not a count. */
+    await openSheet('hold', 0, 0); await click('#go-btn');
+    (await liveNow('hold')) || bad('item 2 the Grow run never went live');
+    /* the round is PLANTED rather than played: a driven hold releases at whatever size the poke produced, and whether that lands
+       inside hold:cut's 15% is chance. One round of 4% off is a round that landed, which is the whole of what this asserts. */
+    { const planted = await page.evaluate(async () => { const M = await import('./games/estimate/index.js'); const E = M.default;
+        if (!E) return null; E.errs = [4]; return { x: E.result().x, hits: E.result().hits }; });
+      await sleep(200); await click('#quit'); await sleep(600);
+      const banked = await page.evaluate(() => { try { return Object.keys((JSON.parse(localStorage.getItem('ne')) || {}).unlock || {}); } catch (e) { return ['UNREADABLE']; } });
+      (planted && planted.x === 4 && banked.includes('hold:cut'))
+        ? ok('v15 2.5 a quit AFTER a round has landed still banks what it earned — the live pass is skipped only when the engine has no round to report, never when it has one')
+        : bad('2.5 quitting costs an earn the player already made', JSON.stringify({ planted, banked })); }
+
+    /* item 3: roundEngine.stop() left `st` on 'wait' / 'run' / 'find', and run.input forwarded taps from R.on — which is set
+       when the screen is BUILT — so a tap during the next run's 3-2-1 ran the dead state's handler. On Flash it walked a
+       phantom early tap, set `pending`, and the player's first real flash was eaten: a Set of five played four. */
+    await openSheet('reaction', 0, 0); await click('#go-btn');
+    (await liveNow('reaction')) || bad('item 3 the Flash run never went live'); await sleep(400); await click('#quit'); await sleep(600);
+    await click('[data-go="s-pick"]'); await sleep(300);
+    await page.evaluate(() => document.querySelector('.tile[data-game="reaction"]').click()); await sleep(320);
+    await page.evaluate(() => { const c = document.querySelectorAll('#diff-row .choice'); (c[0] || c[0]).click(); }); await sleep(420);
+    await page.evaluate(() => { const t = [...document.querySelectorAll('#time-row .tbtn')]; (t[0] || t[0]).click(); }); await sleep(160);
+    await click('#go-btn'); await sleep(250);
+    await down('#gen'); await sleep(120); await down('#gen');   // taps during the 3-2-1, the way a restless thumb makes them
+    await liveNow('reaction'); await sleep(250);
+    const flash55 = await page.evaluate(() => ({ hud: (document.getElementById('hud-time') || {}).textContent || '', held: document.getElementById('game').classList.contains('tapon') }));
+    (/^\s*1\s*\//.test(flash55.hud) && !flash55.held)
+      ? ok(`item 3 a tap during the 3-2-1 after an aborted Flash run is dropped — the new run opens on round 1 (${flash55.hud.trim()}) with no card held over from the dead one`)
+      : bad('item 3 the stale round state eats round 1', JSON.stringify(flash55));
+
+    // item 9: and a route out of a LIVE run ends it, instead of leaving it ticking under the screen the player went to
+    const nav55 = await page.evaluate(async () => { const R = await import('./ui/router.js'); const RN = await import('./run/run.js');
+      const before = RN.R.on; R.show('s-pick'); await new Promise(r => setTimeout(r, 300)); return { before, after: RN.R.on }; });
+    (nav55.before && !nav55.after)
+      ? ok('item 9 navigating away from a live run ends it — a stray toast tap used to call show(\'s-pick\') and leave R.on true, the rAF ticking, the engine armed and the music playing under the pick sheet')
+      : bad('item 9 a live run survives a screen change', JSON.stringify(nav55));
+
+    /* item 4: nothing handled visibilitychange for the run. R.end is absolute, so a locked Marathon recorded its first ten
+       seconds as a Marathon; Stopwatch's t0 kept its start while rAF paused, so the first frame back scored the whole lock
+       time as the attempt and set `ov` — which is what tm_s10 reads, so locking the phone handed out a secret achievement. */
+    await openSheet('timing', 0, 0); await click('#go-btn');
+    (await liveNow('timing')) || bad('item 4 the Stopwatch run never went live'); await sleep(700);
+    await page.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => true }); document.dispatchEvent(new Event('visibilitychange')); });
+    await sleep(600);
+    await page.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => false }); document.dispatchEvent(new Event('visibilitychange')); });
+    await sleep(700);
+    const lock55 = await page.evaluate(async () => { const RN = await import('./run/run.js'); const st = JSON.parse(localStorage.getItem('ne')) || {};
+      return { on: RN.R.on, runs: (st.runs || []).length, ach: Object.keys(st.ach || {}), screen: (document.querySelector('.screen.on') || {}).id, toast: document.getElementById('toast').classList.contains('on') }; });
+    (!lock55.on && !lock55.runs && !lock55.ach.includes('tm_s10') && lock55.screen === 's-pick' && lock55.toast)
+      ? ok('item 4 the phone going to sleep mid-Stopwatch ends the run and banks nothing — no record, no tm_s10, back on the pick sheet with one toast on RETURN rather than into a dark screen')
+      : bad('item 4 a backgrounded run keeps counting', JSON.stringify(lock55));
+
+    // item 14: the rolling hits/sec number was unclamped while its bar was clamped — two taps 100ms apart printed 10.0/s
+    const rate55 = await page.evaluate(async () => { const H = await import('./games/_shared/hud.js'); const G = await import('./config/games.js');
+      const now = performance.now(); H.rate('quick-tap', [now - 100, now], now);
+      const txt = document.querySelector('#rate b').textContent, bar = document.querySelector('#rate i').style.height;
+      return { txt, bar, max: G.RATE_MAX['quick-tap'] }; });
+    (parseFloat(rate55.txt) <= rate55.max + 1e-9 && rate55.bar === '100%')
+      ? ok(`item 14 the HUD's rolling figure is held to the same ceiling as its bar — two taps 100ms apart read ${rate55.txt} against RATE_MAX ${rate55.max}, not 10.0/s`)
+      : bad('item 14 the rate number is unclamped', JSON.stringify(rate55));
   }
 }
 
@@ -1780,6 +1994,62 @@ if (section('the keys, the surface and #375 (v15 sections 5 and 6)')) {
       ? ok(`v27 items 9 / 10 / 11 one shared video player: the clip is 16:9 (${play.box.ratio}) and inset ${play.box.l}px a side of a 390px screen - ${P52.inset}% each edge, never edge to edge - in a drawn frame that glows the unlocking chest's colour (${play.want}) while it plays and dims the moment it is paused; the title is above it, the captions below it from a HIDDEN track so nothing paints over the picture, "tap outside to close" at the foot, and there is no native control bar - a tap on the picture pauses, a tap outside closes. The power-on is ${P52.on.ms}ms (item 10 caps it at 750) and the power-off ${P52.off.ms}ms, both built into the player from named steps (${P52.on.steps.map(x => x.name).join(' > ')} / ${P52.off.steps.map(x => x.name).join(' > ')}), so every clip gets them; all eight slots point at the test card (item 11) and it is not build 46's planted video/test.mp4`)
       : bad('v27 items 9 / 10 / 11 the video player', JSON.stringify({ timing, card, shown, framed, power, play }));
   }
+  /* ---- v29 (items 1 / 10 / 11 / 13, build 55): the meter, the Next card, a dev-opened tier and a clip that will not load ---- */
+  {
+    /* item 1: build 53 put meterPct() over the top of meter() and clamped it to 100, so the front of the app read 100%
+       with two of the three keys still empty. The 2026-09-14 decision stands: one continuous meter, 0-300. */
+    const m55 = await page.evaluate(async () => { const K = await import('./progress/key.js'); const S = await import('./core/store.js');
+      const was = { ch: S.prefs.chests, bars: S.store.bars };
+      S.prefs.chests = { games: 1, key: 1, pro: 1, thorns: 0 }; S.store.bars = {};
+      for (const c of K.COMBOS) { S.store.bars[K.skey(c.key, 'clear')] = 1; S.store.bars[K.skey(c.key, 'pro')] = 1; }
+      const out = { meter: K.meter(), pct: K.meterPct(), max: K.meterMax(), key1: K.bandPct('clear'), pro: K.bandPct('pro'), author: K.bandPct('author') };
+      S.prefs.chests = was.ch; S.store.bars = was.bars; S.save(); return out; });
+    (m55.pct === 200 && m55.meter === 200 && m55.max === 300 && m55.key1 === 100 && m55.pro === 100 && m55.author === 0)
+      ? ok('item 1 the meter is one continuous 0-300 again — every key-1 and Pro bar cleared renders 200%, and what a surface PRINTS (meterPct) is what the app reasons with (meter)')
+      : bad('item 1 the meter at key 1 + Pro', JSON.stringify(m55));
+
+    /* item 13: chestOpen() honours OPEN EVERYTHING and SUPPORTER — right for every READ — but checkKey and retroArrived were
+       banking real |pro and |author bars while a flag was on, and those bars stay once it is off. */
+    const dev55 = await page.evaluate(async () => { const K = await import('./progress/key.js'); const S = await import('./core/store.js');
+      const was = { ch: S.prefs.chests, open: S.prefs.allOpen, bars: S.store.bars, retro: S.prefs.retroCol };
+      S.prefs.chests = { games: 0, key: 0, pro: 0, thorns: 0 }; S.prefs.allOpen = true; S.store.bars = {}; S.prefs.retroCol = {};
+      const c = K.COMBOS.find(x => x.g === 'quick-tap' && x.d === 'two');
+      K.checkKey({ t: Date.now(), g: c.g, d: c.d, s: c.s, misses: 0, hits: (K.barOf(c, 'author') || 0) + 1000, v: 4 }, false);
+      K.retroArrived();
+      const keys = Object.keys(S.store.bars);
+      const open = K.tierOpen('pro'), earned = K.tierEarned('pro');
+      S.prefs.chests = was.ch; S.prefs.allOpen = was.open; S.store.bars = was.bars; S.prefs.retroCol = was.retro; S.save();
+      return { keys, open, earned }; });
+    (!dev55.keys.length && dev55.open && !dev55.earned)
+      ? ok('item 13 a dev-opened tier is SHOWN and never BANKED — OPEN EVERYTHING still reads as open everywhere, and neither checkKey nor the boot-time retro credit writes a bar behind a chest nobody opened')
+      : bad('item 13 OPEN EVERYTHING stores bars', JSON.stringify(dev55));
+
+    /* item 11: nextGoal walked UNLOCKS in table order with no test of whether the row's own `where` is reachable, so the moment
+       Sequence opened the card read "8 notes in Sequence · 7 keys" — and 7 keys is always still locked at that point. */
+    const nx55 = await page.evaluate(async () => { const P = await import('./progress.js'); const S = await import('./core/store.js'); const RG = await import('./games/registry.js');
+      const was = { u: S.store.unlock, r: S.store.runs, o: S.prefs.allOpen };
+      S.prefs.allOpen = false; S.store.runs = [];
+      S.store.unlock = { 'quick-tap:four': 1, 'dots:blind': 1, 'dots:lead': 1, 'hold:grow': 1, 'hold:cut': 1, 'sequence:solo': 1 };
+      const g = P.nextGoal(), w = g && g.where;
+      const d = w && (w.d || RG.GAMES[w.g].modes[0]);
+      const out = { name: g && g.name, where: w, modeOpen: w ? P.isOpen(w.g, d) : null, lenLocked: w && w.s !== undefined ? !!P.lenLock(w.g, d, w.s) : false };
+      S.store.unlock = was.u; S.store.runs = was.r; S.prefs.allOpen = was.o; S.save(); return out; });
+    (nx55.where && nx55.modeOpen && !nx55.lenLocked)
+      ? ok(`item 11 the Next card only ever offers something earnable right now — with Sequence just opened it points at ${JSON.stringify(nx55.where)} ("${nx55.name}"), a mode that is open on a length that is not locked`)
+      : bad('item 11 the Next card offers a locked length', JSON.stringify(nx55));
+
+    /* item 10: nothing listened for `error` on the <video> and the play() rejection was swallowed, so a missing file, a 404 and
+       an iOS NotAllowedError all showed the same thing — a silent black rectangle inside a frame that never lit. */
+    const vid55 = await page.evaluate(async () => { const V = await import('./ui/video.js'); const C = await import('./config/copy.js');
+      V.playVideo({ id: 'gate-missing-clip', by: {}, title: 'gate', file: 'video/no-such-clip-55.mp4' });
+      await new Promise(r => setTimeout(r, 1400));
+      const h = document.getElementById('vplay');
+      const out = { fail: h.classList.contains('vfail'), lit: h.classList.contains('vlit'), cc: h.querySelector('.vcc').textContent, want: C.MSG.unavailable };
+      V.closeVideo(); await new Promise(r => setTimeout(r, 700)); return out; });
+    (vid55.fail && !vid55.lit && vid55.cc === vid55.want)
+      ? ok('item 10 a clip that will not load says so — the player drops its glow and writes MSG.unavailable into the caption strip instead of showing a black rectangle with no way to tell what went wrong')
+      : bad('item 10 the video error state', JSON.stringify(vid55));
+  }
 }
 
 // ---- 7. every button action once (build 15: ui/actions.js dispatches on data-act) ----
@@ -1908,11 +2178,13 @@ if (section('chests')) {
     s.keys.cards.forEach((k, i) => { if (k.theme) w.push(`card ${i} has a theme name`); if (k.locked !== !st.open[i]) w.push(`card ${i} locked ${k.locked}`); if (!k.locked && st.bars[i] < st.total[i] && k.u !== st.pct[i] + '%') w.push(`card ${i} "${k.u}"≠${st.pct[i]}%`); });
     if (/%/.test(s.keys.line)) w.push(`key line "${s.keys.line}"`);
     if (s.keys.row) w.push(`the quiet key screen still draws ${s.keys.row} chest row elements`);
-    /* v28 (item 9, build 53): WHAT THE MENU PRINTS IS meterPct() — 0–100 — not the raw meter. Aiden read "300% complete" on the front of the app
-       and a percentage that runs to 300 is not a percentage. The meter itself is unchanged and everything else here still reads it. */
+    /* v28 (item 9, build 53) put meterPct() over the top of meter() and clamped it to 100. REVERSED at build 55 (v29 item 1): the figure is the
+       METER, 0 to its own maximum, so 100 means key 1 whole and 200 means Pro whole as well — which is what the 2026-09-14 decision says and what
+       build 53 took away. meterPct() is still the ONE thing a surface prints and the one place rounding happens. FEEDBACK-v29 carries the
+       disagreement: Aiden asked for the clamp after reading 300% on the front of the app, and it was Testing's Author switch that produced it. */
     if (s.menu !== null && !s.menu.startsWith(st.shown + '%')) w.push(`menu "${s.menu}"≠${st.shown}%`);
-    if (st.shown > 100 || st.shown < 0) w.push(`the shown figure is ${st.shown}%`);
-    if (st.shown !== Math.min(100, Math.round(st.meter / st.max * 100))) w.push(`shown ${st.shown}≠meter ${st.meter} of ${st.max}`);
+    if (st.shown > st.max || st.shown < 0) w.push(`the shown figure is ${st.shown}% of a ${st.max} meter`);
+    if (st.shown !== Math.max(0, Math.min(st.max, Math.round(st.meter)))) w.push(`shown ${st.shown}≠meter ${st.meter} of ${st.max}`);
     // reachable by play
     st.chests.forEach((c, i) => { if (i && c === 'open' && st.chests[i - 1] !== 'open') w.push(`chest ${i} open behind a shut one`); });
     st.bars.forEach((n, i) => { if (n && !st.open[i]) w.push(`${n} bars on shut key ${i}`); });
@@ -2478,6 +2750,42 @@ if (section('music')) {
       : bad('v27 the earn sound escalation', JSON.stringify({ climbs, rule, grew, n: T52.map(t => E52[t].notes.length), len: T52.map(lenOf), layers: T52.map(layersOf) }));
   }
 
+  /* ---- v29 (items 8 / 12, build 55): a skip silences the earn music, and AC() no longer resumes by itself ---- */
+  {
+    /* item 8: every note of KEY_EARN_FX was scheduled straight to a.destination in one pass with nothing keeping a handle, and
+       Music.hush() only touches the music BED — so no code path could silence it. A tap-to-skip at 1.5s left up to 2.5s of it
+       ringing over the settled key, and over Snd.chest('thorns') 250ms later. The gate spies on Snd.keyEarn, drives the Author
+       key's earn, taps the skip and asks the handle the screen was holding whether it went quiet. */
+    const skip55 = await page.evaluate(async () => { const A = await import('./audio.js'); const R = await import('./ui/router.js');
+      const S = await import('./core/store.js'); const K = await import('./progress/key.js');
+      const wait = t => new Promise(r => setTimeout(r, t));
+      S.prefs.allOpen = true; S.prefs.chests = { games: 1, key: 1, pro: 1, thorns: 0 }; S.prefs.revealed = {}; S.prefs.snd = 'space';
+      S.store.bars = {}; for (const c of K.COMBOS) for (const t of K.TIERS) S.store.bars[K.skey(c.key, t)] = 1;
+      S.save();
+      const orig = A.Snd.keyEarn; let h = null;
+      A.Snd.keyEarn = function () { h = orig.apply(this, arguments); return h; };
+      R.show('s-menu'); await wait(150); R.show('s-key', { tier: 2 }); await wait(1800);
+      const before = h ? { ringing: !h.stopped(), g: h.gain() } : null;
+      const host = document.getElementById('key-cere'); if (host) host.click();
+      await wait(700);
+      const after = h ? { stopped: h.stopped(), g: h.gain() } : null;
+      A.Snd.keyEarn = orig; R.show('s-menu'); await wait(200);
+      return { had: !!h, before, after }; });
+    (skip55.had && skip55.before.ringing && skip55.after.stopped && skip55.after.g < .05)
+      ? ok('item 8 a tap-to-skip silences the earn music — Snd.keyEarn hands back a handle on its own gain node and the skip cuts it, so nothing from it is still sounding over the chest that follows')
+      : bad('item 8 the earn music outlives the skip', JSON.stringify(skip55));
+
+    /* item 12: AC() fired a bare unawaited resume() on every call while the context was not running — the music loop calls it
+       every 80ms and every tone() calls it, so an iOS interruption meant ~12 rejected promises a second, all of them bypassing
+       revive()'s single-flight guard. Every resume goes through revive() now, which is F.2's rule. */
+    const ac55 = await page.evaluate(async () => { const A = await import('./audio.js'); const a = A.AC(); if (!a) return { none: 1 };
+      let n = 0; const real = a.resume.bind(a); a.resume = function () { n++; return real(); };
+      const st0 = a.state; for (let i = 0; i < 12; i++) A.Snd.click();
+      await new Promise(r => setTimeout(r, 250)); a.resume = real; return { n, st0, st1: a.state }; });
+    (!ac55.none && (ac55.st0 === 'running' ? ac55.n === 0 : ac55.n <= 1))
+      ? ok(`item 12 AC() no longer resumes by itself — twelve sounds through a ${ac55.st0} context asked for ${ac55.n} resume${ac55.n === 1 ? '' : 's'}; every one goes through revive()'s single-flight ladder (F.2)`)
+      : bad('item 12 AC() still resumes on every call', JSON.stringify(ac55));
+  }
 }
 
 /* ---- 8. build 27 (v16): the Timing unlock, the music engine, Find versus, the intro ---- */
@@ -3190,9 +3498,10 @@ if (section('build 29 - v17 sections B.19 to B.26')) {
       : bad('B.25 the tier is solo only', JSON.stringify(two29));
   }
   // ---- B.26: the review catalogue reads the same table, and prints the lines, the colours and the sounds ----
-  {
-    const gen = fs.readFileSync(path.resolve(root, '..', '_review', 'scripts', 'catalogue.mjs'), 'utf8');
-    const tpl = fs.readFileSync(path.resolve(root, '..', '_review', 'scripts', 'catalogue.template.html'), 'utf8');
+  rv1: {
+    if (!REVIEW) { noReview('B.26 the review catalogue reads config/verdicts.js'); break rv1; }
+    const gen = rvRead('scripts', 'catalogue.mjs');
+    const tpl = rvRead('scripts', 'catalogue.template.html');
     const reads = /config\/verdicts\.js/.test(gen) && /verdicts/.test(gen);
     const prints = /id="verdicts"/.test(tpl) && /verd-host/.test(tpl) && /REF\.verdicts/.test(tpl);
     (reads && prints) ? ok('B.26 the catalogue reads config/verdicts.js out of the running app and prints a section per game')
@@ -3481,9 +3790,10 @@ if (section('build 30 - v17 sections B.27 to B.33')) {
       : bad('B.33 the key animations are slower', JSON.stringify({ g, h, w }));
   }
   /* ---- the review catalogue plays what a run plays (B.29 / B.27 / B.31) ---- */
-  {
-    const gen = fs.readFileSync(path.resolve(root, '..', '_review', 'scripts', 'catalogue.mjs'), 'utf8');
-    const tpl = fs.readFileSync(path.resolve(root, '..', '_review', 'scripts', 'catalogue.template.html'), 'utf8');
+  rv2: {
+    if (!REVIEW) { noReview('B.29 / B.27 / B.31 the review catalogue plays what a run plays'); break rv2; }
+    const gen = rvRead('scripts', 'catalogue.mjs');
+    const tpl = rvRead('scripts', 'catalogue.template.html');
     // AMENDED at build 42 (v23 L.7e): the key themes are read out of KEY_THEMES, not named
     const reads = /\{ *long: *1 *\}/.test(gen) && /\{ *run:/.test(gen) && /\{ *flow: *1 *\}/.test(gen) && /AU\.KEY_THEMES/.test(gen);
     const plays = /hold > 0/.test(tpl) && /createBiquadFilter/.test(tpl) && /what a run plays/.test(tpl);
@@ -3754,7 +4064,7 @@ if (section('build 31 - v18 sections B.1 to B.14')) {
 if (section('build 32 - v19 section C and v18 sections B.15 to B.27')) {
   const rx32 = read('games', 'reaction', 'index.js'), keyjs32 = read('ui', 'screens', 'key.js'), css32 = read('styles', 'app.css');
   const store32 = read('core', 'store.js'), run32 = read('run', 'run.js'), pkjs32 = read('progress', 'key.js'), pick32 = read('ui', 'screens', 'pick.js');
-  const tpl32 = read('..', '_review', 'scripts', 'catalogue.template.html'), cat32 = read('..', '_review', 'scripts', 'catalogue.mjs');
+  const tpl32 = rvRead('scripts', 'catalogue.template.html'), cat32 = rvRead('scripts', 'catalogue.mjs');
   const G32 = await import(pathToFileURL(path.join(root, 'config', 'games.js')).href);
   const KB32 = await import(pathToFileURL(path.join(root, 'config', 'key-bars.js')).href);
   const KY32 = await import(pathToFileURL(path.join(root, 'config', 'keys.js')).href);
@@ -3842,7 +4152,12 @@ if (section('build 32 - v19 section C and v18 sections B.15 to B.27')) {
       ? ok(`C.5 the arithmetic: three 380ms taps read 200 (over the gate), a wrong tap adds 150 (350), a skipped 980ms target is charged 800 (mean 350), three taps at or under 180 read 0, and a Streak reads its targets (7), not its shapes (40)`)
       : bad('C.5 the scoring', JSON.stringify({ set0: d.set0, set1: d.set1, set2: d.set2, setFree: d.setFree, streakHits: d.streakHits }));
     // the migration as behaviour: a v2 record with Go / No-go runs in the old units
-    await setStorage({ ne: { v: 2, prefs: { ...OPEN_PREFS }, runs: [
+    /*
+   v29 (item 13, build 55): the fixture OPENS the chest it needs. It used to lean on OPEN EVERYTHING, and a dev flag no
+   longer banks a bar or retro-credits a column — "OPEN EVERYTHING and SUPPORTER stay flags that store no progress"
+   (CLAUDE.md). Every READ still honours the escapes; only the two writers ask tierEarned().
+    */
+    await setStorage({ ne: { v: 2, prefs: { ...OPEN_PREFS, chests: { games: 1, key: 0, pro: 0, thorns: 0 } }, runs: [
         { t: NOW - 1000, g: 'reaction', d: 'nogo', s: 5, n: '', v: 3, hits: 380, misses: 0 }, { t: NOW - 2000, g: 'reaction', d: 'nogo', s: -1, n: '', v: 3, hits: 12, misses: 1 },
         { t: NOW - 3000, g: 'reaction', d: 'flash', s: 5, n: '', v: 3, hits: 255, misses: 0 }, { t: NOW - 4000, g: 'quick-tap', d: 'two', s: 5, n: '', v: 3, hits: 14, misses: 0 } ],
       unlock: {}, ach: { rx_clean: NOW }, intro: SEEN_INTRO, seen: {}, bars: { 'reaction:nogo:5': NOW, 'reaction:nogo:-1': NOW, 'quick-tap:two:5': NOW } } });
@@ -3878,7 +4193,8 @@ if (section('build 32 - v19 section C and v18 sections B.15 to B.27')) {
       // …and with the columns full again the same run is a real clear on every open tier
       r1.pro = was[0]; r1.author = was[1]; S.store.bars = {};
       const adv2 = K.checkKey(run, false);
-      out.full = { tiers: K.keyTiers().map(k => k.id + ':' + (k.shell ? 'shell' : 'live')), adv: adv2 && adv2.tier, bars: Object.keys(S.store.bars).sort(), author: K.tierOpen('author'), pct: K.keyPct('pro') };
+      // v29 (item 13, build 55): tierEARNED, not tierOpen — the Pro chest is shut in this fixture, so Author is SHOWN (the dev flag) and never BANKED
+      out.full = { tiers: K.keyTiers().map(k => k.id + ':' + (k.shell ? 'shell' : 'live')), adv: adv2 && adv2.tier, bars: Object.keys(S.store.bars).sort(), author: K.tierEarned('author'), pct: K.keyPct('pro') };
       S.store.bars = {}; S.prefs.chests = { games: 0, key: 0, pro: 0, thorns: 0 }; S.save(); return out; });
     (!sh.shellClear && sh.shellPro && sh.shellAuthor && sh.fullClear && sh.barPro === null && sh.skey === 'a:b:5|pro' && sh.tiers.join(',') === 'clear:live,pro:shell,author:shell')
       ? ok('B.27 the shell is still DERIVED: empty one Pro and one Author cell and key 1 stays live while Pro and Author are shells, the emptied bar reading null')
@@ -3890,7 +4206,8 @@ if (section('build 32 - v19 section C and v18 sections B.15 to B.27')) {
       && sh.full.bars.join(',') === (sh.full.author ? 'quick-tap:two:5,quick-tap:two:5|author,quick-tap:two:5|pro' : 'quick-tap:two:5,quick-tap:two:5|pro'))
       ? ok(`#426 with the columns full the same run is a real clear on every open tier (${sh.full.bars.join(', ')}), the interlude still draws key 1's, and Pro counts ${sh.full.pct.done} of ${sh.full.pct.total}`)
       : bad('#426 a full column is a real tier', JSON.stringify(sh.full));
-    (/pro: b \? KY\.barOf\(c, 'pro'\) : null, author: b \? KY\.barOf\(c, 'author'\) : null/.test(cat32) && /id="' \+ PFX\[tier\] \+ r\.id/.test(tpl32) && /inp\('clear'\) \+ inp\('pro'\) \+ inp\('author'\)/.test(tpl32) && /bars: \{ clear: CUR\.clear, pro: CUR\.pro, author: CUR\.author \}/.test(tpl32))
+    !REVIEW ? noReview('B.27 the catalogue emits all three tiers a row')
+      : (/pro: b \? KY\.barOf\(c, 'pro'\) : null, author: b \? KY\.barOf\(c, 'author'\) : null/.test(cat32) && /id="' \+ PFX\[tier\] \+ r\.id/.test(tpl32) && /inp\('clear'\) \+ inp\('pro'\) \+ inp\('author'\)/.test(tpl32) && /bars: \{ clear: CUR\.clear, pro: CUR\.pro, author: CUR\.author \}/.test(tpl32))
       ? ok('B.27 the review catalogue emits all three tiers a row and the page saves {bars:{clear,pro,author}} to bars/current')
       : bad('B.27 the catalogue\'s three inputs');
   }
@@ -3910,11 +4227,12 @@ if (section('build 32 - v19 section C and v18 sections B.15 to B.27')) {
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(1400);
     const line = await page.evaluate(() => document.getElementById('menu-key').textContent.trim());
     /* AMENDED at build 48 (v26 items 7 / 9): the meter is 0–300, the keys alone - key 1 whole with the Skill chest open is 100.
-       AMENDED AT BUILD 53 (v28 item 9): what the FRONT PRINTS is meterPct() - 0–100 and clamped - so one key of the three reads 33%.
-       The meter itself is unchanged and is still what everything else reads; Aiden read "300% complete" on this line and a percentage
-       that runs to 300 is not a percentage. The figure is derived here rather than written out, so it cannot drift from the config. */
+       Build 53 (v28 item 9) clamped what the FRONT PRINTS to 0–100, so this read 33%. REVERSED AT BUILD 55 (v29 item 1): the figure
+       is the meter itself, so one key of the three reads 100 again and the difference between 100, 200 and 300 is back on the front
+       of the app. FEEDBACK-v29 §1 carries the disagreement — it is the one thing in that build Aiden has asked for both ways.
+       The figure is derived here rather than written out, so it cannot drift from the config. */
     const want53 = await page.evaluate(async () => { const K = await import('./progress/key.js'); return K.meterPct() + '% complete'; });
-    (line === want53 && line === '33% complete') ? ok(`L.8a (retiring B.17) the front of the app reads the meter, never re-bases, and prints it as a share of the whole - every mode, key 1 whole and the Skill chest open reads "${line}" (100 of the raw 0–300 meter)`) : bad('L.8a the front number', JSON.stringify({ line, want53 }));
+    (line === want53 && line === '100% complete') ? ok(`L.8a (retiring B.17) the front of the app reads the meter, never re-bases, and prints it as a share of the whole - every mode, key 1 whole and the Skill chest open reads "${line}" (100 of the raw 0–300 meter)`) : bad('L.8a the front number', JSON.stringify({ line, want53 }));
     // B.19: the column — AMENDED at build 40 (L.10c): four chests, one column, Games at the top of it
     await click('[data-go="s-pick"]'); await sleep(600);
     const col = await page.evaluate(() => { const ids = ['games', 'key', 'pro', 'thorns']; const c = n => document.querySelector(`.chest[data-chest="${n}"]`); const cell = n => ({ r: +c(n).style.gridRow, col: +c(n).style.gridColumn, need: c(n).querySelector('.pic').dataset.need, cls: c(n).className, name: c(n).querySelector('.name').textContent.trim() });
@@ -3944,7 +4262,8 @@ if (section('build 32 - v19 section C and v18 sections B.15 to B.27')) {
   }
   /* ---- B.21: the arrival plays the first time the screen is seen, via a clear during a run too ---- */
   {
-    await setStorage({ ne: { v: 3, prefs: { ...OPEN_PREFS, keySeen: 0, adRuns: 0 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    // v29 (item 13, build 55): the Games chest is what makes key 1 count, and a dev flag no longer stands in for it
+    await setStorage({ ne: { v: 3, prefs: { ...OPEN_PREFS, keySeen: 0, adRuns: 0, chests: { games: 1, key: 0, pro: 0, thorns: 0 } }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
     const arr = await page.evaluate(async () => {
       const E = await import('./core/events.js'); const S = await import('./core/store.js'); const ST = await import('./core/state.js'); const K = await import('./progress/key.js');
@@ -5018,7 +5337,7 @@ if (section('build 38 - the tile keeps its amber, Author waits for the Pro chest
   part('build 38 - #426 Pro and Author placeholders');
   const P38 = await import(pathToFileURL(path.join(root, 'scripts', 'placeholders.mjs')).href);
   const { ROUND_AT: RA38 } = await import(pathToFileURL(path.join(root, 'config', 'verdicts.js')).href);
-  const bars38 = read('config', 'key-bars.js'), json38 = read('..', '_review', 'key-bars.json');
+  const bars38 = read('config', 'key-bars.js'), json38 = rvRead('key-bars.json');
   const rows38 = P38.rowsOf(bars38);
   const spanOf = (src, key, name) => { const r = P38.rowsOf(src).find(x => x.key === key); const f = P38.fieldsOf(src, r.from, r.to).find(x => x.name === name); return f ? src.slice(f.from, f.to) : ''; };
   {
@@ -5029,7 +5348,7 @@ if (section('build 38 - the tile keeps its amber, Author waits for the Pro chest
     const deskOnly = src => { let out = src; for (const t of ['pro', 'author']) for (const r of P38.rowsOf(out).reverse()) { if (!(r.obj.placeholder && r.obj.placeholder[t] && r.obj.placeholder[t].by)) continue;
       const f = P38.fieldsOf(out, r.from, r.to).find(x => x.name === t); out = out.slice(0, f.from) + 'null' + out.slice(f.to); } return out; };
     const emptied = deskOnly(bars38), filled = P38.generate(emptied, RA38).out, rowsF = P38.rowsOf(filled);
-    (again === bars38 && cleared === bars38 && P38.reviewJson(json38, rows38) === json38)
+    (again === bars38 && cleared === bars38 && (!REVIEW || P38.reviewJson(json38, rows38) === json38))
       ? ok(`v24 §E / #426 config/key-bars.js is what npm run placeholders leaves: regenerating changes nothing, --clear changes nothing (all ${rows38.length * 2} Pro and Author cells are Aiden's or the desk's), and ../_review/key-bars.json matches`)
       : bad('#426 the generator keeps every cell', JSON.stringify({ again: again === bars38, cleared: cleared === bars38, json: P38.reviewJson(json38, rows38) === json38 }));
     // the scheme, cell by cell, on the copy whose desk cells were emptied: the multiplier for the row's own direction, its precision, harder tier over tier, the floors, the marker
@@ -5606,8 +5925,9 @@ if (section('build 40 - batch 16, four chests and the meter')) {
       ? ok('L.8f AMENDED at build 48 (v26 items 7 / 12): the Games chest\'s switch unlocks every mode and leaves the chest ready at 0%; the Skill chest\'s opens the Games chest the way a tap does and leaves the Skill chest ready at 100%; taking either off is its reset') : bad('L.8f the per-chest switches', JSON.stringify(t8));
     (t8.keyReset.chest === 0 && !t8.keyReset.bars && !t8.keyReset.ach && t8.gamesReset.chest === 0 && !t8.gamesReset.unlock && !t8.gamesReset.snap)
       ? ok('G.8 extended: resetting the Skill chest backs out key 1, the chest and its achievements; resetting the Games chest locks every mode again and shuts it') : bad('G.8 the per-chest resets', JSON.stringify({ keyReset: t8.keyReset, gamesReset: t8.gamesReset }));
-    // AMENDED AT BUILD 53 (v28 item 9): Testing is the one screen that works in the RAW meter, and its line now says both - "250 of 300 raw - 83% shown"
-    (t8.set.meter === 250 && /\b250\b/.test(t8.set.line) && /83% shown/.test(t8.set.line) && t8.set.stored === undefined && t8.set.chests === 'open,open,open,locked' && t8.set.bars === '30,30,15' && !t8.off.button)
+    /* Build 53 (v28 item 9) made Testing's line say both figures because the shown one was clamped — "250 of 300 raw · 83% shown".
+       Build 55 (v29 item 1) puts the shown figure back on the meter's own scale, so the two now agree and the line reads 250 twice. */
+    (t8.set.meter === 250 && /\b250\b/.test(t8.set.line) && /250% shown/.test(t8.set.line) && t8.set.stored === undefined && t8.set.chests === 'open,open,open,locked' && t8.set.bars === '30,30,15' && !t8.off.button)
       ? ok(`L.8f AMENDED at build 48 (v26 items 7 / 12): "set meter to N%" REACHES 250 - the Key and Pro chests opened, key 1 and Pro whole, 15 Author bars - and stores no override ("${t8.set.line}"); "meter · as earned" is gone with it`) : bad('L.8f set meter to N%', JSON.stringify({ set: t8.set, off: t8.off }));
   }
 
@@ -5827,7 +6147,7 @@ if (section('build 41 - batch 16, the moments')) {
     const bandsOk = mb.out.every(x => x.cls === 'meterv mb' + x.i && x.col !== 'rgb(61, 214, 140)') && [0, 50, 96].every(v => at(v).i === 0) && at(100).i === 1 && at(196).i === 1 && at(200).i === 2 && at(296).i === 2 && at(300).i === 3
       && at(0).col === 'rgb(110, 108, 104)' && at(150).col === 'rgb(232, 230, 225)' && at(250).col === 'rgb(232, 184, 74)' && at(300).col === 'rgb(255, 255, 255)' && at(300).bg === 'rgb(0, 0, 0)'
       && at(0).ts === 'none' && at(150).ts === 'none' && at(250).ts !== 'none' && parseFloat(at(296).glow) > parseFloat(at(200).glow)
-      && at(0).anim === 'none' && at(150).anim === 'none' && at(300).anim === 'mshake' && /^steps\(1(, end)?\)$/.test(at(300).timing) /* Chromium serialises steps(1, end) as steps(1) */ && at(300).shp === '1' && at(250).txt === '83% complete';   // v28 (item 9): the BAND still reads the raw meter; the TEXT is meterPct()
+      && at(0).anim === 'none' && at(150).anim === 'none' && at(300).anim === 'mshake' && /^steps\(1(, end)?\)$/.test(at(300).timing) /* Chromium serialises steps(1, end) as steps(1) */ && at(300).shp === '1' && at(250).txt === '250% complete';   // v29 (item 1, build 55): the printed figure is the meter, not a share of it. Was '83% complete' at build 53 (v28 item 9): the BAND still reads the raw meter; the TEXT is meterPct()
     (cfgOk && pctOk && bandsOk && mb.pulse.up && mb.pulse.mcol === '#E8B84A' && mb.pulse.anim === 'pctup')
       ? ok('L.8d / L.8e the meter\'s bands at figures REACHED by Testing\'s "set meter to N%" (AMENDED at build 48, v26 items 7 / 12 - 0–300, no override): 0-99 --mute with no effects, 100-199 --ink, 200-299 gold with a glow that grows across the band, 300 - the full meter - white on black with a spiked edge, a cold glow and a stepped whole-pixel shake; a rise pulses in the band\'s colour; green is in no band and not in the pulse (B.22)')
       : bad('L.8d / L.8e the meter bands', JSON.stringify({ cfgOk, pctOk, bandsOk, out: mb.out.filter(x => [0, 100, 200, 250, 300].includes(x.v)), pulse: mb.pulse }));
@@ -5851,9 +6171,10 @@ if (section('build 41 - batch 16, the moments')) {
   }
 
   /* ---- 9. L.11e / L.10d / L.8f: the catalogue's chest cards, and the second driver answering a ceremony ---- */
-  {
-    const gen = read('..', '_review', 'scripts', 'catalogue.mjs'), tpl = read('..', '_review', 'scripts', 'catalogue.template.html');
-    const shots = JSON.parse(read('..', '_review', 'scripts', 'catalogue.annotations.json')).filter(a => a.group === 'chests').map(a => a.shot);
+  rv3: {
+    if (!REVIEW) { noReview("L.11e / L.10d / L.8f the catalogue's chest cards"); break rv3; }
+    const gen = rvRead('scripts', 'catalogue.mjs'), tpl = rvRead('scripts', 'catalogue.template.html');
+    const shots = REVIEW ? JSON.parse(rvRead('scripts', 'catalogue.annotations.json')).filter(a => a.group === 'chests').map(a => a.shot) : [];
     const want41 = IDS.flatMap(id => ['locked', 'ready', 'opened', 'spill'].map(s => `30-chest-${id}-${s}`)).concat(IDS.map(id => `31-cere-${id}`), [0, 50, 100, 150, 200, 250, 300 /* AMENDED at build 48 (v26 items 7 / 9 / 12): the meter is 0–300 */].map(v => `32-meter-${String(v).padStart(3, '0')}`), IDS.map(id => `33-spill-${id}`));
     (/const cereTap = async/.test(gen) && /await cereTap\(\)/.test(gen) && /ceremonyFrame\(/.test(gen) && /chestPlan\(/.test(gen) && want41.every(s => shots.includes(s)) && shots.length === want41.length
       && /'chests'\]\.forEach/.test(tpl) && /id="g-chests"/.test(tpl) && /REF\.chestFx/.test(tpl) && /w === 'noise'/.test(tpl))
@@ -6040,9 +6361,10 @@ if (section('build 42 - batch 16, the key themes')) {
   }
 
   /* ---- 6. L.7e: the catalogue - the new themes on the music cards and linked both ways with their key screen cards, the old three once more marked retired, the Everywhere row photographed ---- */
-  {
-    const gen = read('..', '_review', 'scripts', 'catalogue.mjs'), tpl = read('..', '_review', 'scripts', 'catalogue.template.html');
-    const shots = JSON.parse(read('..', '_review', 'scripts', 'catalogue.annotations.json')).map(x => x.shot);
+  rv4: {
+    if (!REVIEW) { noReview('L.7e the catalogue and the key themes'); break rv4; }
+    const gen = rvRead('scripts', 'catalogue.mjs'), tpl = rvRead('scripts', 'catalogue.template.html');
+    const shots = REVIEW ? JSON.parse(rvRead('scripts', 'catalogue.annotations.json')).map(x => x.shot) : [];
     /* AMENDED AT BUILD 53 (v28 items 2 / 3): the Everywhere row is gone, so the capture no longer sets `prefs.everywhere = 'pro'` to photograph
        it and the shot is `13g-s-custom-music` — the one Music row, with a locked key track tapped so its line shows. Everything else stands. */
     const catOk = { gen: /AU\.KEY_THEMES\)/.test(gen) && /AU\.KEY_THEMES_RETIRED\)/.test(gen) && /'13d-s-key-lantern'/.test(gen),
@@ -6322,6 +6644,12 @@ if (section('build 43 - batch 17, chests and keys')) {
     try { ran = execFileSync(process.execPath, [path.join(root, 'scripts', 'native.mjs'), outDir], { encoding: 'utf8' }); } catch (e) { ran = 'FAILED ' + (e.stderr || e.message); }
     if (!/^FAILED/.test(ran)) {
       const nh = fs.readFileSync(path.join(outDir, 'index.html'), 'utf8'), nb = fs.readFileSync(path.join(outDir, 'config', 'build.js'), 'utf8');
+      /* v29 (item 10, build 55): scripts/native.mjs left `video` out of TREE while all eight config/messages.js rows point at
+         video/test-card.mp4 + .vtt, so every message in a native build was a 404 — which, until this build, showed as a silent
+         black rectangle and nothing else. The copy is also atomic now: it is built and checked in a temp tree and only moved
+         into place once every check has passed, so a failure no longer leaves a half-written dist/native that looks like a build. */
+      const vid43 = ['test-card.mp4', 'test-card.vtt'].filter(f => !fs.existsSync(path.join(outDir, 'video', f)));
+      !vid43.length ? ok('v29 item 10 the native tree carries video/ — every message slot\'s clip is in the bundle') : bad('item 10 video/ missing from the native tree', vid43.join(', '));
       nat = { html: !/\sdata-dev[\s>=]/.test(nh) && !/id="s-testing"/.test(nh) && !/data-act="dev-/.test(nh), target: /export const TARGET = 'native';/.test(nb), web: /id="s-testing"/.test(read('index.html')) && /export const TARGET = 'web';/.test(read('config', 'build.js')) };
       const nsrv = await serve(outDir);
       await page.goto(nsrv.base + '/index.html', { waitUntil: 'networkidle0' });
@@ -6337,9 +6665,10 @@ if (section('build 43 - batch 17, chests and keys')) {
   }
 
   /* ---- 11. the review board: the new cards, and each key's earn sound on its card ---- */
-  {
-    const gen = read('..', '_review', 'scripts', 'catalogue.mjs'), tpl = read('..', '_review', 'scripts', 'catalogue.template.html');
-    const shots = JSON.parse(read('..', '_review', 'scripts', 'catalogue.annotations.json')).map(a => a.shot);
+  rv5: {
+    if (!REVIEW) { noReview("the review board's new cards"); break rv5; }
+    const gen = rvRead('scripts', 'catalogue.mjs'), tpl = rvRead('scripts', 'catalogue.template.html');
+    const shots = REVIEW ? JSON.parse(rvRead('scripts', 'catalogue.annotations.json')).map(a => a.shot) : [];
     const want43 = ['13h-s-key-ask', '13i-s-key-earn-clear', '13j-s-key-earn-pro', '13k-s-key-earn-author', '13l-s-custom-keybg', '13m-menu-keys-locked'];
     (want43.every(s => shots.includes(s) && gen.includes(`'${s}'`)) && /keyEarnPlan\(/.test(gen) && /REF\.earnFx/.test(tpl))
       ? ok(`build 43 the catalogue carries ${want43.length} new cards - the ask, the three earn moments (each with its sound on a button, off Snd.keyEarnPlan), Customise's key backgrounds and the Keys row locked`)
@@ -6699,8 +7028,9 @@ if (section('build 45 - batch 18, fixes, state and the catalogue')) {
   }
 
   /* ---- 9. items 20 / 21: the catalogue's sound list and Round formats, built by the same two functions npm run review uses ---- */
-  {
-    const { roundsRef, soundsRef } = await import(pathToFileURL(path.join(root, '..', '_review', 'scripts', 'catalogue.ref.mjs')).href);
+  rv6: {
+    if (!REVIEW) { noReview("items 20 / 21 the catalogue's sound list and Round formats"); break rv6; }
+    const { roundsRef, soundsRef } = REVIEW ? await import(pathToFileURL(path.join(REVIEW_DIR, 'scripts', 'catalogue.ref.mjs')).href) : { roundsRef: null, soundsRef: null };
     await boot({}, { unlock: ALLUNL }, { plain: PLAIN45 });
     const snd = await page.evaluate(soundsRef);
     const rows = snd.groups.flatMap(g => g.rows);
@@ -6738,7 +7068,7 @@ if (section('build 45 - batch 18, fixes, state and the catalogue')) {
       ? ok(`item 21 Round formats: ${rf.length} games, ${bands} bands, every figure read from the game's own config and engine (spot checks: Count round 7 deals ${live21.decoys7} decoys, Find round 5 deals ${live21.find5} shapes, a Hidden Streak's round 5 stretches × ${live21.hid5}); the shapes are drawn by the app's own code, and Go / No-go's square at 45° is flagged as the diamond (#444)`)
       : bad('item 21 Round formats', JSON.stringify({ ids: rf.map(g => g.id), shaped, drawn, diamond, figures, c7, f5, h5 }));
     // and the page has somewhere to put both, carried in the template so every future board keeps them (#441)
-    const tpl45 = read('..', '_review', 'scripts', 'catalogue.template.html'), gen45 = read('..', '_review', 'scripts', 'catalogue.mjs');
+    const tpl45 = rvRead('scripts', 'catalogue.template.html'), gen45 = rvRead('scripts', 'catalogue.mjs');
     (/id="sounds"/.test(tpl45) && /id="snd-host"/.test(tpl45) && /id="rounds"/.test(tpl45) && /id="rf-host"/.test(tpl45) && /REF\.sounds/.test(tpl45) && /REF\.rounds/.test(tpl45)
       && /page\.evaluate\(soundsRef\)/.test(gen45) && /page\.evaluate\(roundsRef\)/.test(gen45))
       ? ok('items 20 / 21 both sections are in catalogue.template.html with their note boxes, and catalogue.mjs fills them from catalogue.ref.mjs - so every future npm run review carries them (#441)')
@@ -7092,8 +7422,9 @@ if (section('build 46 - batch 18, the unlock experience, sound and About')) {
   }
 
   /* ---- 13. items 20 / 22: every new sound is in the catalogue's list, and the card offers a message that has one ---- */
-  {
-    const { soundsRef } = await import(pathToFileURL(path.join(root, '..', '_review', 'scripts', 'catalogue.ref.mjs')).href);
+  rv7: {
+    if (!REVIEW) { noReview('items 20 / 22 every new sound is in the catalogue list'); break rv7; }
+    const { soundsRef } = REVIEW ? await import(pathToFileURL(path.join(REVIEW_DIR, 'scripts', 'catalogue.ref.mjs')).href) : { soundsRef: null };
     await boot({}, { unlock: ALL46 });
     const snd = await page.evaluate(soundsRef);
     const rows = snd.groups.flatMap(g => g.rows);

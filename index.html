@@ -1,6 +1,13 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>No Excuses</title>
 <meta name="robots" content="noindex, nofollow">
+<!-- v29 (item 7, build 55): S4 finally IN FORCE. ARCHITECTURE.md has said since build 14 that this file carries a CSP; it never did.
+     The board XSS this build closed (item 6) ran its inline onerror handler unhindered, and under Capacitor the page sits beside the
+     native bridge. `script-src` is not listed, so it falls to `default-src 'self'` - which is why the update poll had to leave this
+     file first: it was an inline <script> and this meta would have silently killed the update bar. It is core/platform.js now (S7).
+     `style-src 'unsafe-inline'` is required: inline style="" attributes are everywhere (chest.js, board.js, the run layer). The
+     data: SVG in styles/app.css needs img-src data:; <video>/<track> fall to default-src 'self', which is right. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'">
 <meta name="theme-color" content="#050506">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -20,7 +27,7 @@
 </head><body>
 <canvas id="stars"></canvas>
 <!-- v25 (items 4 / 8, build 45): the build stamp comes BEFORE every screen, so each paints over it (styles/app.css #build) -->
-<div id="build">v0.54</div>
+<div id="build">v0.55</div>
 
 <section class="screen on" id="s-menu">
   <div class="nextup" id="nextup" data-act="nextup" hidden></div>
@@ -238,7 +245,7 @@
   <div class="eyebrow msgtitle" id="msg-title">messages</div>
   <div class="hint" id="msg-lede"></div>
   <div class="msglist" id="msglist"></div>
-  <div class="hint">v0.54 · the reward moments · 18 sept 2026</div>
+  <div class="hint">v0.55 · the reward moments · 19 sept 2026</div>
 </section>
 
 <section class="screen" id="s-testing" data-back="s-menu" data-dev>
@@ -334,20 +341,8 @@
 
 <script type="module" src="./boot.js"></script>
 
+<!-- v29 (item 7, build 55): the update poll was an inline script here with the build number written into it a fourth time. It is
+     core/platform.js now - gated to https: and out of the native shell (S7), and covered by `script-src 'self'` (S4). A6 is stronger
+     for it: the constant is gone, so config/build.js is read directly and index.html carries the build in TWO places, not three. -->
 <button id="update">New build available — tap to reload</button>
-<script>
-// build check: version.json is fetched with no-store, so a stale cached page still learns a newer build exists
-(function(){
-  const BUILD="54";
-  async function check(){
-    try{
-      const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});
-      const j=await r.json();
-      // v18 (S.2): the bar names the build it found, in the v0.N form a person reads; BUILD and j.build stay the bare integer (A6)
-      if(j.build && String(j.build)!==BUILD){ const u=document.getElementById('update'); u.textContent='v0.'+j.build+' is ready — tap to reload'; u.classList.add('on'); u.onclick=()=>location.reload(true); }
-    }catch(e){}
-  }
-  check(); document.addEventListener('visibilitychange',()=>{ if(!document.hidden) check(); });
-})();
-</script>
 </body></html>

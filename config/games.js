@@ -92,7 +92,7 @@ export const GAMES = {
     per:{ hidden:{ suffix:'ms', scoreWord:'ms total', streak:{ ...STREAK_CFG } } } },
   'reaction': { name:'Reaction', modes:['flash','nogo'], lenNames:{5:'Best of 5',9:'Best of 9',15:'Best of 15'}, unit:' attempts', timed:false, lower:true, versus:['flash'], vsLens:[5,9,15],
     // v18 (B.1b / B.1c): the mode line says what a round is, and no longer promises an ender that has been removed
-    flash:'Tap the moment it flashes white.', nogo:'Tap only your shape — three times, then it changes. Wait for it.',
+    flash:'Tap the moment it flashes white.', nogo:'Tap only your shape — three targets, then it changes. Wait for it.',
     suffix:'ms', scoreWord:'ms', streak:{ ...STREAK_CFG },
     // Go/No-go (v11): Set = 5 rounds (v14 section 5), average ms on right taps + 150ms per wrong tap (v14 A.2); v14 (6.2 / L5): Streak = shapes survived on a 1000ms budget
     // v19 (C.5 / C.6, L5): every tap is scored over the 180ms gate, and the Streak scores in TARGETS answered on a 3000ms budget —
@@ -129,7 +129,10 @@ export const SET_COPY = {
   // v18 (B.6): a slow attempt is scored at 1000ms and counts; there is no retake to hide it
   'reaction:flash':   { rounds:5,  set:'5 rounds, lowest average time wins — over 1000ms scores 1000ms', streak:'Highest round wins!' },
   // v18 (B.1b): a round is three correct taps of one shape, so a Set is fifteen; the 150ms is the whole of a wrong tap now (B.1c)
-  'reaction:nogo':    { rounds:5,  set:'5 rounds of 3 taps, lowest average over the 180ms gate wins — wrong taps add 150ms', streak:'Most targets wins!' },
+  /* v29 (item 16, build 55): "3 taps" was not what the Set does. It deals 3 TARGETS a round and moves on whether or not they were tapped -
+     a skipped target is charged its full dwell and scored with the rest (B.1b / C.5, deliberate) - so a player who never taps still finishes
+     the Set. The line says targets now, which is the contract the engine keeps; L5 in CLAUDE.md says the same. */
+  'reaction:nogo':    { rounds:5,  set:'5 rounds of 3 targets, lowest average over the 180ms gate wins — a target you miss is charged in full, a wrong tap adds 150ms', streak:'Most targets wins!' },
   'spot:count':       { rounds:10, set:'10 rounds, lowest total miscount wins',          streak:'Highest round wins!' },
   'spot:find':        { rounds:10, set:'10 rounds, lowest total time wins — 0.5s free each find', streak:'Highest round wins!' },
 };

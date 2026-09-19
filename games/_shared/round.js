@@ -16,10 +16,14 @@ function rxBar(words,atOnce){ const b=$('#rxbar'); if(!words){ b.innerHTML=''; r
 const genRect=()=>$('#gen').getBoundingClientRect();
 const rnd=n=>Math.random()*n|0;
 const roundEngine=()=>({ ctx:null, raf:0, round:0, st:'idle', pending:null,
-  mount(ctx){ this.ctx=ctx; this.pending=null; hud.hold(false); },
+  /* v29 (item 3, build 55): MOUNT AND STOP PUT THE STATE BACK TO IDLE. Neither did, so a run aborted mid-round left `st`
+     on 'run' / 'wait' / 'go' / 'find' and the NEXT run's countdown taps ran the dead state's handler - the Flash round
+     that was eaten, the Stopwatch Set that played four of five, the Find round that scored a 20-second find. Estimate
+     and Sequence already did this; the three round-based engines did not. run/run.js gates input on R.live as well. */
+  mount(ctx){ this.ctx=ctx; this.st='idle'; this.pending=null; hud.hold(false); },
   streak(){ return this.ctx.len===STREAK; },
   start(){ this.begin(); },
-  stop(){ this.clearT(); this.pending=null; hud.hold(false); },
+  stop(){ this.clearT(); this.st='idle'; this.pending=null; hud.hold(false); },
   // v14 (6.3): a result card waits for a tap. The tap that clears it is consumed here and never reaches the round underneath
   input(ctx,ev){ if(this.pending){ if(ev.type&&ev.type!=='down') return; const f=this.pending; this.pending=null; hud.hold(false); ctx.audio.click(); return f(); } this.onDown(ev); },
   // hold the card up until it is tapped, then run f. Replaces `this.later(()=>this.next(), ms)` after every reveal

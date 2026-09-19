@@ -4,6 +4,8 @@
    the click dispatcher, the run's input, the canvas. */
 import { TOAST } from "./config/copy.js";
 import { T } from "./core.js";
+// v29 (item 7, build 55): the update poll lives in core/platform.js now (S7). Nothing else imports that file at boot, so boot names it.
+import "./core/platform.js";
 import { prefs, save } from "./core/store.js";
 import { seedSeen, seenAll } from "./progress.js";
 import { retroArrived } from "./progress/key.js";

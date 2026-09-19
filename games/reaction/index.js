@@ -5,6 +5,7 @@ import { REACTION as CP } from "../../config/copy.js";
 import { CFG, NOGO_COUNTER } from "../../config/games.js";
 import { DEALS, NOGO_TURNS, SHAPES } from "../../config/shapes.js";
 import { $, $$, T, mean, minMax, pWho, vmin, winner } from "../../core.js";
+import { haptic } from "../../core/platform.js";
 import { makeDealer, within } from "../_shared/deal.js";
 import { Shapes, shapeI } from "../_shared/shapes.js";
 import * as hud from "../_shared/hud.js";
@@ -122,7 +123,7 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
     if(!this.versus()) this.later(()=>{ if(this.st==='go'){ if(this.streak()||this.two.on) return this.noTap(); this.noTap(this.FLASH_MAX); } },this.streak()||this.two.on?1500:this.FLASH_MAX); },
   noTap(cap){ const ms=cap||600; this.st='show'; this.times.push(ms); const add=Math.max(0,ms-this.FLASH_FREE);
     if(!this.two.on) hud.score(String(this.times.length));
-    this.rxCard(CP.noTap,ms,add,false); this.ctx.audio.miss(); if(navigator.vibrate) navigator.vibrate(30); this.hud();
+    this.rxCard(CP.noTap,ms,add,false); this.ctx.audio.miss(); haptic(30); this.hud();
     if(this.two.on) return this.twoAdd(ms);
     if(this.streak()) return this.flashAdd(add);
     // v18 (B.6): a Set's no-tap walks into the average like any other attempt and the round moves on
@@ -132,7 +133,7 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
   // its average. Either way `round` moves on, so this is next(), never again()
   early(){ this.clearT(); this.faults++; const ms=this.FLASH_EARLY; this.st='show'; this.times.push(ms);
     this.rxCard(CP.earlyTap,ms,ms,true,CP.earlyCost);
-    this.ctx.audio.miss(); if(navigator.vibrate) navigator.vibrate(40);
+    this.ctx.audio.miss(); haptic(40);
     if(this.two.on){ this.hud(); return this.twoAdd(ms); }
     if(this.streak()){ hud.score(String(this.times.length)); this.hud(); return this.flashAdd(ms); }
     this.setAdd(); },
@@ -168,7 +169,7 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
     hud.time(T(CP.hudVs,{n:this.round,s:this.ctx.len})); this.st='wait'; this.armed=false;
     $('#gen').innerHTML=`<div class="rxpane" id="rxpane"><div class="rxmsg" id="rxmsg" style="top:44%;font-size:11px">${CP.wait}</div></div><div class="vz top p2">${pWho(1)}<b>${this.vsN[1]}</b></div><div class="vz bot p1">${pWho(0)}<b>${this.vsN[0]}</b></div>`;
     this.later(()=>this.go(),1200+Math.random()*3300); },
-  vsTap(ev){ if(this.st!=='wait'&&this.st!=='go') return; const r=genRect(); const p=(ev.y-r.top)<r.height/2?1:0; const early=this.st==='wait'; const w=early?1-p:p; this.st='show'; this.clearT(); this.vsN[w]++;
+  vsTap(ev){ if(this.st!=='wait'&&this.st!=='go') return; const r=genRect(); const p=(ev.y-r.top)<r.height/2?1:0; const early=this.st==='wait'||!this.armed; const w=early?1-p:p;   // build 55 (in passing): st 'go' with nothing armed yet was neither early nor timed, and took the round at "0ms" this.st='show'; this.clearT(); this.vsN[w]++;
     const ms=!early&&this.armed?Math.max(1,Math.round(ev.t-this.t0)):0; const pane=$('#rxpane'); pane.classList.remove('lit'); pane.classList.toggle('bad',early);
     pane.innerHTML=`<div class="rxmsg" style="top:40%"><b class="fb ${w?'p2':'p1'}" style="font-size:clamp(18px,5vw,30px)">${T(CP.takes,{n:w+1})}</b><span class="sub">${early?T(CP.tappedEarly,{n:p+1}):ms+CP.ms}</span></div>`; hud.tick($$('.vz b')[w?0:1],this.vsN[w],w); early?this.ctx.audio.miss():this.ctx.audio.hit(); this.later(()=>this.vsRound(),1500); },
   vsEnd(){ const [a,b]=this.vsN; const w=winner(a,b); this.st='over'; $('#gen').innerHTML=`<div class="rxpane"><div class="rxmsg" style="top:40%"><b class="fb ${w<0?'':w?'p2':'p1'}" style="font-size:clamp(18px,5vw,30px)">${w<0?CP.draw:T(CP.wins,{n:w+1})}</b><span class="sub">${a} – ${b}</span></div></div>`; this.ctx.audio.end(); this.later(()=>this.ctx.emit('finish',{hits:a,misses:0,vs2:{a,b,w,how:`${a}–${b}`}}),1600); },
@@ -345,7 +346,7 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
     const cost=this.streak()?this.NOGO_WRONG_STREAK:this.NOGO_WRONG_SET;
     this.st='wrongshow'; pane.classList.add('bad'); hud.shake();
     pane.innerHTML=`<div class="rxmsg" style="top:40%"><b class="fb" style="font-size:clamp(18px,6vw,36px)">${CP.wrongS}</b><span class="sub">+${cost}${CP.ms}</span></div>`;
-    this.ctx.audio.miss(); if(navigator.vibrate) navigator.vibrate(40); hud.score(this.liveNum()); hud.scorePop(); this.hudNogo(); this.ctx.emit('live',this.nogoScore());
+    this.ctx.audio.miss(); haptic(40); hud.score(this.liveNum()); hud.scorePop(); this.hudNogo(); this.ctx.emit('live',this.nogoScore());
     if(this.streak()&&this.over>=this.NOGO_BUD){ this.clearT(); this.st='over'; pane.innerHTML=`<div class="rxmsg" style="top:40%">${T(CP.reached,{bud:this.NOGO_BUD})}<b style="font-size:28px">${CP.over}</b></div>`; return this.later(()=>this.nogoEnd(),1300); } },
   /* v15 (4.4): a Go / No-go turn is a block of shapes — one rule period — because a single shape on an 800ms beat cannot be
      handed over. The block is scored the way the Set is (v14 A.2): the average of the right taps plus 150ms a wrong one,

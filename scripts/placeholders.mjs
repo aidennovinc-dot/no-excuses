@@ -35,7 +35,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const BARS_JS = path.join(ROOT, 'config', 'key-bars.js');
+// build 55 (in passing): the review copy is an OUTPUT, not an input — the script crashed with ENOENT on a checkout without ../_review
 const REVIEW_JSON = path.join(ROOT, '..', '_review', 'key-bars.json');
+const REVIEW_DIR = path.dirname(REVIEW_JSON);
 
 export const MULT = { higher: { pro: 1.15, author: 1.30 }, lower: { pro: 0.80, author: 0.65 } };
 export const TIERS = ['pro', 'author'];
