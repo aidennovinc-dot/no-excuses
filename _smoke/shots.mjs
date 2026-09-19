@@ -348,6 +348,96 @@ scene('59.6', async (page, browser) => {
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 });
 
+/* =======================================================================================================
+   59.7 — Lantern Sky keeps its lanterns and moves onto the dark palette
+   Aiden: "I really like the core of what you've done with the lantern theme, except I think it's far too bright because the
+   words themselves are very difficult to read ... we should be keeping with this game's dark theme." The acceptance is MEASURED:
+   the dimmest text on the Keys screen against the BRIGHTEST pixel of background it can sit over, a lantern passing behind it
+   included. So the background is sampled with the text hidden — the brightest pixel in each dim line's own box, over a second of
+   animation so a lantern drifting through is caught — and the ratio is computed against the text's own colour.
+   59.8 — and the background reaches the bottom of the phone, every theme: the last row of pixels is the theme, not #000.
+   ======================================================================================================= */
+const THEMES = ['stars', 'grid', 'rain', 'orbs', 'lantern', 'circuit', 'thorn'];
+scene('59.7', async (page, browser) => {
+  await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture({ chests: { games: 1, key: 1, pro: 1, thorns: 1 }, bg: 'lantern' }));
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(450);
+  await page.evaluate(async () => { const P = await import('./progress/key.js'), S = await import('./core/store.js');
+    const bars = {}; for (const c of P.COMBOS) for (const t of ['', '|pro', '|author']) bars[c.key + t] = 1; S.store.bars = bars; S.save(); });
+  /* The comparison is the OLD sky against the NEW one, not one theme against another: the Keys screen draws its own TIER's
+     layer over whatever Customise has chosen, so the Skill key is on Lantern whatever `prefs.bg` says. Build 58's numbers are
+     reproduced by putting build 58's values back into KEY_LAYER in the page — same screen, same text, same lanterns. */
+  const rows = {};
+  for (const sky of ['build 59 · dark', 'build 58 · dusk']) {
+    await page.evaluate(async old => { const K = await import('./config/keys.js'), R = await import('./ui/router.js');
+      const L = K.KEY_LAYER.lantern;
+      if (old) Object.assign(L, { sky: '38,24,66', warm: .5, hz: .4 }); else Object.assign(L, { sky: '5,5,6', warm: .1, hz: .07 });
+      R.show('s-menu'); await new Promise(r => setTimeout(r, 120)); R.show('s-key', { tier: 0 }); }, sky.startsWith('build 58'));
+    await sleep(1200);
+    const bg = sky.startsWith('build 58') ? 'dusk-before' : 'dark-after';
+    // scroll the key list to the bottom, which is where it failed
+    await page.evaluate(() => { const l = document.getElementById('key-list'); if (l && !l.hidden) l.scrollTop = l.scrollHeight; });
+    await sleep(400);
+    await frame(page, browser, `59.7-keys-${bg}-390`, `Keys screen with ${bg} behind it — the dim lines measured against the background they sit on`);
+    /* the boxes of the dimmest text, then the same frame with ALL text hidden, sampled across a second so a lantern drifting
+       behind a line is caught. The ratio is that brightest background pixel against the line's own colour. */
+    const boxes = await page.evaluate(() => {
+      const dim = [...document.querySelectorAll('#s-key .hint, #s-key .keycount, #s-key .kneed, #s-key .notyet, #s-key small, #s-key .klbl')]
+        .filter(el => { const r = el.getBoundingClientRect(); return r.width > 8 && r.height > 6 && getComputedStyle(el).visibility !== 'hidden'; });
+      return dim.slice(0, 14).map(el => { const r = el.getBoundingClientRect(), cs = getComputedStyle(el);
+        const m = cs.color.match(/[\d.]+/g).map(Number);
+        return { cls: (el.className || el.id || el.tagName).toString().slice(0, 22), col: m.slice(0, 3), text: el.textContent.trim().slice(0, 26),
+          box: { x0: Math.floor(r.x * 2), y0: Math.floor(r.y * 2), x1: Math.ceil(r.right * 2), y1: Math.ceil(r.bottom * 2) } }; });
+    });
+    await page.evaluate(() => { document.querySelectorAll('.screen').forEach(s => { s.style.visibility = 'hidden'; }); });
+    /* TWO numbers, because they answer two different questions. WORST is the single brightest background pixel under any dim
+       line across a second of animation — a lantern drifting directly behind the text — which is what the acceptance names.
+       TYPICAL is the median background pixel under those lines, which is what "the whole bottom third is unreadable" was
+       about: a wash you cannot escape, as against a lantern that passes. */
+    let worst = null; const all = [];
+    for (let k = 0; k < 6; k++) { await sleep(170);
+      const im = await pixels(browser, await page.screenshot({ type: 'png' }));
+      for (const b of boxes) { let top = null;
+        for (let y = Math.max(0, b.box.y0); y < Math.min(im.h, b.box.y1); y++) for (let x = Math.max(0, b.box.x0); x < Math.min(im.w, b.box.x1); x++) {
+          const p = px(im, x, y); all.push(contrast(b.col, p)); if (!top || lum(p) > lum(top)) top = p; }
+        if (!top) continue; const c = contrast(b.col, top);
+        if (!worst || c < worst.ratio) worst = { ratio: c, on: top, text: b.text, cls: b.cls, col: b.col }; }
+    }
+    await page.evaluate(() => { document.querySelectorAll('.screen').forEach(s => { s.style.visibility = ''; }); });
+    all.sort((a, b2) => a - b2);
+    const median = all.length ? Math.round(all[Math.floor(all.length / 2)] * 100) / 100 : null;
+    const p05 = all.length ? Math.round(all[Math.floor(all.length * .05)] * 100) / 100 : null;
+    rows[bg] = { worst: worst && worst.ratio, median, p05, brightestPixel: worst && worst.on, lines: boxes.length };
+    say('contrast', rows[bg]);
+  }
+  console.log('      dim text vs its background — typical (median): build 58 ' + rows['dusk-before'].median + ':1  ->  build 59 ' + rows['dark-after'].median + ':1');
+  console.log('      worst single pixel (a lantern passing behind):  build 58 ' + rows['dusk-before'].worst + ':1  ->  build 59 ' + rows['dark-after'].worst + ':1');
+});
+
+scene('59.8', async (page, browser) => {
+  const out = {};
+  for (const bg of THEMES) {
+    await page.evaluate((f, b) => localStorage.setItem('ne', JSON.stringify(Object.assign({}, f, { prefs: Object.assign({}, f.prefs, { bg: b }) }))), fixture({ chests: { games: 1, key: 1, pro: 1, thorns: 1 } }), bg);
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(700);
+    for (const screen of ['s-menu', 's-key']) {
+      await page.evaluate(async s => { const R = await import('./ui/router.js'); R.show(s === 's-key' ? 's-key' : 's-menu', s === 's-key' ? { tier: 0 } : undefined); }, screen);
+      await sleep(900);
+      const im = await frame(page, browser, `59.8-${bg}-${screen}`, `${bg} on ${screen} with a 34px bottom inset — the last row of pixels must be the theme, not #000`);
+      /* the bottom row of the SCREENSHOT is the bottom row of the phone. "Not #000" is not enough on its own, because the app's
+         own ground is near-black too — so the row is compared against the row 120px higher, which is unambiguously the theme. */
+      const rowAt = y => { let n = 0, sum = [0, 0, 0];
+        for (let x = 0; x < im.w; x++) { const p = px(im, x, y); sum[0] += p[0]; sum[1] += p[1]; sum[2] += p[2]; n++; }
+        return sum.map(v => Math.round(v / n)); };
+      /* a PROFILE up from the bottom, not two samples: 68 device pixels is the 34px home-indicator inset, so a background that
+         stops at the safe-area line shows as a step between the rows either side of it. A theme that is simply dark shows no step. */
+      const prof = [1, 10, 34, 68, 90, 140].map(d => ({ up: d, mean: rowAt(im.h - d) }));
+      const pure = (() => { let n = 0; for (let x = 0; x < im.w; x++) { const p = px(im, x, im.h - 1); if (p[0] === 0 && p[1] === 0 && p[2] === 0) n++; } return n; })();
+      const step = Math.max(...prof.map(r => Math.abs(r.mean[0] - prof[prof.length - 1].mean[0]) + Math.abs(r.mean[1] - prof[prof.length - 1].mean[1]) + Math.abs(r.mean[2] - prof[prof.length - 1].mean[2])));
+      out[bg + ' ' + screen] = { profileUpFromBottom: prof, pureBlackPixelsInLastRow: pure, maxStep: step, widthPx: im.w };
+      say('bottom', out[bg + ' ' + screen]);
+    }
+  }
+});
+
 /* ---------- the runner ---------- */
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 if (ARGV.includes('--list')) { console.log(Object.keys(SCENES).join('\n')); process.exit(0); }

@@ -18,7 +18,13 @@ const cv=$('#stars'), cx=cv.getContext('2d'); let W,H,pts=[],dpr=1, paused=false
 // v29 (item 16, build 55): DPR IS CAPPED AT 2. It was uncapped, so a Pro / Pro Max drew this canvas at 3x - 1290x2796, 3.6 megapixels -
 // and the Thorn layer fills the whole of it four times a frame, about 14 megapixels of gradient fill per frame at 60fps on the menu.
 // Nothing here has a hard edge that 2x does not hold: stars, orbs and washes are all soft. Battery, not fidelity.
-function size(){ dpr=Math.min(2,devicePixelRatio||1); W=cv.width=innerWidth*dpr; H=cv.height=innerHeight*dpr; geo=null;
+/* v30 (59.8, build 59): the buffer is sized from the canvas's OWN BOX, not from innerWidth/innerHeight. The element is
+   100dvw x 100dvh now, and on iOS those are not the same as the window's inner size while a URL bar is collapsing — a buffer
+   measured from the window stretched or short-changed the drawing against the box it is painted into. Reading the box the
+   browser actually gave us means the two can never disagree, whatever the viewport is doing. */
+function size(){ dpr=Math.min(2,devicePixelRatio||1);
+  const bw=cv.clientWidth||innerWidth, bh=cv.clientHeight||innerHeight;
+  W=cv.width=Math.round(bw*dpr); H=cv.height=Math.round(bh*dpr); geo=null;
   pts=Array.from({length:70},()=>({x:Math.random()*W,y:Math.random()*H,r:(Math.random()*1.4+.4)*dpr,s:(Math.random()*.15+.05)*dpr,a:Math.random()*.5+.15,ph:Math.random()*6.28,l:(30+Math.random()*60)*dpr,v:(.6+Math.random()*1.2)*dpr,R:(120+Math.random()*160)*dpr})); }
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const DRAW={
@@ -80,12 +86,15 @@ const LAYER={
      paper body with a taper at the top, and the flame inside it. A lantern further back is smaller, slower and dimmer, which is the depth. No stars
      under any of it (57.11a). Every number is config/keys.js KEY_LAYER.lantern. */
   lantern(t){ const P=KEY_LAYER.lantern, bar=beatMs('lantern')*4, T=reduce?0:t;
+    /* v30 (59.7, build 59): the ground is the app's own near-black, laid down opaque, and the dusk survives only as a TINT over
+       it. It was an indigo-to-amber wash and every dim line in the bottom third sat on orange. Two numbers, both in config: */
+    cx.globalAlpha=1; cx.fillStyle=`rgb(${P.sky})`; cx.fillRect(0,0,W,H);
     const sky=cx.createLinearGradient(0,0,0,H);
-    sky.addColorStop(0,`rgba(${P.sky},1)`); sky.addColorStop(.55,`rgba(${P.sky},.55)`); sky.addColorStop(1,`rgba(${P.glow},.5)`);
-    cx.globalAlpha=1; cx.fillStyle=sky; cx.fillRect(0,0,W,H);
-    // the horizon's own glow, so the amber reads as light rather than as a band of colour
+    sky.addColorStop(0,`rgba(${P.glow},0)`); sky.addColorStop(.6,`rgba(${P.glow},0)`); sky.addColorStop(1,`rgba(${P.glow},${P.warm})`);
+    cx.fillStyle=sky; cx.fillRect(0,0,W,H);
+    // the horizon's own glow, so the warmth reads as light rather than as a band of colour
     const hz=cx.createRadialGradient(W/2,H*1.02,0,W/2,H*1.02,Math.max(W,H)*.75);
-    hz.addColorStop(0,`rgba(${P.glow},.4)`); hz.addColorStop(1,`rgba(${P.glow},0)`); cx.fillStyle=hz; cx.fillRect(0,0,W,H);
+    hz.addColorStop(0,`rgba(${P.glow},${P.hz})`); hz.addColorStop(1,`rgba(${P.glow},0)`); cx.fillStyle=hz; cx.fillRect(0,0,W,H);
     for(let i=0;i<P.lanterns;i++){
       const dep=rnd(i,2), sc=(P.far+(P.near-P.far)*dep)*dpr;                    // how near this one is, and its size with it
       const span=bar*P.rise*(1.4-dep*.5), u=((T/span)+rnd(i,3))%1;              // how far up it is, nearer ones climbing faster

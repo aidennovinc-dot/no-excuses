@@ -148,7 +148,15 @@
    ================================================================== */
   /* v29 Section A (57.11b, build 57): this canvas IS the background layer, and the colour picked in Customise is painted on it rather than on
      `--ground` — under every screen, over nothing. The canvas already sat behind the whole app, which is why it is the right place for it. */
-  #stars{position:absolute;inset:0;width:100%;height:100%;display:block;transition:opacity .3s}
+  /* v30 (59.8, build 59): IT REACHES THE BOTTOM OF THE PHONE. Aiden: "there seems to be a bit that's cut off at the bottom of the
+     screen, so the background doesn't continue on, so let's fix that." It was `position:absolute` at `height:100%` of a body whose
+     own height resolves to the LAYOUT viewport; with viewport-fit=cover on iOS that ends above the home indicator, and the body's
+     own near-black ground showed under it as a hard-edged band. It shows up on Lantern Sky because that is the only theme bright
+     enough to see against black — every theme was cut off and the rest were hiding it.
+     `fixed` with `100dvh` makes the canvas the VISUAL viewport, which is the thing the home indicator sits on; `dvw` with it so a
+     rotation cannot leave a strip at the side either. The content keeps its own safe-area padding; nothing about the safe area is
+     applied to the background, which is the point — the background goes under the indicator and the content does not. */
+  #stars{position:fixed;inset:0;width:100dvw;height:100dvh;display:block;transition:opacity .3s}
 
 /* ==================================================================
    title — the sequence that opens the menu (ui/screens/menu.js)

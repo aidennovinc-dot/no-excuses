@@ -191,7 +191,15 @@ export const EARN_GLOW = 'flash';
               the oldest fades and is re-seeded, so it never plays backwards.
    Every one is still DIM (`alpha`) and still on its own key's tempo. All (guess). */
 export const KEY_LAYER = {
-  lantern: { lanterns: 14, alpha: .5, rise: 10, far: .5, near: 1.5, flick: .35, sky: '38,24,66', glow: '255,176,90', col: '255,208,138' },
+  /* v30 (59.7, build 59): THE LANTERNS STAY, THE BRIGHT GROUND GOES. Aiden: "I really like the core of what you've done with the
+     lantern theme, except I think it's far too bright because the words themselves are very difficult to read. So we should be
+     keeping with this game's dark theme, but in general this is very, very good." This is his answer to build 57's question 2.
+     `sky` was indigo 38,24,66 running to a .5 amber at the horizon, which put the whole bottom third of the Keys screen - the
+     Sequence description, the two requirement lines, both NOT YET tags and TAP A ROW TO GO AND TRY IT - as dim grey on orange.
+     It is the app's own near-black now, and the amber survives as `warm` (how much of the glow colour tints the foot) and `hz`
+     (the horizon's radial), both a fraction of what they were. The lanterns themselves are untouched: their own glow reads
+     BETTER against dark, which is the whole reason the scene works. */
+  lantern: { lanterns: 14, alpha: .5, rise: 10, far: .5, near: 1.5, flick: .35, sky: '5,5,6', glow: '255,176,90', col: '255,208,138', warm: .1, hz: .07 },
   circuit: { cell: 44, traces: 16, pulse: 1, alpha: .12, head: .5, edge: 3, col: '191,230,255' },
   thorn: { branches: 10, thorns: 7, edge: .6, alpha: .5, grow: [6, 16], reach: [.24, .62], branch: [0, 3], wide: [.8, 2.4], spike: [5, 13], col: '255,255,255' },
 };
