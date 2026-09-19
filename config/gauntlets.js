@@ -45,8 +45,10 @@ const MINI = [
   { g: 'hold', d: 'cut', s: 2, ref: 'hold:cut:10', web: 'hold' },
   { g: 'reaction', d: 'flash', s: 2, ref: 'reaction:flash:5', web: 'reaction:flash' },
   { g: 'reaction', d: 'nogo', s: 2, ref: 'reaction:nogo:5', web: 'reaction:nogo' },
-  // "1 round, 5-6 seconds" — the WINDOW the round's own target is drawn from, not a fixed 5.0 (item 18)
-  { g: 'timing', d: 'stopwatch', s: 1, ref: 'timing:stopwatch:5', tot: 1, web: 'timing:stopwatch', target: [5, 6] },
+  /* "5-6 seconds" is the WINDOW each round's target is drawn from, not a fixed 5.0 (item 18).
+     v29 Section A (57.10, build 57): TWO ROUNDS, not one — "Gauntlet Mini · Stopwatch is two rounds". The window is
+     untouched: each of the two targets is still drawn from 5-6s, and `tot` now scales the bar by 2/5 rather than 1/5. */
+  { g: 'timing', d: 'stopwatch', s: 2, ref: 'timing:stopwatch:5', tot: 1, web: 'timing:stopwatch', target: [5, 6] },
   { g: 'timing', d: 'hidden', s: 2, ref: 'timing:hidden:10', tot: 1, web: 'timing:hidden' },
   { g: 'spot', d: 'find', s: 2, ref: 'spot:find:10', tot: 1, web: 'spot:find' },
 ];

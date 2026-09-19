@@ -196,11 +196,16 @@ export const CHEST_WORDS = {
 /* v29 (items 11 / 18, build 56): THE GAUNTLETS ARE REAL RUNS. `soon` stays for a Gauntlet with no roster; `intro` is the one
    first-play line each gets, the way every game has one (INTRO below). The score is a percentage of the bar, so 100 means the
    run matched it and there is no ceiling above that. */
+/* v29 Section A (57.9, build 57): AIDEN'S OWN COPY, AND THE COUNT COMES OFF THE ROSTER. `intro` carries `{n}` — the number of
+   STEPS in that Gauntlet's roster, filled by ui/screens/gauntlet.js — so the "8" cannot drift from the run the way a typed
+   number would. `oneWay` is RETIRED: "nothing under the list on either". `go` is ENTER THE GAUNTLET on both (he said it of
+   Mini; Cowork's reading is both). `roundsEach` / `roundsPair` / `modePair` are 57.9's one-row Estimate: its two plays are
+   one step of the run and one spoke on the web, so they are ONE row — "2 rounds each" on Mini, "7 + 10 rounds" on Mega. */
 export const GAUNTLET = { name:{ g1:'Gauntlet Mini', g2:'Gauntlet Mega' }, msgTitle:'The {name}', toast:'{need} first', soon:'Coming soon',
-  intro:{ g1:'Every game, back to back, short. One run, one score.', g2:'Every game, back to back, at full length. No way back to the start.' },
-  go:'Go', again:'Again, from game one', oneWay:'One way through — quit and the next attempt starts at game one.',
+  intro:{ g1:'{n} short games back to back. No retries, one final score.', g2:'{n} full length games back to back. Do you have what it takes?' },
+  go:'Enter the Gauntlet', again:'Again, from game one',
   pct:'{n}%', noBar:'—', board:'Your best', barLine:'100% is the bar. Past it is past the bar.',
-  round:'1 round', rounds:'{n} rounds' };
+  round:'1 round', rounds:'{n} rounds', roundsEach:'{n} rounds each', roundsPair:'{a} + {b} rounds', modePair:'{a} + {b}' };
 // v23 (L.11b, build 41): what a word whose reward is not built yet says when tapped (guess)
 export const CHEST_SOON = '{w}<small>not built yet · a later build</small>';
 export const SHEET = { mode:'Mode', toUnlock:'To unlock: {need}', tileUnlock:'to unlock: {need}', locked:'locked', noRun:'no run yet', best:'best', closest:'closest',

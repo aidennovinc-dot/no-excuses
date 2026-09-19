@@ -25,6 +25,12 @@
   @font-face{font-family:"Archivo";font-style:normal;font-weight:800;font-display:swap;src:url(../fonts/archivo-var.woff2) format("woff2")}
   @font-face{font-family:"JetBrains Mono";font-style:normal;font-weight:500;font-display:swap;src:url(../fonts/jetbrains-mono-var.woff2) format("woff2")}
   @font-face{font-family:"JetBrains Mono";font-style:normal;font-weight:700;font-display:swap;src:url(../fonts/jetbrains-mono-var.woff2) format("woff2")}
+  /* v29 Section A (57.9, build 57): A FOURTH FACE, and the only one that is not the app's own voice. Aiden asked for the Gauntlet
+     screens in "special text that looks scary — different font, different colour", so Creepster 400 (SIL Open Font License, the
+     same latin subset Google serves, 28KB) joins the three in ../fonts/. It is NOT preloaded: nothing on first paint uses it, and
+     the Gauntlet screens are four taps in. It is used on the Gauntlet title, the two map labels and the ENTER THE GAUNTLET button
+     and NOWHERE ELSE — the rows keep the mono face, because a roster has to be read rather than felt. */
+  @font-face{font-family:"Creepster";font-style:normal;font-weight:400;font-display:swap;src:url(../fonts/creepster-400.woff2) format("woff2")}
 
 /* ==================================================================
    shell — index.html, core/ — the root, type, buttons, chips, the screen frame, tables, the build bar
@@ -53,6 +59,8 @@
     --glow:rgba(232,230,225,.30);
     --stamp:11px; --stampat:max(6px,env(safe-area-inset-bottom)); --stampclear:calc(var(--stampat) + var(--stamp) + 16px);
     --title:"Syncopate","Michroma",var(--display); --display:"Archivo",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+    /* 57.9: the Gauntlet's own face and its two reds — Mini deep, Mega a step hotter. Nothing outside the Gauntlet reads these */
+    --scare:"Creepster","Impact",var(--title); --gsc1:#A81C12; --gsc2:#D4180A;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   /* v13 (3.1): a `.chips` row set display:flex, which outranks the browser's own [hidden] rule — that is why Solo still showed Pass & play / Versus */
@@ -126,6 +134,8 @@
 /* ==================================================================
    atmosphere — ui/atmosphere.js
    ================================================================== */
+  /* v29 Section A (57.11b, build 57): this canvas IS the background layer, and the colour picked in Customise is painted on it rather than on
+     `--ground` — under every screen, over nothing. The canvas already sat behind the whole app, which is why it is the right place for it. */
   #stars{position:absolute;inset:0;width:100%;height:100%;display:block;transition:opacity .3s}
 
 /* ==================================================================
@@ -144,8 +154,12 @@
   /* v17 (B.19, build 29): it sits HIGHER — a third of the way up rather than on the bottom edge, so it reads as part of
      the title block instead of as furniture under it — and it fades in at 1.5x the old pace (.8s -> 1.2s). L1 is quoted:
      placement and pace only. Nothing is removed, nothing is shortened, and it still arrives last of the four beats. */
+  /* v29 Section A (57.1, build 57 — quotes L1; Aiden authorises the change): IT GLOWS GREEN. Green is the app's "this is the new thing" colour
+     everywhere else (L8), and this is the one instruction on the screen. Placement, pace and wording are untouched — only the colour and the halo,
+     and the halo breathes on the same slow cycle the wordmark does rather than adding a beat of its own. */
   #storyhint{position:absolute;left:0;right:0;bottom:max(30vh,calc(env(safe-area-inset-bottom) + 44px));opacity:0;display:none;margin:0;
-    font-family:var(--title);font-size:clamp(13px,4.4vw,19px);letter-spacing:.3em;color:var(--ink);line-height:1.6;text-align:center}
+    font-family:var(--title);font-size:clamp(13px,4.4vw,19px);letter-spacing:.3em;color:var(--ok);line-height:1.6;text-align:center;
+    text-shadow:0 0 14px color-mix(in srgb,var(--ok) 55%,transparent),0 0 34px color-mix(in srgb,var(--ok) 28%,transparent)}
   #s-menu.story .stline,#s-menu.story #storyhint{display:block}
   #s-menu.story .nextup,#s-menu.story .item,#s-menu.story .menu-key{visibility:hidden}
   /* 1.1 — three beats: the first line at the top, NO EXCUSES in the middle, the second line under it. The title's own
@@ -600,6 +614,12 @@
   #key-main{background:radial-gradient(circle at 50% 34%,var(--kground),transparent 68%)}
   #key-keys.one .kkey{pointer-events:none}
   .kkey i{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ktint);opacity:.75;margin-top:1px}
+  /* v29 Section A (57.11g, build 57): CLEAR SPACE BEHIND THE TEXT. Aiden's line: on the Pro key screen the background's lines "cross TAP THE KEY…,
+     a game label and the PLAYING EVERYWHERE button". The background is a canvas BEHIND the DOM, so a line already passes behind the words — what it
+     lacked was separation. Each of the three gets a halo of the ground colour: the two HTML lines with a text-shadow, the SVG game labels with a
+     stroke under the fill (`paint-order`), which is the SVG way of saying the same thing. Nothing about the layers' own drawing changes. */
+  #s-key #key-hint,#s-key #key-music,#s-key .keycount{text-shadow:0 0 7px var(--ground),0 0 16px var(--ground),0 0 24px var(--ground)}
+  #s-key .klbl{paint-order:stroke fill;stroke:var(--ground);stroke-width:3.5px;stroke-linejoin:round}
   #s-key .kglyph{stroke:var(--ktint);opacity:.85}
   #s-key .khub{stroke:var(--ktint);opacity:.5}
   .kgl{width:34px;height:34px;overflow:visible}
@@ -611,7 +631,11 @@
   #key-shell{display:flex;flex-direction:column;align-items:center;gap:14px;max-width:34ch;text-align:center;padding-top:22px}
   #key-shell p{color:var(--mute);font-size:13px;line-height:1.6}
   #key-shell p.soon{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--mute);opacity:.7;line-height:1.7}
-  #key-ring{width:min(86vw,340px);max-height:46vh;overflow:visible;margin-top:2px}
+  /* v29 Section A (57.5, build 57): THE WHEEL IS LOCKED TO THE SMALL POSITION. It was 46vh until a game was tapped and 30vh after,
+     so a tap resized and shifted the thing the player had just aimed at. Aiden: "it should not move". One layout, the small one —
+     the large one left the bottom third of the screen empty anyway — and the target list scrolls underneath it (`.scroll`, and
+     Quick Tap and Dots have six rows). `.kpanel` is retired with the step-down: nothing on this screen resizes on a tap now. */
+  #key-ring{width:min(86vw,340px);max-height:30vh;overflow:visible;margin-top:2px}
   /* v23 (L.7b, build 42): SET THIS MUSIC at the foot of the key screen, above the build stamp's clearance (L.5); green once it is every run's music */
   #key-music{margin-top:auto;margin-bottom:max(0px,calc(var(--stampclear) - 24px));flex:none;font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;padding:10px 16px;border:1px solid var(--line);color:var(--ink)}
   #key-music.on{color:var(--ok);border-color:var(--ok)}
@@ -652,7 +676,6 @@
   #s-key{overflow:hidden}
   #key-main{flex:1 1 auto}
   #key-list{max-height:none;flex:0 1 auto;min-height:0}
-  #s-key.kpanel #key-ring{max-height:30vh}
   .keyblk h4{font:500 14px var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--ink);padding:2px 0 2px}
   .keyblk h4 span{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--mute);margin-left:8px}
   .keyblk p{color:var(--mute);font-size:12px;line-height:1.5;margin:2px 0 8px}
@@ -793,15 +816,21 @@
   .sw button.pvw{outline:2px solid var(--cue);outline-offset:2px}
   .sw button.locked{opacity:.32}
   .sw button.locked::after{content:"";position:absolute;inset:-1px;background:linear-gradient(135deg,transparent 46%,var(--ground) 46%,var(--ground) 54%,transparent 54%)}
+  /* 57.11b: the Background colour row. "No colour" shows the design's own ground (set inline) and reads as off; the wheel beside it is the colour */
+  .sw button.bgnone{position:relative}
+  .sw button.bgnone::before{content:"";position:absolute;inset:-1px;background:linear-gradient(135deg,transparent 46%,var(--mute) 46%,var(--mute) 54%,transparent 54%)}
   .sw button.wheel{background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);border-radius:50%}
   .sw button.wheel::before{content:"";position:absolute;inset:11px;border-radius:50%;background:var(--ground)}
   .sw button.wheel.locked::after{border-radius:50%}
   .sw button.bg-stars,.rwsw.bg-stars{background-image:radial-gradient(circle at 20% 30%,#fff 1px,transparent 1.5px),radial-gradient(circle at 70% 60%,#fff 1px,transparent 1.5px),radial-gradient(circle at 45% 80%,#fff .8px,transparent 1.3px)}
-  .sw button.bg-grid,.rwsw.bg-grid{background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.18) 0 1px,transparent 1px 9px),repeating-linear-gradient(90deg,rgba(255,255,255,.18) 0 1px,transparent 1px 9px)}
+  /* 57.11c: the swatch matches the layer — a visible blue on navy, not off-white on blue-black */
+  .sw button.bg-grid,.rwsw.bg-grid{background-image:repeating-linear-gradient(0deg,rgba(91,140,255,.55) 0 1px,transparent 1px 9px),repeating-linear-gradient(90deg,rgba(91,140,255,.55) 0 1px,transparent 1px 9px)}
   .sw button.bg-rain,.rwsw.bg-rain{background-image:repeating-linear-gradient(90deg,transparent 0 6px,rgba(255,255,255,.22) 6px 7px,transparent 7px 13px)}
   .sw button.bg-orbs,.rwsw.bg-orbs{background-image:radial-gradient(circle at 30% 35%,rgba(255,255,255,.25),transparent 55%),radial-gradient(circle at 75% 70%,rgba(255,255,255,.18),transparent 50%)}
   /* v24 (C.6, build 43): the three key backgrounds' swatches — a warm glow, a trace with a corner, white spikes on black */
-  .sw button.bg-lantern,.rwsw.bg-lantern{background-image:radial-gradient(circle at 35% 40%,rgba(255,208,138,.5),transparent 45%),radial-gradient(circle at 72% 72%,rgba(255,208,138,.28),transparent 40%)}
+  /* 57.11d: REDRAWN with the layer — a dusk from indigo to amber with three small lanterns at different depths in it, which is what the
+     background is now. It was two soft yellow blobs, which is what Aiden was looking at when he said "just some yellow blobs". */
+  .sw button.bg-lantern,.rwsw.bg-lantern{background-image:radial-gradient(circle at 30% 34%,rgba(255,208,138,.95) 0 8%,transparent 9%),radial-gradient(circle at 66% 56%,rgba(255,208,138,.8) 0 6%,transparent 7%),radial-gradient(circle at 48% 76%,rgba(255,208,138,.6) 0 4.5%,transparent 5.5%),radial-gradient(circle at 50% 108%,rgba(255,176,90,.55),transparent 62%),linear-gradient(180deg,#26183F 0,#3A2450 55%,#6B3B34 100%)}
   .sw button.bg-circuit,.rwsw.bg-circuit{background-image:linear-gradient(90deg,transparent 30%,rgba(191,230,255,.6) 30% 36%,transparent 36%),linear-gradient(0deg,transparent 58%,rgba(191,230,255,.6) 58% 64%,transparent 64%)}
   .sw button.bg-thorn,.rwsw.bg-thorn{background-image:conic-gradient(from 165deg at 50% 0,transparent 0 15deg,rgba(255,255,255,.75) 15deg 30deg,transparent 30deg),conic-gradient(from -15deg at 50% 100%,transparent 0 15deg,rgba(255,255,255,.75) 15deg 30deg,transparent 30deg)}
   .opt{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;padding:9px 13px;border:1px solid var(--line);color:var(--mute)}
@@ -1596,7 +1625,10 @@
      ui/ceremony.js draws every layer of a chest's ceremony at once; each step's start and length are the custom properties it sets from
      config/chests.js CEREMONY (--st-<step>-at / --st-<step>-ms), so nothing below is a literal duration a timing edit could miss. --cc is the
      chest's own band colour. Not skippable; the reveal holds on "tap to continue". Presentation only (L10). */
-  .cere{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding-block:max(18px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-bottom));padding-inline:12px;background:var(--ground);cursor:default;overflow:hidden}
+  /* v29 Section A (57.4, build 57): and the belt on ui/reveal.js's cap — the host is CLIPPED at the top safe-area line, so nothing a
+     reveal lifts, throws or flies can paint into the strip the clock and the battery live in. Zero on a phone with no inset and in the
+     gate's headless Chromium, exactly as the same clip on the scrolling screens is. */
+  .cere{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding-block:max(18px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-bottom));padding-inline:12px;background:var(--ground);cursor:default;overflow:hidden;clip-path:inset(env(safe-area-inset-top) 0 0 0)}
   .cere[hidden]{display:none}
   .cere .cstage{width:100%;max-width:420px;flex:1 1 auto;min-height:0;overflow:visible}
   .cere .cbig{width:120px;height:98px}
@@ -1637,6 +1669,33 @@
   .cere .cbeam{fill:url(#cbeam);opacity:0;transform-box:view-box;transform-origin:150px 300px}
   .cere.play .cbeam{animation:cbeam var(--st-spill-ms) ease-out var(--st-spill-at) both}
   @keyframes cbeam{0%{opacity:0;scale:1 .1}40%{opacity:.9;scale:1 1}100%{opacity:.45;scale:1 1}}
+  /* ---------- v29 Section A (57.8, build 57): THE COVER — the first beat of every chest a key opens ----------
+     Two named steps own it (config/chests.js CEREMONY): `cover` is the introduction and `uncover` is it clearing. THE CHEST IS NOT DRAWN until
+     500ms into the uncover, which is build 52's own timing for the Author chest, restored here and given to all three. Everything is in `--cc`,
+     the colour of the KEY that opens the chest, so this block names no chest's colour. */
+  .cere .ccovbg{fill:var(--ground);opacity:0}
+  .cere.play .ccovbg{animation:cfade calc(var(--st-cover-ms) * .35) ease-out var(--st-cover-at) both,cout calc(var(--st-uncover-ms) * .8) ease-in var(--st-uncover-at) forwards}
+  .cere[data-chest="key"] .cchestg,.cere[data-chest="pro"] .cchestg,.cere[data-chest="thorns"] .cchestg{opacity:0}
+  .cere.play[data-chest="key"] .cchestg,.cere.play[data-chest="pro"] .cchestg,.cere.play[data-chest="thorns"] .cchestg{animation:cfade .8s ease-out calc(var(--st-uncover-at) + 500ms) both}
+  /* SKILL · seven paper lanterns rise through the dark, each flickering, and a disc of light irises open and takes the cover with it */
+  .cere .clan{opacity:0}
+  .cere.play .clan{animation:clanrise calc(var(--st-cover-ms) + var(--st-uncover-ms)) linear calc(var(--st-cover-at) + var(--i) * 90ms) both}
+  @keyframes clanrise{0%{opacity:0;translate:0 70px}16%{opacity:1}64%{opacity:1}100%{opacity:0;translate:0 calc(-1 * var(--rise))}}
+  .cere .clang{fill:var(--cc);opacity:.2;filter:blur(7px)}
+  .cere .clanb{fill:var(--cc);opacity:.85}
+  .cere.play .clanb{animation:clanflick 1.3s ease-in-out infinite}
+  @keyframes clanflick{0%,100%{opacity:.85}45%{opacity:.45}}
+  .cere .ciris{fill:var(--cc);opacity:0;transform-box:view-box;transform-origin:150px 300px}
+  .cere.play .ciris{animation:cirisin var(--st-cover-ms) ease-out var(--st-cover-at) both,ciris var(--st-uncover-ms) cubic-bezier(.3,0,.2,1) var(--st-uncover-at) forwards}
+  @keyframes cirisin{0%{opacity:0;scale:.15}100%{opacity:.45;scale:1}}
+  @keyframes ciris{0%{opacity:.45;scale:1}55%{opacity:.3;scale:13}100%{opacity:0;scale:22}}
+  /* PRO · eight right-angled traces draw in from all four edges, a square node lighting at each inner end, then the whole grid powers down */
+  .cere .ctrace{fill:none;stroke:var(--cc);stroke-width:1.6;stroke-linecap:square;stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 0 3px var(--cc))}
+  .cere.play .ctrace{animation:cdraw calc(var(--st-cover-ms) * .5) ease-out calc(var(--st-cover-at) + var(--i) * 110ms) both,cout calc(var(--st-uncover-ms) * .7) ease-in var(--st-uncover-at) forwards}
+  .cere .cnode{fill:var(--cc);opacity:0}
+  .cere.play .cnode{animation:cfade 160ms ease-out calc(var(--st-cover-at) + var(--i) * 110ms + var(--st-cover-ms) * .48) both,cout calc(var(--st-uncover-ms) * .7) ease-in var(--st-uncover-at) forwards}
+  @media (prefers-reduced-motion:reduce){.cere.play .clanb{animation:none}}
+
   /* v29 (item 5, build 54): THE AUTHOR CHEST'S OWN OPENING, BACK FROM BUILD 52 — AS A THEME OVER THE SHARED KEY TURN, NOT INSTEAD OF IT.
      Every rule below is build 52's, restored verbatim from git (18a0858), with ONE removed: `.cere[data-chest="thorns"] .cchestg{opacity:0}`
      and its late fade, which hid the chest until the widen. The chest has to be there for the bars to assemble onto it and the lid to lift,
@@ -1663,10 +1722,12 @@
      cosmetics that scattered out of it are gone — the Pro key opens the Pro chest, so it unlocks like the Skill chest (the assemble / turn
      rules above carry all three), and item 16 takes the colour out with the scatter. What is left of the breaking moved to the chest with no
      key: the seven cracks are on the SPRITE (ui/chest.js, so the map keeps them), and the ceremony draws the seventh in and bursts it. */
-  .chestart .crk{fill:none;stroke:var(--bc);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;opacity:.9}
-  /* a crack that has just arrived draws itself on — the map only, and only the one that is new (ui/screens/pick.js) */
-  .chestart .crk.fresh{stroke-dasharray:1;stroke-dashoffset:1;animation:cdraw .5s ease-out both}
-  .cere .cbig .crk{stroke-dasharray:1;stroke-dashoffset:1}
+  /* v29 Section A (57.2, build 57): THINNER, AND WITH THE OLD ART'S GLOW. Aiden: "we had this previously on a different one, and the cracks were
+     thinner" — the Pro chest's `ccrack`, removed at build 53. From git (18a0858) that was stroke-width 1.8 in the ceremony's own 300 × 520 box with
+     `drop-shadow(0 0 3px var(--cc))` on it. These cracks are drawn on the SPRITE, whose 44-unit box is scaled to 120px in the ceremony — about 2.7×
+     — so 1.5 was reading as FOUR stage units, well over twice the old weight. .55 lands at 1.5 stage units, and the ceremony adds the glow back. */
+  .chestart .crk{fill:none;stroke:var(--bc);stroke-width:.55;stroke-linecap:round;stroke-linejoin:round;opacity:.9}
+  .cere .cbig .crk{stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 0 1.1px var(--cc))}
   .cere.play .cbig .crk{animation:cdraw .34s ease-out calc(var(--st-crack-at) + var(--i) * var(--crack-step)) both}
   .cere .cburst{fill:var(--cc);opacity:0;transform-box:view-box;transform-origin:150px 300px}
   .cere.play .cburst{animation:cburst var(--st-burst-ms) ease-out var(--st-burst-at) both}
@@ -1745,6 +1806,38 @@
   #s-key.ksettle .kground{animation:cfade .9s ease-out both}
   #s-key.ksettle .kring{animation:kringin .9s ease-out both}
   @keyframes kringin{from{opacity:0}to{opacity:var(--kringop,.5)}}
+
+  /* ---------- v29 Section A (57.6, build 57): THE KEY BEING CREATED, the first time its screen is opened ----------
+     Four named steps from config/keys.js KEY_INTRO, every time a custom property ui/screens/key.js writes onto the stage, so this block names no
+     duration and a re-tune is a number edit there. `--kt` is that key's own tint and `data-style` its own theme, which is the whole of what makes
+     one set of rules three different animations: the material gathers, the key's own KEY_ART paths draw on one at a time, a strike goes through it,
+     and it settles into its finished light. Reduce Motion: the stage is simply there, the way every other moment's is. */
+  .cere .kistage{width:100%;max-width:420px;flex:1 1 auto;min-height:0;overflow:visible}
+  .kistage .kibit{fill:var(--kt);opacity:0}
+  .cere.play .kistage .kibit{animation:kibitin var(--st-gather-ms) cubic-bezier(.25,.65,.3,1) calc(var(--st-gather-at) + var(--i) * 26ms) both,
+    cout 240ms ease-in var(--st-draw-at) forwards}
+  @keyframes kibitin{0%{opacity:0;translate:var(--dx) var(--dy);scale:.35}30%{opacity:.95}100%{opacity:.85;translate:0 0;scale:1}}
+  .kistage[data-style="lantern"] .kibit{rx:2;filter:blur(.7px)}
+  .kistage[data-style="circuit"] .kibit{rx:0}
+  .kistage[data-style="thorn"] .kibit{rx:0}
+  .kistage .kipath{fill:none;stroke:var(--kt);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1;stroke-dashoffset:1;opacity:.92}
+  .kistage[data-style="circuit"] .kipath{stroke-linecap:square;stroke-width:2}
+  .cere.play .kistage .kipath{animation:cdraw var(--ki-stroke) ease-out calc(var(--st-draw-at) + var(--i) * var(--ki-stroke)) both}
+  .kistage .kiflash{fill:var(--kt);opacity:0;transform-box:view-box;transform-origin:150px 150px}
+  .cere.play .kistage .kiflash{animation:kiflash var(--st-forge-ms) ease-out var(--st-forge-at) both}
+  @keyframes kiflash{0%{opacity:0;scale:.2}25%{opacity:.8;scale:1}100%{opacity:0;scale:5}}
+  .kistage .kiring{fill:none;stroke:var(--kt);stroke-width:2;opacity:0;transform-box:view-box;transform-origin:150px 150px}
+  .cere.play .kistage .kiring{animation:kiring calc(var(--st-forge-ms) + var(--st-settle-ms)) ease-out var(--st-forge-at) both}
+  @keyframes kiring{0%{opacity:.9;scale:.35}70%{opacity:.3}100%{opacity:0;scale:1.9}}
+  .kistage .kikeyg{transform-box:view-box;transform-origin:150px 150px}
+  .cere.play .kistage .kikeyg{animation:kikeyset var(--st-settle-ms) ease-out var(--st-settle-at) both}
+  @keyframes kikeyset{from{filter:none;scale:1}to{filter:drop-shadow(0 0 var(--ki-flash) color-mix(in srgb,var(--kt) 70%,transparent));scale:1.06}}
+  .kistage.kiquick .kibit{display:none}
+  .kistage.kiquick .kipath{stroke-dashoffset:0}
+  @media (prefers-reduced-motion:reduce){.cere.play .kistage .kibit{display:none}
+    .cere.play .kistage .kipath{animation:none;stroke-dashoffset:0}
+    .cere.play .kistage .kiflash,.cere.play .kistage .kiring{animation:none;opacity:0}
+    .cere.play .kistage .kikeyg{animation:none}}
 
   /* ---------- item 13: AN UNFINISHED KEY AND A FINISHED ONE ----------
      Both wore the same golden glow, so 3% looked like earned. UNFINISHED (`#s-key` without `.kdone`): no radial ground, no drop shadow
@@ -1865,8 +1958,37 @@
      It was a title, "Coming soon" and Back. It is the run now: what it plays, in order, then Go; and after a run the web,
      the number and every game's share of it. One scroller, so it joins the --stampclear selector above. */
   #s-gauntlet{align-items:center;gap:10px;text-align:center;overflow-y:auto;-webkit-overflow-scrolling:touch;clip-path:inset(env(safe-area-inset-top) 0 0 0)}
-  #s-gauntlet .gttitle{font-size:14px;letter-spacing:.24em}
   #s-gauntlet .gtsoon{max-width:34ch}
+  /* ---------- v29 Section A (57.9, build 57): THE GAUNTLET LOOKS LIKE A THREAT ----------
+     Aiden: "special text that looks scary — different font, different colour", of Mini, and the same a step further on Mega.
+     Cowork's reading, built as written: the scary face and the deep red go on the TITLE, the MAP LABEL and the BUTTON; the roster
+     rows keep the mono face so they stay legible and take the red as an accent instead. `--gsc` is the screen's own red, set per
+     Gauntlet off `data-g` (ui/screens/gauntlet.js), so every rule below names one variable and Mega is one line, not a second set.
+     The FLICKER is slow and mostly on — a red sign with a loose contact, not a strobe: long steady stretches with two short dips,
+     and Mega's cycle is shorter, dips deeper and carries a second shadow. Reduce Motion holds it lit. */
+  #s-gauntlet{--gsc:var(--gsc1);--gflick:5.4s;--gdip:.5}
+  #s-gauntlet[data-g="g2"]{--gsc:var(--gsc2);--gflick:3.6s;--gdip:.3}
+  #s-gauntlet .gttitle{font-family:var(--scare);font-size:clamp(30px,10vw,44px);font-weight:400;letter-spacing:.06em;line-height:1.1;color:var(--gsc);
+    text-shadow:0 0 18px color-mix(in srgb,var(--gsc) 55%,transparent);animation:gflick var(--gflick) steps(1,end) infinite}
+  #s-gauntlet[data-g="g2"] .gttitle{font-size:clamp(34px,12vw,54px);letter-spacing:.09em;
+    text-shadow:0 0 10px color-mix(in srgb,var(--gsc) 80%,transparent),0 0 34px color-mix(in srgb,var(--gsc) 45%,transparent),0 2px 0 #1A0503}
+  /* the rows: the normal face, the red as an accent — the number, the left edge and the length */
+  #s-gauntlet .gtlist li{border-color:color-mix(in srgb,var(--gsc) 34%,var(--line));border-left-width:2px;border-left-color:var(--gsc)}
+  #s-gauntlet .gtlist li b{color:var(--gsc)}
+  #s-gauntlet[data-g="g2"] .gtlist li{border-color:color-mix(in srgb,var(--gsc) 52%,var(--line));border-left-width:3px}
+  /* ENTER THE GAUNTLET: the same face, the same red, the same flicker as the title */
+  #s-gauntlet .gtgo{font-family:var(--scare);font-size:clamp(20px,6.4vw,28px);font-weight:400;letter-spacing:.06em;text-transform:none;
+    color:var(--gsc);border-color:color-mix(in srgb,var(--gsc) 62%,var(--line));animation:gflick var(--gflick) steps(1,end) infinite;animation-delay:-1.7s}
+  #s-gauntlet[data-g="g2"] .gtgo{border-width:2px;text-shadow:0 0 16px color-mix(in srgb,var(--gsc) 55%,transparent)}
+  @keyframes gflick{0%{opacity:1}7%{opacity:1}7.6%{opacity:var(--gdip)}8.4%{opacity:1}9%{opacity:var(--gdip)}9.4%{opacity:1}
+    58%{opacity:1}58.5%{opacity:var(--gdip)}59.2%{opacity:1}100%{opacity:1}}
+  /* the two MAP labels wear it too — a Gauntlet reads as a threat before it is opened (57.9). `.glow` is dropped for these two:
+     its soft white pulse and the flicker are two animations for one property and the flicker is the one Aiden asked for. */
+  .tile.gauntlet .name{font-family:var(--scare);font-size:15px;font-weight:400;letter-spacing:.04em;text-transform:none;color:var(--gsc1);
+    text-shadow:0 0 12px color-mix(in srgb,var(--gsc1) 50%,transparent);animation:gflick 5.4s steps(1,end) infinite;--gdip:.5}
+  .tile.gauntlet[data-gauntlet="g2"] .name{font-size:17px;color:var(--gsc2);animation-duration:3.6s;--gdip:.3;
+    text-shadow:0 0 9px color-mix(in srgb,var(--gsc2) 75%,transparent),0 0 26px color-mix(in srgb,var(--gsc2) 40%,transparent)}
+  @media (prefers-reduced-motion:reduce){#s-gauntlet .gttitle,#s-gauntlet .gtgo,.tile.gauntlet .name{animation:none;opacity:1}}
   #gt-body{width:100%;max-width:340px;display:flex;flex-direction:column;align-items:center;gap:14px}
   .gtbrief,.gtres{width:100%;display:flex;flex-direction:column;align-items:center;gap:14px}
   .gtlist{list-style:none;margin:0;padding:0;width:100%;display:flex;flex-direction:column;gap:2px}
@@ -1922,13 +2044,14 @@
   .cere.card .ctxt{visibility:hidden}
   .cere .rcardwrap.below{inset:auto 0 0 0;align-items:flex-start;padding-top:0}
   .rcard{border-color:color-mix(in srgb,var(--rc,var(--line)) 40%,var(--line));gap:10px;padding:18px 16px 16px}
-  .rcard h3{font-family:var(--title);font-weight:700;font-size:clamp(16px,5.4vw,24px);letter-spacing:.02em;text-transform:none;line-height:1.15;color:var(--rc,var(--ink));text-shadow:0 0 18px color-mix(in srgb,var(--rc,var(--ink)) 45%,transparent)}
+  /* 57.3: the face, the weight and the tracking stay; the SIZE, the COLOUR and the glow move to `.rtitle` below, which is the celebration */
+  .rcard h3{font-family:var(--title);font-weight:700;letter-spacing:.02em;text-transform:none;line-height:1.15}
   .rcard .ryou{font-size:15px;line-height:1.4;color:var(--ink)}
   .rcard .rnext{font-size:13px;line-height:1.4;color:var(--mute)}
   /* ---------- v28 (items 12 / 17, build 53): THE STAGED CARD, THE MESSAGE AS A SCREEN, AND THE CONFETTI ----------
      item 12: the card arrived all at once. Every block now carries its own index and lands --card-step after the one before it, in order: the
      title, each line, the message, Continue last. Under Reduce Motion they all land together with the card's own fade, as build 46's rule asks. */
-  .rcard>*{opacity:0;animation:cardin var(--card-block,260ms) cubic-bezier(.2,.8,.25,1) calc(var(--card-ms,240ms) + var(--ci,0) * var(--card-step,170ms)) both}
+  .rcard>*{opacity:0}
   @keyframes cardin{from{opacity:0;translate:0 8px}to{opacity:1;translate:0 0}}
   /* item 12: the message is the build-52 player, powered off — a picture in a thin white rounded frame with a play mark, its title under it.
      The same drawing serves the Messages list (ui/chest.js msgPreview), so a message looks the same wherever it appears. */
@@ -1942,14 +2065,38 @@
   .mptitle{font-weight:500;font-size:12px;letter-spacing:.04em;color:var(--ink);text-align:center}
   .rcard .rmsg:active .mpframe{box-shadow:0 0 22px -2px color-mix(in srgb,var(--vg,#FFFFFF) 75%,transparent)}
   /* item 17: the confetti — geometric, monochrome, in the chest's own colour, denser and longer each tier. Never rainbow paper: item 16 has
-     just taken colour out of the Pro chest and this would put it straight back. The games chest throws seven squares, one per game. */
-  .rconf{position:absolute;inset:-6px -6px auto -6px;height:0;pointer-events:none;overflow:visible;z-index:2}
-  .rconf .cf{position:absolute;left:var(--x);top:0;width:var(--cf-sz);height:var(--cf-sz);background:var(--rc,var(--ink));opacity:0;
+     just taken colour out of the Pro chest and this would put it straight back. The games chest throws seven squares, one per game.
+     v29 Section A (57.3, build 57): ON THE HOST, ACROSS THE WHOLE SCREEN, AND SEVERAL TIMES THE VOLUME. It hung inside the card, so it fell 190px
+     down a 360px box; it hangs on the full-screen reveal element now and falls past the bottom of the phone. `.w` is a piece drawn in white —
+     57.3's "the chest's colour plus white" — and the colour of the rest is the word's own (`--cwc`), so the two cannot disagree. */
+  .rconf{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:3}
+  .rconf .cf{position:absolute;left:var(--x);top:0;width:var(--cf-sz);height:var(--cf-sz);background:var(--cwc,var(--rc,var(--ink)));opacity:0;
     animation:cfall var(--cf-ms) cubic-bezier(.25,.6,.45,1) calc(var(--card-ms,240ms) + var(--d)) both}
+  .rconf .cf.w{background:#FFFFFF}
   .rconf .cf.shard{width:calc(var(--cf-sz) * .42);height:calc(var(--cf-sz) * 1.5)}
-  @keyframes cfall{0%{opacity:0;translate:0 -14px;rotate:0deg}8%{opacity:1}
-    100%{opacity:0;translate:calc(var(--sw) * 26px) 190px;rotate:var(--cf-spin)}}
-  @media (prefers-reduced-motion:reduce){.rcard>*{animation:cfade var(--card-ms,240ms) ease-out both}.rconf{display:none}}
+  @keyframes cfall{0%{opacity:0;translate:0 -8vh;rotate:0deg}6%{opacity:1}
+    100%{opacity:0;translate:calc(var(--sw) * 9vw) 112vh;rotate:var(--cf-spin)}}
+
+  /* ---------- v29 Section A (57.3, build 57): CONGRATULATIONS IS A CELEBRATION ----------
+     This REVERSES v28 item 12's "under a second" for the WORD (the blocks under it are unchanged). Aiden: "it has to look like a celebration, use
+     your thoughts". Every number is config/chests.js CHEER_LOOK, written onto the host by ui/reveal.js, so this block names none of them: the
+     letters land one at a time with a small bounce, in full-strength colour with a soft halo; one shine crosses the word once the last letter is
+     down; then it settles into a slow pulse. It is `--cw-size` times the line under it — the Games chest's dim grey is bright white here. */
+  .rcard>*:not(.rtitle){animation:cardin var(--card-block,260ms) cubic-bezier(.2,.8,.25,1) calc(var(--card-ms,240ms) + var(--ci,0) * var(--card-step,170ms)) both}
+  .rcard .rtitle{position:relative;opacity:1;color:var(--cwc,var(--rc,var(--ink)));font-size:calc(clamp(15px,4.6vw,19px) * var(--cw-size,1.7));
+    text-shadow:0 0 calc(var(--cw-glow,20px) * .7) color-mix(in srgb,var(--cwc,var(--ink)) 60%,transparent);
+    animation:cwpulse var(--cw-pulse,2600ms) ease-in-out calc(var(--card-ms,240ms) + var(--cw-last,0) * var(--cw-step,70ms) + var(--cw-drop,320ms)) infinite}
+  @keyframes cwpulse{0%,100%{opacity:.9}50%{opacity:1}}
+  .rcard .rtitle .cl{display:inline-block;opacity:0;animation:clin var(--cw-drop,320ms) cubic-bezier(.2,1.5,.35,1) calc(var(--card-ms,240ms) + var(--l,0) * var(--cw-step,70ms)) both}
+  .rcard .rtitle .clsp{display:inline-block;white-space:pre}
+  @keyframes clin{0%{opacity:0;translate:0 -20px;scale:.65}60%{opacity:1;scale:var(--cw-bounce,1.22)}100%{opacity:1;translate:0 0;scale:1}}
+  /* the shine: one pass across the word, as a moving gradient rather than a moving element, so nothing has to be clipped */
+  .rcard .rtitle .cshine{position:absolute;inset:0;pointer-events:none;opacity:0;mix-blend-mode:screen;background-repeat:no-repeat;background-size:280% 100%;
+    background-image:linear-gradient(100deg,transparent 42%,rgba(255,255,255,.85) 50%,transparent 58%);
+    animation:cwshine var(--cw-shine,620ms) ease-out calc(var(--card-ms,240ms) + var(--cw-last,0) * var(--cw-step,70ms) + var(--cw-drop,320ms) + var(--cw-shineat,160ms)) both}
+  @keyframes cwshine{0%{opacity:0;background-position:-70% 0}14%{opacity:.95}100%{opacity:0;background-position:170% 0}}
+  @media (prefers-reduced-motion:reduce){.rcard>*,.rcard>*:not(.rtitle){animation:cfade var(--card-ms,240ms) ease-out both}
+    .rcard .rtitle{animation:none;opacity:1}.rcard .rtitle .cl{animation:none;opacity:1}.rcard .rtitle .cshine{animation:none;display:none}.rconf{display:none}}
   /* item 4: AN UNWATCHED CLIP PULSES AND GLOWS, in the green every other "not seen yet" wears, until it is played. Placeholders and locked slots never do */
   .msgrow.unwatched .msgframe{border-color:var(--ok);animation:msgpulse 1.8s ease-in-out infinite}
   .msgrow.unwatched .msgtxt small{color:var(--ok)}

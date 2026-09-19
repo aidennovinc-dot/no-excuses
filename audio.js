@@ -7,7 +7,7 @@
    finish ramp that lands the last downbeat on the clock (B.28), an end cadence in the track's own key (B.30), a flow-state
    layer over the two tap games (B.27) and a duck for Sequence (B.30). Still no percussion. */
 
-import { CHEER_FX, CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, CRACK_BURST, CRACK_FX, DUCK, DUCK_TAIL, FLOW_STEM, GIFT_FX, HUSH, KEY_EARN_FX, KEY_STEP_FX, KEY_THEMES, MAP_FX, MAP_LOCKED, POP_FX, ROUND_FX, ROUND_VERDICT, SCALES, SET_SECS, STEMS, STING_RING, TITLE_FX, TRACKS, TRACK_PICK, VERDICT_FX, VIDEO_FX, WHOOSH_VARIANTS } from "./config/audio.js";
+import { CHEER_FX, CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, COVER_AT, COVER_FX, DUCK, DUCK_TAIL, FLOW_STEM, GIFT_FX, HUSH, KEY_EARN_FX, KEY_INTRO_FX, KEY_STEP_FX, KEY_THEMES, MAP_FX, MAP_LOCKED, POP_FX, ROUND_FX, ROUND_VERDICT, SCALES, SET_SECS, STEMS, STING_RING, TITLE_FX, TRACKS, TRACK_PICK, VERDICT_FX, VIDEO_FX, WHOOSH_VARIANTS } from "./config/audio.js";
 import { STREAK } from "./config/games.js";
 import { emit, on } from "./core/events.js";
 import { sel } from "./core/state.js";
@@ -200,11 +200,17 @@ const Snd = (()=>{
       const buf=a.createBuffer(1,n,a.sampleRate), d=buf.getChannelData(0); for(let i=0;i<n;i++) d[i]=Math.random()*2-1;
       const src=a.createBufferSource(), f=a.createBiquadFilter(), g=a.createGain(); src.buffer=buf; f.type='highpass'; f.frequency.value=hp||800;
       g.gain.setValueAtTime(gain,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); src.connect(f).connect(g).connect(a.destination); src.start(t); src.stop(t+dur+.02); },
-    chestPlan(id){ const out=[]; for(const e of CHEST_FX[id]||[]) out.push([e[0],e[1],e[2],e[3],e[4],e[5],e[6]||0,e[7]||0,'fx']);
+    /* v29 Section A (57.8, build 57): A CHEST OPENING IS TWO BEATS, AND ITS SOUND IS TOO. COVER_FX is the first beat and is timed from the
+       ceremony's own zero; CHEST_FX and the sting are the SECOND and are shifted by COVER_AT[id] — which is that ceremony's `assemble` step — so
+       the arp still lands on the bars flying in and the sting still resolves on the lid, with no second list of times. CHEST_NOISE is the Author
+       cover's one hard cut on the split, so it belongs to the first beat and is NOT shifted. The Games chest has no cover and COVER_AT is 0. */
+    chestPlan(id){ const out=[], off=(COVER_AT[id]||0)/1000;
+      for(const e of COVER_FX[id]||[]) out.push([e[0],e[1],e[2],e[3],e[4],e[5],e[6]||0,e[7]||0,'fx']);
+      for(const e of CHEST_FX[id]||[]) out.push([+(e[0]+off).toFixed(3),e[1],e[2],e[3],e[4],e[5],e[6]||0,e[7]||0,'fx']);
       for(const [at,ms,g,hp] of CHEST_NOISE[id]||[]) out.push([at,0,0,ms,'noise',g,0,hp,'fx']);
       // v24 (C.7, build 43): the sting is the theme itself, cut and resolved — stingOf() below, the key screen's own arrangement engine
       const s=CHEST_STING[id], tr=s&&TRACKS[s.track];
-      if(tr) for(const e of stingOf(s,tr)) out.push(e.concat('sting'));
+      if(tr) for(const e of stingOf(s,tr)) out.push([+(e[0]+off).toFixed(3)].concat(e.slice(1),'sting'));
       return out.sort((x,y)=>x[0]-y[0]); },
     /* v24 (C.5, build 43): EARNING A KEY. `keyEarnPlan(tier)` is KEY_EARN_FX flat, [at, f0, f1, ms, wave, gain, attackMs, lowpassHz], the shape the
        review catalogue plays; `keyEarn(tier)` schedules it in one pass on the audio clock. An effect: it follows the tap-sound switch (tone()
@@ -226,6 +232,19 @@ const Snd = (()=>{
       return { gain(){ try{ return gn.gain.value; }catch(e){ return 0; } }, stopped(){ return off; },
         stop(){ off=true; try{ const n=a.currentTime; gn.gain.cancelScheduledValues(n); gn.gain.setValueAtTime(gn.gain.value,n); gn.gain.setTargetAtTime(0,n,.04);
         setTimeout(()=>{ try{ gn.gain.value=0; gn.disconnect(); }catch(e){} },600); }catch(e){} } }; },
+    /* v29 Section A (57.6, build 57): THE KEY BEING CREATED. `keyIntroPlan(tier)` is KEY_INTRO_FX flat over that key's own theme root, the same
+       shape keyEarnPlan answers; `keyIntro(tier)` schedules it through a gain node of its own and hands back the same stop() handle the earn does,
+       so a skip can silence it (v29 item 8's lesson, applied when the sound was written rather than a build later). */
+    keyIntroPlan(tier){ const s=KEY_INTRO_FX[tier], tr=s&&TRACKS[s.track]; if(!tr) return [];
+      return s.notes.map(([at,semi,ms,w,g,am,lp])=>{ const f=+(tr.root*2*Math.pow(2,semi/12)).toFixed(2); return [at,f,f,ms,w,g,am||0,lp||0]; }).sort((x,y)=>x[0]-y[0]); },
+    keyIntro(tier){ const a=AC(); if(!a) return null; const t=a.currentTime+.02; let gn=null;
+      try{ gn=a.createGain(); gn.gain.value=1; gn.connect(a.destination); }catch(e){ gn=null; }
+      for(const [at,f0,f1,ms,w,g,am,lp] of this.keyIntroPlan(tier)) tone(f0,f1,ms,w,g,t+at,am,false,gn||undefined,{lp:lp||0,hold:.45});
+      if(!gn) return null;
+      let off=false;
+      return { gain(){ try{ return gn.gain.value; }catch(e){ return 0; } }, stopped(){ return off; },
+        stop(){ off=true; try{ const n=a.currentTime; gn.gain.cancelScheduledValues(n); gn.gain.setValueAtTime(gn.gain.value,n); gn.gain.setTargetAtTime(0,n,.04);
+        setTimeout(()=>{ try{ gn.gain.value=0; gn.disconnect(); }catch(e){} },600); }catch(e){} } }; },
     /* v27 (item 14, build 51): one sound per NAMED STEP of the key-earned animation — config/audio.js KEY_STEP_FX, played through the one fx() like
        every other effect. `keyStepPlan(name)` is the same events flat, for the review catalogue's sound list. */
     keyStepPlan(name){ return (KEY_STEP_FX[name]||[]).map(e=>e.slice()); },
@@ -240,14 +259,9 @@ const Snd = (()=>{
         else if(kind==='sting'){ if(sting) tone(f0,f1,ms,w,g,t+at,am,true,undefined,{lp:lp||0,hold:.55}); }
         else tone(f0,f1,ms,w,g,t+at,am,false,undefined,lp?{lp}:undefined); } },
     chestReady(){ this.fx(CHEST_READY_FX); },
-    /* v28 (item 13, build 53): the Games chest cracking. `crackPlan(i)` is CRACK_FX a tone higher for each crack after the first — the chest's
-       own tick with a thump under it — and `crackBurst()` is the pop and chord its opening already lands on, played as the seventh gives way.
-       Both are recorded by plan() for the review catalogue's sound list, like every other effect. */
-    crackPlan(i){ const r=Math.pow(2,(CRACK_FX.step*(i||0))/12);
-      return CRACK_FX.notes.map(([at,f0,f1,ms,w,g,am,lp])=>[at,+(f0*r).toFixed(2),+(f1*r).toFixed(2),ms,w,g,am||0,lp||0]); },
-    crack(i){ this.fx(this.crackPlan(i)); },
-    crackBurstPlan(){ return CRACK_BURST.map(e=>e.slice()); },
-    crackBurst(){ this.fx(CRACK_BURST); },
+    /* v28 (item 13, build 53): the Games chest cracking on the MAP — RETIRED AT BUILD 57 (v29 Section A, 57.2). `crack(i)` and `crackBurst()`
+       existed for the map arrival 57.2 reverses; the cracking is inside the opening now, on the seven squares' own ticks (CHEST_FX.games), and
+       both they and CRACK_FX / CRACK_BURST are gone rather than left unplayed. */
     /* v28 (item 17, build 53): the celebration on the congratulations screen, one per chest, escalating Games → Skill → Pro → Author. Built out of
        the tick, the pop and the gift landing that are already in the app (config/audio.js CHEER_FX). Fires once, with the card's title. */
     cheerPlan(id){ return (CHEER_FX[id]||CHEER_FX.games).map(e=>e.slice()); },

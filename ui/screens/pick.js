@@ -211,7 +211,7 @@ function renderGauntlets(reveal,fresh){ const arriving=[];
    the column simply stands. Every word is a tap target (`chestword`). A locked key chest's meter line wears its band's colour (L.8d). */
 // the spill's timings, as the custom properties ui/chest.js names — set on an element without touching its grid placement
 const setVars=(el,s)=>s.split(';').forEach(kv=>{ const i=kv.indexOf(':'); if(i>0) el.style.setProperty(kv.slice(0,i),kv.slice(i+1)); });
-function renderChests(){ const m=modeCount(), rang=[], newCracks=[];
+function renderChests(){ const m=modeCount(), rang=[];
   $$('#grid .chest').forEach(el=>{ const id=el.dataset.chest, st=chestState(id), c=CHESTS.find(x=>x.id===id); if(!st||!c) return;
     el.hidden=false;
     el.classList.toggle('locked',st==='locked'||st==='before'); el.classList.toggle('ready',st==='ready'); el.classList.toggle('open',st==='open');
@@ -222,7 +222,6 @@ function renderChests(){ const m=modeCount(), rang=[], newCracks=[];
     const pic=el.querySelector('.pic'); const crk=id==='games'?crackCount():0, art=pic.querySelector('.chestart');
     if(!art) pic.insertAdjacentHTML('afterbegin',chestSvg(id));
     else if(id==='games'&&+art.dataset.cracks!==crk){ art.remove(); pic.insertAdjacentHTML('afterbegin',chestSvg(id)); }
-    if(id==='games') newCracks.push([el,crk]);
     /* v26 (item 12, build 48): A LOCKED KEY CHEST SAYS WHAT OPENS IT IN WORDS — "Earn the Pro key" — with no percentage, and so does one whose
        chest ahead is still shut, because what opens it is the same key either way. It said "203% · opens at 300%": a figure the Keys screen and
        the menu also print, in a second place where it could disagree with them. The Games chest keeps its count of modes, which is not a
@@ -238,20 +237,10 @@ function renderChests(){ const m=modeCount(), rang=[], newCracks=[];
     if(spill){ prefs.spill=Object.assign({},prefs.spill,{[id]:1}); save(); } });
   // L.9c: one quiet sound the first time the map paints a chest READY — once, however many became ready together (guess)
   if(rang.length){ prefs.readySeen=Object.assign({},prefs.readySeen,Object.fromEntries(rang.map(id=>[id,1]))); save(); Snd.chestReady(); }
-  /* item 13: any crack past the last one this map has shown arrives now — drawn on, one tick each, the seventh with the chest's own burst.
-     `prefs.cracked` is the only thing stored about them, and only so the same crack never arrives twice. */
-  for(const [el,n] of newCracks){ const seen=Math.min(7,Math.max(0,prefs.cracked|0)); if(n<=seen){ if(n<seen){ prefs.cracked=n; save(); } continue; }
-    // an OPEN chest has already been broken open: its cracks are history, not an arrival, so they are recorded and never played (L.9b)
-    if(chestOpen('games')){ prefs.cracked=n; save(); continue; }
-    // an OPEN chest has already been broken open: its cracks are history, not an arrival, so they are recorded and never played (L.9b)
-    if(chestOpen('games')){ prefs.cracked=n; save(); continue; }
-    const crks=[...el.querySelectorAll('.crackg .crk')];
-    crks.slice(seen).forEach((c,i)=>{ c.classList.add('fresh'); c.style.animationDelay=(i*260)+'ms'; mapT.push(setTimeout(()=>Snd.crack(seen+i),i*260));   // build 55 (in passing): into mapT, so a crack does not tick over the next run's countdown
-      // the class comes off when it has drawn: L.9b says nothing on a settled map animates but a READY chest's idle
-      setTimeout(()=>{ c.classList.remove('fresh'); c.style.animationDelay=''; },i*260+700); });
-    if(n>=7){ const pic=el.querySelector('.pic'); const old=pic.querySelector('.pburst'); if(old) old.remove();
-      pic.insertAdjacentHTML('beforeend',burstHtml('games')); el.classList.add('spill'); mapT.push(setTimeout(()=>Snd.crackBurst(),(7-seen-1)*260+180)); }
-    prefs.cracked=n; save(); } }
+  /* v29 Section A (57.2, build 57): NOTHING CRACKS ON THE MAP ANY MORE. Item 13's arrival — a crack drawing itself on with its own tick as each
+     game was finished, and the seventh bursting the chest — is gone with the accumulating cracks it announced: the chest is clean until it is
+     opened and the cracking happens inside the opening (config/chests.js CEREMONY.games). `prefs.cracked` went with it, and so did Snd.crack()
+     and Snd.crackBurst(), which existed for this loop and nothing else. An opened chest simply draws its seven, as it did before. */ }
 /* v18 (B.18, build 32): each game tile's outline fills with its KEY-1 progress — 5 of 8 requirements met is the outline
    drawn five eighths of the way round, clockwise from the top, in the lilac named KEYFILL in config/theme.js. A game whose
    key-1 combinations are all cleared is COMPLETE: the outline closes and the picture takes a wash of the same colour, so

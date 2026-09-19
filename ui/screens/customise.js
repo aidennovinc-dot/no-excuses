@@ -52,7 +52,7 @@ const pvSeen={};  // the last unlocked item tapped, so what earned it shows on t
    path — nothing about a locked cosmetic is drawn over anything now. The track row is not in this list on purpose: a
    locked track carries a padlock and says nothing about what opens it (A.1). */
 // v28 (item 2, build 53): `track` joins the list — a key track locked until its key is earned says so under its own row, B.30's one line
-const LOCK_SETS=['sq','lead','cut','bg','snd','scale','rate','track'];
+const LOCK_SETS=['sq','lead','cut','bg','bgcol','snd','scale','rate','track'];
 /* v28 (item 2, build 53): a lock line may now stand for something that is NOT an achievement — a key track, opened by earning its key. It
    carries no `id`, so it is not a way in to Progress and drops the "show me" tail; everything else about the line is unchanged. */
 function lockLine(set,L){ const el=$('#lk-'+set); if(!el) return;
@@ -62,12 +62,17 @@ function lockLine(set,L){ const el=$('#lk-'+set); if(!el) return;
 const shows=(g,set)=>set==='lead'?!!GAMES[g].lead:set==='cut'?g==='hold':set==='scale'?g==='sequence':set==='rate'?!!GAMES[g].timed:true;
 function renderCustom(){
   const fresh=[];
-  for(const set of ['sq','lead','cut','bg']) $('#c-'+set).innerHTML = ITEMS[set].map(it=>{ const L=lockedBy(it); const isWheel=it.v==='wheel';
+  /* v29 Section A (57.11b, build 57): `bg` is the PATTERN and `bgcol` is the COLOUR — two rows, two settings. A pattern swatch is selected on
+     `prefs.bg` alone (it no longer has to have no colour set), and the colour row's two swatches are "no colour" (`prefs.tint` empty — back to the
+     design's own ground) and the wheel (any colour, which is what `prefs.tint` holds). */
+  for(const set of ['sq','lead','cut','bg','bgcol']) $('#c-'+set).innerHTML = ITEMS[set].map(it=>{ const L=lockedBy(it); const isWheel=it.v==='wheel';
     const curC=colOf(F.g)[set];
-    const selNow = isWheel ? (set==='bg'?!!prefs.tint:!ITEMS[set].some(o=>o.v===curC)) : (set==='bg'?prefs.bg===it.v&&!prefs.tint:curC===it.v);
+    const selNow = set==='bgcol' ? (isWheel?!!prefs.tint:!prefs.tint)
+      : isWheel ? !ITEMS[set].some(o=>o.v===curC) : (set==='bg'?prefs.bg===it.v:curC===it.v);
     const nw=L?'':newMark('cos:'+set+':'+it.v,fresh);
-    const cls=`${selNow?'sel':''} ${L?'locked':''}${nw} ${pvTry.set===set&&pvTry.v===it.v?'pvw':''} ${isWheel?'wheel':''} ${set==='bg'&&!isWheel?'bg-'+it.v:''}`;
-    const style=set==='bg'?`background-color:${DESIGNS[it.v]?.tint||'transparent'}`:isWheel?'':`background:${it.v}`;
+    const cls=`${selNow?'sel':''} ${L?'locked':''}${nw} ${pvTry.set===set&&pvTry.v===it.v?'pvw':''} ${isWheel?'wheel':''} ${set==='bg'?'bg-'+it.v:''}${set==='bgcol'&&!isWheel?' bgnone':''}`;
+    const style=set==='bg'?`background-color:${DESIGNS[it.v]?.tint||'transparent'}`
+      :set==='bgcol'?(isWheel?'':`background:${DESIGNS[prefs.bg]?.tint||'#000'}`):isWheel?'':`background:${it.v}`;
     return `<button data-act="item" data-v="${it.v}" class="${cls}" data-lock="${L?L.id:''}" style="${style}" aria-label="${it.v}${L?' locked':''}"></button>`; }).join('');
   for(const set of ['snd','scale','rate']) $('#c-'+set).innerHTML = itemsOf(set).map(it=>{ const L=lockedBy(it); const nw=L?'':newMark('cos:'+set+':'+it.v,fresh); return `<button data-act="item" data-v="${it.v}" class="opt ${String(prefs[set])===String(it.v)?'sel':''} ${L?'locked':''}${nw}" data-lock="${L?L.id:''}">${it.label}</button>`; }).join('');
   /* v18 (B.28) → v28 (items 2 / 3, build 53): ONE MUSIC ROW, AND IT IS THE WHOLE OF THE MUSIC CHOICE. B.28 made the row the track;
@@ -146,12 +151,13 @@ const Wheel=(()=>{ const cv=$('#wheel'), cx=cv.getContext('2d'); let set='sq', d
     const l=(mx+mn)/2, sat=d===0?0:d/(1-Math.abs(2*l-1)); return { h, s:Math.min(1,sat) }; }
   function mark(h,sv){ const el=$('#wheelmark'); if(!el) return; if(h===null){ el.style.display='none'; return; }
     const a=h*Math.PI/180, r=Math.min(1,sv)*50; el.style.display=''; el.style.left=(50+Math.cos(a)*r)+'%'; el.style.top=(50+Math.sin(a)*r)+'%'; }
-  function draw(){ const R=240; const img=cx.createImageData(480,480); const d=img.data; for(let y=0;y<480;y++) for(let x=0;x<480;x++){ const dx=x-R, dy=y-R, r=Math.hypot(dx,dy); const i=(y*480+x)*4; if(r>R){ d[i+3]=0; continue; } const h=(Math.atan2(dy,dx)*180/Math.PI+360)%360, s=r/R, [rr,gg,bb]=hsl(h,s,set==='bg'?.08:.6); d[i]=rr; d[i+1]=gg; d[i+2]=bb; d[i+3]=255; } cx.putImageData(img,0,0); drawn=true; }
+  function draw(){ const R=240; const img=cx.createImageData(480,480); const d=img.data; for(let y=0;y<480;y++) for(let x=0;x<480;x++){ const dx=x-R, dy=y-R, r=Math.hypot(dx,dy); const i=(y*480+x)*4; if(r>R){ d[i+3]=0; continue; } const h=(Math.atan2(dy,dx)*180/Math.PI+360)%360, s=r/R, [rr,gg,bb]=hsl(h,s,set==='bgcol'?.08:.6); d[i]=rr; d[i+1]=gg; d[i+2]=bb; d[i+3]=255; } cx.putImageData(img,0,0); drawn=true; }
   function hsl(h,s,l){ const c=(1-Math.abs(2*l-1))*s, x=c*(1-Math.abs((h/60)%2-1)), m=l-c/2; let r,g,b; if(h<60)[r,g,b]=[c,x,0]; else if(h<120)[r,g,b]=[x,c,0]; else if(h<180)[r,g,b]=[0,c,x]; else if(h<240)[r,g,b]=[0,x,c]; else if(h<300)[r,g,b]=[x,0,c]; else [r,g,b]=[c,0,x]; return [r,g,b].map(v=>Math.round((v+m)*255)); }
-  function pick(e){ const b=cv.getBoundingClientRect(); const x=(e.clientX-b.left)/b.width*480, y=(e.clientY-b.top)/b.height*480; const dx=x-240, dy=y-240, r=Math.min(240,Math.hypot(dx,dy)); const h=(Math.atan2(dy,dx)*180/Math.PI+360)%360; const [rr,gg,bb]=hsl(h,r/240,set==='bg'?.08:.6); col='#'+[rr,gg,bb].map(v=>v.toString(16).padStart(2,'0')).join(''); $('#wheelout').style.background=col; mark(h,r/240); if(set==='bg') prefs.tint=col; else prefs.col[F.g][set]=col; applyPrefs(F.g); $('#pv').style.setProperty(set==='sq'?'--sq-live':set==='cut'?'--cutp':'--cue',col); }
+    // 57.11b: the background's colour comes off the `bgcol` row now. It is still a DARK colour (lightness .08) — it is a background, not a wash
+  function pick(e){ const b=cv.getBoundingClientRect(); const x=(e.clientX-b.left)/b.width*480, y=(e.clientY-b.top)/b.height*480; const dx=x-240, dy=y-240, r=Math.min(240,Math.hypot(dx,dy)); const h=(Math.atan2(dy,dx)*180/Math.PI+360)%360; const bgSet=set==='bgcol'; const [rr,gg,bb]=hsl(h,r/240,bgSet?.08:.6); col='#'+[rr,gg,bb].map(v=>v.toString(16).padStart(2,'0')).join(''); $('#wheelout').style.background=col; mark(h,r/240); if(bgSet) prefs.tint=col; else prefs.col[F.g][set]=col; applyPrefs(F.g); if(!bgSet) $('#pv').style.setProperty(set==='sq'?'--sq-live':set==='cut'?'--cutp':'--cue',col); }
   cv.addEventListener('pointerdown',e=>{ e.preventDefault(); pick(e); cv.setPointerCapture(e.pointerId); }); cv.addEventListener('pointermove',e=>{ if(e.buttons) pick(e); });
   return { open(s){ set=s; draw(); $('#wheel-title').textContent=T(CUSTOM.wheel,{word:ITEM_WORD[s]||s,game:GAMES[F.g].name});
-      const cur=s==='bg'?(prefs.tint||DESIGNS[prefs.bg].tint):colOf(F.g)[s]; $('#wheelout').style.background=cur;
+      const cur=s==='bgcol'?(prefs.tint||DESIGNS[prefs.bg].tint):colOf(F.g)[s]; $('#wheelout').style.background=cur;
       const hs=hueSat(cur); mark(hs?hs.h:null,hs?hs.s:0); $('#wheelwrap').classList.add('on'); },
     close(){ $('#wheelwrap').classList.remove('on'); renderCustom(); } }; })();
 on('screen:change',({id})=>{ if(id==='game') $('#wheelwrap').classList.remove('on'); });
@@ -185,7 +191,9 @@ define({
       const t=b.dataset.v.slice(4); Music.preview(F.g,4200,KEY_THEMES[t]); return 'pick'; }
     if(b.classList.contains('locked')){ const L=lockById(b.dataset.lock); if(!L) return 'pick'; Object.assign(pvTry,{set:k,v:b.dataset.v,by:L.id}); renderCustom(); return 'pick'; }
     pvTry.set=null; const it=(itemsOf(k)||[]).find(i=>String(i.v)===b.dataset.v); pvSeen.set=k; pvSeen.by=it&&it.by||null; if(b.dataset.v==='wheel'){ Wheel.open(k); return 'pick'; }
-    if(k==='bg'){ prefs.bg=b.dataset.v; prefs.tint=''; }
+    // 57.11b: a pattern no longer clears the colour — the colour survives a change of pattern, which is the whole point of splitting them
+    if(k==='bg'){ prefs.bg=b.dataset.v; }
+    else if(k==='bgcol'){ prefs.tint=''; }
     else if(k==='sq'||k==='lead'||k==='cut') prefs.col[F.g][k]=b.dataset.v;
     /* B.28: the music row IS the track, and a tap plays it. v28 (item 2): the row holds the key tracks too — one of those is
        prefs.everywhere, this theme for every run and for the menu; one of this game's three puts it back to Per game and stores the track.

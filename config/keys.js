@@ -77,6 +77,29 @@ export const KEYS = [
 // item 3 (build 54): how long a key-earn ceremony ignores a tap before a tap skips it. One number, all three tiers
 export const EARN_SKIP_AT = 1500;
 
+/* ---------- v29 Section A (57.6, build 57): THE KEY BEING CREATED — the first time its screen is opened ----------
+   Aiden: "the first time a key's screen is opened, play an introduction of that key being created — really cool, with sound effects to match.
+   Only completion has an animation today." So each tier gets ONE introduction, once per key per profile (`prefs.keyIntro`, a ladder step at store
+   v7 so nobody who has already opened a key gets one handed to them late), skippable exactly the way the earn moment is (EARN_SKIP_AT above).
+   It is the KEY_EARN shape — `ms` and NAMED STEPS — so ui/screens/key.js draws a step by its name and nothing else, and every time goes on the
+   screen as a custom property. FOUR STEPS, the same four for all three, each drawn in that key's own style (`style` on the KEYS row above), which
+   is what makes one set of rules three different animations:
+     gather  the material arrives — Lantern's sparks drifting in and pooling, Circuit's grid laying itself out, Thorn's stem climbing from below
+     draw    the key's own KEY_ART paths draw on, one after another, `stroke` ms apart: the bow, the shaft, the teeth, then the flourish
+     forge   the moment it becomes a key — a strike, and the light goes through it
+     settle  it takes its finished tint and glow and the screen is simply the key screen again
+   `stroke` is the beat between one path drawing and the next, `bits` how many pieces of material gather, and `flash` how bright the forge is in
+   px of halo. Escalating Skill → Pro → Author in length, pieces and glow, the way every other moment in the app does. The sound is
+   KEY_INTRO_FX in config/audio.js, one per tier, with each step's own hit from KEY_STEP_FX. All (guess), and heard by nobody (UNVERIFIED.md). */
+export const KEY_INTRO = {
+  clear: { ms: 2600, bits: 14, stroke: 120, flash: 18,
+    steps: [{ name: 'gather', at: 0, ms: 900 }, { name: 'draw', at: 700, ms: 1100 }, { name: 'forge', at: 1800, ms: 320 }, { name: 'settle', at: 2100, ms: 500 }] },
+  pro: { ms: 3000, bits: 20, stroke: 110, flash: 26,
+    steps: [{ name: 'gather', at: 0, ms: 1050 }, { name: 'draw', at: 800, ms: 1300 }, { name: 'forge', at: 2100, ms: 360 }, { name: 'settle', at: 2440, ms: 560 }] },
+  author: { ms: 3400, bits: 26, stroke: 105, flash: 34,
+    steps: [{ name: 'gather', at: 0, ms: 1200 }, { name: 'draw', at: 900, ms: 1500 }, { name: 'forge', at: 2400, ms: 400 }, { name: 'settle', at: 2780, ms: 620 }] },
+};
+
 /* ---------- v27 (item 14, build 51): EARNING A KEY — ONE ANIMATION PER TIER, TWO SECONDS AT MOST ----------
    THIS REPLACES BOTH build 43's KEY_EARN (the moment over the ring: 2.9 / 3.8 / 4.8s) AND build 46's KEY_REVEAL (the first-open reveal that
    wrapped it: 4 / 5 / 6.6s). Nested, they ran 6.3s, 8.0s and 10.5s, none of it skippable — which is what Aiden played on build 50 and described
@@ -119,29 +142,58 @@ export const EARN_SKIP_AT = 1500;
    The sound is KEY_EARN_FX in config/audio.js, fired on the FLASH so it lands on the last beat (item 14); each step has its own sound as well —
    KEY_STEP_FX, except a spoke that fires alone, which lands with its own game's sound the way the map's tiles do. All (guess), and heard by nobody
    (UNVERIFIED.md). */
+/* ---------- v29 Section A (57.7, build 57): THE MOTION IS THE CLOCK, AND THE MUSIC'S TAIL CARRIES ACROSS THE CUT ----------
+   THIS REVERSES v28 ITEM 15, which Section A's own table lists as reversed. Item 15 made the MUSIC the clock and grew a finale to fill it;
+   Aiden played that and found the opposite fault at the other end — "about three seconds between the animation ending and the chest" on the
+   Skill key, "about five seconds, then tap to continue" on Pro. His diagnosis is the right one: "music is being counted as animation while
+   nothing moves". Measured on build 56 (`node _smoke/measure-earn.mjs`), with the assembly's last frame as the mark:
+     Skill   assembly ends 1330ms, the reveal let go at 2390ms  →  1060ms of settling with nothing moving
+     Pro     assembly ends 1900ms, let go at 3000ms             →  1100ms
+     Author  assembly ends 1996ms, let go at 4000ms             →  2004ms
+   So `ms` is the MOTION's own length again — the assembly, the flash, and a settle short enough to be one — and the earn music is NOT
+   shortened to meet it: it rings on across the cut into the chest, the way a sting should. NOTHING ABOUT THE ASSEMBLIES MOVED. Every step
+   before `flash` is at the exact `at` and `ms` Aiden approved on 2026-09-18 and again in 57.7 ("the animation for this is sick, do not
+   change it"): the Skill key's seven spokes and spin, the Pro key's one-by-one spokes with the current running between them, the Author
+   key's drop, slam, cracks and thorns. What shortened is item 15's own filler — `rise` from 830/800/1600 to 300/320/384, `land` from
+   230/300/404 to 180/200/220 and off the music's final note, which there is no longer any reason to land on.
+     Skill   2390 → 1750  (music 2390, 640ms of tail)      Pro  3000 → 2360  (music 3000, 640ms)      Author  4000 → 2500  (music 4000, 1500ms)
+   These are within 50–200ms of build 52's approved motion lengths (1700 / 2160 / 2300), which is the last time the animation and the clock
+   were the same thing. THE GATE'S RULE IS REVERSED WITH IT: `ms` is no longer within a beat of the music — it must be SHORTER than it by a
+   real margin, and the music's own length must not have been trimmed to fit. The movement and assembly rules are untouched. */
 export const KEY_EARN = {
-  clear: { ms: 2390, spokes: { gap: 130, each: 300 }, cracks: 0, crackGap: 0, thorns: 0, thornGap: 0, shake: 0, finale: { scale: 1.05, glow: 16, halo: 1.35 },
-    steps: [{ name: 'spokes', at: 0, ms: 1080 }, { name: 'spin', at: 820, ms: 510 }, { name: 'flash', at: 1330, ms: 240 }, { name: 'rise', at: 1330, ms: 830 }, { name: 'land', at: 2160, ms: 230 }] },
-  pro: { ms: 3000, spokes: { gap: 120, each: 280, trace: 85 }, cracks: 0, crackGap: 0, thorns: 0, thornGap: 0, shake: 0, finale: { scale: 1.07, glow: 24, halo: 1.5 },
-    steps: [{ name: 'spokes', at: 0, ms: 1000 }, { name: 'trace', at: 40, ms: 685 }, { name: 'snap', at: 980, ms: 480 }, { name: 'ring', at: 1420, ms: 480 }, { name: 'flash', at: 1900, ms: 260 }, { name: 'rise', at: 1900, ms: 800 }, { name: 'land', at: 2700, ms: 300 }] },
-  author: { ms: 4000, spokes: null, cracks: 10, crackGap: 48, thorns: 12, thornGap: 46, shake: 5, finale: { scale: 1.09, glow: 34, halo: 1.7 },
-    steps: [{ name: 'drop', at: 0, ms: 430 }, { name: 'slam', at: 410, ms: 250 }, { name: 'crack', at: 620, ms: 712 }, { name: 'thorns', at: 1290, ms: 706 }, { name: 'flash', at: 1996, ms: 280 }, { name: 'rise', at: 1996, ms: 1600 }, { name: 'land', at: 3596, ms: 404 }] },
+  clear: { ms: 1750, spokes: { gap: 130, each: 300 }, cracks: 0, crackGap: 0, thorns: 0, thornGap: 0, shake: 0, finale: { scale: 1.05, glow: 16, halo: 1.35 },
+    steps: [{ name: 'spokes', at: 0, ms: 1080 }, { name: 'spin', at: 820, ms: 510 }, { name: 'flash', at: 1330, ms: 240 }, { name: 'rise', at: 1330, ms: 300 }, { name: 'land', at: 1570, ms: 180 }] },
+  pro: { ms: 2360, spokes: { gap: 120, each: 280, trace: 85 }, cracks: 0, crackGap: 0, thorns: 0, thornGap: 0, shake: 0, finale: { scale: 1.07, glow: 24, halo: 1.5 },
+    steps: [{ name: 'spokes', at: 0, ms: 1000 }, { name: 'trace', at: 40, ms: 685 }, { name: 'snap', at: 980, ms: 480 }, { name: 'ring', at: 1420, ms: 480 }, { name: 'flash', at: 1900, ms: 260 }, { name: 'rise', at: 1900, ms: 320 }, { name: 'land', at: 2160, ms: 200 }] },
+  author: { ms: 2500, spokes: null, cracks: 10, crackGap: 48, thorns: 12, thornGap: 46, shake: 5, finale: { scale: 1.09, glow: 34, halo: 1.7 },
+    steps: [{ name: 'drop', at: 0, ms: 430 }, { name: 'slam', at: 410, ms: 250 }, { name: 'crack', at: 620, ms: 712 }, { name: 'thorns', at: 1290, ms: 706 }, { name: 'flash', at: 1996, ms: 280 }, { name: 'rise', at: 1996, ms: 384 }, { name: 'land', at: 2280, ms: 220 }] },
 };
 // the one step that is not movement — the closing flash. The gate measures every tier's movement against it, so there is no second list of names
 export const EARN_GLOW = 'flash';
 
 /* ---------- v24 (C.6, build 43): THE THREE KEY-SCREEN BACKGROUNDS, drawn in code ----------
-   One per key, drawn by ui/atmosphere.js OVER the live background (C.4) while that key's screen is up, and a Customise background once that
-   key is finished (config/theme.js ITEMS.bg, `key`). No image assets. Each moves gently and keeps its key's tempo — the drawer reads the bpm
-   of the key's own theme (`track` above), so the motion and the music cannot drift apart.
-     lantern  slow-drifting light, soft and warm, low contrast — `blobs` warm glows swaying over `drift` bars, `motes` rising sparks
-     circuit  sharper, cooler, geometric, moving with intent — `traces` right-angled lines on a `cell` grid, a pulse `pulse` cells a beat
-     thorn    black at the edges with white spiked branches, high contrast, slow and menacing — `branches` creep in and back over `breathe` bars
-   `alpha` is the strongest any element gets, so each stays under the screen's own content. All (guess). */
+   One per key, drawn by ui/atmosphere.js while that key's screen is up, and a Customise background once that key is finished (config/theme.js
+   ITEMS.bg, `key`). No image assets. Each moves gently and keeps its key's tempo — the drawer reads the bpm of the key's own theme (`track`
+   above), so the motion and the music cannot drift apart. `alpha` is the strongest any element gets, so each stays under the screen's own content.
+   Build 43 drew each one OVER the live background (C.4); build 46 (item 15) made it REPLACE the base on a key screen; build 57 (57.11a) finishes
+   the thought — a layer is the whole picture and the starfield belongs to the default background alone. The build-43 fields `blobs`, `motes`,
+   `drift` and `breathe` are retired with the drawings that read them, and the rows below are what each layer takes now. */
+/* v29 SECTION A (57.11 a / d / e / f, build 57): ALL THREE REWORKED, AND NONE OF THEM SITS ON THE STARFIELD ANY MORE.
+     lantern  57.11d: "just some yellow blobs over the same background. Rework it completely." It is a SCENE now: a dusk gradient from indigo at the
+              top to amber at the horizon, and small PAPER LANTERNS drifting upward at `lanterns` at a time, each at its own size, depth and speed,
+              each with a soft flicker of its own. `far` / `near` are how big a lantern is at the back and at the front, `rise` how many bars one
+              takes to cross the screen, `flick` how deep its flicker goes, and `sky` / `glow` the two ends of the gradient.
+     circuit  57.11e: he likes it; the lines must COVER THE SCREEN and run off all four edges. `traces` is up and `edge` is how far past each edge a
+              trace is allowed to start and end, in cells — a trace now begins outside the canvas and leaves it on the other side.
+     thorn    57.11f: he likes it, but "it looks like it goes back and forth". The branches GROW rather than sway, and every one of them is
+              randomised: `grow` is the span of how long one takes, `reach` the span of how far it goes, `branch` how many side branches it may
+              throw, `wide` the span of stem thickness and `spike` the span of thorn size. They keep growing until the screen is covered and then
+              the oldest fades and is re-seeded, so it never plays backwards.
+   Every one is still DIM (`alpha`) and still on its own key's tempo. All (guess). */
 export const KEY_LAYER = {
-  lantern: { blobs: 6, motes: 16, alpha: .085, drift: 4, col: '255,208,138' },
-  circuit: { cell: 44, traces: 9, pulse: 1, alpha: .1, head: .45, col: '191,230,255' },
-  thorn: { branches: 8, thorns: 7, edge: .6, breathe: 4, alpha: .5, col: '255,255,255' },
+  lantern: { lanterns: 14, alpha: .5, rise: 10, far: .5, near: 1.5, flick: .35, sky: '38,24,66', glow: '255,176,90', col: '255,208,138' },
+  circuit: { cell: 44, traces: 16, pulse: 1, alpha: .12, head: .5, edge: 3, col: '191,230,255' },
+  thorn: { branches: 10, thorns: 7, edge: .6, alpha: .5, grow: [6, 16], reach: [.24, .62], branch: [0, 3], wide: [.8, 2.4], spike: [5, 13], col: '255,255,255' },
 };
 
 // stroke paths, drawn in a 48x48 box. The bow first, then the shaft, then the teeth, then the theme's own flourish

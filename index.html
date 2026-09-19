@@ -27,7 +27,7 @@
 </head><body>
 <canvas id="stars"></canvas>
 <!-- v25 (items 4 / 8, build 45): the build stamp comes BEFORE every screen, so each paints over it (styles/app.css #build) -->
-<div id="build">v0.56</div>
+<div id="build">v0.57</div>
 
 <section class="screen on" id="s-menu">
   <div class="nextup" id="nextup" data-act="nextup" hidden></div>
@@ -182,6 +182,7 @@
     <div class="cgroup" id="g-lead"><div class="clabel">Lead colour</div><div class="sw" data-set="lead" id="c-lead"></div><div class="lockline" data-act="pvlock" id="lk-lead"></div></div>
     <div class="cgroup" id="g-cut"><div class="clabel">Cut pieces</div><div class="sw" data-set="cut" id="c-cut"></div><div class="lockline" data-act="pvlock" id="lk-cut"></div></div>
     <div class="cgroup"><div class="clabel">Background</div><div class="sw" data-set="bg" id="c-bg"></div><div class="lockline" data-act="pvlock" id="lk-bg"></div></div>
+    <div class="cgroup"><div class="clabel">Background colour</div><div class="sw" data-set="bgcol" id="c-bgcol"></div><div class="lockline" data-act="pvlock" id="lk-bgcol"></div></div>
     <div class="cgroup"><div class="clabel">Tap sound</div><div class="chips" data-set="snd" id="c-snd"></div><div class="lockline" data-act="pvlock" id="lk-snd"></div></div>
     <div class="cgroup" id="g-scale"><div class="clabel">Scale</div><div class="chips" data-set="scale" id="c-scale"></div><div class="lockline" data-act="pvlock" id="lk-scale"></div></div>
     <div class="cgroup" id="g-rate"><div class="clabel">Taps per second</div><div class="chips" data-set="rate" id="c-rate"></div><div class="lockline" data-act="pvlock" id="lk-rate"></div></div>
@@ -249,7 +250,7 @@
   <div class="eyebrow msgtitle" id="msg-title">messages</div>
   <div class="hint" id="msg-lede"></div>
   <div class="msglist" id="msglist"></div>
-  <div class="hint">v0.56 · the gauntlets · 19 sept 2026</div>
+  <div class="hint">v0.57 · feel and fixes · 19 sept 2026</div>
 </section>
 
 <section class="screen" id="s-testing" data-back="s-menu" data-dev>
@@ -275,7 +276,7 @@
        ready, a reset backs that chest out with every chest after it, and "set meter to N%" clears bars and opens chests to reach N (0-300).
        There is no override any more, so "meter · as earned" went with it -->
   <div class="chips" id="dev-meter-row"><input id="dev-meter" type="number" min="0" max="300" step="1" inputmode="numeric" placeholder="0–300" aria-label="meter percentage"><button data-act="dev-meter" class="chip" id="dev-meterset">set meter to N%</button></div>
-  <div class="chips" id="dev-anim"><button data-act="dev-keyin" class="chip">key arrival</button><button data-act="dev-seg" class="chip">segment advance</button><button data-act="dev-whole" data-tier="0" class="chip">key 1 earned</button><button data-act="dev-whole" data-tier="1" class="chip">pro key earned</button><button data-act="dev-whole" data-tier="2" class="chip">author key earned</button><button data-act="dev-chest" data-chest="games" class="chip">replay games chest opening</button><button data-act="dev-chest" data-chest="key" class="chip">replay key chest opening</button><button data-act="dev-chest" data-chest="pro" class="chip">replay pro chest opening</button><button data-act="dev-chest" data-chest="thorns" class="chip">replay thorns chest opening</button></div>
+  <div class="chips" id="dev-anim"><button data-act="dev-keyin" class="chip">key arrival</button><button data-act="dev-seg" class="chip">segment advance</button><button data-act="dev-whole" data-tier="0" class="chip">key 1 earned</button><button data-act="dev-whole" data-tier="1" class="chip">pro key earned</button><button data-act="dev-whole" data-tier="2" class="chip">author key earned</button><button data-act="dev-keyintro" data-tier="0" class="chip">key 1 created</button><button data-act="dev-keyintro" data-tier="1" class="chip">pro key created</button><button data-act="dev-keyintro" data-tier="2" class="chip">author key created</button><button data-act="dev-chest" data-chest="games" class="chip">replay games chest opening</button><button data-act="dev-chest" data-chest="key" class="chip">replay key chest opening</button><button data-act="dev-chest" data-chest="pro" class="chip">replay pro chest opening</button><button data-act="dev-chest" data-chest="thorns" class="chip">replay thorns chest opening</button></div>
 </section>
 
 <section class="screen" id="s-pass">

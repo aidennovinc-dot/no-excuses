@@ -297,9 +297,13 @@ const msgOpen = m => { if (!m) return false; const b = m.by; if (!b) return true
    open, including the support thank-you, which says what opens it. THE COUNTER IS NOT NARROWED BY THIS — ui/screens/about.js counts against
    MESSAGES.length, so it always reads "N of 8" and a player knows two secrets are there without knowing what they are (Aiden, item 8). */
 const msgShown = m => !m ? false : m.by && m.by.gauntlet ? !!(prefs.allOpen || prefs.supporter) || chestOpen(gauntChest(m.by.gauntlet)) : true;
-/* v28 (item 13, build 53): the cracks on the Games chest, as the sprite wants them — one per finished game, never past the seven it draws.
-   Nothing stores it: it is derived, so the map shows the same chest on the next visit and on a different device with the same profile. */
-const crackCount = () => Math.min(7, gamesDone());
+/* v28 (item 13, build 53): the cracks on the Games chest, as the sprite wants them. Nothing stores it: it is derived, so the map shows the same
+   chest on the next visit and on a different device with the same profile.
+   v29 SECTION A (57.2, build 57): AND IT IS NONE UNTIL THE CHEST IS OPENED, which REVERSES item 13's "one per finished game, accumulating on the
+   map". Aiden: no cracks anywhere before it is opened — not on the opening screen, not on the map. The cracking is the OPENING now (each of the
+   seven squares puts one in as it is ticked off, config/chests.js CEREMONY.games `crack`), and once the chest is open its tile may stay broken,
+   so all seven stand from then on. `gamesDone()` no longer decides it; the chest's own state does. */
+const crackCount = () => chestOpen('games') ? 7 : 0;
 const msgDot = () => MESSAGES.some(m => m.file && msgShown(m) && msgOpen(m) && !(prefs.msgSeen || {})[m.id]);
 /* v28 (item 10, build 53): A MESSAGE'S TITLE, AND A GAUNTLET'S IS ITS GAUNTLET'S NAME. The two Gauntlet slots carry `gaunt` instead of a title,
    so renaming a Gauntlet in config/copy.js renames its row on the Messages list, its video title in the player and its word on the chest — one

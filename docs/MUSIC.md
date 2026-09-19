@@ -182,3 +182,28 @@ VERDICT_FX) is in the `config/` paragraph of `RULES-HISTORY.md` → Structure, a
   since build 30 the timer asked for Roots 900ms after `key.js` had asked for the tab's own loop, and arriving on the Pro or Author tab
   heard Roots within a second. **`Music.probe()` reports `track`, `arc`, `arcBars`, `stems`, `flow` and `fin`**, which is what the gate
   reads to prove a theme is under the run rules.
+
+## Build 57 (v29 Section A items 57.1 / 57.3 / 57.6 / 57.7 / 57.8, 2026-09-19)
+
+- **The title's reverb, and TAP TO BEGIN's own sound (57.1, quotes L1; Aiden authorised it).** There is no convolver in this app and there is not
+  going to be one — every sound is `tone()` — so a reverb here is what a reverb IS: the same impact again, later, quieter and darker. Each title beat
+  carries three TAIL events at +90 / +220 / +360ms, each about half the level of the one before and each lowpassed further down. The impact itself did
+  not move, so item 1's "the moment it is fired IS the moment it is heard" still holds — every event at 0s still opens inside 5ms, which is what the
+  gate measures. `TITLE_FX.begin` is the fourth beat's own sound and is deliberately HIGHER than the three that fall: a bell at G5 with the octave over
+  it and a mid body under it, long enough not to read as a tap.
+- **`COVER_FX` and `COVER_AT` (57.8).** A chest a key opens is two beats, and so is its sound. `COVER_FX` is the cover, timed from the ceremony's own
+  zero; `CHEST_FX` and the sting are the key turn and are offset by `COVER_AT[id]`, which IS that ceremony's `assemble` step — so the arp still lands
+  on the bars flying in and the sting still resolves on the lid, with no second list of times. `CHEST_NOISE` is the Author cover's one hard cut on the
+  split, so it belongs to the first beat and is not offset. The Author chest's two old events WERE its cover's (the sub under the black wash and the
+  rise on the widen) and moved into `COVER_FX` verbatim; its key turn got a set of its own, the Skill and Pro shape a tier bigger on the Thorn root.
+- **`KEY_INTRO_FX` (57.6).** One bed per tier under the key being created, cut from that key's own theme the way its earn sound is, held to L.7a. Each
+  step also lands with a hit that already existed — a path with `trace`, the strike with `snap`, the settle with `land` — so the moment needed one new
+  row per tier and nothing else. `Snd.keyIntro()` hands back the same stop handle `keyEarn()` does, so a skip can silence it (v29 item 8's lesson,
+  applied when the sound was written rather than a build later).
+- **`CHEER_FX` is an achievement (57.3).** "Way too quick." Each is build 53's own three voices over the same root, extended rather than replaced: the
+  rise walks the letters of the word as they land, a low hit lands underneath on the last letter, and a held chord and a long shimmer ring out over the
+  confetti. Every tier stays a step bigger than the one below it in notes, length and depth, which the gate measures.
+- **The earn music is no longer the clock (57.7).** It is not shortened to meet the animation and it is not cut when the animation ends: its tail rings
+  on across the cut into the chest. A SKIP still silences it.
+- **RETIRED: `CRACK_FX` and `CRACK_BURST` (57.2)**, with the map's crack arrival they were written for. The seven squares' own ticks in
+  `CHEST_FX.games` are the cracking sound now, because 57.2 puts the cracking on that same beat.

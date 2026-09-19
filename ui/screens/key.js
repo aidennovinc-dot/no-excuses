@@ -74,7 +74,7 @@ import { HIDE_UNRECORDED } from "../../config/build.js";
 import { CHESTS } from "../../config/chests.js";
 import { CARD, GRID, KEY, SHEET } from "../../config/copy.js";
 import { KEY_NOTE } from "../../config/key-bars.js";
-import { EARN_SKIP_AT, KEY_ART, KEY_EARN, KEY_FINISH } from "../../config/keys.js";
+import { EARN_SKIP_AT, KEY_ART, KEY_EARN, KEY_FINISH, KEY_INTRO } from "../../config/keys.js";
 import { MESSAGES } from "../../config/messages.js";
 import { MODE_NAME } from "../../config/games.js";
 import { $, T, esc } from "../../core.js";
@@ -260,7 +260,8 @@ function ring() { const tier = keyTiers()[openKey]; const st = keyState(tier.id)
 // a count of hits, rounds or miscounts — the word comes from the bar's own `unit`, so nothing is ever printed twice
 function barTxt(c, bar) { const n = scoreTxt(c.g, bar, c.d, c.s); return /[^\d.]$/.test(n) || !c.bar.unit ? n : n + ' ' + c.bar.unit; }
 const wantTxt = c => { const bar = barOf(c, tierId()); return bar === null ? KEY.none : T(c.bar.dir === 'lower' ? KEY.ceil : KEY.floor, { bar: barTxt(c, bar) }); };
-function panel() { const box = $('#key-list'); $('#s-key').classList.toggle('kpanel', !!openGame);   // v25 (item 16): the ring steps down to make room
+// v29 Section A (57.5, build 57): no `kpanel` class and no step-down — the ring is locked to one size and the list scrolls under it
+function panel() { const box = $('#key-list');
   if (!openGame) { box.innerHTML = ''; box.hidden = true; return; }
   const tier = tierId(); const st = gameKey(openGame, tier); box.hidden = false;
   // v21 (G.4, build 37): a row cleared RETROACTIVELY when a chest opened wears L8's green the first time it is on screen
@@ -361,7 +362,7 @@ function advance(a) { if (!a) return; const el = $(`[data-seg="${a.g}:${a.was}"]
    A TAP SKIPS TO THE END AND THE SCREEN NEVER LOCKS: the capture below finishes every animation the stage started and lets the reveal settle at
    once. ui/reveal.js swallows a tap before the stage is done, so the skip is registered here, on the same capture the title sequence uses. */
 const ARRIVE_MS = 2600, EARN_AT = 260, OPEN_GAP = 250;   // the arrival's own length; when a due earn starts after the screen draws; the beat between an animation ending and a chest opening (guess)
-let earnAt = EARN_AT, earnT = 0, earnPlan = null;
+let earnAt = EARN_AT, earnT = 0, earnPlan = null, introT = 0;
 const earnOf = tier => KEY_EARN[tier] || KEY_EARN.clear;
 /* the extra layers a tier draws, on top of the ring that is already there: the Author key's cracks running out of the rim and the thorns flicking
    out round it. The counts are config/keys.js (`cracks`, `thorns`); nothing else in the app knows these paths */
@@ -398,7 +399,10 @@ let earnMusic = null;
 function keyStage(tier) { const E = earnOf(tier), el = $('#s-key'), ids = [];
   const at = (t, fn) => { const h = setTimeout(() => { if (revealOn()) fn(); }, Math.max(0, t)); ids.push(h); return h; };
   // v29 (item 3, build 54): when this ceremony started, so a tap inside the first EARN_SKIP_AT ms can be turned away rather than taken
-  let anims = null, quick = false, done = null, began = 0;
+  /* v29 Section A (57.7, build 57): `carry` is whether this moment ENDED BY ITSELF. It did → the earn music is left ringing, and its tail
+     plays across the cut into the chest, which is what 57.7 asks for. It was skipped or abandoned → the music is stopped, because a skip is
+     the player asking to be somewhere else (v29 item 8, build 55, unchanged). */
+  let anims = null, quick = false, done = null, began = 0, carry = false;
   return { ms: E.ms, settleAt: E.ms,
     steps: (E.steps || []).map(x => ({ name: x.name, at: x.at, ms: x.ms })),
     start(host, k = {}) { const ringEl = $('#key-ring'); if (!ringEl) return;
@@ -454,13 +458,84 @@ function keyStage(tier) { const E = earnOf(tier), el = $('#s-key'), ids = [];
     skip() { return earnSkip ? earnSkip() : false; },
     /* SETTLES into the finished state (v25 item 13) — it does not SET `kdone`: ring() already put it on for a key that is whole, and Testing's
        replay on a key that is not whole must not leave the screen claiming it is finished. All settle does is stop holding it back. */
-    settle() { earnSkip = null; el.classList.remove('kearning', 'kearnquick'); delete el.dataset.earn; el.classList.add('ksettle');
+    settle() { carry = true; earnSkip = null; el.classList.remove('kearning', 'kearnquick'); delete el.dataset.earn; el.classList.add('ksettle');
       setTimeout(() => el.classList.remove('ksettle'), 600); },
-    clear() { earnSkip = null; try { earnMusic && earnMusic.stop(); } catch (e) { } earnMusic = null;
+    // 57.7: a moment that settled keeps its music; one that was cut short loses it. The next earn stops whatever is still ringing before it starts
+    clear() { earnSkip = null; if (!carry) { try { earnMusic && earnMusic.stop(); } catch (e) { } earnMusic = null; }
       ids.forEach(clearTimeout); el.classList.remove('kearning', 'kearnquick', 'ksettle', 'kdue'); delete el.dataset.earn; earnClear(); } }; }
 /* item 14: the belt. The reveal's own tap (ui/reveal.js, through `skip()` above) is the route that actually fires — its host covers the screen
    and carries a `data-act`, so ui/actions.js hands the tap to that action and never reaches a capture. This catches a tap that lands outside it. */
 capture(() => { if (!earnSkip || !revealOn()) return false; return earnSkip(); });
+
+/* ---------- v29 Section A (57.6, build 57): THE KEY BEING CREATED — the first time its screen is opened ----------
+   Aiden: "only completion has an animation today". This is the other end of it — the key being MADE, once per key per profile
+   (`prefs.keyIntro`, migrated at store v7 so nobody who has been playing gets three of them handed to them at once).
+   It runs through the SAME shared reveal every other moment does (ui/reveal.js), as an `auto` stage with a skip, so the clock, the swallowed taps
+   and the hand-over are not written a second time. Four named steps from config/keys.js KEY_INTRO — `gather`, `draw`, `forge`, `settle` — drawn
+   by name and nothing else, each time a custom property, and each dressed by that key's own `style` so one set of rules is three animations:
+     lantern  warm sparks drift in and pool                circuit  square nodes snap in on their grid        thorn  shards climb in from below
+   The key itself is its own KEY_ART glyph — the drawing on the Keys screen and on the chest that opens it — drawn on one path at a time, struck
+   on `forge`, and taking its finished tint and glow on `settle`. The bed is Snd.keyIntro (config/audio.js KEY_INTRO_FX, cut from that key's own
+   theme) and each step lands with a hit that already exists: a path with `trace`, the strike with `snap`, the settle with `land`. */
+const introOf = tier => KEY_INTRO[tier] || KEY_INTRO.clear;
+/* where the material comes in FROM, per style — the one thing about `gather` that is not the same for all three, so it is decided here in px and
+   the stylesheet reads `--dx` / `--dy` and knows nothing about it: Lantern's sparks drift in from all around, Circuit's nodes snap in off their own
+   grid, Thorn's shards climb from below. */
+function bitAt(style, i, n) {
+  if (style === 'circuit') return [((i % 4) - 1.5) * 74, (Math.floor(i / 4) % 5 - 2) * 58];
+  if (style === 'thorn') return [((i % 7) - 3) * 34, 150 + (i % 4) * 24];
+  const a = (i * 360 / n + (i % 3) * 11) * Math.PI / 180, r = 96 + (i % 5) * 26;
+  return [Math.cos(a) * r, Math.sin(a) * r]; }
+function introArt(tier) { const I = introOf(tier), t = keyTiers().find(k => k.id === tier) || keyTiers()[0], style = t.style || 'lantern', out = [];
+  for (let i = 0; i < I.bits; i++) { const [dx, dy] = bitAt(style, i, I.bits), s = 3 + (i % 4);
+    out.push(`<rect class="kibit" x="${(150 - s / 2).toFixed(1)}" y="${(150 - s / 2).toFixed(1)}" width="${s}" height="${s}" style="--i:${i};--dx:${dx.toFixed(1)}px;--dy:${dy.toFixed(1)}px"></rect>`); }
+  const paths = (KEY_ART[tier] || KEY_ART.clear).map((d, i) => `<path class="kipath" pathLength="1" d="${d}" style="--i:${i}"></path>`).join('');
+  // .kikeyg carries the animation and NO transform attribute — a CSS scale on an element that has one composes inside it (the build-41 lesson)
+  return `<svg class="kistage" viewBox="0 0 300 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true" data-style="${esc(style)}" style="--kt:${t.tint}">`
+    + `<g class="kibits">${out.join('')}</g><circle class="kiflash" cx="150" cy="150" r="26"></circle><circle class="kiring" cx="150" cy="150" r="64"></circle>`
+    + `<g class="kikeyg"><g transform="translate(78 78) scale(3)">${paths}</g></g></svg>`; }
+let introSkip = null, introMusic = null;
+function introStage(tier) { const I = introOf(tier), el = $('#s-key'), ids = [];
+  const at = (t, fn) => { const h = setTimeout(() => { if (revealOn()) fn(); }, Math.max(0, t)); ids.push(h); return h; };
+  let anims = null, quick = false, done = null, began = 0, carry = false;
+  return { ms: I.ms, settleAt: I.ms,
+    steps: (I.steps || []).map(x => ({ name: x.name, at: x.at, ms: x.ms })),
+    start(host, k = {}) { began = performance.now();
+      host.innerHTML = introArt(tier);
+      const st = host.querySelector('.kistage'); if (!st) return;
+      st.style.setProperty('--ki-ms', I.ms + 'ms'); st.style.setProperty('--ki-stroke', I.stroke + 'ms'); st.style.setProperty('--ki-flash', I.flash + 'px');
+      for (const x of (I.steps || [])) { st.style.setProperty(`--st-${x.name}-at`, x.at + 'ms'); st.style.setProperty(`--st-${x.name}-ms`, x.ms + 'ms'); }
+      quick = !!k.quick; if (quick) { st.classList.add('kiquick'); return; }
+      if (!k.silent) { try { introMusic && introMusic.stop(); } catch (e) { } introMusic = Snd.keyIntro(tier); }
+      if (!k.silent) { const dr = (I.steps || []).find(x => x.name === 'draw'), fo = (I.steps || []).find(x => x.name === 'forge'), se = (I.steps || []).find(x => x.name === 'settle');
+        if (dr) (KEY_ART[tier] || KEY_ART.clear).forEach((_, i) => at(dr.at + i * I.stroke, () => Snd.keyStep('trace')));
+        if (fo) at(fo.at, () => Snd.keyStep('snap'));
+        if (se) at(se.at, () => Snd.keyStep('land')); }
+      anims = document.getAnimations().filter(a => { const tg = a.effect && a.effect.target, tm = a.effect && a.effect.getComputedTiming();
+        return tg && st.contains(tg) && tm && Number.isFinite(tm.endTime) && a.playState !== 'finished'; });
+      // the same skip the earn moment has, on the same window: a tap does nothing for the first EARN_SKIP_AT ms and then runs it to its last frame
+      introSkip = () => { if (performance.now() - began < EARN_SKIP_AT) return false;
+        introSkip = null; ids.forEach(clearTimeout); ids.length = 0;
+        try { introMusic && introMusic.stop(); } catch (e) { } introMusic = null;
+        for (const a of (anims || [])) { try { a.finish(); } catch (e) { } }
+        if (done) done(); return true; }; },
+    hold() { if (quick) return null;
+      const all = (anims || []).map(a => a.finished.then(() => 1, () => 0));
+      return Promise.race([Promise.all(all), new Promise(r => { done = r; setTimeout(r, I.ms * 2 + 1000); })]); },
+    step() { },
+    skip() { return introSkip ? introSkip() : false; },
+    // 57.7's rule, applied here too: a moment that ended by itself keeps its music and the tail carries across the cut
+    settle() { carry = true; introSkip = null; },
+    clear() { introSkip = null; if (!carry) { try { introMusic && introMusic.stop(); } catch (e) { } introMusic = null; } ids.forEach(clearTimeout); } }; }
+/* it plays ONCE per key per profile and is the caller's business, not the reveal's (the build-46 rule). `demo` is Testing's replay: it plays the
+   same moment and stores nothing, which is what every other animation on that screen does. */
+function keyIntro(tier, o = {}) {
+  if (!$('#s-key').classList.contains('on') || $('#key-main').hidden) return false;
+  if (!o.demo) { prefs.keyIntro = Object.assign({}, prefs.keyIntro, { [tier]: 1 }); save(); }
+  const t = keyTiers().find(k => k.id === tier) || keyTiers()[openKey];
+  return playReveal($('#key-cere'), { kind: 'chest', id: 'intro:' + tier, col: t.tint, stage: introStage(tier), auto: true });
+}
+capture(() => { if (!introSkip || !revealOn()) return false; return introSkip(); });
 
 /* ---------- v25 (item 22, build 46): WHAT THE CONGRATULATIONS CARD SAYS ----------
    Every line is read off the same functions the rest of the screen reads, so the card cannot claim something the key screen disagrees with; a
@@ -563,9 +638,10 @@ function interlude(a, back) { const el = $('#s-key'); el.classList.add('auto'); 
 function firstIn() { if (prefs.keySeen) return false; prefs.keySeen = 1; save();
   const el = $('#s-key'); el.classList.add('first'); setTimeout(() => el.classList.remove('first'), ARRIVE_MS); return true; }
 
-register('s-key', { onShow({ advance: a, from, auto: to, tier, whole, arrive, ceremony: cer, open } = {}) { stopReveal(); askClose();
+register('s-key', { onShow({ advance: a, from, auto: to, tier, whole, arrive, ceremony: cer, open, intro } = {}) { stopReveal(); askClose();
     if (openT) { clearTimeout(openT); openT = 0; lock(false); } pendingOpen = null;
-    cameFrom = from || null; pending = a || null; auto = to || null; demo = !!(whole || arrive || cer);
+    clearTimeout(introT);
+    cameFrom = from || null; pending = a || null; auto = to || null; demo = !!(whole || arrive || cer || intro);
     if (a) { openKey = keyTierIx(a.tier); openGame = a.g; }
     if (tier !== undefined) openKey = tier;
     // B.26: Testing asks for the arrival again by clearing the flag first; it asks for the whole-key moment by name
@@ -587,6 +663,11 @@ register('s-key', { onShow({ advance: a, from, auto: to, tier, whole, arrive, ce
     // start one of its own when the screen changes
     Music.menu(themeOf(keyTiers()[openKey]));
     const arrived = !auto && firstIn();
+    /* 57.6: the creation intro, the first time this key's screen is opened. It stands aside for everything that is already a moment — a chest
+       waiting to open, an earn that is due, an interlude handing itself back, the arrival, and Testing's own replays — so two never run at once;
+       when it stands aside it stores nothing and plays on the next plain visit. */
+    const introDue = open0 && !t0.shell && !demo && !auto && !oc && !a && !arrivalDue && !earnDue && !(prefs.keyIntro || {})[t0.id];
+    if (introDue) { clearTimeout(introT); introT = setTimeout(() => { if ($('#s-key').classList.contains('on') && !revealOn()) keyIntro(t0.id); }, EARN_AT); }
     /* B.3: a key animation not yet seen is never cut off — it plays IN FULL, nothing tappable meanwhile, and then the chest opens */
     /* B.3 → AMENDED at build 46 (v25 item 11): a key's first-open REVEAL ends on a tap, not on a length, so a chest waiting behind one cannot be
        opened by a timer. `pendingOpen` hands it to the reveal, which opens it at its Continue; the arrival (5.4) still has a length and still uses
@@ -595,6 +676,8 @@ register('s-key', { onShow({ advance: a, from, auto: to, tier, whole, arrive, ce
       const wait = (arrived ? ARRIVE_MS : 0) + OPEN_GAP;
       lock(true); openT = setTimeout(() => { openT = 0; lock(false); if ($('#s-key').classList.contains('on')) openNow(oc.id); }, wait); return; }
     if (whole) { clearTimeout(earnT); earnT = setTimeout(() => keyReveal(tierId(), { demo: 1 }), 300); }
+    // 57.6: Testing's replay of the creation intro — the same moment, nothing stored
+    if (intro) { clearTimeout(introT); introT = setTimeout(() => { if ($('#s-key').classList.contains('on')) keyIntro(tierId(), { demo: 1 }); }, 300); }
     /* B.26 → v23 (L.6, build 41): Testing replays a chest's CEREMONY here with nothing stored — the meter holds where it is, and the tap
        goes to the map, where the spill replays the same way (ui/screens/pick.js spillDemo) */
     if (cer) setTimeout(() => { if (!$('#s-key').classList.contains('on')) return; const m = meter();

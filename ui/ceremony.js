@@ -12,7 +12,7 @@
 
    frame() draws the same stage paused at a fraction of its length and plays nothing — the review catalogue's frames (L.10d / L.11e). It
    lives here so the catalogue cannot photograph a ceremony the app does not play. */
-import { CEREMONY, CEREMONY_FX, CHESTS } from "../config/chests.js";
+import { CEREMONY, CEREMONY_FX, CHESTS, COVER_LOOK } from "../config/chests.js";
 import { GRID, KEY } from "../config/copy.js";
 import { KEY_ART } from "../config/keys.js";
 import { Snd } from "../audio.js";
@@ -44,10 +44,31 @@ function stageVars(id) { const c = CEREMONY[id];
    chests share one beam, each in its own `--cc`, because all three now open the same way (assemble · turn · lid · spill). */
 /* v29 (item 5, build 54): and the AUTHOR chest draws its own two layers UNDER that beam — the black wash that swallows the stage on `black`,
    and the white panel that splits and widens out of the middle on `widen`. Both are behind the chest, so the lid still lifts in front of them. */
+/* v29 Section A (57.8, build 57): AND THE COVER, which is the first beat of every chest a key opens. `--cc` is the key's own colour, so each cover
+   is drawn in its key's language and this file names none of them:
+     key     the ground closing over the stage, seven paper lanterns rising and flickering through it, and a disc of light irising open
+     pro     black, eight right-angled traces drawing in from all four edges with a square node lighting at each inner end, then powering down
+     thorns  build 52's own two layers, unchanged — the black wash and the white panel that splits and widens
+   The Author chest needs nothing new: its cover IS `black` / `spikes` / `split` / `widen` / `recede`, restored to the FRONT of the ceremony. */
+function coverArt(id) {
+  if (id === 'key') { const n = (COVER_LOOK.key || {}).lanterns || 7, out = [];
+    for (let i = 0; i < n; i++) { const x = 26 + Math.round(i * 248 / Math.max(1, n - 1)), y = 372 - (i % 3) * 44, r = 8 + (i % 4) * 3;
+      out.push(`<g class="clan" style="--i:${i};--rise:${300 + (i % 3) * 70}px"><circle class="clang" cx="${x}" cy="${y}" r="${(r * 2.6).toFixed(1)}"></circle><circle class="clanb" cx="${x}" cy="${y}" r="${r}"></circle></g>`); }
+    return out.join('') + '<circle class="ciris" cx="150" cy="300" r="14"></circle>'; }
+  if (id === 'pro') { const n = (COVER_LOOK.pro || {}).traces || 8;
+    // right-angled runs in from each edge, two a side, each ending on a ring round the middle — the Pro chest's own traces, at stage scale
+    const RUN = [['M0 120H90V250H126', 126, 250], ['M300 120H210V250H174', 174, 250], ['M70 0V70H150V232', 150, 232], ['M230 520V450H150V368', 150, 368],
+      ['M0 430H60V340H120', 120, 340], ['M300 430H240V340H180', 180, 340], ['M230 0V60H196V244', 196, 244], ['M70 520V460H104V356', 104, 356]];
+    return RUN.slice(0, n).map(([d, nx, ny], i) => `<path class="ctrace" pathLength="1" d="${d}" style="--i:${i}"></path>`
+      + `<rect class="cnode" x="${nx - 3}" y="${ny - 3}" width="6" height="6" style="--i:${i}"></rect>`).join('')
+      + '<circle class="ciris" cx="150" cy="300" r="14"></circle>'; }
+  return ''; }
 function behind(id) {
   if (id === 'games') return '<circle class="cglow" cx="150" cy="300" r="80"></circle><circle class="cburst" cx="150" cy="300" r="20"></circle>';
   const thorn = id === 'thorns' ? '<rect class="cblack" x="-60" y="-60" width="420" height="640"></rect><rect class="cwide" x="40" y="0" width="220" height="520"></rect>' : '';
-  return thorn + '<defs><linearGradient id="cbeam" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#FFFFFF" stop-opacity=".85"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient></defs>'
+  // the cover's own ground goes UNDER its shapes and over nothing else: the chest is hidden by the stylesheet, not by this rect
+  const cov = id === 'thorns' ? '' : '<rect class="ccovbg" x="-60" y="-60" width="420" height="640"></rect>' + coverArt(id);
+  return thorn + cov + '<defs><linearGradient id="cbeam" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#FFFFFF" stop-opacity=".85"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient></defs>'
     + '<polygon class="cbeam" points="122,300 178,300 270,0 30,0"></polygon>'; }
 // which key opens a chest — the tier whose glyph and colour its ceremony is drawn in (item 13). The Games chest has none
 const tierOfChest = id => { const c = CHESTS.find(x => x.id === id); return c && c.needs !== 'modes' ? c.needs : null; };
@@ -95,6 +116,12 @@ const setMeter = (m, v) => { if (!m) return; m.textContent = T(KEY.pct, { n: met
    `textMs` is how long the chest's own line needs once the rewards have landed: a key chest's count-up, nothing for the Games chest. The line and the
    count-up start at `textAt` when the reveal passes one (after the last reward lands), and at the end of the ceremony when it does not. */
 const CHEST_BOX = { x: 150, lid: 293, top: 262, foot: 334 };
+/* v29 Section A (57.4, build 57): THE TOPMOST SOLID THING EACH CEREMONY DRAWS, in the same 300 × 520 box. The Games chest's row of
+   seven locked squares sits at 110 with its strikes from 107; the three key chests' bars assemble from about 125 and their key glyph
+   drops in from 136. The reveal caps the lift the congratulations card asks for at this line rather than at the chest's own top, which
+   is what put the squares over the clock and the battery on Aiden's phone. The beam and the Author chest's black wash are deliberately
+   NOT counted: both are washes that reach the top of the box by design, and clipping either costs nothing. */
+const STAGE_HEAD = { games: 104, key: 122, pro: 122, thorns: 122 };
 let upT = 0;
 function chestStage(id, o = {}) { const cfg = CEREMONY[id]; if (!cfg) return null;
   const was = typeof o.was === 'number' ? o.was : 0, now = typeof o.now === 'number' ? o.now : was;
@@ -102,7 +129,8 @@ function chestStage(id, o = {}) { const cfg = CEREMONY[id]; if (!cfg) return nul
   return { ms: cfg.ms, steps: cfg.steps.map(s => ({ name: s.name, at: s.at, ms: s.ms })), textMs: metered(id) ? CEREMONY_FX.meterMs + 150 : 0,
     anchor() { const svg = host && host.querySelector('.rstage .cstage'); if (!svg) return null; const r = svg.getBoundingClientRect(), h = host.getBoundingClientRect(); if (!r.width || !r.height) return null;
       const k = Math.min(r.width / 300, r.height / 520), ox = r.left - h.left + (r.width - 300 * k) / 2, oy = r.top - h.top + (r.height - 520 * k) / 2;
-      return { cx: ox + CHEST_BOX.x * k, lid: oy + CHEST_BOX.lid * k, top: oy + CHEST_BOX.top * k, bottom: oy + CHEST_BOX.foot * k }; },
+      return { cx: ox + CHEST_BOX.x * k, lid: oy + CHEST_BOX.lid * k, top: oy + CHEST_BOX.top * k, bottom: oy + CHEST_BOX.foot * k,
+        head: oy + (typeof STAGE_HEAD[id] === 'number' ? STAGE_HEAD[id] : CHEST_BOX.top) * k }; },
     start(el, k = {}) { host = el.closest('.cere') || el; live = true;
       // the stage's own layers sit on the reveal's host, so the build-41 stylesheet (.cere.play [data-chest]) dresses them unchanged
       host.dataset.chest = id; host.setAttribute('style', (host.getAttribute('style') || '') + ';' + stageVars(id));

@@ -22,7 +22,7 @@ import { DESIGNS, ITEMS } from "../config/theme.js";
 import { GAMES, GC } from "../games/registry.js";
 import { emit } from "./events.js";
 
-const KEY='ne', VERSION=6, RUNS_CAP=600;
+const KEY='ne', VERSION=7, RUNS_CAP=600;
 const LEGACY=['ne.prefs','ne.runs','ne.unlock','ne.ach','ne.seen','ne.intro','ne.tileSeen'];
 const read=k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } };
 const write=(k,v)=>{ try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } };
@@ -89,6 +89,11 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
        Fresh game clears it, and Testing's per-chest reset clears that chest's AND the key it reveals, which is what makes it a first time
        again on the phone (item 11). No ladder step: an absent field means nothing has been revealed, which is what it means. */
     revealed:isObj(p.revealed)?Object.fromEntries(Object.keys(p.revealed).filter(k=>/^(chest:(games|key|pro|thorns)|key:(clear|pro|author))$/.test(k)&&p.revealed[k]).map(k=>[k,1])):{},
+    /* v29 Section A (57.6, build 57): WHICH KEYS HAVE HAD THEIR CREATION INTRO. One flag per tier, written the first time that key's screen is
+       opened. Progress: Fresh game clears it, so the intros play again on the phone. IT DOES TAKE A LADDER STEP (up7): an absent field would mean
+       "no key has been introduced", which for a saved profile with three open keys would hand three intros to somebody who has been playing for a
+       month — and 57.6's own line is "migrate existing profiles so a key already opened does not replay it unasked". */
+    keyIntro:isObj(p.keyIntro)?Object.fromEntries(['clear','pro','author'].filter(t=>p.keyIntro[t]).map(t=>[t,1])):{},
     /* v25 (item 23, build 46): which of the eight messages on About have been watched — the small dot beside the menu row comes off a slot
        once it has. Progress: Fresh game clears it. An id no longer in config/messages.js is dropped, so deleting a slot costs nothing. */
     msgSeen:isObj(p.msgSeen)?Object.fromEntries(Object.entries(p.msgSeen).filter(([k,v])=>MESSAGES.some(m=>m.id===k)&&v).map(([k])=>[k,1])):{},
@@ -148,7 +153,6 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
   if(Number.isInteger(p.meterSeen)&&p.meterSeen>=0&&p.meterSeen<=400) o.meterSeen=p.meterSeen;
   // v28 (item 13, build 53): how many of the Games chest's seven cracks the map has already shown ARRIVING. The cracks themselves are derived
   // from the store (progress/key.js crackCount) and need nothing saved; this is only so a crack animates in once. No ladder step — absent means none
-  if(Number.isInteger(p.cracked)&&p.cracked>=0&&p.cracked<=7) o.cracked=p.cracked;
   return o; }
 /* v29 (items 5 / 6, build 55): WHAT A STORED RUN HAS TO BE BEFORE ANYTHING DRAWS IT. Three things were wrong.
    (a) `!!GAMES[r.g]` was the truthy-index pattern above - g:'constructor' crashed boot before the repairing save().
@@ -289,6 +293,17 @@ function up6(raw){ const p=isObj(raw.prefs)?raw.prefs:null;
   if(p&&p.everywhere===undefined) p.everywhere='game';
   raw.v=6; return raw; }
 
+/* v6 → v7 (build 57, v29 Section A 57.6): EVERY KEY A SAVED PROFILE HAS ALREADY REACHED COUNTS AS INTRODUCED. The creation intro is a first-open
+   moment, and a profile written before this build has no record of which key screens it has opened — what it does have is which CHESTS are open,
+   and a tier is only reachable once the chest that reveals it is (config/chests.js `opens`). So every tier whose chest is open is marked seen, and
+   a tier still behind a shut chest is left unmarked and gets its intro when it arrives. It only ever ADDS the field (the build-40 lesson): a record
+   that already carries one keeps it, and cleanPrefs shape-checks whatever is there. */
+function up7(raw){ const p=isObj(raw.prefs)?raw.prefs:null;
+  if(p&&!isObj(p.keyIntro)){ const ch=isObj(p.chests)?p.chests:{}, seen={};
+    if(ch.games) seen.clear=1; if(ch.key) seen.pro=1; if(ch.pro) seen.author=1;
+    p.keyIntro=seen; }
+  raw.v=7; return raw; }
+
 function load(){ let raw=parse(read(KEY)), legacy=false;
   if(!isObj(raw)){ raw=fromLegacy(); legacy=!!raw; if(!raw) raw={}; }
   if((raw.v||0)<2) raw=up2(raw);
@@ -296,6 +311,7 @@ function load(){ let raw=parse(read(KEY)), legacy=false;
   if((raw.v||0)<4) raw=up4(raw);
   if((raw.v||0)<5) raw=up5(raw);
   if((raw.v||0)<6) raw=up6(raw);
+  if((raw.v||0)<7) raw=up7(raw);
 /* v29 (items 11 / 18, build 56): THE GAUNTLETS KEEP THEIR OWN BOARD. A Gauntlet advances no key, bar, unlock or achievement and
    nothing of it reaches a game's board (L10 applied to a thing that is not a mode), so its rows live here and nowhere else. One
    row is { id, t, score, tier, web:[{key,pct}] } — the tier is which key-bar column it was scored against, so a board written
@@ -341,6 +357,6 @@ const musicOn=g=>!opened('games')||prefs.musicG[g]!==false;
    profile showed all 27 of them open. Supporter is a dev switch today (S5 gates it out of a release build entirely) and
    Fresh game is the switch for seeing the app as a new player does, so it belongs in this list. When it becomes a real
    purchase at the native build it will be restored from the store rather than from prefs, and this line stays correct. */
-function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; store.gaunt=[]; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,keysSeen:0,chests:cleanChests(null),cusSeen:0,readySeen:cleanChests(null),spill:cleanChests(null),keyWhole:{},revealed:{},msgSeen:{},gauntSeen:{},paid:0,cracked:0,menuOpened:{},retro:{},retroCol:{},devKeys:{}}); delete prefs.mig11; delete prefs.mig31; delete prefs.mig32; delete prefs.mig35; delete prefs.meterSeen; delete prefs.devMeter; save(); emit('store:reset'); }
+function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; store.gaunt=[]; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,keysSeen:0,chests:cleanChests(null),cusSeen:0,readySeen:cleanChests(null),spill:cleanChests(null),keyWhole:{},revealed:{},msgSeen:{},gauntSeen:{},paid:0,menuOpened:{},keyIntro:{},retro:{},retroCol:{},devKeys:{}}); delete prefs.mig11; delete prefs.mig31; delete prefs.mig32; delete prefs.mig35; delete prefs.meterSeen; delete prefs.devMeter; save(); emit('store:reset'); }
 
 export { RUNS_CAP, everywhere, look, lookCol, musicOn, opened, prefs, reset, save, setKeyDone, store, trimRuns };

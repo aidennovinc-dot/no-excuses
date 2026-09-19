@@ -294,3 +294,19 @@ of it, statically and by quitting a run mid-flight and reading storage back.
   of every animation `kwhole` started. The reveal is `auto`: it ends itself, no tap line, no card. Tapping the whole key asks (`askOpen`) and
   Open calls `openNow` — build 48's `data-direct` open with no ask is gone (Aiden, after build 48; built for build 49).
 - **The menu's green.** `prefs.menuOpened[screen]`, written by `ui/screens/menu.js` on a screen change whose previous screen was the menu.
+
+## Build 57 (v29 Section A items 57.5 / 57.6 / 57.7 / 57.8, 2026-09-19): the key screen, the creation intro and the two-beat chest
+
+- **One layout (57.5).** `#key-ring` is locked to 30vh at every moment; `.kpanel` and the 46vh state are gone. `#key-list` (a `.scroll`) takes what is
+  left and scrolls, which is what Quick Tap's and Dots' six rows need.
+- **The creation intro (57.6).** `keyIntro(tier)` plays `introStage(tier)` through `ui/reveal.js` as an `auto` stage with a `skip()` on the same
+  `EARN_SKIP_AT` window the earn moment uses. It is scheduled from `onShow` only when nothing else on that screen is already a moment — no chest
+  waiting, no earn due, no interlude handing back, no arrival, no Testing replay — and when it stands aside it stores nothing and plays on the next
+  plain visit. `prefs.keyIntro[tier]` is written when it plays and is the only thing stored about it; Testing's "key N created" replays it with
+  `{intro:1}` and stores nothing, the way "key N earned" does.
+- **The earn moment ends on its own last movement (57.7).** `KEY_EARN[tier].ms` is the motion's length, `settleAt` is still `ms`, and `keyStage`'s
+  `carry` flag decides whether the music is cut: settled keeps it, skipped or abandoned loses it.
+- **A chest opening is two beats (57.8).** `chestStage` is unchanged in shape; what moved is the ceremony DATA — a `cover` and an `uncover` step in
+  front of the four turn steps, with the chest drawn from `uncover.at + 500ms`. `STAGE_HEAD` is new beside `CHEST_BOX`: the topmost SOLID layer each
+  ceremony draws, which `anchor()` answers as `head` and `ui/reveal.js` caps the congratulations card's lift at (57.4).
+- **The Games chest's cracks are derived from the chest's STATE (57.2), not from games finished** — `crackCount()` is `chestOpen('games') ? 7 : 0`.

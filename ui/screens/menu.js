@@ -118,7 +118,10 @@ function paintPct(mk,pct){ const rc=readyChest();
    measured from the moment this function happened to run rather than from the animation's own start, so the style recalc and the first frame were
    added on top. `startTime` is when the animation itself began on the document timeline, so `startTime + delay − now` is exactly how long is left
    until that line moves, however long the work in between took. */
-const TITLE_BEATS=[['#st1','line'],['#s-menu .wmin','title'],['#st2','line'],['#storyhint','line']];
+/* v29 Section A (57.1, build 57 — quotes L1; Aiden authorises the change): the fourth beat takes a sound of its OWN, `begin`, pitched above the
+   three that fall (config/audio.js TITLE_FX). Nothing about the sequence's placement or pace moves: four beats, four sounds, each still fired off
+   its own animation's start on the document timeline. */
+const TITLE_BEATS=[['#st1','line'],['#s-menu .wmin','title'],['#st2','line'],['#storyhint','begin']];
 let titleT=[];
 function titleSounds(){ titleT.forEach(clearTimeout); titleT=[];
   const now=(document.timeline&&document.timeline.currentTime)||0;

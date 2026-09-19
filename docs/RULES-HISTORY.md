@@ -1151,3 +1151,69 @@ Sets `BUILD` in `config/build.js`, then writes the three places in `index.html` 
 hand-edit the four places: a mismatch between the constant and `version.json` pins the green "new build" bar on
 every phone forever. The gate's static check asserts all five agree. `RUN_SCHEMA` (the `v` on every run record)
 lives beside `BUILD` and does **not** move with it — see the comment there for why it is still 13.
+
+## Build 57 (v29 Section A items 57.1–57.12, 2026-09-19): feel and fixes
+
+Aiden's phone review of v0.56, dictated 14:55–15:30 AEST on 2026-09-19. Section A of FEEDBACK-v29 overrides anything earlier it contradicts and
+**reverses four standing instructions**; each reversal is recorded with the rule it turns over, because the next session has to be able to see that
+the turn was asked for rather than drifted into.
+
+- **REVERSED (v28 item 13's "the Games-chest cracks accumulate as each square fills and stay visible on the map"): THE CHEST IS CLEAN UNTIL IT IS
+  OPENED (57.2).** Aiden: no cracks anywhere before it is opened, on the opening screen or on the map. So `crackCount()` in `progress/key.js` reads
+  the CHEST'S STATE rather than the count of games finished — none while it is locked or ready, all seven once it is open, and a tile that is open may
+  stay broken. The cracking is the OPENING now: `CEREMONY.games`'s `crack` step runs on the `uncross` beat with the same 150ms stagger, so each of the
+  seven squares in turn puts one more crack in the chest, and `burst` is it giving way. The map's arrival — a crack drawing itself on with its own
+  tick as each game was finished, `prefs.cracked`, `CRACK_FX`, `CRACK_BURST`, `Snd.crack()` and `Snd.crackBurst()` — is all **retired with the rule it
+  served**, rather than left wired to a path nothing takes. The cracks are also THINNER, which is his own memory of the Pro chest's old `ccrack`:
+  from git (18a0858) that art was 1.8 units with `drop-shadow(0 0 3px)`, and the sprite's 1.5 was reading at four units in the ceremony, so the stroke
+  is .55 and the ceremony adds the glow back.
+- **REVERSED (v28 item 12's "the congratulations reveal lands in under a second"): IT IS A CELEBRATION AND GETS THE TIME IT NEEDS (57.3).** The
+  BLOCKS under the word are unchanged and still land `REVEAL.cardStep` apart inside a second — what changed is the WORD. `CHEER_LOOK` in
+  `config/chests.js` is the one place its numbers live: the letters land one at a time with a small bounce, in full-strength colour with a halo (the
+  Games chest's dim grey becomes bright white, which is the dim Aiden pointed at), one shine crosses it once the last letter is down, it settles into a
+  slow pulse, and it is `size`× the line under it. The confetti moved from inside the card to the HOST, so `spread` is a share of the SCREEN and every
+  piece falls its whole height, at five to six times the volume with `white` in ten pieces drawn white. `CHEER_FX` is an achievement rather than a
+  flourish: the same three voices over the same root, roughly twice as long, with a low hit under the last letter and a chord ringing out.
+- **REVERSED (v28 item 15's "the earn music is the clock and the animation holds a finale until the last note"): THE MOTION IS THE CLOCK (57.7).**
+  Measured on build 56 (`node _smoke/measure-earn.mjs`, kept in the tree): the Skill key's assembly ended at 1330ms and the reveal let go at 2390,
+  Pro's at 1900 against 3000, Author's at 1996 against 4000 — a second of settling with nothing moving, two on Author. `KEY_EARN[tier].ms` is the
+  MOTION's own length again (1750 / 2360 / 2500, within 200ms of build 52's approved figures) and the earn music is NOT trimmed to meet it: its tail
+  rings on across the cut into the chest, which `keyStage`'s `carry` flag is for — a moment that SETTLED keeps its music, one that was skipped or
+  abandoned loses it. **Every assembly step is untouched** at the exact `at` and `ms` Aiden approved, which is what "the animation for this is sick,
+  do not change it" protects; what shortened is item 15's own filler, `rise` and `land`. The gate's rule turns over with the config: `ms` must be at
+  least 300ms SHORTER than the music, and the music's own length must not have been cut to fit.
+- **NOT REVERSED HERE: build 56 §3's "a Gauntlet advances nothing" is build 58's**, and nothing in build 57 touches it.
+
+- **NEW (57.8): a chest opening is TWO BEATS, in order.** Aiden played build 54's Author chest — the cover and the key turn at once — and said "it
+  just doesn't make sense and it looks weird". Every chest a KEY opens now runs a `cover` step from zero and an `uncover` step that clears it, the
+  chest is drawn from `uncover.at + 500ms` (build 52's own timing for the Author chest, restored and given to all three), and `assemble` starts once
+  the chest is fully there. The four turn steps are untouched in order and in meaning. The Author cover is **build 52's own, restored from git
+  (18a0858) at the same `at` and `ms` to the millisecond**, including the rule build 54 removed that hides the chest until the widen; the Skill and Pro
+  covers are new, in their own keys' language (lanterns rising through the dark and an iris opening; traces drawing in from four edges with their
+  nodes lighting, then powering down). The sound splits with the picture: `COVER_FX` is the first beat at the ceremony's own zero, and `CHEST_FX` and
+  the sting are the second, offset by `COVER_AT` — which is that ceremony's `assemble` step, held to it by the gate.
+- **NEW (57.6): each key's CREATION is introduced, once per key per profile.** "Only completion has an animation today." `KEY_INTRO` in
+  `config/keys.js` is four named steps — `gather`, `draw`, `forge`, `settle` — drawn by `ui/screens/key.js` through the one shared reveal as an `auto`
+  stage with the same skip window the earn moment has, dressed by that key's own `style` so one set of rules is three animations. It is the one field
+  in a year to take a **LADDER STEP** (`up7`): an absent `prefs.keyIntro` would mean "none", which on a saved profile with three open keys would hand
+  three intros to somebody who has been playing for a month, so every tier whose revealing chest is open is marked introduced at migration.
+- **NEW (57.4): the congratulations card's lift respects the TOP SAFE AREA.** It was capped at the chest's own top; the Games chest draws its row of
+  seven squares 150 units above the chest, so a card that asked for a big lift pushed them over the clock and the battery. The cap is the stage's
+  topmost SOLID layer (`STAGE_HEAD` in `ui/ceremony.js`, answered as `anchor.head`) held at the host's padding line, and `.cere` is clipped at
+  `env(safe-area-inset-top)` as a belt. A card that then does not fit scrolls, which it could always do.
+- **NEW (57.5): the key screen keeps ONE layout.** The wheel was 46vh until a game was tapped and 30vh after, so a tap resized and shifted the thing
+  the player had just aimed at. It is locked to the small position — the large one left the bottom third empty — and the target list scrolls under it.
+  `.kpanel` is retired with the step-down.
+- **NEW (57.9 / 57.10): the Gauntlet screens read as a threat.** A fourth self-hosted face (Creepster 400, SIL OFL, 28KB) on the title, the two map
+  labels and the button and nowhere else; two reds and two flicker cycles, Mega a step hotter; the rows keep the mono face and take the red as an
+  accent. One row per STEP, so Estimate's two plays are one row and eight games read as eight rows, and the count in the line above the list is
+  generated from the roster so the copy cannot drift. `GAUNTLET.oneWay` is retired — nothing under the list on either screen. Mini's Stopwatch step is
+  two rounds, its 5–6s window untouched.
+- **NEW (57.11): the backgrounds.** Stars belong to the default background alone — `rain` and `orbs` already drew none, the three key layers did and no
+  longer do. The colour wheel is a SECOND SETTING: `bg` is the pattern, `bgcol` is the colour, the colour is painted on the background CANVAS beneath
+  every screen rather than on `--ground` (which every panel, border and tile colour is mixed from, and which is the whole of "it colours everything on
+  screen"), it survives a change of pattern, and "no colour" goes back to the design's own ground. Grid is navy with blue lines; Lantern Sky is rebuilt
+  as a dusk gradient with paper lanterns rising at their own sizes, depths and flickers; Circuit's traces start and end outside the canvas on all four
+  sides; Thorns GROW, each branch with its own length, reach, bow, stem weight, thorn size and side branches, instead of one cosine swaying all of them.
+  Text a background's lines pass behind takes a halo of the ground colour — a text-shadow on the two HTML lines, `paint-order: stroke fill` on the SVG
+  game labels.

@@ -28,9 +28,14 @@ import { crackCount, meterBand, msgTitle } from "../progress/key.js";
 export const chestCol = id => { const L = CHEST_LOOK[id] || {}; return L.col || (METER_BANDS[L.band] || METER_BANDS[1]).col; };
 const symCol = (id, chest) => { const S = SYMBOLS[id] || {}; if (S.key) return (KEYS.find(k => k.id === S.key) || {}).tint || '';
   if (S.col) return S.col; return CHEST_LOOK[chest] ? chestCol(chest) : ''; };
+/* v29 Section A (57.3, build 57): AND A SYMBOL MAY PAINT ITS FILLED PATHS THEIR OWN COLOURS. `fcol` on a SYMBOLS row is one colour per filled
+   path, in order — the Customise palette's three wells, which is the whole reason it exists: with no colour of its own the icon took the Games
+   chest's grey and looked switched off beside a gold key. A row without `fcol` is untouched and still takes `currentColor`. */
 function symSvg(id, cls = '', chest = '') { const S = SYMBOLS[id]; if (!S) return ''; const col = symCol(id, chest), art = S.key ? KEY_ART[S.key] || [] : null;
+  const fc = S.fcol || [];
   return `<svg class="sym${art ? ' symkey' : ''}${cls ? ' ' + cls : ''}" data-sym="${esc(id)}" viewBox="${art ? '0 0 48 48' : '0 0 24 24'}" aria-hidden="true"${col ? ` style="color:${col}"` : ''}>`
-    + (art || S.p || []).map(d => `<path class="sp" d="${d}"></path>`).join('') + (art ? '' : (S.f || []).map(d => `<path class="sf" d="${d}"></path>`).join('')) + '</svg>'; }
+    + (art || S.p || []).map(d => `<path class="sp" d="${d}"></path>`).join('')
+    + (art ? '' : (S.f || []).map((d, i) => `<path class="sf" d="${d}"${fc[i] ? ` style="fill:${fc[i]}"` : ''}></path>`).join('')) + '</svg>'; }
 /* v26 (item 5, build 49): EVERY CHEST ALSO GIVES THE ABOUT VIDEO IT OPENS. The slot is the one in config/messages.js opened by this chest, and its
    title is read from there, so a renamed slot renames the reward everywhere. It stands while the slot is a placeholder, so the wording can be
    reviewed; config/build.js HIDE_UNRECORDED is the before-release switch that drops it while the slot has no clip. `to` is `msg:<slot>`. */

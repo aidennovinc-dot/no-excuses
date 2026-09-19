@@ -126,14 +126,34 @@ export const CHEST_LOOK = {
    for them. So `thorns` is the one ceremony with nine steps: the four every key chest runs, and five of its own laid across them. `black`
    comes up first, `spikes` grow across the assembly, `split` opens on the lid, and `widen` and `recede` carry the spill. The other three
    chests are untouched, which is the whole of what item 5 asks for. */
+/* ---------- v29 Section A (57.8 / 57.2, build 57): A CHEST OPENING IS TWO BEATS, IN ORDER ----------
+   Aiden played build 54's Author chest and said of the two things happening at once: "it just doesn't make sense and it looks weird". So every
+   chest a KEY opens now runs a COVER first — an animation that hides the chest and introduces it — which CLEARS to show the chest intact, and
+   only then does the key turn in the lock. Two named steps own that beat on all three: `cover` is the introduction and `uncover` is it clearing,
+   and the chest is drawn from `uncover.at + 500ms` (the stylesheet's one rule, which is build 52's own timing for the Author chest). `assemble`
+   starts when the chest is fully there, so the four turn steps are untouched in order and in meaning — they are simply no longer on top of it.
+     Skill (key)  the dark, warm lantern light blooming and drifting up, the light irising open        — the Lantern key's language
+     Pro          black, right-angled traces drawing in from all four edges with their nodes lighting  — the Circuit key's language
+     Author       RESTORED FROM BUILD 52 (commit 18a0858, verbatim `at` and `ms`): black, spikes growing in from both edges, one white line
+                  splitting the middle and widening into the reveal, the spikes receding. Build 54 laid these OVER the key turn; 57.8 puts them
+                  back in front of it, and the rule build 54 removed — the chest hidden until the widen — comes back with them.
+   THE GAMES CHEST has no key, so it has no cover: it is the one that BREAKS. 57.2 moves its cracking INSIDE the opening — `crack` now runs on
+   the `uncross` beat with the same 150ms step, so each of the seven squares in turn puts one more crack in the chest, and `burst` is it giving
+   way. Nothing is cracked before that: the map's chest is clean until it is opened (progress/key.js crackCount), which reverses v28 item 13.
+   LENGTHS. The covers are the escalation and they make the three key chests longer: 4.0 → 6.2s, 5.0 → 6.8s, 6.0 → 8.7s. The Games chest is
+   SHORTER, 3.65 → 3.05s, because its cracking now shares the squares' own beat instead of following it. */
 export const CEREMONY = {
-  games: { ms: 3650, steps: [{ name: 'uncross', at: 0, ms: 1200 }, { name: 'path', at: 1150, ms: 600 }, { name: 'crack', at: 1600, ms: 1000 }, { name: 'burst', at: 2500, ms: 520 }, { name: 'lid', at: 2650, ms: 500 }, { name: 'chord', at: 2900, ms: 750 }] },
-  key: { ms: 4000, steps: [{ name: 'assemble', at: 0, ms: 1800 }, { name: 'turn', at: 1800, ms: 600 }, { name: 'lid', at: 2400, ms: 500 }, { name: 'spill', at: 2700, ms: 1300 }] },
-  pro: { ms: 5000, steps: [{ name: 'assemble', at: 0, ms: 2300 }, { name: 'turn', at: 2300, ms: 700 }, { name: 'lid', at: 3000, ms: 600 }, { name: 'spill', at: 3400, ms: 1600 }] },
-  thorns: { ms: 6000, steps: [{ name: 'assemble', at: 0, ms: 2800 }, { name: 'turn', at: 2800, ms: 800 }, { name: 'lid', at: 3600, ms: 700 }, { name: 'spill', at: 4100, ms: 1900 },
-    { name: 'black', at: 0, ms: 700 }, { name: 'spikes', at: 400, ms: 2200 }, { name: 'split', at: 3600, ms: 400 }, { name: 'widen', at: 4000, ms: 1600 }, { name: 'recede', at: 4000, ms: 1400 }] },
+  games: { ms: 3050, steps: [{ name: 'uncross', at: 0, ms: 1200 }, { name: 'crack', at: 90, ms: 1200 }, { name: 'path', at: 1150, ms: 600 }, { name: 'burst', at: 1900, ms: 520 }, { name: 'lid', at: 2050, ms: 500 }, { name: 'chord', at: 2300, ms: 750 }] },
+  key: { ms: 6200, steps: [{ name: 'cover', at: 0, ms: 1400 }, { name: 'uncover', at: 1200, ms: 900 }, { name: 'assemble', at: 2500, ms: 1500 }, { name: 'turn', at: 4000, ms: 600 }, { name: 'lid', at: 4600, ms: 500 }, { name: 'spill', at: 4900, ms: 1300 }] },
+  pro: { ms: 6800, steps: [{ name: 'cover', at: 0, ms: 1700 }, { name: 'uncover', at: 1500, ms: 1000 }, { name: 'assemble', at: 2800, ms: 1700 }, { name: 'turn', at: 4500, ms: 650 }, { name: 'lid', at: 5150, ms: 550 }, { name: 'spill', at: 5500, ms: 1300 }] },
+  thorns: { ms: 8700, steps: [{ name: 'cover', at: 0, ms: 3100 }, { name: 'black', at: 0, ms: 700 }, { name: 'spikes', at: 500, ms: 2200 }, { name: 'split', at: 2700, ms: 400 },
+    { name: 'uncover', at: 3100, ms: 1600 }, { name: 'widen', at: 3100, ms: 1600 }, { name: 'recede', at: 3100, ms: 1600 },
+    { name: 'assemble', at: 4400, ms: 1900 }, { name: 'turn', at: 6300, ms: 700 }, { name: 'lid', at: 7000, ms: 600 }, { name: 'spill', at: 7400, ms: 1300 }] },
 };
 export const CEREMONY_FX = { meterMs: 900 };
+/* 57.8: how many of a cover's own shapes are drawn — the Skill chest's lanterns and the Pro chest's traces, each with a node at its end. The
+   Author chest's six spikes a side are build 52's own count and stay in ui/ceremony.js with the paths they belong to. All (guess). */
+export const COVER_LOOK = { key: { lanterns: 7 }, pro: { traces: 8 } };
 
 /* ---------- v23 (§L.11b / §L.11d, build 41): THE SPILL ----------
    After a chest opens, the map shows its words shooting out to the right, one per line, `stagger` ms apart, each taking `ms`, starting
@@ -154,8 +174,13 @@ export const SYMBOLS = {
   key: { key: 'clear' },
   keypro: { key: 'pro' },
   keyauthor: { key: 'author' },
-  // customisation — a palette with three wells
-  palette: { p: ['M12 3a9 9 0 1 0 2 17.8c1.2-.2 1.6-1.6.8-2.5-.9-1-.2-2.5 1.1-2.5H18a3.9 3.9 0 0 0 3.9-4.4A9 9 0 0 0 12 3z'], f: ['M8 8.6a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 1 0 0-2.6', 'M12.4 6.2a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 1 0 0-2.6', 'M16.6 9.2a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 1 0 0-2.6'] },
+  /* customisation — a palette with three wells.
+     v29 Section A (57.3, build 57): AND IT IS DRAWN IN COLOUR. It came out of the Games chest, so with no colour of its own it took that chest's
+     grey and sat beside a gold Skill key looking switched off. `fcol` paints each FILLED path its own colour (ui/chest.js) and `col` the outline:
+     the three wells are the three KEYS' own tints — Lantern gold, Circuit blue, Thorn white — so the icon is colourful in the app's own palette
+     and says what customising is for, rather than putting item 16's rainbow back. */
+  palette: { col: '#E8E6E1', fcol: ['#FFD08A', '#BFE6FF', '#FFFFFF'],
+    p: ['M12 3a9 9 0 1 0 2 17.8c1.2-.2 1.6-1.6.8-2.5-.9-1-.2-2.5 1.1-2.5H18a3.9 3.9 0 0 0 3.9-4.4A9 9 0 0 0 12 3z'], f: ['M8 8.6a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 1 0 0-2.6', 'M12.4 6.2a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 1 0 0-2.6', 'M16.6 9.2a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 1 0 0-2.6'] },
   // Gauntlet — a plain armoured glove: four plated fingers, the back plate, the thumb out to the left and a flared cuff (item 13, draft)
   gauntlet: { p: ['M7.5 10V5.6a1.25 1.25 0 0 1 2.5 0V10', 'M10 10V4.3a1.25 1.25 0 0 1 2.5 0V10', 'M12.5 10V4.9a1.25 1.25 0 0 1 2.5 0V10', 'M15 10V6.6a1.25 1.25 0 0 1 2.5 0v4.4',
     'M6.5 17v-5.5A1.5 1.5 0 0 1 8 10h8a1.5 1.5 0 0 1 1.5 1.5V17', 'M6.5 13.2h11', 'M6.5 14.2L4 11.7a1.3 1.3 0 0 1 1.8-1.8l.7.7', 'M6 17h12l-1.2 5H7.2z', 'M7.5 7.8H10', 'M10 6.8h2.5', 'M12.5 7.2H15', 'M15 8.6h2.5'] },
@@ -196,11 +221,32 @@ export const REVEAL = { giftAt: 260, giftGap: 400, giftMs: 1150, hold: 420, card
    same colour as its key, R2). `n` is how many pieces, `shape` what they are — the GAMES chest throws the seven game squares, one per game, and
    the three key chests throw shards of their key — `ms` how long one falls, `spread` how wide in % of the card, `spin` a turn in degrees and
    `size` the piece in px. Denser and longer each tier. Fires once with the card's title beat (before the message row). All (guess). */
+/* v29 Section A (57.3, build 57): A LOT OF IT, ACROSS THE WHOLE SCREEN. Aiden asked for "a LOT of confetti, shooting across the whole screen",
+   several times the volume, in build 53's own language — which is the paragraph above and is unchanged: geometric monochrome pieces, the chest's
+   own colour, the Games chest throwing squares and the keys throwing shards. Two things move. `n` is between five and six times what it was, and
+   the pieces are thrown from the HOST rather than from inside the card (ui/reveal.js), so `spread` is now a percentage of the SCREEN and every
+   piece falls its whole height. And `white` is how many in ten are drawn in white instead of the chest's colour — 57.3's "the chest's colour plus
+   white" — which is what stops a wall of one colour reading as a curtain. All (guess). */
 export const CONFETTI = {
-  games: { n: 7, shape: 'square', ms: 1500, spread: 62, spin: 180, size: 9 },
-  key: { n: 16, shape: 'shard', ms: 1900, spread: 74, spin: 360, size: 10 },
-  pro: { n: 26, shape: 'shard', ms: 2300, spread: 86, spin: 540, size: 11 },
-  thorns: { n: 36, shape: 'shard', ms: 2700, spread: 96, spin: 720, size: 12 },
+  games: { n: 42, shape: 'square', ms: 1900, spread: 104, spin: 180, size: 9, white: 4 },
+  key: { n: 88, shape: 'shard', ms: 2300, spread: 108, spin: 360, size: 10, white: 4 },
+  pro: { n: 130, shape: 'shard', ms: 2700, spread: 112, spin: 540, size: 11, white: 5 },
+  thorns: { n: 170, shape: 'shard', ms: 3100, spread: 116, spin: 720, size: 12, white: 5 },
+};
+
+/* ---------- v29 Section A (57.3, build 57): CONGRATULATIONS IS A CELEBRATION ----------
+   THIS REVERSES v28 ITEM 12's "the whole reveal under a second", which Section A's table lists as reversed: "too quick. It is a celebration and
+   gets the time it needs". The staging of the card's BLOCKS is unchanged (REVEAL.cardStep / cardBlockMs); what changes is the WORD at the top.
+   `step` is the beat between one letter landing and the next, `drop` how long one letter takes, `bounce` how far it overshoots (1 = none);
+   `shine` is the sweep that crosses the word once it has landed and `shineAt` how long after the last letter it starts; `pulse` is the slow
+   breath it settles into; `size` how much bigger the word is than the line under it. `col` is the word's own colour: the chest's own, except the
+   GAMES chest, whose grey (`var(--mute)`) is the dim Aiden pointed at — it celebrates in bright white instead. `glow` is the halo in px.
+   All (guess) apart from the Games chest's white, which is his own instruction. */
+export const CHEER_LOOK = {
+  games: { col: '#FFFFFF', glow: 20, step: 70, drop: 320, bounce: 1.22, shine: 620, shineAt: 160, pulse: 2600, size: 1.7 },
+  key: { col: '#E8B84A', glow: 24, step: 70, drop: 340, bounce: 1.24, shine: 660, shineAt: 160, pulse: 2600, size: 1.75 },
+  pro: { col: '#BFE6FF', glow: 28, step: 72, drop: 360, bounce: 1.26, shine: 700, shineAt: 150, pulse: 2500, size: 1.8 },
+  thorns: { col: '#FFFFFF', glow: 34, step: 74, drop: 380, bounce: 1.28, shine: 760, shineAt: 150, pulse: 2400, size: 1.9 },
 };
 
 /* v26 (item 6, build 49): HOW EACH CHEST'S REWARDS FLY — the same motion for all four, each in its chest's own colour and each grander than the one

@@ -359,8 +359,12 @@ export const FLOW_AT = 2.7, FLOW_RISE = .8, FLOW_FALL = 1.6;
 export const CHEST_FX = {
   games: [[0, 206, 174.6, 70, 'triangle', .042, 2], [.15, 231.3, 196, 70, 'triangle', .042, 2], [.3, 259.6, 220, 70, 'triangle', .043, 2], [.45, 291.3, 246.9, 70, 'triangle', .044, 2],
     [.6, 308.7, 261.6, 70, 'triangle', .045, 2], [.75, 346.6, 293.7, 70, 'triangle', .046, 2], [.9, 388.9, 329.6, 150, 'triangle', .05, 2], [.9, 164.8, 164.8, 300, 'sine', .035, 3],
-    [1.1, 196, 392, 700, 'sine', .03, 220], [1.8, 110, 82, 320, 'sine', .07, 10],
-    [2.1, 392, 392, 1000, 'triangle', .045, 30], [2.1, 493.9, 493.9, 1000, 'triangle', .04, 30], [2.1, 587.3, 587.3, 1000, 'triangle', .035, 30]],
+    [1.1, 196, 392, 700, 'sine', .03, 220],
+    /* v29 Section A (57.2, build 57): the hit and the chord move with the steps they land on. The seven squares' ticks are UNTOUCHED — they are
+       still 150ms apart on the `uncross` beat — and each one is now the sound of a crack as well as of a square, because 57.2 puts the cracking
+       on that same beat. What moved is `burst` (2500 → 1900) and `chord` (2900 → 2300), so the 1.8s hit is 1.9 and the 2.1s triad is 2.3. */
+    [1.9, 110, 82, 320, 'sine', .07, 10],
+    [2.3, 392, 392, 1000, 'triangle', .045, 30], [2.3, 493.9, 493.9, 1000, 'triangle', .04, 30], [2.3, 587.3, 587.3, 1000, 'triangle', .035, 30]],
   /* v26 (§B1, build 49): KEY — "change it far more, much closer to the first key's theme". The scale that climbed G3 to G4 while the bars assembled was
      a generic figure beside the theme; it is now the theme's own first two chords, arpeggiated as the bars fly in (G · D · G · A, then F · C · F · G,
      the Roots progression theme:key opens on), the click and the turn as they were, the swell on the lid, and the theme's opening chord held as the
@@ -381,6 +385,31 @@ export const CHEST_FX = {
     [2.8, 293.7, 293.7, 1500, 'sawtooth', .014, 30, 1500], [2.8, 370, 370, 1500, 'sawtooth', .012, 30, 1600], [2.8, 440, 440, 1500, 'triangle', .03, 20], [2.8, 587.3, 587.3, 1600, 'sine', .02, 30],
     [3.2, 587.3, 587.3, 900, 'sine', .024, 30], [3.35, 659.3, 659.3, 900, 'sine', .024, 30], [3.5, 740, 740, 900, 'sine', .022, 30], [3.65, 880, 880, 1000, 'sine', .022, 40],
     [3.8, 1174.7, 1174.7, 1500, 'sine', .016, 60], [3.8, 1760, 1760, 1800, 'sine', .006, 120]],
+  /* v29 Section A (57.8, build 57): THE AUTHOR CHEST'S TURN GETS A SOUND OF ITS OWN. Its only two events were the black wash and the widen —
+     the COVER's, which is where they have gone (COVER_FX below) — so its key turn played under nothing at all. This is the Skill and Pro shape a
+     tier bigger, on the Thorn theme's own root E: the bars assembling as a rising E-minor figure, the click and the turn, a swell on the lid, and
+     the chord held as the light spills. Relative to `assemble`, like every other key chest's (COVER_AT offsets it). All (guess). */
+  thorns: [[0, 82.4, 82.4, 900, 'sine', .05, 60], [.24, 123.5, 123.5, 900, 'sine', .045, 60], [.48, 164.8, 164.8, 900, 'sine', .04, 60], [.72, 246.9, 246.9, 950, 'sine', .036, 70],
+    [.96, 329.6, 329.6, 1000, 'triangle', .03, 90], [1.2, 415.3, 415.3, 1000, 'triangle', .026, 110],
+    [1.9, 150, 104, 50, 'square', .055, 2, 900], [1.96, 130, 62, 340, 'triangle', .07, 20], [2.6, 82.4, 164.8, 900, 'sine', .08, 380],
+    [3.0, 164.8, 164.8, 1500, 'sine', .026, 480], [3.0, 246.9, 246.9, 1500, 'sine', .02, 520], [3.0, 329.6, 329.6, 1500, 'sine', .018, 560], [3.05, 493.9, 493.9, 1450, 'sine', .013, 620]],
+};
+/* ---------- v29 Section A (57.8, build 57): THE COVER'S OWN SOUNDS, AND WHERE THE TURN'S NOW START ----------
+   A chest a key opens is two beats: a COVER that hides it and introduces it, then the key turn on the revealed chest. COVER_FX is the first beat,
+   timed from the ceremony's own zero; CHEST_FX and the sting are the second, and audio.js shifts both by COVER_AT — which IS that ceremony's
+   `assemble` step, so the arp still lands on the bars and the sting still resolves on the lid. The gate holds the two numbers together.
+     key     the ground closing, warm lantern light blooming through it in thirds, then the iris opening — Lantern's own language
+     pro     a low electrical hum, eight trace-ends ticking as they land, a filtered riser, then the grid powering down — Circuit's
+     thorns  BUILD 52'S OWN TWO EVENTS, moved here verbatim: the sub under the black wash and the rise on the widen
+   CHEST_NOISE is the Author cover's one hard cut on the split, so it is timed to the COVER and is not shifted. All (guess). */
+export const COVER_AT = { games: 0, key: 2500, pro: 2800, thorns: 4400 };
+export const COVER_FX = {
+  key: [[0, 65.4, 49, 900, 'sine', .05, 300], [.45, 196, 196, 900, 'sine', .022, 260], [.62, 293.7, 293.7, 900, 'sine', .018, 280], [.8, 392, 392, 950, 'sine', .015, 300],
+    [1.2, 130.8, 261.6, 900, 'sine', .04, 260], [1.35, 587.3, 587.3, 1250, 'sine', .012, 320]],
+  pro: [[0, 55, 55, 1100, 'sine', .055, 400],
+    [.35, 220, 130, 70, 'square', .03, 2, 900], [.55, 240, 142, 70, 'square', .03, 2, 900], [.75, 262, 155, 70, 'square', .032, 2, 900], [.95, 285, 168, 70, 'square', .032, 2, 900],
+    [1.15, 311, 184, 70, 'square', .034, 2, 900], [1.3, 340, 200, 80, 'square', .036, 2, 900],
+    [1.5, 146.8, 587.3, 900, 'sawtooth', .014, 300, 1800], [1.55, 73.4, 36.7, 800, 'sine', .06, 20]],
   thorns: [[.3, 41.2, 41.2, 2800, 'sine', .1, 2400], [3.1, 82.4, 164.8, 1600, 'sine', .06, 400]],
 };
 export const CHEST_NOISE = { thorns: [[2.7, 180, .14, 1200]] };
@@ -403,15 +432,11 @@ export const CHEST_STING = {
 };
 export const CHEST_READY_FX = [[0, 146.8, 146.8, 460, 'sine', .03, 50], [.24, 220, 220, 700, 'sine', .03, 80]];
 
-/* ---------- v28 (item 13, build 53): THE GAMES CHEST CRACKING OPEN, ONE GAME AT A TIME ----------
-   REUSED, NOT WRITTEN NEW, which is what item 13 asks. CRACK_FX is the Games chest's own tick — the first event of CHEST_FX.games, the triangle
-   fall that already plays seven times while its ceremony un-crosses the seven tiles — with a short low thump under it so it reads as something
-   giving way rather than as a menu tick. `step` lifts it a tone for each crack after the first, the way GIFT_FX climbs, so the seven cracks are
-   audibly a sequence going somewhere. CRACK_BURST is the Games chest's own pop and chord, the 1.8s hit and the 2.1s triad of CHEST_FX.games,
-   played together: the seventh crack on the map is the same sound the chest's opening lands on. */
-export const CRACK_FX = { step: 2, notes: [[0, 206, 174.6, 70, 'triangle', .042, 2], [0, 96, 62, 190, 'sine', .05, 4]] };
-export const CRACK_BURST = [[0, 110, 82, 320, 'sine', .075, 10],
-  [.06, 392, 392, 1000, 'triangle', .045, 30], [.06, 493.9, 493.9, 1000, 'triangle', .04, 30], [.06, 587.3, 587.3, 1000, 'triangle', .035, 30]];
+/* ---------- v28 (item 13, build 53): THE GAMES CHEST CRACKING ON THE MAP — RETIRED AT BUILD 57 (v29 Section A, 57.2) ----------
+   CRACK_FX was the crack that arrived on the map as each game was finished, and CRACK_BURST the seventh bursting it. 57.2 reverses the
+   accumulating cracks they announced: the chest is CLEAN until it is opened and the cracking happens inside the opening, where the seven squares'
+   own ticks (CHEST_FX.games) already land on exactly that beat. Both rows are gone rather than left unread, with Snd.crack() / Snd.crackBurst()
+   and the map loop that was their only caller — a sound table nothing plays is the kind of thing that gets re-wired by accident. */
 
 /* ---------- v28 (item 17, build 53): THE CELEBRATION ON THE CONGRATULATIONS SCREEN, ONE PER CHEST ----------
    Item 17: confetti and a celebratory sound on the screen the player taps through to after a chest opens, DIFFERENT FOR EACH CHEST and escalating
@@ -419,15 +444,50 @@ export const CRACK_BURST = [[0, 110, 82, 320, 'sine', .075, 10],
    reward pop (POP_FX) and the gift landing (GIFT_FX), stacked thicker and lower each tier over that key's own root — G for Skill, D for Pro, E for
    Author, the roots their themes are written on. Nothing here is a new instrument; each is the same three voices arranged bigger.
    It fires ONCE, with the staged card's title (item 12), before the message row appears. An effect, so it follows the tap-sound switch. */
+/* v29 Section A (57.3, build 57): AN ACHIEVEMENT, NOT A FLOURISH. Aiden on build 56's: "way too quick" — make it longer, with a bigger payoff.
+   Each is the same three voices as build 53's, over the same root, extended rather than replaced: the rise now walks the letters of the word as
+   they land instead of stopping in a fifth of a second, a LOW HIT lands underneath on the last letter, and a held chord and a long shimmer ring
+   out over the confetti. Every tier stays a step bigger than the one below it in notes, length and depth, which the gate measures. */
 export const CHEER_FX = {
-  games: [[0, 392, 392, 90, 'triangle', .05, 2], [.07, 523.3, 523.3, 320, 'triangle', .042, 8], [.14, 784, 784, 460, 'sine', .03, 12], [0, 130.8, 98, 260, 'sine', .05, 4]],
-  key: [[0, 392, 392, 110, 'triangle', .055, 2], [.06, 587.3, 587.3, 420, 'triangle', .048, 8], [.12, 784, 784, 620, 'sine', .04, 12], [.18, 987.8, 987.8, 700, 'sine', .028, 16],
-    [0, 98, 73.4, 420, 'sine', .07, 6], [.3, 196, 392, 820, 'sine', .026, 220]],
-  pro: [[0, 293.7, 293.7, 120, 'triangle', .058, 2], [.05, 440, 440, 460, 'triangle', .05, 8], [.1, 587.3, 587.3, 700, 'triangle', .044, 10], [.16, 880, 880, 820, 'sine', .034, 14],
-    [.22, 1174.7, 1174.7, 900, 'sine', .024, 18], [0, 73.4, 55, 520, 'sine', .085, 6], [.34, 146.8, 587.3, 1000, 'sawtooth', .016, 260, 2200]],
-  thorns: [[0, 164.8, 164.8, 130, 'triangle', .06, 2], [.05, 246.9, 246.9, 500, 'triangle', .054, 8], [.1, 329.6, 329.6, 760, 'triangle', .048, 10], [.16, 493.9, 493.9, 900, 'sine', .04, 14],
-    [.22, 659.3, 659.3, 1000, 'sine', .03, 18], [.28, 987.8, 987.8, 1100, 'sine', .022, 22], [0, 41.2, 32.7, 640, 'sine', .095, 6],
-    [.36, 164.8, 659.3, 1250, 'sawtooth', .018, 300, 2600], [.6, 82.4, 82.4, 1400, 'sine', .05, 120]],
+  games: [[0, 392, 392, 110, 'triangle', .05, 2], [.09, 523.3, 523.3, 340, 'triangle', .044, 8], [.18, 659.3, 659.3, 420, 'triangle', .038, 10], [.27, 784, 784, 700, 'sine', .032, 12],
+    [0, 130.8, 98, 300, 'sine', .05, 4], [.42, 98, 73.4, 560, 'sine', .07, 6],
+    [.48, 392, 392, 1300, 'triangle', .022, 60], [.48, 587.3, 587.3, 1300, 'triangle', .018, 70], [.48, 784, 784, 1350, 'sine', .015, 90], [.6, 1174.7, 1174.7, 1400, 'sine', .01, 200]],
+  key: [[0, 392, 392, 120, 'triangle', .055, 2], [.08, 587.3, 587.3, 420, 'triangle', .05, 8], [.16, 784, 784, 560, 'triangle', .042, 10], [.24, 987.8, 987.8, 700, 'sine', .034, 14],
+    [.32, 1174.7, 1174.7, 760, 'sine', .026, 18],
+    [0, 98, 73.4, 440, 'sine', .07, 6], [.5, 73.4, 49, 700, 'sine', .085, 6],
+    [.56, 196, 196, 1500, 'sine', .026, 80], [.56, 392, 392, 1500, 'triangle', .02, 90], [.56, 587.3, 587.3, 1500, 'triangle', .017, 100], [.56, 784, 784, 1550, 'sine', .014, 120],
+    [.7, 1567.9, 1567.9, 1600, 'sine', .009, 220], [.9, 196, 784, 1400, 'sine', .022, 320]],
+  pro: [[0, 293.7, 293.7, 130, 'triangle', .058, 2], [.07, 440, 440, 460, 'triangle', .052, 8], [.14, 587.3, 587.3, 620, 'triangle', .046, 10], [.21, 880, 880, 760, 'sine', .038, 14],
+    [.28, 1174.7, 1174.7, 860, 'sine', .028, 18], [.35, 1760, 1760, 900, 'sine', .02, 24],
+    [0, 73.4, 55, 540, 'sine', .085, 6], [.54, 55, 36.7, 820, 'sine', .1, 6],
+    [.6, 146.8, 146.8, 1700, 'sine', .03, 90], [.6, 293.7, 293.7, 1700, 'sawtooth', .014, 110, 1600], [.6, 440, 440, 1700, 'sawtooth', .012, 120, 1700],
+    [.6, 587.3, 587.3, 1750, 'triangle', .016, 130], [.6, 880, 880, 1800, 'sine', .013, 160],
+    [.78, 1174.7, 1174.7, 1800, 'sine', .01, 240], [.95, 146.8, 1174.7, 1600, 'sawtooth', .014, 340, 2400]],
+  thorns: [[0, 164.8, 164.8, 140, 'triangle', .06, 2], [.07, 246.9, 246.9, 500, 'triangle', .056, 8], [.14, 329.6, 329.6, 680, 'triangle', .05, 10], [.21, 493.9, 493.9, 820, 'sine', .042, 14],
+    [.28, 659.3, 659.3, 920, 'sine', .034, 18], [.35, 987.8, 987.8, 1000, 'sine', .026, 22], [.42, 1318.5, 1318.5, 1050, 'sine', .018, 28],
+    [0, 41.2, 32.7, 660, 'sine', .095, 6], [.6, 32.7, 24.5, 900, 'sine', .11, 6],
+    [.66, 82.4, 82.4, 1900, 'sine', .034, 100], [.66, 164.8, 164.8, 1900, 'sawtooth', .015, 120, 1300], [.66, 246.9, 246.9, 1900, 'sawtooth', .013, 130, 1400],
+    [.66, 329.6, 329.6, 1950, 'triangle', .017, 140], [.66, 493.9, 493.9, 2000, 'sine', .014, 170], [.66, 659.3, 659.3, 2000, 'sine', .011, 200],
+    [.86, 987.8, 987.8, 2000, 'sine', .01, 260], [1.05, 164.8, 1318.5, 1800, 'sawtooth', .016, 380, 2800], [1.3, 82.4, 82.4, 1600, 'sine', .05, 140]],
+};
+/* ---------- v29 Section A (57.6, build 57): THE KEY BEING CREATED — one sound per tier ----------
+   config/keys.js KEY_INTRO is four named steps: `gather` the material arriving, `draw` the key's own paths drawing on, `forge` the strike that
+   makes it a key, `settle` it taking its finished light. This is the BED under all four, cut from that key's own theme the way its earn sound is —
+   the root and the fifth under a rising figure, the strike landing on `forge` and the chord opening on `settle`. Each step ALSO lands with its own
+   hit: `gather` and `draw` take a quiet tick per piece and per path from ui/screens/key.js (MAP_FX / KEY_STEP_FX), and `forge` takes `snap`, which
+   is a key turning in a lock and is exactly the right shape for one being struck. Escalating Skill → Pro → Author in notes, depth and length, and
+   held to L.7a's theme rule — nothing under 700ms above 300 Hz, nothing above C5 under 1200ms. An EFFECT, so it follows the tap-sound switch, and
+   it is none of the unlock sound, the achievement click, a chest's or a key's earn (gated). All (guess), heard by nobody (UNVERIFIED.md). */
+export const KEY_INTRO_FX = {
+  clear: { track: 'theme:key', notes: [[0, -24, 1600, 'sine', .05, 500], [0, -12, 1500, 'sine', .03, 520],
+    [.7, 0, 1000, 'triangle', .018, 220], [1.0, 7, 1000, 'triangle', .018, 240], [1.3, 12, 1100, 'triangle', .016, 260],
+    [1.8, -12, 800, 'sine', .07, 8], [2.1, 0, 1300, 'triangle', .02, 180], [2.1, 7, 1300, 'triangle', .017, 200], [2.15, 19, 1350, 'sine', .012, 300]] },
+  pro: { track: 'theme:pro', notes: [[0, -24, 1900, 'sine', .055, 560], [0, -12, 1800, 'sine', .032, 580], [.4, -5, 1200, 'sawtooth', .01, 700, 1200],
+    [.8, 0, 1100, 'triangle', .02, 240], [1.1, 7, 1100, 'triangle', .02, 260], [1.4, 12, 1150, 'triangle', .018, 280], [1.7, 19, 1250, 'sine', .014, 320],
+    [2.1, -12, 900, 'sine', .08, 8], [2.44, -5, 1500, 'triangle', .02, 200], [2.44, 2, 1500, 'triangle', .017, 220], [2.44, 9, 1500, 'triangle', .015, 240], [2.5, 21, 1500, 'sine', .012, 340]] },
+  author: { track: 'theme:thorns', notes: [[0, -24, 2200, 'sine', .06, 620], [0, -12, 2100, 'sine', .034, 640], [.3, 0, 1600, 'sawtooth', .009, 900, 1100],
+    [.9, 0, 1200, 'triangle', .02, 260], [1.2, 3, 1200, 'triangle', .02, 280], [1.5, 7, 1250, 'triangle', .018, 300], [1.8, 10, 1300, 'sine', .015, 340], [2.1, 15, 1350, 'sine', .013, 360],
+    [2.4, -12, 1000, 'sine', .09, 8], [2.78, -12, 1700, 'sine', .035, 300], [2.78, 3, 1700, 'sawtooth', .01, 240, 1100], [2.78, 10, 1700, 'sawtooth', .009, 260, 1100], [2.85, 22, 1700, 'sine', .012, 400]] },
 };
 export const HUSH = { down: .08, up: .4 };
 
@@ -568,10 +628,22 @@ export const VERDICT_FX = {
    The shape, both beats: a low sine dropping fast (the body), a triangle an octave under it (the weight) and one very quiet high tick (the "b" of
    the boosh, 90–110ms, well under the level that would read as a tap). The title line keeps a sub under it and a longer fall, so it is still the
    heavier of the two. Nothing under 300 Hz is short enough to read as a tap; nothing above it lasts long enough to read as a note. */
+/* v29 Section A (57.1, build 57 — quotes L1; Aiden authorises the change): MORE REVERB ON EACH LINE, AND TAP TO BEGIN GETS ITS OWN SOUND.
+   THE REVERB. There is no convolver in this app and there is not going to be one — every sound is tone() and nothing else — so a reverb here is
+   what a reverb IS: the same impact again, later, quieter and darker. Each beat now carries three TAIL events after its impact, at +90 / +220 /
+   +360ms, each about half the level of the one before and each lowpassed further down, which is a room rather than an effect. The IMPACT itself is
+   untouched, so item 1's "the moment it is fired IS the moment it is heard" still holds: every event at 0s still opens inside 5ms.
+   TAP TO BEGIN is `begin`, and it is HIGHER THAN THE TITLE HITS by design — Aiden's own instruction. The other three fall from 210–260 Hz into the
+   floor; this one is a bell at G5 with the octave over it and a mid body under it, long enough not to read as a tap, with the same three-tail room
+   on it. It is the fourth beat and the one instruction on the screen, so it is the one that rings rather than thuds. All (guess). */
 export const TITLE_FX = {
-  line: [[0, 210, 58, 250, 'sine', .055, 2, 900], [0, 120, 42, 380, 'triangle', .04, 3, 480], [0, 640, 210, 90, 'sine', .012, 1, 2200]],
+  line: [[0, 210, 58, 250, 'sine', .055, 2, 900], [0, 120, 42, 380, 'triangle', .04, 3, 480], [0, 640, 210, 90, 'sine', .012, 1, 2200],
+    [.09, 210, 58, 300, 'sine', .019, 6, 620], [.22, 210, 58, 380, 'sine', .0095, 9, 420], [.36, 210, 58, 460, 'sine', .005, 13, 300]],
   title: [[0, 260, 46, 420, 'sine', .075, 2, 1000], [0, 150, 34, 620, 'triangle', .055, 3, 460], [0, 74, 30, 900, 'sine', .045, 4],
-    [0, 880, 250, 110, 'sine', .016, 1, 2600]],
+    [0, 880, 250, 110, 'sine', .016, 1, 2600],
+    [.09, 260, 46, 480, 'sine', .026, 6, 700], [.22, 260, 46, 560, 'sine', .013, 9, 480], [.36, 150, 34, 680, 'triangle', .007, 13, 340]],
+  begin: [[0, 784, 784, 520, 'triangle', .03, 3, 3200], [0, 1174.7, 1174.7, 700, 'sine', .015, 4], [0, 392, 392, 380, 'sine', .022, 2, 2400],
+    [.1, 784, 784, 620, 'triangle', .013, 8, 2400], [.24, 784, 784, 700, 'sine', .0065, 11, 1600], [.38, 1174.7, 1174.7, 800, 'sine', .0032, 15, 1200]],
 };
 
 /* MAP_FX (item 2, and item 11's nodes) — ONE SOFT SOUND PER GAME, so the map's first open previews what each game sounds like as its tile

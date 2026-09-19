@@ -28,13 +28,25 @@ const stepName = st => GAMES[st.g].name + (GAMES[st.g].modes.length > 1 && MODE_
    where a Set is the only Set there is, and useless here, where the whole point is that Mini plays two rounds of it. */
 const stepLen = st => GAMES[st.g].timed ? lenName(st.g, st.s, st.d) : T(st.s === 1 ? GAUNTLET.round : GAUNTLET.rounds, { n: st.s });
 
-/* the roster, numbered by STEP and not by play — Estimate's Grow and Cut share a number because they are one step of the
-   run and one spoke on the web, which is how item 18's own table reads: nine plays across eight steps. */
+/* v29 Section A (57.9, build 57): ONE ROW PER STEP, not one per play. Estimate's Grow and Cut are one step of the run and one
+   spoke on the web, so they are ONE row — `3 Estimate · Grow + Cut`, "2 rounds each" on Mini and "7 + 10 rounds" on Mega — which
+   is what makes the list show EIGHT rows for eight games. Two rows numbered 3 read as a numbering bug (Cowork made that mistake
+   on the phone), and the count in the line above the list is `stepsOf(id).length`, so the copy cannot drift from the run. */
+function stepsOf(id) { const out = [];
+  for (const st of (GAUNTLET_RUNS[id] || [])) { const key = st.web || (st.g + ':' + st.d);
+    const row = out.find(r => r.key === key); if (row) row.steps.push(st); else out.push({ key, steps: [st] }); }
+  return out; }
+// a row's name: the game, then every mode this step plays, joined — one mode reads as it always did
+function rowName(r) { const g = GAMES[r.steps[0].g], ms = r.steps.map(st => MODE_NAME[st.d]).filter(Boolean);
+  if (g.modes.length < 2 || !ms.length) return g.name;
+  return g.name + ' · ' + (ms.length > 1 ? T(GAUNTLET.modePair, { a: ms[0], b: ms[1] }) : ms[0]); }
+// and its length: the same count twice is "N rounds each", two different counts are "A + B rounds"
+function rowLen(r) { if (r.steps.length < 2) return stepLen(r.steps[0]);
+  const a = r.steps[0].s, b = r.steps[1].s;
+  return a === b ? T(GAUNTLET.roundsEach, { n: a }) : T(GAUNTLET.roundsPair, { a, b }); }
 function rosterHtml(id) {
-  const steps = GAUNTLET_RUNS[id] || [], seen = [];
-  const rows = steps.map(st => { const key = st.web || (st.g + ':' + st.d);
-    let n = seen.indexOf(key); if (n < 0) { seen.push(key); n = seen.length - 1; }
-    return `<li><b>${n + 1}</b><span>${esc(stepName(st))}</span><i>${esc(stepLen(st))}</i></li>`; }).join('');
+  const rows = stepsOf(id).map((r, i) =>
+    `<li><b>${i + 1}</b><span>${esc(rowName(r))}</span><i>${esc(rowLen(r))}</i></li>`).join('');
   return `<ol class="gtlist">${rows}</ol>`;
 }
 
@@ -76,18 +88,22 @@ function boardHtml(id) {
     + `</ol></div>`;
 }
 
+/* 57.9: NOTHING UNDER THE LIST. "ONE WAY THROUGH — QUIT AND THE NEXT ATTEMPT STARTS AT GAME ONE" is gone from both screens
+   (GAUNTLET.oneWay is retired with it); what the run does on a quit is in the line above the list and in the run itself. */
 function briefHtml(id) {
   return `<div class="gtbrief">${rosterHtml(id)}`
-    + `<div class="gthint">${esc(GAUNTLET.oneWay)}</div>`
-    + `<button class="item big" data-act="gaunt-go" data-gid="${esc(id)}">${esc(GAUNTLET.go)}</button>`
+    + `<button class="item big gtgo" data-act="gaunt-go" data-gid="${esc(id)}">${esc(GAUNTLET.go)}</button>`
     + boardHtml(id) + `</div>`;
 }
 
 let cur = 'g1';
 register('s-gauntlet', { onShow({ id, done } = {}) {
   if (id) cur = id; const g = cur;
+  /* 57.9: `data-g` is how the stylesheet knows WHICH Gauntlet is on screen — the scary face and the deep red go on the title
+     and the button, and Mega is dressed a step further than Mini. Nothing about the look is decided here. */
+  $('#s-gauntlet').dataset.g = g;
   $('#gt-title').textContent = GAUNTLET.name[g] || '';
-  $('#gt-soon').textContent = (GAUNTLET.intro && GAUNTLET.intro[g]) || '';
+  $('#gt-soon').textContent = T((GAUNTLET.intro && GAUNTLET.intro[g]) || '', { n: stepsOf(g).length });
   $('#gt-body').innerHTML = done ? resultHtml(g, done) : briefHtml(g);
   // item 8 (build 52): arriving here is opening the Gauntlet, and that is what opens its message slot
   if (g && !(prefs.gauntSeen || {})[g]) { prefs.gauntSeen = Object.assign({}, prefs.gauntSeen, { [g]: 1 }); save(); }

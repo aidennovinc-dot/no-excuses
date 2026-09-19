@@ -105,6 +105,8 @@ define({
   'dev-seg'(){ show('s-key',{advance:firstKey(),from:'s-testing'}); return 'pick'; },
   // v24 (C.5, build 43): one per key — each key's earn moment is its own now
   'dev-whole'(b){ show('s-key',{whole:1,tier:+(b.dataset.tier||0),from:'s-testing'}); return 'pick'; },
+  // v29 Section A (57.6, build 57): and one per key for its CREATION intro, which is otherwise a once-per-profile moment. Nothing stored
+  'dev-keyintro'(b){ show('s-key',{intro:1,tier:+(b.dataset.tier||0),from:'s-testing'}); return 'pick'; },
   // v23 (L.6, build 41, S5): "replay chest opening" — the chest's CEREMONY on the key screen, then its spill on the map, nothing stored
   'dev-chest'(b){ show('s-key',{ceremony:b.dataset.chest,from:'s-testing'}); return 'pick'; },
 });

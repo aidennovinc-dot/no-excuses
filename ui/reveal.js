@@ -35,7 +35,7 @@
    with a small pop as it leaves and the "an unlock lands" sound as it lands — both read off that reward's own animation, never a second list of
    times. The chest's name and a key chest's count-up wait for the last one to land, and "tap to continue" waits for both. The card is placed BELOW
    the row, clear of the chest; if the phone is too short for it, the chest and its rewards lift up by exactly what the card needs. */
-import { CONFETTI, GIFT_LOOK, REVEAL } from "../config/chests.js";
+import { CHEER_LOOK, CONFETTI, GIFT_LOOK, REVEAL } from "../config/chests.js";
 import { CARD, KEY } from "../config/copy.js";
 import { Music, Snd } from "../audio.js";
 import { esc } from "../core.js";
@@ -57,15 +57,22 @@ const giftHtml = (gifts, chest) => { const L = GIFT_LOOK[chest] || GIFT_LOOK.gam
    it is the build-52 player powered off (msgPreview in ui/chest.js), a framed picture with a play mark and the clip's own title under it, which is
    the same thing the Messages list shows — Aiden did not know the old line was tappable. And the confetti (item 17) is thrown on the title's beat,
    in the chest's own colour and in the game's own shapes, escalating with the chest. */
+/* v29 Section A (57.3, build 57): A LOT OF IT, ACROSS THE WHOLE SCREEN. It was thrown from inside the card, so `spread` was a fraction of a 360px
+   box and the pieces fell 190px. It hangs on the HOST now — the full-screen reveal element, which 57.4 clips at the top safe area — so `spread` is
+   a percentage of the SCREEN and every piece falls past the bottom of it. `white` is how many in ten are drawn white instead of the chest's colour
+   (57.3's "the chest's colour plus white"); the pieces are spread evenly with a sway and a stagger, so a hundred of them do not read as a curtain. */
 function confettiHtml(chest) { const C = CONFETTI[chest]; if (!C) return '';
+  const w = Math.max(0, Math.min(10, C.white || 0));
   return `<span class="rconf" aria-hidden="true" style="--cf-ms:${C.ms}ms;--cf-spin:${C.spin}deg;--cf-sz:${C.size}px">`
-    + Array.from({ length: C.n }, (_, i) => { const x = C.n < 2 ? 50 : 50 + (i / (C.n - 1) - .5) * C.spread;
-      return `<i class="cf ${C.shape}" style="--x:${x.toFixed(1)}%;--i:${i};--d:${(i % 5) * 70}ms;--sw:${(i % 3) - 1}"></i>`; }).join('') + '</span>'; }
+    + Array.from({ length: C.n }, (_, i) => { const x = 50 + ((i + .5) / C.n - .5) * C.spread;
+      return `<i class="cf ${C.shape}${i % 10 < w ? ' w' : ''}" style="--x:${x.toFixed(1)}%;--i:${i};--d:${(i % 9) * 60}ms;--sw:${(i % 5) - 2}"></i>`; }).join('') + '</span>'; }
+// 57.3: the word lands one letter at a time, so every letter carries its own index. A space is drawn and never animated
+const wordHtml = t => String(t || '').split('').map((ch, i) =>
+  ch === ' ' ? '<span class="clsp"> </span>' : `<span class="cl" style="--l:${i}">${esc(ch)}</span>`).join('');
 function cardHtml(c) { if (!c) return '';
   let i = 0; const at = () => `style="--ci:${i++}"`;
   return `<div class="rcard" style="${c.col ? `--rc:${c.col}` : ''}">`
-    + confettiHtml(c.chest)
-    + `<h3 ${at()}>${esc(c.title || '')}</h3>`
+    + `<h3 class="rtitle" ${at()}>${wordHtml(c.title || '')}<i class="cshine" aria-hidden="true"></i></h3>`
     + (c.you ? `<p class="ryou" ${at()}>${esc(c.you)}</p>` : '')
     + (c.next ? `<p class="rnext" ${at()}>${esc(c.next)}</p>` : '')
     + (c.msg ? `<button class="rmsg" data-act="reveal-msg" data-msg="${esc(c.msg)}" ${at()}>${msgPreview(c.msgObj || null) || `<span class="mprev"><span class="mpframe"><span class="mppic"><i class="mpplay"></i></span></span><b class="mptitle">${esc(CARD.msg)}</b></span>`}</button>` : '')
@@ -170,14 +177,33 @@ function tap() { if (!cur) return false;
   wrap.innerHTML = cardHtml(c.card);
   /* v26 (item 8): LOWER, CLEAR OF THE CHEST. The card starts under the row of rewards; on a phone too short to hold it there, the chest and its rewards
      lift by exactly what the card needs, and never past the top of the chest */
-  if (row && c.anchor) { const pad = parseFloat(getComputedStyle(c.host).paddingBottom) || 18, top = row.offsetTop + row.offsetHeight + REVEAL.cardGap;
+  /* v29 Section A (57.4, build 57): THE LIFT RESPECTS THE TOP SAFE AREA. It was capped at the CHEST'S own top — "never past the top
+     of the chest" — but the Games chest draws its row of seven squares 150 units ABOVE the chest, so a card that asked for a big lift
+     pushed them over the phone's clock and battery (Aiden's 2:59 screenshot). The cap is the stage's topmost SOLID layer instead
+     (`anchor.head`, ui/ceremony.js STAGE_HEAD), held at the host's own padding line — which IS `env(safe-area-inset-top)`. A card that
+     then does not fit scrolls, which it could always do; nothing is drawn under the status bar to make room for it. */
+  if (row && c.anchor) { const cs = getComputedStyle(c.host), pad = parseFloat(cs.paddingBottom) || 18, padTop = parseFloat(cs.paddingTop) || 18;
+    const top = row.offsetTop + row.offsetHeight + REVEAL.cardGap;
     const need = (wrap.firstElementChild || wrap).offsetHeight, room = c.host.clientHeight - pad - top;
-    const lift = Math.round(Math.max(0, Math.min(c.anchor.top - pad, need - room)));
+    const headroom = Math.max(0, (typeof c.anchor.head === 'number' ? c.anchor.head : c.anchor.top) - padTop);
+    const lift = Math.round(Math.max(0, Math.min(headroom, need - room)));
     c.host.style.setProperty('--lift', lift + 'px'); wrap.classList.add('below'); wrap.style.top = (top - lift) + 'px'; }
   c.host.classList.add('card');
-  /* v28 (item 17, build 53): the celebration — confetti (in the markup above) and one sound, different per chest and escalating, on the card's
-     TITLE beat and before the message row, which is where item 17 puts it: "the screen the player taps through to after a chest opens", never on
-     the map and never during the chest animation. A key's reveal is `auto` and has no card, so it never reaches this. */
+  /* v28 (item 17, build 53): the celebration — confetti and one sound, different per chest and escalating, on the card's TITLE beat and before
+     the message row, which is where item 17 puts it: "the screen the player taps through to after a chest opens", never on the map and never
+     during the chest animation. A key's reveal is `auto` and has no card, so it never reaches this.
+     v29 Section A (57.3, build 57): AND THE WORD IS A CELEBRATION. Every number is config/chests.js CHEER_LOOK, written onto the host as custom
+     properties the stylesheet reads, so a re-tune is a number edit there: the beat between letters, how long one takes and how far it overshoots,
+     the shine that crosses the word once the last letter has landed, the slow pulse it settles into, its colour (the chest's own, white for the
+     Games chest, whose grey was the dim Aiden pointed at), its halo and how much bigger than the line under it it is. `--cw-last` is the last
+     letter's index, which is what the shine and the pulse wait for. THE CONFETTI HANGS ON THE HOST, not in the card, so it covers the screen. */
+  { const L = CHEER_LOOK[c.card.chest] || CHEER_LOOK.games, n = String(c.card.title || '').length;
+    const h = c.host.style;
+    h.setProperty('--cwc', L.col); h.setProperty('--cw-glow', L.glow + 'px'); h.setProperty('--cw-step', L.step + 'ms');
+    h.setProperty('--cw-drop', L.drop + 'ms'); h.setProperty('--cw-bounce', String(L.bounce)); h.setProperty('--cw-shine', L.shine + 'ms');
+    h.setProperty('--cw-shineat', L.shineAt + 'ms'); h.setProperty('--cw-pulse', L.pulse + 'ms'); h.setProperty('--cw-size', String(L.size));
+    h.setProperty('--cw-last', String(Math.max(0, n - 1)));
+    if (c.card.chest) c.host.insertAdjacentHTML('beforeend', confettiHtml(c.card.chest)); }
   if (!c.silent && c.card.chest) c.timers.push(setTimeout(() => { if (cur === c) Snd.cheer(c.card.chest); }, REVEAL.cardAt));
   // item 22: Continue is dead for about a second, so a tap left over from the animation cannot close the card unseen. Item 12 puts it last of the
   // staged blocks, so its own wait now starts after the blocks have landed
