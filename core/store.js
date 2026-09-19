@@ -23,6 +23,9 @@ import { GAMES, GC } from "../games/registry.js";
 import { emit } from "./events.js";
 
 const KEY='ne', VERSION=7, RUNS_CAP=600;
+// 58.3: the six Progress tabs, by id. GAUNTLETS is already imported here for `gauntSeen`; CHESTS comes with it
+const PROG_TABS=()=>CHESTS.map(c=>'c-'+c.id).concat(['cul','ach']);
+const cleanTab=v=>{ const t=v==='cus'?'cul':v==='unl'?'c-games':v; const all=PROG_TABS(); return all.includes(t)?t:all[0]; };
 const LEGACY=['ne.prefs','ne.runs','ne.unlock','ne.ach','ne.seen','ne.intro','ne.tileSeen'];
 const read=k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } };
 const write=(k,v)=>{ try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } };
@@ -61,7 +64,11 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
     // v18 (B.31, build 33): three tabs, so the field takes three values — Customise joined Game unlocks and Achievements
     // v23 (L.4, build 39): Customise left again and the middle tab is Customise unlocks, `cul` — a stored 'cus' lands on it
     // v23 (L.10, build 40): `chest1` is retired into `chests` — four chests by name, each opened or not. PROGRESS, so Fresh game clears it
-    chests:cleanChests(p.chests), progTab:p.progTab==='cus'?'cul':['cul','ach'].includes(p.progTab)?p.progTab:'unl',
+    /* v29 Section A (58.3, build 58): SIX TABS — one per chest, then Customise unlocks and Achievements. A chest tab's id is
+       `c-<chest>`, so the shape check is the four chest ids plus the two; a stored `unl` from builds 33-57 lands on the Games
+       chest tab, which is what that tab became, and `cus` still lands on Customise. No ladder step: it is a preference and a
+       value that is not one of the six falls back to the first tab, which is what an absent one does. */
+    chests:cleanChests(p.chests), progTab:cleanTab(p.progTab),
     /* v23 (L.8b / L.11a, build 40): `pro` (B.16 / B.17's step into Pro) and `chest1` / `chest2` / `chest3` are RETIRED — the meter never
        re-bases, so there is no step to store, and the chests are named (`chests`, above; up5 moves the old flags across). `cusSeen` is
        L8's green on the Customise menu row, held until the screen is first opened after the Games chest (v20 D.5). Progress: Fresh

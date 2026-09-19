@@ -72,7 +72,7 @@
 import { Music, Snd } from "../../audio.js";
 import { HIDE_UNRECORDED } from "../../config/build.js";
 import { CHESTS } from "../../config/chests.js";
-import { CARD, GRID, KEY, SHEET } from "../../config/copy.js";
+import { CARD, GAUNTLET, GRID, KEY, SHEET } from "../../config/copy.js";
 import { KEY_NOTE } from "../../config/key-bars.js";
 import { EARN_SKIP_AT, KEY_ART, KEY_EARN, KEY_FINISH, KEY_INTRO } from "../../config/keys.js";
 import { MESSAGES } from "../../config/messages.js";
@@ -244,7 +244,7 @@ function ring() { const tier = keyTiers()[openKey]; const st = keyState(tier.id)
   /* v24 (C.5, build 43): the animated group carries NO transform attribute — the translate sits on a group inside it. A CSS scale or rotate on
      an SVG element that has a transform attribute composes inside it (the build-41 lesson), and the earn moments threw the glyph off the hub */
   const hub = `<g class="kglyph${st.whole ? ' whole' : ''}${kc ? ' tochest' : ''}"><g transform="translate(${CX - 24} ${CY - 24})">${KEY_ART[tier.id].map(d => `<path d="${d}"></path>`).join('')}</g></g>`
-    + (kc ? `<circle class="khubhit" data-act="key-chest" data-chest="${kc.id}" cx="${CX}" cy="${CY}" r="${R_HUB}"></circle>` : '');
+    + (kc ? `<circle class="khubhit" data-act="key-chest" data-chest="${kc.id}"${kc.gaunt ? ` data-gaunt="${kc.gaunt}"` : ''} cx="${CX}" cy="${CY}" r="${R_HUB}"></circle>` : '');
   $('#key-ring').innerHTML = groundOf(style) + outer + `<circle class="khub" cx="${CX}" cy="${CY}" r="${R_HUB}"></circle>` + hub + parts + labelsHtml(st);
   $('#key-ring').classList.toggle('whole', st.whole); placeLabels();
   /* v17 (§A.6.7) / v18 (B.15): "19 of 30 · 74%" stays HERE — the cleared count is what a player acts on and this is the
@@ -311,7 +311,12 @@ function render() { const tiers = keyTiers();
   const st = ring(); panel();
   // L.12: a whole key says what a tap on it does — open its waiting chest (C.1: it asks first), or see what its chest gave
   const kc = keyChest(t.id);
-  $('#key-hint').textContent = st.whole ? (kc && kc.state === 'open' ? KEY.completeOpen : kc && kc.state === 'ready' ? T(KEY.completeReady, { chest: GRID.chest[kc.id] }) : KEY.completeSub) : openGame ? KEY.rowGo : KEY.hint;
+  /* v29 Section A (58.2, build 58): the third state — the key is whole and its chest wants a finished Gauntlet as well.
+     `keyChest` answers `gaunt` for it, and the hint names the Gauntlet rather than promising a chest that will not open. */
+  const kcLine = !st.whole ? null : kc && kc.state === 'open' ? KEY.completeOpen
+    : kc && kc.state === 'ready' ? T(KEY.completeReady, { chest: GRID.chest[kc.id] })
+    : kc && kc.state === 'gaunt' ? T(KEY.completeGaunt, { name: GAUNTLET.name[kc.gaunt] || kc.gaunt }) : KEY.completeSub;
+  $('#key-hint').textContent = st.whole ? kcLine : openGame ? KEY.rowGo : KEY.hint;
   /* a real config mismatch outranks Testing's in-memory fill — one is a fault, the other a dev switch (S5).
      v25 (item 14, build 45, superseding #428 on this screen): THE RED "N OF THE 30 NUMBERS ON THIS KEY ARE PLACEHOLDERS" LINE IS GONE. This screen
      is written for the player; it covered the requirements under it, and which numbers are placeholders is Aiden's to know, not the player's —
@@ -717,8 +722,11 @@ define({
      v24 (C.1, build 43): when that chest is READY the tap ASKS — and so does a ready chest in the row, and the quiet screen's key */
   /* v26 (item 11, build 48) opened a ready chest straight from the key, with no ask. REVERSED (Aiden's answer to build 48's open questions, built for
      build 49): tapping a whole key — or the quiet screen's key — ASKS again, as C.1 had it. "tap the key to open the Skill chest" still leads to it */
+  /* v29 Section A (58.2, build 58): a whole key whose chest wants a Gauntlet sends the tap to that GAUNTLET's tile, not to a
+     chest that will not open. Everything else is unchanged — a ready chest asks, an open one shows what it gave. */
   'key-chest'(el) { const id = el.dataset.chest; if (chestState(id) === 'ready') { askOpen(id); return 'pick'; }
-    if (keyWait) return undefined; show('s-pick', { chest: id }); return 'click'; },
+    if (keyWait) return undefined;
+    show('s-pick', el.dataset.gaunt ? { gaunt: el.dataset.gaunt } : { chest: id }); return 'click'; },
   'key-ask-yes'(el) { return openNow(el.dataset.chest) ? 'click' : (askClose(), undefined); },
   'key-ask-no'() { askClose(); return 'click'; },
   /* 5.2: go and try this one. A locked mode or length hands over to the lock box — the same event the pick sheet and the

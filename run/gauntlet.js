@@ -11,7 +11,7 @@
    THE SCORE is in config/gauntlets.js's own comment: each step as a percentage of its reference bar, the spokes averaged,
    uncapped. Everything a screen needs is on `gaunt:done`, so no screen has to know any of this (A4). */
 
-import { GAUNTLET_RUNS, GAUNTLET_SCORE, GAUNTLET_STEP } from "../config/gauntlets.js";
+import { GAUNTLET_BANDS, GAUNTLET_BAND_OVERRIDE, GAUNTLET_RUNS, GAUNTLET_SCORE, GAUNTLET_STEP } from "../config/gauntlets.js";
 import { VERDICTS, VERDICT_TIERS } from "../config/verdicts.js";
 import { emit, on } from "../core/events.js";
 import { VS, sel } from "../core/state.js";
@@ -67,11 +67,20 @@ function gauntVerdict(pct) {
   return { tier: t.id, name: t.name, col: t.col, line: lines.length ? lines[Math.floor(Math.random() * lines.length)] : '' };
 }
 
+/* v29 Section A (58.1, build 58): THE STEP THE ENGINE SEES CARRIES ITS BAND. The shared table plus this Gauntlet's own
+   override (config/gauntlets.js), resolved here and handed down on `ctx.gaunt.band` — so an engine asks its quantity by
+   name and never learns which Gauntlet it is in, and the two tables are put together in one place rather than in six.
+   The step object the run sees is a COPY: GAUNTLET_RUNS is config and stays exactly as written (A2). */
+const bandFor = (id, st) => Object.assign({}, GAUNTLET_BANDS[st.g + ':' + st.d] || null,
+  ((GAUNTLET_BAND_OVERRIDE[id] || {})[st.g + ':' + st.d]) || null);
+const stepOf = (id, st) => { const b = bandFor(id, st);
+  return Object.assign({}, st, { id, band: Object.keys(b).length ? b : null }); };
+
 function playStep() {
-  const st = G.steps[G.i];
+  const st = G.steps[G.i], run = stepOf(G.id, st);
   VS.reset(); sel.game = st.g; sel.diff = st.d; sel.secs = st.s; sel.vs = 0; sel.practice = 0; sel.opens = 3;
-  setGauntStep(st);
-  emit('gaunt:at', { id: G.id, i: G.i, n: G.steps.length, step: st });
+  setGauntStep(run);
+  emit('gaunt:at', { id: G.id, i: G.i, n: G.steps.length, step: run });
   start();
 }
 
@@ -108,4 +117,4 @@ on('run:abort', () => { if (!G) return; const id = G.id; G = null; setGauntStep(
 const gauntOn = () => !!G;
 const gauntBoard = id => (Array.isArray(store.gaunt) ? store.gaunt : []).filter(r => r && r.id === id).slice().sort((a, b) => b.score - a.score);
 
-export { gauntBoard, gauntOn, gauntVerdict, scoreOf, startGauntlet, stepPct, webOf };
+export { bandFor, gauntBoard, gauntOn, gauntVerdict, scoreOf, startGauntlet, stepPct, webOf };

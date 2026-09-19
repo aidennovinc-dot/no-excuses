@@ -10,6 +10,7 @@ import * as hud from "../_shared/hud.js";
 import { genRect, rnd, roundEngine } from "../_shared/round.js";
 import { roundShow, tierWord } from "../_shared/tier.js";
 import { makeTwo } from "../_shared/two.js";
+import { bandPick, gauntBand, gauntDealt } from "../_shared/deal.js";
 /* Timing — Stopwatch: a clock counts up and fades at 1.5s, tap on the target. Hidden: a ball rolls behind a wall, tap when it is at the marker. Both Sets are a TOTAL since build 31 (B.2), and Hidden is scored in milliseconds (B.4) */
 const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, ball:null, targets:[], out:false, tot:0, asked:0, stopAt:0, ranOut:0, two:{on:false}, held:0,
   hid(){ return this.ctx.mode==='hidden'; },
@@ -44,9 +45,13 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
   deal(n){ const D=this.DEAL[this.hid()?'hidden':'stopwatch'], mid=D.mid, sp=D.sp; if(n<1) return [];
     /* v29 (item 18, build 56): a Gauntlet step may name its own WINDOW for the target — Mini's Stopwatch is "1 round, 5-6
        seconds", read as the window the round's target is drawn from rather than a fixed 5.0 (Aiden's own words). The
-       exact-mean deal below is what a Set is built on and is untouched; this only ever fires inside a Gauntlet. */
-    const gw=this.ctx&&this.ctx.gaunt&&this.ctx.gaunt.target;
-    if(gw&&!this.hid()) return Array.from({length:n},()=>Math.round((gw[0]+Math.random()*(gw[1]-gw[0]))*100)/100);
+       exact-mean deal below is what a Set is built on and is untouched; this only ever fires inside a Gauntlet.
+       v29 Section A (58.1, build 58): HIDDEN TOO, and the window comes off the band table rather than off the step. The
+       exact-mean deal spreads every target by up to 2.6s on Stopwatch and .65s on Hidden about its mid, which is the
+       game being a game and is far too wide for a run scored as one number. A Gauntlet is always a Set, so `behind` and
+       `watch` read these targets with their Streak ramps switched off and the band is the whole of what varies. */
+    const gw=gauntBand(this.ctx,'target');
+    if(gw) return Array.from({length:n},()=>gauntDealt(this.ctx,'target',Math.round(bandPick(gw)*100)/100));
     const off=Array.from({length:n},()=>(rnd(2)?1:-1)*(sp[0]+Math.random()*sp[1]));
     const m=off.reduce((a,b)=>a+b,0)/n;
     const t=off.map(d=>Math.round((mid+d-m)*100)/100);

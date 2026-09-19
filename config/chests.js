@@ -10,11 +10,18 @@
    whose bars it reveals: the Games chest reveals key 1 (and banks the bars a saved best already beats, silently — G.4 extended one
    chest earlier), the Skill chest Pro, the Pro chest Author (build 38). `screen` is the key screen tab a tap on the chest lands on.
    What each one GIVES, in words, is CHEST_WORDS in config/copy.js (L.11c). The sprites, idle states and ceremonies are build 41. */
+/* v29 Section A (58.2, build 58, quoting L6 and reversing build 56 SS3's "a Gauntlet advances nothing" — Aiden authorised
+   both on 2026-09-19): `gaunt` is a SECOND requirement on the chest, beside the key `needs` already names. Gauntlet Mini
+   is required for the Pro chest and Gauntlet Mega for the Author chest, which is the chain the GAUNTLETS list below
+   already makes possible: the Skill chest gives Mini and the Pro chest gives Mega, so each Gauntlet is always in hand a
+   whole chest before it is asked for. THE CHEST IS GATED, NOT THE KEY (Cowork's reading): a key is still the game
+   targets and its count does not move, so nothing about `needs`, the bars, the meter or the key screens' figures changes.
+   "Finished" is one row in the `gaunt` store — no score threshold; the score is on the tile, not in the gate. */
 export const CHESTS = [
   { id: 'games', needs: 'modes', opens: 'clear', screen: 0 },
   { id: 'key', needs: 'clear', opens: 'pro', screen: 0 },
-  { id: 'pro', needs: 'pro', opens: 'author', screen: 1 },
-  { id: 'thorns', needs: 'author', opens: null, screen: 2 },
+  { id: 'pro', needs: 'pro', gaunt: 'g1', opens: 'author', screen: 1 },
+  { id: 'thorns', needs: 'author', gaunt: 'g2', opens: null, screen: 2 },
 ];
 
 /* THE METER (v23 §L.8a / §L.10b): one number, 0–400, never reset. Band 1 is the modes band (modes unlocked ÷ modes total); bands

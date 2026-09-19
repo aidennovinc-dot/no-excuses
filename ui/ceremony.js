@@ -12,7 +12,7 @@
 
    frame() draws the same stage paused at a fraction of its length and plays nothing — the review catalogue's frames (L.10d / L.11e). It
    lives here so the catalogue cannot photograph a ceremony the app does not play. */
-import { CEREMONY, CEREMONY_FX, CHESTS, COVER_LOOK } from "../config/chests.js";
+import { CEREMONY, CEREMONY_FX, CHESTS, COVER_LOOK, GAUNTLETS, SYMBOLS } from "../config/chests.js";
 import { GRID, KEY } from "../config/copy.js";
 import { KEY_ART } from "../config/keys.js";
 import { Snd } from "../audio.js";
@@ -72,6 +72,13 @@ function behind(id) {
     + '<polygon class="cbeam" points="122,300 178,300 270,0 30,0"></polygon>'; }
 // which key opens a chest — the tier whose glyph and colour its ceremony is drawn in (item 13). The Games chest has none
 const tierOfChest = id => { const c = CHESTS.find(x => x.id === id); return c && c.needs !== 'modes' ? c.needs : null; };
+/* 58.2: the glove that opens this chest, or nothing. It sits low and to the left of the key glyph so it reads as a hand holding it,
+   and it is stroked in the chest's own `--cc` with the key, because the two are one object for the length of the turn. */
+function handHtml(id) { const c = CHESTS.find(x => x.id === id);
+  if (!c || !c.gaunt) return '';
+  const g = GAUNTLETS.find(x => x.id === c.gaunt), sym = g && SYMBOLS[g.sym];
+  if (!sym || !sym.p) return '';
+  return `<g class="chand" transform="translate(101 166) scale(2)">${sym.p.map(d => `<path d="${d}"></path>`).join('')}</g>`; }
 function inFront(id) { const out = [];
   // Games · uncross: the seven locked tiles, each struck through, the strikes wiping off one by one; path: the line down to the chest
   if (id === 'games') { for (let i = 0; i < 7; i++) { const x = 150 + (i - 3) * 34 - 11;
@@ -85,7 +92,13 @@ function inFront(id) { const out = [];
     for (let i = 0; i < n; i++) { const a = i * (360 / n) * Math.PI / 180, c = Math.cos(a), s = Math.sin(a), far = 170 + (i % 4) * 22;
       bars.push(`<line class="cbar" x1="${f1(150 + c * 30)}" y1="${f1(170 + s * 30)}" x2="${f1(150 + c * 40)}" y2="${f1(170 + s * 40)}" style="--i:${i};--dx:${f1(c * far)}px;--dy:${f1(s * far)}px"></line>`); }
     // the animated group carries NO transform attribute — a CSS translate on an element that has one composes inside it, and the key missed the lock
-    out.push(`<g class="cbarsg">${bars.join('')}</g>`, `<g class="ckeyg"><g transform="translate(116 136) scale(1.4)">${(KEY_ART[tier] || KEY_ART.clear).map(d => `<path d="${d}"></path>`).join('')}</g></g>`); }
+    /* v29 Section A (58.2, build 58): THE GAUNTLET HAND CARRIES THE KEY IN AND TURNS IT, on the two chests that now require a
+       finished Gauntlet (`gaunt` on the chest, config/chests.js). It is the SAME glove the map tile and the chest word draw —
+       SYMBOLS `gauntlet` / `gauntlet2` — inside the `ckeyg` group, so it travels and turns with the key on one animation rather
+       than needing a clock of its own. The player sees what the Gauntlet was for at the moment the chest opens. A chest with no
+       Gauntlet requirement (Games, Skill) draws nothing extra and opens exactly as it did. */
+    out.push(`<g class="cbarsg">${bars.join('')}</g>`,
+      `<g class="ckeyg">${handHtml(id)}<g transform="translate(116 136) scale(1.4)">${(KEY_ART[tier] || KEY_ART.clear).map(d => `<path d="${d}"></path>`).join('')}</g></g>`); }
   /* v29 (item 5, build 54): AUTHOR · the spikes grow in from both edges on `spikes` and pull back on `recede`; the split is one white line down
      the middle, opening on `split`. Build 52's own paths and counts, restored from git — they are in front of the chest because they frame it. */
   if (id === 'thorns') { for (let i = 0; i < 6; i++) { const y = 18 + i * 84;

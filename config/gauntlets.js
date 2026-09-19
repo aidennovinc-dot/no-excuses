@@ -45,10 +45,11 @@ const MINI = [
   { g: 'hold', d: 'cut', s: 2, ref: 'hold:cut:10', web: 'hold' },
   { g: 'reaction', d: 'flash', s: 2, ref: 'reaction:flash:5', web: 'reaction:flash' },
   { g: 'reaction', d: 'nogo', s: 2, ref: 'reaction:nogo:5', web: 'reaction:nogo' },
-  /* "5-6 seconds" is the WINDOW each round's target is drawn from, not a fixed 5.0 (item 18).
-     v29 Section A (57.10, build 57): TWO ROUNDS, not one — "Gauntlet Mini · Stopwatch is two rounds". The window is
-     untouched: each of the two targets is still drawn from 5-6s, and `tot` now scales the bar by 2/5 rather than 1/5. */
-  { g: 'timing', d: 'stopwatch', s: 2, ref: 'timing:stopwatch:5', tot: 1, web: 'timing:stopwatch', target: [5, 6] },
+  /* v29 Section A (57.10, build 57): TWO ROUNDS, not one — "Gauntlet Mini · Stopwatch is two rounds". The window is
+     untouched: each of the two targets is still drawn from 5-6s, and `tot` now scales the bar by 2/5 rather than 1/5.
+     v29 Section A (58.1, build 58): the 5-6s window MOVED to GAUNTLET_BANDS below — it was the first band and it is now
+     one row of the table with the other six, so no step carries a band of its own. Nothing about it changed. */
+  { g: 'timing', d: 'stopwatch', s: 2, ref: 'timing:stopwatch:5', tot: 1, web: 'timing:stopwatch' },
   { g: 'timing', d: 'hidden', s: 2, ref: 'timing:hidden:10', tot: 1, web: 'timing:hidden' },
   { g: 'spot', d: 'find', s: 2, ref: 'spot:find:10', tot: 1, web: 'spot:find' },
 ];
@@ -66,6 +67,56 @@ const MEGA = [
 ];
 
 export const GAUNTLET_RUNS = { g1: MINI, g2: MEGA };
+
+/* ---------- v29 Section A (58.1, build 58): A GAUNTLET DEALS EVENLY ----------
+   Aiden, of Estimate · Grow: "the gauntlet should be really standardised… a very tight range as to what the games can offer…
+   so it's always relatively even across different gauntlet runs." A Gauntlet is ONE number against a bar, so a run that
+   happens to deal a 16vmin target and a run that deals a 55vmin one are not the same test, and the score cannot tell them
+   apart. Every step that deals a RANDOM QUANTITY draws it from a tight band here instead of from its game's own spread.
+
+   A BAND, NOT A FIXED RUN. Cowork's reading, and the reason: a fixed deal can be memorised, which rewards remembering the
+   run instead of playing it. The band is narrow enough that one run is about as hard as the next and wide enough that no
+   two are the same. This is what Stopwatch's 5-6s window already did (item 18); 58.1 is that extended to every step.
+
+   IT ONLY EVER FIRES INSIDE A GAUNTLET. An ordinary Set or Streak is untouched — every game's own spread, ramp, dealer
+   and tier factor is exactly what it was. The engines read `ctx.gaunt.band`, which run/gauntlet.js fills from here.
+
+   THE UNIT IS NAMED PER QUANTITY, because they are not all absolute:
+     size    Grow's target, as a FRACTION of the range this shape may be dealt at (0 = the smallest it may be, 1 = TMAX).
+             Fraction and not vmin, because the floor moves with the shape's fill — it is the same unit as the tier band
+             it replaces (`DEALS['hold:grow'].tiers`, which spans 0-1 across easy/medium/hard).
+     share   Cut's percentage to cut off, SNAPPED to the nearest 5 inside the band, because every share the game has ever
+             dealt is a multiple of 5 and a 33% ask would read as a different game.
+     wait    the milliseconds before the signal — Flash's blank screen, Go / No-go's wait period before each beat.
+     target  seconds: Stopwatch's target, Hidden's time behind the wall.
+     crowd   Find's field, as a MULTIPLIER on the round's own ramp. The ramp is a function of the round number, so it is
+             already identical run to run; what varies is the dealer's tier factor (.85 / 1 / 1.15), and that is what the
+             band replaces. The field still grows across a Mega run, which is the game.
+   Quick Tap · Two and Dots · Blind deal no quantity at all — a tap target is a tap target — so neither has a row.
+   Mini and Mega share every band but Stopwatch's, which keeps Aiden's own 5-6s on Mini and sits around its own mid on
+   Mega, where the step is a full five-round Set scored against the five-round bar. */
+export const GAUNTLET_BANDS = {
+  'hold:grow': { size: [0.40, 0.60] },
+  'hold:cut': { share: [25, 40] },
+  'reaction:flash': { wait: [1600, 2400] },
+  'reaction:nogo': { wait: [900, 1300] },
+  'timing:stopwatch': { target: [5, 6] },
+  'timing:hidden': { target: [1.05, 1.35] },
+  'spot:find': { crowd: [0.95, 1.05] },
+};
+/* the one band that is not the same on both: Mega's Stopwatch step is a full five-round Set scored against the five-round
+   bar, so it sits around that bar's own mid rather than on Mini's 5-6s. A Gauntlet id here overrides the table above for
+   that step and nothing else — run/gauntlet.js is where the two are put together. */
+export const GAUNTLET_BAND_OVERRIDE = { g2: { 'timing:stopwatch': { target: [6.4, 7.6] } } };
+/* what each quantity IS, for the outcome's table and the catalogue's Gauntlet scoring section — so the unit is written
+   once, beside the numbers, rather than in two documents that can drift apart. `[what it is, the unit, the note]`. */
+export const BAND_WORDS = {
+  size: ['Target size', '', 'as a fraction of the range this shape may be dealt at'],
+  share: ['Share to cut off', '%', 'snapped to the nearest 5'],
+  wait: ['Wait before the signal', 'ms', ''],
+  target: ['Target', 's', ''],
+  crowd: ['The field', '×', "a multiplier on the round's own ramp"],
+};
 
 /* `tier` is the switch. `perfect` is what a lower-is-better step scores when the player's total is 0 — a real result on
    Estimate and Find, and a division by nothing — stated rather than left as Infinity. `cap` caps ONE step's contribution

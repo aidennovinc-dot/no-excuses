@@ -169,7 +169,7 @@ of it, statically and by quitting a run mid-flight and reading storage back.
   v5's `up5` maps `chest1` → Key and Games (G.3 already made chest 1 wait for every mode), `chest2` → Pro, `chest3` → Thorns.
 - **Each tier opens with the chest that reveals it** (`CHESTS[].opens`): key 1 with Games, Pro with Key, Author with Pro — `tierOpen()` is
   that one line. **Key 1 is quiet before the Games chest (L.10a, §M.2):** `checkKey` banks nothing on a closed tier, so there is no
-  interlude; no tile outline fill; no key-1 achievement set; the Game unlocks tab's key row says "open the Games chest"; and the key
+  interlude; no tile outline fill; no key-1 achievement set; the Games chest tab's key row says "open the Games chest" (that tab was called Game unlocks until build 58); and the key
   screen shows only the modes count, the meter and the four chests. Opening the Games chest credits already-beaten key-1 bars silently —
   `retroBank(['clear'])`, G.4 one chest earlier. `retroArrived()` still leaves key 1 alone at boot: its column is Aiden's numbers, never a
   placeholder that arrives. A key-1 clear banked before build 40 stays banked and shows from the Games chest on.
@@ -241,7 +241,7 @@ of it, statically and by quitting a run mid-flight and reading storage back.
   `key_<tier>_all` achievement, so Testing's per-key switch opens it at once. `ITEMS.bg` rows carry `key` instead of `by`; Customise's lock line
   names that key's whole-key row, and `openKeys()` does not seed them, so each is first-seen green the day it opens. Thorn's solid black
   `#key-main` is gone.
-- **KEYS WAITS FOR THE GAMES CHEST (A.1)** — the menu row, the meter line under the menu and the Game unlocks tab's key row all refuse the tap
+- **KEYS WAITS FOR THE GAMES CHEST (A.1)** — the menu row, the meter line under the menu and the Games chest tab's key row all refuse the tap
   with `TOAST.keysLocked` until `chestOpen('games')`. The row is crossed out with "open the Games chest" under it and wipes its strike on the
   first draw after. It stays green until the key screen is first seen after the chest (`prefs.keysSeen`; no ladder step, an absent field
   takes `keySeen`; the Games chest's Testing reset clears it). The quiet key screen is still what Testing and the router reach.
@@ -310,3 +310,43 @@ of it, statically and by quitting a run mid-flight and reading storage back.
   front of the four turn steps, with the chest drawn from `uncover.at + 500ms`. `STAGE_HEAD` is new beside `CHEST_BOX`: the topmost SOLID layer each
   ceremony draws, which `anchor()` answers as `head` and `ui/reveal.js` caps the congratulations card's lift at (57.4).
 - **The Games chest's cracks are derived from the chest's STATE (57.2), not from games finished** — `crackCount()` is `chestOpen('games') ? 7 : 0`.
+
+## Build 58 (v29 Section A items 58.2 / 58.3, 2026-09-19): a Gauntlet opens the next chest, and Progress is one tab per chest
+
+Both quote **L6**, and both were authorised by Aiden on 2026-09-19. 58.2 also REVERSES build 56 §3's *"a Gauntlet advances
+nothing"* — Cowork's call where item 18 was silent, L10's principle applied to a thing that is not a mode.
+
+### 58.2 — a finished Gauntlet is a second requirement on the CHEST
+
+- **`gaunt` on a `CHESTS` row** (`config/chests.js`) names the Gauntlet that chest also needs. `pro` wants `g1`, `thorns`
+  wants `g2`. **Confirmed from config rather than assumed:** `GAUNTLETS` gives `g1` out of the Skill chest and `g2` out of
+  the Pro chest, so each Gauntlet is in hand a whole chest before the chest that asks for it — the chain cannot strand.
+- **The chest is gated, never the key.** `chestMet(id)` is `chestKeyMet(c) && gauntDone(c.gaunt)`. `keyState`, the bars,
+  `bandPct`, the meter and every figure on a key screen are byte for byte what they were: no key's count moved.
+- **"Finished" is one row in `gaunt`**, no score threshold. `run/gauntlet.js` writes a row only from `finishGauntlet()`, so
+  a quit never counts and nothing here has to test for one. `gauntDone` honours the two dev escapes, like every gate (#411).
+- **Nobody is locked back out.** `chestState()` answers `'open'` off the store before it asks `chestMet`, so a chest already
+  opened stays open and the tier it revealed stays revealed — whatever the Gauntlet board says. A chest that was READY and
+  not yet opened becomes LOCKED with its Gauntlet named, which is the change and is what it should say.
+- **`chestNeeds(id)`** is the new read every surface makes: one row per requirement with its own `done`. The map tile lists
+  both and ticks each (`white-space:pre-line` on its `::after`); the Unlocks screen's chest tab prints the same two rows.
+- **`keyChest(tier)` gains a third state, `gaunt`** — the key is whole, the chest is not ready, and the only thing left is
+  the Gauntlet. The key screen names it (`KEY.completeGaunt`) and the tap goes to that Gauntlet's own map tile, not to a
+  chest that will not open.
+- **`gauntBest(id)`** is the best finished run, for the tile's tick and score.
+- **Testing** (S5): `devGauntDone()` writes a row marked `dev` so it can never be read as a played run; `devNeed` calls it,
+  `devMeterTo` calls it on the walk, and `devBack` removes only `dev` rows with the chest.
+
+### 58.3 — the Unlocks screen is organised by chest
+
+- **Six tabs, built from `CHESTS`**: one per chest in the order they open, then Customise unlocks and Achievements. The four
+  chest names are still spelled once, in `GRID.chest`.
+- **`tabFor(a)` in `ui/screens/progress.js` is the one test** and keeps the partition: `unlocks` → Customise unlocks (L.4c),
+  a `keyAch` row → the chest whose `needs` is its `kt`, everything else → Achievements.
+- **A chest tab is `chestNeeds` at the top, a per-game filter, then the rows.** The Games chest lists the chain and the
+  lengths (the old tab, unchanged); a key chest lists that key's rows grouped by game with the key entire last; a tier its
+  chest has not revealed lists nothing and says so (A.1).
+- **Achievements keeps the extras alone** — the Pro rows and the Secrets — and a **Secret carries no description until it is
+  earned** (58.3, reversing v14 8.5): the progress bar is the only hint.
+- **`prefs.progTab`** takes `c-<chest>` / `cul` / `ach`; `cleanTab` in `core/store.js` lands a stored `unl` on the Games chest
+  and anything unknown on the first tab. No ladder step: it is a preference, and an unknown value already fell back.

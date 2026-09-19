@@ -1,36 +1,45 @@
-/* No Excuses — Progress: Game unlocks · Customise unlocks · Achievements, three tabs on one screen (build 33, v18 §B.31;
-   the middle tab is a LIST since build 39, v23 §L.4, amending B.31 as v21 G.6 asked).
+/* No Excuses — Progress: ONE TAB PER CHEST, then Customise unlocks and Achievements (v29 Section A 58.3, build 58, quoting L6
+   where the unlock table's PRESENTATION moves; the screen itself is build 33, v18 §B.31).
 
-   Build 23 (v15 §2.4) split unlocks from achievements onto two screens, and the reason was right: an UNLOCK opens
-   something you could not play before, an achievement is a mark on a thing you already have. Build 29 (v17 §B.21) made
-   that split two tabs instead of two menu rows. Build 33 brought the Customise screen in as the middle tab; build 39
-   takes it back out (`ui/screens/customise.js`, its own menu row again) and the middle tab becomes what Aiden meant in
-   the first place — "achievements that provided a customisation unlock would have its own subsection just like
-   achievements and just like unlocks" (v23 L.4).
+   WHY IT MOVED. Aiden, on v0.56: "the current achievements make no sense." His 67 of 110 were the 33 Skill-key rows and the
+   34 Pro-key rows — the clearance bars, listed a second time as achievements, under a heading that made them look like
+   extras. They are not extras; they are what a chest needs. So each chest gets a tab that says what THAT chest needs, the
+   key rows live under the chest their key opens, today's Game unlocks content sits under the Games chest, and Achievements
+   keeps only what fits nowhere else — today the five Pro extras and the thirteen Secrets. Its count shrinks to match.
 
-   THE THREE TABS ARE A PARTITION (v23 L.4c). `achTab()` in progress.js is the one test: an ACH row with `unlocks` is on
-   Customise unlocks and nowhere else; every other row and every keyAch() row is on Achievements; Game unlocks is the
-   chain (L6) and holds no achievement at all. The gate asserts the three are disjoint and their union is ACH + keyAch().
-   A row that moved tabs says exactly what it said before — L.1, Aiden's own rewrite of names and lines, is deferred.
+   THE TABS ARE STILL A PARTITION, and it is still ONE test: `tabFor(a)` below. A row with `unlocks` is on Customise unlocks
+   and nowhere else (v23 L.4c, unchanged); a keyAch row goes to the chest whose `needs` is its tier (`kt`); everything else
+   is on Achievements. The gate asserts the six are disjoint and their union is ACH + keyAch(). Nothing about what a row SAYS
+   changed — L.1, Aiden's own rewrite of names and lines, is still deferred.
 
-   A LABEL IS WHITE UNTIL IT IS EARNED AND GREEN ONCE IT IS, ON EVERY TAB — NEVER RED (v23 L.2). The red Aiden saw was
-   `.ach .lock em.u`, a build-8 rule that put an unearned "unlocks …" label in the cue red; v21 G.6 asked for white and
-   green and was never built.
+   ONE HOST FOR FOUR CHEST TABS. They differ in what they list, not in how they are laid out. `#chest-list` takes the `unl`
+   class for the Games chest (whose rows are the chain's own `.urow`s) and `ach` for a key chest (whose rows are achievement
+   rows), because the two rule sets disagree on one selector and a host wearing both would paint a locked achievement's line
+   green. `#chest-need` is the chest's own requirements, ticked, and it does not scroll away.
 
-   L6 is quoted by B.31, because "the Unlocks screen" in that rule is the Game unlocks tab now. Nothing else about it
-   moved: every line on it still comes out of UNLOCKS and lenLock() / lenNeed() in progress.js, exactly as the lock box,
-   the goal line and the Next card do. A tap on a locked row opens the same lock box the pick sheet opens.
+   WHAT IS UNCHANGED, DELIBERATELY. Build 53's three rules hold: NO ENTRY ANIMATION on any list or tab (R3), ONE "N of M
+   unlocked" line per tab, and SECRET below every other tier. The per-game filter stays, one inside each chest tab and the
+   one on Achievements. Customise unlocks is untouched — "Customise is great".
+
+   A SECRET'S DESCRIPTION IS HIDDEN UNTIL IT IS EARNED (58.3). The tier heading says "what earns them is not written down"
+   and every row then wrote it down, in `hint`. The progress bar is the hint now, and the only one.
+
+   L6 is quoted by B.31 and again here, because "the Unlocks screen" in that rule is the Games chest tab now. Every line on
+   it still comes out of UNLOCKS and lenLock() / lenNeed() in progress.js, exactly as the lock box, the goal line and the
+   Next card do. A tap on a locked row opens the same lock box the pick sheet opens.
 
    The screen remembers which tab was last open in `prefs.progTab`; only the tab that is up renders. */
-import { ACH_SCREEN, ITEM_WORD, PROGRESS_SCREEN, TIERS, UNLOCKS_SCREEN } from "../../config/copy.js";
+import { ACH_SCREEN, GRID, GAUNTLET, ITEM_WORD, PROGRESS_SCREEN, TIERS, UNLOCKS_SCREEN } from "../../config/copy.js";
+import { CHESTS } from "../../config/chests.js";
+import { KEYS } from "../../config/keys.js";
 import { MODE_NAME } from "../../config/games.js";
 import { $, $$, T } from "../../core.js";
 import { emit } from "../../core/events.js";
 import { sel } from "../../core/state.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, lenName } from "../../games/registry.js";
-import { Scores, UNLOCKS, achAll, achById, achTab, gameOpen, got, isOpen, lenLock, lenOpen, markSeen, newMark, setPendingAim, unlockHear, unlockHtml, unlockName, unlocked } from "../../progress.js";
-import { chestOpen, keyAch, keyState, tierOpen } from "../../progress/key.js";
+import { Scores, UNLOCKS, achAll, achById, achTab, gameOpen, got, isOpen, lenLock, lenOpen, markSeen, modeCount, newMark, setPendingAim, unlockHear, unlockHtml, unlockName, unlocked } from "../../progress.js";
+import { chestNeeds, chestOpen, keyAch, keyState, tierOpen } from "../../progress/key.js";
 import { Snd } from "../../audio.js";
 import { toast } from "../toast.js";
 import { TOAST } from "../../config/copy.js";
@@ -46,46 +55,61 @@ import { define } from "../actions.js";
 import { chips } from "../chips.js";
 import { register, show } from "../router.js";
 
-// build 39 (v23 L.4b): the middle tab is `cul`, Customise unlocks. A stored 'cus' from builds 33–38 lands on it (core/store.js)
-const TABS = ['unl', 'cul', 'ach'];
-const tabOf = t => TABS.includes(t) ? t : (TABS.includes(prefs.progTab) ? prefs.progTab : 'unl');
+/* ---------- 58.3: the six tabs ----------
+   One per chest, in the order they open (config/chests.js IS that order), then the two that are not a chest. A chest tab's
+   id is `c-<chest>`, so the four chest names are still spelled in exactly one place (GRID.chest) and a fifth chest would
+   add a fifth tab with no code change. A profile that last had `unl` open lands on the Games chest, which is what that tab
+   became; `cus` from builds 33–38 still lands on Customise (core/store.js). */
+const CHEST_TABS = CHESTS.map(c => 'c-' + c.id);
+const TABS = CHEST_TABS.concat(['cul', 'ach']);
+const OLD_TAB = { unl: 'c-games' };
+const tabOf = t => { const want = OLD_TAB[t] || t; if (TABS.includes(want)) return want;
+  const held = OLD_TAB[prefs.progTab] || prefs.progTab; return TABS.includes(held) ? held : TABS[0]; };
+const chestOfTab = t => CHESTS.find(c => 'c-' + c.id === t) || null;
+const tabLabel = t => { const c = chestOfTab(t); return c ? (GRID.chest[c.id] || c.id) : PROGRESS_SCREEN[t]; };
+/* THE ONE TEST — which tab a row lives on, so the six are a partition. A payout goes to Customise unlocks (L.4c); a key row
+   goes to the chest whose `needs` is its tier; everything else is on Achievements. */
+function tabFor(a){ if(!a) return 'ach'; if(achTab(a)==='cul') return 'cul';
+  if(!a.kt) return 'ach'; const c=CHESTS.find(x=>x.needs===a.kt); return c?'c-'+c.id:'ach'; }
+// the tier a chest's rows belong to — null for the Games chest, whose rows are the chain and not a key
+const tierOfChest = c => c && c.needs !== 'modes' ? c.needs : null;
 
-/* ---------- the Game unlocks tab (build 23, v15 §2.4 — unchanged but for where it lives and what it is called) ---------- */
+/* ---------- the Games chest tab (the old Game unlocks tab, build 23 v15 §2.4 — its content unchanged) ---------- */
 const row=(cls,name,need,state,data)=>`<button data-act="unl" class="urow ${cls}"${data}><span>${name}</span><em>${state}</em><small>${need}</small></button>`;
-function renderUnlocks(){
+function gamesHtml(gsel){
   const u=unlocked(); const fresh=[];
   // the chain, in the order it is earned. A row is open when its key is in the store or its game is open from the start
   let open=0, total=0;                         // item 4: what the tab's one count line reports
+  const mine=g=>gsel==='all'||g===gsel;        // 58.3: the per-game filter, now on this tab too
   const chain=UNLOCKS.map(x=>{ const [g,d]=x.key.split(':'); const isO=x.key==='sequence:practice'?!!u[x.key]:isOpen(g,d);
     const nw=isO?newMark('mode:'+g+':'+d,fresh):''; total++; if(isO) open++;
+    if(!mine(g)) return '';
     return row('u'+(isO?' done':' lock')+nw,unlockName(x.key),isO?'':x.need,isO?UNLOCKS_SCREEN.done:UNLOCKS_SCREEN.locked,` data-g="${g}" data-d="${d}"`); }).join('');
   // every length of every mode, from lenLock — the same call the pick sheet's crossed-out rows make
   const lens=[];
   for(const g in GAMES){ if(!gameOpen(g)) continue; for(const d of GAMES[g].modes) for(const s of GC(g,d).lens){ const L=lenLock(g,d,s); if(!L&&GC(g,d).lens.indexOf(s)===0) continue;
     const name=`${GAMES[g].name}${MODE_NAME[d]?' · '+MODE_NAME[d]:''} · ${lenName(g,s,d)}`;
-    total++; if(!L) open++;
+    total++; if(!L) open++; if(!mine(g)) continue;
     lens.push(row('u'+(L?' lock':' done'),name,L?L.need:'',L?UNLOCKS_SCREEN.locked:UNLOCKS_SCREEN.done,` data-g="${g}" data-d="${d}" data-s="${s}"`)); } }
   // v23 (L.10a, build 40): key 1 is quiet until the Games chest — the key row says what opens it, with no count
   const k=keyState(), kq=!tierOpen('clear');
-  $('#unl-list').innerHTML=
-    `<h4>${UNLOCKS_SCREEN.games}</h4>${chain}`+
-    `<h4>${UNLOCKS_SCREEN.lens}</h4>${lens.join('')||''}`+
-    `<h4>${UNLOCKS_SCREEN.keys}</h4>`+
+  const keyRow=gsel!=='all'?'':`<h4>${UNLOCKS_SCREEN.keys}</h4>`+
     // v17 (B.9): the count in the key line is read from the same keyState() the row's own figure comes from — a literal
     // would have gone stale the day Sequence lost 5 keys, which is the day it did
     row('u key'+(!kq&&k.done>=k.total?' done':' lock'),UNLOCKS_SCREEN.keys,kq?PROGRESS_SCREEN.keyLocked:T(UNLOCKS_SCREEN.keyLine,{n:k.total}),kq?UNLOCKS_SCREEN.locked:`${k.done}/${k.total}`,' data-key="1"');
-  /* item 4: the chain rows and the length rows, open against the lot. The key row is not counted — it is a way in to another screen with
-     its own count on it (`19/30`), not a thing this tab unlocks. */
-  tabCount('unl',open,total);
   markSeen(fresh);
+  /* item 4: the chain rows and the length rows, open against the lot. The key row is not counted — it is a way in to another screen with
+     its own count on it (`19/30`), not a thing this tab unlocks. The count is the WHOLE tab, not the filter's slice, because this tab's
+     count is the Games chest's own requirement and a filter must not make the chest look closer than it is. */
+  return { html:`<h4>${UNLOCKS_SCREEN.games}</h4>${chain}`+`<h4>${UNLOCKS_SCREEN.lens}</h4>${lens.join('')||''}`+keyRow, open, total };
 }
 
-/* ---------- one achievement row, for either tab that lists achievements ----------
-   Build 39 lifts this out of renderAch so both tabs build a row's WORDS the same way: L.1 is deferred, so a row that
-   moved tabs must say exactly what it said on build 38. What differs is the headline. On Achievements a row leads with
-   its name, as it always has. On Customise unlocks it leads with what it pays out (v23 L.4d), and the achievement's
-   name and criterion sit under it. `c` carries the earned-row stagger across a whole list. */
-function achRow(a,tab,{g,all,fsGame,fresh,c}){
+/* ---------- one achievement row, for any tab that lists achievements ----------
+   Build 39 lifts this out of renderAch so every tab builds a row's WORDS the same way: L.1 is deferred, so a row that
+   moved tabs must say exactly what it said before. What differs is the headline. On an achievement or a chest tab a row
+   leads with its name, as it always has. On Customise unlocks it leads with what it pays out (v23 L.4d), and the
+   achievement's name and criterion sit under it. */
+function achRow(a,tab,{g,all,fsGame,fresh}){
   const isDone=!!g[a.id], secret=a.tier==='secret'&&!isDone;
   const p=a.progress&&!isDone?Math.min(1,a.progress(all,fsGame)):null;
   // v14 (8.3): the game name leads the title. v14 (8.4): so it is written once — the jump line below repeats it only for
@@ -101,28 +125,76 @@ function achRow(a,tab,{g,all,fsGame,fresh,c}){
   // v14 (8.1): a requirement that is a set of things names the ones still outstanding
   const left=!isDone&&a.left?a.left(all):null;
   const leftTxt=left&&left.length?T(ACH_SCREEN.left,{names:left.join(', ')}):'';
-  // v14 (8.5): a secret row is described. The name stays ???; the hint says what kind of thing earns it, never the number
-  const line=secret?(a.hint||ACH_SCREEN.stretch)+(p!==null?T(ACH_SCREEN.progress,{p:Math.round(p*100)}):'')
-                   :a.how+(a.id==='fullset'?T(ACH_SCREEN.inGame,{game:GAMES[fsGame].name}):'')+leftTxt;
+  /* v29 Section A (58.3, build 58): A SECRET SAYS NOTHING UNTIL IT IS EARNED. v14 (8.5) gave every secret a `hint` describing what
+     kind of thing earns it, and the tier heading above it says "what earns them is not written down" — so the heading and the rows
+     disagreed, thirteen times. The progress bar is the hint now and the only one; `hint` is left in config/achievements.js because
+     an EARNED secret is still described by its `how`, and the day Aiden wants the hints back it is this line that changes. */
+  const line=secret?'':a.how+(a.id==='fullset'?T(ACH_SCREEN.inGame,{game:GAMES[fsGame].name}):'')+leftTxt;
   /* v28 (item 1 / R3, build 53): NO ENTRY ANIMATION ON A LIST. The earned rows used to slide in on a 70ms stagger, so a tab or a filter
-     tap painted over about a second. `c` is kept only because renderCul / renderAch still hand one in; nothing reads it now. */
-  const nw=isDone?newMark('ach:'+a.id,fresh):''; const dl='';
+     tap painted over about a second. Motion belongs to rewards, not to menus. */
+  const nw=isDone?newMark('ach:'+a.id,fresh):'';
   const cls=`${isDone?'done':'lock'}${nw} ${jump?'jump':''}`, name=secret?ACH_SCREEN.hidden:a.name;
   // v23 (L.4d): what it unlocks first, white until earned and green once (L.2); the achievement and its criterion under it
-  if(tab==='cul') return `<button data-act="ach" class="a cu ${cls}" data-ach="${a.id}" id="cul-${a.id}"${dl}><span class="rw">${isDone?'✓ ':''}${unlockHtml(a)}</span><em>${isDone?ACH_SCREEN.done:''}</em><small>${gname}${name} · ${line}</small>${where}${bar}</button>`;
-  return `<button data-act="ach" class="a ${cls}" data-ach="${a.id}" id="ach-${a.id}"${dl}><span>${gname}${isDone?'✓ ':''}${name}</span><em>${isDone?ACH_SCREEN.done:secret?ACH_SCREEN.secret:''}</em><small>${line}</small>${where}${bar}</button>`;
+  if(tab==='cul') return `<button data-act="ach" class="a cu ${cls}" data-ach="${a.id}" id="cul-${a.id}"><span class="rw">${isDone?'✓ ':''}${unlockHtml(a)}</span><em>${isDone?ACH_SCREEN.done:''}</em><small>${gname}${name} · ${line}</small>${where}${bar}</button>`;
+  return `<button data-act="ach" class="a ${cls}" data-ach="${a.id}" id="${tab}-${a.id}"><span>${gname}${isDone?'✓ ':''}${name}</span><em>${isDone?ACH_SCREEN.done:secret?ACH_SCREEN.secret:''}</em><small>${line}</small>${where}${bar}</button>`;
 }
 
-/* ---------- the Customise unlocks tab (build 39, v23 L.4b–d) ----------
+/* ---------- 58.3: WHAT THIS CHEST NEEDS ----------
+   `chestNeeds` in progress/key.js is the one read, and it is the same one the map tile uses — the key (or every mode) it has
+   always named, and since 58.2 a finished Gauntlet on the Pro and Author chests. Each row carries its own tick, so the tab
+   says what is left rather than only what is missing first. L.2: white until met, green once, never red. */
+function needHtml(c,m){
+  return chestNeeds(c.id).map(r=>{
+    const name=r.k==='gaunt'?T(PROGRESS_SCREEN.needGaunt,{name:GAUNTLET.name[r.gaunt]||r.gaunt})
+      :r.k==='modes'?T(PROGRESS_SCREEN.needModes,{open:m.open,total:m.total})
+      :T(PROGRESS_SCREEN.needKey,{key:(KEYS.find(k=>k.id===r.tier)||{}).name||r.tier});
+    return `<div class="urow ${r.done?'done':'lock'}"><span>${name}</span><em>${r.done?PROGRESS_SCREEN.met:PROGRESS_SCREEN.todo}</em></div>`;
+  }).join('');
+}
+
+/* ---------- 58.3: a chest tab ----------
+   The Games chest lists the chain and the lengths, which is what opens it. A key chest lists that key's own rows, grouped by
+   game the way the Key Unlocks Desk groups them — each game's bars, then that game's own row — with the key entire last. A
+   tier whose chest has not revealed it lists nothing and says so (A.1: existence shows, numbers do not). */
+const F={};                                     // the per-tab game filter, remembered while the screen is up
+function renderChest(tab){
+  const c=chestOfTab(tab); if(!c) return;
+  const g=got(), all=Scores.runs(); const fresh=[]; const gsel=F[tab]||'all';
+  const m=modeCount();
+  $('#chest-need').innerHTML=needHtml(c,m);
+  $('#chest-g').innerHTML=`<button class="chip" data-act="chip-chest" data-chip="chest-g" data-v="all">${ACH_SCREEN.all}</button>`+Object.entries(GAMES).map(([id,x])=>`<button class="chip" data-act="chip-chest" data-chip="chest-g" data-v="${id}">${x.name}</button>`).join(''); chips('chest','g',gsel);
+  const list=$('#chest-list');
+  const tier=tierOfChest(c);
+  if(!tier){ const out=gamesHtml(gsel); list.className='unl scroll'; list.innerHTML=out.html; tabCount('chest',out.open,out.total); return; }
+  list.className='ach scroll';
+  const key='key'+(KEYS.findIndex(k=>k.id===tier)+1);
+  if(!groupShown(key)){ list.innerHTML=`<h4>${PROGRESS_SCREEN.shut}</h4>`; tabCount('chest',0,0); return; }
+  const rows=allAch().filter(a=>tabFor(a)===tab);
+  const ctx={g,all,fsGame:gsel==='all'?sel.game:gsel,fresh};
+  const shown=rows.filter(a=>gsel==='all'||a.g===gsel||a.g==='all');
+  let html='';
+  for(const gid in GAMES){ if(gsel!=='all'&&gid!==gsel) continue;
+    const items=shown.filter(a=>a.g===gid); if(!items.length) continue;
+    const done=items.filter(a=>g[a.id]).length;
+    html+=`<h4>${GAMES[gid].name} · ${done}/${items.length}</h4>`+items.map(a=>achRow(a,tab,ctx)).join(''); }
+  const whole=shown.filter(a=>a.g==='all');
+  if(whole.length) html+=`<h4>${PROGRESS_SCREEN.whole} · ${whole.filter(a=>g[a.id]).length}/${whole.length}</h4>`+whole.map(a=>achRow(a,tab,ctx)).join('');
+  list.innerHTML=html;
+  // item 4: the tab's one count is the WHOLE chest, not the filter's slice — a filter must never make a chest look closer than it is
+  tabCount('chest',rows.filter(a=>g[a.id]).length,rows.length);
+  markSeen(fresh);
+}
+
+/* ---------- the Customise unlocks tab (build 39, v23 L.4b–d) — UNCHANGED at 58.3 ("Customise is great") ----------
    Every achievement that pays out a cosmetic, and nothing else — grouped by the Customise row it pays into, in that
    screen's own order, so the list reads like the screen it leads to. An earned row goes to Customise with that item
    picked out; an unearned one still goes to play it. No game filter: it is twenty rows, and a filter would hide the
    Every-game rows behind a chip (guess). */
 const CUL_ORDER=['sq','lead','cut','bg','snd','scale','rate','wheel'];
 function renderCul(){
-  const g=got(), all=Scores.runs(); const fresh=[]; const ctx={g,all,fsGame:sel.game,fresh,c:{k:0}};
+  const g=got(), all=Scores.runs(); const fresh=[]; const ctx={g,all,fsGame:sel.game,fresh};
   // v24 (D.2, build 44): key roster rows that pay out a cosmetic are here too — the tier's rows only once its chest has revealed it (A.1)
-  const list=allAch().filter(a=>achTab(a)==='cul'&&groupShown(a.tier));
+  const list=allAch().filter(a=>tabFor(a)==='cul'&&groupShown(a.tier));
   const at=s=>{ const i=CUL_ORDER.indexOf(s); return i<0?99:i; };
   const sets=[...new Set(list.map(a=>a.unlocks[0]))].sort((x,y)=>at(x)-at(y));
   $('#cul-list').innerHTML=sets.map(set=>{ const items=list.filter(a=>a.unlocks[0]===set), done=items.filter(a=>g[a.id]).length;
@@ -132,14 +204,17 @@ function renderCul(){
   markSeen(fresh);
 }
 
-/* ---------- the Achievements tab (build 18; the filter row, three tiers plus the key sets) ---------- */
+/* ---------- the Achievements tab — 58.3: THE EXTRAS THAT FIT NOWHERE ELSE ----------
+   Today that is the five Pro extras and the thirteen Secrets. Every key row has gone to its own chest's tab, which is what
+   Aiden's "the current achievements make no sense" was about: 67 of his 110 were clearance bars wearing an achievement's
+   clothes. The filter row and build 53's rules stay — Secret below every other tier (the TIERS key order IS the render
+   order), one count line, no entry animation. */
 const A={ g:'all' };
 function renderAch(){
   const g=got(), all=Scores.runs(), gsel=A.g; const fresh=[];
   $('#ach-g').innerHTML=`<button class="chip" data-act="chip-ach" data-chip="ach-g" data-v="all">${ACH_SCREEN.all}</button>`+Object.entries(GAMES).map(([id,x])=>`<button class="chip" data-act="chip-ach" data-chip="ach-g" data-v="${id}">${x.name}</button>`).join(''); chips('ach','g',gsel);
-  // v23 (L.4c): only the rows achTab puts here — nothing that pays out a cosmetic
-  const list=allAch().filter(a=>achTab(a)==='ach'&&(gsel==='all'||a.g===gsel||a.g==='all'));
-  const ctx={g,all,fsGame:gsel==='all'?sel.game:gsel,fresh,c:{k:0}};
+  const list=allAch().filter(a=>tabFor(a)==='ach'&&(gsel==='all'||a.g===gsel||a.g==='all'));
+  const ctx={g,all,fsGame:gsel==='all'?sel.game:gsel,fresh};
   $('#achlist').innerHTML = Object.keys(TIERS).filter(groupShown).map(t=>{
     const items=list.filter(a=>a.tier===t), done=items.filter(a=>g[a.id]).length;
     if(!items.length) return '';
@@ -162,18 +237,22 @@ function jumpTo(a){ const g=a.g==='all'?(A.g==='all'?sel.game:A.g):a.g; const d=
    section ("Target colours · 1/3"), summed. Each render works its own count out and hands it here. */
 const tabCount=(tab,done,total)=>{ const el=$('#'+tab+'-hint'); if(el) el.textContent=T(PROGRESS_SCREEN.count,{done,total}); };
 
-/* ---------- the three tabs ---------- */
-// only the tab that is up is rendered: the achievements list is the longest markup in the app and the unlocks list walks
-// every mode of every game, so building the hidden ones would be three renders for one screen. `opts.ach` is a row to
-// scroll to and flash — on whichever tab achTab says it lives
+/* ---------- the six tabs ---------- */
+// only the tab that is up is rendered: a chest's list is the longest markup in the app and the Games chest's walks every mode of
+// every game, so building the hidden ones would be six renders for one screen. `opts.ach` is a row to scroll to and flash — on
+// whichever tab tabFor says it lives
+function renderTabs(tab){
+  $('#prog-tabs').innerHTML=TABS.map(t=>`<button data-act="ptab" class="chip${t===tab?' sel':''}" data-tab="${t}">${tabLabel(t)}</button>`).join('');
+}
 function setTab(t,opts){ const tab=tabOf(t); prefs.progTab=tab; save(); opts=opts||{};
-  $$('#prog-tabs .chip').forEach(c=>c.classList.toggle('sel',c.dataset.tab===tab));
-  for(const x of TABS) $('#p-'+x).hidden=tab!==x;
-  if(tab==='unl') renderUnlocks(); else if(tab==='cul') renderCul(); else renderAch();
-  if(opts.ach&&tab!=='unl'){ const r=$(`#${tab}-${opts.ach}`); if(r){ r.scrollIntoView({block:'center'}); r.classList.add('flash'); } } }
+  renderTabs(tab);
+  $('#p-chest').hidden=!chestOfTab(tab); $('#p-cul').hidden=tab!=='cul'; $('#p-ach').hidden=tab!=='ach';
+  if(chestOfTab(tab)) renderChest(tab); else if(tab==='cul') renderCul(); else renderAch();
+  if(opts.ach){ const r=$(`#${tab}-${opts.ach}`); if(r){ r.scrollIntoView({block:'center'}); r.classList.add('flash'); } } }
 
-register('s-prog',{ onShow(o){ const a=o.ach?findAch(o.ach):null; if(a&&achTab(a)==='ach') A.g=a.g==='all'?'all':a.g;
-  setTab(a?achTab(a):o.tab,o); } });
+register('s-prog',{ onShow(o){ const a=o.ach?findAch(o.ach):null; const t=a?tabFor(a):o.tab;
+  if(a&&t==='ach') A.g=a.g==='all'?'all':a.g; if(a&&chestOfTab(t)) F[t]=a.g==='all'?'all':a.g;
+  setTab(t,o); } });
 define({
   ptab(b){ setTab(b.dataset.tab); return 'pick'; },
   // a locked row asks the lock box, exactly as the pick sheet does (v15 2.1); an open one goes where it is played
@@ -183,6 +262,8 @@ define({
     if(b.classList.contains('lock')){ emit('lock:ask',{g,d,s:len}); return 'pick'; }
     show('s-pick',{g,d,s:len}); return 'click'; },
   'chip-ach'(b){ A.g=b.dataset.v; renderAch(); return 'pick'; },
+  // 58.3: the per-game filter inside a chest tab, remembered per tab so switching tabs does not lose it
+  'chip-chest'(b){ F[tabOf(prefs.progTab)]=b.dataset.v; renderChest(tabOf(prefs.progTab)); return 'pick'; },
   /* an EARNED row that paid out a cosmetic opens Customise — its own screen again since build 39 — with that game previewed
      and the item picked out (v11; v23 L.4d). Every other row, earned or not, goes where it is played: build 38 sent an earned
      row with no payout to the Customise tab with nothing to show, and that tab is gone (guess: to play it, as the hint says) */

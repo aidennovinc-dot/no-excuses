@@ -27,7 +27,7 @@
 </head><body>
 <canvas id="stars"></canvas>
 <!-- v25 (items 4 / 8, build 45): the build stamp comes BEFORE every screen, so each paints over it (styles/app.css #build) -->
-<div id="build">v0.57</div>
+<div id="build">v0.58</div>
 
 <section class="screen on" id="s-menu">
   <div class="nextup" id="nextup" data-act="nextup" hidden></div>
@@ -136,16 +136,23 @@
      (L6). Three labels that long wrap the tab row at 390px; the row wraps rather than the type shrinking (L.4b) -->
 <section class="screen top" id="s-prog" data-back="s-menu">
   <button data-act="back" class="back">&larr; BACK</button>
-  <div class="chips ptabs" id="prog-tabs">
-    <button data-act="ptab" class="chip" data-tab="unl">Game unlocks</button>
-    <button data-act="ptab" class="chip" data-tab="cul">Customise unlocks</button>
-    <button data-act="ptab" class="chip" data-tab="ach">Achievements</button>
-  </div>
+  <!-- v29 Section A (58.3, build 58, quoting L6 where the unlock table's PRESENTATION moves): SIX TABS, ORGANISED BY CHEST.
+       Aiden: "the current achievements make no sense" - his 67 of 110 were the Skill-key and Pro-key bars listed a second time
+       as achievements. Each chest now has a tab that says what THAT chest needs, the key rows live under their own chest, and
+       Achievements keeps only the extras that fit nowhere else. The chip row is filled by ui/screens/progress.js from CHESTS,
+       so the four chest names are still spelled once (GRID.chest) and adding a chest adds a tab. Six labels wrap the row at
+       390px; the row wraps rather than the type shrinking (L.4b). -->
+  <div class="chips ptabs" id="prog-tabs"></div>
   <!-- v28 (item 4, build 53): the grey helper line on each tab is now the tab's own count - "N of M unlocked". The Game unlocks paragraph
        under it (UNLOCKS_SCREEN.lede) went with the helper text it explained -->
-  <div class="ptab" id="p-unl">
-    <div class="eyebrow" id="unl-hint"></div>
-    <div class="unl scroll" id="unl-list"></div>
+  <!-- 58.3: ONE host for all four chest tabs - they differ in what they list, not in how they are laid out, and four scrollers
+       would be four copies of the same furniture. `chest-need` is what the chest is waiting for, ticked, and it does not scroll
+       away; `chest-g` is the per-game filter, which stays inside each chest tab; `chest-list` takes `unl` or `ach` per tab -->
+  <div class="ptab" id="p-chest">
+    <div class="eyebrow" id="chest-hint"></div>
+    <div class="unl" id="chest-need"></div>
+    <div class="chips" id="chest-g"></div>
+    <div class="scroll" id="chest-list"></div>
   </div>
   <!-- v23 (L.4c / L.4d, build 39): every achievement that pays out a cosmetic, grouped by the Customise row it pays into -->
   <div class="ptab" id="p-cul" hidden>
@@ -250,7 +257,7 @@
   <div class="eyebrow msgtitle" id="msg-title">messages</div>
   <div class="hint" id="msg-lede"></div>
   <div class="msglist" id="msglist"></div>
-  <div class="hint">v0.57 · feel and fixes · 19 sept 2026</div>
+  <div class="hint">v0.58 · structure · 19 sept 2026</div>
 </section>
 
 <section class="screen" id="s-testing" data-back="s-menu" data-dev>

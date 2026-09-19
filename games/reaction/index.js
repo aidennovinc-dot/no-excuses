@@ -6,7 +6,7 @@ import { CFG, NOGO_COUNTER } from "../../config/games.js";
 import { DEALS, NOGO_TURNS, SHAPES } from "../../config/shapes.js";
 import { $, $$, T, mean, minMax, pWho, vmin, winner } from "../../core.js";
 import { haptic } from "../../core/platform.js";
-import { makeDealer, within } from "../_shared/deal.js";
+import { bandPick, gauntBand, gauntDealt, makeDealer, within } from "../_shared/deal.js";
 import { Shapes, shapeI } from "../_shared/shapes.js";
 import * as hud from "../_shared/hud.js";
 import { genRect, rnd, roundEngine, rxBar } from "../_shared/round.js";
@@ -108,9 +108,13 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
   twoAdd(ms){ const p=this.two.p, was=this.two.scoreOf(p); this.two.add(ms); const to=this.two.scoreOf(p);
     hud.countUp({ audio:this.ctx.audio, from:was, to, ms:500, fmt:v=>String(Math.round(v)), set:t=>{ hud.score(t); this.setTot(+t); }, alive:()=>this.st==='show',
       done:()=>{ hud.scorePop(); this.two.turnDone(); this.later(()=>this.next(),1400); } }); },
+  /* v29 Section A (58.1, build 58): the blank before the flash is 1200-4500ms, which is the game — a long wait is part of
+     what Flash tests. Inside a Gauntlet it is drawn from the band instead, because a run that happened to get four short
+     waits is not the same test as one that got four long ones and the single score cannot tell them apart. */
+  waitMs(lo,span){ const b=gauntBand(this.ctx,'wait'); return b?gauntDealt(this.ctx,'wait',Math.round(bandPick(b))):lo+Math.random()*span; },
   again(msg){ this.clearT(); this.st='wait'; this.armed=false;
     $('#gen').innerHTML=`<div class="rxpane" id="rxpane"><div class="rxmsg" id="rxmsg">${msg||CP.wait}</div></div>`;
-    rxBar(null); this.later(()=>this.go(),1200+Math.random()*3300); },
+    rxBar(null); this.later(()=>this.go(),this.waitMs(1200,3300)); },
   arm(){ this.armed=false; requestAnimationFrame(()=>requestAnimationFrame(()=>{ if(this.st==='go'){ this.t0=performance.now(); this.armed=true; } })); },
   // v14 (6.22): white is the WHOLE screen. The large square with burst lines was the preview screen's picture of the game, never the game
   go(){ const pane=$('#rxpane'); this.st='go'; pane.classList.add('lit'); const m=$('#rxmsg'); if(m) m.textContent=CP.tap; this.arm();
@@ -302,7 +306,7 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
   rulePause(){ this.clearT(); this.st='rule'; $('#gen').innerHTML=`<div class="rxpane" id="rxpane"></div>`;
     rxBar([...(this.round>1?CP.ruleNow:CP.ruleTap),shapeI(this.rule),`<b>${SHAPES[this.rule].word}</b>`],true); this.later(()=>this.nogoWait(),2200); },
   // v14 (6.25): there is ALWAYS a wait period — before the first shape and after every rule change. Tapping through it is a wrong tap
-  nogoWait(){ this.clearT(); this.st='wait'; const pane=$('#rxpane'); if(pane) pane.innerHTML=`<div class="rxmsg" id="rxmsg" style="top:40%;font-size:11px">${CP.wait}</div>`; this.later(()=>this.beat(),700+Math.random()*900); },
+  nogoWait(){ this.clearT(); this.st='wait'; const pane=$('#rxpane'); if(pane) pane.innerHTML=`<div class="rxmsg" id="rxmsg" style="top:40%;font-size:11px">${CP.wait}</div>`; this.later(()=>this.beat(),this.waitMs(700,900)); },
   /* v14 (6.25) / v18 (B.1b): nextShape() is retired. Rolling a shape per beat is what let the target land first every
      time, and its two fairness rules - no shape three times running, no decoy repeated - live in dealBlock now, where
      B.1d's third rule could be added beside them. Every mode deals its round; nothing rolls. */

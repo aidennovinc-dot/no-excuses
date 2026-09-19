@@ -199,6 +199,27 @@ text here is the rule with its history.
   names L6). `prefs.progTab` is `unl` / `cul` / `ach`; a stored `cus` lands on `cul` with no store step (a preference, not
   progress). The label CUSTOMISE UNLOCKS is a guess ("Rewards" retired because it does not say unlock); at 390px the three
   wrap the tab row to two rows rather than shrinking the 11px chip type.
+  **AMENDED AT BUILD 58 (v29 Section A 58.3, quoting L6; Aiden authorised it).** Aiden, on v0.56: *"the current achievements
+  make no sense."* His 67 of 110 were the 33 Skill-key and 34 Pro-key clearance bars, listed a second time as achievements,
+  under a heading that made them read as extras. They are not extras; they are what a chest needs. **Progress is now ONE TAB
+  PER CHEST, then Customise unlocks and Achievements** — six, built from `CHESTS` so the four names are still spelled once in
+  `GRID.chest` and a fifth chest would add a fifth tab with no code change. The partition survives intact and is still ONE
+  test, `tabFor()` in `ui/screens/progress.js`: a row with `unlocks` → Customise unlocks (L.4c is untouched), a `keyAch` row
+  → the chest whose `needs` is its `kt`, everything else → Achievements. Each chest tab opens with **what that chest needs**
+  — `chestNeeds()` in `progress/key.js`, one row per requirement with its own tick, the same read the map tile makes, so
+  58.2's Gauntlet appears on the Pro and Author tabs without a second spelling. The Games chest tab is the old Game unlocks
+  tab with nothing changed in it; a key chest tab is that key's rows grouped by game with the key entire last; a tier its
+  chest has not revealed lists nothing and says so (A.1 — existence shows, numbers do not). **Achievements keeps only the
+  extras that fit nowhere else**, today the five Pro rows and the thirteen Secrets, and its "N of M" shrinks to match.
+  **Customise unlocks is untouched** — Aiden: "Customise is great". The per-game filter is inside each chest tab, remembered
+  per tab; the four chest tabs share one host (`#p-chest`), which takes the `unl` class for the Games chest and `ach` for a
+  key chest, because the two rule sets disagree on one selector and a host wearing both paints a locked achievement's line
+  green. `prefs.progTab` takes `c-<chest>` / `cul` / `ach`; `cleanTab` in `core/store.js` lands a stored `unl` on the Games
+  chest and anything unknown on the first tab, with no ladder step — it is a preference, and an unknown value already fell
+  back. **A SECRET SAYS NOTHING UNTIL IT IS EARNED (58.3, reversing v14 8.5):** the tier heading is "they exist. what earns
+  them is not written down" and every row underneath then wrote it down, in `hint`. The progress bar is the hint now and the
+  only one; an earned secret is described in full. `hint` stays in `config/achievements.js` — one line in `achRow()` brings
+  the descriptions back the day Aiden wants them.
 - **A Progress label is white until earned, green once, never red (v23 L.2; v21 G.6's last sentence).** The red was
   `.ach .lock em.u{color:var(--cue)}`, written at build 8 and carried into `styles/app.css` at build 18: every unearned
   row with `unlocks` wore the cue red on its "unlocks …" label. G.6 was never built, so the rule was not scoped to one tab

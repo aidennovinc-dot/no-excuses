@@ -7,7 +7,7 @@ import { CFG, COUNT_ADD, COUNT_BUDGET, SPOT_FIND, SPOT_RAMP, VS_TARGET } from ".
 import { DEALS, SHAPES } from "../../config/shapes.js";
 import { $, $$, T, f2, minMax, pWho, winner } from "../../core.js";
 import { haptic } from "../../core/platform.js";
-import { makeDealer, within } from "../_shared/deal.js";
+import { bandPick, gauntBand, gauntDealt, makeDealer, within } from "../_shared/deal.js";
 import { shapeI } from "../_shared/shapes.js";
 import * as hud from "../_shared/hud.js";
 import { roundShow } from "../_shared/tier.js";
@@ -105,8 +105,14 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
   /* v25 (item 21, build 45): a Find round's crowd as numbers — the expressions findRound() deals from, so the review catalogue's Round formats table
      prints what the game plays. `p` runs 0 → 1 over rounds 1 → 10 and holds there; `sizeK` is the base size as a share of the field's short side */
   // v26 §B2 (build 50): `S` is the round's deal — the crowd is the SETTING its odd shape pairs with, this round's count × its tier's factor
-  findSpec(r,S){ const p=Math.min(1,(r-1)/9); return { p, n:Math.round((SPOT_FIND.nBase+Math.round(p*SPOT_FIND.nSpan))*(S?DEALS['spot:find'].tiers[S.set]:1)), drift:p*SPOT_FIND.drift, sizeVar:p*SPOT_FIND.sizeVar, overlap:SPOT_FIND.overlap+p*SPOT_FIND.overlapPer, sizeK:.085-p*.025 }; },
-  findRound(){ const S=this.spec=this.dealer.at(this.round), F=this.findSpec(this.round,S), p=F.p, r=genRect(); this.size=Math.max(18,Math.min(r.width,r.height)*F.sizeK); this.pen=0;
+  /* v29 Section A (58.1, build 58): `crowd` overrides the dealer's tier factor with one drawn from the Gauntlet's band.
+     The ramp itself is a function of the round number and is already identical run to run, so the factor (.85 / 1 / 1.15)
+     is the only thing that makes one Gauntlet's field harder than another's. The third argument is what findRound hands
+     in; every other caller passes two and gets exactly what it got before. */
+  findSpec(r,S,crowd){ const p=Math.min(1,(r-1)/9); const f=crowd!==undefined?crowd:(S?DEALS['spot:find'].tiers[S.set]:1);
+    return { p, n:Math.round((SPOT_FIND.nBase+Math.round(p*SPOT_FIND.nSpan))*f), drift:p*SPOT_FIND.drift, sizeVar:p*SPOT_FIND.sizeVar, overlap:SPOT_FIND.overlap+p*SPOT_FIND.overlapPer, sizeK:.085-p*.025 }; },
+  findRound(){ const S=this.spec=this.dealer.at(this.round), gb=gauntBand(this.ctx,'crowd');
+    const F=this.findSpec(this.round,S,gb?gauntDealt(this.ctx,'crowd',Math.round(bandPick(gb)*100)/100):undefined), p=F.p, r=genRect(); this.size=Math.max(18,Math.min(r.width,r.height)*F.sizeK); this.pen=0;
     this.odd=S.shape; const rest=S.pool.filter(s=>s!==this.odd); const n=F.n, drift=F.drift;
     // v17 (B.15): Find's crowd varies in size too, arriving with the motion. v17 (B.16): and every shape is clamped inside
     // the field from the moment it is dealt, not only once it has drifted out of it

@@ -133,6 +133,15 @@ export const PROGRESS_SCREEN = { title:'progress', unl:'Game unlocks', cul:'Cust
      leaves Secret out until one has been found (R1) — the line may never say how many secrets there are. */
   count:'{done} of {total} unlocked',
   keyLocked:'open the Games chest',
+  /* v29 Section A (58.3, build 58): the six tabs' own words. `needs` heads the two-or-one requirement rows at the top of a
+     chest tab; `needKey` / `needModes` / `needGaunt` are those rows, and `met` / `todo` the state each wears (L.2: white
+     until met, green once, never red). `shut` is what a chest tab shows in place of its rows while the tier that fills it
+     has not been revealed — A.1's rule that existence shows and NUMBERS do not. `extras` is the Achievements tab's own
+     line, now that it holds only what fits nowhere else. `whole` heads the one row that is the key entire. */
+  needs:'To open it', needKey:'{key} — every bar cleared', needModes:'Every game and mode — {open} of {total}',
+  needGaunt:'{name} — finish one run', met:'done', todo:'not yet',
+  shut:'Revealed when the chest before it opens', whole:'The key entire',
+  extras:'Added extras', gauntBest:'best {n}%',
   culGroup:{ sq:'Target colours', lead:'Lead colours', cut:'Cut pieces', bg:'Backgrounds', snd:'Tap sounds', scale:'Scales', rate:'Taps per second', wheel:'Colour wheel' } };
 /* v17 (B.23 / B.24, build 29): the game-select grid says what order the games open in, and where that order ENDS.
    The chest needs key 1 — every clearance bar cleared — and A.1 forbids anything about pro or author appearing before
@@ -160,7 +169,13 @@ export const GRID = { chest:{ games:'Games chest', key:'Skill chest', pro:'Pro c
   chestNeed:'the {chest}', chestOpenIt:'Open the {chest}',
   chestModes:'unlock every game · {open} of {total}', chestModesToast:'Unlock every game first<small>{open} of {total} modes unlocked</small>',
   chestEarn:{ key:'Earn the Skill key', pro:'Earn the Pro key', thorns:'Earn the Author key' }, chestOpen:'tap to open', chestOpened:'opened', tba:'tba',
-  chestPrev:'open the previous chest', chestPrevToast:'Open the previous chest first' };
+  chestPrev:'open the previous chest', chestPrevToast:'Open the previous chest first',
+  /* v29 Section A (58.2, build 58): a chest that wants TWO things lists both and ticks each as it is met — the key it
+     already named, and a finished Gauntlet. One line per requirement, joined by a newline (the tile's `::after` is
+     `white-space:pre-line`), so the tile says what is left rather than only what is missing first. A chest whose chest
+     ahead is still shut keeps "open the previous chest" and says nothing about either (A.1 / G.1, untouched). */
+  chestTick:'✓ {line}', chestTodo:'· {line}', chestGaunt:'Finish {name}',
+  chestGauntToast:'Finish {name} first' };
 /* v23 (L.11c, build 40): WHAT EACH CHEST GIVES, one entry per chest and a line per word, so Aiden can rewrite them on the next Desk.
    An opened chest shows them as a plain column to its right (L.11b animates them in build 41); nothing shows beside a chest that is
    not open. `tba` marks a placeholder reward — the 2026-09-10 cosmetic set and hard Gauntlet, reopened by L.11 — and none of these
@@ -204,6 +219,9 @@ export const CHEST_WORDS = {
 export const GAUNTLET = { name:{ g1:'Gauntlet Mini', g2:'Gauntlet Mega' }, msgTitle:'The {name}', toast:'{need} first', soon:'Coming soon',
   intro:{ g1:'{n} short games back to back. No retries, one final score.', g2:'{n} full length games back to back. Do you have what it takes?' },
   go:'Enter the Gauntlet', again:'Again, from game one',
+  /* v29 Section A (58.2, build 58): a FINISHED Gauntlet is marked on its own map tile — a tick, and its best score under
+     it — because finishing one is now what opens the next chest and the map is where a player looks to see what is left. */
+  done:'best {n}%',
   pct:'{n}%', noBar:'—', board:'Your best', barLine:'100% is the bar. Past it is past the bar.',
   round:'1 round', rounds:'{n} rounds', roundsEach:'{n} rounds each', roundsPair:'{a} + {b} rounds', modePair:'{a} + {b}' };
 // v23 (L.11b, build 41): what a word whose reward is not built yet says when tapped (guess)
@@ -324,6 +342,11 @@ export const KEY = { title:'the key', hint:'tap a game · solo runs only',
   /* v24 (C.1, build 43): the key screen never opens a chest by itself any more — the key is tapped, it ASKS, then it opens. A deliberate
      trigger, not batch 16's retired mid-flow step (both stand). `completeReady` is the hint under a whole key whose chest is waiting;
      `quietReady` is the quiet screen's line once every mode is unlocked (guess on the words) */
+  /* v29 Section A (58.2, build 58): a whole key whose chest ALSO wants a finished Gauntlet. Before 58.2 the only two
+     states a whole key could be in were "its chest is waiting" and "its chest is open"; now there is a third, and the
+     hint has to name the thing standing between the two rather than saying "tap the key to go to its chest" and sending
+     the player to a chest that will not open. The tap still goes to the map, where the Gauntlet's own tile is. */
+  completeGaunt:'{name} first · tap the key to find it',
   ask:'Open the {chest}?', askYes:'Open', askNo:'Not yet', completeReady:'tap the key to open the {chest}',
   quietReady:'Every game mode is unlocked. Tap the key to open the Games chest.',
   // v23 (L.6, build 41): the ceremony holds on this until it is tapped — it is not skippable before it

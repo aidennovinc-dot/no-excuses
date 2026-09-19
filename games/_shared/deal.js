@@ -8,6 +8,7 @@
    A deal is CACHED by its round number, so the two players of a pass & play run asking for their turn N get the same deal. */
 
 import { DEALS, SHAPES, TIER } from "../../config/shapes.js";
+import { emit } from "../../core/events.js";
 
 const ORDER = ['easy', 'medium', 'hard'];
 const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -43,4 +44,18 @@ function makeDealer(key) {
       cache.set(k, spec); return spec; } };
 }
 
-export { ORDER, bandAt, bandFrom, makeDealer, poolAt, setTier, within };
+/* ---------- v29 Section A (58.1, build 58): A GAUNTLET DEALS EVENLY ----------
+   Two calls, and an engine makes both or neither. `gauntBand(ctx, q)` hands back the `[lo, hi]` for this step's quantity
+   — config/gauntlets.js GAUNTLET_BANDS, put together per Gauntlet by run/gauntlet.js and carried on `ctx.gaunt.band` —
+   or null when this is not a Gauntlet step, which is every ordinary Set and Streak and is the untouched path.
+   `gauntDealt` then announces what was ACTUALLY dealt, after any snapping or rounding the engine does, so the gate can
+   assert the number the player met rather than the number that was drawn before the engine finished with it. It is a
+   plain event (A3 lets _shared reach core/), so nothing in games/ has to know a Gauntlet exists beyond its own quantity. */
+const gauntBand = (ctx, q) => { const b = ctx && ctx.gaunt && ctx.gaunt.band && ctx.gaunt.band[q];
+  return Array.isArray(b) && b.length === 2 ? b : null; };
+// `u` of the way along the band, or a fresh draw when none is handed in — the one place a band is turned into a number
+const bandPick = (band, u) => band[0] + (u === undefined ? Math.random() : u) * (band[1] - band[0]);
+function gauntDealt(ctx, q, v) { const g = ctx && ctx.gaunt; if (!g || !g.band || !g.band[q]) return v;
+  emit('gaunt:deal', { id: g.id, step: g.g + ':' + g.d, q, v, band: g.band[q] }); return v; }
+
+export { ORDER, bandAt, bandFrom, bandPick, gauntBand, gauntDealt, makeDealer, poolAt, setTier, within };

@@ -236,7 +236,37 @@ const bandPct = tier => Math.floor(100 * bandOf(tier) + 1e-9);
    chestAt(id) is the meter figure at which it becomes ready — the top of the band before it. */
 const chestIx = id => CHESTS.findIndex(c => c.id === id);
 const chestOf = id => CHESTS.find(c => c.id === id) || null;
-const chestMet = id => { const c = chestOf(id); if (!c) return false; if (c.needs === 'modes') return modesOpen(); return !isShell(c.needs) && keyState(c.needs).whole; };
+/* ---------- v29 Section A (58.2, build 58, quoting L6): A FINISHED GAUNTLET OPENS THE NEXT CHEST ----------
+   This REVERSES build 56 SS3's "a Gauntlet advances nothing", which was L10's principle applied to a thing that is not a
+   mode. Aiden authorised it on 2026-09-19. What that call got right is still true and is not touched here: a Gauntlet
+   still banks no key, no clearance bar, no unlock, no achievement and no board row, and run/gauntlet.js still returns
+   before a line of banking runs. The one thing it now does is FINISH, and a finish is a row in its own board.
+
+   IT GATES THE CHEST, NOT THE KEY (Cowork's reading, built as written). The key is the game targets and nothing else, so
+   `keyState`, the bars, the meter and every figure on a key screen are exactly what they were. The chest asks for the
+   whole key AND a finished Gauntlet, and a chest that has both is READY as it always was.
+
+   NO SCORE THRESHOLD — finishing is the requirement, which is what 58.2 says. Quitting does not finish: run/gauntlet.js
+   writes a row only from finishGauntlet(), so `gaunt` holds completed runs alone and nothing here has to test for one.
+
+   NOBODY IS LOCKED BACK OUT. chestState() answers 'open' from the store before it asks this, so a chest already opened
+   stays open whatever the Gauntlet board says, and the tier it revealed stays revealed. A chest that was READY and is
+   not yet opened becomes LOCKED with its Gauntlet named — which is the change, and is what a player who has not run one
+   should see. Like every gate here it honours the two dev escapes (#411), so OPEN EVERYTHING still reviews past it. */
+const gauntDone = gid => !gid || !!(prefs.allOpen || prefs.supporter)
+  || (Array.isArray(store.gaunt) ? store.gaunt : []).some(r => r && r.id === gid);
+// the best finished run of a Gauntlet, for its map tile — null when it has never been finished
+const gauntBest = gid => { const rows = (Array.isArray(store.gaunt) ? store.gaunt : []).filter(r => r && r.id === gid && Number.isFinite(r.score));
+  return rows.length ? Math.max.apply(null, rows.map(r => r.score)) : null; };
+const chestKeyMet = c => c.needs === 'modes' ? modesOpen() : !isShell(c.needs) && keyState(c.needs).whole;
+const chestMet = id => { const c = chestOf(id); if (!c) return false; return chestKeyMet(c) && gauntDone(c.gaunt); };
+/* WHAT A LOCKED CHEST IS WAITING FOR, one row per requirement with its own tick — so the map tile lists both and marks
+   each as it is met, and the Unlocks screen's chest tab (58.3) prints the same two rows off the same read. `k` is which
+   kind, so a screen names it without knowing what a key or a Gauntlet is; `done` is that row alone, never the chest. */
+function chestNeeds(id) { const c = chestOf(id); if (!c) return [];
+  const out = [{ k: c.needs === 'modes' ? 'modes' : 'key', tier: c.needs === 'modes' ? null : c.needs, done: chestKeyMet(c) }];
+  if (c.gaunt) out.push({ k: 'gaunt', gaunt: c.gaunt, done: gauntDone(c.gaunt) });
+  return out; }
 function chestState(id) { const i = chestIx(id); if (i < 0) return null; if (chestOpen(id)) return 'open';
   if (i > 0 && !chestOpen(CHESTS[i - 1].id)) return 'before';
   return chestMet(id) ? 'ready' : 'locked'; }
@@ -252,8 +282,15 @@ function openChest(id) { if (chestState(id) !== 'ready') return null; const c = 
 /* v23 (§L.12, build 40): WHERE A WHOLE KEY TAPS THROUGH TO. The chest a key opens — the one whose `needs` is this tier — once the key is
    whole and that chest is ready or already open; null for a key still in progress, which does nothing new on tap. The key screen asks
    this and nothing else about a chest (A4). */
+/* v29 Section A (58.2, build 58): A WHOLE KEY WHOSE CHEST IS WAITING FOR A GAUNTLET STILL ANSWERS. The key screen's
+   "tap the key to open the chest" line is written off this, and before 58.2 a whole key whose chest was not ready
+   answered null and the screen said nothing at all — which would now be the ordinary case for anyone who has filled the
+   Pro key and not run Gauntlet Mini. The state `gaunt` is that case: the key is whole, the chest is not ready, and the
+   only thing outstanding is the Gauntlet, which the screen names. */
 function keyChest(tier) { const c = CHESTS.find(x => x.needs === tier); if (!c || isShell(tier) || !keyState(tier).whole) return null;
-  const st = chestState(c.id); return st === 'ready' || st === 'open' ? { id: c.id, state: st } : null; }
+  const st = chestState(c.id);
+  if (st === 'ready' || st === 'open') return { id: c.id, state: st };
+  return c.gaunt && !gauntDone(c.gaunt) && st === 'locked' ? { id: c.id, state: 'gaunt', gaunt: c.gaunt } : null; }
 
 /* the three keys (v15 §5.3 / A.1, build 26). They are difficulty TIERS over the same combinations, not three collections:
    key 1 is the clearance bars this file already keeps, key 2 a pro tier and key 3 the author's times. B.27: a tier whose
@@ -448,8 +485,14 @@ function devOpen(id) { const r = openChest(id); if (!r) return null; const c = c
   prefs.revealed = Object.assign({}, prefs.revealed, { ['chest:' + id]: 1 }, c && c.needs !== 'modes' ? { ['key:' + c.needs]: 1 } : {});
   prefs.readySeen = Object.assign({}, prefs.readySeen, { [id]: 1 }); prefs.spill = Object.assign({}, prefs.spill, { [id]: 1 });
   save(); return r; }
-// what a chest's need is filled with: every mode for the Games chest (the caller's), that key's every bar for the rest
-const devNeed = (c, modes) => { if (c.needs === 'modes') { if (!modesOpen() && modes) modes(true); } else devClearTo(c.needs); };
+/* what a chest's need is filled with: every mode for the Games chest (the caller's), that key's every bar for the rest —
+   and since 58.2 (build 58) a finished Gauntlet where the chest asks for one, or every Testing switch from the Pro chest
+   on would leave its chest LOCKED and do nothing. The row it writes is the shape run/gauntlet.js writes, scored 0 and
+   marked `dev` so it can never be mistaken for a played run on the Gauntlet's own board; a reset takes it out again. */
+const devGauntDone = gid => { if (!gid || gauntDone(gid)) return;
+  store.gaunt = [{ id: gid, t: Date.now(), score: 0, tier: 'clear', web: [], dev: 1 }].concat(Array.isArray(store.gaunt) ? store.gaunt : []); };
+const devNeed = (c, modes) => { if (c.needs === 'modes') { if (!modesOpen() && modes) modes(true); } else devClearTo(c.needs);
+  devGauntDone(c.gaunt); };
 function devReach(id, modes) { const i = chestIx(id); if (i < 0) return null;
   for (let j = 0; j < i; j++) { const c = CHESTS[j]; if (chestOpen(c.id)) continue; devNeed(c, modes); if (chestState(c.id) !== 'ready' || !devOpen(c.id)) return chestState(id); }
   if (!chestOpen(id)) devNeed(CHESTS[i], modes);
@@ -475,6 +518,8 @@ const unseen = id => { prefs.readySeen = Object.assign({}, prefs.readySeen, { [i
 function devBack(id, modes) { const i = chestIx(id); if (i < 0) return;
   for (let j = CHESTS.length - 1; j >= i; j--) { const c = CHESTS[j];
     if (c.opens) devTierOut(c.opens);
+    // 58.2: the row a switch wrote goes with the chest it was written for; a run Aiden actually played is left alone
+    if (c.gaunt && Array.isArray(store.gaunt)) store.gaunt = store.gaunt.filter(r => !(r && r.dev && r.id === c.gaunt));
     prefs.chests = Object.assign({}, prefs.chests, { [c.id]: 0 }); unseen(c.id); }
   const c = CHESTS[i];
   if (c.needs !== 'modes') devTierOut(c.needs);
@@ -496,7 +541,9 @@ function devMeterTo(n, modes) { const want = Math.max(0, Math.min(meterMax(), Ma
     devClearTo(tier, bars);
     if (!keyState(tier).whole) break;
     left -= METER.band; if (left <= 0) break;
-    const c = CHESTS.find(x => x.needs === tier); if (!c || chestState(c.id) !== 'ready' || !devOpen(c.id)) break; }
+    // 58.2: the chest ahead may also want a finished Gauntlet, and the walk has to satisfy it the way play would
+    const c = CHESTS.find(x => x.needs === tier); if (!c) break; devGauntDone(c.gaunt);
+    if (chestState(c.id) !== 'ready' || !devOpen(c.id)) break; }
   seenDown(); save(); return meter(); }
 
-export { COMBOS, RADAR_PAST, TIERS, tierEarned, crackCount, msgDot, msgOpen, msgShown, msgTitle, bandPct, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, checkKeyAch, chestAt, chestOpen, chestState, cleared, combos, credit, devBack, devChestReset, devClearTo, devMeterTo, devOpen, devReach, fillBars, gameKey, isCleared, isPlaceholder, isShell, keyAch, keyChest, keyFinished, keyGoal, keyOf, keyPct, keyState, keyTier, keyTiers, meter, meterBand, meterMax, meterPct, modesOpen, openChest, placeholderCount, radarOf, radarRungs, readyChest, retroArrived, retroBank, retroTier, skey, tierFull, tierOpen };
+export { COMBOS, RADAR_PAST, TIERS, tierEarned, chestNeeds, crackCount, gauntBest, gauntDone, msgDot, msgOpen, msgShown, msgTitle, bandPct, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, checkKeyAch, chestAt, chestOpen, chestState, cleared, combos, credit, devBack, devChestReset, devClearTo, devMeterTo, devOpen, devReach, fillBars, gameKey, isCleared, isPlaceholder, isShell, keyAch, keyChest, keyFinished, keyGoal, keyOf, keyPct, keyState, keyTier, keyTiers, meter, meterBand, meterMax, meterPct, modesOpen, openChest, placeholderCount, radarOf, radarRungs, readyChest, retroArrived, retroBank, retroTier, skey, tierFull, tierOpen };

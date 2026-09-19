@@ -8,7 +8,7 @@ import { haptic } from "../../core/platform.js";
 import * as hud from "../_shared/hud.js";
 import { roundShow, tierWord } from "../_shared/tier.js";
 import { Shapes } from "../_shared/shapes.js";
-import { makeDealer, within } from "../_shared/deal.js";
+import { bandPick, gauntBand, gauntDealt, makeDealer, within } from "../_shared/deal.js";
 import { makeTwo } from "../_shared/two.js";
 import { DEALS, SHAPES } from "../../config/shapes.js";
 /* ---------- Estimate (v9, was Hold). Grow: a shape grows with a wobble and vanishes; tap and hold to grow yours to the same area — the same shape on odd rounds, a different one on even. Cut: a shape appears; drag a line through it that splits off the share asked for. Score is % off, lower is better. Five rounds ---------- */
@@ -31,8 +31,14 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
     for(let i=0;i<12;i++){ sh=Shapes.make(this.spec.shape); if(sh.coef>=min) return sh; } return sh; },
   /* v26 §B2 (build 50): the target's SIZE is the setting a Grow round pairs with its shape — a third of the range this shape can be dealt
      at, the biggest third easy — so a hard shape is dealt big and an easy one small (DEALS 'hold:grow' tiers) */
+  /* v29 Section A (58.1, build 58): INSIDE A GAUNTLET THE SIZE COMES FROM THE BAND, not from the deal's tier. Aiden's own
+     example of an uneven Gauntlet was this line: the tier spans the whole 0-1 of the range, so one run could be handed a
+     shape at its floor and the next the same shape at TMAX, and the Gauntlet's single score cannot tell the two apart.
+     The band is the same UNIT the tier is (a fraction of lo..TMAX), so nothing else on this path changes. */
   growTarget(){ const lo=Math.max(EST.TMIN,Math.min(EST.TMAX,Math.sqrt(EST.MIN_AREA/this.shape.coef))), S=this.spec;
-    return lo+within(DEALS['hold:grow'].tiers[S.set],S.u)*(EST.TMAX-lo); },
+    const gb=gauntBand(this.ctx,'size');
+    const f=gb?gauntDealt(this.ctx,'size',bandPick(gb)):within(DEALS['hold:grow'].tiers[S.set],S.u);
+    return lo+f*(EST.TMAX-lo); },
   streak(){ return this.ctx.len===STREAK; },
   cut(){ return this.ctx.mode==='cut'; },
   live(){ return this.ctx.timers.alive(); },
@@ -180,7 +186,13 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
      v13 (6.4) stands: a shape with an axis of symmetry never asks for 50% — halving one of those is a ruler job, not an estimate */
   cutRound(){ const S=this.spec=this.dealer.at(this.turn()); this.shape=Shapes.make(S.shape);
     let shares=DEALS['hold:cut'].tiers[S.set]; if(SHAPES[S.shape].sym) shares=shares.filter(v=>v!==50);
-    this.share=shares[Math.min(shares.length-1,S.u*shares.length|0)]; const v=vmin(); this.target=Math.min(54*v,$('#hfield').getBoundingClientRect().width*.7);
+    /* v29 Section A (58.1, build 58): inside a Gauntlet the share is drawn from the band and snapped to the nearest 5 —
+       every share this game has ever asked for is a multiple of 5, and a 33% ask would read as a different game. The band
+       never reaches 50, so v13 6.4's "a symmetric shape is never halved" holds without the filter above having to fire. */
+    const gs=gauntBand(this.ctx,'share');
+    this.share=gs?gauntDealt(this.ctx,'share',Math.min(gs[1],Math.max(gs[0],Math.round(bandPick(gs)/5)*5)))
+                 :shares[Math.min(shares.length-1,S.u*shares.length|0)];
+    const v=vmin(); this.target=Math.min(54*v,$('#hfield').getBoundingClientRect().width*.7);
     // v13 (6.3): the drag hint plays once, on the first round of the run. After that the screen carries one instruction and one figure
     // build 55 (in passing): `round` is the SHARED counter, so in pass & play only Player 1 ever saw the drag hint
     this.hud(); const first=this.turn()===1; if(first) this.hint(this.shape); else this.icon(null); this.st='wait';

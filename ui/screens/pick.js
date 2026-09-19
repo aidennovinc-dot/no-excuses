@@ -13,7 +13,7 @@ import { VS, sel } from "../../core/state.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, SHARED2, lenName, lenSub, versusAny, versusOf } from "../../games/registry.js";
 import { Scores, gameOpen, isOpen, lenLock, lenOpen, lensOf, markSeen, modeCount, needFor, newMark, newPlay, practiceOpen } from "../../progress.js";
-import { chestOpen, chestState, crackCount, gameKey, tierOpen } from "../../progress/key.js";
+import { chestNeeds, chestOpen, chestState, crackCount, gameKey, gauntBest, tierOpen } from "../../progress/key.js";
 import { Snd } from "../../audio.js";
 import { start } from "../../run/run.js";
 import { define } from "../actions.js";
@@ -190,8 +190,12 @@ function renderGauntlets(reveal,fresh){ const arriving=[];
     t.classList.remove('reveal','newthing','arrive','spillin'); t.style.animationDelay=''; t.style.removeProperty('--gin'); t.hidden=!open;
     if(!open) return;
     t.classList.remove('locked'); t.querySelector('.name').textContent=GAUNTLET.name[G.id]||G.id;
-    const pic=t.querySelector('.pic'); if(!pic.querySelector('.sym')) pic.insertAdjacentHTML('afterbegin',symSvg(G.sym,'gsym',G.chest)+'<i class="gx"></i>');
-    pic.dataset.need='';
+    const pic=t.querySelector('.pic'); if(!pic.querySelector('.sym')) pic.insertAdjacentHTML('afterbegin',symSvg(G.sym,'gsym',G.chest)+'<i class="gx"></i><i class="gdone"></i>');
+    /* v29 Section A (58.2, build 58): A FINISHED GAUNTLET IS MARKED, with its best score under it. It is the tile a player
+       is sent to by the chest that now wants it, so the tile has to say whether that requirement is met. `gauntBest` is
+       null until one is finished — quitting writes no row — and the tick and the line arrive together. */
+    const best=gauntBest(G.id); t.classList.toggle('done',best!==null);
+    pic.dataset.need=best===null?'':T(GAUNTLET.done,{n:Math.round(best)});
     // the chest this Gauntlet came out of is spilling on this very paint (renderChests writes prefs.spill after us) — arrive with its words
     const spilling=!(prefs.spill||{})[G.chest];
     if(reveal){ t.classList.add('reveal'); t.style.animationDelay=introAt(t)+'ms'; }
@@ -226,9 +230,18 @@ function renderChests(){ const m=modeCount(), rang=[];
        chest ahead is still shut, because what opens it is the same key either way. It said "203% · opens at 300%": a figure the Keys screen and
        the menu also print, in a second place where it could disagree with them. The Games chest keeps its count of modes, which is not a
        percentage. The meter lives on the menu (the total) and on each key's card (its own share), and nowhere on the map. */
+    /* v29 Section A (58.2, build 58): A CHEST THAT WANTS TWO THINGS LISTS BOTH AND TICKS EACH. `chestNeeds` is the one read —
+       the key (or the modes) it already named, and since 58.2 a finished Gauntlet on the Pro and Author chests — and each row
+       carries its own `done`, so the tile says what is left rather than only naming the first thing missing. A chest with one
+       requirement prints exactly the line it printed before, unticked: a tick on a list of one says nothing. A chest whose
+       chest ahead is still shut keeps "open the previous chest" and gives nothing away about either (A.1, as G.1 narrowed it). */
+    const rows=st==='locked'?chestNeeds(id):[];
+    const line=r=>r.k==='gaunt'?T(GRID.chestGaunt,{name:GAUNTLET.name[r.gaunt]||r.gaunt})
+      :r.k==='modes'?T(GRID.chestModes,{open:m.open,total:m.total}):(GRID.chestEarn[id]||GRID.chestPrev);
     const need=st==='open'?GRID.chestOpened:st==='ready'?GRID.chestOpen
+      :rows.length>1?rows.map(r=>T(r.done?GRID.chestTick:GRID.chestTodo,{line:line(r)})).join('\n')
       :c.needs==='modes'?(st==='before'?GRID.chestPrev:T(GRID.chestModes,{open:m.open,total:m.total})):(GRID.chestEarn[id]||GRID.chestPrev);
-    pic.dataset.need=need; el.classList.remove('metered');
+    pic.dataset.need=need; el.classList.toggle('twoneed',rows.length>1); el.classList.remove('metered');
     if(st==='ready'&&!(prefs.readySeen||{})[id]) rang.push(id);
     const spill=st==='open'&&!(prefs.spill||{})[id];
     const old=pic.querySelector('.pburst'); if(old) old.remove(); if(spill) pic.insertAdjacentHTML('beforeend',burstHtml(id));
@@ -342,7 +355,8 @@ function chestInView(id){ const b=$(`#grid .chest[data-chest="${id}"]`); if(!b) 
   b.scrollIntoView({block:'center',behavior:'smooth'}); b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); setTimeout(()=>b.classList.remove('flash'),1800); }
 register('s-pick',{
   // v25 (item 10, build 45): the map never keeps a sideways offset — see #s-pick in styles/app.css
-  onShow({g,d,s,spillDemo:sd,chest}){ $('#s-pick').scrollLeft=0; if(g){ sel.game=g; prefs.lastGame=g; save(); applyPrefs(g); } renderTiles(); setStage('grid'); if(g) openSheet(g,d,s); if(sd) setTimeout(()=>spillDemo(sd),350); if(chest) setTimeout(()=>chestInView(chest),150); },
+  // v29 Section A (58.2, build 58): `gaunt` scrolls a Gauntlet's own tile into view — where a whole key whose chest is waiting on one now sends you
+  onShow({g,d,s,spillDemo:sd,chest,gaunt}){ $('#s-pick').scrollLeft=0; if(g){ sel.game=g; prefs.lastGame=g; save(); applyPrefs(g); } renderTiles(); setStage('grid'); if(g) openSheet(g,d,s); if(sd) setTimeout(()=>spillDemo(sd),350); if(chest) setTimeout(()=>chestInView(chest),150); if(gaunt) setTimeout(()=>tileInView(gaunt),150); },
   onBack(){ if(stage==='len'){ setStage(GAMES[sel.game].modes.length===1?'grid':'mode'); return true; } if(stage==='mode'){ setStage('grid'); return true; } return false; },
 });
 /* B.26 → v23 (L.6 / L.11b, build 41): Testing's "replay chest opening" plays the CEREMONY on the key screen, and its tap lands here, where
