@@ -39,7 +39,7 @@
      and one line more of empty space (guess: a 16px line), so the last thing in it clears the stamp when scrolled to the
      bottom. A pseudo-element, not padding: bottom padding inside a scrolling flex column is not honoured by every engine,
      and a flex item is. .otwrap (the result's top-10 box) sits mid-screen and is left out. The gate scrolls each one. */
-  #s-pick::after,#s-about::after,#s-over::after,#s-custom::after,#s-testing::after,.scroll::after{content:"";display:block;flex:none;height:var(--stampclear)}
+  #s-pick::after,#s-about::after,#s-over::after,#s-custom::after,#s-testing::after,#s-gauntlet::after,.scroll::after{content:"";display:block;flex:none;height:var(--stampclear)}
   /* v25 (items 8 / 19, build 45): NOTHING SCROLLS UNDER THE PHONE'S CLOCK. A screen that scrolls as a whole starts below the status bar (its
      padding-top) but its content scrolled up behind the time and battery. Each is clipped at the safe-area line, so scrolled content disappears
      there and the live background still shows through the status bar. Zero on a phone with no inset, and in the gate's headless Chromium. */
@@ -1861,8 +1861,35 @@
   .tile.gauntlet .gx{display:none;position:absolute;inset:0;pointer-events:none;background:linear-gradient(to top right,transparent calc(50% - 1px),var(--cue) calc(50% - 1px),var(--cue) calc(50% + 1px),transparent calc(50% + 1px))}
   .tile.gauntlet.locked .gx{display:block}
   .tile.gauntlet.flash .pic{outline:2px solid var(--ink);outline-offset:2px}
-  #s-gauntlet{justify-content:center;align-items:center;gap:12px;text-align:center}
+  /* ---------- v29 (items 11 / 18, build 56): THE GAUNTLET SCREEN ----------
+     It was a title, "Coming soon" and Back. It is the run now: what it plays, in order, then Go; and after a run the web,
+     the number and every game's share of it. One scroller, so it joins the --stampclear selector above. */
+  #s-gauntlet{align-items:center;gap:10px;text-align:center;overflow-y:auto;-webkit-overflow-scrolling:touch;clip-path:inset(env(safe-area-inset-top) 0 0 0)}
   #s-gauntlet .gttitle{font-size:14px;letter-spacing:.24em}
+  #s-gauntlet .gtsoon{max-width:34ch}
+  #gt-body{width:100%;max-width:340px;display:flex;flex-direction:column;align-items:center;gap:14px}
+  .gtbrief,.gtres{width:100%;display:flex;flex-direction:column;align-items:center;gap:14px}
+  .gtlist{list-style:none;margin:0;padding:0;width:100%;display:flex;flex-direction:column;gap:2px}
+  .gtlist li{display:flex;align-items:baseline;gap:10px;padding:7px 10px;border:1px solid var(--line);font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+  .gtlist li b{flex:0 0 18px;text-align:left;color:var(--mute)}
+  .gtlist li span{flex:1 1 auto;text-align:left;color:var(--ink)}
+  .gtlist li i{flex:0 0 auto;font-style:normal;color:var(--mute)}
+  .gthint{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);max-width:32ch;line-height:1.7}
+  #gt-web{width:min(76vw,260px);height:auto}
+  #gt-web .gwgrid line,#gt-web .gwgrid polygon{fill:none;stroke:var(--line);stroke-width:1}
+  #gt-web .gwbar{fill:none;stroke:var(--mute);stroke-width:1.4;stroke-dasharray:4 4}
+  #gt-web .gwme{fill:rgba(110,198,255,.16);stroke:#6EC6FF;stroke-width:2}
+  #gt-web .gwdot circle{fill:#6EC6FF}
+  .gtbig{font-family:var(--title);font-size:clamp(40px,12vw,72px);line-height:1;letter-spacing:.02em}
+  .gtline{font-size:13px;letter-spacing:.08em;color:var(--ink);max-width:30ch}
+  .gtscores{list-style:none;margin:0;padding:0;width:100%;display:flex;flex-direction:column;gap:2px}
+  .gtscores li{display:flex;justify-content:space-between;gap:10px;padding:6px 10px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+  .gtscores li span{color:var(--mute)} .gtscores li i{font-style:normal;color:var(--ink)}
+  .gtboard{width:100%}
+  .gtboard h4{margin:0 0 6px;font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);font-weight:400}
+  .gtboard ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+  .gtboard li{display:flex;justify-content:space-between;gap:10px;padding:5px 10px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:11px;letter-spacing:.1em}
+  .gtboard li i{font-style:normal;color:var(--mute)}
   /* item 2: the map's first open, drawn out — each tile's arrival takes MAP_INTRO.ms (--tin, set by ui/screens/pick.js) */
   .grid .tile.reveal{animation-duration:var(--tin,.5s)}
   /* item 6: THE REWARDS FLY OUT OF THE CHEST. The row sits where they rest, close under the chest (ui/reveal.js places it); each reward walks the eleven

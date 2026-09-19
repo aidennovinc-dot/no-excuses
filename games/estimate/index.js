@@ -182,7 +182,8 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
     let shares=DEALS['hold:cut'].tiers[S.set]; if(SHAPES[S.shape].sym) shares=shares.filter(v=>v!==50);
     this.share=shares[Math.min(shares.length-1,S.u*shares.length|0)]; const v=vmin(); this.target=Math.min(54*v,$('#hfield').getBoundingClientRect().width*.7);
     // v13 (6.3): the drag hint plays once, on the first round of the run. After that the screen carries one instruction and one figure
-    this.hud(); const first=this.turn()===1;   // build 55 (in passing): `round` is the SHARED counter, so in pass & play only Player 1 ever saw the drag hint if(first) this.hint(this.shape); else this.icon(null); this.st='wait';
+    // build 55 (in passing): `round` is the SHARED counter, so in pass & play only Player 1 ever saw the drag hint
+    this.hud(); const first=this.turn()===1; if(first) this.hint(this.shape); else this.icon(null); this.st='wait';
     this.later(()=>{ $('#hcut path.a').setAttribute('d',this.path(this.shape,this.target)); $('#hcut path.a').classList.remove('b'); if(!first) this.icon(null); this.bg(CP.drag); this.shareUp(this.share); },first?1500:500); },
   fpt(ev){ const f=$('#hfield').getBoundingClientRect(); return [ev.x-f.left,ev.y-f.top]; },
   cutDown(ev){ if(this.st!=='wait'||!$('#hcut path.a').getAttribute('d')) return; this.st='draw'; this.p0=this.fpt(ev); this.p1=this.p0; const l=$('#hline'); l.setAttribute('x1',this.p0[0]); l.setAttribute('y1',this.p0[1]); l.setAttribute('x2',this.p0[0]); l.setAttribute('y2',this.p0[1]); l.style.opacity=1; this.bg(''); },

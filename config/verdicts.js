@@ -51,6 +51,14 @@ export const VERDICT_FAIL_TIER = 'bad';
    8 / 5 notes over 16, Stopwatch 0.50 / 1.30 / 2.20s over 5, Hidden 400 / 650 / 950ms over 5400, Flash 230 / 265 / 295ms,
    Go / No-go 320 / 350 / 405 on its 70ms-offset curve. */
 export const VERDICTS = {
+  /* v29 (items 11 / 18, build 56): THE GAUNTLET'S OWN VERDICT SET, a row like any game's. Its score is a percentage of the bar, so
+     the thresholds are read straight off it: 100 matched the bar, 80 close, 55 a finish. run/gauntlet.js reads it through the same
+     VERDICT_TIERS as every other result, because progress.js's verdict() asks GAMES[r.g] and a Gauntlet is not a game. */
+  gauntlet: { at:[100, 80, 55], lines:{
+    bad: ['A finish is a finish.','Every game, start to end — now do it faster.','The bar is still ahead of you.','That is the shape of it. Again.','Nine games is nine chances. Go again.'],
+    ok:  ['Solid all the way through.','No weak game in there.','Getting close to the bar.','Respectable across the board.','That will do. It will not beat the bar.'],
+    good:['That is a serious run.','Almost the whole bar.','Very few people get that far.','Strong, game after game.','One or two games off it.'],
+    ace: ['You beat the bar.','Past 100 — the whole way through.','Nothing left to prove here.','That is the Gauntlet answered.','Nine games, and the bar behind you.'] } },
   'quick-tap': { at:[.4833,.3667,.25], lines:{
     bad: ['Warming up, try again!','A few mistakes?',"Alright let's go again.",'Could be quicker...','Do you need a coffee?'],
     ok:  ['Good work!','Steady pace!','Keep pushing!','Decent speed.','Almost a Great!'],

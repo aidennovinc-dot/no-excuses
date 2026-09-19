@@ -42,6 +42,11 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
      side, as named numbers the review catalogue reads. The values are build 44's, unmoved */
   DEAL:{ hidden:{ mid:1.2, sp:[.15,.5] }, stopwatch:{ mid:7, sp:[.6,2.6] } },
   deal(n){ const D=this.DEAL[this.hid()?'hidden':'stopwatch'], mid=D.mid, sp=D.sp; if(n<1) return [];
+    /* v29 (item 18, build 56): a Gauntlet step may name its own WINDOW for the target — Mini's Stopwatch is "1 round, 5-6
+       seconds", read as the window the round's target is drawn from rather than a fixed 5.0 (Aiden's own words). The
+       exact-mean deal below is what a Set is built on and is untouched; this only ever fires inside a Gauntlet. */
+    const gw=this.ctx&&this.ctx.gaunt&&this.ctx.gaunt.target;
+    if(gw&&!this.hid()) return Array.from({length:n},()=>Math.round((gw[0]+Math.random()*(gw[1]-gw[0]))*100)/100);
     const off=Array.from({length:n},()=>(rnd(2)?1:-1)*(sp[0]+Math.random()*sp[1]));
     const m=off.reduce((a,b)=>a+b,0)/n;
     const t=off.map(d=>Math.round((mid+d-m)*100)/100);

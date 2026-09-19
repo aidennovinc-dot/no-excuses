@@ -40,6 +40,11 @@ import { toast } from "../ui/toast.js";
    with a fade on it since build 31, not a measure of how far past the line you are. `flowOn` is solo Quick Tap and Dots only:
    the glow is light blue, which is Player 2 (L4), so it can never appear in a two-player run. Presentation only (L10). */
 const R={ on:false, live:false, id:0, timed:false, t0:0, end:0, raf:0, goal:null, goalHit:false, fresh:[], lenNext:null, lenDone:false, demo:false, tension:0, fin:0, vsP:[0,0], flow:0, flowOn:false, flowT:0 };
+/* v29 (items 11 / 18, build 56): THE ONE THING THE RUN KNOWS ABOUT A GAUNTLET. run/gauntlet.js sets the step before it calls
+   start(), and finish() RETURNS on it before a single line of banking runs — so no key, bar, unlock, achievement or board row
+   can be written by a Gauntlet step by construction, rather than by a list of guards somebody has to keep adding to (L10). */
+let pendingGaunt=null;
+const setGauntStep=st=>{ pendingGaunt=st||null; };
 let eng=null, ctx=null;
 const isVx=()=>sel.vs===2&&(sel.game==='quick-tap'||sel.game==='dots');
 const active=()=>R.on;
@@ -82,7 +87,7 @@ function pbShow(){ const g=GAMES[sel.game], pb=Scores.best(sel.game,sel.diff,sel
   else { gh.textContent=T(HUD.best,{score:scoreTxt(sel.game,pb,sel.diff,sel.secs)}); gh.classList.add('on'); } }
 function makeCtx(){ const id=R.id; const timers=makeTimers(()=>R.on&&R.id===id);
   // v15 (4.5): `opens` joins practice and scale as a Sequence-only extra on the contract's set — how many notes a versus starts on
-  return { root:$('#game'), game:sel.game, cfg:GC(sel.game,sel.diff,sel.secs), mode:sel.diff, len:sel.secs, players:sel.vs, practice:sel.practice||0, opens:sel.opens||3, scale:sel.scale, rateMode:look('rate'), timers, audio:Snd,   // build 55 (in passing): `rand` was dead - every engine and the dealer call Math.random directly, and there is no seeded path
+  return { root:$('#game'), game:sel.game, cfg:GC(sel.game,sel.diff,sel.secs), mode:sel.diff, len:sel.secs, players:sel.vs, practice:sel.practice||0, opens:sel.opens||3, scale:sel.scale, rateMode:look('rate'), gaunt:pendingGaunt, timers, audio:Snd,   // build 55 (in passing): `rand` was dead - every engine and the dealer call Math.random directly, and there is no seeded path
    
     /* v16 (1.5): a round-based engine says how far into its finish it is — the final round of a Set, a Streak budget past
        80% — and the music reads it. A timed run needs nothing here: the clock already tells audio.js. MUSIC ONLY (A.1). */
@@ -115,8 +120,9 @@ function start(){
   /* v24 (D.1, build 44): the automatic offer is the next unlock this run can fairly earn (goalFor), and when the chain has nothing for it,
      this combination's nearest unearned key requirement (keyGoal). An aim the player arrived with — Try to unlock, an achievement row, a
      clearance bar — still outranks both and is shown as it was: that is Aiden's own earlier rule. */
-  const auto=pendingAim?null:(goalFor(sel.game,sel.diff,sel.secs)||keyGoal(sel.game,sel.diff,sel.secs));
-  R.goal=VS.on||sel.vs?null:((pendingGoal&&UNLOCKS.find(u=>u.key===pendingGoal))||auto); const gl=$('#goal'); gl.classList.remove('hit'); gl.classList.toggle('roll',!!R.goal); gl.classList.toggle('on',!!R.goal||(!!pendingAim&&!sel.vs)); if(R.goal){ gl.innerHTML=R.goal.kt?T(HUD.keyGoal,{need:R.goal.need,name:R.goal.name,key:R.goal.keyName}):T(HUD.goal,{need:here(R.goal.need),name:unlockName(R.goal.key)}); } else if(pendingAim&&!sel.vs) gl.innerHTML=T(HUD.aim,{aim:here(pendingAim)}); else gl.innerHTML='';
+  // a Gauntlet step chases nothing: there is no goal line, because nothing it does can be earned (L10)
+  const auto=(pendingGaunt||pendingAim)?null:(goalFor(sel.game,sel.diff,sel.secs)||keyGoal(sel.game,sel.diff,sel.secs));
+  R.goal=VS.on||sel.vs||pendingGaunt?null:((pendingGoal&&UNLOCKS.find(u=>u.key===pendingGoal))||auto); const gl=$('#goal'); gl.classList.remove('hit'); gl.classList.toggle('roll',!!R.goal); gl.classList.toggle('on',!!R.goal||(!!pendingAim&&!sel.vs)); if(R.goal){ gl.innerHTML=R.goal.kt?T(HUD.keyGoal,{need:R.goal.need,name:R.goal.name,key:R.goal.keyName}):T(HUD.goal,{need:here(R.goal.need),name:unlockName(R.goal.key)}); } else if(pendingAim&&!sel.vs) gl.innerHTML=T(HUD.aim,{aim:here(pendingAim)}); else gl.innerHTML='';
   // v15 (2.2): the thing being chased sits at the TOP of the screen during a run, so it is visible while playing. The HUD
   // steps down to make room only when there is a goal to show — a run with nothing to chase looks exactly as it did
   $('#game').classList.toggle('goalon',gl.classList.contains('on'));
@@ -124,7 +130,7 @@ function start(){
   $('#hud-time').textContent=g.timed?sel.secs.toFixed(2):'';
   hud.reset(); applyPrefs(sel.game); $('#game').classList.toggle('timed',!!g.timed&&!versus);
   if(ctx) ctx.timers.clearT();
-  R.id++; Object.assign(R,{on:true,live:false,timed:!!g.timed&&!vx,t0:0,end:0,goalHit:false,fresh:[],lenNext:null,lenDone:false,demo:false,tension:0,fin:0,vsP:[0,0],flow:0,flowT:0,
+  R.id++; Object.assign(R,{on:true,live:false,gaunt:pendingGaunt,timed:!!g.timed&&!vx,t0:0,end:0,goalHit:false,fresh:[],lenNext:null,lenDone:false,demo:false,tension:0,fin:0,vsP:[0,0],flow:0,flowT:0,
     flowOn:!VS.on&&!sel.vs&&(sel.game==='quick-tap'||sel.game==='dots')});
   $('#game').classList.remove('flowon'); $('#game').style.setProperty('--flow','0');
   /* v17 (B.5, L6): the next length this run could open, and the test that says so. It is computed ONCE per run because a
@@ -218,7 +224,10 @@ function flowTick(now){ const tps=eng&&eng.tps?eng.tps(now):0;
 function input(ev){ if(!R.on||!R.live) return; ev.t=tapTime(ev.raw); eng.input(ctx,ev); }
 function finish(res){
   R.on=false; R.live=false; R.flow=0; cancelAnimationFrame(R.raf); ctx.timers.clearT(); Music.stop(); eng.stop(ctx); Snd.end(); $('#seqdone')?.classList.remove('on'); $('#game').classList.remove('flowon');
-  const run=Object.assign({ t:Date.now(), g:sel.game, d:sel.diff, s:sel.secs, n:prefs.name||'', v:RUN_SCHEMA },res||eng.result(ctx)); if(chalRun(run.g,run.d,run.s)) run.chal=1; emit('run:record',{run}); if(!prefs.played){ prefs.played=1; save(); }
+  const run=Object.assign({ t:Date.now(), g:sel.game, d:sel.diff, s:sel.secs, n:prefs.name||'', v:RUN_SCHEMA },res||eng.result(ctx));
+  // v29 (build 56): a Gauntlet step hands itself to run/gauntlet.js and stops here — before run:record, before the board, before every earn
+  if(R.gaunt){ run.gaunt=1; emit('gaunt:step',{run,step:R.gaunt}); return; }
+  if(chalRun(run.g,run.d,run.s)) run.chal=1; emit('run:record',{run}); if(!prefs.played){ prefs.played=1; save(); }
   // pass & play (v10): neither run is recorded — the board is solo. Player 1 plays, the phone is passed, the two are compared. v11: Player 1 red, Player 2 blue
   if(VS.on&&VS.stage===1){ VS.p1=run; emit('run:pass',{run}); return; }
   if(VS.on&&VS.stage===2) VS.p2=run;
@@ -266,7 +275,7 @@ function liveCheck(part){ if(!R.on) return;
   /* v29 (item 2, build 55): Object.assign copies an own property whose value is undefined, so an engine that reports no
      best round would blank the 999 sentinel rather than leave it standing. Undefined fields are dropped instead - 999
      fails every lower-is-better test, which is exactly what 'no round yet' should do. */
-  if(VS.on||sel.vs||R.demo) return; const run=Object.assign({g:sel.game,d:sel.diff,s:sel.secs,hits:0,misses:0,x:999,y:0,practice:sel.practice||0},part);
+  if(VS.on||sel.vs||R.demo||R.gaunt) return; const run=Object.assign({g:sel.game,d:sel.diff,s:sel.secs,hits:0,misses:0,x:999,y:0,practice:sel.practice||0},part);
   for(const k in run) if(run[k]===undefined) delete run[k];
   if(run.x===undefined) run.x=999; if(run.y===undefined) run.y=0;
   if(chalRun(run.g,run.d,run.s)) run.chal=1;
@@ -306,4 +315,4 @@ function goWhere(w){ if(!w) return; sel.game=w.g; prefs.lastGame=w.g; save();
 
 const introActive=()=>Intro.active();
 const introTap=()=>Intro.tap();
-export { R, abort, active, goWhere, input, introActive, introTap, liveCheck, start, whereOf };
+export { R, abort, active, goWhere, input, introActive, introTap, liveCheck, setGauntStep, start, whereOf };

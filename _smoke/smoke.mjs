@@ -332,11 +332,32 @@ async function clearHeld(g) {
 async function poke(g) {
   if (g === 'quick-tap') { const i = await page.evaluate(() => { for (let i = 0; i < 4; i++) if (document.getElementById('sq' + i)?.style.getPropertyValue('--v').trim() === '1') return i; return -1; }); if (i >= 0) await down(`.pad[data-side="${i}"]`); return; }
   if (g === 'dots') { await page.evaluate(() => { const d = document.getElementById('dot'), f = document.getElementById('field'); if (!d.classList.contains('on')) return; const r = d.getBoundingClientRect(); f.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1 })); }); return; }
-  if (g === 'hold') { const wait = await page.evaluate(() => document.getElementById('hbg').classList.contains('on')); if (wait) { await down('#hfield'); await sleep(360); await up('#hfield'); } return; }
+  /* v29 (build 56): Estimate has TWO shapes of input and poke() could only do one. Grow is a hold; Cut is a DRAG, and until now
+     nothing in the gate drove it — every driver here plays a game's FIRST mode, and Cut is the second. A Gauntlet plays both, so
+     the shared poke learns the drag: pointerdown, one move well past cutUp's 24px floor, pointerup, all on #hfield. */
+  if (g === 'hold') { const st = await page.evaluate(() => import('./games/estimate/index.js').then(M => ({ cut: !!(M.default && M.default.cut && M.default.cut()),
+      drawn: !!(document.querySelector('#hcut path.a') && document.querySelector('#hcut path.a').getAttribute('d')),
+      hold: document.getElementById('hbg').classList.contains('on') })).catch(() => ({ cut: false, drawn: false, hold: false })));
+    // the MODE decides, not #hbg: it carries the prompt in both, so a Cut round looked like a Grow round waiting for a hold
+    if (!st.cut) { if (st.hold) { await down('#hfield'); await sleep(360); await up('#hfield'); } return; }
+    if (st.drawn) { await ptr('pointerdown', '#hfield', .2, .3); await sleep(50); await ptr('pointermove', '#hfield', .8, .72); await sleep(50); await ptr('pointerup', '#hfield', .8, .72); }
+    return; }
   if (g === 'sequence') { const input = await page.evaluate(() => document.getElementById('seq').classList.contains('input')); if (input) await down('.key[data-k="0"]'); return; }
   if (g === 'timing') { const run = await page.evaluate(() => !!document.querySelector('#tmclock, #tmball')); if (run) await down('#gen'); return; }
   if (g === 'reaction') { const lit = await page.evaluate(() => !!document.querySelector('#rxpane.lit')); if (lit) await down('#gen'); return; }  // Flash: tap only on the flash. A Streak that never taps also ends (no tap = 600ms)
-  if (g === 'spot') { await page.evaluate(n => { const b = document.querySelector(`#gen [data-num="${n}"]`); if (b) b.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: 0, clientY: 0, pointerId: 1 })); }, 14); return; }
+  /* v29 (build 56): Spot has two shapes of input too. Count is the keypad, which is all poke() could press; FIND is a tap on the
+     ODD SHAPE in the crowd, and only that shape advances the round — a wrong tap costs a penalty and the round waits. A Gauntlet
+     plays Find, so the gate reads the odd point off the engine and taps its centre, the way a player who has spotted it would. */
+  if (g === 'spot') {
+    const hit = await page.evaluate(() => import('./games/spot/index.js').then(M => { const S = M.default;
+      if (!S || typeof S.find !== 'function' || !S.find() || !Array.isArray(S.pts) || !S.odd) return false;
+      const q = S.pts.find(x => x.shape === S.odd); if (!q) return false;
+      const r = document.getElementById('gen').getBoundingClientRect(), sz = q.sz || S.size;
+      document.getElementById('gen').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true,
+        clientX: r.left + q.x + sz / 2, clientY: r.top + q.y + sz / 2, pointerId: 1 }));
+      return true; }).catch(() => false));
+    if (hit) return;
+    await page.evaluate(n => { const b = document.querySelector(`#gen [data-num="${n}"]`); if (b) b.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: 0, clientY: 0, pointerId: 1 })); }, 14); return; }
 }
 // the ad break (every fourth result) has a 2s skip; press it when it is live
 /* v25 (items 6 / 11 / 22, build 46): A CHEST OPENING AND A KEY'S FIRST OPEN ARE THE SAME REVEAL NOW — the stage, the symbols rising out of it,
@@ -697,6 +718,27 @@ if (section('two-player (v15 section 4)')) {
     if (at === 's-over') { const r = await page.evaluate(() => ({ pair: document.querySelector('#vsbox').classList.contains('on'), board: document.querySelector('#over-top').hidden, txt: document.querySelector('#vsbox').textContent.replace(/\s+/g, ' ').trim().slice(0, 60) }));
       (r.pair && r.board) ? ok(`4.6 Spot · Find versus plays out to a pair and no board · ${r.txt}`) : bad('4.6 Spot versus result', JSON.stringify(r)); }
     else bad('4.6 Spot · Find versus reaches a result', 'on ' + (at || 'the game'));
+  }
+  /* ---- v29 (build 56): REACTION VERSUS SCORES. Nothing in this file had ever driven it — the versus drives here are Quick Tap's
+     pads and Spot's crowd, and Reaction versus is a tap on the top or bottom half of #gen. Build 55 lost the three statements
+     that score it (a stray end-of-line comment swallowed them) and every one of four full gate runs passed. This is the guard. ---- */
+  {
+    await boot({});
+    const rx = await page.evaluate(async () => { const ST = await import('./core/state.js'); const RUN = await import('./run/run.js');
+      const M = await import('./games/reaction/index.js'); const E = M.default; const wait = t => new Promise(r => setTimeout(r, t));
+      Object.assign(ST.sel, { game: 'reaction', diff: 'flash', secs: 5, vs: 2, practice: 0 }); ST.VS.reset();
+      RUN.start(); await wait(3200);
+      for (let i = 0; i < 90 && !E.armed; i++) await wait(100);      // through the 3-2-1 and the 1.2-4.5s wait
+      const before = { st: E.st, armed: !!E.armed, n: (E.vsN || []).slice() };
+      const g = document.getElementById('gen'), r = g.getBoundingClientRect();
+      g.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height * .2, pointerId: 1 }));
+      await wait(200);
+      const after = { st: E.st, n: (E.vsN || []).slice() };
+      RUN.abort(); await wait(300); ST.sel.vs = 0; ST.VS.reset();
+      return { before, after }; });
+    (rx.before.armed && rx.before.st === 'go' && rx.after.st === 'show' && (rx.after.n[0] + rx.after.n[1]) === (rx.before.n[0] + rx.before.n[1]) + 1)
+      ? ok(`v15 §4 / L4 a Reaction VERSUS tap scores the round to a player and stops it — ${rx.before.n.join('-')} to ${rx.after.n.join('-')}`)
+      : bad('a Reaction versus tap scores nothing', JSON.stringify(rx));
   }
 }
 
@@ -2397,7 +2439,10 @@ if (section('chests')) {
     const word = await page.evaluate(async () => { const wait = ms => new Promise(r => setTimeout(r, ms)); const w = [...document.querySelectorAll('.chestwords[data-for="key"] .cw')].find(x => x.dataset.to === 'tile:g1');
       if (!w) return null; w.click(); await wait(250); return { screen: document.querySelector('.screen.on').id, flash: document.querySelector('#grid .tile[data-gauntlet="g1"]').classList.contains('flash') }; });
     await page.evaluate(() => document.querySelector('#grid .tile[data-gauntlet="g1"]').click()); await sleep(400);
+    /* v29 (items 11 / 18, build 56): this screen was a title, "Coming soon" and Back. It is the RUN now, so what it must show is the
+       one intro line, the roster in order and a Go button — and the body is the fourth child. The R1 half of this check is unchanged. */
     const screen = await page.evaluate(() => { const s = document.getElementById('s-gauntlet'); return { on: s.classList.contains('on'), title: document.getElementById('gt-title').textContent, soon: document.getElementById('gt-soon').textContent,
+      rows: document.querySelectorAll('#gt-body .gtlist li').length, go: !!document.querySelector('#gt-body [data-act="gaunt-go"]'),
       shown: [...s.children].filter(e => getComputedStyle(e).display !== 'none').map(e => e.id || e.className) }; });
     await sleep(500); await click('#s-gauntlet .back'); await sleep(400);
     const back = await onScreen();
@@ -2410,8 +2455,8 @@ if (section('chests')) {
       && half[0].spillin && half[0].delay === CH48.SPILL.delay + 'ms' && gone(half[1])
       && !again[0].hidden && !again[0].spillin && gone(again[1])
       && word && word.screen === 's-pick' && word.flash
-      && screen.on && screen.title === C.name.g1 && screen.soon === C.soon && screen.shown.length === 3 && back === 's-pick')
-      ? ok(`v27 item 2 / R1 a Gauntlet is NOTHING until its chest opens - no tile, no label, no lock, no connector, no grid cell and no beat in the map's first open (the chests land at ${intro.chests[0]}ms, ${I.chestAt}ms after the seventh game and not ${2 * I.gap}ms later) - and then it comes out of that chest: the ${CP48.GRID.chest.key} opens ${C.name.g1}, which arrives on the spill's own beat (${half[0].delay}) in its chest's row to the LEFT of it on a green connector of its own, with its GAUNTLET word going to it; ${C.name.g2} is still not on the map at all; seen again it simply stands there; and an open tile goes to a placeholder with its title, "${C.soon}" and Back, and nothing else`)
+      && screen.on && screen.title === C.name.g1 && screen.soon === C.intro.g1 && screen.rows === 9 && screen.go && screen.shown.length === 4 && back === 's-pick')
+      ? ok(`v27 item 2 / R1 a Gauntlet is NOTHING until its chest opens - no tile, no label, no lock, no connector, no grid cell and no beat in the map's first open (the chests land at ${intro.chests[0]}ms, ${I.chestAt}ms after the seventh game and not ${2 * I.gap}ms later) - and then it comes out of that chest: the ${CP48.GRID.chest.key} opens ${C.name.g1}, which arrives on the spill's own beat and leads to its nine-play roster and Go (${half[0].delay}) in its chest's row to the LEFT of it on a green connector of its own, with its GAUNTLET word going to it; ${C.name.g2} is still not on the map at all; seen again it simply stands there; and an open tile goes to a placeholder with its title, "${C.soon}" and Back, and nothing else`)
       : bad('v27 item 2 the Gauntlets are secret until their chest', JSON.stringify({ shut, intro, noGap, half, again, word, screen, back }));
   }
 
@@ -2786,6 +2831,105 @@ if (section('music')) {
       ? ok(`item 12 AC() no longer resumes by itself — twelve sounds through a ${ac55.st0} context asked for ${ac55.n} resume${ac55.n === 1 ? '' : 's'}; every one goes through revive()'s single-flight ladder (F.2)`)
       : bad('item 12 AC() still resumes on every call', JSON.stringify(ac55));
   }
+}
+
+/* ---- 7c. the Gauntlets: real runs, and everything they must NOT touch (v29 items 11 / 18, build 56) ---- */
+if (section('gauntlets')) {
+  const GA56 = await import(pathToFileURL(path.join(root, 'config', 'gauntlets.js')).href);
+  const GT56 = await import(pathToFileURL(path.join(root, 'config', 'games.js')).href);
+  const KB56 = await import(pathToFileURL(path.join(root, 'config', 'key-bars.js')).href);
+
+  /* item 18's rosters are Aiden's own, typed 2026-09-18, and this is the mapping check he asked for: every row a real game
+     and mode, every step scored against a bar that exists, Sequence in NEITHER, and Mega the same roster as Mini. */
+  { const wrong = [];
+    for (const id of ['g1', 'g2']) for (const st of (GA56.GAUNTLET_RUNS[id] || [])) {
+      if (!GT56.GAMES[st.g] || !GT56.GAMES[st.g].modes.includes(st.d)) wrong.push(`${id} ${st.g}:${st.d}`);
+      if (!KB56.KEY_BARS[st.ref]) wrong.push(`${id} ref ${st.ref}`);
+      if (!Number.isInteger(st.s) || st.s < 1) wrong.push(`${id} len ${st.s}`);
+      if (st.g === 'sequence') wrong.push(`${id} Sequence is in a Gauntlet`); }
+    const order = id => (GA56.GAUNTLET_RUNS[id] || []).map(x => x.g + ':' + x.d).join(' > ');
+    const same = order('g1') === order('g2');
+    (!wrong.length && same && GA56.GAUNTLET_RUNS.g1.length === 9)
+      ? ok(`items 11 / 18 both rosters are Aiden's nine plays in his order — ${order('g1')} — every step a real game and mode with a bar to score against, Sequence in neither, Mega the same roster at full length`)
+      : bad('items 11 / 18 the rosters', JSON.stringify({ wrong, same, n: (GA56.GAUNTLET_RUNS.g1 || []).length })); }
+
+  /* R1 (v27 item 2): a secret may be KNOWN TO EXIST, never what it is — until its chest is opened a Gauntlet has no tile at
+     all. Aiden narrowed this himself on 2026-09-18: "both tiles show NOTHING until their chest is opened". */
+  const tiles = async chests => { await boot({ chests }); await click('[data-go="s-pick"]'); await sleep(1200);
+    return page.evaluate(() => [...document.querySelectorAll('#grid .tile[data-gauntlet]')]
+      .map(t => ({ id: t.dataset.gauntlet, hidden: !!t.hidden, lines: document.querySelectorAll(`#gridlines [data-gauntlet="${t.dataset.gauntlet}"]`).length }))); };
+  const t0 = await tiles({ games: 1, key: 0, pro: 0, thorns: 0 });
+  const t1 = await tiles({ games: 1, key: 1, pro: 0, thorns: 0 });
+  const t2 = await tiles({ games: 1, key: 1, pro: 1, thorns: 0 });
+  const at = (rows, id) => rows.find(r => r.id === id) || { hidden: null, lines: -1 };
+  (t0.every(r => r.hidden && !r.lines) && !at(t1, 'g1').hidden && at(t1, 'g2').hidden && !at(t2, 'g1').hidden && !at(t2, 'g2').hidden)
+    ? ok('R1 neither Gauntlet is on the map before its chest — no tile, no connector; Gauntlet Mini arrives with the Skill chest and Gauntlet Mega with the Pro chest')
+    : bad('R1 the Gauntlet tiles', JSON.stringify({ t0, t1, t2 }));
+
+  // item 8 (build 52): opening a Gauntlet is what opens its message, and it happens ONCE
+  const msg56 = await page.evaluate(async () => { const R = await import('./ui/router.js'); const S = await import('./core/store.js');
+    const K = await import('./progress/key.js'); const M = await import('./config/messages.js'); const wait = t => new Promise(r => setTimeout(r, t));
+    const row = M.MESSAGES.find(m => m.by && m.by.gauntlet === 'g1');
+    S.prefs.gauntSeen = {}; S.save();
+    const before = { seen: !!(S.prefs.gauntSeen || {}).g1, open: row ? !!K.msgOpen(row) : null };
+    R.show('s-gauntlet', { id: 'g1' }); await wait(350);
+    const one = { seen: (S.prefs.gauntSeen || {}).g1, open: row ? !!K.msgOpen(row) : null };
+    R.show('s-menu'); await wait(150); R.show('s-gauntlet', { id: 'g1' }); await wait(350);
+    const two = { seen: (S.prefs.gauntSeen || {}).g1, keys: Object.keys(S.prefs.gauntSeen || {}) };
+    R.show('s-menu'); await wait(150);
+    return { row: !!row, before, one, two }; });
+  (msg56.row && !msg56.before.seen && !msg56.before.open && msg56.one.seen === 1 && msg56.one.open && msg56.two.seen === 1 && msg56.two.keys.length === 1)
+    ? ok('item 8 "The Gauntlet Mini" opens the first time its Gauntlet is opened, and a second visit writes nothing more')
+    : bad('item 8 the Gauntlet message', JSON.stringify(msg56));
+
+  /* THE RUN. Nine plays back to back, driven the way every other run in this file is driven; what it must not touch is read
+     off the store either side of it. The gate runs it TWICE — once with the Author-bar switch off, which is how it ships
+     until #349 sets real Author times, and once with it on — because "the run must play and score sensibly with the switch
+     off" is the whole point of building the scoring before the numbers exist. */
+  const driveGaunt = async (id, ms = 300000) => {
+    await page.evaluate(() => { window.__g56 = null; return import('./core/events.js').then(E => { E.on('gaunt:done', o => { window.__g56 = o; }); }); });
+    await sleep(250);
+    await page.evaluate(gid => import('./run/gauntlet.js').then(G => G.startGauntlet(gid)), id);
+    const deadline = Date.now() + ms;
+    while (Date.now() < deadline) {
+      const out = await page.evaluate(() => window.__g56); if (out) return out;
+      if (await inGame()) { const g = await page.evaluate(() => import('./core/state.js').then(S => S.sel.game));
+        if (!(await clearReady(g)) && !(await clearHeld(g))) await poke(g); }
+      await sleep(110); }
+    return null; };
+
+  await boot({ chests: { games: 1, key: 1, pro: 1, thorns: 0 } }, { unlock: {}, ach: {}, bars: {} });
+  const before56 = await page.evaluate(() => { const st = JSON.parse(localStorage.getItem('ne')) || {};
+    return { runs: (st.runs || []).length, unlock: Object.keys(st.unlock || {}).length, ach: Object.keys(st.ach || {}).length, bars: Object.keys(st.bars || {}).length, gaunt: (st.gaunt || []).length }; });
+  const off56 = await driveGaunt('g1');
+  const after56 = await page.evaluate(() => { const st = JSON.parse(localStorage.getItem('ne')) || {};
+    return { runs: (st.runs || []).length, unlock: Object.keys(st.unlock || {}).length, ach: Object.keys(st.ach || {}).length, bars: Object.keys(st.bars || {}).length, gaunt: (st.gaunt || []).length, tier: (st.gaunt || [])[0] && (st.gaunt || [])[0].tier }; });
+  (off56 && Number.isFinite(off56.score) && off56.web.length === 8 && off56.web.every(r => r.pct === null || Number.isFinite(r.pct)) && off56.verdict && off56.verdict.tier)
+    ? ok(`items 11 / 18 Gauntlet Mini plays nine games back to back with the Author-bar switch OFF and scores ${off56.score}% against the key-1 column — eight spokes on the web (Estimate's two modes are one), a verdict of "${off56.verdict.name}"`)
+    : bad('items 11 / 18 a Gauntlet run with the switch off', JSON.stringify(off56 && { score: off56.score, web: off56.web }));
+  (after56.runs === before56.runs && after56.unlock === before56.unlock && after56.ach === before56.ach && after56.bars === before56.bars && after56.gaunt === before56.gaunt + 1 && after56.tier === 'clear')
+    ? ok('L10 a Gauntlet run advances NOTHING — no board row, no unlock, no achievement, no clearance bar — and writes one row to its own board, stamped with the column it was scored against')
+    : bad('L10 a Gauntlet run wrote something it should not have', JSON.stringify({ before56, after56 }));
+
+  await page.evaluate(() => import('./config/gauntlets.js').then(G => { G.GAUNTLET_SCORE.tier = 'author'; }));
+  const on56 = await driveGaunt('g1');
+  const tier56 = await page.evaluate(() => { const st = JSON.parse(localStorage.getItem('ne')) || {}; return (st.gaunt || [])[0] && (st.gaunt || [])[0].tier; });
+  await page.evaluate(() => import('./config/gauntlets.js').then(G => { G.GAUNTLET_SCORE.tier = 'clear'; }));
+  (on56 && Number.isFinite(on56.score) && on56.web.length === 8 && on56.web.every(r => r.pct === null || Number.isFinite(r.pct)) && tier56 === 'author')
+    ? ok(`items 11 / 18 and with the switch ON the same run completes and scores against the Author column (${on56.score}%) — the switch is one line in config/gauntlets.js and both sides of it play`)
+    : bad('items 11 / 18 a Gauntlet run with the switch on', JSON.stringify({ on56: on56 && { score: on56.score }, tier56 }));
+
+  // one way through: a quit ends the Gauntlet outright and writes no row at all
+  await page.evaluate(() => { window.__q56 = null; return import('./core/events.js').then(E => { E.on('gaunt:quit', o => { window.__q56 = o; }); }); });
+  const wasG = await page.evaluate(() => ((JSON.parse(localStorage.getItem('ne')) || {}).gaunt || []).length);
+  await page.evaluate(() => import('./run/gauntlet.js').then(G => G.startGauntlet('g1')));
+  for (let i = 0; i < 60 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) await sleep(100);
+  await sleep(400); await click('#quit'); await sleep(700);
+  const quit56 = await page.evaluate(async () => { const G = await import('./run/gauntlet.js');
+    return { quit: !!window.__q56, on: G.gauntOn(), rows: ((JSON.parse(localStorage.getItem('ne')) || {}).gaunt || []).length, screen: (document.querySelector('.screen.on') || {}).id }; });
+  (quit56.quit && !quit56.on && quit56.rows === wasG && quit56.screen === 's-gauntlet')
+    ? ok('item 11 one way through — a quit ends the whole Gauntlet, writes no row, and lands back on its own screen where the next attempt starts at game one')
+    : bad('item 11 quitting a Gauntlet', JSON.stringify(quit56));
 }
 
 /* ---- 8. build 27 (v16): the Timing unlock, the music engine, Find versus, the intro ---- */
@@ -5014,8 +5158,9 @@ if (section('build 36 - the frozen clock and the verdict export')) {
       'spot:find': { bad: ['It was there the whole time!', 'Too long on each one.', 'Lost in the crowd.', 'Scan, do not stare.', 'Look wider and go again.'], ok: ['Finding them.', 'Decent search.', 'Let the odd one come to you.', 'Mid pace.', 'Nearly quick!'], good: ['Quick eye!', 'Great scanning.', 'Straight to it, mostly.', 'Low times, nice.', 'Very good run!'], ace: ['You did not search, you saw!', 'Straight to it, every time.', 'Nothing wasted.', 'Very quick eye.', 'That will be hard to beat.'] } };
     const lineBad = []; for (const [k, tiers] of Object.entries(W)) for (const [t, want] of Object.entries(tiers)) if (((T[k] || {}).lines || {})[t]?.join('|') !== want.join('|')) lineBad.push(k + ':' + t);
     const ws = Object.entries(T).flatMap(([k, r]) => Object.values(r.lines).flat().filter(l => l !== l.trim()).map(l => k + ' "' + l + '"'));
-    (!lineBad.length && !ws.length && Object.keys(T).length === 11)
-      ? ok('Verdict export (v658): every line it carries is in, across all eleven verdict rows; the lines it left blank keep theirs; the two half-typed lines are Aiden\'s fixes; no line carries stray whitespace')
+    // v29 (items 11 / 18, build 56): TWELVE rows. The Gauntlet has a verdict set of its own, like any game (config/verdicts.js)
+    (!lineBad.length && !ws.length && Object.keys(T).length === 12)
+      ? ok('Verdict export (v658): every line it carries is in, across all eleven of Aiden\'s verdict rows plus the Gauntlet\'s own; the lines it left blank keep theirs; the two half-typed lines are Aiden\'s fixes; no line carries stray whitespace')
       : bad('Verdict export lines', JSON.stringify({ lineBad, ws, keys: Object.keys(T) }));
     const AT = { 'quick-tap': [.4833, .3667, .25], dots: [.5556, .4444, .3111], hold: [.875, .75, .25], 'hold:cut': [.8875, .8, .625], sequence: [.6875, .5, .3125],
       'reaction:flash': [.7714, .6714, .5857], 'reaction:nogo': [.5, .44, .33], 'timing:stopwatch': [.9, .74, .56], 'timing:hidden': [.9259, .8796, .8241], 'spot:count': [.85, .6, .35], 'spot:find': [.85, .6, .35] };

@@ -296,7 +296,16 @@ function load(){ let raw=parse(read(KEY)), legacy=false;
   if((raw.v||0)<4) raw=up4(raw);
   if((raw.v||0)<5) raw=up5(raw);
   if((raw.v||0)<6) raw=up6(raw);
-  return { st:{ v:VERSION, prefs:cleanPrefs(raw.prefs), runs:cleanRuns(raw.runs), ach:cleanMap(raw.ach), unlock:cleanMap(raw.unlock), intro:cleanMap(raw.intro), seen:isObj(raw.seen)?cleanMap(raw.seen):null, bars:cleanMap(raw.bars) }, legacy }; }
+/* v29 (items 11 / 18, build 56): THE GAUNTLETS KEEP THEIR OWN BOARD. A Gauntlet advances no key, bar, unlock or achievement and
+   nothing of it reaches a game's board (L10 applied to a thing that is not a mode), so its rows live here and nowhere else. One
+   row is { id, t, score, tier, web:[{key,pct}] } — the tier is which key-bar column it was scored against, so a board written
+   before the Author bars are real can never be read as if it were written after. No ladder step: absent means none. */
+const GAUNT_CAP=200;
+const validGaunt=r=>isObj(r)&&typeof r.id==='string'&&r.id.length<=8&&typeof r.t==='number'&&Number.isFinite(r.t)
+  &&typeof r.score==='number'&&Number.isFinite(r.score)&&Array.isArray(r.web)
+  &&r.web.every(w=>isObj(w)&&typeof w.key==='string'&&w.key.length<=40&&(w.pct===null||(typeof w.pct==='number'&&Number.isFinite(w.pct))));
+const cleanGaunt=raw=>(Array.isArray(raw)?raw.filter(validGaunt):[]).slice(0,GAUNT_CAP);
+  return { st:{ v:VERSION, prefs:cleanPrefs(raw.prefs), runs:cleanRuns(raw.runs), ach:cleanMap(raw.ach), unlock:cleanMap(raw.unlock), intro:cleanMap(raw.intro), seen:isObj(raw.seen)?cleanMap(raw.seen):null, bars:cleanMap(raw.bars), gaunt:cleanGaunt(raw.gaunt) }, legacy }; }
 
 const { st: store, legacy } = load();
 const prefs = store.prefs;
@@ -332,6 +341,6 @@ const musicOn=g=>!opened('games')||prefs.musicG[g]!==false;
    profile showed all 27 of them open. Supporter is a dev switch today (S5 gates it out of a release build entirely) and
    Fresh game is the switch for seeing the app as a new player does, so it belongs in this list. When it becomes a real
    purchase at the native build it will be restored from the store rather than from prefs, and this line stays correct. */
-function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,keysSeen:0,chests:cleanChests(null),cusSeen:0,readySeen:cleanChests(null),spill:cleanChests(null),keyWhole:{},revealed:{},msgSeen:{},gauntSeen:{},paid:0,cracked:0,menuOpened:{},retro:{},retroCol:{},devKeys:{}}); delete prefs.mig11; delete prefs.mig31; delete prefs.mig32; delete prefs.mig35; delete prefs.meterSeen; delete prefs.devMeter; save(); emit('store:reset'); }
+function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; store.gaunt=[]; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,keysSeen:0,chests:cleanChests(null),cusSeen:0,readySeen:cleanChests(null),spill:cleanChests(null),keyWhole:{},revealed:{},msgSeen:{},gauntSeen:{},paid:0,cracked:0,menuOpened:{},retro:{},retroCol:{},devKeys:{}}); delete prefs.mig11; delete prefs.mig31; delete prefs.mig32; delete prefs.mig35; delete prefs.meterSeen; delete prefs.devMeter; save(); emit('store:reset'); }
 
 export { RUNS_CAP, everywhere, look, lookCol, musicOn, opened, prefs, reset, save, setKeyDone, store, trimRuns };

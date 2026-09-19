@@ -193,7 +193,14 @@ export const CHEST_WORDS = {
    — confirmed in the outcome. This object is the ONE spelling of either name: the map tiles, the chest word that brings each one in, the
    Messages rows and their video titles, the placeholder screen and Testing all compose off it. The ids g1 / g2 do NOT move — they are store
    keys (prefs.gauntSeen) and a saved profile must not reset. `msgTitle` in progress/key.js is how a message row spells its Gauntlet. */
-export const GAUNTLET = { name:{ g1:'Gauntlet Mini', g2:'Gauntlet Mega' }, msgTitle:'The {name}', toast:'{need} first', soon:'Coming soon' };
+/* v29 (items 11 / 18, build 56): THE GAUNTLETS ARE REAL RUNS. `soon` stays for a Gauntlet with no roster; `intro` is the one
+   first-play line each gets, the way every game has one (INTRO below). The score is a percentage of the bar, so 100 means the
+   run matched it and there is no ceiling above that. */
+export const GAUNTLET = { name:{ g1:'Gauntlet Mini', g2:'Gauntlet Mega' }, msgTitle:'The {name}', toast:'{need} first', soon:'Coming soon',
+  intro:{ g1:'Every game, back to back, short. One run, one score.', g2:'Every game, back to back, at full length. No way back to the start.' },
+  go:'Go', again:'Again, from game one', oneWay:'One way through — quit and the next attempt starts at game one.',
+  pct:'{n}%', noBar:'—', board:'Your best', barLine:'100% is the bar. Past it is past the bar.',
+  round:'1 round', rounds:'{n} rounds' };
 // v23 (L.11b, build 41): what a word whose reward is not built yet says when tapped (guess)
 export const CHEST_SOON = '{w}<small>not built yet · a later build</small>';
 export const SHEET = { mode:'Mode', toUnlock:'To unlock: {need}', tileUnlock:'to unlock: {need}', locked:'locked', noRun:'no run yet', best:'best', closest:'closest',
