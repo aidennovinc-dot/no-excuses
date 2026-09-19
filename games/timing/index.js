@@ -195,22 +195,27 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
       b.t=Math.max(0,Math.min(lim,(tapAt-this.t0)/1000*b.v)); }
     // v14 (6.19): nothing to judge until the ball is behind the wall, so a tap before that is ignored rather than scored
     if(this.hid()&&this.ball&&ev!==true&&this.ball.t<this.ball.wall) return;
-    this.st='show'; cancelAnimationFrame(this.raf); const now=(tapAt&&this.t0)?tapAt:performance.now(); let err, note;
+    this.st='show'; cancelAnimationFrame(this.raf); const now=(tapAt&&this.t0)?tapAt:performance.now(); let err;
     // hidden (v10): scored in pixels between the ball and the marker — dead on within 10px, close within 35px
     const hid=this.hid();
     // v18 (B.4): the error is the TIME between the ball and the marker - the pixels divided by this round's own pace -
     // so the same miss reads the same on every phone and at every speed B.5 deals
-    if(hid){ const b=this.ball; const off=(b.t-b.markT)/b.v*1000; err=Math.round(Math.abs(off)); note=off>0?CP.late:CP.early; $('#tmwall').style.opacity=.12; const g=$('#tmghost'), p=b.pos(b.t); g.style.left=p.x+'px'; g.style.top=p.y+'px'; g.style.opacity=1; }
-    else { const e=(now-this.t0)/1000; err=Math.abs(e-this.target); note=e>this.target?CP.late:CP.early; const el=$('#tmclock'); el.style.opacity=1; el.textContent=f2(e); err=Math.round(err*100)/100; }
+    if(hid){ const b=this.ball; const off=(b.t-b.markT)/b.v*1000; err=Math.round(Math.abs(off)); $('#tmwall').style.opacity=.12; const g=$('#tmghost'), p=b.pos(b.t); g.style.left=p.x+'px'; g.style.top=p.y+'px'; g.style.opacity=1; }
+    else { const e=(now-this.t0)/1000; err=Math.abs(e-this.target); const el=$('#tmclock'); el.style.opacity=1; el.textContent=f2(e); err=Math.round(err*100)/100; }
     this.errs.push(err);
     if(this.streak()) hud.score(this.streakScore());
     /* v13 (8.4): Hidden shows every round's result — the miss, dead on / early / late — then moves on.
        v18 (B.10): the round's own figure wears its tier colour, judged against ROUND_AT for this mode. Solo only (L4). */
     const key='timing:'+this.ctx.mode; const at=ROUND_AT[key]||[]; const good=err<=at[0], ok=err<=at[2];
-    /* v25 (items 17 / 18, build 45): solo, the round's word IS its tier — Aiden's name in its colour, then early / late unless it was Amazing! — and the
-       tier's short sound plays with it. A shared run keeps dead on / close / early / late and no tier (L4) */
+    /* v25 (items 17 / 18, build 45): solo, the round's word IS its tier — Aiden's name in its colour — and the tier's short sound plays with it.
+       v30 (59.4, build 59): AND THE DIRECTION WORD IS GONE, here and in every other game. Aiden on Timing · Hidden reading "44MS · Great!· EARLY":
+       "we don't need late or early after a user finishes a round ... it doesn't need to be told whether it's early or late. This should apply to
+       all games." The direction is already on screen as a PICTURE — the dashed target ring against the ring where he stopped, and the ghost ball
+       against the marker — so the word only repeated it and made a good round read like a correction. The separator went with it rather than
+       being left dangling. A shared run still has no tier (L4), so it keeps dead on and close; below those it now shows the figure alone, in red,
+       because the only word it had left there WAS the direction. `note` is what the direction was and it is not computed any more. */
     const t=roundShow(this.ctx.audio,key,err,!this.two.on), col=t?t.col:'';
-    $('#gen').insertAdjacentHTML('beforeend',`<div class="glbl bot" id="tmres"><b class="${good?'g':ok?'':'r'}" id="tmerr"${col?` style="color:${col}"`:''}>${hid?err+CP.msU:f2(err)+'s'}</b>${t?tierWord(t)+(t.id==='ace'?'':' · '+note):good?CP.dead:ok?CP.close:note}</div>`); const h=$('#tmhint'); if(h) h.remove();
+    $('#gen').insertAdjacentHTML('beforeend',`<div class="glbl bot" id="tmres"><b class="${good?'g':ok?'':'r'}" id="tmerr"${col?` style="color:${col}"`:''}>${hid?err+CP.msU:f2(err)+'s'}</b>${t?tierWord(t):good?CP.dead:ok?CP.close:''}</div>`); const h=$('#tmhint'); if(h) h.remove();
     ok?this.ctx.audio.hit():this.ctx.audio.miss(); if(!ok) haptic(30);
     if(this.two.on) return this.twoAdd(err,hid);
     if(this.streak()) return this.addUp(err,hid);

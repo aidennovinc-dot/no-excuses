@@ -1295,6 +1295,54 @@ if (section('the chain and its screens (v15 sections 1 and 2)')) {
 // ---- 6e. the runs (v15 section 3), build 24 ----
 if (section('the runs (v15 section 3)')) {
   const css = read('styles', 'app.css');
+
+  /* ---- v30 (59.4, build 59): NO DIRECTION WORD AFTER A ROUND, IN ANY GAME ----
+     Aiden, on a Timing · Hidden round reading "44MS · Great! · EARLY": "we don't need late or early after a user finishes a round. In this
+     one it says great, that's all we need ... it doesn't need to be told whether it's early or late. This should apply to all games." The
+     direction is already on screen as a PICTURE in every game that had one — the ghost ball against the marker, your shape against the dashed
+     target — so the word repeated it and made a good round read like a correction.
+     Two games printed one and they are the two driven here: Timing's early / late and Estimate's too much / too little. The check plays a real
+     round of each MODE and reads the round line off the screen, because the item says to find every APPENDER rather than blank the strings —
+     a string left in config with a caller still on it would pass a config test and fail on the phone. The separator is asserted gone too
+     ("not left dangling"), and the figure and the tier's own name are asserted still there, because 59.4 keeps both. */
+  {
+    const DIRW = await (async () => { const C = await import(pathToFileURL(path.join(root, 'config', 'copy.js')).href);
+      return { timing: [C.TIMING.early, C.TIMING.late], est: [C.ESTIMATE.much, C.ESTIMATE.little], tiers: (await import(pathToFileURL(path.join(root, 'config', 'verdicts.js')).href)).VERDICT_TIERS.map(t => t.name) }; })();
+    /* `clearReady` first, then poke: a fresh profile shows each game's one-line intro and ends it on "Ready?", and a driver that
+       only pokes the playing field waits out the whole run on that screen. `clearHeld` is deliberately NOT called — it taps the
+       round card away, and the round card is the thing being read. The line is read off its own HOST, not off the figure: the
+       tier's word is a SIBLING of `<b id="hpct">`, so reading the figure's element would report a line with no verdict in it. */
+    const lineOf = async (g, mi, sel) => {
+      await openSheet(g, mi, 0);
+      await click('#go-btn');
+      for (let i = 0; i < 160; i++) {
+        if (!(await clearReady(g))) await poke(g);
+        await sleep(130);
+        const txt = await page.evaluate(s => { const el = document.querySelector(s); return el ? el.textContent.replace(/\s+/g, ' ').trim() : ''; }, sel);
+        if (txt) return txt;
+        if ((await onScreen()) === 's-over') return '';
+      }
+      return '';
+    };
+    const lines = {};
+    lines['timing:stopwatch'] = await lineOf('timing', 0, '#tmres');
+    lines['timing:hidden'] = await lineOf('timing', 1, '#tmres');
+    lines['hold:grow'] = await lineOf('hold', 0, '#hres');
+    lines['hold:cut'] = await lineOf('hold', 1, '#hres');
+    const got = Object.entries(lines).filter(([, v]) => v);
+    const words = k => k.startsWith('timing') ? DIRW.timing : DIRW.est;
+    const noDir = got.every(([k, v]) => !words(k).some(w => w && new RegExp('\\b' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(v)));
+    // "not left dangling": no round line ends on the separator, and none carries an empty one
+    const noDangle = got.every(([, v]) => !/·\s*$/.test(v) && !/·\s*·/.test(v));
+    // KEEP: the figure and the verdict word. Every line still carries a number, and a judged one still names its tier
+    const keptFigure = got.every(([, v]) => /\d/.test(v));
+    const keptVerdict = got.some(([, v]) => DIRW.tiers.some(n => v.includes(n)));
+    (got.length === 4 && noDir && noDangle && keptFigure && keptVerdict)
+      ? ok(`v30 59.4 no direction word after a round, every game and mode: ${got.map(([k, v]) => k + ' "' + v + '"').join(' · ')} — none of ${[...DIRW.timing, ...DIRW.est].join(' / ')}, no separator left dangling, and the figure and the tier's own name both kept`)
+      : bad('v30 59.4 the direction word after a round', JSON.stringify({ lines, noDir, noDangle, keptFigure, keptVerdict }));
+  }
+  await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' });
+  await setStorage({}); await page.reload({ waitUntil: 'networkidle0' }); await sleep(600);
   // 3.12: a glow, not a solid line. The old rule is the thing that must be gone, so test for its absence too
   { const rule = (css.match(/#game\.pturn::after\{[^}]*\}/) || [''])[0];
     const glow = /box-shadow:\s*inset/.test(rule), solid = /border:\s*\d+px solid/.test(rule);

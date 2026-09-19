@@ -128,13 +128,18 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
     // the hold ran to its ceiling — what Greedy actually asks for, and true at every target size
     if(size>=cap-.5) this.maxed=true;
     this.set('hm',this.mine,size); const mine=Shapes.area(this.mine.loops)*size*size, tgt=this.shape.coef*this.target*this.target; const pct=mine/tgt*100, err=Math.abs(pct-100);
-    const word=err<=2?CP.money:err<=8?CP.close:pct>100?CP.much:CP.little;
+    /* v30 (59.4, build 59): NO DIRECTION WORD AFTER A ROUND, in this game as in every other. Aiden: "we don't need late or early after a
+       user finishes a round ... it doesn't need to be told whether it's early or late. This should apply to all games." Estimate's siblings
+       of early / late are "too much" and "too little", and they go the same way: the reveal already draws your shape against the dashed
+       target, so which side you missed on is visible, and the word only repeated it. A shared run has no tier (L4), so below "close" it now
+       shows the percentage alone — the word it had there WAS the direction. */
+    const word=err<=2?CP.money:err<=8?CP.close:'';
     // the target comes back filled, from the bottom up, inside its outline; yours fills the same way
     // v15 (3.3): the dashed target outline STAYS, over your shape, for the whole reveal — .rev lifts it above the fill.
     // Readable without motion and it needs no dismiss, which is why it beat flashing between the two
     this.set('hg',this.shape,this.target,{a:this.rot,x:0,y:0}); this.set('ht',this.shape,this.target,{a:this.rot,x:0,y:0}); $('#hfield').classList.add('show','rev'); this.clipTo('tclipr',0,this.target); this.clipTo('hclipr',0,size);
     this.calc([[CP.target,tgt,'',0,'',k=>this.clipTo('tclipr',k,this.target)],[CP.yours,mine,'m',0,'',k=>this.clipTo('hclipr',k,size)]],Math.max(tgt,mine)*1.15,()=>{ const diff=Math.round(mine-tgt); return `<b class="${err<=2?'g':err>8?'r':''}" style="font-size:22px">${diff>0?'+':'−'}${Math.abs(diff).toLocaleString()} ${CP.px}</b>`; },
-      ()=>{ const t=this.tierOf('hold:grow',err); return `<b class="${err<=2?'g':err>8?'r':''}" id="hpct"${t?` style="color:${t.col}"`:''}>${f2(pct)}%</b>${t?tierWord(t)+(t.id==='ace'?'':' · '+(pct>100?CP.much:CP.little)):word}`; }, err, {from:pct,to:100}); },
+      ()=>{ const t=this.tierOf('hold:grow',err); return `<b class="${err<=2?'g':err>8?'r':''}" id="hpct"${t?` style="color:${t.col}"`:''}>${f2(pct)}%</b>${t?tierWord(t):word}`; }, err, {from:pct,to:100}); },
   /* v18 (B.10): the tier's colour on the round's own figure, as a ready-made style attribute. The class beside it stays:
      `g` / `r` are the engine's own dead-on / way-off marks and the tier is the four-step reading of the same number.
      Solo only (L4) — light blue is Player 2 and red is Player 1, so a shared run keeps the player colours. */
@@ -210,11 +215,15 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
     const P=Ls=>Ls.map(L=>'M'+L.map(([x,y])=>`${x.toFixed(2)},${y.toFixed(2)}`).join('L')+'z').join(''); $('#hcut path.a').setAttribute('d',P(small)); $('#hcut path.b').setAttribute('d',P(big)); $('#hlbl').innerHTML='';
     // the reveal (v11): each piece fills bottom-up while its px² counts, the cut-off piece first, then the rest; then the share against the target and the difference
     this.clipTo('aclipr',0,this.target); this.clipTo('bclipr',0,this.target);
-    const word=err<=1.5?CP.money:err<=5?CP.closeCut:share>this.share?CP.much:CP.little; const want=total*this.share/100;
+    const word=err<=1.5?CP.money:err<=5?CP.closeCut:''; const want=total*this.share/100;
     // v13 (6.5): ONE bar. It is the whole shape; the cut piece's share fills it from the left while the px² count, and the red target line stays put.
     // The two pieces wear the customisable pair — the piece in --cutp, the rest at 40% of it — and the bar wears the same two colours
     this.clipFull('bclipr');
-    this.calc([[CP.piece,aS,'cutbar',Math.round(want/total*100),'',k=>this.clipTo('aclipr',k,this.target)]],total,()=>{ const diff=Math.round(aS-want); return `<b class="${err<=1.5?'g':err>8?'r':''}" style="font-size:22px">${diff>0?'+':'−'}${Math.abs(diff).toLocaleString()} ${CP.px}</b><br><span style="font-size:10px">${T(CP.targetPx,{n:Math.round(want).toLocaleString()})}</span>`; },()=>{ const t=this.tierOf('hold:cut',err); return `<b class="${err<=1.5?'g':err>8?'r':''}" id="hpct"${t?` style="color:${t.col}"`:''}>${f2(share)}%</b>${t?tierWord(t)+(t.id==='ace'?'':' · '+(share>this.share?CP.much:CP.little)):word} · ${T(CP.targetShare,{n:this.share})}`; },err,{from:share,to:this.share}); } };
+    this.calc([[CP.piece,aS,'cutbar',Math.round(want/total*100),'',k=>this.clipTo('aclipr',k,this.target)]],total,()=>{ const diff=Math.round(aS-want); return `<b class="${err<=1.5?'g':err>8?'r':''}" style="font-size:22px">${diff>0?'+':'−'}${Math.abs(diff).toLocaleString()} ${CP.px}</b><br><span style="font-size:10px">${T(CP.targetPx,{n:Math.round(want).toLocaleString()})}</span>`; },()=>{ const t=this.tierOf('hold:cut',err); const v=t?tierWord(t):word;
+      /* v30 (59.4, build 59): the verdict may now be EMPTY on a shared run's worst band, because the only word it had there was the
+         direction. The target share still follows it, so the separator is put on with the word rather than typed before the share —
+         59.4 asks for the " · " gone too, "not left dangling". */
+      return `<b class="${err<=1.5?'g':err>8?'r':''}" id="hpct"${t?` style="color:${t.col}"`:''}>${f2(share)}%</b>${v?v+' · ':''}${T(CP.targetShare,{n:this.share})}`; },err,{from:share,to:this.share}); } };
 
 export default HD;
 export { HD };
