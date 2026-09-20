@@ -2097,9 +2097,15 @@ if (section('the keys, the surface and #375 (v15 sections 5 and 6)')) {
     const timing = P52.on.ms <= 750 && onSpan <= P52.on.ms && offSpan <= P52.off.ms
       && P52.on.steps.map(x => x.name).join() === 'outline,line,open' && P52.off.steps.map(x => x.name).join() === 'close,dot,fade'
       && P52.inset > 0 && P52.inset < 25;
-    // the test card is really there and it is NOT build 46's planted video/test.mp4 (item 11 says so in as many words)
-    const card = fs.existsSync(path.join(root, 'video', 'test-card.mp4')) && fs.existsSync(path.join(root, 'video', 'test-card.vtt'))
-      && MS52b.MESSAGES.every(m => m.file === 'video/test-card.mp4' && m.cc === 'video/test-card.vtt') && !fs.existsSync(path.join(root, 'video', 'test.mp4'));
+    /* the test card is really there and it is NOT build 46's planted video/test.mp4 (item 11 says so in as many words).
+       AMENDED AT BUILD 59 (v30 59.10): the Welcome slot points at Aiden's own clip now, so "every slot is the test card" is no longer
+       the rule. What replaces it is stricter than what it replaces: every file a slot names EXISTS ON DISK (the old check never asked
+       that of the card itself), every `cc` a slot names exists too, and anything that is not the test card is still NAMED as a test —
+       which is 59.10's own instruction, "It is a TEST — name it that way so nobody ships it". */
+    const onDisk52 = f => !!f && fs.existsSync(path.join(root, ...String(f).split('/')));
+    const card = onDisk52('video/test-card.mp4') && onDisk52('video/test-card.vtt') && !fs.existsSync(path.join(root, 'video', 'test.mp4'))
+      && MS52b.MESSAGES.every(m => onDisk52(m.file) && (!m.cc || onDisk52(m.cc)))
+      && MS52b.MESSAGES.every(m => /test/i.test(m.file));
     await boot({ chests: { games: 1, key: 1, pro: 1, thorns: 1 }, gauntSeen: { g1: 1, g2: 1 }, paid: 1 }, { runs: [{ t: Date.now(), g: 'quick-tap', d: 'two', s: 5, hits: 7, misses: 0, v: 4 }] });
     await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-about'); }); await sleep(500);
     const play = await page.evaluate(async P => { const CH = await import('./ui/chest.js'); const M = await import('./config/messages.js');
@@ -2141,15 +2147,33 @@ if (section('the keys, the surface and #375 (v15 sections 5 and 6)')) {
   {
     /* item 1: build 53 put meterPct() over the top of meter() and clamped it to 100, so the front of the app read 100%
        with two of the three keys still empty. The 2026-09-14 decision stands: one continuous meter, 0-300. */
-    const m55 = await page.evaluate(async () => { const K = await import('./progress/key.js'); const S = await import('./core/store.js');
-      const was = { ch: S.prefs.chests, bars: S.store.bars };
+    /* AMENDED AT BUILD 59 (v30 59.11): the first band is MODES + KEY-1 BARS now, so a fixture that banks every bar and leaves every
+       mode locked is not a state play can reach and would read 71, not 100. The fixture opens the modes as well — and the check below
+       it asserts WHY that is not a fudge: every unlockable mode carries at least one key-1 bar, so clearing all 30 bars is only
+       possible with every mode open. That is what keeps Aiden's "100 means key 1 whole" true under the new split. */
+    const m55 = await page.evaluate(async () => { const K = await import('./progress/key.js'); const S = await import('./core/store.js'); const U = await import('./config/unlocks.js');
+      const was = { ch: S.prefs.chests, bars: S.store.bars, unlock: S.store.unlock };
       S.prefs.chests = { games: 1, key: 1, pro: 1, thorns: 0 }; S.store.bars = {};
+      S.store.unlock = Object.fromEntries(U.UNLOCKS.map(u => [u.key, Date.now()]));
       for (const c of K.COMBOS) { S.store.bars[K.skey(c.key, 'clear')] = 1; S.store.bars[K.skey(c.key, 'pro')] = 1; }
       const out = { meter: K.meter(), pct: K.meterPct(), max: K.meterMax(), key1: K.bandPct('clear'), pro: K.bandPct('pro'), author: K.bandPct('author') };
-      S.prefs.chests = was.ch; S.store.bars = was.bars; S.save(); return out; });
+      S.prefs.chests = was.ch; S.store.bars = was.bars; S.store.unlock = was.unlock; S.save(); return out; });
     (m55.pct === 200 && m55.meter === 200 && m55.max === 300 && m55.key1 === 100 && m55.pro === 100 && m55.author === 0)
-      ? ok('item 1 the meter is one continuous 0-300 again — every key-1 and Pro bar cleared renders 200%, and what a surface PRINTS (meterPct) is what the app reasons with (meter)')
+      ? ok('item 1 / v30 59.11 the meter is one continuous 0-300 — every mode open and every key-1 and Pro bar cleared renders 200%, and what a surface PRINTS (meterPct) is what the app reasons with (meter)')
       : bad('item 1 the meter at key 1 + Pro', JSON.stringify(m55));
+
+    /* v30 (59.11, build 59): AND 100 STILL MEANS KEY 1 WHOLE. The first hundred is now shared between the modes and the key-1 bars,
+       which only leaves "100 = key 1 whole" true if a whole key implies every mode. It does, and not by luck: a key-1 bar is a bar on
+       a game:mode:length combination, so every unlockable mode carries at least one, and there is no way to clear all 30 with a mode
+       still locked. Asserted from the data rather than assumed, because if a mode were ever added without a bar this silently breaks
+       and the front of the app would stop at 97% for a player who had finished the key. */
+    const cover59 = await page.evaluate(async () => { const K = await import('./progress/key.js'), P = await import('./progress.js'), G = await import('./config/games.js');
+      const withBar = new Set(K.COMBOS.map(c => c.g + ':' + c.d));
+      const modes = []; for (const g in G.GAMES) for (const d of G.GAMES[g].modes) modes.push(g + ':' + d);
+      return { modes: modes.length, missing: modes.filter(k => !withBar.has(k)), bars: K.COMBOS.length, free: P.modeCount().free }; });
+    (!cover59.missing.length)
+      ? ok(`v30 59.11 100 still means key 1 whole: all ${cover59.modes} modes carry at least one of the ${cover59.bars} key-1 bars, so the key cannot be finished with a mode still locked and the modes' share of the first hundred is always full by the time the last bar lands`)
+      : bad('v30 59.11 a mode with no key-1 bar would strand the meter under 100', JSON.stringify(cover59));
 
     /* item 13: chestOpen() honours OPEN EVERYTHING and SUPPORTER — right for every READ — but checkKey and retroArrived were
        banking real |pro and |author bars while a flag was on, and those bars stay once it is off. */
@@ -2385,7 +2409,11 @@ if (section('chests')) {
   // every surface's reading, beside the store's
   const read48 = () => page.evaluate(async () => { const K = await import('./progress/key.js'); const R = await import('./ui/router.js'); const wait = ms => new Promise(r => setTimeout(r, ms));
     const ids = ['games', 'key', 'pro', 'thorns'];
-    const out = { store: { meter: K.meter(), shown: K.meterPct(), max: K.meterMax(), chests: ids.map(K.chestState), bars: K.TIERS.map(t => K.keyState(t).done), total: K.TIERS.map(t => K.keyState(t).total), pct: K.TIERS.map(t => K.bandPct(t)), open: K.TIERS.map(t => K.tierOpen(t)) } };
+    // v30 (59.11): the modes are part of the first band now, so the derived figure this section checks against needs their count too
+    const P59 = await import('./progress.js'), C59 = await import('./config/chests.js');
+    const mc = P59.modeCount(), freeN = C59.METER.freeStart ? mc.free : 0;
+    const out = { store: { meter: K.meter(), shown: K.meterPct(), max: K.meterMax(), chests: ids.map(K.chestState), bars: K.TIERS.map(t => K.keyState(t).done), total: K.TIERS.map(t => K.keyState(t).total), pct: K.TIERS.map(t => K.bandPct(t)), open: K.TIERS.map(t => K.tierOpen(t)),
+      modes: { num: Math.max(0, mc.open - freeN), den: Math.max(0, mc.total - freeN) } } };
     R.show('s-pick'); await wait(450);
     out.map = ids.map(id => { const c = document.querySelector(`#grid .chest[data-chest="${id}"]`); return { st: c.classList.contains('open') ? 'open' : c.classList.contains('ready') ? 'ready' : 'locked', need: c.querySelector('.pic').dataset.need }; });
     R.show('s-testing'); await wait(60); R.show('s-key', { tier: 0, from: 's-testing' }); await wait(450);
@@ -2423,7 +2451,15 @@ if (section('chests')) {
     // reachable by play
     st.chests.forEach((c, i) => { if (i && c === 'open' && st.chests[i - 1] !== 'open') w.push(`chest ${i} open behind a shut one`); });
     st.bars.forEach((n, i) => { if (n && !st.open[i]) w.push(`${n} bars on shut key ${i}`); });
-    const m = Math.floor(st.bars.reduce((a, n, i) => a + (st.open[i] ? 100 * n / st.total[i] : 0), 0) + 1e-9); if (st.meter !== m) w.push(`meter ${st.meter}≠bars ${m}`);
+    /* AMENDED AT BUILD 59 (v30 59.11): the first hundred is MODES UNLOCKED + KEY-1 BARS in equal steps, so the figure this derives
+       independently of meter() has to be derived the same way or it is checking the old rule. The other two bands are bars alone and
+       do not move. The point of deriving it here at all is unchanged: the store, the map, the Keys screen and the menu must agree on
+       a number that PLAY can reach, and this is the only place that recomputes it from first principles rather than asking meter(). */
+    const band59 = (i) => { const bars = st.open[i] ? st.bars[i] : 0;
+      if (i > 0) return st.total[i] ? 100 * bars / st.total[i] : 0;
+      const den = st.modes.den + st.total[i];
+      return den ? 100 * (st.modes.num + bars) / den : 0; };
+    const m = Math.floor(st.bars.reduce((a, _, i) => a + band59(i), 0) + 1e-9); if (st.meter !== m) w.push(`meter ${st.meter}≠modes+bars ${m}`);
     return w; };
   const MODES48 = (await page.evaluate(async () => (await import('./progress.js')).UNLOCKS.map(u => u.key))).filter(k => k.split(':').length === 2);
 
@@ -2502,7 +2538,10 @@ if (section('chests')) {
     && t4.store.chests.join() === 'open,open,open,locked' && t4.store.bars.join() === '30,30,1' && t4.store.meter === 203
     && t4.map[3].need === EARN.thorns
     && t5.store.chests.join() === 'open,ready,before,before' && t5.store.meter === 100 && t5.map[2].need === EARN.pro
-    && t5b.store.chests.join() === 'open,locked,before,before' && t5b.store.meter === 0
+    /* AMENDED AT BUILD 59 (v30 59.11): taking the Skill chest's switch off shuts that chest and clears its bars, but the GAMES chest
+       stays open and its modes stay unlocked — so the meter falls back to the modes' own share of the first hundred, not to 0. It is
+       0 only when the Games chest itself is reset, which is t8 below and is still asserted as 0. */
+    && t5b.store.chests.join() === 'open,locked,before,before' && t5b.store.meter > 0 && t5b.store.meter < 100
     && t6.store.chests.join() === 'open,open,open,ready' && t6.store.meter === 300
     && t7.store.chests.join() === 'open,open,locked,before' && t7.store.meter === 100
     && t8.store.chests.join() === 'locked,before,before,before' && t8.store.meter === 0)
@@ -6537,8 +6576,11 @@ if (section('build 40 - batch 16, four chests and the meter')) {
       const out = { before, r: r && { was: r.was, now: r.now, fresh: r.fresh.length }, bare: bars.filter(k => !k.includes('|')).length, tiered: bars.filter(k => k.includes('|')).length,
         retroBare: Object.keys(S.prefs.retro || {}).every(k => !k.includes('|')), again: K.openChest('games'), total: K.COMBOS.length, key: K.chestState('key') };
       S.store.runs = []; S.store.bars = {}; S.store.ach = {}; S.prefs.chests = { games: 0, key: 0, pro: 0, thorns: 0 }; S.prefs.retro = {}; S.store.unlock = {}; S.save(); return out; }, ALL_UNLOCK);
-    (rv.before.state === 'ready' && !rv.before.clear && rv.before.meter === 0 && rv.r && rv.r.was === 0 && rv.r.now === 100 /* AMENDED at build 48 (v26 items 7 / 9): 0–300 */ && rv.bare === rv.total && !rv.tiered && rv.retroBare && rv.again === null && rv.key === 'ready')
-      ? ok(`L.10e opening the Games chest reveals exactly key 1: all ${rv.bare} key-1 bars a saved best beats bank silently and nothing on Pro or Author does; the meter goes ${rv.r.was} -> ${rv.r.now}, the Skill chest is ready, a second open does nothing`)
+    /* AMENDED AT BUILD 59 (v30 59.11): the meter BEFORE the chest opens is no longer 0 — it is the modes' own share of the first
+       hundred, which is the whole of the item ("it should go towards 100% as we play the game"). What is asserted instead is the
+       thing that has not changed: the chest opening is what lands the KEY-1 BARS, so the figure jumps from the modes share to 100. */
+    (rv.before.state === 'ready' && !rv.before.clear && rv.before.meter > 0 && rv.before.meter < 100 && rv.r && rv.r.was === rv.before.meter && rv.r.now === 100 /* AMENDED at build 48 (v26 items 7 / 9): 0–300 */ && rv.bare === rv.total && !rv.tiered && rv.retroBare && rv.again === null && rv.key === 'ready')
+      ? ok(`L.10e / v30 59.11 opening the Games chest reveals exactly key 1 — it already stood at ${rv.r.was} on the modes alone, and the chest is what lets the bars count: all ${rv.bare} key-1 bars a saved best beats bank silently and nothing on Pro or Author does; the meter goes ${rv.r.was} -> ${rv.r.now}, the Skill chest is ready, a second open does nothing`)
       : bad('L.10e what the Games chest reveals', JSON.stringify(rv));
   }
 
@@ -6558,10 +6600,21 @@ if (section('build 40 - batch 16, four chests and the meter')) {
         noThorns: set({ games: 1, key: 1, pro: 1 }, Object.assign({}, ALL), all), full: set({ games: 1, key: 1, pro: 1, thorns: 1 }, Object.assign({}, ALL), all), max: K.meterMax() };
       set({ games: 1 }, Object.assign({}, ALL), []); K.COMBOS.slice(0, K.COMBOS.length / 2).forEach(c => { S.store.bars[c.key] = 1; }); out.half = K.meter();
       S.prefs.chests = { games: 0, key: 0, pro: 0, thorns: 0 }; S.store.unlock = {}; S.store.bars = {}; S.save(); return out; }, ALL_UNLOCK);
-    // AMENDED at build 48 (v26 items 7 / 9 / 12): the meter is 0–300 - the modes band is off (METER.modes false), so modes read 0 and the keys are the whole of it
-    (mt.fresh === 0 && mt.oneMode === 0 && mt.everyMode === 0 && mt.noGames === 0 && mt.noKey === 100 && mt.noPro === 200 && mt.noThorns === 300 && mt.full === 300 && mt.half === 50 && mt.max === 300)
-      ? ok(`L.8a / L.10b the meter, 0–300 since build 48: a new profile ${mt.fresh}%, every mode ${mt.everyMode}; with every bar on every key banked underneath it still reads ${mt.noGames} before the Games chest, ${mt.noKey} before the Skill chest, ${mt.noPro} before the Pro chest and ${mt.noThorns} past it (never past a shut chest); half of key 1 is ${mt.half}`)
-      : bad('L.8a the meter', JSON.stringify(mt));
+    /* AMENDED at build 48 (v26 items 7 / 9 / 12): the meter is 0–300 - the modes band is off (METER.modes false), so modes read 0 and the keys are the whole of it.
+       AMENDED AT BUILD 59 (v30 59.11): THE FIRST 100 IS MODES + KEY-1 BARS IN EQUAL STEPS, so modes are back in the number - but INSIDE the
+       first band, not as a fourth one. Aiden: "the user should also feel like they're progressing based on the games they unlocked. So the
+       first 100% should be a combination of unlocking games and then doing the key." The figures this asserts are therefore derived rather
+       than typed: the modes' share of the first band is its own count over (modes + key-1 bars), so a mode added to the game moves all of
+       them together and this check follows without an edit. What has NOT moved is asserted as hard numbers because it is the rule: 100 at
+       key 1 whole, 200 at Pro, 300 at Author, a maximum of 300, and nothing counting past a shut chest. */
+    const modeShare = await page.evaluate(async () => { const P = await import('./progress.js'), K = await import('./progress/key.js'), C = await import('./config/chests.js');
+      const m = P.modeCount(), free = C.METER.freeStart ? m.free : 0, den = Math.max(0, m.total - free);
+      return { den, bars: K.COMBOS.length, all: Math.floor(100 * den / (den + K.COMBOS.length) + 1e-9) }; });
+    const half58 = Math.floor(100 * (modeShare.den + Math.floor(modeShare.bars / 2)) / (modeShare.den + modeShare.bars) + 1e-9);
+    (mt.fresh === 0 && mt.oneMode > 0 && mt.oneMode < modeShare.all && mt.everyMode === modeShare.all && mt.noGames === modeShare.all
+      && mt.noKey === 100 && mt.noPro === 200 && mt.noThorns === 300 && mt.full === 300 && mt.half === half58 && mt.max === 300)
+      ? ok(`L.8a / L.10b / v30 59.11 the meter, 0–300, with the first hundred shared between modes and key-1 bars in EQUAL STEPS: a new profile ${mt.fresh}%, one mode ${mt.oneMode}, every mode ${mt.everyMode} (${modeShare.den} unlockable modes against ${modeShare.bars} bars, so the Games chest opens at about a quarter and the key carries the rest); with every bar on every key banked underneath it still reads ${mt.noGames} before the Games chest — the bars wait for it, only the modes move — then ${mt.noKey} before the Skill chest, ${mt.noPro} before the Pro chest and ${mt.noThorns} past it (never past a shut chest); half of key 1 is ${mt.half}`)
+      : bad('L.8a / v30 59.11 the meter', JSON.stringify({ mt, modeShare, half58 }));
   }
 
   /* ---- 4. L.8b: a chest's tap opens its screen and the open happens THERE by itself - no ask - then no repeat; L.11c its words beside it ---- */
@@ -6578,7 +6631,10 @@ if (section('build 40 - batch 16, four chests and the meter')) {
     const onKey = await onScreen();
     await revealReady();
     const opened = await page.evaluate(async () => { const K = await import('./progress/key.js'); const ne = JSON.parse(localStorage.getItem('ne')); const box = document.getElementById('key-cere');
-      return { games: ne.prefs.chests.games, shown: !box.hidden, tap: box.classList.contains('tap'), txt: box.innerText.replace(/\s+/g, ' ').trim(), meterTxt: (box.querySelector('.meterv') || {}).textContent, meter: K.meter(), seen: ne.prefs.meterSeen, total: K.COMBOS.length,
+      // v30 (59.11): the first band is modes + key-1 bars, so the figure derived here needs the modes count as well
+      const P59 = await import('./progress.js'), C59 = await import('./config/chests.js');
+      const mc = P59.modeCount(), fr = C59.METER.freeStart ? mc.free : 0;
+      return { modes: { num: Math.max(0, mc.open - fr), den: Math.max(0, mc.total - fr) }, games: ne.prefs.chests.games, shown: !box.hidden, tap: box.classList.contains('tap'), txt: box.innerText.replace(/\s+/g, ' ').trim(), meterTxt: (box.querySelector('.meterv') || {}).textContent, meter: K.meter(), seen: ne.prefs.meterSeen, total: K.COMBOS.length,
         bare: Object.keys(ne.bars).filter(k => !k.includes('|')).length, fx: window.__un40 ? -window.__un40 : window.__fx40, toast: document.getElementById('toast').classList.contains('on') ? document.getElementById('toast').textContent.trim() : '' }; });
     await revealDone(); await sleep(500); opened.map = await onScreen();
     await click('#s-pick .back'); await sleep(400); await click('[data-go="s-key"]'); await sleep(1400);
@@ -6588,7 +6644,7 @@ if (section('build 40 - batch 16, four chests and the meter')) {
       return { cls: c.className, need: c.querySelector('.pic').dataset.need, words: w.hidden ? null : [...w.querySelectorAll('.cw')].map(x => x.dataset.w), syms: w.querySelectorAll('.cwsym').length, wr: +w.style.gridRow, wc: +w.style.gridColumn, cr: +c.style.gridRow, cc: +c.style.gridColumn, key: document.querySelector('.chest[data-chest="key"] .pic').dataset.need, keyWords: document.querySelector('.chestwords[data-for="key"]').hidden }; });
     (/ready/.test(map.games) && map.need === 'tap to open' && map.key === 'Earn the Skill key' /* AMENDED at build 48 (v26 item 12); for build 49, the Skill key */ && !map.ask && map.words)
       ? ok('L.8b with every mode unlocked the Games chest is ready on the map - "tap to open" - the Skill chest says "Earn the Skill key", nothing stands beside a shut chest, and there is no ask box in the page') : bad('L.8b the ready Games chest', JSON.stringify(map));
-    (onKey === 's-key' && opened.games === 1 && opened.shown && opened.tap && /Games chest opened/i.test(opened.txt) && !opened.meterTxt && !/%/.test(opened.txt) /* AMENDED at build 48 (v26 item 7): no percentage on the Games chest */ && opened.seen === opened.meter && opened.meter === Math.floor(100 * opened.bare / opened.total) && opened.bare === 5 && opened.fx === 1 && !opened.toast && opened.map === 's-pick')
+    (onKey === 's-key' && opened.games === 1 && opened.shown && opened.tap && /Games chest opened/i.test(opened.txt) && !opened.meterTxt && !/%/.test(opened.txt) /* AMENDED at build 48 (v26 item 7): no percentage on the Games chest */ && opened.seen === opened.meter && opened.meter === Math.floor(100 * (opened.modes.num + opened.bare) / (opened.modes.den + opened.total) + 1e-9) /* AMENDED at build 59 (v30 59.11): the first band is modes + key-1 bars */ && opened.bare === 5 && opened.fx === 1 && !opened.toast && opened.map === 's-pick')
       ? ok(`L.8b AMENDED at build 43 (v24 B.2): the map's tap on the READY chest opened it at once, its ceremony covering the key screen from the frame it is shown: "${opened.txt}" - its ${opened.bare} already-beaten key-1 bars credited silently (G.4 extended) and the meter at ${opened.meter}% with no figure on the chest's own screen (v26 item 7), one chest sound, no toast, no question; its tap goes to the map (AMENDED at build 41, L.6)`) : bad('L.8b the open on the key screen', JSON.stringify(opened));
     (!again.shown && again.fx === 1) ? ok('L.8b opened is opened: the next visit to the key screen opens nothing and plays nothing') : bad('L.8b no repeat', JSON.stringify(again));
     // v25 (item 7, build 46): and each word now carries the SAME symbol that rose out of the chest, so the two moments are connected
@@ -6712,8 +6768,10 @@ if (section('build 40 - batch 16, four chests and the meter')) {
       q('#dev-meter').value = '250'; q('[data-act="dev-meter"]').click(); await wait(300); out.set = { meter: K.meter(), line: q('#dev-meter-now').textContent, stored: JSON.parse(localStorage.getItem('ne')).prefs.devMeter, chests: ['games', 'key', 'pro', 'thorns'].map(K.chestState).join(), bars: K.TIERS.map(t => K.keyState(t).done).join() };
       out.off = { button: !!q('[data-act="dev-meteroff"]') };
       return out; });
-    (t8.m0 === 0 && t8.games.meter === 0 && t8.games.state === 'ready' && t8.games.sel && t8.gamesOff.unlock === 0 && t8.gamesOff.state === 'locked' && t8.key.meter === 100 && t8.key.state === 'ready' && t8.key.games === 'open' && t8.keyOff.bars === '' && t8.keyOff.state === 'locked')
-      ? ok('L.8f AMENDED at build 48 (v26 items 7 / 12): the Games chest\'s switch unlocks every mode and leaves the chest ready at 0%; the Skill chest\'s opens the Games chest the way a tap does and leaves the Skill chest ready at 100%; taking either off is its reset') : bad('L.8f the per-chest switches', JSON.stringify(t8));
+    /* AMENDED AT BUILD 59 (v30 59.11): the Games chest's switch unlocks every mode, and every mode unlocked is now most of the way
+       to the Games chest rather than 0% — so what is asserted is that it is ABOVE zero and still short of the key. */
+    (t8.m0 === 0 && t8.games.meter > 0 && t8.games.meter < 100 && t8.gamesOff.meter === 0 && t8.games.state === 'ready' && t8.games.sel && t8.gamesOff.unlock === 0 && t8.gamesOff.state === 'locked' && t8.key.meter === 100 && t8.key.state === 'ready' && t8.key.games === 'open' && t8.keyOff.bars === '' && t8.keyOff.state === 'locked')
+      ? ok(`L.8f AMENDED at build 48 (v26 items 7 / 12) and at build 59 (v30 59.11): the Games chest's switch unlocks every mode and leaves the chest ready at ${t8.games.meter}% — the modes' own share of the first hundred, where it used to read 0; the Skill chest's opens the Games chest the way a tap does and leaves the Skill chest ready at 100%; taking either off is its reset, and taking the Games one off puts the meter back to ${t8.gamesOff.meter}`) : bad('L.8f the per-chest switches', JSON.stringify(t8));
     (t8.keyReset.chest === 0 && !t8.keyReset.bars && !t8.keyReset.ach && t8.gamesReset.chest === 0 && !t8.gamesReset.unlock && !t8.gamesReset.snap)
       ? ok('G.8 extended: resetting the Skill chest backs out key 1, the chest and its achievements; resetting the Games chest locks every mode again and shuts it') : bad('G.8 the per-chest resets', JSON.stringify({ keyReset: t8.keyReset, gamesReset: t8.gamesReset }));
     /* Build 53 (v28 item 9) made Testing's line say both figures because the shown one was clamped — "250 of 300 raw · 83% shown".

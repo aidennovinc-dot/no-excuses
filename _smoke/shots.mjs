@@ -523,6 +523,35 @@ scene('59.10', async (page, browser) => {
   await page.evaluate(async () => { const V = await import('./ui/video.js'); V.closeVideo && V.closeVideo(); });
 });
 
+/* =======================================================================================================
+   59.11 — "% complete" moves from the first game
+   Aiden, on a menu reading "0% complete": "The percent complete just stays at zero until I've opened the Games chest. It should go
+   towards 100% as we play the game." The evidence is the figure on the FRONT of the app at four points a player actually passes.
+   ======================================================================================================= */
+scene('59.11', async (page, browser) => {
+  const steps = [
+    ['new-profile', async () => {}],
+    ['one-mode-unlocked', async () => page.evaluate(async () => { const S = await import('./core/store.js'), U = await import('./config/unlocks.js');
+      const k = U.UNLOCKS.filter(x => x.key.split(':').length === 2)[0].key; S.store.unlock = { [k]: Date.now() }; S.save(); })],
+    ['every-mode-unlocked', async () => page.evaluate(async () => { const S = await import('./core/store.js'), U = await import('./config/unlocks.js');
+      S.store.unlock = Object.fromEntries(U.UNLOCKS.map(u => [u.key, Date.now()])); S.save(); })],
+    ['games-chest-open-key-whole', async () => page.evaluate(async () => { const S = await import('./core/store.js'), K = await import('./progress/key.js'), U = await import('./config/unlocks.js');
+      S.store.unlock = Object.fromEntries(U.UNLOCKS.map(u => [u.key, Date.now()]));
+      S.prefs.chests = { games: 1, key: 0, pro: 0, thorns: 0 };
+      const bars = {}; for (const c of K.COMBOS) bars[c.key] = 1; S.store.bars = bars; S.save(); })],
+  ];
+  for (const [label, set] of steps) {
+    await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture());
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(420);
+    await set();
+    await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-pick'); await new Promise(r => setTimeout(r, 120)); R.show('s-menu'); });
+    await sleep(1500);   // the menu's count-up is 900ms
+    await frame(page, browser, `59.11-menu-${label}`, `The menu at "${label}" — the figure a player sees on the front of the app`);
+    say('menu', await page.evaluate(async () => { const K = await import('./progress/key.js'), el = document.getElementById('menu-key');
+      return { line: el && !el.hidden ? el.textContent.trim() : null, meter: K.meter(), shown: K.meterPct(), max: K.meterMax() }; }));
+  }
+});
+
 /* ---------- the runner ---------- */
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 if (ARGV.includes('--list')) { console.log(Object.keys(SCENES).join('\n')); process.exit(0); }

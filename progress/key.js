@@ -194,7 +194,34 @@ function keyState(tier = 'clear') { const games = Object.keys(GAMES).map(g => ga
    THERE IS NO OVERRIDE. Build 40's `prefs.devMeter` let Testing make the meter read a figure nothing had earned, which is how the Pro chest
    sat locked at 203% saying "opens at 300%" beside a Keys screen that disagreed. meter() is what the bars and the chests say, full stop, and
    Testing's "set meter to N%" now clears the bars and opens the chests that figure means (devMeterTo, below). */
-const bandOf = tier => { if (!tierOpen(tier) || isShell(tier)) return 0;
+/* ---------- v30 (59.11, build 59): THE FIRST 100 IS MODES UNLOCKED + KEY-1 BARS, IN EQUAL STEPS ----------
+   Aiden, on a menu reading "0% complete": "The percent complete just stays at zero until I've opened the Games chest. It should go
+   towards 100% as we play the game. I know that most of the contribution is coming from obtaining the first key, but the user should
+   also feel like they're progressing based on the games they unlocked. So the first 100% should be a combination of unlocking games
+   and then doing the key. So break it up however you want, but as long as it's consistent."
+   CAUSE: build 48 set METER.modes false, so the meter was the three key bands alone, and bandOf() answers 0 for key 1 until the Games
+   chest is open — nothing a new player did moved the number.
+   COWORK'S SPLIT, which he delegated ("break it up however you want"): EQUAL STEPS. Every mode unlocked and every key-1 bar cleared is
+   worth the same slice of the first hundred, so there is no magic 30/70 to defend and no re-base like the retired frontPct(). With 30
+   key-1 bars and 12 unlockable modes that puts the Games chest at about 29% and leaves the key the rest, which matches his "most of the
+   contribution is coming from obtaining the first key".
+   WHAT DOES NOT MOVE. 100 still means key 1 WHOLE — with every mode open the modes part is already full, so the last bar is still what
+   takes it to 100. Pro and Author are still 100 each, so the meter is still 0–300, one meter, never reset, no override, only ever up
+   (METER.modes stays false: the modes share sits INSIDE the first band, it is NOT a fourth band, which is what build 40's 0–400 was).
+   meterPct() is still the one thing any surface prints, which is the "consistent" he asked for.
+   AND THE ONE JUDGEMENT CALL, named in the outcome: key-1 bars cleared BEFORE the Games chest opens still land WHEN IT OPENS, as they
+   did, so the number never runs ahead of what the player has been shown. Only the modes part moves before that. */
+const modesPair = () => { const m = modeCount(), free = METER.freeStart ? m.free : 0, den = Math.max(0, m.total - free);
+  return { num: Math.max(0, Math.min(den, m.open - free)), den }; };
+/* how full a tier's band is at a given number of cleared bars. The FIRST band carries the modes with it; the other two are the bars
+   alone, unchanged. Testing's "set meter to N%" walks this too, so the walk and the reading can never disagree. */
+function bandWith(tier, bars) { const st = keyState(tier);
+  if (tier !== TIERS[0]) return st.total ? Math.max(0, Math.min(1, bars / st.total)) : 0;
+  const m = modesPair(), den = m.den + st.total;
+  return den > 0 ? Math.max(0, Math.min(1, (m.num + bars) / den)) : 0; }
+const bandOf = tier => { const shell = isShell(tier), open = tierOpen(tier);
+  if (tier === TIERS[0]) return shell ? 0 : bandWith(tier, open ? keyState(tier).done : 0);
+  if (!open || shell) return 0;
   if (METER.partial) return keyPct(tier).pct / 100;
   const st = keyState(tier); return st.total ? st.done / st.total : 0; };
 function meterBands() { const m = modeCount(), free = METER.freeStart ? m.free : 0, den = m.total - free;
@@ -287,6 +314,11 @@ function openChest(id) { if (chestState(id) !== 'ready') return null; const c = 
    answered null and the screen said nothing at all — which would now be the ordinary case for anyone who has filled the
    Pro key and not run Gauntlet Mini. The state `gaunt` is that case: the key is whole, the chest is not ready, and the
    only thing outstanding is the Gauntlet, which the screen names. */
+/* v30 (59.6, build 59): WHICH GAUNTLET MUST WIELD THIS KEY, as a standing fact rather than a state. `keyChest` below answers
+   only once the key is WHOLE, which is too late to be a reason: 59.6 takes the Gauntlet requirement off the chest's map tile
+   (where it wrapped to four lines over the drawing) and puts it into the KEY'S OWN STORY, where it has to read from the moment
+   the tier is open. Empty for a key whose chest wants no Gauntlet, which is the Skill key and always will be. */
+const keyGaunt = tier => { const c = CHESTS.find(x => x.needs === tier); return c && c.gaunt ? c.gaunt : ''; };
 function keyChest(tier) { const c = CHESTS.find(x => x.needs === tier); if (!c || isShell(tier) || !keyState(tier).whole) return null;
   const st = chestState(c.id);
   if (st === 'ready' || st === 'open') return { id: c.id, state: st };
@@ -537,7 +569,9 @@ function devMeterTo(n, modes) { const want = Math.max(0, Math.min(meterMax(), Ma
   devReach('games', modes); if (chestState('games') === 'ready') devOpen('games');
   let left = want;
   for (const tier of TIERS) { const total = keyState(tier).total; if (!total || !tierOpen(tier)) break;
-    let bars = total; if (left < METER.band) { bars = 0; while (bars < total && Math.floor(METER.band * (bars + 1) / total + 1e-9) <= left) bars++; }
+    /* v30 (59.11): the walk asks bandWith() what a bar is worth instead of assuming bars/total, because the FIRST band now carries
+       the modes as well — by this point devReach('games') has opened every mode, so that part is full and the bars fill the rest. */
+    let bars = total; if (left < METER.band) { bars = 0; while (bars < total && Math.floor(METER.band * bandWith(tier, bars + 1) + 1e-9) <= left) bars++; }
     devClearTo(tier, bars);
     if (!keyState(tier).whole) break;
     left -= METER.band; if (left <= 0) break;
@@ -546,4 +580,4 @@ function devMeterTo(n, modes) { const want = Math.max(0, Math.min(meterMax(), Ma
     if (chestState(c.id) !== 'ready' || !devOpen(c.id)) break; }
   seenDown(); save(); return meter(); }
 
-export { COMBOS, RADAR_PAST, TIERS, tierEarned, chestNeeds, crackCount, gauntBest, gauntDone, msgDot, msgOpen, msgShown, msgTitle, bandPct, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, checkKeyAch, chestAt, chestOpen, chestState, cleared, combos, credit, devBack, devChestReset, devClearTo, devMeterTo, devOpen, devReach, fillBars, gameKey, isCleared, isPlaceholder, isShell, keyAch, keyChest, keyFinished, keyGoal, keyOf, keyPct, keyState, keyTier, keyTiers, meter, meterBand, meterMax, meterPct, modesOpen, openChest, placeholderCount, radarOf, radarRungs, readyChest, retroArrived, retroBank, retroTier, skey, tierFull, tierOpen };
+export { COMBOS, RADAR_PAST, TIERS, tierEarned, chestNeeds, crackCount, gauntBest, gauntDone, msgDot, msgOpen, msgShown, msgTitle, bandPct, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, checkKeyAch, chestAt, chestOpen, chestState, cleared, combos, credit, devBack, devChestReset, devClearTo, devMeterTo, devOpen, devReach, fillBars, gameKey, isCleared, isPlaceholder, isShell, keyAch, keyChest, keyFinished, keyGaunt, keyGoal, keyOf, keyPct, keyState, keyTier, keyTiers, meter, meterBand, meterMax, meterPct, modesOpen, openChest, placeholderCount, radarOf, radarRungs, readyChest, retroArrived, retroBank, retroTier, skey, tierFull, tierOpen };
