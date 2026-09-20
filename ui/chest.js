@@ -100,9 +100,13 @@ function burstHtml(id) { const n = SPILL.particles;
    (msgCol), with a play mark in the middle and the slot's own title under it. One drawer, here beside chestCol() and msgCol(), because the card
    (ui/reveal.js) and the Messages list (ui/screens/about.js) are a screen and a module and neither may import the other (A4).
    A slot with no clip yet shows the same frame with its "video coming soon" line in it, so the placeholder reads the same way. */
+/* v30 (59.10, build 59): AND THE CARD'S SMALL FRAME TAKES THE CLIP'S SHAPE TOO. It is a POWERED-OFF frame — there is no video
+   element in it to measure — so it reads `ratio` off the slot, which is why that field exists at all; the big player reads the
+   file itself. A row with no `ratio` is 16:9, which is what the test card is, so nothing that has not been re-shot moves. */
 function msgPreview(m, o = {}) { if (!m) return '';
   const col = msgCol(m) || '', has = !!m.file && !o.soon;
-  return `<span class="mprev${o.big ? ' big' : ''}${has ? ' has' : ''}" style="${col ? `--vg:${col}` : ''}">`
+  const r = Array.isArray(m.ratio) && m.ratio.length === 2 ? m.ratio : null;
+  return `<span class="mprev${o.big ? ' big' : ''}${has ? ' has' : ''}" style="${col ? `--vg:${col};` : ''}${r ? `--mp-arw:${r[0]};--mp-arh:${r[1]}` : ''}">`
     + `<span class="mpframe"><span class="mppic">${has ? '<i class="mpplay"></i>' : `<i class="mpsoon">${esc(o.soon || MSG.soon)}</i>`}</span></span>`
     + (o.title === false ? '' : `<b class="mptitle">${esc(quoted(msgTitle(m)))}</b>`) + '</span>'; }
 

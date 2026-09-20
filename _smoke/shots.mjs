@@ -438,6 +438,91 @@ scene('59.8', async (page, browser) => {
   }
 });
 
+/* =======================================================================================================
+   59.9 — the confetti is drawn at random, not off each piece's index
+   Aiden: "the confetti is cool, except it looks very robotic and mechanical. It should be more randomized and human." Build 58
+   had NINE start times on a 60ms grid, FIVE sways, one spin and one size for every piece, so they fell as neat horizontal rows
+   of identical dashes. The acceptance is a STILL FRAME MID-FALL: no three neighbouring pieces share an angle or sit on one
+   horizontal line. Both are measured off the frozen frame, and the variety is counted beside them.
+   ======================================================================================================= */
+scene('59.9', async (page, browser) => {
+  for (const chest of CHESTS4) {
+    await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture());
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(420);
+    await toCard(page, chest);
+    // freeze mid-fall: the burst window plus about a third of the fall, so the field is in the air rather than launching
+    const at = await page.evaluate(async () => { const C = await import('./config/chests.js');
+      return Math.round(240 + C.CONFETTI_VARY.burst + C.CONFETTI.games.ms * .35); });
+    await freezeAt(page, at);
+    await sleep(60);
+    await frame(page, browser, `59.9-${chest}-midfall`, `${chest} chest, confetti frozen ${at}ms in — no three neighbours on one line or at one angle`);
+    say('confetti', await page.evaluate(() => {
+      const pcs = [...document.querySelectorAll('.rconf .cf')].map(el => { const r = el.getBoundingClientRect(), cs = getComputedStyle(el);
+        const v = k => cs.getPropertyValue(k).trim();
+        return { x: r.x + r.width / 2, y: r.y + r.height / 2, w: Math.round(r.width * 10) / 10, h: Math.round(r.height * 10) / 10,
+          rot: Math.round(parseFloat(v('rotate')) || 0), d: v('--d'), sw: v('--sw'), s: v('--s'), tum: el.classList.contains('tum') };
+      }).filter(p => p.y > -80);
+      if (!pcs.length) return { pieces: 0 };
+      // the VARIETY, against build 58's known 9 start times / 5 sways / one size / one spin
+      const uniq = k => new Set(pcs.map(p => p[k])).size;
+      /* the ACCEPTANCE, on neighbours in the order the eye reads them: left to right. "one horizontal line" is within a piece's
+         own height; "one angle" is within 6 degrees, which is as close as two rotations can be and still look deliberate. */
+      const byX = pcs.slice().sort((a, b) => a.x - b.x);
+      let lineRuns = 0, angleRuns = 0;
+      for (let i = 2; i < byX.length; i++) {
+        const [a, b, c] = [byX[i - 2], byX[i - 1], byX[i]];
+        const tol = Math.max(4, (a.h + b.h + c.h) / 3 * .5);
+        if (Math.abs(a.y - b.y) < tol && Math.abs(b.y - c.y) < tol) lineRuns++;
+        const near = (p, q) => { const d = Math.abs(((p - q) % 360 + 540) % 360 - 180); return d > 174; };
+        if (near(a.rot, b.rot) && near(b.rot, c.rot)) angleRuns++;
+      }
+      return { pieces: pcs.length, startTimes: uniq('d'), sways: uniq('sw'), sizes: uniq('s'), angles: uniq('rot'),
+        tumbling: pcs.filter(p => p.tum).length, threeOnALine: lineRuns, threeAtOneAngle: angleRuns };
+    }));
+  }
+});
+
+/* =======================================================================================================
+   59.10 — the player fits the clip instead of boxing it into 16:9
+   Aiden: "I currently see that the videos are a square, but they're very small within that player, so I feel like they should be
+   widened a lot more. And the captions can actually sit outside of the box that it plays in." The frame was fixed at 16:9 with
+   the video `object-fit:contain`, so a square clip was letterboxed to the frame's HEIGHT — about 184px of picture inside a 328px
+   frame on a 390px phone. Three real files are driven through the real player: the 16:9 test card (must be unchanged), Aiden's
+   own 9:16 clip, and a 1:1 card generated for this item because he has not shot a square one.
+   ======================================================================================================= */
+scene('59.10', async (page, browser) => {
+  const CLIPS = [
+    ['16x9', { id: 'games', title: 'The 16:9 test card', file: 'video/test-card.mp4', cc: 'video/test-card.vtt' }],
+    ['9x16', { id: 'intro', title: 'Welcome', file: 'video/welcome-test.mp4', ratio: [9, 16] }],
+    ['1x1', { id: 'games', title: 'Square test card', file: 'video/square-test-card.mp4', ratio: [1, 1] }],
+  ];
+  await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture({ chests: { games: 1, key: 1, pro: 1, thorns: 1 } }));
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(450);
+  for (const [label, row] of CLIPS) {
+    await page.evaluate(async m => { const V = await import('./ui/video.js'); V.closeVideo && V.closeVideo(); V.playVideo(m); }, row);
+    // wait for the clip's own metadata, which is what the frame's shape now comes from
+    await page.evaluate(async () => { const w = ms => new Promise(r => setTimeout(r, ms));
+      for (let i = 0; i < 80; i++) { const v = document.querySelector('#vplay video'); if (v && v.videoWidth) return; await w(60); } });
+    await sleep(900);
+    await frame(page, browser, `59.10-player-${label}-390`, `The shared player with a ${label} clip at 390px — the frame is the picture, captions outside it`);
+    say('player', await page.evaluate(() => {
+      const host = document.getElementById('vplay'), fr = host.querySelector('.vframe'), v = host.querySelector('video');
+      const box = el => { const r = el.getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height), bottom: Math.round(r.bottom) }; };
+      const title = host.querySelector('.vtitle'), cc = host.querySelector('.vcc'), foot = host.querySelector('.vfoot');
+      const f = box(fr), vb = v ? box(v) : null;
+      const inside = el => { const r = el.getBoundingClientRect(); return r.top >= -.5 && r.bottom <= innerHeight + .5 && r.width > 0; };
+      /* "nothing overlays the picture": the title, the caption strip and the foot line must each sit clear of the frame's box.
+         That is the whole of item 9's rule and the thing a taller frame could break. */
+      const clear = [title, cc, foot].every(el => { const r = el.getBoundingClientRect(); return r.bottom <= f.y + .5 || r.top >= f.bottom - .5; });
+      return { clip: v ? [v.videoWidth, v.videoHeight] : null, frame: f, picture: vb,
+        pictureFillsFrame: !!vb && Math.abs(vb.w - f.w) <= 2 && Math.abs(vb.h - f.h) <= 2,
+        titleOnScreen: inside(title), captionsOnScreen: inside(cc), footOnScreen: inside(foot),
+        nothingOverPicture: clear, vw: innerWidth, vh: innerHeight };
+    }));
+  }
+  await page.evaluate(async () => { const V = await import('./ui/video.js'); V.closeVideo && V.closeVideo(); });
+});
+
 /* ---------- the runner ---------- */
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 if (ARGV.includes('--list')) { console.log(Object.keys(SCENES).join('\n')); process.exit(0); }

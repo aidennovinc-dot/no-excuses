@@ -1928,8 +1928,17 @@
   .vback{position:absolute;inset:0;background:color-mix(in srgb,var(--ground) 82%,transparent);border:0;padding:0}
   .vwrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:10px;width:100%}
   .vtitle{font-family:var(--title);font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--ink);text-align:center;max-width:84vw;line-height:1.5}
-  /* 16:9, inset from every edge — the width is what is left after `--vinset` a side, and the same inset caps the height on a wide screen */
-  .vframe{position:relative;width:calc(100vw - var(--vinset,8%) * 2);max-width:calc((100svh - var(--vinset,8%) * 2) * 16 / 9)   /* build 55 (in passing): 100vh in a Safari tab is the toolbar-HIDDEN height, so the cap was ~10% too generous */;aspect-ratio:16/9;
+  /* inset from every edge — the width is what is left after `--vinset` a side (item 9: never edge to edge).
+     v30 (59.10, build 59): THE FRAME TAKES THE CLIP'S OWN SHAPE. It was fixed at 16:9 with the video `object-fit:contain`, so a
+     square clip was letterboxed to the frame's HEIGHT — about 184px of picture inside a 328px frame on a 390px phone, which is
+     what Aiden saw: "I currently see that the videos are a square, but they're very small within that player, so I feel like they
+     should be widened a lot more." `--v-arw` / `--v-arh` are the clip's real dimensions, read off the file on loadedmetadata by
+     ui/video.js, so the frame is the picture and there is nothing to letterbox.
+     `--v-maxh` is how much height the frame may take — measured by ui/video.js from what is left after the title above and the
+     caption strip and the foot line below — and the WIDTH is derived from it through the ratio, so a portrait or square clip
+     shrinks by height rather than pushing those off the screen. The 16:9 case is unchanged: its width cap binds first. */
+  .vframe{position:relative;aspect-ratio:var(--v-arw,16)/var(--v-arh,9);
+    width:min(calc(100vw - var(--vinset,8%) * 2),calc(var(--v-maxh,100svh) * var(--v-arw,16) / var(--v-arh,9)));
     border:1px solid #FFFFFF;border-radius:6px;background:#000;overflow:hidden;padding:0;cursor:pointer;transition:box-shadow .3s}
   /* the glow: on while the clip is playing, in the unlocking chest's colour; dim the moment it is paused or ended (item 9) */
   #vplay.vlit .vframe{box-shadow:0 0 22px -2px color-mix(in srgb,var(--vg,#FFFFFF) 70%,transparent),0 0 60px -14px color-mix(in srgb,var(--vg,#FFFFFF) 55%,transparent)}
@@ -2135,12 +2144,21 @@
      down a 360px box; it hangs on the full-screen reveal element now and falls past the bottom of the phone. `.w` is a piece drawn in white —
      57.3's "the chest's colour plus white" — and the colour of the rest is the word's own (`--cwc`), so the two cannot disagree. */
   .rconf{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:3}
-  .rconf .cf{position:absolute;left:var(--x);top:0;width:var(--cf-sz);height:var(--cf-sz);background:var(--cwc,var(--rc,var(--ink)));opacity:0;
-    animation:cfall var(--cf-ms) cubic-bezier(.25,.6,.45,1) calc(var(--card-ms,240ms) + var(--d)) both}
+  /* v30 (59.9, build 59): every piece has its own size, fall time, starting angle, spin and sway — `--s`, `--fm`, `--rot0`,
+     `--rot1` and `--sw`, all drawn at random in ui/reveal.js from CONFETTI_VARY. The keyframes no longer name a single spin
+     for the whole burst, and `--sw` is a signed distance in vw rather than one of five steps times a fixed 9vw. */
+  .rconf .cf{position:absolute;left:var(--x);top:0;width:calc(var(--cf-sz) * var(--s,1));height:calc(var(--cf-sz) * var(--s,1));background:var(--cwc,var(--rc,var(--ink)));opacity:0;
+    animation:cfall calc(var(--cf-ms) * var(--fm,1)) cubic-bezier(.25,.6,.45,1) calc(var(--card-ms,240ms) + var(--d)) both}
   .rconf .cf.w{background:#FFFFFF}
-  .rconf .cf.shard{width:calc(var(--cf-sz) * .42);height:calc(var(--cf-sz) * 1.5)}
-  @keyframes cfall{0%{opacity:0;translate:0 -8vh;rotate:0deg}6%{opacity:1}
-    100%{opacity:0;translate:calc(var(--sw) * 9vw) 112vh;rotate:var(--cf-spin)}}
+  .rconf .cf.shard{width:calc(var(--cf-sz) * var(--s,1) * .42);height:calc(var(--cf-sz) * var(--s,1) * 1.5)}
+  @keyframes cfall{0%{opacity:0;translate:0 -8vh;rotate:var(--rot0,0deg)}6%{opacity:1}
+    100%{opacity:0;translate:calc(var(--sw,0) * 1vw) 112vh;rotate:var(--rot1,var(--cf-spin))}}
+  /* the share that tumble EDGE-ON as they fall: a flat shape that never turns over reads as a paper cut-out rather than as a
+     piece of paper. It is the same fall with scaleY carried through zero, so the piece disappears to a line and comes back. */
+  .rconf .cf.tum{animation-name:cfalltum}
+  @keyframes cfalltum{0%{opacity:0;translate:0 -8vh;rotate:var(--rot0,0deg);scale:1 1}6%{opacity:1}
+    30%{scale:1 -.35}60%{scale:1 .85}
+    100%{opacity:0;translate:calc(var(--sw,0) * 1vw) 112vh;rotate:var(--rot1,var(--cf-spin));scale:1 -.6}}
 
   /* ---------- v29 Section A (57.3, build 57): CONGRATULATIONS IS A CELEBRATION ----------
      This REVERSES v28 item 12's "under a second" for the WORD (the blocks under it are unchanged). Aiden: "it has to look like a celebration, use

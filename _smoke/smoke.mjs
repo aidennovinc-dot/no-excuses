@@ -7943,7 +7943,9 @@ if (section('build 46 - batch 18, the unlock experience, sound and About')) {
       const held = Object.assign(await revState(), { fired: await page.evaluate(() => window.__g46.slice()) });
       // AMENDED at build 49 (v26 item 5): every chest also gives the About video it opens, its slot's title last among the rewards
       // AMENDED at build 53 (v28 item 10): a chest word that GIVES a Gauntlet carries `gaunt` and composes its name off GAUNTLET.name
-      seen.push({ id, state, early, held, words: (CP46.CHEST_WORDS[id] || []).map(x => x.w || (CP46.GAUNTLET.name[x.gaunt] || '').toUpperCase()).concat(MS46.MESSAGES.find(m => m.by && m.by.chest === id).title) });
+      // AMENDED at build 59 (v30 59.3): the video's title wears MSG.quote, so it reads as the name of a clip and not as a sentence
+      seen.push({ id, state, early, held, words: (CP46.CHEST_WORDS[id] || []).map(x => x.w || (CP46.GAUNTLET.name[x.gaunt] || '').toUpperCase())
+        .concat(CP46.MSG.quote[0] + MS46.MESSAGES.find(m => m.by && m.by.chest === id).title + CP46.MSG.quote[1]) });
       await revealDone(); await sleep(400);
     }
     const bad6 = seen.filter(s => !/ready/.test(s.state) || s.early.tap || s.early.card || !s.held.tap

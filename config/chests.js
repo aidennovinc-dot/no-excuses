@@ -243,6 +243,24 @@ export const CONFETTI = {
   pro: { n: 130, shape: 'shard', ms: 2700, spread: 112, spin: 540, size: 11, white: 5 },
   thorns: { n: 170, shape: 'shard', ms: 3100, spread: 116, spin: 720, size: 12, white: 5 },
 };
+/* ---------- v30 (59.9, build 59): THE CONFETTI IS DRAWN AT RANDOM, NOT OFF THE PIECE'S INDEX ----------
+   Aiden: "the confetti is cool, except it looks very robotic and mechanical. It should be more randomized and human." Every value
+   was a formula of `i` — x evenly spaced, delay (i % 9) * 60ms, sway (i % 5) - 2, one spin and one size for all — so there were
+   NINE start times and FIVE sways repeating in order, and the pieces fell as neat horizontal rows of identical dashes.
+   These are the spans each piece now draws its own value from, in ui/reveal.js. They are deliberately NOT per chest: what is
+   per chest is the colour, the white share, the shape, the piece count and the overall duration, and 59.9 says to randomise
+   WITHIN those rather than flatten them, so the variation is one shared row and the character stays in CONFETTI above.
+     burst  how long the launch window is, in ms — every piece starts somewhere inside it
+     front  how hard the burst is FRONT-LOADED: a piece's delay is burst * u^front, so most launch early and stragglers trail,
+            the way a real handful falls. 1 would be uniform; above 1 leans early
+     fall   how far either side of the chest's own `ms` one piece's fall time may land (.3 = 30%)
+     size   the same for its size (.4 = 40%)
+     sway   how far sideways a piece drifts by the end, in vw, its direction drawn separately
+     spin   the span of multipliers on the chest's own `spin`, its direction drawn separately
+     tilt   how far off square a piece may START, in degrees either way
+     flip   the share of pieces that tumble edge-on as they fall, which is what stops a field of flat shapes reading as paper cut-outs
+   All (guess); the numbers are Cowork's, the behaviour is his. */
+export const CONFETTI_VARY = { burst: 620, front: 2.2, fall: .3, size: .4, sway: [1, 13], spin: [.45, 1.7], tilt: 180, flip: .18 };
 
 /* ---------- v29 Section A (57.3, build 57): CONGRATULATIONS IS A CELEBRATION ----------
    THIS REVERSES v28 ITEM 12's "the whole reveal under a second", which Section A's table lists as reversed: "too quick. It is a celebration and

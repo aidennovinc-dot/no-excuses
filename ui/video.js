@@ -53,6 +53,8 @@ function build() { if (host) return host;
   host.style.setProperty('--vinset', PLAYER.inset + '%');
   for (const k of ['on', 'off']) for (const s of PLAYER[k].steps) { host.style.setProperty(`--v-${s.name}-at`, s.at + 'ms'); host.style.setProperty(`--v-${s.name}-ms`, s.ms + 'ms'); }
   host.style.setProperty('--von-ms', PLAYER.on.ms + 'ms'); host.style.setProperty('--voff-ms', PLAYER.off.ms + 'ms');
+  // 59.10: ONE resize listener for the life of the player, not one per clip — the open path sets `_reshape` and this calls it
+  addEventListener('resize', () => { if (host && !host.hidden && host._reshape) host._reshape(); });
   return host; }
 
 /* the captions strip. The track is HIDDEN, never showing: a showing track paints its cues over the picture and item 9 says nothing overlays it.
@@ -76,6 +78,28 @@ function playVideo(m) { if (!m || !m.file) return false;
   pic.innerHTML = `<video playsinline preload="metadata"${m.cc ? ' crossorigin="anonymous"' : ''}><source src="${esc(m.file)}" type="video/mp4">`
     + (m.cc ? `<track kind="captions" srclang="en" label="English" src="${esc(m.cc)}" default>` : '') + '</video>';
   vid = pic.querySelector('video'); captions(vid);
+  /* v30 (59.10, build 59): THE FRAME TAKES THE CLIP'S OWN SHAPE, AND LEAVES THE WORDS ROOM.
+     The frame was fixed at 16:9 with the video `object-fit:contain`, so anything that was not 16:9 was letterboxed to the frame's
+     HEIGHT — a square clip on a 390px phone was 184px of picture inside a 328px frame, which is Aiden's "they're very small within
+     that player". `ratio` on the row is the CARD's copy of this (a powered-off frame has no video to measure); the player reads the
+     file itself, which is authoritative and needs no config at all. `--v-maxh` is the room left after the title, the caption strip
+     and the foot line, so a portrait clip gives up HEIGHT instead of pushing them off the screen; the 16:9 case never reaches it
+     because its width cap binds first. Recomputed on metadata and on resize, because the room changes with the phone. */
+  /* the row's own `ratio` first, so the frame is already the right shape before a byte of the clip has loaded — and so a 16:9
+     clip opened after a portrait one does not wear the portrait one's shape for the moment before its metadata arrives. */
+  { const r = Array.isArray(m.ratio) && m.ratio.length === 2 ? m.ratio : [16, 9];
+    host.style.setProperty('--v-arw', String(r[0])); host.style.setProperty('--v-arh', String(r[1])); }
+  const shape = () => { if (!host || !vid) return;
+    const w = vid.videoWidth || 0, h = vid.videoHeight || 0;
+    if (w > 0 && h > 0) { host.style.setProperty('--v-arw', String(w)); host.style.setProperty('--v-arh', String(h)); }
+    const wrap = host.querySelector('.vwrap'), title = host.querySelector('.vtitle'),
+      cc = host.querySelector('.vcc'), foot = host.querySelector('.vfoot');
+    const cs = getComputedStyle(host), gap = parseFloat(getComputedStyle(wrap).rowGap) || 0;
+    const room = host.clientHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0)
+      - (title ? title.offsetHeight : 0) - (cc ? cc.offsetHeight : 0) - (foot ? foot.offsetHeight : 0) - gap * 2 - PLAYER.footGap;
+    host.style.setProperty('--v-maxh', Math.max(120, Math.round(room)) + 'px'); };
+  vid.addEventListener('loadedmetadata', shape);
+  host._reshape = shape; shape();
   vid.addEventListener('play', () => glow(true));
   vid.addEventListener('pause', () => glow(false));
   vid.addEventListener('ended', () => glow(false));

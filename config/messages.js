@@ -41,7 +41,15 @@
    A real clip replaces both paths on that row and nothing else changes. (This is NOT build 46's `video/test.mp4`, which does not exist and
    is planted by the gate to prove a 404 is survived — two different files, on purpose.) */
 export const MESSAGES = [
-  { id: 'intro', title: 'Welcome', by: { run: { g: 'quick-tap', s: 5 } }, file: 'video/test-card.mp4', cc: 'video/test-card.vtt' },
+  /* v30 (59.10, build 59): THE WELCOME SLOT HAS A REAL TEST CLIP. Aiden: "I've just uploaded a video that I want you to put as part
+     of the welcome video, just as a test." `video/welcome-test.mp4` is his own 7.9s phone clip, transcoded to H.264 SDR (540x960,
+     PORTRAIT 9:16, mono AAC, faststart). It is a TEST and named as one so nobody ships it. No `cc`: it is a throwaway shot of
+     pavement with ambient sound and there is nothing to transcribe, and a clip with no `cc` simply shows no captions.
+     `ratio` is how the CONGRATULATIONS CARD's small frame knows a clip's shape. The PLAYER does not need it — it reads
+     videoWidth / videoHeight off the file itself on loadedmetadata, which is authoritative and needs no config — but the card
+     draws a powered-OFF frame with no video element in it, so there is nothing there to measure. A row without `ratio` is 16:9,
+     which is what the test card is; a new clip that is not 16:9 sets this. (The build session's call, per 59.10.) */
+  { id: 'intro', title: 'Welcome', by: { run: { g: 'quick-tap', s: 5 } }, file: 'video/welcome-test.mp4', ratio: [9, 16] },
   { id: 'games', title: "You've seen them all!", by: { chest: 'games' }, file: 'video/test-card.mp4', cc: 'video/test-card.vtt' },
   { id: 'skill', title: 'The skill chest is open', by: { chest: 'key' }, file: 'video/test-card.mp4', cc: 'video/test-card.vtt' },
   { id: 'pro', title: 'Have you gone pro?', by: { chest: 'pro' }, file: 'video/test-card.mp4', cc: 'video/test-card.vtt' },
@@ -69,7 +77,10 @@ export const MESSAGES = [
      off  close    the picture collapses back to the line             ·  dot   the line shrinks to a dot and goes out  ·  fade  the outline fades last
    Item 10 caps the power-on at 750ms and asks for about 600; the gate fails a total over 750. The soft thunk is VIDEO_FX in config/audio.js,
    fired on `open` going out and on `dot` coming back. Identical for all eight clips, and it happens INSIDE the frame only. */
-export const PLAYER = {
+/* v30 (59.10, build 59): `footGap` is the clearance the frame leaves above "tap outside to close". The foot line is absolutely
+   positioned at the bottom of the player, so it is not in the flex flow the frame shrinks inside — ui/video.js subtracts its
+   height and this gap when it works out how tall the frame may be. Without it a portrait clip sits on top of the line. (guess) */
+export const PLAYER = { footGap: 14,
   inset: 8,
   on: { ms: 600, steps: [{ name: 'outline', at: 0, ms: 220 }, { name: 'line', at: 200, ms: 130 }, { name: 'open', at: 320, ms: 280 }] },
   off: { ms: 460, steps: [{ name: 'close', at: 0, ms: 200 }, { name: 'dot', at: 180, ms: 140 }, { name: 'fade', at: 300, ms: 160 }] },

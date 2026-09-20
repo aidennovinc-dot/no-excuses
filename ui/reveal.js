@@ -35,7 +35,7 @@
    with a small pop as it leaves and the "an unlock lands" sound as it lands — both read off that reward's own animation, never a second list of
    times. The chest's name and a key chest's count-up wait for the last one to land, and "tap to continue" waits for both. The card is placed BELOW
    the row, clear of the chest; if the phone is too short for it, the chest and its rewards lift up by exactly what the card needs. */
-import { CHEER_LOOK, CONFETTI, GIFT_LOOK, REVEAL } from "../config/chests.js";
+import { CHEER_LOOK, CONFETTI, CONFETTI_VARY, GIFT_LOOK, REVEAL } from "../config/chests.js";
 import { CARD, KEY } from "../config/copy.js";
 import { Music, Snd } from "../audio.js";
 import { esc } from "../core.js";
@@ -61,11 +61,29 @@ const giftHtml = (gifts, chest) => { const L = GIFT_LOOK[chest] || GIFT_LOOK.gam
    box and the pieces fell 190px. It hangs on the HOST now — the full-screen reveal element, which 57.4 clips at the top safe area — so `spread` is
    a percentage of the SCREEN and every piece falls past the bottom of it. `white` is how many in ten are drawn white instead of the chest's colour
    (57.3's "the chest's colour plus white"); the pieces are spread evenly with a sway and a stagger, so a hundred of them do not read as a curtain. */
+/* v30 (59.9, build 59): EVERY PIECE DRAWS ITS OWN VALUES. Aiden: "the confetti is cool, except it looks very robotic and mechanical.
+   It should be more randomized and human." It was a formula of the index — x evenly spaced, nine start times on a 60ms grid, five
+   sways, one spin and one size for all — so the pieces fell as neat horizontal rows of identical dashes at identical angles, which
+   reads as a pattern scrolling down rather than as confetti. Now: x anywhere across the spread, a start anywhere in the burst
+   window and FRONT-LOADED so most launch early and stragglers trail, its own fall time, sway distance AND direction, spin speed AND
+   direction, starting angle, size, and a small share that tumble edge-on. The spans are CONFETTI_VARY; what stays per chest is the
+   colour, the white share, the shape, the count and the overall duration, which is what 59.9 says to randomise WITHIN.
+   The draw is fresh on every call — the card is built each time it is shown — so two openings of the same chest never match. */
 function confettiHtml(chest) { const C = CONFETTI[chest]; if (!C) return '';
-  const w = Math.max(0, Math.min(10, C.white || 0));
+  const V = CONFETTI_VARY, w = Math.max(0, Math.min(10, C.white || 0));
+  const R = (a, b) => a + Math.random() * (b - a), sign = () => Math.random() < .5 ? -1 : 1;
+  // the white share is a SHARE now, not every tenth piece: `i % 10 < w` put the white ones on a fixed cycle like everything else
   return `<span class="rconf" aria-hidden="true" style="--cf-ms:${C.ms}ms;--cf-spin:${C.spin}deg;--cf-sz:${C.size}px">`
-    + Array.from({ length: C.n }, (_, i) => { const x = 50 + ((i + .5) / C.n - .5) * C.spread;
-      return `<i class="cf ${C.shape}${i % 10 < w ? ' w' : ''}" style="--x:${x.toFixed(1)}%;--i:${i};--d:${(i % 9) * 60}ms;--sw:${(i % 5) - 2}"></i>`; }).join('') + '</span>'; }
+    + Array.from({ length: C.n }, (_, i) => {
+      const x = 50 + (Math.random() - .5) * C.spread;
+      const d = Math.round(Math.pow(Math.random(), V.front) * V.burst);
+      const fm = R(1 - V.fall, 1 + V.fall), sz = R(1 - V.size, 1 + V.size);
+      const sw = (R(V.sway[0], V.sway[1]) * sign()).toFixed(2);
+      const rot0 = Math.round(R(-V.tilt, V.tilt));
+      const rot1 = rot0 + Math.round(C.spin * R(V.spin[0], V.spin[1])) * sign();
+      return `<i class="cf ${C.shape}${Math.random() * 10 < w ? ' w' : ''}${Math.random() < V.flip ? ' tum' : ''}"`
+        + ` style="--x:${x.toFixed(1)}%;--i:${i};--d:${d}ms;--sw:${sw};--fm:${fm.toFixed(3)};--s:${sz.toFixed(3)};--rot0:${rot0}deg;--rot1:${rot1}deg"></i>`;
+    }).join('') + '</span>'; }
 // 57.3: the word lands one letter at a time, so every letter carries its own index. A space is drawn and never animated
 const wordHtml = t => String(t || '').split('').map((ch, i) =>
   ch === ' ' ? '<span class="clsp"> </span>' : `<span class="cl" style="--l:${i}">${esc(ch)}</span>`).join('');
