@@ -87,10 +87,15 @@ let SAB = 'none';
 const SCENES = {};
 const scene = (name, fn) => { SCENES[name] = fn; };
 
+/* the lens page (below) becomes the foreground tab the first time it is used, which leaves the app page HIDDEN — and Chrome
+   stops firing requestAnimationFrame on a hidden page, so a per-frame trace taken after the first screenshot measures nothing at
+   all. Every frame ends by handing the foreground back. */
 async function frame(page, browser, name, note, extra = {}) {
+  await page.bringToFront();
   const png = await page.screenshot({ type: 'png' });
   fs.writeFileSync(path.join(OUT, name + '.png'), png);
   const im = await pixels(browser, png);
+  await page.bringToFront();
   manifest.push(Object.assign({ frame: name + '.png', note, sab: SAB }, extra));
   return im;
 }
@@ -578,6 +583,85 @@ scene('59.12', async (page, browser) => {
   await sleep(900);
   await frame(page, browser, '59.12-result-390', "Aiden's own 310.8% Mini run, replayed through build 59's scoring — every row shows its working");
   say('replay', out);
+});
+
+/* =======================================================================================================
+   59.13 — the finished key must not flash up before its own animation, on any of the three keys
+   Aiden: "it shows a brief frame showing that the key was already complete, but then it does the animation again. So that just
+   looks a little awkward." The Keys screen appeared with the whole key drawn, held it about three frames, blanked to the bare hub
+   and only then drew the spokes in. The acceptance is per-frame: step the first 500ms and let no frame show a lit spoke before its
+   turn. Sampled at 60fps INSIDE the page, because the fault lives in the first paint and a screenshot every 16ms cannot be taken
+   fast enough to catch it — a frame trace is the measured frame the rule asks for, and the first frame is photographed beside it.
+   ======================================================================================================= */
+scene('59.13', async (page, browser) => {
+  for (const [i, tier] of ['clear', 'pro', 'author'].entries()) {
+    await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture({ chests: { games: 1, key: 1, pro: 1, thorns: 0 } }));
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(450);
+    await page.evaluate(async () => { const P = await import('./progress/key.js'), S = await import('./core/store.js');
+      const bars = {}; for (const c of P.COMBOS) for (const t of ['', '|pro', '|author']) bars[c.key + t] = 1;
+      S.store.bars = bars; S.prefs.revealed = {}; S.save(); });
+    /* HIS OWN PATH: the key is set whole from Testing, then the chest is tapped on the Progress map, which lands on the Keys
+       screen. The trace starts on the frame the screen is shown, which is the frame the whole key used to appear on. */
+    const trace = await page.evaluate(async n => {
+      const R = await import('./ui/router.js');
+      const rows = []; const t0 = performance.now();
+      const dbg = { shown: null, vis: document.visibilityState, raf: 0 };
+      R.show('s-key', { tier: n });
+      dbg.shown = (document.querySelector('.screen.on') || {}).id; dbg.vis = document.visibilityState;
+      window.__dbg = dbg;
+      /* the tick can never throw its way out of the loop and leave the promise hanging: anything unexpected is recorded and the
+         trace ends. A wall-clock fallback closes it too, because rAF does not fire while the page is busy with something heavy. */
+      return await new Promise(res => {
+        let over = false; const end = () => { if (!over) { over = true; res(rows); } };
+        setTimeout(end, 3000);
+        const tick = () => { if (over) return; dbg.raf++;
+          try { const t = performance.now() - t0;
+            const el = document.getElementById('s-key');
+            const spokes = [...document.querySelectorAll('#key-ring .kr')].map(g => Math.round((parseFloat(getComputedStyle(g).opacity) || 0) * 100) / 100);
+            const ring = document.querySelector('#key-ring .kring');
+            rows.push({ t: Math.round(t), lit: spokes.filter(o => o > .02).length, spokes,
+              ring: ring ? Math.round((parseFloat(getComputedStyle(ring).opacity) || 0) * 100) / 100 : null,
+              cls: el ? el.className.replace(/\bon\b/, '').trim() : 'no #s-key' });
+            if (t < 520) requestAnimationFrame(tick); else end();
+          } catch (e) { rows.push({ t: -1, lit: -1, spokes: [], err: String((e && e.message) || e) }); end(); } };
+        requestAnimationFrame(tick);
+      });
+    }, i);
+    await page.evaluate(async n => { const R = await import('./ui/router.js'); R.show('s-menu'); await new Promise(r => setTimeout(r, 80)); R.show('s-key', { tier: n }); }, i);
+    await sleep(40);
+    await frame(page, browser, `59.13-${tier}-first-frame`, `The ${tier} key the frame its screen appears — the bare hub, never the finished key`);
+    // a spoke may only light AT OR AFTER its own scheduled turn; before that the trace must read zero lit
+    if (!trace.length) { say('trace', { tier, frames: 0, note: 'no animation frame fired — nothing measured, NOT a pass', dbg: await page.evaluate(() => window.__dbg || null) }); continue; }
+    /* and the same trace with BUILD 58's paint put back, so the number beside it is a comparison and not a claim: a rule of higher
+       specificity that lights the key while `kdue` is on and `kearning` has not arrived yet is exactly what the screen used to do. */
+    if (tier === 'clear') {
+      const was = await page.evaluate(async n => {
+        const R = await import('./ui/router.js');
+        const st = document.createElement('style'); st.id = '__b58';
+        st.textContent = '#s-key.kdue:not(.kearning):not(.ksettle) .kr,#s-key.kdue:not(.kearning):not(.ksettle) .knode,#s-key.kdue:not(.kearning):not(.ksettle) .kring{opacity:1}';
+        document.head.appendChild(st);
+        R.show('s-menu'); await new Promise(r => setTimeout(r, 90));
+        const rows = []; const t0 = performance.now();
+        R.show('s-key', { tier: n });
+        return await new Promise(res => { let over = false; const end = () => { if (!over) { over = true; st.remove(); res(rows); } };
+          setTimeout(end, 3000);
+          const tick = () => { if (over) return;
+            try { const t = performance.now() - t0;
+              const lit = [...document.querySelectorAll('#key-ring .kr')].filter(g => (parseFloat(getComputedStyle(g).opacity) || 0) > .02).length;
+              rows.push({ t: Math.round(t), lit });
+              if (t < 520) requestAnimationFrame(tick); else end();
+            } catch (e) { end(); } };
+          requestAnimationFrame(tick); });
+      }, i);
+      say('build58Paint', was.length ? { frames: was.length, litOnFirstFrame: was[0].lit, framesFullyLitBeforeTheAnimation: was.filter((r, k) => r.lit === 7 && k < 12).length } : { frames: 0 });
+    }
+    const firstLit = trace.find(r => r.lit > 0);
+    const worst = trace.reduce((m, r) => Math.max(m, r.lit), 0);
+    say('trace', { tier, frames: trace.length, spanMs: trace[trace.length - 1].t, spokes: trace[0].spokes.length,
+      litOnFirstFrame: trace[0].lit, maxLitInFirst500ms: worst,
+      firstFrameWithAnyLitSpoke: firstLit ? { t: firstLit.t, lit: firstLit.lit } : null,
+      classesOnFirstFrame: trace[0].cls });
+  }
 });
 
 /* ---------- the runner ---------- */

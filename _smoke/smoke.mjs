@@ -1868,6 +1868,40 @@ if (section('the keys, the surface and #375 (v15 sections 5 and 6)')) {
        to do nothing, and item 14 asks for a tap that SKIPS TO THE END at any point, so the run below is untapped and the tap is driven on its own
        further down. The escalation is no longer "more animations each tier" either - the Author key has no spokes at all, so it runs fewer than the
        other two and is grander in what is drawn (its cracks and thorns), which is checked in build 46's own section. */
+    /* ---- v30 (59.13, build 59): THE FINISHED KEY MUST NOT FLASH UP BEFORE ITS OWN ANIMATION ----
+       Aiden: "it shows a brief frame showing that the key was already complete, but then it does the animation again. So that just
+       looks a little awkward." The Keys screen renders from STATE, and the state is a whole key — so it painted every spoke lit,
+       held it about three frames, blanked, and only then drew them in. Same family as the chest cracks: the animation's start state
+       was applied a tick AFTER the first paint instead of being in it.
+       What is asserted is the mechanism, on the page: with `kdue` on (which the draw that SCHEDULES the earn sets) and `kearning`
+       not yet added, every spoke, node and ring already computes to opacity 0. `ksettle` is excluded because that is the one moment
+       `kdue` is still on and the key is meant to be lit. A per-frame trace of the first 500ms of all three keys, with build 58's
+       paint reproduced beside it, is `_smoke/shots.mjs 59.13` — there build 58 shows 7 spokes lit on frame one and 12 frames fully
+       lit before the animation, and build 59 shows none on any of the three. */
+    {
+      await boot({ allOpen: true });
+      const dueState = await page.evaluate(async () => {
+        const R = await import('./ui/router.js'); const wait = ms => new Promise(r => setTimeout(r, ms));
+        R.show('s-key', { tier: 0 }); await wait(60);
+        const el = document.getElementById('s-key');
+        const cls = el.className;
+        // force the DUE-but-not-yet-EARNING state the first paint is in, and read what the stylesheet makes of it
+        el.classList.add('kdue'); el.classList.remove('kearning', 'ksettle');
+        const op = sel => [...document.querySelectorAll(sel)].map(g => Math.round((parseFloat(getComputedStyle(g).opacity) || 0) * 100) / 100);
+        const due = { kr: op('#key-ring .kr'), knode: op('#key-ring .knode'), kring: op('#key-ring .kring') };
+        // and the settle, which is the one moment kdue is still on and the key is supposed to be lit
+        el.classList.add('ksettle');
+        const settle = { kr: op('#key-ring .kr') };
+        el.className = cls;
+        return { due, settle, hadKdueInClass: /\bkdue\b/.test(cls) };
+      });
+      const allDark = ['kr', 'knode', 'kring'].every(k => dueState.due[k].length === 0 || dueState.due[k].every(o => o <= .02));
+      const settleLit = dueState.settle.kr.length > 0 && dueState.settle.kr.some(o => o > .02);
+      (allDark && settleLit)
+        ? ok(`v30 59.13 the earn animation's START STATE is in the first paint: with the screen DUE and the animation not yet running, all ${dueState.due.kr.length} spokes, ${dueState.due.knode.length} nodes and the ring already compute to opacity 0 — so the finished key cannot flash up before it — while the settle, the one moment the class is still on and the key is meant to be lit, reads lit`)
+        : bad('v30 59.13 the key flashes complete before its animation', JSON.stringify(dueState));
+    }
+
     await boot({ allOpen: true });
     const reveals = [];
     for (const tier of [0, 1, 2]) {

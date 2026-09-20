@@ -1551,8 +1551,16 @@
   #s-key{--earn-ms:1700ms}
   .kearn .kecur{pointer-events:none}
   .kearn{pointer-events:none}
-  /* the ring starts unlit whatever the tier; what lights it is that tier's own first step */
-  #s-key.kearning .kr,#s-key.kearning .knode,#s-key.kearning .klabels text,#s-key.kearning .kring,#s-key.kearning .kground{opacity:0}
+  /* the ring starts unlit whatever the tier; what lights it is that tier's own first step.
+     v30 (59.13, build 59): AND IT IS UNLIT FROM THE FIRST PAINT, not from a tick later. Aiden: "it shows a brief frame showing that
+     the key was already complete, but then it does the animation again. So that just looks a little awkward." The screen renders
+     from STATE — and the state is a whole key — so it painted every spoke lit, held that for about three frames, blanked, and only
+     then drew them in. The same family as the chest cracks: the animation's start state was applied AFTER the first paint instead
+     of being in it. `kdue` is already on from the draw that SCHEDULES the earn (it is what hides the words for that beat), so the
+     start state simply joins it. `:not(.ksettle)` is what lets the finished key back in at the end — settle() is the one moment
+     `kdue` is still on and the key is supposed to be lit. */
+  #s-key.kearning .kr,#s-key.kearning .knode,#s-key.kearning .klabels text,#s-key.kearning .kring,#s-key.kearning .kground,
+  #s-key.kdue:not(.ksettle) .kr,#s-key.kdue:not(.ksettle) .knode,#s-key.kdue:not(.ksettle) .klabels text,#s-key.kdue:not(.ksettle) .kring,#s-key.kdue:not(.ksettle) .kground{opacity:0}
   /* SKILL and PRO — THE SEVEN SPOKES FIRE INWARD, each segment drawing from its node down to the hub with the halo running ahead of it as the
      fire. `--spoke-gap` is the beat between them: 130ms on the Skill key, so they walk round the ring one at a time, and 0 on the Pro key, whose
      whole idea is that all seven go at once. The Author key has no spokes step — its ring arrives on the crack. */
