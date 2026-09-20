@@ -5201,7 +5201,7 @@ if (section('build 32 - v19 section C and v18 sections B.15 to B.27')) {
     const col = await page.evaluate(() => { const ids = ['games', 'key', 'pro', 'thorns']; const c = n => document.querySelector(`.chest[data-chest="${n}"]`); const cell = n => ({ r: +c(n).style.gridRow, col: +c(n).style.gridColumn, need: c(n).querySelector('.pic').dataset.need, cls: c(n).className, name: c(n).querySelector('.name').textContent.trim() });
       return Object.assign(Object.fromEntries(ids.map(n => [n, cell(n)])), { scroll: getComputedStyle(document.getElementById('s-pick')).overflowY }); });
     (col.key.col === col.games.col && col.pro.col === col.games.col && col.thorns.col === col.games.col && col.key.r === col.games.r + 1 && col.pro.r === col.games.r + 2 && col.thorns.r === col.games.r + 3
-      && /open/.test(col.games.cls) && /open/.test(col.key.cls) && /locked/.test(col.pro.cls) && col.pro.need.split('\n').length === 2 && /Earn the Pro key/.test(col.pro.need) && /Finish Gauntlet Mini/.test(col.pro.need) && col.thorns.need === 'Earn the Author key' /* AMENDED at build 48 (v26 item 12); at build 58 (58.2) the Pro chest lists both its requirements */ && col.pro.name === CP32.GRID.chest.pro && col.thorns.name === CP32.GRID.chest.thorns && col.scroll === 'auto')
+      && /open/.test(col.games.cls) && /open/.test(col.key.cls) && /locked/.test(col.pro.cls) && col.pro.need.split('\n').length === 1 && /Earn the Pro key/.test(col.pro.need) /* AMENDED AT BUILD 59 (v30 59.6): the locked tile carries ONE line, the first thing still missing - 58.2's two ticked requirements wrapped to four and ran over the chest drawing. The Pro key is not in hand here, so its line is the key's; the Gauntlet's turn comes once the key is held, and it is on the key's own screen from the start. */ && col.thorns.need === 'Earn the Author key' /* AMENDED at build 48 (v26 item 12); at build 58 (58.2) the Pro chest lists both its requirements */ && col.pro.name === CP32.GRID.chest.pro && col.thorns.name === CP32.GRID.chest.thorns && col.scroll === 'auto')
       ? ok(`B.19 AMENDED at build 40 (L.10c): four chests in a column (rows ${col.games.r}-${col.thorns.r}); Games and Key open, the Pro chest saying "${col.pro.need}" and Thorns "${col.thorns.need}" (v26 item 12); the screen scrolls`)
       : bad('B.19 the chest column', JSON.stringify(col));
   }
@@ -6244,10 +6244,14 @@ if (section('build 37 - keys and chests')) {
       S.prefs.meterSeen = 90; S.save(); R.show('s-pick'); await wait(120); R.show('s-menu'); const down = { up: mk.classList.contains('up'), txt: mk.textContent, seen: S.prefs.meterSeen };
       /* AMENDED AT BUILD 53 (v28 item 9): the raw meter still drives the count-up and `prefs.meterSeen` — what the line PRINTS is meterPct(),
          so a raw 10 → 20 reads 3% → 7%. The figures are derived here rather than written out, so the check cannot drift from the config. */
-      A.Snd.whoosh = ow; return { pct, first, end, again, down, showFrom: K.meterPct(10), showTo: K.meterPct(20) }; });
-    (d4.pct === 20 && d4.first.txt === d4.showFrom + '% complete' && d4.first.up && d4.end.txt === d4.showTo + '% complete' && d4.end.seen === 20 && d4.end.whoosh.includes(900))
+      A.Snd.whoosh = ow; return { pct, first, end, again, down, showFrom: K.meterPct(10), showTo: K.meterPct(pct) }; });
+    /* AMENDED AT BUILD 59 (v30 59.11): the figure this fixture reaches is DERIVED, not typed. Six of thirty key-1 bars with every
+       mode open used to be 20; the first hundred is now the modes AND the bars in equal steps, so the same store reads 42. What the
+       check is for has not changed and is what is asserted: the menu pulses, counts UP from the last figure it painted to the one it
+       has now, plays the count-up's own whoosh, and writes what it painted. */
+    (d4.pct > 10 && d4.first.txt === d4.showFrom + '% complete' && d4.first.up && d4.end.txt === d4.showTo + '% complete' && d4.end.seen === d4.pct && d4.end.whoosh.includes(900))
       ? ok(`D.4 / L.8e back at the menu with the meter up from 10 to 20 since it was last shown, the figure pulses and counts up with the count-up's own whoosh (${d4.showFrom}% → ${d4.showTo}% on screen, v28 item 9), and the raw 20 is written when it is painted`) : bad('D.4 the count-up', JSON.stringify(d4));
-    (!d4.again.up && d4.again.txt === d4.showTo + '% complete' && !d4.down.up && d4.down.txt === d4.showTo + '% complete' && d4.down.seen === 20)
+    (!d4.again.up && d4.again.txt === d4.showTo + '% complete' && !d4.down.up && d4.down.txt === d4.showTo + '% complete' && d4.down.seen === d4.pct)
       ? ok('D.4 painting the same figure again plays nothing, and a figure LOWER than the one last seen never counts down') : bad('D.4 once, and never down', JSON.stringify({ again: d4.again, down: d4.down }));
   }
 }
@@ -8121,7 +8125,10 @@ if (section('build 45 - batch 18, fixes, state and the catalogue')) {
     /* AMENDED at build 53 (v28 items 13 / 17): cheerPlan, the plan helper for each chest's celebration.
        AMENDED AT BUILD 57 (v29 Section A, 57.2 / 57.6): crackPlan and crackBurstPlan are GONE with the map arrival they were written for, and
        keyIntroPlan arrives with the key-creation intro. */
-    const HELP = ['unlock', 'tone', 'plan', 'fx', 'noise', 'chestPlan', 'keyEarnPlan', 'keyIntroPlan', 'keyStepPlan', 'videoPlan', 'roundVerdictPlan', 'mapPlan', 'giftPlan', 'popPlan', 'cheerPlan', 'endLeft'];
+    /* AMENDED AT BUILD 59 (v30 59.15): keyCircuitPlan, the plan helper for the Pro key's electrical layer. Like keyEarnPlan beside
+       it, it is not a sound of its own — Snd.keyEarn plays both plans through one gain node, so one stop() silences both — and a
+       helper in this list is one the page's sound roster does not need a button for. */
+    const HELP = ['unlock', 'tone', 'plan', 'fx', 'noise', 'chestPlan', 'keyEarnPlan', 'keyCircuitPlan', 'keyIntroPlan', 'keyStepPlan', 'videoPlan', 'roundVerdictPlan', 'mapPlan', 'giftPlan', 'popPlan', 'cheerPlan', 'endLeft'];
     const srcs = rows.map(r => r.src).join(' ');
     const missed = snd.methods.filter(m => !HELP.includes(m) && !srcs.includes(m + '('));
     const packs = rows.filter(r => r.plays.length > 1).length;
