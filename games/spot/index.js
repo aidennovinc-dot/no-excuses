@@ -7,7 +7,7 @@ import { CFG, COUNT_ADD, COUNT_BUDGET, SPOT_FIND, SPOT_RAMP, VS_TARGET } from ".
 import { DEALS, SHAPES } from "../../config/shapes.js";
 import { $, $$, T, f2, minMax, pWho, winner } from "../../core.js";
 import { haptic } from "../../core/platform.js";
-import { bandPick, gauntBand, gauntDealt, makeDealer, within } from "../_shared/deal.js";
+import { bandPick, gauntBand, gauntDealt, gauntRound, makeDealer, within } from "../_shared/deal.js";
 import { shapeI } from "../_shared/shapes.js";
 import * as hud from "../_shared/hud.js";
 import { roundShow } from "../_shared/tier.js";
@@ -35,8 +35,11 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
   // v16 (1.5): a Set ramps over its last round, a Streak once its budget is 80% spent — 5 miscounts on Count, 10s on
   // Find (L5). Music only (A.1); a two-player run ramps on nothing, it has no budget of its own
   fin(){ if(this.two||this.vs) return 0; return this.streak()?this.finBud(this.find()?this.tot:this.off,this.find()?10:COUNT_BUDGET):this.finSet(); },
-  // Find's crowd still grows across ten rounds; a Streak holds at the round-10 crowd
-  p(){ return Math.min(1,(this.round-1)/9); },
+  /* Find's crowd still grows across ten rounds; a Streak holds at the round-10 crowd.
+     v30 (59.12b, build 59): inside a GAUNTLET the round the ramp reads is the middle of the reference set, not the opening — Mini
+     plays 2 of the 10 and was playing the two easiest of them while `tot` scaled the bar as though they were average. This is the
+     ONLY ramp in the app that grows with the round number; Timing · Hidden's variance comes from its deal, which 58.1 already bands. */
+  p(){ return Math.min(1,(gauntRound(this.ctx,this.round)-1)/9); },
   /* v17 (B.15) — the difficulty is the CROWD, not the clock. The target count is dealt from a band whose two edges rise
      at different rates, so it can fall as well as climb and there is no 8-9-10-11 to count; every dipEvery-th round from
      dipFrom deals the band's floor among half again as many decoys, which is the round that has FEWER targets in a much

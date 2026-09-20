@@ -122,7 +122,24 @@ export const BAND_WORDS = {
    Estimate and Find, and a division by nothing — stated rather than left as Infinity. `cap` caps ONE step's contribution
    so a freak result cannot carry a bad run; 0 is uncapped, which is what item 11 asks for, and Cowork's 150 is the open
    recommendation beside it. `keep` is how many Gauntlet runs the board holds. */
-export const GAUNTLET_SCORE = { tier: 'clear', perfect: 200, cap: 0, keep: 50 };
+/* ---------- v30 (59.12, build 59): THE SCORING, AS ONE PACKAGE ----------
+   Aiden, on a Gauntlet Mini result reading 310.8%: "I like how the games play, except I don't know how I got 310%. 100% is supposed
+   to be relative to author times, and anything above that is over 100%. So however you're doing the calculations, it seems to be
+   wrong." The arithmetic was right — the eight rows do average to 310.8 — and the DESIGN was wrong in four places.
+   (a) IT WAS NOT SCORING AGAINST AUTHOR. `tier` was 'clear', the KEY 1 column and the easiest bar, because the Author cells are #426
+       placeholders Aiden has never played. Every row was therefore "how far past the beginner bar", which is why a decent run read
+       130–260 everywhere. It is 'author' NOW, placeholders and all: a provisional HARD bar gives saner numbers than a real EASY one,
+       a Gauntlet advances nothing so a wrong bar harms nothing, and every stored run already records its own tier — so the board
+       shows only runs at the current tier and today's 'clear' runs drop off it rather than sitting on top forever. Say "provisional
+       bars" until Aiden has played real Author numbers in (#371).
+   (c) NOTHING LIMITED ONE STEP. `cap` was 0 and lower-is-better uses bar / player, which has no ceiling — halve your error and the
+       score doubles, approach zero and it explodes. Spot · Find's 1241% was one step adding 155 points to the headline; without it
+       that run averages 177.9. Each step is capped at 150 now, and `perfect` — what a lower-is-better step scores on a total of zero,
+       a real result and a division by nothing — comes down to the same 150 so the cap cannot be beaten by a perfect round. Over 100
+       still means past the Author, which is what he wants; 150 against an Author bar is already half the Author's error.
+   (b) and (d) are not here: (b) is the mid-set ramp, which lives on the step in run/gauntlet.js and is read through
+   games/_shared/deal.js, and (d) is the working on the result rows, which is ui/screens/gauntlet.js. */
+export const GAUNTLET_SCORE = { tier: 'author', perfect: 150, cap: 150, keep: 50 };
 
 /* how long the run holds between one game and the next. There is no card naming what is coming — nine games back to back
    would read better with one, and it is the first thing to add here, but it is DOM and timing rather than the run itself. */

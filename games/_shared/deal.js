@@ -58,4 +58,11 @@ const bandPick = (band, u) => band[0] + (u === undefined ? Math.random() : u) * 
 function gauntDealt(ctx, q, v) { const g = ctx && ctx.gaunt; if (!g || !g.band || !g.band[q]) return v;
   emit('gaunt:deal', { id: g.id, step: g.g + ':' + g.d, q, v, band: g.band[q] }); return v; }
 
-export { ORDER, bandAt, bandFrom, bandPick, gauntBand, gauntDealt, makeDealer, poolAt, setTier, within };
+/* v30 (59.12b, build 59): WHICH ROUND A RAMP SHOULD THINK IT IS ON. A Gauntlet plays a few rounds of a longer set, and a game whose
+   difficulty grows with the round number would otherwise play that set's EASIEST rounds while its bar is scaled as though they were
+   average ones. `ramp.from` on the step (run/gauntlet.js) is the middle block of the reference set, so Find's 2 of 10 play as rounds
+   5 and 6. Outside a Gauntlet, and for a step that plays the whole set, this is the round number unchanged. */
+const gauntRound = (ctx, round) => { const r = ctx && ctx.gaunt && ctx.gaunt.ramp;
+  return r && r.from > 0 ? r.from + (round - 1) : round; };
+
+export { ORDER, bandAt, bandFrom, bandPick, gauntBand, gauntDealt, gauntRound, makeDealer, poolAt, setTier, within };

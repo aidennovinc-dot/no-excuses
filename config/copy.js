@@ -227,6 +227,13 @@ export const GAUNTLET = { name:{ g1:'Gauntlet Mini', g2:'Gauntlet Mega' }, msgTi
      it — because finishing one is now what opens the next chest and the map is where a player looks to see what is left. */
   done:'best {n}%',
   pct:'{n}%', noBar:'—', board:'Your best', barLine:'100% is the bar. Past it is past the bar.',
+  /* v30 (59.12d, build 59): THE WORKING, on the row. Aiden: "I don't know how I got 310%." Each row now shows what he scored and the
+     bar it was measured against, so a figure can never again be unexplainable. `cap` marks a row the 150 ceiling caught, because a
+     capped row is the one place the arithmetic on screen would otherwise not reach the percentage beside it. */
+  work:'{you} · bar {bar}', workCap:'{you} · bar {bar} · capped at {cap}%',
+  /* and what the bar IS, said once under the list rather than assumed. The Author column is #426 placeholders until Aiden plays his
+     own numbers in (#371), so the screen says so rather than presenting a guess as his. */
+  barTier:'Bars: the Author column, provisional until Aiden plays his own in.',
   round:'1 round', rounds:'{n} rounds', roundsEach:'{n} rounds each', roundsPair:'{a} + {b} rounds', modePair:'{a} + {b}' };
 // v23 (L.11b, build 41): what a word whose reward is not built yet says when tapped (guess)
 export const CHEST_SOON = '{w}<small>not built yet · a later build</small>';

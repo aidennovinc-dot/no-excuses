@@ -552,6 +552,34 @@ scene('59.11', async (page, browser) => {
   }
 });
 
+/* =======================================================================================================
+   59.12 — the Gauntlet result shows its working
+   Aiden: "I don't know how I got 310%." Every row now carries the number he scored and the bar it was measured against, so the
+   figure can be read back off the screen. The frame below is HIS OWN Mini run, replayed through the new scoring — the raw result
+   of each step recovered by inverting the old arithmetic, then re-scored against the Author column with the 150 cap.
+   ======================================================================================================= */
+scene('59.12', async (page, browser) => {
+  await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture({ chests: { games: 1, key: 1, pro: 1 }, gauntSeen: { g1: 1 } }));
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(450);
+  const out = await page.evaluate(async his => {
+    const G = await import('./config/gauntlets.js'), R = await import('./run/gauntlet.js'), K = await import('./progress/key.js'),
+      Rt = await import('./ui/router.js');
+    const refOf = ref => K.COMBOS.find(c => c.key === ref);
+    const runs = G.GAUNTLET_RUNS.g1.map(st => { const key = st.web || (st.g + ':' + st.d), was = his[key];
+      const c = refOf(st.ref); let bar = K.barOf(c, 'clear');
+      if (st.tot) { const rl = +String(st.ref).split(':')[2]; if (rl > 0) bar = bar * (st.s / rl); }
+      const v = c.bar.dir === 'lower' ? bar * 100 / was : bar * was / 100;
+      return { hits: v }; });
+    const web = R.webOf(G.GAUNTLET_RUNS.g1, runs), score = R.scoreOf(web);
+    const done = { id: 'g1', score, web, verdict: R.gauntVerdict(score) };
+    Rt.show('s-gauntlet', { id: 'g1', done });
+    return { score, rows: web.map(r => ({ key: r.key, pct: r.pct, work: (r.work || []).map(w => w.you + ' / bar ' + w.barShown + (w.capped ? ' CAPPED' : '')) })) };
+  }, { 'quick-tap:two': 155.6, 'dots:blind': 142.9, hold: 242.8, 'reaction:flash': 128.3, 'reaction:nogo': 139.9, 'timing:stopwatch': 172.4, 'timing:hidden': 263.2, 'spot:find': 1241.4 });
+  await sleep(900);
+  await frame(page, browser, '59.12-result-390', "Aiden's own 310.8% Mini run, replayed through build 59's scoring — every row shows its working");
+  say('replay', out);
+});
+
 /* ---------- the runner ---------- */
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 if (ARGV.includes('--list')) { console.log(Object.keys(SCENES).join('\n')); process.exit(0); }

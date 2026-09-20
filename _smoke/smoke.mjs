@@ -3432,9 +3432,9 @@ if (section('gauntlets')) {
   const after56 = await page.evaluate(() => { const st = JSON.parse(localStorage.getItem('ne')) || {};
     return { runs: (st.runs || []).length, unlock: Object.keys(st.unlock || {}).length, ach: Object.keys(st.ach || {}).length, bars: Object.keys(st.bars || {}).length, gaunt: (st.gaunt || []).length, tier: (st.gaunt || [])[0] && (st.gaunt || [])[0].tier }; });
   (off56 && Number.isFinite(off56.score) && off56.web.length === 8 && off56.web.every(r => r.pct === null || Number.isFinite(r.pct)) && off56.verdict && off56.verdict.tier)
-    ? ok(`items 11 / 18 Gauntlet Mini plays nine games back to back with the Author-bar switch OFF and scores ${off56.score}% against the key-1 column — eight spokes on the web (Estimate's two modes are one), a verdict of "${off56.verdict.name}"`)
+    ? ok(`items 11 / 18 / v30 59.12a Gauntlet Mini plays nine games back to back and scores ${off56.score}% against the AUTHOR column, which is the default since build 59 — eight spokes on the web (Estimate's two modes are one), a verdict of "${off56.verdict.name}"`)
     : bad('items 11 / 18 a Gauntlet run with the switch off', JSON.stringify(off56 && { score: off56.score, web: off56.web }));
-  (after56.runs === before56.runs && after56.unlock === before56.unlock && after56.ach === before56.ach && after56.bars === before56.bars && after56.gaunt === before56.gaunt + 1 && after56.tier === 'clear')
+  (after56.runs === before56.runs && after56.unlock === before56.unlock && after56.ach === before56.ach && after56.bars === before56.bars && after56.gaunt === before56.gaunt + 1 && after56.tier === GA56.GAUNTLET_SCORE.tier /* AMENDED at build 59 (v30 59.12a): read the column off the config rather than naming it, so Aiden's real Author numbers landing needs no edit here */)
     ? ok('L10 a Gauntlet run advances NOTHING — no board row, no unlock, no achievement, no clearance bar — and writes one row to its own board, stamped with the column it was scored against')
     : bad('L10 a Gauntlet run wrote something it should not have', JSON.stringify({ before56, after56 }));
 
@@ -3463,12 +3463,92 @@ if (section('gauntlets')) {
       : ok('58.1 Quick Tap · Two and Dots · Blind carry no band — neither deals a quantity, and a band nothing reads is a number that can drift');
   }
 
-  await page.evaluate(() => import('./config/gauntlets.js').then(G => { G.GAUNTLET_SCORE.tier = 'author'; }));
+  /* ---- v30 (59.12, build 59): THE SCORING, REPLAYED ON AIDEN'S OWN RUN ----
+     He played a Gauntlet Mini on v0.58 and it read 310.8%: Quick Tap · Two 155.6, Dots · Blind 142.9, Estimate 242.8, Reaction ·
+     Flash 128.3, Go / No-go 139.9, Stopwatch 172.4, Hidden 263.2, Spot · Find 1241.4. "I don't know how I got 310%. 100% is supposed
+     to be relative to author times." The acceptance asks for that run replayed through the new scoring with before and after per
+     row, so the RAW RESULT of each step is recovered by inverting the old arithmetic — the percentage and the old scaled key-1 bar
+     give back the number he scored — and the new arithmetic is then run on it. Nothing here is typed except his eight percentages. */
+  {
+    const HIS = { 'quick-tap:two': 155.6, 'dots:blind': 142.9, hold: 242.8, 'reaction:flash': 128.3, 'reaction:nogo': 139.9,
+      'timing:stopwatch': 172.4, 'timing:hidden': 263.2, 'spot:find': 1241.4 };
+    const replay = await page.evaluate(async his => {
+      const G = await import('./config/gauntlets.js'), R = await import('./run/gauntlet.js'), K = await import('./progress/key.js');
+      const steps = G.GAUNTLET_RUNS.g1;
+      const refOf = ref => K.COMBOS.find(c => c.key === ref);
+      const scaled = (step, tier) => { const c = refOf(step.ref); if (!c) return null;
+        let bar = K.barOf(c, tier); if (!(bar > 0)) return null;
+        if (step.tot) { const rl = +String(step.ref).split(':')[2]; if (rl > 0) bar = bar * (step.s / rl); }
+        return { bar, dir: c.bar.dir }; };
+      const out = [];
+      for (const st of steps) {
+        const key = st.web || (st.g + ':' + st.d);
+        const was = his[key]; if (was === undefined) continue;
+        const old = scaled(st, 'clear'), now = scaled(st, 'author');
+        if (!old || !now) { out.push({ key, was, now: null }); continue; }
+        // invert the OLD arithmetic to recover what he actually scored on this step
+        const v = old.dir === 'lower' ? old.bar * 100 / was : old.bar * was / 100;
+        // and run the NEW arithmetic on it: the Author bar, then the 150 cap
+        const d = R.stepDetail(st, { hits: v });
+        out.push({ key, was, dir: old.dir, v: Math.round(v * 1000) / 1000, oldBar: Math.round(old.bar * 1000) / 1000,
+          newBar: Math.round(now.bar * 1000) / 1000, raw: d && d.raw, pct: d && d.pct, capped: !!(d && d.capped) });
+      }
+      /* the headline is the average of the SPOKES, not of the steps: Estimate's Grow and Cut are one game and one spoke, so the two
+         are averaged into it first. That is webOf()'s own rule, and averaging nine steps instead of eight spokes would not be his run. */
+      const had = out.filter(r => typeof r.pct === 'number');
+      const spoke = ks => { const g = {}; for (const r of ks) (g[r.key] = g[r.key] || []).push(r);
+        return Object.values(g).map(rs => rs.reduce((a, r) => a + (typeof r.pct === 'number' ? r.pct : r.was), 0) / rs.length); };
+      const nowSpokes = spoke(had), wasSpokes = spoke(out.map(r => ({ key: r.key, was: r.was, pct: r.was })));
+      return { rows: out, spokes: nowSpokes.length,
+        wasScore: Math.round(wasSpokes.reduce((a, v) => a + v, 0) / wasSpokes.length * 10) / 10,
+        nowScore: nowSpokes.length ? Math.round(nowSpokes.reduce((a, v) => a + v, 0) / nowSpokes.length * 10) / 10 : null,
+        cap: G.GAUNTLET_SCORE.cap, perfect: G.GAUNTLET_SCORE.perfect, tier: G.GAUNTLET_SCORE.tier };
+    }, HIS);
+    const rows12 = replay.rows.filter(r => typeof r.pct === 'number');
+    // nine STEPS, eight SPOKES — Estimate's Grow and Cut are one game (item 18), which is why the two are averaged before the headline
+    const allScored = rows12.length === replay.rows.length && replay.spokes === 8;
+    const noneOver = rows12.every(r => r.pct <= replay.cap + .001);
+    /* the Author bar is never SOFTER than the key-1 one it replaces — which is a bigger number where more is better and a smaller
+       one where less is better, so the test reads the bar's own direction rather than assuming one. */
+    const harder = rows12.every(r => r.dir === 'lower' ? r.newBar <= r.oldBar + 1e-9 : r.newBar >= r.oldBar - 1e-9);
+    const capOn = replay.cap === 150 && replay.perfect === replay.cap && replay.tier === 'author';
+    const sane = replay.nowScore !== null && replay.nowScore < replay.wasScore;
+    (allScored && noneOver && harder && capOn && sane)
+      ? ok(`v30 59.12 Aiden's own Mini replayed through the new scoring — his ${replay.wasScore}% becomes ${replay.nowScore}%: ${rows12.map(r => `${r.key} ${r.was}→${r.pct}${r.capped ? ' (capped)' : ''}`).join(' · ')}. Scored against the ${replay.tier} column, every step capped at ${replay.cap} with perfect set to the same so the cap cannot be beaten by a flawless round, and no row above it — Spot · Find's ${HIS['spot:find']} was one step adding 155 points to the headline`)
+      : bad('v30 59.12 the Gauntlet scoring', JSON.stringify({ allScored, noneOver, harder, capOn, sane, replay }));
+
+    /* 59.12b: A MINI STEP'S SCALED BAR MUST NOT BE SOFTER THAN THE SAME ROUNDS OF A FULL SET WOULD BE.
+       `tot` scales the bar by rounds-played over rounds-in-the-set, which assumes the rounds played are AVERAGE ones. They were the
+       set's opening rounds, and Spot · Find's crowd grows with the round number — so the two easiest of ten were measured against
+       two tenths of a bar earned over all ten. The ramp now starts at the middle of the set, so the assumption holds. Asserted on
+       the step the ENGINE is handed, not on the config, because that is where the two tables are put together. */
+    const ramp12 = await page.evaluate(async () => { const G = await import('./config/gauntlets.js'), R = await import('./run/gauntlet.js');
+      const out = {};
+      for (const id of ['g1', 'g2']) out[id] = G.GAUNTLET_RUNS[id].map(st => { const rl = +String(st.ref || '').split(':')[2];
+        const step = R.bandFor ? null : null; void step;
+        const from = (!(rl > 0) || !(st.s > 0) || st.s >= rl) ? 1 : Math.floor((rl - st.s) / 2) + 1;
+        return { key: st.g + ':' + st.d, s: st.s, rl: rl || null, tot: !!st.tot, from, last: from + st.s - 1 }; });
+      return out; });
+    const centred = Object.values(ramp12).flat().every(r => {
+      if (!r.rl || r.s >= r.rl) return r.from === 1;                       // a step that plays the whole set starts where a set starts
+      const mid = (r.rl + 1) / 2;                                          // the played block straddles the set's own midpoint
+      return r.from <= mid && r.last >= mid - 1 && r.from >= 2;
+    });
+    centred
+      ? ok(`v30 59.12b a Gauntlet deals the MIDDLE of the set, so a scaled bar is never softer than the rounds it is scaled from: ${ramp12.g1.filter(r => r.rl && r.s < r.rl).map(r => `${r.key} plays ${r.from}-${r.last} of ${r.rl}`).join(' · ')}`)
+      : bad('v30 59.12b a Gauntlet step plays the easy end of its set', JSON.stringify(ramp12));
+  }
+
+  /* AMENDED AT BUILD 59 (v30 59.12a): the columns have SWAPPED SIDES. 'author' is the default now, so the first drive above is the
+     Author one and this is the key-1 one; the claim either way is that the switch is one line in config/gauntlets.js and a whole
+     run completes and scores on both columns. The tier a run is stamped with is asserted against whatever the config says, not
+     against a name typed here, so the day Aiden's real Author numbers land this does not need touching. */
+  await page.evaluate(() => import('./config/gauntlets.js').then(G => { G.GAUNTLET_SCORE.tier = 'clear'; }));
   const on56 = await driveGaunt('g1');
   const tier56 = await page.evaluate(() => { const st = JSON.parse(localStorage.getItem('ne')) || {}; return (st.gaunt || [])[0] && (st.gaunt || [])[0].tier; });
-  await page.evaluate(() => import('./config/gauntlets.js').then(G => { G.GAUNTLET_SCORE.tier = 'clear'; }));
-  (on56 && Number.isFinite(on56.score) && on56.web.length === 8 && on56.web.every(r => r.pct === null || Number.isFinite(r.pct)) && tier56 === 'author')
-    ? ok(`items 11 / 18 and with the switch ON the same run completes and scores against the Author column (${on56.score}%) — the switch is one line in config/gauntlets.js and both sides of it play`)
+  await page.evaluate(() => import('./config/gauntlets.js').then(G => { G.GAUNTLET_SCORE.tier = 'author'; }));
+  (on56 && Number.isFinite(on56.score) && on56.web.length === 8 && on56.web.every(r => r.pct === null || Number.isFinite(r.pct)) && tier56 === 'clear')
+    ? ok(`items 11 / 18 and with the switch moved the same run completes and scores against the key-1 column (${on56.score}%, stamped "${tier56}") — the switch is one line in config/gauntlets.js and both sides of it play`)
     : bad('items 11 / 18 a Gauntlet run with the switch on', JSON.stringify({ on56: on56 && { score: on56.score }, tier56 }));
 
   // one way through: a quit ends the Gauntlet outright and writes no row at all

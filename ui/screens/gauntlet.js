@@ -12,7 +12,7 @@
    The run itself is run/gauntlet.js. This file knows the id, the roster it is shown, and what `gaunt:done` hands back. */
 
 import { GAUNTLET } from "../../config/copy.js";
-import { GAUNTLET_RUNS } from "../../config/gauntlets.js";
+import { GAUNTLET_RUNS, GAUNTLET_SCORE } from "../../config/gauntlets.js";
 import { MODE_NAME } from "../../config/games.js";
 import { $, T, esc } from "../../core.js";
 import { on } from "../../core/events.js";
@@ -70,12 +70,19 @@ function webSvg(web) {
 }
 
 function resultHtml(id, out) {
-  const rows = out.web.map(r => `<li><span>${esc(GAMES[r.g].name + (r.d && MODE_NAME[r.d] ? ' · ' + MODE_NAME[r.d] : ''))}</span>`
+  /* v30 (59.12d, build 59): each row SHOWS ITS WORKING — what you scored, the bar it was measured against, then the percentage.
+     A spoke that averages two steps (Estimate's Grow and Cut) shows both, because the average of two numbers is not readable from
+     one of them. A row the 150 cap caught says so, since that is the one case where the arithmetic on screen does not reach the
+     figure beside it. The bar is the one the step was scored against, already scaled for the rounds played. */
+  const workOf = r => (r.work || []).map(w => esc(T(w.capped ? GAUNTLET.workCap : GAUNTLET.work,
+    { you: w.you, bar: w.barShown, cap: GAUNTLET_SCORE.cap }))).join(' · ');
+  const rows = out.web.map(r => `<li><span>${esc(GAMES[r.g].name + (r.d && MODE_NAME[r.d] ? ' · ' + MODE_NAME[r.d] : ''))}`
+    + (workOf(r) ? `<small>${workOf(r)}</small>` : '') + `</span>`
     + `<i>${r.pct === null ? esc(GAUNTLET.noBar) : esc(T(GAUNTLET.pct, { n: r.pct }))}</i></li>`).join('');
   return `<div class="gtres">${webSvg(out.web)}`
     + `<div class="gtbig" style="color:${esc(out.verdict.col)}">${esc(T(GAUNTLET.pct, { n: out.score }))}</div>`
     + `<div class="gtline">${esc(out.verdict.name)} ${esc(out.verdict.line)}</div>`
-    + `<div class="gthint">${esc(GAUNTLET.barLine)}</div>`
+    + `<div class="gthint">${esc(GAUNTLET.barLine)}<br>${esc(GAUNTLET.barTier)}</div>`
     + `<ul class="gtscores">${rows}</ul>`
     + `<button class="item big" data-act="gaunt-go" data-gid="${esc(id)}">${esc(GAUNTLET.again)}</button></div>`;
 }

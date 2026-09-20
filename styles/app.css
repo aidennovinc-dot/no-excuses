@@ -2073,6 +2073,11 @@
   .gtscores{list-style:none;margin:0;padding:0;width:100%;display:flex;flex-direction:column;gap:2px}
   .gtscores li{display:flex;justify-content:space-between;gap:10px;padding:6px 10px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase}
   .gtscores li span{color:var(--mute)} .gtscores li i{font-style:normal;color:var(--ink)}
+  /* v30 (59.12d, build 59): the working under the game's name — what you scored and the bar it was measured against. Lower case
+     and a step smaller than the row, because it is the arithmetic behind the figure and not a second label. */
+  .gtscores li span{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:2px;min-width:0}
+  .gtscores li small{font-size:9px;letter-spacing:.06em;text-transform:none;color:var(--mute);opacity:.85}
+  .gtscores li{align-items:baseline}
   .gtboard{width:100%}
   .gtboard h4{margin:0 0 6px;font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);font-weight:400}
   .gtboard ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}

@@ -27,18 +27,32 @@ const refLen = key => +String(key).split(':')[2];
 /* ONE STEP AS A PERCENTAGE OF ITS BAR. `dir` comes from the bar's own row, so nothing here decides which way a game counts.
    A lower-is-better total of 0 is a real result (a clean Find, a perfect Estimate) and a division by nothing, so it takes
    GAUNTLET_SCORE.perfect rather than Infinity — stated in the config, not hidden here. */
-function stepPct(step, run) {
+/* v30 (59.12d, build 59): AND THE WORKING COMES OUT WITH IT. Aiden: "I don't know how I got 310%." A step now hands back its own
+   arithmetic — the number he scored, the bar it was measured against (already scaled for the rounds played) and the unit — so the
+   result screen can show "3.1s · bar 4.0s · 129%" and the figure can never again be unexplainable. The unit is the bar's own, cut to
+   its first word, because a key-bar row spells it as prose ("s total", "ms avg", "% off"). */
+const UNIT_TIGHT = { '%': 1, 's': 1, 'ms': 1 };
+const unitOf = c => { const u = String((c.bar && c.bar.unit) || '').trim().split(' ')[0]; return u; };
+const numOf = v => { const n = Math.abs(v); const d = n >= 100 ? 0 : n >= 10 ? 1 : 2; return String(Math.round(v * 10 ** d) / 10 ** d); };
+const shownOf = (v, u) => numOf(v) + (u ? (UNIT_TIGHT[u] ? u : ' ' + u) : '');
+function stepDetail(step, run) {
   const c = refOf(step.ref); if (!c || !c.bar) return null;
   let bar = barOf(c, GAUNTLET_SCORE.tier);
   if (bar === null || !Number.isFinite(bar) || bar <= 0) return null;
   // a TOTAL scales with the rounds played; a mean does not (config/gauntlets.js `tot`)
-  if (step.tot) { const rl = refLen(step.ref); if (rl > 0) bar = bar * (step.s / rl); }
+  const scaled = !!step.tot && refLen(step.ref) > 0;
+  if (scaled) { const rl = refLen(step.ref); bar = bar * (step.s / rl); }
   const v = +run.hits; if (!Number.isFinite(v)) return null;
   let pct = c.bar.dir === 'lower' ? (v <= 0 ? GAUNTLET_SCORE.perfect : bar / v * 100) : v / bar * 100;
   pct = Math.max(0, pct);
+  const raw = Math.round(pct * 10) / 10;
   if (GAUNTLET_SCORE.cap > 0) pct = Math.min(GAUNTLET_SCORE.cap, pct);
-  return Math.round(pct * 10) / 10;
+  const u = unitOf(c);
+  return { pct: Math.round(pct * 10) / 10, raw, capped: raw > (GAUNTLET_SCORE.cap || Infinity),
+    v, bar: Math.round(bar * 100) / 100, unit: u, dir: c.bar.dir, scaled,
+    you: shownOf(v, u), barShown: shownOf(bar, u) };
 }
+function stepPct(step, run) { const d = stepDetail(step, run); return d ? d.pct : null; }
 
 // the web: one spoke per `web` key, two steps sharing one averaged into it (Estimate's Grow and Cut are one game, item 18)
 function webOf(steps, runs) {
@@ -46,11 +60,12 @@ function webOf(steps, runs) {
   steps.forEach((st, i) => {
     const key = st.web || (st.g + ':' + st.d);
     let row = by.find(r => r.key === key);
-    if (!row) { row = { key, g: st.g, d: st.d, pcts: [] }; by.push(row); }
-    const p = runs[i] ? stepPct(st, runs[i]) : null; if (p !== null) row.pcts.push(p);
+    if (!row) { row = { key, g: st.g, d: st.d, pcts: [], work: [] }; by.push(row); }
+    const det = runs[i] ? stepDetail(st, runs[i]) : null; if (det) { row.pcts.push(det.pct); row.work.push(det); }
   });
   // `d` is null on a spoke that is a whole GAME rather than one mode of it (Estimate), so a screen names it "Estimate", not "Estimate · Grow"
-  return by.map(r => ({ key: r.key, g: r.g, d: r.key.includes(':') ? r.d : null,
+  // 59.12d: `work` is the arithmetic behind the spoke — one entry per step, so a spoke that averages two carries both
+  return by.map(r => ({ key: r.key, g: r.g, d: r.key.includes(':') ? r.d : null, work: r.work,
     pct: r.pcts.length ? Math.round(r.pcts.reduce((a, b) => a + b, 0) / r.pcts.length * 10) / 10 : null }));
 }
 
@@ -73,8 +88,16 @@ function gauntVerdict(pct) {
    The step object the run sees is a COPY: GAUNTLET_RUNS is config and stays exactly as written (A2). */
 const bandFor = (id, st) => Object.assign({}, GAUNTLET_BANDS[st.g + ':' + st.d] || null,
   ((GAUNTLET_BAND_OVERRIDE[id] || {})[st.g + ':' + st.d]) || null);
-const stepOf = (id, st) => { const b = bandFor(id, st);
-  return Object.assign({}, st, { id, band: Object.keys(b).length ? b : null }); };
+/* v30 (59.12b, build 59): A GAUNTLET DEALS THE MIDDLE OF THE SET, not its opening rounds. Aiden's Mini plays 2 of Spot · Find's 10
+   rounds, and Find's crowd grows with the round number — so it played the two EASIEST rounds of the ten while `tot` scaled the bar
+   as though they were average ones. That is most of why Find and Hidden were the two worst rows. `ramp.from` is the round the step
+   starts at: the middle block of the reference set, so 2 of 10 plays rounds 5 and 6. An engine reads it through gauntRound() in
+   games/_shared/deal.js and never learns which Gauntlet it is in; a step that plays the whole set starts at 1, unchanged. */
+const rampFor = st => { const rl = +String(st.ref || '').split(':')[2], s = +st.s;
+  if (!(rl > 0) || !(s > 0) || s >= rl) return null;
+  return { from: Math.floor((rl - s) / 2) + 1, of: rl }; };
+const stepOf = (id, st) => { const b = bandFor(id, st), r = rampFor(st);
+  return Object.assign({}, st, { id, band: Object.keys(b).length ? b : null, ramp: r }); };
 
 function playStep() {
   const st = G.steps[G.i], run = stepOf(G.id, st);
@@ -117,4 +140,4 @@ on('run:abort', () => { if (!G) return; const id = G.id; G = null; setGauntStep(
 const gauntOn = () => !!G;
 const gauntBoard = id => (Array.isArray(store.gaunt) ? store.gaunt : []).filter(r => r && r.id === id).slice().sort((a, b) => b.score - a.score);
 
-export { bandFor, gauntBoard, gauntOn, gauntVerdict, scoreOf, startGauntlet, stepPct, webOf };
+export { bandFor, gauntBoard, gauntOn, gauntVerdict, scoreOf, startGauntlet, stepDetail, stepPct, webOf };
