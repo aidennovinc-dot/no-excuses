@@ -664,6 +664,108 @@ scene('59.13', async (page, browser) => {
   }
 });
 
+/* =======================================================================================================
+   59.14 — the earn moment: motion fills the time, the prompt lands when it ends, a tap anywhere opens the chest
+   This is 57.7 for the second time. Build 57 measured it with `_smoke/measure-earn.mjs`, which showed 420–504ms of dead air;
+   Aiden's own recordings show 4.6s (Skill) and 5.8s (Pro). The difference is the PATH: the harness drove the key screen
+   directly, and he came through Testing → the Progress map → a tap on the chest tile. So this walks HIS path and measures THAT,
+   in pixels — a frame every `STEP_MS` from the moment the Keys screen appears until the prompt shows or the screen leaves.
+   ======================================================================================================= */
+const EARN_STEP_MS = 100;
+async function earnRun(page, browser, tier, tierIx, label) {
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+  await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture({ chests: { games: 1, key: tierIx > 0 ? 1 : 0, pro: tierIx > 1 ? 1 : 0, thorns: 0 } }));
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(420);
+  /* HIS PATH, step for step: Testing sets this key whole, then the Progress map, then a tap on that key's chest tile — which is
+     what lands on the Keys screen with the earn due. Nothing here shows the key screen directly, which is what build 57 did. */
+  const chest = ['key', 'pro', 'thorns'][tierIx];
+  /* HIS STATE, reached deterministically instead of through Testing's switch — which plays a reveal of its own and left the chest
+     already open, so the measurement started after the thing it was meant to measure. What matters about his path is what it LANDS
+     ON: this key whole, its chest READY and not yet opened, and nothing revealed — then the tap on that chest's tile on the
+     Progress map, which is the tap he made. The clock starts on the frame the earn is first on screen. */
+  await page.evaluate(async t => { const P = await import('./progress/key.js'), S = await import('./core/store.js');
+    const tiers = ['clear', 'pro', 'author'].slice(0, t + 1);
+    const bars = {}; for (const c of P.COMBOS) for (const ti of tiers) bars[P.skey(c.key, ti)] = 1;
+    S.store.bars = bars; S.prefs.revealed = {}; S.prefs.keyWhole = {}; S.save(); }, tierIx);
+  await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-menu'); }); await sleep(250);
+  await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-pick'); }); await sleep(900);
+  await page.bringToFront();
+  const pre = await page.evaluate(async c => { const K = await import('./progress/key.js'), el = document.getElementById('s-key');
+    return { screen: (document.querySelector('.screen.on') || {}).id, chestState: K.chestState(c),
+      keyWhole: K.keyState(['clear', 'pro', 'author'][['key', 'pro', 'thorns'].indexOf(c)]).whole,
+      keyOn: !!(el && el.classList.contains('on')) }; }, chest);
+  /* THE KEY SCREEN IS WHERE THE MOMENT LIVES. A tap on a READY chest tile starts the CHEST'S reveal, and a reveal already running
+     is exactly what stops the key screen scheduling the key's earn (ui/screens/key.js: `!revealOn()`) — so that tap measures the
+     chest opening, not this. What his Pro recording shows is the key screen's own moment: the key whole, its chest ready and
+     unopened, nothing revealed, the earn playing and then the screen waiting on "TAP THE KEY TO OPEN THE PRO CHEST". That is the
+     state reached above and the screen opened here, and the clock starts on the frame the earn is first on screen. */
+  await page.evaluate(async t => { const R = await import('./ui/router.js'); R.show('s-key', { tier: t }); }, tierIx);
+  // wait for the earn moment to actually be on screen before the clock starts, so t=0 is the frame HE sees it on
+  await page.evaluate(async () => { const w = ms => new Promise(r => setTimeout(r, ms));
+    for (let i = 0; i < 120; i++) { const el = document.getElementById('s-key');
+      if (el && el.classList.contains('on') && /kearning|kdue/.test(el.className)) return; await w(50); } });
+  const shots = [];
+  let prev = null, firstPrompt = null, left = null;
+  for (let i = 0; i < 140; i++) {
+    const png = await page.screenshot({ type: 'png' });
+    const im = await pixels(browser, png);
+    const state = await page.evaluate(() => { const h = document.getElementById('key-cere'), el = document.getElementById('s-key');
+      const hint = document.getElementById('key-hint'), cp = document.querySelector('.keprompt');
+      const vis = e => { if (!e) return false; const cs = getComputedStyle(e);
+        return cs.visibility !== 'hidden' && cs.display !== 'none' && (parseFloat(cs.opacity) || 0) > .3 && e.textContent.trim().length > 0; };
+      /* the PROMPT is the one that arrives after the earn — a dedicated element, or the hint once the earn moment has let go of
+         the screen. The screen's ordinary hint ("tap a game · solo runs only") is not it, and counting it was why the first run
+         of this measurement reported a prompt on frame one. */
+      const earning = el ? /kearning|kdue|ksettle/.test(el.className) : false;
+      const hintTxt = vis(hint) ? hint.textContent.trim() : '';
+      const isPrompt = /tap/i.test(hintTxt) && /chest|continue/i.test(hintTxt);
+      return { screen: (document.querySelector('.screen.on') || {}).id, cere: !!(h && !h.hidden),
+        cereStep: h ? h.dataset.step || '' : '', earn: earning,
+        promptShown: vis(cp) || isPrompt, promptText: (cp && cp.textContent.trim()) || (isPrompt ? hintTxt : '') }; });
+    // a coarse subsample is enough to answer "did anything move": every 4th pixel, any channel differing by more than 6
+    let changed = 0;
+    if (prev) { for (let y = 0; y < im.h; y += 4) for (let x = 0; x < im.w; x += 4) {
+      const a = px(im, x, y), b = px(prev, x, y);
+      if (Math.abs(a[0] - b[0]) > 6 || Math.abs(a[1] - b[1]) > 6 || Math.abs(a[2] - b[2]) > 6) changed++; } }
+    shots.push({ t: i * EARN_STEP_MS, changed, ...state });
+    if (!firstPrompt && state.promptShown && state.screen === 's-key') firstPrompt = i * EARN_STEP_MS;
+    if (firstPrompt === null && state.screen && state.screen !== 's-key' && i > 3) { left = { t: i * EARN_STEP_MS, to: state.screen }; break; }
+    if (firstPrompt !== null && i * EARN_STEP_MS - firstPrompt > 900) break;
+    prev = im;
+    await sleep(Math.max(0, EARN_STEP_MS - 60));
+  }
+  // the longest run of frames with nothing moving, before the prompt
+  const before = shots.filter(s => firstPrompt === null || s.t <= firstPrompt);
+  let run = 0, worst = 0, worstAt = null;
+  for (const s of before.slice(1)) { if (s.changed === 0) { run++; if (run > worst) { worst = run; worstAt = s.t; } } else run = 0; }
+  /* how legible the prompt is, against the chest ceremony's own "tap to continue", which is the item's yardstick: the rendered
+     colour at its rendered opacity, as a contrast ratio on the screen's ground. */
+  const legible = await page.evaluate(() => {
+    const read = el => { if (!el) return null; const cs = getComputedStyle(el);
+      const m = (cs.color.match(/[\d.]+/g) || []).map(Number), o = parseFloat(cs.opacity) || 0;
+      return { rgb: m.slice(0, 3), opacity: o, px: Math.round(parseFloat(cs.fontSize) * 10) / 10,
+        pulses: el.getAnimations().map(a => a.animationName).join(',') }; };
+    const probe = document.createElement('i'); probe.className = 'ctap'; probe.style.cssText = 'position:fixed;left:-999px';
+    const host = document.createElement('div'); host.className = 'cere'; host.appendChild(probe); document.body.appendChild(host);
+    const ctap = read(probe); host.remove();
+    return { prompt: read(document.getElementById('key-hint')), ceremonyTapToContinue: ctap }; });
+  await frame(page, browser, `59.14-${label}-${tier}-prompt`, `${tier} key — the frame the prompt arrives`);
+  say('promptLegibility', legible);
+  say('earn', { tier, path: 'Testing sets the key whole → Progress map → tap the chest tile → Keys screen', beforeTheTap: pre,
+    firstFrames: shots.slice(0, 6).map(s2 => `${s2.t}:${s2.screen}${s2.earn ? '+earn' : ''}${s2.cere ? '+cere' : ''}${s2.promptShown ? '+PROMPT' : ''} ch${s2.changed}`),
+    sampleEveryMs: EARN_STEP_MS, promptAtMs: firstPrompt, leftWithoutATap: left,
+    longestStillStretchMs: worst * EARN_STEP_MS, longestStillEndedAtMs: worstAt,
+    promptText: (shots.find(s => s.promptShown) || {}).promptText || null, frames: shots.length });
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  return { firstPrompt, worst: worst * EARN_STEP_MS, left, shots };
+}
+scene('59.14-before', async (page, browser) => {
+  for (const [i, tier] of ['clear', 'pro', 'author'].entries()) await earnRun(page, browser, tier, i, 'before');
+});
+scene('59.14', async (page, browser) => {
+  for (const [i, tier] of ['clear', 'pro', 'author'].entries()) await earnRun(page, browser, tier, i, 'after');
+});
+
 /* ---------- the runner ---------- */
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 if (ARGV.includes('--list')) { console.log(Object.keys(SCENES).join('\n')); process.exit(0); }

@@ -284,6 +284,13 @@ function panel() { const box = $('#key-list');
    same field through the same store, and neither screen imports the other (A4). */
 const themeOf = t => tierOpen(t.id) ? t.track : 'menu';
 // v28 (item 2, build 53): the button waits for the KEY, not for the chest that key opens — the same line Customise's Music row now takes
+/* v30 (59.14, build 59): SET THIS MUSIC IS HIDDEN WHILE THE EARN MOMENT IS ON. Every other control on this screen is swallowed by
+   the tap-anywhere rule below, and Cowork's call — named in the outcome — is to hide this one for the moment rather than make it the
+   single exception: it is still here afterwards, and an exception is how a mis-tap happens again. `kdue` covers the beat before the
+   animation starts as well as the animation itself, which is the same window the hint is hidden for. */
+/* v30 (59.14, build 59): whether the button is SHOWN AT ALL for the earn moment is the stylesheet's job, not this function's — the
+   classes that mark the moment are put on by the ring's own draw, which runs after this one, so a test here is always a beat early
+   and the button flashes up for exactly the moment it must not be tappable in. See `#s-key.kdue #key-music`. */
 function musicBtn(t) { const b = $('#key-music'), open = !!t.music && keyFinished(t.id), on = open && everywhere() === t.music;
   b.hidden = !open; b.classList.toggle('on', on); b.textContent = on ? KEY.musicOn : KEY.setMusic; }
 
@@ -316,7 +323,14 @@ function render() { const tiers = keyTiers();
   const kcLine = !st.whole ? null : kc && kc.state === 'open' ? KEY.completeOpen
     : kc && kc.state === 'ready' ? T(KEY.completeReady, { chest: GRID.chest[kc.id] })
     : kc && kc.state === 'gaunt' ? T(KEY.completeGaunt, { name: GAUNTLET.name[kc.gaunt] || kc.gaunt }) : KEY.completeSub;
-  $('#key-hint').textContent = st.whole ? kcLine : openGame ? KEY.rowGo : KEY.hint;
+  /* v30 (59.14, build 59): THE PROMPT IS LEGIBLE, AND IT CARRIES ITS CHEST. Aiden on the Pro key's prompt: it is "almost invisible
+     — very dim grey small caps on near-black"; Cowork could only read it by zooming the recording. The chest prompt is now drawn
+     like the chest ceremony's own "tap to continue" — full strength and the same slow breath — with that chest's sprite beside it,
+     so the two read as one family, which is what the item asks for. The screen's ordinary hints are untouched. */
+  { const hintEl = $('#key-hint'), isPrompt = !!(st.whole && kc && (kc.state === 'ready' || kc.state === 'gaunt'));
+    hintEl.classList.toggle('kprompt', isPrompt);
+    if (isPrompt) hintEl.innerHTML = chestSvg(kc.id, 'kpchest') + `<span>${esc(kcLine)}</span>`;
+    else hintEl.textContent = st.whole ? kcLine : openGame ? KEY.rowGo : KEY.hint; }
   /* v30 (59.6, build 59): AND THE KEY CARRIES ITS GAUNTLET. 59.6 takes the Gauntlet requirement off the chest's map tile, where
      it did not fit, and gives it to the key as a standing line — "Only Gauntlet Mega can wield it." — shown from the moment the
      tier is open rather than only once the key is whole, because a player holding the key with the Gauntlet unfinished is
@@ -650,6 +664,24 @@ function interlude(a, back) { const el = $('#s-key'); el.classList.add('auto'); 
 // 5.4: once per profile, the whole screen arrives rather than simply being there. Answers whether it played
 function firstIn() { if (prefs.keySeen) return false; prefs.keySeen = 1; save();
   const el = $('#s-key'); el.classList.add('first'); setTimeout(() => el.classList.remove('first'), ARRIVE_MS); return true; }
+
+/* ---------- v30 (59.14, build 59): WHILE THE PROMPT IS UP, A TAP ANYWHERE OPENS THAT CHEST ----------
+   Aiden tapped beside the key on the Pro earn moment and landed on the HOME PAGE with the chest unopened: "really wherever the user
+   clicks it should just take them to the chest because that's going to be what they want to do and it only happens once. So let's do
+   that for all keys." Back, the tier tabs and empty ground all carry their own `data-act`, and ui/actions.js routes a tap to the
+   nearest one — so the only way to make every tap mean the same thing is to take the tap BEFORE it gets there. This is a capture
+   listener on the screen, live only while the prompt is showing, which is the one moment the rule applies: the key is whole, its
+   chest is ready and not yet open. It stops the event dead and asks the chest the same way the key's own hit disc does.
+   The one other control is SET THIS MUSIC, and Cowork's call — named in the outcome — is to HIDE it for this moment rather than make
+   it the single exception: it is still on the Keys screen afterwards, and an exception is how a mis-tap happens again. */
+function promptChest() { const el = $('#s-key'), hint = $('#key-hint');
+  if (!el || !el.classList.contains('on') || !hint || !hint.classList.contains('kprompt')) return null;
+  if (getComputedStyle(hint).visibility === 'hidden') return null;
+  const t = keyTiers()[openKey]; if (!t) return null;
+  const kc = keyChest(t.id);
+  return kc && kc.state === 'ready' ? kc.id : null; }
+$('#s-key').addEventListener('pointerdown', ev => { const id = promptChest(); if (!id) return;
+  ev.preventDefault(); ev.stopPropagation(); askOpen(id); }, true);
 
 register('s-key', { onShow({ advance: a, from, auto: to, tier, whole, arrive, ceremony: cer, open, intro } = {}) { stopReveal(); askClose();
     if (openT) { clearTimeout(openT); openT = 0; lock(false); } pendingOpen = null;

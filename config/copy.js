@@ -364,7 +364,11 @@ export const KEY = { title:'the key', hint:'tap a game · solo runs only',
      moment the tier is open rather than only once the key is whole. The Gauntlet's NAME comes from GAUNTLET.name, which is the
      one place either is spelled (v28 item 10), so "the Mega Gauntlet" of his dictation reads "Gauntlet Mega" here. */
   wield:'Only {name} can wield it.',
-  ask:'Open the {chest}?', askYes:'Open', askNo:'Not yet', completeReady:'tap the key to open the {chest}',
+  ask:'Open the {chest}?', askYes:'Open', askNo:'Not yet',
+  /* v30 (59.14, build 59): "TAP TO OPEN" — not "tap the KEY to open". Aiden tapped beside the key and landed on the home page:
+     "really wherever the user clicks it should just take them to the chest because that's going to be what they want to do and it
+     only happens once. So let's do that for all keys." The wording follows the rule rather than describing the old target. */
+  completeReady:'tap to open the {chest}',
   quietReady:'Every game mode is unlocked. Tap the key to open the Games chest.',
   // v23 (L.6, build 41): the ceremony holds on this until it is tapped — it is not skippable before it
   tapOn:'tap to continue',

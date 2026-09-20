@@ -1902,6 +1902,56 @@ if (section('the keys, the surface and #375 (v15 sections 5 and 6)')) {
         : bad('v30 59.13 the key flashes complete before its animation', JSON.stringify(dueState));
     }
 
+    /* ---- v30 (59.14, build 59): WHILE THE PROMPT IS UP, A TAP ANYWHERE OPENS THAT CHEST ----
+       Aiden tapped beside the key on the Pro earn moment and landed on the HOME PAGE with the chest unopened: "really wherever the
+       user clicks it should just take them to the chest ... So let's do that for all keys." The acceptance names five points, and
+       they are the five driven here: the key itself, empty space, Back, a tier tab and the bottom edge. What they must all reach is
+       that chest's OPENING — which since v24 C.1 (Aiden's own reversal, built for build 49) means its ask, one tap from the
+       ceremony — and what none of them may reach is the menu, which is where the mis-tap used to land. */
+    {
+      await boot({ chests: { games: 1 } }, {}, { plain: PLAIN });
+      const taps = await page.evaluate(async () => {
+        const K = await import('./progress/key.js'), S = await import('./core/store.js'), R = await import('./ui/router.js');
+        const wait = ms => new Promise(r => setTimeout(r, ms));
+        const bars = {}; for (const c of K.COMBOS) bars[K.skey(c.key, 'clear')] = 1;
+        S.store.bars = bars; S.save();
+        const out = [];
+        const POINTS = [['the key', '#key-ring .khubhit'], ['empty space', '#key-main'], ['Back', '#s-key .back'],
+          ['a tier tab', '#key-keys .kkey'], ['the bottom edge', '#key-hint']];
+        for (const [name, sel] of POINTS) {
+          S.prefs.revealed = {}; S.prefs.keyWhole = {}; S.save();
+          R.show('s-menu'); await wait(120); R.show('s-key', { tier: 0 });
+          // let the earn play out and the prompt arrive
+          for (let i = 0; i < 80; i++) { const h = document.getElementById('key-hint');
+            if (h && h.classList.contains('kprompt') && getComputedStyle(h).visibility !== 'hidden') break; await wait(80); }
+          const hint = document.getElementById('key-hint');
+          const ready = !!(hint && hint.classList.contains('kprompt'));
+          const el = document.querySelector(sel);
+          const r = el ? el.getBoundingClientRect() : null;
+          if (el) el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1 }));
+          await wait(400);
+          const askOn = !document.getElementById('key-ask').hidden;
+          out.push({ name, found: !!el, promptWasUp: ready, ask: askOn, screen: (document.querySelector('.screen.on') || {}).id });
+          const no = document.querySelector('[data-act="key-ask-no"]'); if (no) no.click(); await wait(150);
+        }
+        // and the one control that is hidden for the moment rather than made an exception
+        S.prefs.revealed = {}; S.prefs.keyWhole = {}; S.save();
+        R.show('s-menu'); await wait(120); R.show('s-key', { tier: 0 }); await wait(150);
+        const mb = document.getElementById('key-music');
+        const music = { duringEarn: mb.hidden || getComputedStyle(mb).display === 'none' };
+        for (let i = 0; i < 80; i++) { const h = document.getElementById('key-hint');
+          if (h && h.classList.contains('kprompt') && getComputedStyle(h).visibility !== 'hidden') break; await wait(80); }
+        return { out, music };
+      });
+      const five = taps.out;
+      const allFound = five.every(t => t.found && t.promptWasUp);
+      const allToChest = five.every(t => t.ask && t.screen === 's-key');
+      const noneToMenu = five.every(t => t.screen !== 's-menu');
+      (allFound && allToChest && noneToMenu && taps.music.duringEarn)
+        ? ok(`v30 59.14 while the prompt is up a tap ANYWHERE opens that chest — ${five.map(t => t.name).join(', ')} all reach its ask and none reaches the menu, which is where the mis-tap used to land; SET THIS MUSIC is hidden for the moment rather than made the single exception`)
+        : bad('v30 59.14 a tap beside the key does not open the chest', JSON.stringify(taps));
+    }
+
     await boot({ allOpen: true });
     const reveals = [];
     for (const tier of [0, 1, 2]) {

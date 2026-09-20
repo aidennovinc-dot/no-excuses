@@ -690,10 +690,22 @@
   .klbl.home .knum{fill:var(--ok);opacity:1}
   .keycount{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink)}
   #key-warn.warn{color:var(--miss);opacity:1;text-transform:none;letter-spacing:.08em;max-width:34ch}
+  /* v30 (59.14, build 59): THE CHEST PROMPT, AS LEGIBLE AS THE CHEST CEREMONY'S OWN. Aiden could only read it by zooming his
+     recording — it was a `.hint` at opacity .6, which is the screen's furniture treatment. It takes the ceremony's `.ctap`
+     values instead (full strength, the same tracking, the same 2.4s breath) and carries that chest's own sprite beside it, so
+     the moment before the chest and the moment inside it read as one family. */
+  #key-hint.kprompt{display:inline-flex;align-items:center;justify-content:center;gap:8px;opacity:1;letter-spacing:.2em;
+    animation:ctap 2.4s ease-in-out infinite}
+  #key-hint.kprompt .kpchest{width:22px;height:18px;flex:none}
+  @media (prefers-reduced-motion:reduce){#key-hint.kprompt{animation:none}}
   /* v30 (59.6, build 59): the key's own standing line about the Gauntlet that must wield it. It is the KEY'S STORY, not a
      warning and not a state, so it takes the muted ink rather than the miss red and sits a step under the hint above it. */
   #key-wield{color:var(--mute);text-transform:none;letter-spacing:.06em;max-width:34ch;margin-top:2px}
   #s-key.kdue #key-wield,#s-key.kearning #key-wield{visibility:hidden}
+  /* v30 (59.14, build 59): SET THIS MUSIC IS HIDDEN WHILE THE EARN MOMENT IS ON. Every other control on the screen is swallowed by
+     the tap-anywhere rule, and Cowork's call — named in the outcome — is to hide this one for the moment rather than make it the
+     single exception: it is still here afterwards, and an exception is how a mis-tap happens again. */
+  #s-key.kdue #key-music,#s-key.kearning #key-music,#s-key.ksettle #key-music{display:none}
   /* v25 (item 16, build 45): THE GAME PANEL FITS ON THE PHONE. It was a 34vh box under a ring up to 46vh tall with the keys row above both, so the
      panel ran off the bottom — Sequence's second line under the stamp. The screen is the phone's height and no taller; the ring's column takes what
      is left, a game's panel shrinks to fit and scrolls inside itself, and opening one steps the ring down to 30vh (guess) to give it the room */
