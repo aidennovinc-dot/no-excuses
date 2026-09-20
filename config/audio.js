@@ -377,7 +377,13 @@ export const CHEST_FX = {
      the chest shakes; a low hit under each crack; a riser from the first crack to the burst; the burst a deeper boom under a full D major chord in
      sawtooth brass with the octave over it; and the cosmetics scattering on a five-note climb to D6 with a long shimmer. The sting under it runs
      further into the Pro theme and lands on a wider chord (CHEST_STING.pro). */
-  pro: [[0, 55, 73.4, 1800, 'sawtooth', .045, 1400, 320], [0, 55.6, 74, 1800, 'sawtooth', .04, 1500, 320], [0, 36.7, 41.2, 1900, 'sine', .08, 1500],
+
+    /* v30 (59.16, build 59): the GRIP and the LANDING, the two beats the gauntlet adds. Aiden asked for the glove to hold the key
+       and push it in, and a beat you cannot hear is a beat that reads as a slide: the grip is a short dry close (a square blip over
+       a low triangle body) on `grip`, and the landing is the hit the key makes as it seats, on the end of `drive`. Timed to those
+       steps in config/chests.js; every other note on this track is build 52's and lands before `assemble` even ends. */
+  pro: [[5.7, 190, 96, 60, 'square', .05, 2, 900], [5.74, 124, 76, 190, 'triangle', .05, 14], [6.65, 112, 56, 240, 'sine', .07, 46],
+    [0, 55, 73.4, 1800, 'sawtooth', .045, 1400, 320], [0, 55.6, 74, 1800, 'sawtooth', .04, 1500, 320], [0, 36.7, 41.2, 1900, 'sine', .08, 1500],
     [1.2, 240, 90, 90, 'square', .055, 2, 900], [1.2, 110, 70, 260, 'sine', .07, 4], [1.6, 240, 90, 90, 'square', .055, 2, 900], [1.6, 110, 70, 260, 'sine', .07, 4],
     [2.0, 240, 90, 90, 'square', .055, 2, 900], [2.0, 110, 70, 260, 'sine', .075, 4], [2.4, 240, 90, 90, 'square', .06, 2, 900], [2.4, 110, 65, 300, 'sine', .08, 4],
     [1.6, 146.8, 587.3, 1200, 'sawtooth', .012, 900, 1400], [1.6, 293.7, 1174.7, 1200, 'triangle', .006, 900],
@@ -389,7 +395,8 @@ export const CHEST_FX = {
      the COVER's, which is where they have gone (COVER_FX below) — so its key turn played under nothing at all. This is the Skill and Pro shape a
      tier bigger, on the Thorn theme's own root E: the bars assembling as a rising E-minor figure, the click and the turn, a swell on the lid, and
      the chord held as the light spills. Relative to `assemble`, like every other key chest's (COVER_AT offsets it). All (guess). */
-  thorns: [[0, 82.4, 82.4, 900, 'sine', .05, 60], [.24, 123.5, 123.5, 900, 'sine', .045, 60], [.48, 164.8, 164.8, 900, 'sine', .04, 60], [.72, 246.9, 246.9, 950, 'sine', .036, 70],
+  thorns: [[7.5, 172, 86, 70, 'square', .055, 2, 900], [7.55, 106, 64, 230, 'triangle', .055, 16], [8.45, 98, 49, 280, 'sine', .075, 52],
+    [0, 82.4, 82.4, 900, 'sine', .05, 60], [.24, 123.5, 123.5, 900, 'sine', .045, 60], [.48, 164.8, 164.8, 900, 'sine', .04, 60], [.72, 246.9, 246.9, 950, 'sine', .036, 70],
     [.96, 329.6, 329.6, 1000, 'triangle', .03, 90], [1.2, 415.3, 415.3, 1000, 'triangle', .026, 110],
     [1.9, 150, 104, 50, 'square', .055, 2, 900], [1.96, 130, 62, 340, 'triangle', .07, 20], [2.6, 82.4, 164.8, 900, 'sine', .08, 380],
     [3.0, 164.8, 164.8, 1500, 'sine', .026, 480], [3.0, 246.9, 246.9, 1500, 'sine', .02, 520], [3.0, 329.6, 329.6, 1500, 'sine', .018, 560], [3.05, 493.9, 493.9, 1450, 'sine', .013, 620]],

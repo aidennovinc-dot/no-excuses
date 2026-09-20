@@ -74,11 +74,13 @@ function behind(id) {
 const tierOfChest = id => { const c = CHESTS.find(x => x.id === id); return c && c.needs !== 'modes' ? c.needs : null; };
 /* 58.2: the glove that opens this chest, or nothing. It sits low and to the left of the key glyph so it reads as a hand holding it,
    and it is stroked in the chest's own `--cc` with the key, because the two are one object for the length of the turn. */
+/* v30 (59.16, build 59): the glove is its OWN group inside the key's, so it can enter, grip and then travel with the key rather
+   than arriving already attached to it. `chandg` is what moves on `enter` and `grip`; `chand` is the drawing, untouched. */
 function handHtml(id) { const c = CHESTS.find(x => x.id === id);
   if (!c || !c.gaunt) return '';
   const g = GAUNTLETS.find(x => x.id === c.gaunt), sym = g && SYMBOLS[g.sym];
   if (!sym || !sym.p) return '';
-  return `<g class="chand" transform="translate(101 166) scale(2)">${sym.p.map(d => `<path d="${d}"></path>`).join('')}</g>`; }
+  return `<g class="chandg"><g class="chand" transform="translate(101 166) scale(2)">${sym.p.map(d => `<path d="${d}"></path>`).join('')}</g></g>`; }
 function inFront(id) { const out = [];
   // Games · uncross: the seven locked tiles, each struck through, the strikes wiping off one by one; path: the line down to the chest
   if (id === 'games') { for (let i = 0; i < 7; i++) { const x = 150 + (i - 3) * 34 - 11;
@@ -147,6 +149,8 @@ function chestStage(id, o = {}) { const cfg = CEREMONY[id]; if (!cfg) return nul
     start(el, k = {}) { host = el.closest('.cere') || el; live = true;
       // the stage's own layers sit on the reveal's host, so the build-41 stylesheet (.cere.play [data-chest]) dresses them unchanged
       host.dataset.chest = id; host.setAttribute('style', (host.getAttribute('style') || '') + ';' + stageVars(id));
+      // v30 (59.16): the four gauntlet beats are scoped by this, so a chest with no Gauntlet keeps its single combined turn
+      { const c = CHESTS.find(x => x.id === id); if (c && c.gaunt) host.dataset.gaunt = c.gaunt; else delete host.dataset.gaunt; }
       el.innerHTML = stageHtml(id, o.name || nameOf(id), was, false);
       const m = el.querySelector('.meterv'); if (m) meterLook(m, was);
       if (!o.silent) Snd.chest(id);
@@ -158,12 +162,13 @@ function chestStage(id, o = {}) { const cfg = CEREMONY[id]; if (!cfg) return nul
       if (k.quick) run(); else upT = setTimeout(run, Math.max(0, typeof k.textAt === 'number' ? k.textAt : cfg.ms - CEREMONY_FX.meterMs)); },
     step() { },
     settle() { },
-    clear() { live = false; clearTimeout(upT); if (host) delete host.dataset.chest; host = null; } }; }
+    clear() { live = false; clearTimeout(upT); if (host) { delete host.dataset.chest; delete host.dataset.gaunt; } host = null; } }; }
 
 /* the review catalogue's frames: the stage at `frac` of its length, every animation paused there, the meter where the count-up would be */
 function frame(host, id, frac, o = {}) { const cfg = CEREMONY[id]; if (!host || !cfg) return;
   const f = Math.max(0, Math.min(1, frac)), t = f * cfg.ms, was = o.was || 0, now = typeof o.now === 'number' ? o.now : was;
   host.dataset.chest = id; host.setAttribute('style', stageVars(id)); host.innerHTML = stageHtml(id, o.name || nameOf(id), was, true);
+  { const c = CHESTS.find(x => x.id === id); if (c && c.gaunt) host.dataset.gaunt = c.gaunt; else delete host.dataset.gaunt; }
   host.classList.add('cere', 'play'); host.classList.toggle('tap', f >= 1); host.hidden = false;
   const up = cfg.ms - CEREMONY_FX.meterMs, k = Math.max(0, Math.min(1, (t - up) / CEREMONY_FX.meterMs));
   setMeter(host.querySelector('.meterv'), Math.round(was + (now - was) * k));

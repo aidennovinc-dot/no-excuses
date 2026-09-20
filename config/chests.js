@@ -152,10 +152,24 @@ export const CHEST_LOOK = {
 export const CEREMONY = {
   games: { ms: 3050, steps: [{ name: 'uncross', at: 0, ms: 1200 }, { name: 'crack', at: 90, ms: 1200 }, { name: 'path', at: 1150, ms: 600 }, { name: 'burst', at: 1900, ms: 520 }, { name: 'lid', at: 2050, ms: 500 }, { name: 'chord', at: 2300, ms: 750 }] },
   key: { ms: 6200, steps: [{ name: 'cover', at: 0, ms: 1400 }, { name: 'uncover', at: 1200, ms: 900 }, { name: 'assemble', at: 2500, ms: 1500 }, { name: 'turn', at: 4000, ms: 600 }, { name: 'lid', at: 4600, ms: 500 }, { name: 'spill', at: 4900, ms: 1300 }] },
-  pro: { ms: 6800, steps: [{ name: 'cover', at: 0, ms: 1700 }, { name: 'uncover', at: 1500, ms: 1000 }, { name: 'assemble', at: 2800, ms: 1700 }, { name: 'turn', at: 4500, ms: 650 }, { name: 'lid', at: 5150, ms: 550 }, { name: 'spill', at: 5500, ms: 1300 }] },
-  thorns: { ms: 8700, steps: [{ name: 'cover', at: 0, ms: 3100 }, { name: 'black', at: 0, ms: 700 }, { name: 'spikes', at: 500, ms: 2200 }, { name: 'split', at: 2700, ms: 400 },
+  /* v30 (59.16, build 59): THE GAUNTLET TAKES THE KEY AND DRIVES IT INTO THE LOCK. Aiden, on the Author chest: "it shows that the key
+     and the gauntlet are next to each other, but it happens so quickly the user can't see. What should instead happen is that the key
+     is sitting there and then the gauntlet comes out, holds the key, and then pushes it into the chest to unlock it. This should happen
+     for the pro chest as well." They arrived together and were gone inside half a second. Four named beats now sit between `assemble`
+     and `turn`, on the TWO chests that want a Gauntlet and on neither of the others:
+       hold   the key alone, finished and still, above the chest — long enough to register
+       enter  the gauntlet comes up from below toward it
+       grip   it closes on the key, with its own sound
+       drive  gauntlet and key travel together down into the lock, landing on a hit
+     `turn` and everything after it are unchanged, which is what keeps the rest of the opening exactly as it was. About 2.3s added. */
+  pro: { ms: 9200, steps: [{ name: 'cover', at: 0, ms: 1700 }, { name: 'uncover', at: 1500, ms: 1000 }, { name: 'assemble', at: 2800, ms: 1700 },
+    { name: 'hold', at: 4500, ms: 700 }, { name: 'enter', at: 5100, ms: 650 }, { name: 'grip', at: 5700, ms: 400 }, { name: 'drive', at: 6100, ms: 600 },
+    { name: 'turn', at: 6700, ms: 650 }, { name: 'lid', at: 7350, ms: 550 }, { name: 'spill', at: 7700, ms: 1300 }] },
+  thorns: { ms: 11000, steps: [{ name: 'cover', at: 0, ms: 3100 }, { name: 'black', at: 0, ms: 700 }, { name: 'spikes', at: 500, ms: 2200 }, { name: 'split', at: 2700, ms: 400 },
     { name: 'uncover', at: 3100, ms: 1600 }, { name: 'widen', at: 3100, ms: 1600 }, { name: 'recede', at: 3100, ms: 1600 },
-    { name: 'assemble', at: 4400, ms: 1900 }, { name: 'turn', at: 6300, ms: 700 }, { name: 'lid', at: 7000, ms: 600 }, { name: 'spill', at: 7400, ms: 1300 }] },
+    { name: 'assemble', at: 4400, ms: 1900 },
+    { name: 'hold', at: 6300, ms: 700 }, { name: 'enter', at: 6900, ms: 650 }, { name: 'grip', at: 7500, ms: 400 }, { name: 'drive', at: 7900, ms: 600 },
+    { name: 'turn', at: 8500, ms: 700 }, { name: 'lid', at: 9200, ms: 600 }, { name: 'spill', at: 9600, ms: 1300 }] },
 };
 export const CEREMONY_FX = { meterMs: 900 };
 /* 57.8: how many of a cover's own shapes are drawn — the Skill chest's lanterns and the Pro chest's traces, each with a node at its end. The

@@ -1717,6 +1717,26 @@
   .cere.play .ckeyg{animation:ckeyin .4s ease-out calc(var(--st-assemble-at) + var(--st-assemble-ms) - 400ms) both,cturn var(--st-turn-ms) cubic-bezier(.5,0,.3,1) var(--st-turn-at) forwards}
   @keyframes ckeyin{from{opacity:0;scale:.6}to{opacity:1;scale:1}}
   @keyframes cturn{0%{opacity:1;translate:0 0;rotate:0deg;scale:1}60%{opacity:1;translate:0 132px;rotate:0deg;scale:.5}100%{opacity:0;translate:0 132px;rotate:90deg;scale:.5}}
+  /* ---------- v30 (59.16, build 59): THE GAUNTLET TAKES THE KEY AND DRIVES IT INTO THE LOCK ----------
+     Aiden: "it shows that the key and the gauntlet are next to each other, but it happens so quickly the user can't see. What should
+     instead happen is that the key is sitting there and then the gauntlet comes out, holds the key, and then pushes it into the chest
+     to unlock it. This should happen for the pro chest as well." They used to arrive together on one fade and be gone inside half a
+     second. On the two chests that want a Gauntlet the key now holds alone, the glove comes up from below, closes on it, and the two
+     travel down together — four named beats in config/chests.js, so the catalogue's step list and the sounds hang off them.
+     `cdrive` takes the DROP off `cturn` for these two, and `cturn` is left doing only the turn; a chest with no Gauntlet keeps the
+     single combined animation exactly as it was, which is why this is scoped by `[data-gaunt]`. */
+  .cere .chandg{opacity:0;transform-box:view-box;transform-origin:150px 170px}
+  .cere.play[data-gaunt] .chandg{animation:chandin var(--st-enter-ms,650ms) cubic-bezier(.2,.9,.3,1) var(--st-enter-at,0ms) both,
+    chandgrip var(--st-grip-ms,350ms) cubic-bezier(.4,1.6,.5,1) var(--st-grip-at,0ms) both}
+  @keyframes chandin{from{opacity:0;translate:-16px 86px;scale:1.1}to{opacity:.85;translate:0 0;scale:1}}
+  @keyframes chandgrip{0%{scale:1}55%{scale:.9}100%{scale:.94}}
+  /* the key waits, still, while all of that happens — then the two go down together and only then does the turn run */
+  .cere.play[data-gaunt] .ckeyg{animation:ckeyin .4s ease-out calc(var(--st-assemble-at) + var(--st-assemble-ms) - 400ms) both,
+    cdrive var(--st-drive-ms,550ms) cubic-bezier(.55,0,.35,1) var(--st-drive-at,0ms) both,
+    cturn2 var(--st-turn-ms) cubic-bezier(.5,0,.3,1) var(--st-turn-at) forwards}
+  @keyframes cdrive{0%{translate:0 0;scale:1}82%{translate:0 136px;scale:.5}100%{translate:0 132px;scale:.5}}
+  @keyframes cturn2{0%{opacity:1;rotate:0deg}100%{opacity:0;rotate:90deg}}
+  @media (prefers-reduced-motion:reduce){.cere.play[data-gaunt] .chandg{animation:cfade var(--st-enter-ms,650ms) ease-out var(--st-enter-at,0ms) both}}
   .cere .cbeam{fill:url(#cbeam);opacity:0;transform-box:view-box;transform-origin:150px 300px}
   .cere.play .cbeam{animation:cbeam var(--st-spill-ms) ease-out var(--st-spill-at) both}
   @keyframes cbeam{0%{opacity:0;scale:1 .1}40%{opacity:.9;scale:1 1}100%{opacity:.45;scale:1 1}}

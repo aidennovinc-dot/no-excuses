@@ -766,6 +766,39 @@ scene('59.14', async (page, browser) => {
   for (const [i, tier] of ['clear', 'pro', 'author'].entries()) await earnRun(page, browser, tier, i, 'after');
 });
 
+/* =======================================================================================================
+   59.16 — the gauntlet takes the key and drives it into the lock, on the Pro and Author chests
+   Aiden: "it shows that the key and the gauntlet are next to each other, but it happens so quickly the user can't see. What should
+   instead happen is that the key is sitting there and then the gauntlet comes out, holds the key, and then pushes it into the chest
+   to unlock it." The acceptance is the two DURATIONS: the key visible alone for at least 0.6s, and gauntlet-holding-key visible for
+   at least 1s before the lock turns. Frozen frames at each beat, with the glove's and the key's own opacity read off the page.
+   ======================================================================================================= */
+scene('59.16', async (page, browser) => {
+  for (const chest of ['pro', 'thorns']) {
+    await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture());
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(450);
+    const beats = await page.evaluate(async c => { const C = await import('./config/chests.js');
+      const st = C.CEREMONY[c].steps, at = n => st.find(x => x.name === n) || null;
+      return { ms: C.CEREMONY[c].ms, steps: st.map(x => x.name), hold: at('hold'), enter: at('enter'), grip: at('grip'), drive: at('drive'), turn: at('turn') }; }, chest);
+    for (const b of ['hold', 'enter', 'grip', 'drive', 'turn']) {
+      const t = beats[b].at + Math.round(beats[b].ms * .6);
+      await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-testing'); }); await sleep(300);
+      await page.evaluate(c => { const el = document.querySelector(`[data-act="dev-chest"][data-chest="${c}"]`); if (el) el.click(); }, chest);
+      await page.evaluate(async () => { const w = ms => new Promise(r => setTimeout(r, ms));
+        for (let i = 0; i < 80; i++) { if (document.querySelector('.cere .ckeyg')) return; await w(20); } });
+      await freezeAt(page, t); await sleep(50);
+      await frame(page, browser, `59.16-${chest}-${b}`, `${chest} chest at the ${b} beat (t=${t}ms of ${beats.ms}ms)`);
+      say('beat', await page.evaluate(() => { const o = s2 => { const el = document.querySelector(s2); if (!el) return null;
+          const cs = getComputedStyle(el); const r = el.getBoundingClientRect();
+          return { opacity: Math.round((parseFloat(cs.opacity) || 0) * 100) / 100, y: Math.round(r.y), h: Math.round(r.height) }; };
+        return { key: o('.cere .ckeyg'), glove: o('.cere .chandg'), gauntOnHost: document.getElementById('key-cere').dataset.gaunt || null }; }));
+    }
+    say('timings', { chest, ms: beats.ms, steps: beats.steps.join(' · '),
+      keyAloneMs: beats.enter.at - beats.hold.at,
+      holdingKeyBeforeTheTurnMs: beats.turn.at - (beats.grip.at + beats.grip.ms) + beats.grip.ms });
+  }
+});
+
 /* ---------- the runner ---------- */
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 if (ARGV.includes('--list')) { console.log(Object.keys(SCENES).join('\n')); process.exit(0); }

@@ -7045,9 +7045,20 @@ if (section('build 41 - batch 16, the moments')) {
     /* AMENDED AGAIN AT BUILD 57 (v29 Section A, 57.2 / 57.8): every chest a key opens runs a COVER first and the Games chest cracks on its own
        squares' beat, so both step lists move. The Games chest is SHORTER for it (its cracking shares the uncross beat instead of following it) and the
        three key chests are longer (a cover in front of the turn), which is what makes the Author chest the longest thing in the app. */
-    const C = CH41.CEREMONY, want = { games: 'uncross,crack,path,burst,lid,chord', key: 'cover,uncover,assemble,turn,lid,spill', pro: 'cover,uncover,assemble,turn,lid,spill', thorns: 'cover,black,spikes,split,uncover,widen,recede,assemble,turn,lid,spill' };
+    /* AMENDED AT BUILD 59 (v30 59.16): the two chests that want a GAUNTLET gain four named beats between `assemble` and `turn` —
+       hold, enter, grip, drive — because the key and the glove used to arrive together and be gone inside half a second. The
+       Games and Skill chests have no Gauntlet and are untouched, which is half of what this check is for. */
+    const C = CH41.CEREMONY, want = { games: 'uncross,crack,path,burst,lid,chord', key: 'cover,uncover,assemble,turn,lid,spill',
+      pro: 'cover,uncover,assemble,hold,enter,grip,drive,turn,lid,spill',
+      thorns: 'cover,black,spikes,split,uncover,widen,recede,assemble,hold,enter,grip,drive,turn,lid,spill' };
     const names = IDS.every(id => C[id].steps.map(s => s.name).join() === want[id]);
-    const lens = IDS.map(id => C[id].ms), rising = lens.every((v, i) => !i || v > lens[i - 1]) && Math.abs(lens[0] - 3000) <= 500 && lens[3] <= 9000;
+    /* AMENDED AT BUILD 59 (v30 59.16): the CEILING moves from 9000 to 11500, because the item deliberately lengthens the two
+       ceremonies that now have a gauntlet: "That is roughly 2.5s added, which is fine: he has said these moments can run long as
+       long as something is happening." The bound is restated rather than dropped — the four ceremonies must still RISE, the Games
+       one must still be about 3s, and there is still a ceiling. FLAGGED IN THE OUTCOME: build 57's question 1, whether the Author
+       chest's 8.7s opening is too long, is STILL UNANSWERED, and this takes it to 11.0s. If he says it is too long, this ceiling
+       and those four beats come back down together. */
+    const lens = IDS.map(id => C[id].ms), rising = lens.every((v, i) => !i || v > lens[i - 1]) && Math.abs(lens[0] - 3000) <= 500 && lens[3] <= 11500;
     const inside = IDS.every(id => C[id].steps.every(s => s.at >= 0 && s.at + s.ms <= C[id].ms));
     /* AMENDED at build 43 (v24 C.7): a sting is CUT FROM ITS KEY'S THEME through the arrangement engine, so it is read off Snd.chestPlan() on the
        page and held to the theme's own rule — nothing under 700ms (or attacked under 40ms) at 300 Hz or above, nothing above C5 under 1200ms.
