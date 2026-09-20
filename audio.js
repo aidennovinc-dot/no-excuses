@@ -7,7 +7,8 @@
    finish ramp that lands the last downbeat on the clock (B.28), an end cadence in the track's own key (B.30), a flow-state
    layer over the two tap games (B.27) and a duck for Sequence (B.30). Still no percussion. */
 
-import { CHEER_FX, CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, COVER_AT, COVER_FX, DUCK, DUCK_TAIL, FLOW_STEM, GIFT_FX, HUSH, KEY_EARN_FX, KEY_INTRO_FX, KEY_STEP_FX, KEY_THEMES, MAP_FX, MAP_LOCKED, POP_FX, ROUND_FX, ROUND_VERDICT, SCALES, SET_SECS, STEMS, STING_RING, TITLE_FX, TRACKS, TRACK_PICK, VERDICT_FX, VIDEO_FX, WHOOSH_VARIANTS } from "./config/audio.js";
+import { CHEER_FX, CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, COVER_AT, COVER_FX, DUCK, DUCK_TAIL, FLOW_STEM, GIFT_FX, HUSH, KEY_EARN_CIRCUIT, KEY_EARN_FX, KEY_INTRO_FX, KEY_STEP_FX, KEY_THEMES, MAP_FX, MAP_LOCKED, POP_FX, ROUND_FX, ROUND_VERDICT, SCALES, SET_SECS, STEMS, STING_RING, TITLE_FX, TRACKS, TRACK_PICK, VERDICT_FX, VIDEO_FX, WHOOSH_VARIANTS } from "./config/audio.js";
+import { KEY_EARN } from "./config/keys.js";
 import { STREAK } from "./config/games.js";
 import { emit, on } from "./core/events.js";
 import { sel } from "./core/state.js";
@@ -223,9 +224,37 @@ const Snd = (()=>{
        and on an Author key with its chest already tapped, over Snd.chest('thorns') 250ms later: two pieces of music at once,
        which is the overlap cut() exists to prevent for beds. The notes go through a gain node of their own now and the
        handle's stop() ramps it away; ui/screens/key.js cuts it in earnSkip and in the stage's clear(). */
+    /* v30 (59.15, build 59): THE PRO KEY'S ELECTRICAL LAYER, built from the ANIMATION'S OWN STEP TIMES. Aiden: "the sound should be
+       more electronic. You can keep the current music but also have some electrical success music because it's a circuit, you know."
+       The bed is untouched — this is a second plan in the same shape, played through the same gain node so one stop() silences both,
+       and returned separately so the review catalogue can play it on its own. Every time comes off config/keys.js KEY_EARN, which is
+       what 59.15 asks for: "schedule these off the animation's own step times, not fixed offsets, or they drift the first time a
+       timing changes". The Skill and Author keys get none of it; each key keeps its own character. */
+    keyCircuitPlan(tier){ const C=KEY_EARN_CIRCUIT; if(!C||C.tier!==tier) return [];
+      const E=KEY_EARN[tier], s=KEY_EARN_FX[tier], tr=s&&TRACKS[s.track]; if(!E||!tr) return [];
+      const step=n=>(E.steps||[]).find(x=>x.name===n)||null;
+      const f=semi=>+(tr.root*2*Math.pow(2,semi/12)).toFixed(2);
+      const sp=step('spokes'), ring=step('ring'), land=step('land')||step('flash');
+      const gap=((E.spokes&&E.spokes.gap)||0)/1000, each=((E.spokes&&E.spokes.each)||0)/1000;
+      const out=[];
+      if(sp){ const at0=sp.at/1000;
+        // one blip per spoke, a step higher each time — the trace climbing as it spreads — and a relay click as each node is reached
+        for(let i=0;i<7;i++){ const at=at0+i*gap;
+          out.push([at,f(C.blip.semi+i*C.blip.step),f(C.blip.semi+i*C.blip.step),C.blip.ms,C.blip.wave,C.blip.gain,C.blip.attack,C.blip.lp]);
+          out.push([at+each*C.click.at,C.click.hz,C.click.hz,C.click.ms,C.click.wave,C.click.gain,C.click.attack,C.click.lp]); }
+        // the mains hum under the whole build, rising as more of the circuit goes live
+        const end=ring?(ring.at+ring.ms)/1000:at0+7*gap;
+        out.push([at0,f(C.hum.from),f(C.hum.to),Math.round((end-at0)*1000),C.hum.wave,C.hum.gain,C.hum.attack,C.hum.lp]); }
+      // the ring closing is the power-up; the finish is a bright arpeggio of the bed's own final chord, then a short live tail
+      if(ring) out.push([ring.at/1000,f(C.sweep.from),f(C.sweep.to),C.sweep.ms,C.sweep.wave,C.sweep.gain,C.sweep.attack,C.sweep.lp]);
+      if(land){ const at0=land.at/1000;
+        C.arp.semi.forEach((semi,i)=>out.push([at0+i*C.arp.gap/1000,f(semi),f(semi),C.arp.ms,C.arp.wave,C.arp.gain,C.arp.attack,C.arp.lp]));
+        out.push([at0+C.arp.semi.length*C.arp.gap/1000,f(C.shimmer.semi),f(C.shimmer.semi),C.shimmer.ms,C.shimmer.wave,C.shimmer.gain,C.shimmer.attack,C.shimmer.lp]); }
+      return out.sort((x,y)=>x[0]-y[0]); },
     keyEarn(tier){ const a=AC(); if(!a) return null; const t=a.currentTime+.02; let gn=null;
       try{ gn=a.createGain(); gn.gain.value=1; gn.connect(a.destination); }catch(e){ gn=null; }
       for(const [at,f0,f1,ms,w,g,am,lp] of this.keyEarnPlan(tier)) tone(f0,f1,ms,w,g,t+at,am,false,gn||undefined,{lp:lp||0,hold:.45});
+      for(const [at,f0,f1,ms,w,g,am,lp] of this.keyCircuitPlan(tier)) tone(f0,f1,ms,w,g,t+at,am,false,gn||undefined,{lp:lp||0,hold:.45});
       if(!gn) return null;
       let off=false;
       // gain() and stopped() are the gate's read: it spies on Snd.keyEarn, taps the skip and proves THIS handle went quiet (item 8)

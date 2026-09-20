@@ -519,6 +519,30 @@ export const HUSH = { down: .08, up: .4 };
    with them: the current running the ring from one spoke to the next, six times, quiet and short so it sits between the seven game sounds rather
    than over them — a filtered blip rising as it travels, with a thin high edge on it, which is the Circuit key's own language.
    All (guess), and heard by nobody (UNVERIFIED.md). */
+/* ---------- v30 (59.15, build 59): THE PRO KEY SOUNDS ELECTRICAL ----------
+   Aiden: "the sound should be more electronic. You can keep the current music but also have some electrical success music because
+   it's a circuit, you know." The earn music stays exactly as it is and is the BED; this is a second layer over it, and it is tied to
+   what the circuit is DOING rather than being a jingle on top — which is the whole point of the note.
+     blip     one per spoke as it fires, a step higher each time, so the trace climbs a scale as it spreads
+     click    a dry relay click as each node is reached — a few ms of hard square through a low filter, no pitch to speak of
+     hum      a low mains-style drone under the whole build, rising in pitch and level as more of the circuit goes live
+     sweep    the ring closing: a saw sweep upward, the power-up
+     arp      the finish: a bright square arpeggio of the bed's OWN final chord, so the two layers resolve together
+     shimmer  and a short "live" tail after it
+   EVERY TIME IS READ OFF THE ANIMATION'S OWN STEPS (config/keys.js KEY_EARN.pro) in audio.js, never written here — 59.15 says so in
+   as many words, "schedule these off the animation's own step times, not fixed offsets, or they drift the first time a timing
+   changes", and the animation has been re-timed twice already. `semi` values are semitones over the theme's root, like the bed's.
+   The Skill and Author keys keep their own character and get none of this, for the same reason each chest keeps its own opening. */
+export const KEY_EARN_CIRCUIT = {
+  tier: 'pro',
+  blip: { semi: 0, step: 2, ms: 70, wave: 'square', gain: .026, attack: 1, lp: 2800 },
+  click: { hz: 1750, ms: 22, wave: 'square', gain: .014, attack: 0, lp: 820, at: .78 },
+  hum: { from: -24, to: -17, wave: 'sawtooth', gain: .022, attack: 260, lp: 260 },
+  sweep: { from: -12, to: 16, ms: 420, wave: 'sawtooth', gain: .03, attack: 6, lp: 3400 },
+  arp: { semi: [12, 16, 19, 24], ms: 150, gap: 62, wave: 'square', gain: .024, attack: 2, lp: 4400 },
+  shimmer: { semi: 31, ms: 560, wave: 'triangle', gain: .011, attack: 90, lp: 6200 },
+};
+
 export const KEY_STEP_FX = {
   trace: [[0, 620, 1180, 60, 'triangle', .012, 1, 3400], [.01, 210, 330, 70, 'sine', .018, 2, 1800]],
   spin: [[0, 240, 360, 260, 'triangle', .028, 30, 1800], [.2, 400, 200, 80, 'square', .022, 2, 1400], [.24, 150, 95, 240, 'sine', .04, 3]],

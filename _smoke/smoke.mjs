@@ -3200,6 +3200,39 @@ if (section('chests')) {
 
 /* ---- music (build 49 opened it: v26 §B1, the sound notes from the build 46 board) ---- */
 if (section('music')) {
+  /* ---- v30 (59.15, build 59): THE PRO KEY SOUNDS ELECTRICAL, AND ITS TIMES COME OFF THE ANIMATION ----
+     Aiden: "the sound should be more electronic. You can keep the current music but also have some electrical success music
+     because it's a circuit, you know." The bed is untouched and this is a second layer over it, tied to what the circuit is
+     DOING. What is asserted is the thing that would rot first: 59.15 says to "schedule these off the animation's own step times,
+     not fixed offsets, or they drift the first time a timing changes", and this animation has been re-timed twice already — so
+     the check MOVES a step in config and proves the layer moved with it, rather than reading a list of numbers. */
+  {
+    const c15 = await page.evaluate(async () => { const M = await import('./audio.js'), K = await import('./config/keys.js');
+      const at = p => p.map(n => Math.round(n[0] * 1000));
+      const before = M.Snd.keyCircuitPlan('pro');
+      const E = K.KEY_EARN.pro, ring = E.steps.find(s => s.name === 'ring'), was = ring.at;
+      ring.at = was + 500;                                    // move the ring later and ask the layer where its sweep went
+      const moved = M.Snd.keyCircuitPlan('pro');
+      ring.at = was;
+      const sweepOf = p => { const n = p.find(x => x[4] === 'sawtooth' && x[1] !== x[2] && x[3] <= 600); return n ? Math.round(n[0] * 1000) : null; };
+      return { n: before.length, tiers: { clear: M.Snd.keyCircuitPlan('clear').length, pro: before.length, author: M.Snd.keyCircuitPlan('author').length },
+        sweepWas: sweepOf(before), sweepMoved: sweepOf(moved), ringAt: was,
+        // the layer's own shapes: climbing blips, dry clicks, one long rising hum, the sweep, the closing arpeggio
+        blips: before.filter(x => x[4] === 'square' && x[3] === 70).map(x => Math.round(x[1])),
+        clicks: before.filter(x => x[4] === 'square' && x[3] <= 30).length,
+        hum: before.filter(x => x[4] === 'sawtooth' && x[3] > 1000).map(x => [Math.round(x[1]), Math.round(x[2]), x[3]])[0] || null,
+        arp: before.filter(x => x[4] === 'square' && x[3] === 150).map(x => Math.round(x[1])),
+        endsBeforeTheBed: Math.max(...before.map(x => x[0] * 1000 + x[3])) <= Math.max(...M.Snd.keyEarnPlan('pro').map(x => x[0] * 1000 + x[3])) + 1,
+        bedUntouched: at(M.Snd.keyEarnPlan('pro')).length }; });
+    const climbs = c15.blips.length === 7 && c15.blips.every((f, i) => !i || f > c15.blips[i - 1]);
+    const arpRises = c15.arp.length >= 3 && c15.arp.every((f, i) => !i || f > c15.arp[i - 1]);
+    const humRises = !!c15.hum && c15.hum[1] > c15.hum[0] && c15.hum[2] > 1000;
+    const proOnly = c15.tiers.clear === 0 && c15.tiers.author === 0 && c15.tiers.pro > 10;
+    const followsTheAnimation = c15.sweepWas === c15.ringAt && c15.sweepMoved === c15.ringAt + 500;
+    (climbs && arpRises && humRises && proOnly && followsTheAnimation && c15.clicks === 7 && c15.endsBeforeTheBed)
+      ? ok(`v30 59.15 the Pro key has an ELECTRICAL layer over its own music, and it is tied to the circuit: ${c15.blips.length} blips climbing ${c15.blips[0]}→${c15.blips[c15.blips.length - 1]}Hz one per spoke, ${c15.clicks} dry relay clicks as the nodes are reached, a mains hum rising ${c15.hum[0]}→${c15.hum[1]}Hz under the whole build, a saw sweep as the ring closes and a ${c15.arp.length}-note arpeggio resolving with the bed — and MOVING the ring step 500ms later moves the sweep with it (${c15.sweepWas}→${c15.sweepMoved}ms), so no offset is written twice. The Skill and Author keys have none of it and the bed is untouched`)
+      : bad('v30 59.15 the Pro key circuit layer', JSON.stringify(c15));
+  }
   const AU49 = await import(pathToFileURL(path.join(root, 'config', 'audio.js')).href);
   const CH49 = await import(pathToFileURL(path.join(root, 'config', 'chests.js')).href);   // build 51 (v27 item 5): the uncross step's own beat
   // build 51 (v27 item 1): the title sequence is driven here, so this section needs a profile of its own
