@@ -61,7 +61,10 @@ export const LEN_RULES = {
      safe: the smallest reachable maximum miss is 25 (target 25), so 15 is reachable at every target and on every shape. The text
      and the predicate move together — they are the same fact said twice and the gate checks they agree. */
   'hold:cut':       [null,'Make a terrible cut — more than 15% off in one {game} · {mode} round'],
-  'reaction:flash': [null,'a {game} · {mode} Set averaging over 500ms'],
+  /* v31 (60.7, build 60, L6 quoted — Aiden 2026-09-23): AND A TAP IN EVERY ROUND. A round nobody answers is scored FLASH_MAX
+     (1000ms) and lifts the average by itself, so a player could be handed this by putting the phone down. The run still scores
+     exactly as it did; only the unlock reads the count. `noTap` on the record is the engine's (games/reaction/index.js). */
+  'reaction:flash': [null,'a {game} · {mode} Set averaging over 500ms — tap every round'],
 };
 /* v18 (B.8, L6): WHICH LENGTH RUNGS MAY BE JUDGED MID-RUN. Same shape as LEN_RULES — one entry per length index, 1 = the
    rung above may be tested while the run is still going, 0 = only a finished run can answer it.

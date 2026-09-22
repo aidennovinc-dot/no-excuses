@@ -89,11 +89,17 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
   nogo(){ return this.ctx.mode==='nogo'; }, versus(){ return this.ctx.players===2; },
   // v15 (4.4): pass & play is attempt by attempt, both modes. Flash hands the phone over after every flash; Go / No-go
   // arrives on a beat, so its turn is a block of shapes — one rule period — and the block is scored the way its Set is
-  begin(){ this.round=0; this.times=[]; this.faults=0; this.over=0; this.out=false; this.wrong=0; this.seen=0; this.got=0; this.goDealt=0; this.bi=0; this.block=null; this.vsN=[0,0]; this.vsDone=false; this.skipped=[]; this.dealer=makeDealer('reaction:nogo'); this.spec=null; this.dwell=0; this.gotAll=0;
+  begin(){ this.round=0; this.times=[]; this.faults=0; this.noTaps=0; this.over=0; this.out=false; this.wrong=0; this.seen=0; this.got=0; this.goDealt=0; this.bi=0; this.block=null; this.vsN=[0,0]; this.vsDone=false; this.skipped=[]; this.dealer=makeDealer('reaction:nogo'); this.spec=null; this.dwell=0; this.gotAll=0;
     this.two=makeTwo(this.ctx,{lower:true,fmt:v=>Math.round(v)+CP.ms}); hud.score('0');
     if(this.versus()) return this.vsRound(); if(this.two.on) return this.next(); if(this.nogo()) return this.nogoBegin(); this.next(); },
   // Flash (v11 / v14 section 5): Set = 5 attempts, average ms. Streak = every ms above 150 (C.1) adds to a total; the run ends at 500, score attempts
-  result(){ const [x,y]=minMax(this.times); if(this.streak()) return {hits:this.times.length,misses:this.faults,x,y,lim:this.FLASH_BUD+'ms'}; return {hits:this.times.length?Math.round(mean(this.times)):0,misses:this.faults,x,y}; },
+  /* v31 (60.7, build 60, L6 quoted — Aiden 2026-09-23): `noTap` is how many rounds of this run TIMED OUT. It is on the record
+     because the slow-run unlock now asks for a tap in every round: a round nobody answered is scored FLASH_MAX (1000ms) and lifts
+     the average by itself, so the run could be handed the unlock without the player having played slowly — or at all. The run
+     itself still scores exactly as it did; only the unlock reads this. `faults` is a different fact (early taps) and is untouched.
+     A record from BEFORE build 60 carries no `noTap` at all, so it is judged the old way rather than quietly un-earned — the same
+     convention v17 B.6 gave `row`. */
+  result(){ const [x,y]=minMax(this.times); if(this.streak()) return {hits:this.times.length,misses:this.faults,x,y,noTap:this.noTaps||0,lim:this.FLASH_BUD+'ms'}; return {hits:this.times.length?Math.round(mean(this.times)):0,misses:this.faults,x,y,noTap:this.noTaps||0}; },
   // v16 (1.5): Set ramps over the last round; a Streak once its own budget is 80% spent. Music only (A.1)
   fin(){ if(this.two.on||this.versus()) return 0; return this.streak()?this.finBud(this.over,this.nogo()?this.NOGO_BUD:this.FLASH_BUD):this.finSet(); },
   hud(){ if(this.two.on) return hud.timeHtml(this.two.hudLine());
@@ -125,7 +131,7 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
        measured only the attempts you were quick on, which is the opposite of what a reaction Set is for. The Streak still
        waits 1500ms for the 600ms no-tap (v13 9.1): there the cost is the budget and there was never a retake to remove. */
     if(!this.versus()) this.later(()=>{ if(this.st==='go'){ if(this.streak()||this.two.on) return this.noTap(); this.noTap(this.FLASH_MAX); } },this.streak()||this.two.on?1500:this.FLASH_MAX); },
-  noTap(cap){ const ms=cap||600; this.st='show'; this.times.push(ms); const add=Math.max(0,ms-this.FLASH_FREE);
+  noTap(cap){ const ms=cap||600; this.st='show'; this.times.push(ms); this.noTaps=(this.noTaps||0)+1; const add=Math.max(0,ms-this.FLASH_FREE);
     if(!this.two.on) hud.score(String(this.times.length));
     this.rxCard(CP.noTap,ms,add,false); this.ctx.audio.miss(); haptic(30); this.hud();
     if(this.two.on) return this.twoAdd(ms);

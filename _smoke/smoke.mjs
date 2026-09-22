@@ -1205,7 +1205,9 @@ if (section('the chain and its screens (v15 sections 1 and 2)')) {
          v31 (60.5, build 60, L6 quoted — Aiden 2026-09-23): FIFTEEN, one step either side. The smallest reachable maximum miss
          is 25 (target 25), so 15 is still reachable at every target and on every shape, which is the whole of B.8's derivation. */
       cutStreak: [L('hold', 'cut', 1)({ y: 16 }), L('hold', 'cut', 1)({ y: 15 })],
-      flashStreak: [L('reaction', 'flash', 1)({ hits: 501 }), L('reaction', 'flash', 1)({ hits: 500 })] };
+      flashStreak: [L('reaction', 'flash', 1)({ hits: 501 }), L('reaction', 'flash', 1)({ hits: 500 })],
+      // v31 (60.7, build 60, L6): a slow run with a round nobody tapped is disqualified; a record from before build 60 carries no `noTap` and is judged the old way
+      flashNoTap: [L('reaction', 'flash', 1)({ hits: 900, noTap: 0 }), L('reaction', 'flash', 1)({ hits: 900, noTap: 1 }), L('reaction', 'flash', 1)({ hits: 900 })] };
     // build 24: Greedy is the engine's `mx` flag — the hold ran to its ceiling — not a % threshold. A big overshoot
     // with no `mx` must NOT earn it, or the row is just "miss by a lot" under another name
     out.hdMax = [R.ACH_TEST.hd_max({ g: 'hold', d: 'grow', s: 7, mx: 1, y: 174 }), R.ACH_TEST.hd_max({ g: 'hold', d: 'grow', s: 7, y: 684 }), R.ACH_TEST.hd_max({ g: 'hold', d: 'grow', s: 7, y: 120 })];
@@ -1246,6 +1248,10 @@ if (section('the chain and its screens (v15 sections 1 and 2)')) {
       ? ok(`60.5 (L6) the Cut Streak row's words and its predicate agree — "${c60.text}", and a run whose worst round is ${c60.n + 1}% off opens it while ${c60.n}% does not`)
       : bad('60.5 the Cut Streak text and predicate disagree', JSON.stringify(c60)); }
   pair('1.4b Reaction · Flash Streak asks for a Set averaging over 500ms', V.lens.flashStreak);
+  { const f = V.lens.flashNoTap;
+    (f[0] === true && f[1] === false && f[2] === true)
+      ? ok('60.7 (L6) — and a tap in every round: a 900ms Set with no timed-out round opens the Streak, the same 900ms Set with one timed-out round does not, and a record from before build 60 (no `noTap` field) is judged the old way rather than un-earned')
+      : bad('60.7 the Flash slow-run unlock', JSON.stringify(f)); }
   pair('1.5 the shape at its limit earns Greedy; merely overshooting does not', V.hdMax);
   (!V.oneRecord.length) ? ok('1.0d one record of the chain — every lock box and goal line reads the string lenNeed builds') : bad('1.0d a second copy of a requirement', V.oneRecord.join(', '));
 
@@ -1699,6 +1705,22 @@ if (section('the runs (v15 section 3)')) {
       }
       await page.evaluate(async () => (await import('./run/run.js')).abort()); await sleep(300);
     }
+    /* ---- v31 (60.7, build 60, L6): AND THE ENGINE ACTUALLY COUNTS THE TIMED-OUT ROUNDS ----
+       The predicate above is only half of it: it is worth nothing unless a real Flash Set that nobody taps comes back with
+       `noTap` set. This plays one — five rounds, no input at all — and reads the record the engine hands the run. */
+    await page.evaluate(async () => { const RUN = await import('./run/run.js'), ST = await import('./core/state.js');
+      const SS = await import('./core/store.js'); SS.store.intro['reaction'] = SS.store.intro['reaction:flash'] = Date.now(); SS.save();
+      Object.assign(ST.sel, { vs: 0, practice: 0, game: 'reaction', diff: 'flash', secs: 5 }); RUN.start(); });
+    // five rounds, never tapping the FLASH — only the held card between rounds, which is what clearHeld does everywhere else
+    for (let i = 0; i < 90; i++) { const n = await page.evaluate(async () => (await import('./games/reaction/index.js')).default.times.length);
+      if (n >= 5) break; await clearReady('reaction'); await clearHeld('reaction'); await sleep(250); }
+    const nt60 = await page.evaluate(async () => { const RX = (await import('./games/reaction/index.js')).default;
+      const out = { res: RX.result(), times: RX.times.slice() }; (await import('./run/run.js')).abort(); return out; });
+    await sleep(300);
+    (nt60.res && nt60.res.noTap >= 3 && nt60.res.hits > 500)
+      ? ok(`60.7 a Flash Set nobody taps comes back with noTap=${nt60.res.noTap} of ${nt60.times.length} rounds and an average of ${nt60.res.hits}ms — over 500, and disqualified by the line above, which is the whole point: the run scores normally and only the unlock reads the count`)
+      : bad('60.7 the engine does not count timed-out rounds', JSON.stringify(nt60));
+
     const vBad = vis60.filter(v => v.target < 90);
     (vis60.length >= 20 && vBad.length === 0 && vis60.some(v => v.moving) && vis60.some(v => v.decoyBuried > 0))
       ? ok(`60.3 the Find target is never overlapped — ${vis60.length} rounds dealt across every band (${vis60.filter(v => v.moving).length} of them measured after 2.5s of drift), worst target ${Math.min(...vis60.map(v => v.target))}% visible, none under 90%; decoy-on-decoy piles are untouched (build 44's F.7 — up to ${Math.max(...vis60.map(v => v.decoyBuried))} decoys under 90% in a round)`)

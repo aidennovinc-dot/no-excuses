@@ -70,7 +70,9 @@ const LEN_TEST = {
   // v31 (60.5, build 60, L6): 10 → 15, Aiden's call of 2026-09-23. The ceiling and floor above are unchanged, so 15 is still
   // reachable at every target; the sentence in config/unlocks.js moves with it
   'hold:cut':       [null, r=>r.y>15],
-  'reaction:flash': [null, r=>r.hits>500],
+  // v31 (60.7, build 60, L6): a run with a round nobody tapped is disqualified. A record from before build 60 carries no `noTap`
+  // and is judged the old way, the same convention B.6 gave `row` — nothing already earned is taken back
+  'reaction:flash': [null, r=>r.hits>500&&!r.noTap],
 };
 
 /* ---------- achievements: test(run, allRuns) per id; progress(allRuns, game) 0..1 for the bar where one exists ----------
