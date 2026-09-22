@@ -57,7 +57,10 @@ export const LEN_RULES = {
      share never exceeds 50 and the engine re-asks below 0.5 — the most any target can be missed by is max(t−0.5, 50−t),
      which peaks at 44.5 (target 45) and BOTTOMS at 25 (target 25). Half the smallest reachable maximum, down to a 5, is 10.
      It stays a deliberate-failure row (v15 0.5) — Aiden's intention is "a purposely bad cut" — and it now says so out loud */
-  'hold:cut':       [null,'Make a terrible cut — more than 10% off in one {game} · {mode} round'],
+  /* v31 (60.5, build 60, L6 quoted — Aiden 2026-09-23): 10 becomes 15. The maths above still holds and is the reason 15 is
+     safe: the smallest reachable maximum miss is 25 (target 25), so 15 is reachable at every target and on every shape. The text
+     and the predicate move together — they are the same fact said twice and the gate checks they agree. */
+  'hold:cut':       [null,'Make a terrible cut — more than 15% off in one {game} · {mode} round'],
   'reaction:flash': [null,'a {game} · {mode} Set averaging over 500ms'],
 };
 /* v18 (B.8, L6): WHICH LENGTH RUNGS MAY BE JUDGED MID-RUN. Same shape as LEN_RULES — one entry per length index, 1 = the

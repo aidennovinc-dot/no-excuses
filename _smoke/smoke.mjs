@@ -1201,8 +1201,10 @@ if (section('the chain and its screens (v15 sections 1 and 2)')) {
       qtDash: [L('quick-tap', 'two', 1)({ hits: 40, misses: 9, row: 7 }), L('quick-tap', 'two', 1)({ hits: 40, misses: 0, row: 6 })],
       blindMar: [L('dots', 'blind', 2)({ hits: 22 }), L('dots', 'blind', 2)({ hits: 21 })],   // AMENDED at build 35 (#415, L6): 24 -> 22
       leadMar: [L('dots', 'lead', 2)({ hits: 28 }), L('dots', 'lead', 2)({ hits: 27 })],
-      // v17 (B.8): 80% off was unreachable — the measured ceiling on a Cut round is 44.5%. Ten, one step either side
-      cutStreak: [L('hold', 'cut', 1)({ y: 11 }), L('hold', 'cut', 1)({ y: 10 })],
+      /* v17 (B.8): 80% off was unreachable — the measured ceiling on a Cut round is 44.5%. Ten, one step either side.
+         v31 (60.5, build 60, L6 quoted — Aiden 2026-09-23): FIFTEEN, one step either side. The smallest reachable maximum miss
+         is 25 (target 25), so 15 is still reachable at every target and on every shape, which is the whole of B.8's derivation. */
+      cutStreak: [L('hold', 'cut', 1)({ y: 16 }), L('hold', 'cut', 1)({ y: 15 })],
       flashStreak: [L('reaction', 'flash', 1)({ hits: 501 }), L('reaction', 'flash', 1)({ hits: 500 })] };
     // build 24: Greedy is the engine's `mx` flag — the hold ran to its ceiling — not a % threshold. A big overshoot
     // with no `mx` must NOT earn it, or the row is just "miss by a lot" under another name
@@ -1233,7 +1235,16 @@ if (section('the chain and its screens (v15 sections 1 and 2)')) {
   pair('B.6 Quick Tap Dash asks 7 in a row', V.lens.qtDash);
   pair('1.2d / #415 Dots · Blind Marathon asks 22 (AMENDED at build 35, was 24)', V.lens.blindMar);
   pair('1.2f Dots · Lead Marathon asks 28', V.lens.leadMar);
-  pair('B.8 Estimate · Cut Streak asks for one round more than 10% off — 80 could never fire', V.lens.cutStreak);
+  pair('60.5 (L6) Estimate · Cut Streak asks for one round more than 15% off — 10 until build 60, 80 until build 28, and 80 could never fire', V.lens.cutStreak);
+  /* v31 (60.5): the SENTENCE and the PREDICATE are the same fact said twice, so they are checked against each other rather than
+     each against a number. A build that moves one and not the other is exactly the failure this catches. */
+  { const c60 = await page.evaluate(async () => { const U = await import('./config/unlocks.js'), R = await import('./progress/rules.js');
+      const text = U.LEN_RULES['hold:cut'][1], n = +((text.match(/more than (\d+)%/) || [])[1]);
+      const t = R.LEN_TEST['hold:cut'][1];
+      return { text, n, over: !!t({ y: n + 1 }), at: !!t({ y: n }), under: !!t({ y: n - 1 }) }; });
+    (c60.n === 15 && c60.over && !c60.at && !c60.under)
+      ? ok(`60.5 (L6) the Cut Streak row's words and its predicate agree — "${c60.text}", and a run whose worst round is ${c60.n + 1}% off opens it while ${c60.n}% does not`)
+      : bad('60.5 the Cut Streak text and predicate disagree', JSON.stringify(c60)); }
   pair('1.4b Reaction · Flash Streak asks for a Set averaging over 500ms', V.lens.flashStreak);
   pair('1.5 the shape at its limit earns Greedy; merely overshooting does not', V.hdMax);
   (!V.oneRecord.length) ? ok('1.0d one record of the chain — every lock box and goal line reads the string lenNeed builds') : bad('1.0d a second copy of a requirement', V.oneRecord.join(', '));

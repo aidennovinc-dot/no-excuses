@@ -67,7 +67,9 @@ const LEN_TEST = {
   // v15 (1.3b / 1.4b): the two Streaks with a real requirement. `y` is a Set's worst single round, `hits` its average
   // v17 (B.8, L6): 80 → 10. The measured ceiling on a Cut round is 44.5% off and the floor across the share pool is 25%,
   // so 80 could never fire on any shape at any target. Numbers and the derivation are in config/unlocks.js and FEATURES.md
-  'hold:cut':       [null, r=>r.y>10],
+  // v31 (60.5, build 60, L6): 10 → 15, Aiden's call of 2026-09-23. The ceiling and floor above are unchanged, so 15 is still
+  // reachable at every target; the sentence in config/unlocks.js moves with it
+  'hold:cut':       [null, r=>r.y>15],
   'reaction:flash': [null, r=>r.hits>500],
 };
 
