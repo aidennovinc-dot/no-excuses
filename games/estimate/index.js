@@ -170,7 +170,10 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
         const was=this.errs.length?mean(this.errs):0; this.errs.push(err);
         const w=walk?{el:$('#hpct'),from:walk.from,to:walk.to,fmt:v=>f2(v)+'%'}:null;
         if(this.two.on) return this.twoAdd(err,w);
-        if(this.streak()){ hud.score(String(this.errs.length)); hud.scorePop(); return this.addUp(err,w); }
+        /* v31 (60.4, build 60, L5): a GROW Streak spends max(0, err − GROW_FREE) of the 100% budget; Cut spends its error whole.
+           The tier above and the figure walking to 100% both read the raw error — only the cost is reduced — and the allowance
+           block (60.18's shared layout) is what says so on the screen. */
+        if(this.streak()){ hud.score(String(this.errs.length)); hud.scorePop(); return this.addUp(this.spendOf(err),w,err); }
         // v14 (6.1 / 6.16): the Set figure is the running average % difference — the line the sheet promises — and it WALKS to its
         // new value instead of jumping, the same as a Streak's total. Then the reveal waits for a tap (6.3)
         hud.countUp({ audio:this.ctx.audio, from:was, to:mean(this.errs), ms:700, fmt:v=>f2(v)+'%', set:t=>hud.score(t), alive:()=>this.st==='reveal', walk:w,
@@ -182,8 +185,14 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
       done:()=>{ hud.scorePop(); this.two.turnDone(); this.later(()=>this.next(),1400); } }); },
   // v13 (6.7): in a Streak the round's % difference visibly walks into the running total — the round figure counts down to 0 while the total counts up by the same amount, together, with the whoosh
   // v14 (6.15): what the round contributes is written as what it is — "+1%" walking out of the round figure and into the total
-  addUp(err,walk){ hud.addUp({ audio:this.ctx.audio, from:this.total, err, ms:900, el:null, walk, fmt:v=>'+'+f2(v)+'%', alive:()=>this.st==='reveal',
-      onFrame:tot=>{ this.total=tot; hud.time(T(CP.hudStreak,{n:this.round,tot:f2(this.total)})); },
+  /* v31 (60.4, build 60): `spend` is what this round costs the budget and `raw` is the round's own error. On Grow they differ by
+     the allowance; on Cut they are the same number. The allowance block is drawn before the drain starts and its bar is moved by
+     the same frames that move the total, so the figure draining and the bar filling are one animation (60.18). */
+  spendOf(err){ return this.cut()?err:Math.max(0,err-EST.GROW_FREE); },
+  addUp(err,walk,raw){ const free=raw!==undefined&&!this.cut(), bud=EST.STREAK_BUD, spent=this.total;
+    if(free){ const c=$('#hcalc'); if(c) c.insertAdjacentHTML('beforeend',hud.allowHtml({ id:'hallow', add:f2(err), unit:'%', spent, budget:bud, free:EST.GROW_FREE, freeText:CP.freeEach })); }
+    hud.addUp({ audio:this.ctx.audio, from:this.total, err, ms:900, el:free?$('#hallow-add'):null, walk, fmt:v=>'+'+f2(v)+'%', alive:()=>this.st==='reveal',
+      onFrame:tot=>{ this.total=tot; if(free) hud.allowBar('hallow',spent,tot-spent,bud); hud.time(T(CP.hudStreak,{n:this.round,tot:f2(this.total)})); },
       done:tot=>{ this.total=tot; this.hud(); this.ctx.emit('live',this.result()); this.wait(()=>this.next()); } }); },
   /* Cut (v11) — REDEALT at v26 §B2 (build 50). The shape comes from the dealer (config/shapes.js DEALS 'hold:cut'): each two-round band deals
      its mix of easy, medium and hard shapes, and the SHARE is the setting it pairs with — about a half easy, a third to a quarter medium, a

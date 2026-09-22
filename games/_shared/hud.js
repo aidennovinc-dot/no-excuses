@@ -80,6 +80,31 @@ function countdown(timers,audio,cb){ const c=$('#count'); let n=3; c.classList.a
   const step=()=>{ if(n>0){ c.innerHTML=`<span>${n}</span>`; audio.tick(); n--; timers.later(step,CFG.countStep); } else { c.classList.remove('on'); c.innerHTML=''; audio.go(); cb(); } };
   step(); }
 // what every start clears in the shell: the slots the engines share and whatever the last run left in them
+/* ---------- v31 (60.18, build 60): THE ALLOWANCE-STREAK ROUND SCREEN, ONE BLOCK FOR ALL THREE ----------
+   Flash Streak read, in order: the verdict, the big time, "BASELINE 150 MS", "+0 MS", "TOTAL 398 OF 1000 MS". Aiden: "it looks
+   messy" — three lines of small caps saying three different things about the same budget, the middle one repeating what the
+   third already says. 60.4 and 60.12 add the same shape of allowance to Grow and Hidden, so it is built once and used three
+   times rather than drawn three ways.
+
+   The new order is the item's: verdict, big number, a small "+84ms" that DRAINS as it is spent, a slim budget bar in place of
+   the TOTAL text with this round's addition lighting up as it drains in, and the allowance as a dim caption at the bar's end.
+   The bar is the running total said once (B.13) — what is spent, what this round adds, and what the budget is, all in one
+   object — so the line that used to say it in words is gone rather than kept beside it.
+
+   `allowHtml` draws it and `allowBar` moves it; the game owns the verdict and the big number above, and the drain itself is
+   still `addUp`, which is what makes the figure and the bar the same animation. `unit` is the game's own ('%' or 'ms'), so
+   nothing here knows what is being measured. */
+function allowHtml({ id, add, unit, spent, budget, free, freeText }){
+  const pc=v=>Math.max(0,Math.min(100,v/budget*100));
+  return `<div class="allow" id="${id}">`
+    +`<span class="asub aadd" id="${id}-add">+${add}${unit}</span>`
+    +`<div class="abar"><i class="aspent" style="width:${pc(spent)}%"></i><i class="anew" id="${id}-new" style="width:0%"></i></div>`
+    +`<span class="afree">${freeText.replace('{n}',free).replace('{u}',unit)}</span></div>`; }
+// one frame of the drain: `spent` is the budget before this round, `in` how much of this round's addition has landed
+function allowBar(id,spent,landed,budget){ const el=$('#'+id+'-new'), s=$('#'+id+' .aspent'); if(!el||!s) return;
+  const pc=v=>Math.max(0,Math.min(100,v/budget*100));
+  s.style.width=pc(spent)+'%'; el.style.width=pc(landed)+'%'; }
+
 function reset(){ $('#bigcount').textContent='0'; $('#score').style.visibility=''; $('#gen').innerHTML=''; $('#rxbar').innerHTML=''; $('#hud-time').classList.remove('you'); $('#seq').classList.remove('watch','input'); $('#turn').classList.remove('on','stay','p1','p2'); $('#rate i').style.height='0'; $('#rate b').textContent='0.0/s'; $('#edge').style.opacity=0; hold(false); }
 // the ghost finger (v6): the first-play demo moves it, taps with it, holds with it. `later` is the demo's own timer set
 function makeGhost(audio,timers){ const ghost=$('#ghost');
@@ -91,4 +116,4 @@ function makeGhost(audio,timers){ const ghost=$('#ghost');
     tap(){ ghost.classList.remove('tap'); void ghost.offsetWidth; ghost.classList.add('tap'); audio.hit(); },
     hold(on){ ghost.classList.toggle('hold',!!on); } }; }
 
-export { addUp, bigcount, countUp, countdown, cue, flash, hold, makeGhost, mode, pturn, pulse, rate, reset, scorePop, score, scoreVisible, shake, tick, time, timeHtml, you };
+export { addUp, allowBar, allowHtml, bigcount, countUp, countdown, cue, flash, hold, makeGhost, mode, pturn, pulse, rate, reset, scorePop, score, scoreVisible, shake, tick, time, timeHtml, you };

@@ -394,6 +394,8 @@ export const SEQ = { copy:'copy the notes', yourTurn:'your turn', whoTurn:'{who}
 export const ESTIMATE = { hold:'tap and hold',
   money:'on the money', close:'close', closeCut:'close!', much:'too much', little:'too little', target:'target', yours:'yours', piece:'piece', px:'px²', targetPx:'target {n} px²', targetShare:'target {n}%', off:' off',
   missed:'the line missed the shape · <b>{share}%</b> again', drag:'tap and drag a line to cut the shape', draw:'tap and draw a line', shareTarget:'<small>target</small>',
+  // v31 (60.4 / 60.18, build 60): the allowance caption at the foot of the shared budget bar. One line, three games
+  freeEach:'{n}{u} free each round',
   hudStreak:'Round {n} · {tot}% of 100%', hudSet:'Round {n} of {s}', diff:' · different shape', same:' · same shape' };
 export const TIMING = { target:'target', stop:'tap to stop the timer', marker:'tap when the ball has reached the marker', late:'late', early:'early', dead:'dead on', close:'close',
   // v15 (3.8): `budS` is gone. The Stopwatch Streak budget changes with the round (25s, 30s past round 10), so the engine

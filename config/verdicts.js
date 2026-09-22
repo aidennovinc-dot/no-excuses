@@ -70,7 +70,10 @@ export const VERDICTS = {
     good:['Quick work!','Great job!','That was some serious speed.','Very good run!','Be one with the dots.'],
     ace: ['Are you cheating?','Quickest hands in the West.','That will be hard to top.','You are the Dots master!','Wow, what a run!'] } },
   // build 36: ace/2 is not in the export and keeps build 34's line
-  'hold': { at:[.875,.75,.25], lines:{
+  /* v31 (60.4, build 60): GROW IS LOOSER. Aiden played v0.59 and asked for 7 / 12 / 30% off over the Set where it was 5 / 10 / 30 —
+     on the same 40 scale, so `at` is 1 − 7/40, 1 − 12/40, 1 − 30/40. Only the top two steps move; "Good." stays at 30. Cut is a
+     separate row and does not move (60.4 is Grow only). */
+  'hold': { at:[.825,.7,.25], lines:{
     bad: ['Ooft, maybe try another round.','Make sure you match the total area','A bit off but not the worst','Were you just guessing or...','Back to the drawing board.'],
     ok:  ['Decent estimation skills!','In the ball park for sure.','Not a bad run at all.','Reasonable, but could you do better?',"You're getting there!"],
     good:['Great eye!','Tight. Nearly there!','You were on the ball for that one!','Close to being an amazing run!','One step off perfect.'],
@@ -91,8 +94,12 @@ export const VERDICTS = {
     ok:  ['Getting the rhythm.','In the ballpark!','Learn to trust your gut.','Not bad at all.','Close, but I think you could do better!'],
     good:['Great intuition.','Tight.  Tight tight tight tight!','On a roll!','Very close timing.','Very very good.'],
     ace: ['The human-stopwatch hybrid!','Who needs clocks when we have you?','The stopwatch master!','More accurate than my Casio!','Uncanny performance!'] } },
-  // build 37: Aiden's thresholds — 400 / 650 / 950ms total over the Set
-  'timing:hidden': { at:[.9259,.8796,.8241], lines:{
+  /* build 37: Aiden's thresholds — 400 / 650 / 950ms total over the Set.
+     v31 (60.9, build 60): 700 / 1,000 / 1,500ms, on the same 5,400 scale (1 − 700/5400, 1 − 1000/5400, 1 − 1500/5400). The old
+     "Meh." sat at 950ms, which was STRICTER than the Skill key's own 1,500ms bar on the same combination — a player could clear
+     the key bar and be told the run was bad. The three steps are now the key's three tiers: Author, Pro and Skill. Cowork's call,
+     matched to `config/key-bars.js` 'timing:hidden:10'; Aiden's own numbers are the per-round ones in ROUND_AT below. */
+  'timing:hidden': { at:[.8704,.8148,.7222], lines:{
     bad: ['Was there an accidental tap in there?','The wall won that one.','It really was hidden…','Maybe another attempt?','Have another go!'],
     ok:  ['Feel the ball, be the ball.','In the ball park.','A touch early or late, but solid!','Decent read.','Getting there!'],
     good:['Great tracking!','Very close!','Nice run!','Well judged.','You’re a natural!'],
@@ -140,12 +147,15 @@ export const VERDICTS = {
    BUILD 36 (the Verdict Desk export): Cut, Flash and Go / No-go are Aiden's numbers. BUILD 37: so are Timing's. A round's
    ceiling is DELIBERATELY MORE FORGIVING than a fifth of the Set's — Stopwatch 0.10s a round against a 0.50s Set, Hidden
    95ms a round against 400ms over the Set — and that is the intent, not a slip to "correct". */
+/* v31 (60.4 / 60.9, build 60): Aiden played v0.59 and set two of these himself — Grow's per-round ceilings to 4 / 8 / 15% off
+   (were 2 / 5 / 10) and Hidden's to 60 / 115 / 200ms (were 40 / 70 / 95). Both loosen. The paragraph above still holds: a
+   round's ceiling is deliberately more forgiving than a fifth of the Set's, and these two are more forgiving again. */
 export const ROUND_AT = {
   'timing:stopwatch': [0.1, 0.3, 0.55],
-  'timing:hidden':    [40, 70, 95],
+  'timing:hidden':    [60, 115, 200],
   'reaction:flash':   [225, 255, 285],
   'reaction:nogo':    [299, 330, 400],
-  'hold:grow':        [2, 5, 10],
+  'hold:grow':        [4, 8, 15],
   'hold:cut':         [3.5, 5.5, 9],
   'spot:count':       [0, 1, 2],
   'spot:find':        [1, 2, 4],

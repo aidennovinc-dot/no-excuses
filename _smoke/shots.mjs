@@ -929,6 +929,66 @@ scene('60.2-60.3', async (page, browser) => {
   await abortRun(page); await sleep(300);
 });
 
+/* ---------- pointer helpers, for the scenes that play a round (build 60) ---------- */
+const ptr = (page, type, sel, fx = .5, fy = .5) => page.evaluate((t, s, fx, fy) => { const el = document.querySelector(s); if (!el) return false;
+  const r = el.getBoundingClientRect();
+  el.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true, pointerId: 1, clientX: r.left + r.width * fx, clientY: r.top + r.height * fy }));
+  return true; }, type, sel, fx, fy);
+
+/* =======================================================================================================
+   60.4 / 60.12 / 60.18 — the allowance-Streak round screen, one layout for Grow, Hidden and Flash
+   Flash read: verdict, big time, "BASELINE 150 MS", "+0 MS", "TOTAL 398 OF 1000 MS". The new order is the item's —
+   verdict, big number, the amount over the allowance (draining), a slim budget bar with this round's addition lighting up
+   as it drains in, and the allowance as a dim caption at the bar's end. The frames are the middle of the drain, so the
+   lit share is visible, and the manifest carries the measured widths.
+   ======================================================================================================= */
+const allowMetrics = (page, id) => page.evaluate(i => { const host = document.getElementById(i); if (!host) return null;
+  const box = el => { if (!el) return null; const r = el.getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }; };
+  const bar = host.querySelector('.abar');
+  return { add: (host.querySelector('.aadd') || {}).textContent, addBox: box(host.querySelector('.aadd')),
+    bar: box(bar), spent: box(host.querySelector('.aspent')), lit: box(host.querySelector('.anew')),
+    free: (host.querySelector('.afree') || {}).textContent, freeBox: box(host.querySelector('.afree')),
+    order: [...host.children].map(e => e.className) }; }, id);
+
+scene('60.4', async (page, browser) => {
+  await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture({ allOpen: 1 }));
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(450);
+  await goRun(page, { game: 'hold', diff: 'grow', secs: -1 });
+  /* the hold that lands a round a chosen distance off: the demo's own sum (target ÷ holdRate·vmin) is the hold that matches
+     the area exactly, and area goes as the square of the size, so √(1 + e) of it lands e over. Round 3 is deliberately 12%
+     off — over the 4% allowance, so there is something to watch drain. */
+  const holdFor = over => page.evaluate(async e => { const HD = (await import('./games/estimate/index.js')).default;
+    const { CFG } = await import('./config/games.js'); const { vmin } = await import('./core.js');
+    return HD.target / (CFG.holdRate * vmin()) * 1000 * Math.sqrt(1 + e / 100); }, over);
+  let shot = false;
+  for (let round = 1; round <= 6 && !shot; round++) {
+    await waitFor(page, () => document.getElementById('hbg') && document.getElementById('hbg').classList.contains('on'), 20000);
+    const ms = await holdFor(12);
+    // the previous round's block is taken out first, so waiting for one can only ever find THIS round's
+    await page.evaluate(() => { const o = document.getElementById('hallow'); if (o) o.remove(); });
+    await ptr(page, 'pointerdown', '#hfield'); await sleep(Math.round(ms)); await ptr(page, 'pointerup', '#hfield');
+    // the reveal chains target → yours → difference → % → the drain; the block lands with the drain and is LAID OUT then
+    const up = await waitFor(page, () => { const h = document.getElementById('hallow'); if (!h) return false;
+      const b = h.querySelector('.abar'); return !!b && b.getBoundingClientRect().width > 10; }, 14000);
+    if (up) {
+      await sleep(420);   // mid-drain, so the lit share is part-way across the bar
+      // measured BEFORE the frame: `frame()` hands the tab to the lens page to decode the PNG, and a backgrounded page
+      // reports a zero box for everything
+      const met = await allowMetrics(page, 'hallow');
+      const bud = await page.evaluate(async () => { const HD = (await import('./games/estimate/index.js')).default;
+        const G = await import('./config/games.js');
+        return { free: G.ESTIMATE.GROW_FREE + '%', budget: G.ESTIMATE.STREAK_BUD + '%', spentSoFar: Math.round(HD.total * 100) / 100,
+          roundsPlayed: HD.errs.length, rawErrors: HD.errs.map(e => Math.round(e * 10) / 10),
+          spentPerRound: HD.errs.map(e => Math.round(Math.max(0, e - G.ESTIMATE.GROW_FREE) * 10) / 10) }; });
+      await frame(page, browser, '60.4-grow-streak-round', 'Grow Streak round screen — the 60.18 allowance layout: the amount over the allowance draining, the budget bar with this round lit, the caption');
+      say('allowance', met); say('budget', bud);
+      shot = true;
+    }
+    await sleep(1400); await ptr(page, 'pointerdown', '#game'); await ptr(page, 'pointerup', '#game'); await sleep(600);
+  }
+  await abortRun(page); await sleep(300);
+});
+
 /* ---------- the runner ---------- */
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 if (ARGV.includes('--list')) { console.log(Object.keys(SCENES).join('\n')); process.exit(0); }

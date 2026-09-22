@@ -143,8 +143,13 @@ export const SET_COPY = {
 // logged against Timing · Hidden's bars, which do not travel across screen sizes. 460 vmin² is 7,000 px² on a 390-wide
 // phone (Aiden's number, measured there) and stays the same share of the screen everywhere else. TMIN/TMAX are the
 // linear range in vmin; a shape too thin to reach the floor even at TMAX is re-dealt rather than shrunk to a reaction test.
+/* v31 (60.4, build 60, L5 quoted — Aiden's call of 2026-09-23): A GROW STREAK HAS AN ALLOWANCE. The budget is still 100% (L5 is
+   untouched); what changes is what a round SPENDS of it — `max(0, err − GROW_FREE)` rather than the whole error. The round's
+   own verdict word still reads the RAW error, so the judgement of the round and the cost of the round are separate facts, which
+   is how Flash's 150ms baseline has always worked. GROW ONLY: Cut has no allowance (Cowork's reading, Aiden agreed) and
+   `hold:cut` spends its error in full. */
 export const ESTIMATE = {
-  MIN_AREA: 460, TMIN: 16, TMAX: 58,
+  MIN_AREA: 460, TMIN: 16, TMAX: 58, GROW_FREE: 4, STREAK_BUD: 100,
 };
 /* Spot · Count — REWORKED for v17 (B.15), and this is the difficulty review #366 asked for.
    Aiden's three complaints: it starts too easy (lots of time, few shapes), it ends too hard because the TIME is cut, and

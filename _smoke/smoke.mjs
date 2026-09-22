@@ -1402,6 +1402,32 @@ if (section('the runs (v15 section 3)')) {
     (s.early === 5 && s.late === 7.5 && s.hidden === 700 && s.txt === '5.00s')
       ? ok('B.3a / B.4 / L5 the Stopwatch Streak budget is 5s, 7.5s past round 10; Hidden is 700ms and the screen says so')
       : bad('B.3a / B.4 the Streak budgets', JSON.stringify(s)); }
+
+  /* ---- v31 (60.4, build 60, L5 quoted — Aiden 2026-09-23): GROW'S VERDICTS AND ITS STREAK ALLOWANCE ----
+     Three separate facts, and the third is the one that could quietly rot: the round's verdict word reads the RAW error while
+     the budget is charged the error MINUS the allowance. If a later build ever passes the reduced number to the tier, a 6% round
+     would read "Amazing!" — so the assertion drives the arithmetic on both sides rather than reading a constant.
+     The BUDGET ITSELF DOES NOT MOVE: L5's 100% stands, and so do the key bars on Grow (they are not part of 60.4). */
+  { const g60 = await page.evaluate(async () => { const V = await import('./config/verdicts.js'), G = await import('./config/games.js');
+      const R = await import('./progress/rules.js').catch(() => null);
+      const HD = (await import('./games/estimate/index.js')).default;
+      const spend = e => { HD.ctx = { mode: 'grow' }; return HD.spendOf(e); };
+      const spendCut = e => { HD.ctx = { mode: 'cut' }; return HD.spendOf(e); };
+      return { round: V.ROUND_AT['hold:grow'], setAt: V.VERDICTS['hold'].at, cutAt: V.VERDICTS['hold:cut'].at,
+        free: G.ESTIMATE.GROW_FREE, bud: G.ESTIMATE.STREAK_BUD,
+        // the % off each `at` fraction stands for, on Estimate's own 40 scale
+        setOff: V.VERDICTS['hold'].at.map(a => Math.round((1 - a) * 40 * 10) / 10),
+        grow: [0, 2, 4, 6, 12, 30].map(e => [e, spend(e)]), cut: [0, 4, 12].map(e => [e, spendCut(e)]),
+        tierReadsRaw: V.ROUND_AT['hold:grow'][0] }; });
+    const wantRound = [4, 8, 15], wantOff = [7, 12, 30];
+    const growSpend = Object.fromEntries(g60.grow), cutSpend = Object.fromEntries(g60.cut);
+    (JSON.stringify(g60.round) === JSON.stringify(wantRound) && JSON.stringify(g60.setOff) === JSON.stringify(wantOff)
+      && g60.free === 4 && g60.bud === 100
+      && growSpend[0] === 0 && growSpend[2] === 0 && growSpend[4] === 0 && growSpend[6] === 2 && growSpend[12] === 8 && growSpend[30] === 26
+      && cutSpend[0] === 0 && cutSpend[4] === 4 && cutSpend[12] === 12
+      && JSON.stringify(g60.cutAt) === JSON.stringify([.8875, .8, .625]))
+      ? ok(`60.4 (L5) Grow is looser: per-round ceilings ${wantRound.join(' / ')}% off (were 2 / 5 / 10), a Set's Amazing / Great / Good at ${wantOff.join(' / ')}% off over the 40 scale (were 5 / 10 / 30), and a Grow STREAK spends max(0, err − 4)% of the unchanged 100% budget — 6% costs 2, 12% costs 8, 30% costs 26 — while CUT still spends its error whole and keeps its own thresholds`)
+      : bad('60.4 Grow verdicts and the Streak allowance', JSON.stringify(g60)); }
   { const r = S3.ramp, climbs = r.every((x, i) => !i || x > r[i - 1] - 0.9), low = r[0] < 4, high = r[4] > 7;
     (climbs && low && high) ? ok(`3.8 Stopwatch Streak targets climb — rounds 1/2/5/10/20 dealt ${r.join('s · ')}s`)
       : bad('3.8 the Stopwatch Streak ramp', JSON.stringify(r)); }
