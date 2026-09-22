@@ -5298,10 +5298,17 @@ if (section('build 32 - v19 section C and v18 sections B.15 to B.27')) {
     /* AMENDED at build 44 (v24 §E): both columns are FULL - each Pro and Author number is either Aiden's (no marker: the twelve Quick Tap and
        Dots Pro figures) or a desk proposal whose marker still holds (the other 48); every key 1 bar is `conf:'set'` */
     const aidenPro = rows.filter(r => /^(qt|dt)-/.test(r.id));
-    (rows.every(r => typeof r.pro === 'number' && typeof r.author === 'number' && r.conf === 'set' && r.placeholder && r.placeholder.author && r.placeholder.author.v === r.author && r.placeholder.author.by === 'desk')
+    /* AMENDED at build 60 (v31 60.6): ONE AUTHOR CELL IS AIDEN'S NOW — `es-cut-streak`, 25, "I reached around 25, put that as an
+       author time for now" (2026-09-23). A.2 as amended at #426 says a ported number DROPS its marker and no build regenerates it,
+       so the rule this asserts is not "every author cell is marked" but "every author cell is EITHER Aiden's, with no marker, OR a
+       desk proposal whose marker still matches the number". The same shape the Pro column has had since build 44. */
+    const aidenAuthor = rows.filter(r => !(r.placeholder && r.placeholder.author));
+    (rows.every(r => typeof r.pro === 'number' && typeof r.author === 'number' && r.conf === 'set'
+        && r.placeholder && (!r.placeholder.author || (r.placeholder.author.v === r.author && r.placeholder.author.by === 'desk')))
+      && aidenAuthor.length === 1 && aidenAuthor[0].id === 'es-cut-streak' && aidenAuthor[0].author === 25
       && aidenPro.length === 12 && aidenPro.every(r => !('pro' in r.placeholder)) && rows.filter(r => !aidenPro.includes(r)).every(r => r.placeholder.pro && r.placeholder.pro.v === r.pro && r.placeholder.pro.by === 'desk')
       && KY32.KEYS.every(k => !('shell' in k)))
-      ? ok(`B.27 / v24 §E every one of the ${rows.length} rows carries pro and author: 12 Pro figures Aiden set carry no marker, the other 48 cells are desk proposals marked by:'desk', every key 1 bar is conf 'set', and config/keys.js carries no shell flag`)
+      ? ok(`B.27 / v24 §E / v31 60.6 every one of the ${rows.length} rows carries pro and author: 12 Pro figures and 1 Author figure (es-cut-streak, 25) are Aiden's own and carry no marker, the other ${rows.length * 2 - 13} cells are desk proposals marked by:'desk' whose markers still match their numbers, every key 1 bar is conf 'set', and config/keys.js carries no shell flag`)
       : bad('B.27 the data shape', JSON.stringify(rows.filter(r => !(typeof r.pro === 'number' && typeof r.author === 'number' && r.placeholder && r.conf === 'set')).map(r => r.id)));
     const sh = await page.evaluate(async () => { const K = await import('./progress/key.js'); const S = await import('./core/store.js'); const KB = await import('./config/key-bars.js');
       S.prefs.chests = { games: 1, key: 1, pro: 0, thorns: 0 }; S.store.bars = {}; S.save();   // AMENDED at build 40 (L.10): chest 1 is the Skill chest, behind the Games chest

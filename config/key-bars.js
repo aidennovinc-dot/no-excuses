@@ -78,9 +78,13 @@ export const KEY_BARS = {
   'hold:cut:10':          { id:'es-cut-set', bar:15, dir:'lower', pro:10, author:7, unit:'% off', conf:'set', basis:'Aiden’s number, set on the Key Unlocks Desk 2026-09-15 — the same widening as Grow.',
     placeholder:{ pro:{ v:10, conf:'low', by:'desk', basis:'PROPOSED on the Key Unlocks Desk 2026-09-15, extrapolated from Aiden’s key 1 figure. Not Aiden’s number: he accepted it for play-testing and corrects it in play (#371).' },
                   author:{ v:7, conf:'low', by:'desk', basis:'PROPOSED on the Key Unlocks Desk 2026-09-15, extrapolated from the Pro figure. Not Aiden’s number, awaiting his (#371).' } } },
-  'hold:cut:-1':          { id:'es-cut-streak', bar:10, dir:'higher', pro:15, author:19, unit:'rounds', conf:'set', basis:'Aiden’s number, set on the Key Unlocks Desk 2026-09-15 (FEEDBACK-v24 §E).',
-    placeholder:{ pro:{ v:15, conf:'low', by:'desk', basis:'PROPOSED on the Key Unlocks Desk 2026-09-15, extrapolated from Aiden’s key 1 figure. Not Aiden’s number: he accepted it for play-testing and corrects it in play (#371).' },
-                  author:{ v:19, conf:'low', by:'desk', basis:'PROPOSED on the Key Unlocks Desk 2026-09-15, extrapolated from the Pro figure. Not Aiden’s number, awaiting his (#371).' } } },
+  /* v31 (60.6, build 60): THE AUTHOR BAR IS AIDEN'S NOW — 19 → 25. "I reached around 25, put that as an author time for now"
+     (2026-09-23), so the desk's marker comes OFF the author cell (A.2: `--set` ports his number and drops the marker, and from
+     then on no build regenerates, rounds or corrects it). It is PROVISIONAL until his author-records playthrough, which is what
+     `conf:'play'` says: his own number, taken from his own run, not yet a record he has set out to set. PRO IS UNTOUCHED — still
+     the desk's 15, still marked. This is the only key bar build 60 moves. */
+  'hold:cut:-1':          { id:'es-cut-streak', bar:10, dir:'higher', pro:15, author:25, unit:'rounds', conf:'set', basis:'Aiden’s number, set on the Key Unlocks Desk 2026-09-15 (FEEDBACK-v24 §E). AUTHOR is Aiden’s own, 2026-09-23 (FEEDBACK-v31 60.6): “I reached around 25, put that as an author time for now” — provisional until his author-records playthrough.',
+    placeholder:{ pro:{ v:15, conf:'low', by:'desk', basis:'PROPOSED on the Key Unlocks Desk 2026-09-15, extrapolated from Aiden’s key 1 figure. Not Aiden’s number: he accepted it for play-testing and corrects it in play (#371).' } } },
   'sequence:solo:3':      { id:'sq-3', bar:6, dir:'higher', pro:9, author:12, unit:'rounds', conf:'set', basis:'Aiden’s number, set on the Key Unlocks Desk 2026-09-15 (FEEDBACK-v24 §E).',
     placeholder:{ pro:{ v:9, conf:'low', by:'desk', basis:'PROPOSED on the Key Unlocks Desk 2026-09-15, extrapolated from Aiden’s key 1 figure. Not Aiden’s number: he accepted it for play-testing and corrects it in play (#371).' },
                   author:{ v:12, conf:'low', by:'desk', basis:'PROPOSED on the Key Unlocks Desk 2026-09-15, extrapolated from the Pro figure. Not Aiden’s number, awaiting his (#371).' } } },
