@@ -1628,6 +1628,44 @@ if (section('the runs (v15 section 3)')) {
     paint60.bad.length === 0
       ? ok(`60.2 every one of the ${paint60.n} shapes in config/shapes.js is painted in all ${paint60.states} states a crowd puts it in — plain, dim, bad, odd and odd in each player's colour — with a fill that is not the ground, a real drawn area, and a recolour that takes the STROKE with it (${paint60.n * paint60.states} combinations)`)
       : bad('60.2 a shape comes out invisible', JSON.stringify(paint60.bad.slice(0, 8)));
+
+    /* ---- v31 (60.3, build 60): THE FIND TARGET IS NEVER OVERLAPPED — AT THE DEAL AND WHILE THE CROWD DRIFTS ----
+       `pile()` (F.7, build 44) could move the target onto a decoy or drop a decoy on the target, and the target is dealt at index
+       0 so every shape that touches it paints OVER it. Measured before the fix over 57 dealt rounds: 28 targets under 90% visible
+       and several at 0%. The item's own test: deal many rounds, including during motion, and fail on a target less than about 90%
+       visible. Decoy-on-decoy piles are NOT under test — they are build 44's ask and they stay. */
+    const findVis = () => page.evaluate(() => { const S = window.__sp60; if (!S || !S.pts) return null;
+      const box = q => { const s = q.sz || S.size; return { x0: q.x, y0: q.y, x1: q.x + s, y1: q.y + s, a: s * s }; };
+      const B = S.pts.map(box);
+      const over = (a, b) => Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
+      const vis = i => { let sum = 0; for (let j = i + 1; j < B.length; j++) sum += over(B[i], B[j]); return Math.max(0, 1 - Math.min(1, sum / B[i].a)); };
+      const ti = S.pts.findIndex(q => q.shape === S.odd);
+      return { odd: S.odd, n: B.length, target: Math.round(vis(ti) * 100),
+        decoyBuried: S.pts.filter((_, i) => i !== ti && vis(i) < .9).length }; });
+    const find60 = await page.evaluate(async () => { const RUN = await import('./run/run.js'), ST = await import('./core/state.js');
+      const SS = await import('./core/store.js'); SS.store.intro['spot'] = SS.store.intro['spot:find'] = Date.now(); SS.save();
+      Object.assign(ST.sel, { vs: 0, practice: 0, game: 'spot', diff: 'find', secs: 10 }); RUN.start();
+      await new Promise(r => setTimeout(r, 200));
+      window.__sp60 = (await import('./games/spot/index.js')).default; return !!window.__sp60; });
+    const vis60 = [];
+    if (find60) {
+      // 20 deals across both Find runs' whole band range, measured the instant they are dealt
+      for (let pass = 0; pass < 2; pass++) for (let r = 1; r <= 10; r++) {
+        await page.evaluate(n => { const S = window.__sp60; S.clearT(); S.round = n; S.findRound(); }, r);
+        const v = await findVis(); if (v) { v.round = r; vis60.push(v); }
+      }
+      // and three rounds driven all the way through 2.5s of real drift, which is where the keep-out has to hold
+      for (const r of [4, 7, 10]) {
+        await page.evaluate(n => { const S = window.__sp60; S.clearT(); S.round = n; S.findRound(); }, r);
+        await sleep(1500 + 2500);
+        const v = await findVis(); if (v) { v.round = r; v.moving = 1; vis60.push(v); }
+      }
+      await page.evaluate(async () => (await import('./run/run.js')).abort()); await sleep(300);
+    }
+    const vBad = vis60.filter(v => v.target < 90);
+    (vis60.length >= 20 && vBad.length === 0 && vis60.some(v => v.moving) && vis60.some(v => v.decoyBuried > 0))
+      ? ok(`60.3 the Find target is never overlapped — ${vis60.length} rounds dealt across every band (${vis60.filter(v => v.moving).length} of them measured after 2.5s of drift), worst target ${Math.min(...vis60.map(v => v.target))}% visible, none under 90%; decoy-on-decoy piles are untouched (build 44's F.7 — up to ${Math.max(...vis60.map(v => v.decoyBuried))} decoys under 90% in a round)`)
+      : bad('60.3 the Find target is overlapped', JSON.stringify({ rounds: vis60.length, under90: vBad.slice(0, 6), moving: vis60.filter(v => v.moving) }));
   }
   /* ---- v29 (items 2 / 3 / 4 / 9 / 14, build 55): the quit path, the stale state, the sleeping phone ----
      Four of the build-54 review's findings meet on the same few lines of run/run.js, so they are driven together. */

@@ -181,7 +181,14 @@ export const SPOT_RAMP = { loBase:5, loPer:0.45, hiBase:7, hiPer:1.0, nCap:14,
 // the eye scans fastest and that is exactly what Find is testing
 // v24 (F.7, build 44): `overlap` is the share of the crowd dealt ON a neighbour in round 1 and `overlapPer` what it gains by round 10
 // (20% → 40%, guesses) — shapes may START overlapped now, where only drift used to push two together
-export const SPOT_FIND = { leeway:0.5, nBase:16, nSpan:54, drift:34, sizeVar:0.3, sizeMin:14, overlap:0.2, overlapPer:0.2 };
+/* v31 (60.3, build 60): `keepOut`, `soften`, `space` and `push` are the target's personal space and the crowd's.
+   `keepOut` is the HARD edge round a target, as a multiple of the two shapes' mean size — 1.15 is Aiden's "about 1.15× its
+   size", a 15% gap beyond touching, and nothing may cross it. `soften` is how far out the gentle push starts (1.7× the hard
+   edge), so a decoy drifting in glides round rather than arriving at a wall: the bounce is the thing to avoid, because a
+   player would find the target by watching the collisions. `space` is every OTHER pair's personal space — the disguise, so
+   the whole crowd moves the same way — and `push` is how quickly either one closes, per second, as a share of the gap. */
+export const SPOT_FIND = { leeway:0.5, nBase:16, nSpan:54, drift:34, sizeVar:0.3, sizeMin:14, overlap:0.2, overlapPer:0.2,
+  keepOut:1.15, soften:1.7, space:1.0, push:2.4 };
 /* v24 (F.6, build 44, L5 amended at Aiden's direct request): a Spot · Count Streak's miscount budget. 5 → 8 — Aiden asked for more room
    and named no figure, so 8 is a PLACEHOLDER (guess), logged in UNVERIFIED.md. games/spot/index.js and the copy read this one number. */
 export const COUNT_BUDGET = 8;

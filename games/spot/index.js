@@ -88,6 +88,8 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
     const list=Array.from({length:n},()=>this.target).concat(Array.from({length:decoys},()=>rest[rnd(rest.length)])); this.pts=scatter(list.length,[this.target],Math.round(this.size*(1+R.sizeVar)));
     this.pts.forEach((q,i)=>{ q.shape=list[i]||this.target; q.sz=this.vary(this.size,R.sizeVar,SPOT_RAMP.sizeMin); }); this.answer=this.pts.filter(q=>q.shape===this.target).length;
     for(let i=this.pts.length-1;i>0;i--){ const j=rnd(i+1); const t=this.pts[i].shape; this.pts[i].shape=this.pts[j].shape; this.pts[j].shape=t; }
+    // v31 (60.3, build 60): Count has no ONE target — every target shape is countable and they may overlap as they always have
+    this.keep=null;
     this.pts.forEach(q=>{ q.vx=(Math.random()-.5)*R.drift; q.vy=(Math.random()-.5)*R.drift; q.a=0; q.va=(Math.random()-.5)*R.spin; this.clamp(q,r); });
     // v17 (B.14): the whole rule arrives at once, so the 1500ms it sits there is 1500ms of looking at the shape
     this.st='wait'; $('#gen').innerHTML=''; rxBar([...CP.count,shapeI(this.target),`<b>${this.many(this.target)}</b>`],true);
@@ -97,9 +99,56 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
       if(state==='find'){ const c=$('#spclock'); if(c) c.textContent=f2((now-this.t0)/1000); }
       // v17 (B.16): CLAMP, not just reflect. Flipping the velocity leaves a shape that has already crossed the edge across
       // it — and a turning shape sweeps wider than its own box, which is how one drifted off screen and could not be tapped
-      this.pts.forEach((q,i)=>{ q.x+=(q.vx||0)*dt; q.y+=(q.vy||0)*dt; q.a=(q.a||0)+(q.va||0)*dt; this.clamp(q,r);
-        const el=els[i]; if(!el) return; el.style.left=q.x+'px'; el.style.top=q.y+'px'; if(q.va) el.style.rotate=q.a+'deg'; });
+      this.pts.forEach((q,i)=>{ q.x+=(q.vx||0)*dt; q.y+=(q.vy||0)*dt; q.a=(q.a||0)+(q.va||0)*dt; });
+      // v31 (60.3, build 60): the crowd keeps its distance BEFORE it is clamped into the field, so a shape pushed off an edge is put back
+      this.space(dt); this.pts.forEach(q=>this.clamp(q,r));
+      this.pts.forEach((q,i)=>{ const el=els[i]; if(!el) return; el.style.left=q.x+'px'; el.style.top=q.y+'px'; if(q.va) el.style.rotate=q.a+'deg'; });
       this.raf=requestAnimationFrame(loop); }; this.raf=requestAnimationFrame(loop); },
+
+  /* ---------- v31 (60.3, build 60): THE TARGET IS NEVER OVERLAPPED ----------
+     Aiden was asked to find a shape that was not on screen. Measured over 57 dealt rounds before this: 28 targets were under 90%
+     visible and several were 0% — completely buried. Two things did it. `pile()` (F.7, build 44) shuffles a share of the crowd
+     onto a random neighbour, and nothing stopped it moving the TARGET or dropping a decoy on it; and the target is dealt at index
+     0, so it is the first element in `#gen` and every shape that touches it paints OVER it.
+     Build 44's ask stands — decoy-on-decoy piles are the whole of "start overlapped" and are untouched. It is only the target
+     that is kept clear, at deal and while the crowd drifts.
+
+     `keep` is the indices that must stay clear: Find's odd shape, and BOTH players' shapes in versus. It is set where the round
+     is dealt, so a mode that has no target (Count) simply has none and nothing here does anything.
+
+     THE MOTION. A hard wall round the target would be a tell: a player would find it by watching what the crowd bounces off. So
+     every shape carries the same soft personal space (`SPOT_FIND.space`), and a pair only pushes apart while it is CLOSING —
+     which is what keeps a pile that was DEALT overlapping exactly where it was dealt, because a pile sitting still is not
+     closing. Round a target that soft zone is wider (`soften` × the hard edge) and the push is the same shape of push, so a
+     decoy gliding round the target looks like a decoy gliding round any big neighbour. The hard edge (`keepOut`) is the backstop
+     underneath it, and because the soft push starts 70% further out it is almost never the thing that acts.
+     A protected shape is never itself pushed — its partner takes the whole of the push — so the target's own drift is the same
+     drift every other shape has, and nothing about how it moves says which one it is. */
+  keepSet(){ const k=this.keep; return Array.isArray(k)&&k.length?k:null; },
+  /* the deal's own settle: the same hard edge, applied a few times with no velocity in it, so the opening frame already honours
+     the keep-out. Six passes is enough for a decoy pushed out of one target to clear the other in versus. */
+  settle(r){ if(!this.keepSet()) return; for(let n=0;n<6;n++){ this.space(1/60); this.pts.forEach(q=>this.clamp(q,r)); } },
+  space(dt){ const P=this.pts; if(!P||P.length<2) return; const keep=this.keepSet(), K=SPOT_FIND;
+    const prot=keep?new Set(keep):null;
+    const cx=q=>q.x+(q.sz||this.size)/2, cy=q=>q.y+(q.sz||this.size)/2;
+    for(let i=0;i<P.length;i++) for(let j=i+1;j<P.length;j++){
+      const a=P[i], b=P[j], sa=a.sz||this.size, sb=b.sz||this.size, mean=(sa+sb)/2;
+      const pa=prot&&prot.has(i), pb=prot&&prot.has(j); if(pa&&pb) continue;
+      // the pair's own edges: the hard one only exists where one of the two is a target
+      const hard=(pa||pb)?mean*K.keepOut:0, soft=hard?hard*K.soften:mean*K.space;
+      let dx=cx(b)-cx(a), dy=cy(b)-cy(a); let d=Math.hypot(dx,dy);
+      if(d>=soft) continue;
+      if(d<1e-3){ dx=Math.cos(i*2.399); dy=Math.sin(i*2.399); d=1e-3; }
+      const ux=dx/d, uy=dy/d;
+      // closing speed along the line of centres; a pile that is not closing is left alone (build 44's piles survive)
+      const rel=((b.vx||0)-(a.vx||0))*ux+((b.vy||0)-(a.vy||0))*uy;
+      if(!hard&&rel>=0) continue;
+      const gap=(soft-d)/soft, step=K.push*gap*gap*mean*dt;
+      const put=(p,s)=>{ p.x+=ux*s; p.y+=uy*s; };
+      if(pa) put(b,step); else if(pb) put(a,-step); else { put(a,-step/2); put(b,step/2); }
+      // the backstop: nothing sits inside a target's keep-out, whatever the push did
+      if(hard&&d<hard){ const need=hard-d; if(pa) put(b,need); else put(a,-need); }
+    } },
   // v17 (B.15): the highest button IS SPOT_RAMP.nCap. The band may never deal more targets than the player can answer,
   // and writing 15 here is how that guarantee gets lost the next time the ramp is retuned
   keypad(){ return `<div class="pad-num">${Array.from({length:SPOT_RAMP.nCap+1},(_,i)=>`<button data-num="${i}">${i}</button>`).join('')}</div>`; },
@@ -121,17 +170,28 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
     // the field from the moment it is dealt, not only once it has drifted out of it
     const sv=F.sizeVar;
     this.pts=scatter(n,rest,Math.round(this.size*(1+sv)),this.odd); this.pts.forEach(q=>{ q.sz=this.vary(this.size,sv,SPOT_FIND.sizeMin); q.vx=(Math.random()-.5)*drift; q.vy=(Math.random()-.5)*drift; q.va=0; });
-    // v24 (F.7, build 44): some of the crowd starts ON a neighbour — the target included — and only then is everything clamped in
-    this.pile(this.pts,SPOT_FIND.overlap+p*SPOT_FIND.overlapPer); this.pts.forEach(q=>this.clamp(q,r));
+    /* v24 (F.7, build 44): some of the crowd starts ON a neighbour, and only then is everything clamped in.
+       v31 (60.3, build 60): THE TARGET IS NOT ONE OF THEM. `scatter` deals the odd shape at index 0, so that one index is the
+       whole of `keep`; `space(0)` then settles the crowd off it once, after the clamp, in case a clamp slid a decoy in. */
+    this.keep=[0];
+    this.pile(this.pts,SPOT_FIND.overlap+p*SPOT_FIND.overlapPer,this.keep); this.pts.forEach(q=>this.clamp(q,r));
+    this.settle(r);
     this.st='wait'; $('#gen').innerHTML=''; rxBar([...CP.find,shapeI(this.odd),`<b>${SHAPES[this.odd].word}</b>`]);
     // v14 (6.31): the round's own clock runs in large grey type behind the crowd, so the cost of staring is visible while you stare
     this.later(()=>{ this.st='find'; this.t0=performance.now(); $('#gen').innerHTML=`<div class="spclock" id="spclock">0.00</div>`+this.pts.map(q=>shapeHtml(q,this.size)).join(''); this.move('find'); },1400); },
   /* v24 (F.7, build 44): SHAPES MAY START OVERLAPPED. scatter() deals one shape to a grid cell so nothing touches, and only drift ever pushed
      two together, so Aiden found the opening frame too easy to read. `share` of the crowd is dealt on a random neighbour instead, a third to
      two thirds of that shape's own size off its corner, in any direction — the target can land under a decoy as easily as over one. */
-  pile(pts,share){ const k=Math.round(pts.length*share); if(pts.length<2||k<1) return;
-    const idx=pts.map((_,i)=>i); for(let i=idx.length-1;i>0;i--){ const j=rnd(i+1); [idx[i],idx[j]]=[idx[j],idx[i]]; }
-    for(const i of idx.slice(0,k)){ let j=rnd(pts.length); if(j===i) j=(j+1)%pts.length; const o=pts[j], sz=o.sz||this.size, ang=Math.random()*Math.PI*2, far=sz*(.33+Math.random()*.33);
+  /* v31 (60.3, build 60): AND NEVER ON THE TARGET. `keep` is the indices that must stay clear. A protected shape is never one of
+     the shapes MOVED, and is never the neighbour a shape is moved ONTO — those were the two ways the target ended up buried, and
+     they are the same two lines. Everything else is build 44's: the same share of the crowd, the same random neighbour, the same
+     third-to-two-thirds offset. Decoy-on-decoy piles are untouched. */
+  pile(pts,share,keep){ const k=Math.round(pts.length*share); if(pts.length<2||k<1) return;
+    const prot=new Set(keep||[]); const free=pts.map((_,i)=>i).filter(i=>!prot.has(i));
+    if(free.length<2) return;
+    const idx=free.slice(); for(let i=idx.length-1;i>0;i--){ const j=rnd(i+1); [idx[i],idx[j]]=[idx[j],idx[i]]; }
+    for(const i of idx.slice(0,Math.min(k,idx.length))){ let j=free[rnd(free.length)]; for(let t=0;t<8&&j===i;t++) j=free[rnd(free.length)]; if(j===i) continue;
+      const o=pts[j], sz=o.sz||this.size, ang=Math.random()*Math.PI*2, far=sz*(.33+Math.random()*.33);
       pts[i].x=o.x+Math.cos(ang)*far; pts[i].y=o.y+Math.sin(ang)*far; } },
   /* v24 (F.7, build 44): A TAP ON THE SHAPE YOU ARE LOOKING FOR ALWAYS COUNTS. The hit test took the NEAREST centre, so with two shapes
      overlapping, a tap squarely on the target could sit nearer a decoy's centre and be charged as a wrong tap — which reads as the game
@@ -186,6 +246,8 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
     this.pts.forEach(q=>{ q.shape=this.vsBase; q.sz=this.vary(this.size,sv,SPOT_FIND.sizeMin); q.vx=(Math.random()-.5)*drift; q.vy=(Math.random()-.5)*drift; q.a=0; q.va=(Math.random()-.5)*spin; q.puls=puls; this.clamp(q,r); });
     const a=rnd(this.pts.length); let b=rnd(this.pts.length); for(let k=0;k<12&&b===a;k++) b=rnd(this.pts.length); if(b===a) b=(a+1)%this.pts.length;
     this.pts[a].shape=this.o1; this.pts[b].shape=this.o2;
+    // v31 (60.3, build 60): BOTH players' shapes are targets, and each keeps its own clear space (L4 — neither player is favoured)
+    this.keep=[a,b]; this.settle(r);
     hud.timeHtml(this.vsLine()); this.vsBar();
     // v16 (1.4): each player's stem swells with their share of the match. Presentation only (L10)
     this.ctx.emit('live',{vsP:[this.vsN[0]/this.vsTarget(),this.vsN[1]/this.vsTarget()]});

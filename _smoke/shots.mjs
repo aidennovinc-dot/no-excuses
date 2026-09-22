@@ -906,6 +906,9 @@ scene('60.2-60.3', async (page, browser) => {
       const m = await findMetrics(page);
       if (!m) break;
       m.round = r; rows.push(m);
+      // and again after three seconds of drift — the item asks for "including during motion"
+      await sleep(3000); const m2 = await findMetrics(page);
+      if (m2) { m2.round = r; m2.moving = 1; rows.push(m2); }
       // a frame for each of the shapes 60.2 names, the first time it comes up as the target
       if (['ring', 'crescent', 'spiral'].includes(m.odd) && !shot[m.odd]) { shot[m.odd] = 1;
         await frame(page, browser, `60.2-find-${m.odd}`, `Find round ${r}, "find the ${m.odd}" — ${m.n} shapes, target ${m.targetVisible}% visible`);
@@ -918,7 +921,8 @@ scene('60.2-60.3', async (page, browser) => {
   await frame(page, browser, '60.2-find-last', 'the last Find field of the pass');
   say('overTheRounds', { rounds: rows.length, worstTargetVisible: worst + '%',
     targetsUnder90pc: under.length + ' of ' + rows.length,
-    worstFive: rows.slice().sort((a, b) => a.targetVisible - b.targetVisible).slice(0, 5).map(r => `r${r.round} ${r.odd} ${r.targetVisible}%`).join(' · '),
+    dealt: rows.filter(r => !r.moving).length + ' at the deal, ' + rows.filter(r => r.moving).length + ' after 3s of drift',
+    worstFive: rows.slice().sort((a, b) => a.targetVisible - b.targetVisible).slice(0, 5).map(r => `r${r.round}${r.moving ? ' moving' : ''} ${r.odd} ${r.targetVisible}%`).join(' · '),
     shapesSeenAsTarget: [...new Set(rows.map(r => r.odd))].join(','),
     fills: [...new Set(rows.flatMap(r => r.fills))], strokes: [...new Set(rows.flatMap(r => r.strokes))] });
   console.log('      worst target visibility over ' + rows.length + ' rounds: ' + worst + '%  ·  under 90%: ' + under.length);
