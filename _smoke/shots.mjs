@@ -29,7 +29,11 @@ import { serve } from './server.mjs';
 import { launch, phonePage } from './chrome.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const OUT = path.join(ROOT, '..', '_review', '_shots', 'build-59');
+/* build 60: the folder follows the BUILD rather than being written here, so a build's frames land beside its own review and
+   an earlier build's are never overwritten by a re-run. `--out <name>` overrides it for a before / after pair. */
+const { BUILD: SHOT_BUILD } = await import('../config/build.js');
+const OUT_ARG = (process.argv.indexOf('--out') >= 0 && process.argv[process.argv.indexOf('--out') + 1]) || null;
+const OUT = path.join(ROOT, '..', '_review', '_shots', OUT_ARG || ('build-' + SHOT_BUILD));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const ARGV = process.argv.slice(2);
 
@@ -799,6 +803,61 @@ scene('59.16', async (page, browser) => {
   }
 });
 
+/* =======================================================================================================
+   60.1 — the Skill chest can be opened. Aiden's own path, on all three keys.
+   "Earn the Skill key, open the Skill key screen, tap the key or 'tap to open the Skill chest', and the dialog appears.
+   Neither button does anything." Cowork guessed the Lantern effects layer was catching the taps. It was not: `#stars` is
+   the first element in the body and every positioned screen paints over it. The cause is build 59's own 59.14 — a capture
+   listener on `#s-key` that swallows every pointerdown while the chest prompt is up, so that a tap anywhere opens the
+   chest. `askOpen()` never touches `#key-hint`, so the prompt is still up while its own dialog is, and the listener ate
+   the taps on Open and Not yet and re-raised the same box.
+   The proof is the Open button's own pointerdown: `defaultPrevented` is the swallow, and `chestState` is the outcome.
+   Frames: the prompt, the dialog, and the frame after Open — which on build 59 is the dialog again.
+   ======================================================================================================= */
+scene('60.1', async (page, browser) => {
+  for (const [chest, ix, label] of [['key', 0, 'Skill'], ['pro', 1, 'Pro'], ['thorns', 2, 'Author']]) {
+    await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture());
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(450);
+    // Testing's switch: every chest before this one opened the way play does, this one left READY and its key whole
+    await page.evaluate(async c => { const K = await import('./progress/key.js'), P = await import('./progress.js');
+      K.devReach(c, P.devModesAll); }, chest);
+    await page.evaluate(async i => { const R = await import('./ui/router.js'); R.show('s-key', { tier: i, from: 's-testing' }); }, ix);
+    await sleep(1400);
+    const pre = await page.evaluate(async c => { const K = await import('./progress/key.js');
+      const h = document.getElementById('key-hint');
+      return { chest: K.chestState(c), prompt: h.classList.contains('kprompt'), promptText: h.textContent.trim() }; }, chest);
+    await frame(page, browser, `60.1-${chest}-a-prompt`, `${label} key whole, its chest READY — the prompt Aiden taps`);
+    say('before', pre);
+
+    // tap the key: the ask goes up
+    await page.evaluate(() => { const el = document.querySelector('#s-key [data-act="key-chest"]');
+      el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+      el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })); });
+    await sleep(500);
+    await frame(page, browser, `60.1-${chest}-b-ask`, `${label} key — "Open the ${label} chest?", Open / Not yet`);
+    say('askBox', await page.evaluate(() => { const b = document.getElementById('key-ask');
+      return { shown: !b.hidden, buttons: [...b.querySelectorAll('button')].map(x => x.textContent.trim()) }; }));
+
+    // THE TAP UNDER TEST: Open
+    const tap = await page.evaluate(() => { const b = document.querySelector('[data-act="key-ask-yes"]');
+      const ev = new PointerEvent('pointerdown', { bubbles: true, cancelable: true }); b.dispatchEvent(ev);
+      b.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+      return { pointerdownDefaultPrevented: ev.defaultPrevented }; });
+    await sleep(900);
+    await frame(page, browser, `60.1-${chest}-c-after-open`, `${label} chest, 900ms after Open — the ceremony, where build 59 showed the same dialog`);
+    say('open', Object.assign(tap, await page.evaluate(async c => { const K = await import('./progress/key.js');
+      const cere = document.getElementById('key-cere');
+      return { chestState: K.chestState(c), askStillUp: !document.getElementById('key-ask').hidden,
+        ceremonyPlaying: !cere.hidden, ceremonyNodes: cere.querySelectorAll('svg,.cbig,.cchestg').length }; }, chest)));
+    say('starsPointerEvents', await page.evaluate(() => getComputedStyle(document.getElementById('stars')).pointerEvents));
+    // and a later beat, where the chest itself is on screen — the assembly at 900ms is the bars flying in, which reads as orbs alone
+    await sleep(2600);
+    await frame(page, browser, `60.1-${chest}-d-chest`, `${label} chest mid-ceremony (~3.5s after Open) — the chest itself, the key turning in the lock`);
+    say('ceremony', await page.evaluate(() => { const c = document.getElementById('key-cere');
+      return { step: c.dataset.step || null, chestDrawn: c.querySelectorAll('.cchestg,.cbig').length, keyDrawn: c.querySelectorAll('.ckeyg').length }; }));
+  }
+});
+
 /* ---------- the runner ---------- */
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 if (ARGV.includes('--list')) { console.log(Object.keys(SCENES).join('\n')); process.exit(0); }
@@ -822,7 +881,7 @@ try {
 console.log('safe area: ' + SAB);
 await page.goto(srv.base + '/index.html', { waitUntil: 'networkidle0' });
 
-const want = ARGV.filter(a => !a.startsWith('--'));
+const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }
   console.log('\n' + name);

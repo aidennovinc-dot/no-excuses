@@ -674,13 +674,25 @@ function firstIn() { if (prefs.keySeen) return false; prefs.keySeen = 1; save();
    chest is ready and not yet open. It stops the event dead and asks the chest the same way the key's own hit disc does.
    The one other control is SET THIS MUSIC, and Cowork's call — named in the outcome — is to HIDE it for this moment rather than make
    it the single exception: it is still on the Keys screen afterwards, and an exception is how a mis-tap happens again. */
-function promptChest() { const el = $('#s-key'), hint = $('#key-hint');
+/* v31 (60.1, build 60): AND THE ASK IS NOT PART OF "ANYWHERE". The rule above is right and stays, but the prompt is still up
+   while the ask box it raises is on screen — `askOpen()` does not touch `#key-hint` — so this listener went on swallowing every
+   tap, INCLUDING the taps on Open and Not yet, and re-raised the same box instead. A player who earned the Skill key could not
+   open the Skill chest at all: the prompt answered, the dialog appeared and neither button did anything, on every key.
+   Confirmed by driving it (the first frame of 60.1's scene in `_smoke/shots.mjs`): the Open button's own pointerdown came back
+   `defaultPrevented`, the chest stayed `ready` and nothing played. The Lantern layer was not it — `#stars` sits before every
+   screen in the markup and paints under them — though 60.1 asks for the layer to be inert as well, and it is now (`app.css`).
+   Two gates, because one is the state and the other is the structure: the ask box being up ends the moment, and a tap that
+   STARTED inside the ask or inside the ceremony was never "anywhere" in the first place. */
+function promptChest(ev) { const el = $('#s-key'), hint = $('#key-hint');
   if (!el || !el.classList.contains('on') || !hint || !hint.classList.contains('kprompt')) return null;
+  const ask = $('#key-ask'); if (ask && !ask.hidden) return null;
+  const cere = $('#key-cere'); if (cere && !cere.hidden) return null;
+  const t0 = ev && ev.target; if (t0 && t0.closest && t0.closest('#key-ask,#key-cere')) return null;
   if (getComputedStyle(hint).visibility === 'hidden') return null;
   const t = keyTiers()[openKey]; if (!t) return null;
   const kc = keyChest(t.id);
   return kc && kc.state === 'ready' ? kc.id : null; }
-$('#s-key').addEventListener('pointerdown', ev => { const id = promptChest(); if (!id) return;
+$('#s-key').addEventListener('pointerdown', ev => { const id = promptChest(ev); if (!id) return;
   ev.preventDefault(); ev.stopPropagation(); askOpen(id); }, true);
 
 register('s-key', { onShow({ advance: a, from, auto: to, tier, whole, arrive, ceremony: cer, open, intro } = {}) { stopReveal(); askClose();

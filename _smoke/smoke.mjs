@@ -3196,6 +3196,48 @@ if (section('chests')) {
       ? ok(`58.2 in the chest's own opening the GAUNTLET HAND carries the key in and turns it — the same glove the map tile draws, inside the key's own group so the two move as one (${hand58.pro.hand} paths on the Pro chest, ${hand58.thorns.hand} on the Author chest), and neither the Games nor the Skill chest draws one`)
       : bad('58.2 the gauntlet hand', JSON.stringify(hand58));
   }
+
+  /* ---- v31 (60.1, build 60): THE ASK ANSWERS. END TO END, ON ALL THREE KEYS ----
+     Build 59's 59.14 put a capture listener on `#s-key` so that while the chest prompt is up a tap ANYWHERE opens that chest. The
+     prompt is still up while the ask box it raises is on screen, so that listener swallowed the taps on Open and Not yet as well and
+     re-raised the same box: every player who earned the Skill key was stuck at the dialog with the chest unopened. Nothing in the
+     gate caught it, because every chest check above opens a chest through Testing or through `openChest()` rather than through the
+     two buttons a player actually taps.
+     So this walks the player's path on each of the three key chests — earn the key, open its key screen, tap the key, tap Open — and
+     fails unless the CEREMONY ACTUALLY PLAYS and the chest ends up open. Not yet is driven too, on its own raise, because the same
+     listener ate it. The Pro and Author chests want a finished Gauntlet as well (L6, 58.2), so the fixture carries GAUNT_ALL. */
+  const ask60 = {};
+  for (const [chest, ix] of [['key', 0], ['pro', 1], ['thorns', 2]]) {
+    await boot(PLAIN48);
+    ask60[chest] = await page.evaluate(async (chest, ix) => { const R = await import('./ui/router.js'), K = await import('./progress/key.js');
+      const P = await import('./progress.js'); const wait = ms => new Promise(r => setTimeout(r, ms));
+      // Testing's own switch: every chest before this one filled and opened the way play does, and this one left READY
+      K.devReach(chest, P.devModesAll);
+      R.show('s-key', { tier: ix, from: 's-testing' }); await wait(1200);
+      const out = { state: K.chestState(chest), prompt: document.getElementById('key-hint').classList.contains('kprompt') };
+      const fire = sel => { const el = document.querySelector(sel); if (!el) return null;
+        const ev = new PointerEvent('pointerdown', { bubbles: true, cancelable: true }); el.dispatchEvent(ev);
+        el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })); return { swallowed: ev.defaultPrevented }; };
+      // the key's own hit disc raises the ask (C.1)
+      out.tapKey = fire('#s-key [data-act="key-chest"]'); await wait(400);
+      out.askUp = !document.getElementById('key-ask').hidden;
+      // NOT YET closes it and opens nothing
+      out.tapNo = fire('[data-act="key-ask-no"]'); await wait(300);
+      out.closed = document.getElementById('key-ask').hidden; out.afterNo = K.chestState(chest);
+      // raise it again and say OPEN
+      fire('#s-key [data-act="key-chest"]'); await wait(400);
+      out.tapYes = fire('[data-act="key-ask-yes"]'); await wait(700);
+      const cere = document.getElementById('key-cere');
+      out.cere = { shown: !cere.hidden, nodes: cere.querySelectorAll('svg,.cbig,.cchestg').length };
+      await wait(700); out.after = K.chestState(chest);
+      return out; }, chest, ix);
+  }
+  const askBad = Object.entries(ask60).filter(([id, r]) => !(r.state === 'ready' && r.prompt
+    && r.askUp && r.tapNo && !r.tapNo.swallowed && r.closed && r.afterNo === 'ready'
+    && r.tapYes && !r.tapYes.swallowed && r.cere.shown && r.cere.nodes > 0 && r.after === 'open'));
+  askBad.length === 0
+    ? ok(`60.1 the ask ANSWERS on all three key chests — the key's own tap raises "Open the … chest?", Not yet closes it and opens nothing, Open is not swallowed and the CEREMONY PLAYS (${Object.entries(ask60).map(([id, r]) => `${id}: ${r.cere.nodes} nodes drawn, ${r.state} → ${r.after}`).join('; ')})`)
+    : bad('60.1 the ask does not answer', JSON.stringify(ask60));
 }
 
 /* ---- music (build 49 opened it: v26 §B1, the sound notes from the build 46 board) ---- */

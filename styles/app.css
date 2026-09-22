@@ -156,7 +156,11 @@
      `fixed` with `100dvh` makes the canvas the VISUAL viewport, which is the thing the home indicator sits on; `dvw` with it so a
      rotation cannot leave a strip at the side either. The content keeps its own safe-area padding; nothing about the safe area is
      applied to the background, which is the point — the background goes under the indicator and the content does not. */
-  #stars{position:fixed;inset:0;width:100dvw;height:100dvh;display:block;transition:opacity .3s}
+  /* v31 (60.1, build 60): AND IT IS INERT. This canvas is decoration — stars, the Customise ground and the three key layers —
+     and it has never had a control on it. It sat in front of nothing (it is the first element in the body, so every positioned
+     screen paints over it), but 60.1 asks for theme and atmosphere layers to sit behind the UI and take no taps, and a fixed,
+     full-viewport element with no `pointer-events` is one stacking change away from eating a tap. It takes none now. */
+  #stars{position:fixed;inset:0;width:100dvw;height:100dvh;display:block;pointer-events:none;transition:opacity .3s}
 
 /* ==================================================================
    title — the sequence that opens the menu (ui/screens/menu.js)
