@@ -1432,6 +1432,26 @@ if (section('the runs (v15 section 3)')) {
       ? ok('B.3a / B.4 / L5 the Stopwatch Streak budget is 5s, 7.5s past round 10; Hidden is 700ms and the screen says so')
       : bad('B.3a / B.4 the Streak budgets', JSON.stringify(s)); }
 
+  /* ---- v31 (60.9, build 60): HIDDEN'S VERDICTS, AND THE SET'S THREE STEPS ARE THE KEY'S THREE BARS ----
+     Per round, Aiden's numbers: 40 / 70 / 95ms becomes 60 / 115 / 200. Over the Set, Cowork's call: 400 / 650 / 950ms becomes
+     700 / 1,000 / 1,500 on the same 5,400 scale. The WHY is the assertion: the old "Meh." sat at 950ms, which was STRICTER than
+     the Skill key's own 1,500ms bar on the same combination, so a player could clear the key bar and be told the run was bad.
+     The three steps are now Author, Pro and Skill off 'timing:hidden:10' — read from key-bars rather than written twice, so a
+     bar Aiden moves later cannot leave the verdicts behind. This closes the verdict half of FEEDBACK-v24 §F.8. */
+  { const h60 = await page.evaluate(async () => { const V = await import('./config/verdicts.js'), KB = await import('./config/key-bars.js');
+      const P = await import('./progress.js'); const row = KB.KEY_BARS['timing:hidden:10'];
+      const scale = 5400, at = V.VERDICTS['timing:hidden'].at;
+      return { round: V.ROUND_AT['timing:hidden'], at, ms: at.map(a => Math.round((1 - a) * scale)),
+        bars: { author: row.author, pro: row.pro, skill: row.bar },
+        // and the reading a run actually gets, through the app's own verdict()
+        tiers: [650, 700, 999, 1000, 1499, 1500, 1501].map(ms => [ms, P.verdict({ g: 'timing', d: 'hidden', s: 10, hits: ms }).tier]) }; });
+    const want = [700, 1000, 1500];
+    (JSON.stringify(h60.round) === JSON.stringify([60, 115, 200]) && JSON.stringify(h60.ms) === JSON.stringify(want)
+      && h60.bars.author === 700 && h60.bars.pro === 1000 && h60.bars.skill === 1500
+      && h60.tiers.find(t => t[0] === 1500)[1] !== 'bad' && h60.tiers.find(t => t[0] === 1501)[1] === 'bad')
+      ? ok(`60.9 Hidden is looser and its Set now agrees with its own key: per-round ceilings ${h60.round.join(' / ')}ms (were 40 / 70 / 95), and a Set's Amazing / Great / Good at ${h60.ms.join(' / ')}ms — the SAME three numbers as the Author, Pro and Skill bars on timing:hidden:10, so a run that clears the Skill key bar is no longer told it was bad (${h60.tiers.map(t => t[0] + 'ms→' + t[1]).join(', ')}). Closes v24 §F.8's verdict half`)
+      : bad('60.9 Hidden verdicts', JSON.stringify(h60)); }
+
   /* ---- v31 (60.4, build 60, L5 quoted — Aiden 2026-09-23): GROW'S VERDICTS AND ITS STREAK ALLOWANCE ----
      Three separate facts, and the third is the one that could quietly rot: the round's verdict word reads the RAW error while
      the budget is charged the error MINUS the allowance. If a later build ever passes the reduced number to the tier, a 6% round
