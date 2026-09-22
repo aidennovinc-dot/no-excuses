@@ -174,7 +174,16 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
     // the chord runs through the middle of the field, slid along its long side so one diagonal is not always the same line
     const slide=(Math.random()*2-1)*Math.abs(h-w)/2*.7, cx=w/2+(w>h?slide:0), cy=h/2+(h>=w?slide:0);
     const span=(c,d,lo,hi)=>d>1e-9?[(lo-c)/d,(hi-c)/d]:d<-1e-9?[(hi-c)/d,(lo-c)/d]:[-1e9,1e9];
-    const sx=span(cx,vx,half,w-half), sy=span(cy,vy,half,h-half), s0=Math.max(sx[0],sy[0])-size, L=Math.min(sx[1],sy[1])-s0;
+    const sx=span(cx,vx,half,w-half), sy=span(cy,vy,half,h-half);
+    /* v31 (60.13, build 60): THE BALL STARTS OFF SCREEN AND ROLLS IN, as it does on a straight wall. `sx[0]` is the parameter at
+       which the box is fully INSIDE the field in x, so starting a `size` before it left the ball straddling the edge — half of it
+       visible from the first frame, sitting there through the 600ms before the loop starts. Aiden saw exactly that. The ball is
+       fully off screen while it is fully outside in EITHER axis, so `ax` / `ay` are the last parameter at which each of those is
+       true and the later of the two is where it stops being off screen; a further `size` of run-up gives it the same lead-in a
+       straight round has (`pos(0).x = -size` there). L grows with it, so the pace is unchanged — the ball crosses its whole path
+       in 1/HIDDEN.speed seconds either way — and about a twentieth of that is now spent out of sight before it appears. */
+    const ax=sx[0]-size/Math.max(1e-6,Math.abs(vx)), ay=sy[0]-size/Math.max(1e-6,Math.abs(vy));
+    const s0=Math.max(ax,ay)-size, L=Math.min(sx[1],sy[1])-s0;
     const v=L*HIDDEN.speed*jit(R.band), spread=jit(R.spread);
     let behind=Math.max(.6,(this.targets[this.round-1]||1.2)*R.ramp*spread);
     const need=v*behind+size*1.5; const cover=Math.min(.86,Math.max(.6,need/L+.06)), wallStart=L*(1-cover);

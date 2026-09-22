@@ -1432,6 +1432,36 @@ if (section('the runs (v15 section 3)')) {
       ? ok('B.3a / B.4 / L5 the Stopwatch Streak budget is 5s, 7.5s past round 10; Hidden is 700ms and the screen says so')
       : bad('B.3a / B.4 the Streak budgets', JSON.stringify(s)); }
 
+  /* ---- v31 (60.13, build 60): AN ANGLED-WALL BALL STARTS OFF SCREEN AND ROLLS IN ----
+     hiddenDiag started it a `size` before the point at which the box is fully INSIDE the field, which left it straddling the edge
+     — half of it visible from the first frame, sitting there through the 600ms before the loop starts. A straight round starts at
+     pos(0).x = −size, fully out. Measured the same way for both: the ball's box at t=0 against the field's own rect. */
+  { const roll60 = await page.evaluate(async () => { const TM = (await import('./games/timing/index.js')).default;
+      const RUN = await import('./run/run.js'), ST = await import('./core/state.js'), SS = await import('./core/store.js');
+      const G = await import('./config/games.js');
+      SS.store.intro['timing'] = SS.store.intro['timing:hidden'] = Date.now(); SS.save();
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      Object.assign(ST.sel, { vs: 0, practice: 0, game: 'timing', diff: 'hidden', secs: -1 }); RUN.start();
+      for (let i = 0; i < 200 && TM.st !== 'run' && TM.st !== 'arm'; i++) await wait(25);
+      const f = document.getElementById('gen').getBoundingClientRect();
+      const off = b => { const p0 = b.pos(0), s = b.size;
+        return p0.x + s <= 0.5 || p0.x >= f.width - 0.5 || p0.y + s <= 0.5 || p0.y >= f.height - 0.5; };
+      const out = { field: { w: Math.round(f.width), h: Math.round(f.height) }, diag: [], straight: [] };
+      const wasD = G.HIDDEN.diag, wasP = G.HIDDEN.plain, wasF = G.HIDDEN.diagFrom;
+      for (const [which, force] of [['diag', 1], ['straight', 0]]) {
+        G.HIDDEN.diag = force; G.HIDDEN.plain = 0; G.HIDDEN.diagFrom = 1;
+        for (let i = 0; i < 24; i++) { TM.clearT(); TM.round = 14 + i; TM.st = 'arm'; TM.hidden();
+          const b = TM.ball; out[which].push({ diag: b.diag === undefined ? null : b.diag, off: off(b),
+            at0: { x: Math.round(b.pos(0).x), y: Math.round(b.pos(0).y) }, size: Math.round(b.size) }); }
+      }
+      G.HIDDEN.diag = wasD; G.HIDDEN.plain = wasP; G.HIDDEN.diagFrom = wasF;
+      RUN.abort(); await wait(300); return out; });
+    const dOff = roll60.diag.filter(r => !r.off), sOff = roll60.straight.filter(r => !r.off);
+    (roll60.diag.length === 24 && roll60.diag.every(r => r.diag !== null) && dOff.length === 0
+      && roll60.straight.every(r => r.diag === null) && sOff.length === 0)
+      ? ok(`60.13 an angled-wall ball starts entirely off screen and rolls in, exactly as a straight-wall ball does — 24 angled rounds and 24 straight ones, every one of them with its whole box outside the ${roll60.field.w}×${roll60.field.h} field at t=0`)
+      : bad('60.13 the angled ball starts on screen', JSON.stringify({ diagOn: dOff.slice(0, 4), straightOn: sOff.slice(0, 4) })); }
+
   /* ---- v31 (60.12, build 60, L5 quoted — Aiden 2026-09-23): A HIDDEN STREAK HAS A 50ms ALLOWANCE ----
      The budget is still 700ms; what changes is what a round SPENDS of it. As with 60.4 the thing that could quietly rot is the
      split — the verdict word reads the RAW ms and the budget is charged the reduced one — so the check drives both sides and

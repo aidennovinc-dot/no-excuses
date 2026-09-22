@@ -1023,6 +1023,42 @@ scene('60.12', async (page, browser) => {
   await abortRun(page); await sleep(300);
 });
 
+/* =======================================================================================================
+   60.13 — an angled-wall ball starts off screen and rolls in
+   Two frames per wall: the first frame the round is drawn (where build 59 shows half a ball parked on the edge) and the
+   same round a second later, rolling. The straight wall is beside it as the reference, because it is the behaviour the
+   item asks the angled one to match.
+   ======================================================================================================= */
+scene('60.13', async (page, browser) => {
+  await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture({ allOpen: 1 }));
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(450);
+  for (const [which, force] of [['angled', 1], ['straight', 0]]) {
+    // a fresh run each time: a round dealt into a #gen that is no longer laid out measures nothing
+    await goRun(page, { game: 'timing', diff: 'hidden', secs: -1 });
+    await page.evaluate(async () => { window.__tm = (await import('./games/timing/index.js')).default; });
+    await waitFor(page, () => window.__tm && (window.__tm.st === 'run' || window.__tm.st === 'arm'), 20000);
+    await page.evaluate(async f => { const G = await import('./config/games.js');
+      G.HIDDEN.diag = f; G.HIDDEN.plain = 0; G.HIDDEN.diagFrom = 1;
+      const M = window.__tm; M.clearT(); M.round = 16; M.st = 'arm'; M.hidden(); }, force);
+    await sleep(60);
+    // measured BEFORE the frame: frame() hands the tab to the lens page and a backgrounded page reports a zero box
+    const ball = await page.evaluate(() => { const M = window.__tm, b = M.ball, p0 = b.pos(0);
+      const f = document.getElementById('gen').getBoundingClientRect(); const el = document.getElementById('tmball');
+      const r = el ? el.getBoundingClientRect() : null;
+      return { wall: b.diag === undefined ? 'straight' : b.diag + '°', size: Math.round(b.size),
+        at0: { x: Math.round(p0.x), y: Math.round(p0.y) },
+        field: { w: Math.round(f.width), h: Math.round(f.height) },
+        onScreenPixels: r ? Math.round(Math.max(0, Math.min(r.right, f.right) - Math.max(r.left, f.left)) * Math.max(0, Math.min(r.bottom, f.bottom) - Math.max(r.top, f.top))) : null }; });
+    await frame(page, browser, `60.13-${which}-t0`, `Hidden Streak, ${which} wall — the first frame the round is drawn`);
+    say('ball', ball);
+    await sleep(1500);
+    await frame(page, browser, `60.13-${which}-rolling`, `the same round 1.5s later — the ball has rolled in`);
+    await abortRun(page); await sleep(400);
+  }
+  await page.evaluate(async () => { const G = await import('./config/games.js'); G.HIDDEN.diag = 0.5; G.HIDDEN.plain = 3; G.HIDDEN.diagFrom = 6; });
+  await abortRun(page); await sleep(300);
+});
+
 /* ---------- the runner ---------- */
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 if (ARGV.includes('--list')) { console.log(Object.keys(SCENES).join('\n')); process.exit(0); }
