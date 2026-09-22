@@ -1432,6 +1432,29 @@ if (section('the runs (v15 section 3)')) {
       ? ok('B.3a / B.4 / L5 the Stopwatch Streak budget is 5s, 7.5s past round 10; Hidden is 700ms and the screen says so')
       : bad('B.3a / B.4 the Streak budgets', JSON.stringify(s)); }
 
+  /* ---- v31 (60.11, build 60, Cowork's ramp, Aiden agreed): A HIDDEN STREAK RAMPS UP MORE SLOWLY ----
+     "I only got to round six." The speed band and the angled wall both applied from ROUND ONE at full strength, so round 1 was
+     already most of the difficulty. The new shape is asserted at the rounds it names — plain to 3, band in from 4 and full at
+     10, angled walls from 6 and full at 14, rampTo 20 — and, separately, that a SET still gets none of it whatever the round. */
+  { const ramp60 = await page.evaluate(async () => { const TM = (await import('./games/timing/index.js')).default;
+      const G = await import('./config/games.js'); const H = G.HIDDEN;
+      const at = (r, vary) => TM.hiddenRamp(r, vary);
+      const rows = [1, 2, 3, 4, 6, 7, 10, 14, 20, 30].map(r => { const x = at(r, true);
+        return { r, plain: !!x.plain, band: Math.round(x.band * 1000) / 1000, diagP: Math.round(x.diagP * 1000) / 1000, tilt: Math.round(x.tilt * 10) / 10 }; });
+      return { H: { plain: H.plain, bandFrom: H.bandFrom, bandFull: H.bandFull, diagFrom: H.diagFrom, diagFull: H.diagFull, rampTo: H.rampTo, band: H.band, diag: H.diag },
+        rows, set: [1, 6, 10, 20].map(r => at(r, false)).map(x => ({ band: x.band, diagP: x.diagP, tilt: x.tilt, plain: !!x.plain })) }; });
+    const by = n => ramp60.rows.find(r => r.r === n);
+    const H = ramp60.H;
+    const monotone = (k) => ramp60.rows.every((r, i) => !i || r[k] >= ramp60.rows[i - 1][k] - 1e-9);
+    (H.plain === 3 && H.bandFrom === 4 && H.bandFull === 10 && H.diagFrom === 6 && H.diagFull === 14 && H.rampTo === 20
+      && [1, 2, 3].every(n => by(n).plain && by(n).band === 0 && by(n).diagP === 0 && by(n).tilt === 0)
+      && by(4).band > 0 && by(4).band < H.band && by(10).band === H.band && by(20).band === H.band
+      && by(4).diagP === 0 && by(6).diagP > 0 && by(6).diagP < H.diag && by(14).diagP === H.diag && by(30).diagP === H.diag
+      && monotone('band') && monotone('diagP') && monotone('tilt')
+      && ramp60.set.every(x => x.band === 0 && x.diagP === 0 && x.tilt === 0 && !x.plain))
+      ? ok(`60.11 a Hidden Streak ramps up slowly: rounds 1-${H.plain} are plain (steady speed, straight wall, no tilt), the speed band phases in from ${H.bandFrom} and is full at ${H.bandFull} (${ramp60.rows.filter(r => [1, 4, 7, 10].includes(r.r)).map(r => 'r' + r.r + ' ±' + Math.round(r.band * 100) + '%').join(', ')}), angled walls start at ${H.diagFrom} and reach ${H.diag} by ${H.diagFull} (${ramp60.rows.filter(r => [4, 6, 10, 14].includes(r.r)).map(r => 'r' + r.r + ' ' + r.diagP).join(', ')}), rampTo is ${H.rampTo} (was 12), every dimension climbs and never falls — and a SET draws none of it at any round`)
+      : bad('60.11 the Hidden Streak ramp', JSON.stringify(ramp60)); }
+
   /* ---- v31 (60.10, build 60): THE STOPWATCH IGNORES TAPS FOR ITS FIRST SECOND ----
      Aiden's accidental tap as the game started scored 0.01 and ruined a run. The lock is measured from when the CLOCK starts,
      not from when the round is drawn, so the check reads `t0` off the engine and taps against that rather than against a sleep.
@@ -1687,8 +1710,13 @@ if (section('the runs (v15 section 3)')) {
       await wait(() => SP.st === 'find'); const fs = [...document.querySelectorAll('#gen .fs')];
       out.find = { n: fs.length, drawn: fs.filter(e => { const p = e.querySelector('svg path'); return p && p.getBoundingClientRect().width > 4; }).length, odd: fs.filter(e => e.classList.contains(SP.odd)).length };
       RUN.abort(); await new Promise(r => setTimeout(r, 400));
+      /* AMENDED at build 60 (v31 60.11, Aiden's call of 2026-09-23): the angled wall's share is a RAMP now — 0 until round 6,
+         rising to HIDDEN.diag by round 14 — so forcing HIDDEN.diag to 1 no longer turns round 1. The assertion is not loosened:
+         it still demands that EVERY Streak round it samples is turned, and it samples them at round 14 and up, which is where
+         the ramp says every round should be. `at` is the round to deal, and a Set still refuses to turn at any round. */
       const was = G.HIDDEN.diag; G.HIDDEN.diag = 1;
-      const hid = async secs => { TM.ball = null; document.getElementById('gen').innerHTML = ''; go({ game: 'timing', diff: 'hidden', secs });
+      const hid = async (secs, at) => { TM.ball = null; document.getElementById('gen').innerHTML = ''; go({ game: 'timing', diff: 'hidden', secs });
+        if (at) { await wait(() => TM.st === 'run' || TM.st === 'arm'); TM.clearT(); TM.round = at; TM.st = 'arm'; TM.hidden(); }
         if (!(await wait(() => TM.st === 'run' && TM.ball && document.getElementById('tmwall')))) { RUN.abort(); await new Promise(res => setTimeout(res, 400)); return { never: 1 }; }
         const b = TM.ball, s = b.size, f = document.getElementById('gen').getBoundingClientRect(), c = t => { const p = b.pos(t); return [p.x + s / 2, p.y + s / 2]; };
         const u = b.diag === undefined ? null : [Math.cos(b.diag * Math.PI / 180), Math.sin(b.diag * Math.PI / 180)];
@@ -1696,7 +1724,7 @@ if (section('the runs (v15 section 3)')) {
         const r = { diag: b.diag, tilt: b.tilt, markAhead: u ? (m[0] - w[0]) * u[0] + (m[1] - w[1]) * u[1] > 0 : null,
           inField: [c(b.wall), m].every(([x, y]) => x >= 0 && x <= f.width && y >= 0 && y <= f.height), wall: getComputedStyle(document.getElementById('tmwall')).transform };
         RUN.abort(); await new Promise(res => setTimeout(res, 400)); return r; };
-      out.streak = []; for (let i = 0; i < 4; i++) out.streak.push(await hid(-1));
+      out.streak = []; for (let i = 0; i < 4; i++) out.streak.push(await hid(-1, 14 + i));
       out.set = await hid(10);
       G.HIDDEN.diag = was; return out; });
     const diagOk = live50.streak.every(r => [45, 135, 225, 315].includes(r.diag) && Math.abs(r.tilt) <= G50.HIDDEN.diagTilt && r.markAhead && r.inField && r.wall !== 'none') && live50.set.diag === undefined && live50.set.wall === 'none';
@@ -5169,14 +5197,14 @@ if (section('build 31 - v18 sections B.1 to B.14')) {
   {
     const ms = /const off=\(b\.t-b\.markT\)\/b\.v\*1000/.test(tm31);
     const cfgOk = G31.HIDDEN.band > 0 && G31.HIDDEN.tilt > 0 && G31.HIDDEN.far > 0;
-    /* AMENDED at build 45 (v25 item 21): the three variations moved into TM.hiddenRamp(round, vary) — expression for expression, so the review
-       catalogue's Round formats table reads the ramp the game deals from instead of a typed copy. The check follows them there. */
-    const ramp45 = (tm31.match(/hiddenRamp\(round,vary\)\{[\s\S]*?\},\r?\n/) || [''])[0];
-    const varies = /const vary=this\.streak\(\)&&!this\.two\.on/.test(tm31) && /const R=this\.hiddenRamp\(this\.round,vary\)/.test(tm31)
-      && /jit\(R\.band\)/.test(tm31) && /jit\(R\.spread\)/.test(tm31) && /R\.tilt\*Math\.PI\/180/.test(tm31)
-      && /band:vary\?HIDDEN\.band:0/.test(ramp45) && /HIDDEN\.far\*k/.test(ramp45) && /HIDDEN\.spread\*k/.test(ramp45) && /HIDDEN\.tilt\*\(k\/Math\.max\(1,HIDDEN\.rampTo-1\)\)/.test(ramp45);
-    (ms && cfgOk && varies) ? ok(`B.4 / B.5 Hidden scores the TIME between ball and marker, and a Streak varies its pace (±${G31.HIDDEN.band * 100}%), its angle (to ${G31.HIDDEN.tilt}°) and its distance (+${G31.HIDDEN.far * 100}% a round)`)
-      : bad('B.4 / B.5 milliseconds and the variation', JSON.stringify({ ms, cfgOk, varies }));
+    /* AMENDED at build 45 (v25 item 21): the three variations moved into TM.hiddenRamp(round, vary) — expression for expression.
+       DELETED AT BUILD 60 (v31 60.11): `varies` was a SOURCE-TEXT check — nine regexes against how hiddenRamp is spelled — and
+       60.11 rewrote that function, so it failed on the refactor. The gate's own rule is to DELETE such a check and name it in the
+       outcome rather than re-spell it, and the FACT it stood for is asserted better elsewhere now: 60.11 in "the runs" drives
+       hiddenRamp itself at ten rounds and checks the pace, the angled-wall share and the tilt against the numbers in config, and
+       asserts a SET draws none of them; the live 45° check in that same section drives four real Streak rounds and a real Set. */
+    (ms && cfgOk) ? ok(`B.4 / B.5 Hidden scores the TIME between ball and marker, and a Streak varies its pace (±${G31.HIDDEN.band * 100}%), its angle (to ${G31.HIDDEN.tilt}°) and its distance (+${G31.HIDDEN.far * 100}% a round) — the variation's own shape is 60.11's check in "the runs" since build 60`)
+      : bad('B.4 / B.5 milliseconds and the variation', JSON.stringify({ ms, cfgOk }));
     // nothing anywhere still calls Hidden pixels
     const pxLeft = [['config/games.js', G31.GAMES.timing.per.hidden.suffix], ['config/key-bars.js', KB31.KEY_BARS['timing:hidden:10'].unit]].filter(([, v]) => /px/.test(String(v)));
     // AMENDED at build 44 (v24 §E): the conversions stood until Aiden set both bars himself — 1500ms and 2.5s, in the converted units

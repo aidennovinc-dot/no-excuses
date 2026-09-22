@@ -24,7 +24,17 @@ export const CFG = { lockout: 750, countStep: 300, holdRate: 38 /* vmin per seco
    Streak deals `diag` of its rounds (guess) with the wall and the ball's path turned 45° together — the ball travels a diagonal of the
    field and the wall stays square to it — and the path's tilt off that square is held to `diagTilt` degrees (guess) on those rounds. A
    Set still draws none of it (B.5). */
-export const HIDDEN = { speed: 0.3, band: 0.25, tilt: 22, far: 0.10, spread: 0.05, rampTo: 12, maxAt: 0.94, diag: 0.5, diagTilt: 10 };
+/* v31 (60.11, build 60, Cowork's ramp, Aiden agreed): A HIDDEN STREAK RAMPS UP MORE SLOWLY. "I only got to round six."
+   Until build 59 the speed band (±25%) and the angled wall (half the rounds) applied from ROUND ONE at full strength, and
+   only tilt, far and spread ramped — so round 1 was already most of the difficulty and there was nothing left to climb.
+   Four numbers carry the new shape and the engine reads them rather than holding any of it:
+   · `plain` — rounds 1 to 3 are steady speed, a straight wall and no tilt at all;
+   · `bandFrom` / `bandFull` — the speed band phases in from round 4 and reaches its full ±25% at round 10;
+   · `diagFrom` / `diagFull` — angled walls start at round 6 and their share rises to `diag` (0.5) by round 14;
+   · `rampTo` 12 → 20, so far, spread and tilt take nearly twice as long to reach full.
+   THE SET IS UNTOUCHED: every one of these is inside `vary`, which is a solo Streak and nothing else (B.5). */
+export const HIDDEN = { speed: 0.3, band: 0.25, tilt: 22, far: 0.10, spread: 0.05, rampTo: 20, maxAt: 0.94, diag: 0.5, diagTilt: 10,
+  plain: 3, bandFrom: 4, bandFull: 10, diagFrom: 6, diagFull: 14 };
 // sequence speed is not a choice any more (v9): it starts at 0.5s a key and tightens 15ms a round, floor 0.28s
 export const SEQ_STEP = { start: 500, step: 15, floor: 280 };
 // length faces (v11): the name everywhere, the seconds only on the pick sheet. 7 and 10 are the pass & play lengths (PASS_LEN)

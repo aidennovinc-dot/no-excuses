@@ -129,13 +129,25 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
   /* v25 (item 21, build 45): a Hidden round's ramp as numbers — the expressions hidden() deals from, moved here unchanged so the review catalogue's
      Round formats table cannot print a ramp the game does not play. `vary` is a solo Streak; a Set and a shared run draw none of it.
      band: the pace's ± share · ramp: how much further behind the wall than the dealt time · spread: that distance's ± share · tilt: the widest angle, degrees */
+  /* v31 (60.11, build 60): the ramp is a function of the round for EVERY dimension now, not just three of them. `up(from,full)`
+     is one straight line from 0 at `from` to 1 at `full`, held at both ends — the shape the band and the angled wall's share
+     both take. Rounds 1 to `plain` get none of it: steady speed, a straight wall, no tilt. `diagP` is the CHANCE this round
+     turns the wall and is read by hidden(); every other field is what it was, on a `rampTo` that is now 20. A Set passes
+     `vary` false and gets exactly what it always got. */
   hiddenRamp(round,vary){ const k=vary?Math.min(HIDDEN.rampTo,round)-1:0;
-    return { k, band:vary?HIDDEN.band:0, ramp:vary?1+HIDDEN.far*k:1+.06*(Math.min(10,round)-1), spread:vary?HIDDEN.spread*k:0, tilt:vary?HIDDEN.tilt*(k/Math.max(1,HIDDEN.rampTo-1)):0 }; },
+    // `from` is the first round that carries ANY of it, so the line's zero sits the round before and `from` itself is already on it
+    const up=(from,full)=>Math.max(0,Math.min(1,(round-(from-1))/Math.max(1,full-(from-1))));
+    const plain=vary&&round<=HIDDEN.plain;
+    return { k, plain, band:vary&&!plain?HIDDEN.band*up(HIDDEN.bandFrom,HIDDEN.bandFull):0,
+      diagP:vary&&!plain?HIDDEN.diag*up(HIDDEN.diagFrom,HIDDEN.diagFull):0,
+      ramp:vary?1+HIDDEN.far*k:1+.06*(Math.min(10,round)-1), spread:vary?HIDDEN.spread*k:0,
+      tilt:vary&&!plain?HIDDEN.tilt*(k/Math.max(1,HIDDEN.rampTo-1)):0 }; },
   hidden(){ const r=genRect(); const size=Math.max(28,Math.min(r.width,r.height)*.11); const dir=rnd(4), horiz=dir<2; const L=horiz?r.width:r.height;
     const vary=this.streak()&&!this.two.on;
     const R=this.hiddenRamp(this.round,vary);
     // v26 §B2 (build 50, part of #450): a solo Streak turns the wall 45° on HIDDEN.diag of its rounds — hiddenDiag below
-    if(vary&&Math.random()<HIDDEN.diag) return this.hiddenDiag(r,size,R);
+    // v31 (60.11): the share is the RAMP's, not the flat HIDDEN.diag — 0 until round 6 and rising to 0.5 by round 14
+    if(vary&&Math.random()<R.diagP) return this.hiddenDiag(r,size,R);
     const jit=(a)=>1+(Math.random()*2-1)*a;
     const v=L*HIDDEN.speed*(vary?jit(R.band):1);
     const ramp=R.ramp;
