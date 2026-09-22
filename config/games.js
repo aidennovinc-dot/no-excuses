@@ -33,8 +33,12 @@ export const CFG = { lockout: 750, countStep: 300, holdRate: 38 /* vmin per seco
    · `diagFrom` / `diagFull` — angled walls start at round 6 and their share rises to `diag` (0.5) by round 14;
    · `rampTo` 12 → 20, so far, spread and tilt take nearly twice as long to reach full.
    THE SET IS UNTOUCHED: every one of these is inside `vary`, which is a solo Streak and nothing else (B.5). */
+/* v31 (60.12, build 60, L5 quoted — Aiden 2026-09-23): `free` is a HIDDEN STREAK'S ALLOWANCE, in ms. The budget is still 700
+   (L5 is untouched); what changes is what a round SPENDS of it — `max(0, ms − 50)` rather than the whole miss. The round's own
+   verdict word still reads the RAW ms, the same split 60.4 gives Grow and Flash has always had. Hidden only: the STOPWATCH Streak
+   has no allowance and spends its seconds whole. */
 export const HIDDEN = { speed: 0.3, band: 0.25, tilt: 22, far: 0.10, spread: 0.05, rampTo: 20, maxAt: 0.94, diag: 0.5, diagTilt: 10,
-  plain: 3, bandFrom: 4, bandFull: 10, diagFrom: 6, diagFull: 14 };
+  plain: 3, bandFrom: 4, bandFull: 10, diagFrom: 6, diagFull: 14, free: 50 };
 // sequence speed is not a choice any more (v9): it starts at 0.5s a key and tightens 15ms a round, floor 0.28s
 export const SEQ_STEP = { start: 500, step: 15, floor: 280 };
 // length faces (v11): the name everywhere, the seconds only on the pick sheet. 7 and 10 are the pass & play lengths (PASS_LEN)

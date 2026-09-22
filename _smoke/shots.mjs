@@ -989,6 +989,40 @@ scene('60.4', async (page, browser) => {
   await abortRun(page); await sleep(300);
 });
 
+scene('60.12', async (page, browser) => {
+  await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture({ allOpen: 1 }));
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(450);
+  await goRun(page, { game: 'timing', diff: 'hidden', secs: -1 });
+  let shot = false;
+  for (let round = 1; round <= 6 && !shot; round++) {
+    // tap a fixed distance past the marker, so the round's miss is a known number well over the 50ms allowance
+    await page.evaluate(async () => { window.__tm = (await import('./games/timing/index.js')).default; });
+    const ok = await waitFor(page, () => { const M = window.__tm; return M && M.st === 'run' && M.ball && M.t0; }, 20000);
+    if (!ok) { console.log('      never reached a live round'); break; }
+    await page.evaluate(() => { const o = document.getElementById('tmallow'); if (o) o.remove(); });
+    // the tap lands 180ms after the marker: 180ms raw, 130ms spent
+    await page.evaluate(async () => { const M = window.__tm = window.__tm || (await import('./games/timing/index.js')).default;
+      const b = M.ball, at = M.t0 + (b.markT / b.v + 0.18) * 1000;
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      while (performance.now() < at - 4) await wait(2);
+      M.onDown({ type: 'down', t: at }); });
+    const up = await waitFor(page, () => { const h = document.getElementById('tmallow'); if (!h) return false;
+      const b = h.querySelector('.abar'); return !!b && b.getBoundingClientRect().width > 10; }, 6000);
+    if (up) {
+      await sleep(380);
+      const met = await allowMetrics(page, 'tmallow');
+      const bud = await page.evaluate(async () => { const M = window.__tm; const G = await import('./config/games.js');
+        return { free: G.HIDDEN.free + 'ms', budget: M.budget() + 'ms', spentSoFar: Math.round(M.tot),
+          roundsPlayed: M.errs.length, rawMiss: M.errs.map(e => Math.round(e)),
+          spentPerRound: M.errs.map(e => Math.round(Math.max(0, e - G.HIDDEN.free))) }; });
+      await frame(page, browser, '60.12-hidden-streak-round', 'Hidden Streak round screen — the same 60.18 allowance layout: the ms over the allowance draining, the 700ms budget bar with this round lit, the caption');
+      say('allowance', met); say('budget', bud); shot = true;
+    }
+    await sleep(1600); await ptr(page, 'pointerdown', '#gen'); await ptr(page, 'pointerup', '#gen'); await sleep(700);
+  }
+  await abortRun(page); await sleep(300);
+});
+
 /* ---------- the runner ---------- */
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 if (ARGV.includes('--list')) { console.log(Object.keys(SCENES).join('\n')); process.exit(0); }

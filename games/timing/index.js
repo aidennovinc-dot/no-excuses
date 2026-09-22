@@ -1,7 +1,7 @@
 /* No Excuses — Timing — Stopwatch and Hidden
    Split out of index.html at build 12. Build 17 (refactor stage 3): the engine contract, on the round base. Behaviour is identical to build 11. */
 
-import { TIMING as CP } from "../../config/copy.js";
+import { ALLOWANCE, TIMING as CP } from "../../config/copy.js";
 import { CFG, HIDDEN } from "../../config/games.js";
 import { $, T, f2, minMax, sum } from "../../core.js";
 import { haptic } from "../../core/platform.js";
@@ -243,7 +243,8 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
     $('#gen').insertAdjacentHTML('beforeend',`<div class="glbl bot" id="tmres"><b class="${good?'g':ok?'':'r'}" id="tmerr"${col?` style="color:${col}"`:''}>${hid?err+CP.msU:f2(err)+'s'}</b>${t?tierWord(t):good?CP.dead:ok?CP.close:''}</div>`); const h=$('#tmhint'); if(h) h.remove();
     ok?this.ctx.audio.hit():this.ctx.audio.miss(); if(!ok) haptic(30);
     if(this.two.on) return this.twoAdd(err,hid);
-    if(this.streak()) return this.addUp(err,hid);
+    // v31 (60.12, build 60, L5): a HIDDEN Streak spends max(0, ms − 50) of its 700ms budget; Stopwatch spends its seconds whole
+    if(this.streak()) return this.addUp(this.spendOf(err),hid,err);
     // v14 (6.1 / 6.3) / v18 (B.2): BOTH Sets walk a running TOTAL now - Hidden's milliseconds and Stopwatch's seconds off
     const past=this.errs.slice(0,-1); const was=sum(past), to=sum(this.errs);
     hud.countUp({ audio:this.ctx.audio, from:was, to, ms:600, fmt:v=>hid?Math.round(v)+CP.msU:f2(v)+'s', set:t=>hud.score(t), alive:()=>this.st==='show',
@@ -256,9 +257,15 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
   /* v18 (B.3c): the difference HOLDS for CFG.hold before it drains into the total. It used to start draining the moment
      the result was drawn, so the number Aiden was meant to read had already begun moving - "it adds immediately and I
      can't see what happened". Reaction's Flash Streak holds on the same number (B.7), so the two beat alike. */
-  addUp(err,hid){ this.later(()=>{ if(this.st!=='show') return; this.drainUp(err,hid); },CFG.hold); },
-  drainUp(err,hid){ hud.addUp({ audio:this.ctx.audio, from:this.tot, err, ms:800, el:$('#tmerr'), fmt:v=>hid?Math.round(v)+CP.msU:f2(v)+'s', alive:()=>this.st==='show',
-      onFrame:tot=>{ this.tot=tot; hud.score(this.streakScore()); this.hud(); },
+  /* v31 (60.12, build 60): `spend` is what this round costs the budget and `raw` is the round's own miss. On Hidden they differ
+     by the allowance; on Stopwatch they are the same number. The allowance block is 60.18's shared layout and its bar is moved by
+     the same frames that move the total, so the figure draining and the bar filling are one animation. */
+  spendOf(err){ return this.hid()?Math.max(0,err-HIDDEN.free):err; },
+  addUp(err,hid,raw){ this.later(()=>{ if(this.st!=='show') return; this.drainUp(err,hid,raw); },CFG.hold); },
+  drainUp(err,hid,raw){ const free=hid&&raw!==undefined, bud=this.budget(), spent=this.tot;
+    if(free){ const g=$('#tmres'); if(g) g.insertAdjacentHTML('beforeend',hud.allowHtml({ id:'tmallow', add:Math.round(err), unit:CP.msU, spent, budget:bud, free:HIDDEN.free, freeText:ALLOWANCE.freeEach })); }
+    hud.addUp({ audio:this.ctx.audio, from:this.tot, err, ms:800, el:free?$('#tmallow-add'):$('#tmerr'), fmt:v=>free?'+'+Math.round(v)+CP.msU:(hid?Math.round(v)+CP.msU:f2(v)+'s'), alive:()=>this.st==='show',
+      onFrame:tot=>{ this.tot=tot; if(free) hud.allowBar('tmallow',spent,tot-spent,bud); hud.score(this.streakScore()); this.hud(); },
       done:tot=>{ this.tot=tot; if(this.tot>=this.budget()) this.out=true; hud.score(this.streakScore()); this.hud();
         if(this.out){ const r=$('#tmres'); if(r) r.insertAdjacentHTML('beforeend',`<br>${T(CP.over,{bud:this.budTxt()})}`); }
         this.ctx.emit('live',this.result()); this.after(()=>this.next()); } }); } });

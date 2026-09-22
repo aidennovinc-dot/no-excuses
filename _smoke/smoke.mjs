@@ -1432,6 +1432,22 @@ if (section('the runs (v15 section 3)')) {
       ? ok('B.3a / B.4 / L5 the Stopwatch Streak budget is 5s, 7.5s past round 10; Hidden is 700ms and the screen says so')
       : bad('B.3a / B.4 the Streak budgets', JSON.stringify(s)); }
 
+  /* ---- v31 (60.12, build 60, L5 quoted — Aiden 2026-09-23): A HIDDEN STREAK HAS A 50ms ALLOWANCE ----
+     The budget is still 700ms; what changes is what a round SPENDS of it. As with 60.4 the thing that could quietly rot is the
+     split — the verdict word reads the RAW ms and the budget is charged the reduced one — so the check drives both sides and
+     asserts the STOPWATCH Streak still spends its seconds whole. */
+  { const hf60 = await page.evaluate(async () => { const TM = (await import('./games/timing/index.js')).default;
+      const G = await import('./config/games.js');
+      const spend = (mode, e) => { TM.ctx = { mode }; return TM.spendOf(e); };
+      return { free: G.HIDDEN.free,
+        hidden: [0, 25, 50, 51, 180, 700].map(e => [e, spend('hidden', e)]),
+        stopwatch: [0, 0.5, 2].map(e => [e, spend('stopwatch', e)]) }; });
+    const h = Object.fromEntries(hf60.hidden), w = Object.fromEntries(hf60.stopwatch);
+    (hf60.free === 50 && h[0] === 0 && h[25] === 0 && h[50] === 0 && h[51] === 1 && h[180] === 130 && h[700] === 650
+      && w[0] === 0 && w[0.5] === 0.5 && w[2] === 2)
+      ? ok('60.12 (L5) a Hidden Streak round spends max(0, ms − 50) of the unchanged 700ms budget — a 180ms miss costs 130, a 50ms miss costs nothing — while the STOPWATCH Streak still spends its seconds whole')
+      : bad('60.12 the Hidden Streak allowance', JSON.stringify(hf60)); }
+
   /* ---- v31 (60.11, build 60, Cowork's ramp, Aiden agreed): A HIDDEN STREAK RAMPS UP MORE SLOWLY ----
      "I only got to round six." The speed band and the angled wall both applied from ROUND ONE at full strength, so round 1 was
      already most of the difficulty. The new shape is asserted at the rounds it names — plain to 3, band in from 4 and full at
