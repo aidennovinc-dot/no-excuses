@@ -1432,6 +1432,21 @@ if (section('the runs (v15 section 3)')) {
       ? ok('B.3a / B.4 / L5 the Stopwatch Streak budget is 5s, 7.5s past round 10; Hidden is 700ms and the screen says so')
       : bad('B.3a / B.4 the Streak budgets', JSON.stringify(s)); }
 
+  /* ---- v31 (60.14, build 60): THE STOPWATCH STREAK'S RUNNING COUNTER READS TO TWO DECIMALS ----
+     "0.2 / 5.0s" becomes "0.16 / 5.00s". An attempt is scored to a hundredth (onDown rounds err to 100ths), so a whole round
+     could land and a counter printed to a tenth not move — one tenth of a 5s budget is two percent of the run. Driven, not read
+     off the string: a real attempt is scored and the number on #score is compared with the engine's own total. */
+  { const dp60 = await page.evaluate(async () => { const TM = (await import('./games/timing/index.js')).default;
+      TM.ctx = { mode: 'stopwatch', len: -1 }; TM.round = 1;
+      const shots = [0, 0.04, 0.16, 1.234, 5].map(v => { TM.tot = v; return { tot: v, line: TM.streakScore() }; });
+      TM.round = 11; TM.tot = 0.16; const past10 = TM.streakScore();
+      return { shots, past10 }; });
+    const two = dp60.shots.every(r => /^[0-9]+\.[0-9]{2} \/ [0-9]+\.[0-9]{2}s$/.test(r.line));
+    const moves = dp60.shots.find(r => r.tot === 0.04).line !== dp60.shots.find(r => r.tot === 0).line;
+    (two && moves && dp60.shots.find(r => r.tot === 0.16).line === '0.16 / 5.00s' && dp60.past10 === '0.16 / 7.50s')
+      ? ok(`60.14 the Stopwatch Streak's running counter reads to two decimals — ${dp60.shots.map(r => '"' + r.line + '"').join(', ')}, and "${dp60.past10}" past round 10 — so a 0.04s round moves it where a single decimal did not`)
+      : bad('60.14 the Stopwatch Streak counter', JSON.stringify(dp60)); }
+
   /* ---- v31 (60.13, build 60): AN ANGLED-WALL BALL STARTS OFF SCREEN AND ROLLS IN ----
      hiddenDiag started it a `size` before the point at which the box is fully INSIDE the field, which left it straddling the edge
      — half of it visible from the first frame, sitting there through the 600ms before the loop starts. A straight round starts at

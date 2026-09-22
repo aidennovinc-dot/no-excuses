@@ -1059,6 +1059,25 @@ scene('60.13', async (page, browser) => {
   await abortRun(page); await sleep(300);
 });
 
+/* 60.14 — the Stopwatch Streak's running counter, on the screen it is printed on */
+scene('60.14', async (page, browser) => {
+  await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture({ allOpen: 1 }));
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(450);
+  await goRun(page, { game: 'timing', diff: 'stopwatch', secs: -1 });
+  await page.evaluate(async () => { window.__tm = (await import('./games/timing/index.js')).default; });
+  await waitFor(page, () => window.__tm && window.__tm.st === 'run' && window.__tm.t0, 20000);
+  // a real attempt, stopped a known distance past the target so the total is a hundredths figure
+  await page.evaluate(async () => { const M = window.__tm; const G = await import('./config/games.js');
+    const at = M.t0 + (M.target + 0.16) * 1000; const wait = ms => new Promise(r => setTimeout(r, ms));
+    while (performance.now() < at - 4) await wait(2);
+    M.onDown({ type: 'down', t: at }); });
+  await sleep(2200);
+  const line = await page.evaluate(() => ({ score: document.getElementById('score').textContent.trim(),
+    hud: document.getElementById('hud-time').textContent.trim() }));
+  await frame(page, browser, '60.14-stopwatch-streak-counter', 'Stopwatch Streak, after one attempt — the running counter to two decimals');
+  say('counter', line);
+});
+
 /* ---------- the runner ---------- */
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 if (ARGV.includes('--list')) { console.log(Object.keys(SCENES).join('\n')); process.exit(0); }
