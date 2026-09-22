@@ -110,7 +110,10 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
     const was=this.asked; this.asked=Math.round((this.asked+this.target)*100)/100; const showAsked=!this.streak();
     $('#gen').innerHTML=`<div class="tmtarget">${CP.target}<b>${f2(this.target)}</b>${showAsked?'<u id="tmasked"></u>':''}</div><div class="tmclock" id="tmclock">0.00</div><div class="glbl bot" id="tmhint">${CP.stop}</div>`;
     if(showAsked) hud.countUp({ from:was, to:this.asked, ms:600, fmt:v=>T(CP.askedSet,{tot:f2(v),all:f2(this.askTot())}), set:t=>{ const el=$('#tmasked'); if(el) el.textContent=t; }, alive:()=>this.st==='arm'||this.st==='run' });
-    this.later(()=>{ this.st='run'; this.t0=performance.now(); const el=$('#tmclock'); const loop=now=>{ if(this.st!=='run') return; const e=(now-this.t0)/1000; el.textContent=f2(e); el.style.opacity=e<1.5?1:Math.max(0,1-(e-1.5)/.5);
+    this.later(()=>{ this.st='run'; this.t0=performance.now(); const el=$('#tmclock'); const hint=$('#tmhint');
+      // v31 (60.10): the hint is dim while taps are ignored and comes up the moment they count, so nothing on screen invites a tap that does nothing
+      if(hint){ hint.classList.add('locked'); this.later(()=>{ const h=$('#tmhint'); if(h) h.classList.remove('locked'); },CFG.swLock); }
+      const loop=now=>{ if(this.st!=='run') return; const e=(now-this.t0)/1000; el.textContent=f2(e); el.style.opacity=e<1.5?1:Math.max(0,1-(e-1.5)/.5);
       /* v17 (B.12): an attempt keeps running to TEN seconds past its target before it stops itself, not five, and it scores
          the real difference either way. Going the whole distance is a thing you can only do on purpose, so it is a secret
          row (`ov` on the record). Solo only, because no two-player run earns anything (L10); the Streak spends the ten
@@ -183,7 +186,17 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
         if(t>=wallStart){ const say=$('#tmsay'); if(say) say.remove(); }
         if(this.stopAt&&now-this.stopAt>700) return this.onDown(true);
         this.raf=requestAnimationFrame(loop); }; this.raf=requestAnimationFrame(loop); },600); },
+  /* v31 (60.10, build 60): THE STOPWATCH IGNORES TAPS FOR ITS FIRST SECOND. Aiden's accidental tap as the game started scored
+     0.01 and ruined a run. `SW_LOCK` in config/games.js is the window, measured from when the clock starts — not from when the
+     round is drawn — and the shortest target ever dealt is 2.5s, so the lock can never eat a real answer. A tap inside it does
+     NOTHING and makes NO SOUND, and the "tap to stop" hint is dim until taps count, so nothing on screen invites one.
+     HIDDEN IS NOT INCLUDED: its ball can be behind the wall for as little as 0.6s, so a second of lockout there would eat real
+     answers. It keeps its own rule — a tap before the ball is behind the wall is ignored, two lines down. */
+  swLocked(ev){ if(this.hid()||this.st!=='run'||!this.t0||ev===true) return false;
+    const at=(ev&&typeof ev.t==='number'&&ev.t>0)?ev.t:performance.now();
+    return at-this.t0<CFG.swLock; },
   onDown(ev){ if(this.st!=='run') return;
+    if(this.swLocked(ev)) return;
     /* v29 (item 16, build 55): A TAP IS SCORED FROM ITS OWN TIME, NEVER FROM THE LAST PAINTED FRAME. Hidden read `ball.t`, which
        the rAF loop wrote on the frame it last drew, so a tap 15ms after that frame was judged as if it had landed on it - up to a
        whole frame (16.7ms at 60Hz) of systematic EARLY bias, against round tiers 40 / 70 / 95ms wide. A third of a tier, every

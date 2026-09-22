@@ -1432,6 +1432,51 @@ if (section('the runs (v15 section 3)')) {
       ? ok('B.3a / B.4 / L5 the Stopwatch Streak budget is 5s, 7.5s past round 10; Hidden is 700ms and the screen says so')
       : bad('B.3a / B.4 the Streak budgets', JSON.stringify(s)); }
 
+  /* ---- v31 (60.10, build 60): THE STOPWATCH IGNORES TAPS FOR ITS FIRST SECOND ----
+     Aiden's accidental tap as the game started scored 0.01 and ruined a run. The lock is measured from when the CLOCK starts,
+     not from when the round is drawn, so the check reads `t0` off the engine and taps against that rather than against a sleep.
+     Three things: a tap inside the window scores NOTHING and leaves the attempt running, a tap after it scores normally, and
+     HIDDEN IS NOT LOCKED — its ball can be behind the wall for 0.6s, so a second there would eat real answers. */
+  { const lock60 = await page.evaluate(async () => { const RUN = await import('./run/run.js'), ST = await import('./core/state.js');
+      const SS = await import('./core/store.js'), G = await import('./config/games.js');
+      SS.store.intro['timing'] = SS.store.intro['timing:stopwatch'] = SS.store.intro['timing:hidden'] = Date.now(); SS.save();
+      const TM = (await import('./games/timing/index.js')).default;
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const till = async f => { for (let i = 0; i < 400; i++) { if (f()) return true; await wait(25); } return false; };
+      const tap = () => { const g = document.getElementById('gen'); const r = g.getBoundingClientRect();
+        g.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: 1, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 })); };
+      const out = { lock: G.CFG.swLock, shortestTarget: null };
+      Object.assign(ST.sel, { vs: 0, practice: 0, game: 'timing', diff: 'stopwatch', secs: -1 }); RUN.start();
+      await till(() => TM.st === 'run' && TM.t0);
+      out.target = TM.target;
+      // the hint is dim while the lock holds
+      out.hintLockedAt = (() => { const h = document.getElementById('tmhint'); return h ? h.classList.contains('locked') : null; })();
+      // inside the window, twice
+      await wait(Math.max(0, 120 - (performance.now() - TM.t0))); tap(); await wait(60);
+      out.afterEarly = { st: TM.st, errs: TM.errs.length };
+      await wait(300); tap(); await wait(60);
+      out.afterEarly2 = { st: TM.st, errs: TM.errs.length };
+      // past it
+      await wait(Math.max(0, G.CFG.swLock + 250 - (performance.now() - TM.t0)));
+      out.hintLockedLater = (() => { const h = document.getElementById('tmhint'); return h ? h.classList.contains('locked') : null; })();
+      tap(); await wait(120);
+      out.afterLate = { st: TM.st, errs: TM.errs.length, score: TM.errs[0] };
+      RUN.abort(); await wait(400);
+      // the shortest target a Stopwatch attempt can ever be dealt, so the lock can be shown never to eat a real answer
+      out.shortestTarget = Math.min(...Array.from({ length: 400 }, () => TM.rampAt(1)));
+      // Hidden is not locked
+      Object.assign(ST.sel, { vs: 0, practice: 0, game: 'timing', diff: 'hidden', secs: -1 }); RUN.start();
+      await till(() => TM.st === 'run' && TM.t0 && TM.ball);
+      out.hiddenLocked = TM.swLocked({ t: TM.t0 + 100 });
+      RUN.abort(); await wait(300);
+      return out; });
+    (lock60.lock === 1000 && lock60.hintLockedAt === true && lock60.hintLockedLater === false
+      && lock60.afterEarly.errs === 0 && lock60.afterEarly.st === 'run'
+      && lock60.afterEarly2.errs === 0 && lock60.afterEarly2.st === 'run'
+      && lock60.afterLate.errs === 1 && lock60.hiddenLocked === false && lock60.shortestTarget >= 2)
+      ? ok(`60.10 a Stopwatch attempt ignores taps for its first ${lock60.lock}ms: two taps inside the window score nothing and leave the attempt running, a tap after it scores (${lock60.afterLate.score}s off), the "tap to stop" hint is dim until taps count, and Hidden is NOT locked — the shortest Stopwatch target ever dealt is ${lock60.shortestTarget}s, so the window can never eat a real answer`)
+      : bad('60.10 the Stopwatch lockout', JSON.stringify(lock60)); }
+
   /* ---- v31 (60.9, build 60): HIDDEN'S VERDICTS, AND THE SET'S THREE STEPS ARE THE KEY'S THREE BARS ----
      Per round, Aiden's numbers: 40 / 70 / 95ms becomes 60 / 115 / 200. Over the Set, Cowork's call: 400 / 650 / 950ms becomes
      700 / 1,000 / 1,500 on the same 5,400 scale. The WHY is the assertion: the old "Meh." sat at 950ms, which was STRICTER than

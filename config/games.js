@@ -10,7 +10,10 @@ export const STREAK = -1;
 // v18 (B.3c / B.7): `hold` is how long a round's own figure sits, readable, before it drains into the running total.
 // Aiden could not read either of them — "it adds immediately and I can't see what happened" — and the two Streaks that
 // do this now share one number so they beat the same way
-export const CFG = { lockout: 750, countStep: 300, holdRate: 38 /* vmin per second */, dotLeeway: 1.18 /* hidden: hit radius × this */, swOver: 10, hold: 800 };
+/* v31 (60.10, build 60): `swLock` is how long a Stopwatch attempt ignores taps, in ms, measured from when the CLOCK starts.
+   Aiden's accidental tap as the game started scored 0.01 and ruined a run. The shortest target ever dealt is 2.5s, so a second
+   can never eat a real answer. Stopwatch only — a Hidden ball can be behind the wall for 0.6s. */
+export const CFG = { lockout: 750, countStep: 300, holdRate: 38 /* vmin per second */, dotLeeway: 1.18 /* hidden: hit radius × this */, swOver: 10, hold: 800, swLock: 1000 };
 /* v18 (B.4 / B.5) — TIMING · HIDDEN, in milliseconds. `speed` is the ball's pace as a fraction of the travel it has to
    cross, which is what it always was (0.3) — but the SCORE is the time between the ball and the marker now, not the
    pixels, because 100px is a different miss on every phone and 855ms is not. B.5's variation is the Streak's: `band` is
