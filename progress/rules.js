@@ -49,7 +49,8 @@ const UNLOCK_TEST = {
   'reaction:nogo':     r=>r.g==='reaction'&&r.d==='flash'&&r.s===5&&r.hits<=350,
   // v15 (1.4d): a Flash OR a Go / No-go Set averaging under 350ms — built as Aiden wrote it. Both modes run a 5-round Set
   'spot:count':        r=>r.g==='reaction'&&r.s===5&&r.hits<=350,
-  'spot:find':         r=>r.g==='spot'&&r.d==='count'&&(r.rounds||0)>=5,
+  // v31 (60.8, build 60, L6): round 6 of a Count STREAK. Round 5 of any Count run was free — every Set is ten rounds long
+  'spot:find':         r=>r.g==='spot'&&r.d==='count'&&r.s===STREAK&&(r.rounds||0)>=6,
 };
 /* length locks: the test for LEN_RULES['game:mode'][i], run over the previous length's runs of THAT mode.
    v15 (1.0a): keyed 'game:mode' since build 23, so Dots · Blind and Dots · Lead can ask for different numbers.

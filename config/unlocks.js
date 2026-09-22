@@ -33,7 +33,10 @@ export const UNLOCKS = [
   // v15 (1.4d): built as Aiden wrote it — Flash OR Go / No-go. Cowork's note is that this collapses into reaction:nogo
   // above (one 349ms Flash Set opens both at once) and recommends Go / No-go only. Flagged in FEATURES.md, not decided here
   { key:'spot:count',        need:'Finish a Reaction · Flash or Go / No-go Set averaging under 350ms', where:{g:'reaction',s:5} },
-  { key:'spot:find',         need:'reach round 5 in Spot · Count',              where:{g:'spot',d:'count'},              live:1 },
+  /* v31 (60.8, build 60, L6 quoted — Aiden 2026-09-23): ROUND 6 IN A COUNT STREAK, not round 5 in any Count run. Every Count
+     SET is ten rounds, so "reach round 5" was satisfied by finishing one — it asked for nothing. A Streak ends when the miscount
+     budget is spent, so reaching round 6 is a real ask. The chain still works: Count Streak is opened during Count Set. */
+  { key:'spot:find',         need:'reach round 6 in a Spot · Count Streak', where:{g:'spot',d:'count',s:-1},         live:1 },
 ];
 /* length locks (v13 section 4) — keyed 'game:mode' since build 23 (v15 1.0a), was keyed by game alone.
    Per key, the requirement copy for the length at index i; `{prev}` is the length before it, `{game}` the game's name and

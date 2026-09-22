@@ -1229,6 +1229,18 @@ if (section('the chain and its screens (v15 sections 1 and 2)')) {
   pair('1.4c Go / No-go opens at a 350ms Flash Set, not 351', V.rxNogo);
   // 1.4d is the one row with TWO ways in — a Flash Set or a Go / No-go Set, built as Aiden wrote it. Cowork's note is that
   // this collapses 1.4c into it; the shape of the test says plainly that both doors are open, so a later change is visible
+  /* ---- v31 (60.8, build 60, L6 quoted — Aiden 2026-09-23): SPOT · FIND ASKS FOR ROUND 6 OF A COUNT STREAK ----
+     "reach round 5 in Spot · Count" was free: every Count SET is ten rounds, so finishing one satisfied it and the row asked for
+     nothing. A Streak ends when the miscount budget is spent, so round 6 is a real ask. The check drives the predicate with the
+     shape of record each mode actually writes, and asserts the SET no longer opens it however far it got. */
+  { const f60 = await page.evaluate(async () => { const R = await import('./progress/rules.js'), U = await import('./config/unlocks.js');
+      const t = R.UNLOCK_TEST['spot:find'], row = U.UNLOCKS.find(r => r.key === 'spot:find');
+      return { need: row.need, where: row.where,
+        streak6: !!t({ g: 'spot', d: 'count', s: -1, rounds: 6 }), streak5: !!t({ g: 'spot', d: 'count', s: -1, rounds: 5 }),
+        set10: !!t({ g: 'spot', d: 'count', s: 10, rounds: 10 }), otherGame: !!t({ g: 'spot', d: 'find', s: -1, rounds: 9 }) }; });
+    (f60.streak6 && !f60.streak5 && !f60.set10 && !f60.otherGame && /round 6/.test(f60.need) && /Streak/.test(f60.need) && f60.where.s === -1)
+      ? ok(`60.8 (L6) Spot · Find asks for "${f60.need}": round 6 of a Count STREAK opens it, round 5 does not, and a finished ten-round Count SET no longer opens it by itself — which is what it did until build 60`)
+      : bad('60.8 the Spot · Find unlock', JSON.stringify(f60)); }
   { const [nogo, flash, slow] = V.spCount;
     (nogo && flash && !slow) ? ok('1.4d Spot · Count opens on a Flash OR a Go / No-go Set under 350ms — both doors, per Aiden') : bad('1.4d Spot · Count', JSON.stringify(V.spCount)); }
   pair('1.1b Quick Tap Marathon asks 24 in a Dash', V.lens.qtMar);
