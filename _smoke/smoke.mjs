@@ -1586,6 +1586,48 @@ if (section('the runs (v15 section 3)')) {
     (live50.bar && live50.bar.w > 8 && live50.beat && Math.max(live50.beat.w, live50.beat.h) > 40 && live50.find.n > 10 && live50.find.drawn === live50.find.n && live50.find.odd === 1 && diagOk)
       ? ok(`v26 §B2 on screen: the rule bar and a Go / No-go beat (${live50.beatShape}) are the shared svg, all ${live50.find.n} shapes of a Find crowd are drawn with one odd one, and a Hidden Streak turned its wall to ${live50.streak.map(r => r.diag + '°').join(', ')} with the ball within ${Math.max(...live50.streak.map(r => Math.abs(r.tilt)))}° of square and the marker behind it — a Set never did (#450)`)
       : bad('v26 §B2 the shapes and the 45° wall on screen', JSON.stringify(live50));
+
+    /* ---- v31 (60.2, build 60): EVERY SHAPE IS PAINTED, IN EVERY STATE A GAME PUTS IT IN ----
+       Aiden played Find, was asked for the RING and could not see one anywhere. Cowork's guess was that the crowd's recolouring
+       sets `fill` only, so a stroke-only shape gets no colour. It is not that: NOTHING in config/shapes.js is stroke-only — every
+       shape is one filled path with `fill-rule:evenodd`, which is how a ring's hole and a spiral's turns are drawn — so a shape
+       was never left uncoloured. What was left behind was a STROKE: `.fs.bad` set the fill alone, so an odd shape tapped in error
+       wore its green (or the other player's red or blue, L4) ring round a red fill.
+       This is the check the item asks for and it is stronger than the item's wording: every shape in SHAPES, in every state a game
+       puts a crowd shape in — plain, dim, bad, odd, odd.p1, odd.p2, odd.bad — with the fill and stroke each resolved to real paint,
+       both against the ground, and a path with real area. It fails on a shape drawn in the ground colour, at zero alpha, or with a
+       recolour that moved the fill and left the stroke. (What Aiden actually saw is 60.3: the target was buried under a decoy, and
+       a ring whose hole is filled in by the shape behind it is a disc.) */
+    const paint60 = await page.evaluate(async () => {
+      const { Shapes } = await import('./games/_shared/shapes.js');
+      const { SHAPES } = await import('./config/shapes.js');
+      const host = document.createElement('div'); host.style.cssText = 'position:fixed;left:-9999px;top:0';
+      document.body.appendChild(host);
+      const rgba = s => { const m = (String(s).match(/[\d.]+/g) || []).map(Number); return m.length >= 3 ? { r: m[0], g: m[1], b: m[2], a: m.length > 3 ? m[3] : 1 } : null; };
+      const near = (a, b) => a && b && Math.abs(a.r - b.r) < 12 && Math.abs(a.g - b.g) < 12 && Math.abs(a.b - b.b) < 12;
+      const ground = rgba(getComputedStyle(document.body).backgroundColor) || { r: 0, g: 0, b: 0, a: 1 };
+      const STATES = ['', 'dim', 'bad', 'odd', 'odd p1', 'odd p2', 'odd bad'];
+      const out = [];
+      for (const name of Object.keys(SHAPES)) for (const st of STATES) {
+        const i = document.createElement('i'); i.className = ('fs ' + name + ' ' + st).trim();
+        i.style.cssText = 'position:relative;--fsz:40px'; i.innerHTML = Shapes.svg(name); host.appendChild(i);
+        const p = i.querySelector('path'), cs = getComputedStyle(p), box = p.getBBox();
+        const fill = rgba(cs.fill), stroke = cs.stroke === 'none' ? null : rgba(cs.stroke);
+        const bad = [];
+        if (!fill || !fill.a || near(fill, ground)) bad.push('fill ' + cs.fill);
+        // a stroke is optional; one that EXISTS has to be paint, and on `bad` it has to have followed the fill
+        if (stroke && (!stroke.a || near(stroke, ground))) bad.push('stroke ' + cs.stroke);
+        if (st.includes('bad') && stroke && !near(stroke, fill)) bad.push('bad left the stroke at ' + cs.stroke + ' over a ' + cs.fill + ' fill');
+        if (!(box.width > 1 && box.height > 1)) bad.push('no area');
+        if (getComputedStyle(i).opacity === '0') bad.push('opacity 0');
+        if (bad.length) out.push({ shape: name, state: st || 'plain', why: bad.join(', ') });
+        host.removeChild(i);
+      }
+      host.remove();
+      return { n: Object.keys(SHAPES).length, states: STATES.length, bad: out }; });
+    paint60.bad.length === 0
+      ? ok(`60.2 every one of the ${paint60.n} shapes in config/shapes.js is painted in all ${paint60.states} states a crowd puts it in — plain, dim, bad, odd and odd in each player's colour — with a fill that is not the ground, a real drawn area, and a recolour that takes the STROKE with it (${paint60.n * paint60.states} combinations)`)
+      : bad('60.2 a shape comes out invisible', JSON.stringify(paint60.bad.slice(0, 8)));
   }
   /* ---- v29 (items 2 / 3 / 4 / 9 / 14, build 55): the quit path, the stale state, the sleeping phone ----
      Four of the build-54 review's findings meet on the same few lines of run/run.js, so they are driven together. */

@@ -858,6 +858,73 @@ scene('60.1', async (page, browser) => {
   }
 });
 
+/* ---------- driving a real run, for the Find and Count scenes (build 60) ---------- */
+const goRun = (page, sel) => page.evaluate(async sel => { const RUN = await import('./run/run.js'), ST = await import('./core/state.js');
+  const SS = await import('./core/store.js');
+  for (const k of ['spot', 'spot:find', 'spot:count', 'timing', 'timing:hidden', 'hold', 'hold:grow', 'reaction', 'reaction:flash']) SS.store.intro[k] = Date.now();
+  SS.save(); Object.assign(ST.sel, { vs: 0, practice: 0 }, sel); RUN.start(); }, sel);
+const abortRun = page => page.evaluate(async () => (await import('./run/run.js')).abort());
+const waitFor = (page, fn, ms = 15000) => page.evaluate(async (src, ms) => { const f = new Function('return (' + src + ')')();
+  const t0 = Date.now(); while (Date.now() - t0 < ms) { let v = null; try { v = f(); } catch (e) {} if (v) return true; await new Promise(r => setTimeout(r, 50)); } return false; }, fn.toString(), ms);
+
+/* =======================================================================================================
+   60.2 / 60.3 — every shape is visible in the Find field, and the target is never buried
+   The item's own test: deal many rounds and fail if any target is less than about 90% visible. The measurement is
+   geometric and done on the live DOM — each shape's own box against every box drawn AFTER it (later elements paint over
+   earlier ones, and the target is index 0, so it is under every decoy it touches) — plus a rendered check that the shape
+   has a paint at all under the game's own colour scheme.
+   ======================================================================================================= */
+const findMetrics = page => page.evaluate(() => { const SP = window.__spot;
+  const els = [...document.querySelectorAll('#gen .fs')]; if (!els.length || !SP) return null;
+  const rects = els.map(e => { const r = e.getBoundingClientRect(); return { x0: r.left, y0: r.top, x1: r.right, y1: r.bottom, a: r.width * r.height }; });
+  const over = (a, b) => Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
+  const visible = i => { const me = rects[i]; if (!me.a) return 0;
+    // a conservative union: the largest single cover, plus the rest summed, capped at 1 — it can only UNDER-state visibility
+    let sum = 0; for (let j = i + 1; j < rects.length; j++) sum += over(me, rects[j]);
+    return Math.max(0, 1 - Math.min(1, sum / me.a)); };
+  const paint = els.map(e => { const p = e.querySelector('path'); const cs = p && getComputedStyle(p);
+    return cs ? { fill: cs.fill, stroke: cs.stroke, w: cs.strokeWidth } : null; });
+  const ti = els.findIndex(e => e.classList.contains(SP.odd));
+  return { n: els.length, odd: SP.odd, targetIx: ti, targetVisible: Math.round(visible(ti) * 100),
+    worstDecoy: Math.round(Math.min(...els.map((_, i) => i === ti ? 1 : visible(i))) * 100),
+    fills: [...new Set(paint.map(p => p && p.fill))], strokes: [...new Set(paint.map(p => p && p.stroke))] }; });
+
+scene('60.2-60.3', async (page, browser) => {
+  await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture({ allOpen: 1 }));
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(450);
+  const rows = [], shot = {};
+  /* Every round is dealt through the engine's own findRound(), with the round number set first — so the later bands (which is
+     where ring, crescent and spiral arrive) are dealt exactly as play deals them rather than mocked. The deck is a deck per RUN,
+     so each pass is a fresh run; six passes over rounds 1–10 is the item's "deal many rounds". */
+  for (let pass = 0; pass < 6; pass++) {
+    await goRun(page, { game: 'spot', diff: 'find', secs: 10 });
+    await waitFor(page, () => document.querySelectorAll('#gen .fs').length > 3);
+    await page.evaluate(async () => { window.__spot = (await import('./games/spot/index.js')).default; });
+    for (let r = 1; r <= 10; r++) {
+      await page.evaluate(n => { const S = window.__spot; S.clearT(); S.round = n; S.findRound(); }, r);
+      await sleep(1550);   // findRound shows the crowd 1.4s after it deals
+      const m = await findMetrics(page);
+      if (!m) break;
+      m.round = r; rows.push(m);
+      // a frame for each of the shapes 60.2 names, the first time it comes up as the target
+      if (['ring', 'crescent', 'spiral'].includes(m.odd) && !shot[m.odd]) { shot[m.odd] = 1;
+        await frame(page, browser, `60.2-find-${m.odd}`, `Find round ${r}, "find the ${m.odd}" — ${m.n} shapes, target ${m.targetVisible}% visible`);
+        say('field', m); }
+    }
+    await abortRun(page); await sleep(300);
+  }
+  const worst = rows.reduce((a, r) => Math.min(a, r.targetVisible), 100);
+  const under = rows.filter(r => r.targetVisible < 90);
+  await frame(page, browser, '60.2-find-last', 'the last Find field of the pass');
+  say('overTheRounds', { rounds: rows.length, worstTargetVisible: worst + '%',
+    targetsUnder90pc: under.length + ' of ' + rows.length,
+    worstFive: rows.slice().sort((a, b) => a.targetVisible - b.targetVisible).slice(0, 5).map(r => `r${r.round} ${r.odd} ${r.targetVisible}%`).join(' · '),
+    shapesSeenAsTarget: [...new Set(rows.map(r => r.odd))].join(','),
+    fills: [...new Set(rows.flatMap(r => r.fills))], strokes: [...new Set(rows.flatMap(r => r.strokes))] });
+  console.log('      worst target visibility over ' + rows.length + ' rounds: ' + worst + '%  ·  under 90%: ' + under.length);
+  await abortRun(page); await sleep(300);
+});
+
 /* ---------- the runner ---------- */
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 if (ARGV.includes('--list')) { console.log(Object.keys(SCENES).join('\n')); process.exit(0); }

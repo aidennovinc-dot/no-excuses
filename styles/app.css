@@ -1083,6 +1083,12 @@
   /* v16 (§4): the round's shape lights in the OWNER's colour, never green, so the two players can read a shared field (L4) */
   .fs.odd.p1 path{stroke:var(--p1)}
   .fs.odd.p2 path{stroke:var(--p2)}
+  /* v31 (60.2, build 60): A RECOLOUR TAKES THE STROKE WITH IT. `.bad` set the FILL alone, so an odd shape tapped in error kept
+     the ring it was wearing — green, or the other player's red or blue (L4) — round a red fill, which is the one moment the
+     colour has to say one thing. It is the same defect 60.2 names, in the one place a crowd shape actually carries a stroke:
+     nothing in `config/shapes.js` is stroke-only (every shape is a filled path with `fill-rule:evenodd`, which is how a ring's
+     hole and a spiral's turns are drawn), so there was no shape left uncoloured — there was a stroke left BEHIND. */
+  .fs.bad.odd path{stroke:var(--miss)}
   /* v16 (§4): the crowd starts static and gains a pulse as the match goes on. `scale` is its own transform property, so
      this never fights the rotation the drift loop writes to `rotate` */
   .fs.puls{animation:fspuls 1.35s ease-in-out infinite}
@@ -1202,7 +1208,14 @@
   #game[data-g="quick-tap"] .cue{display:none}
   .cue.on{opacity:1;animation:fall 1.1s cubic-bezier(.3,0,.7,1) forwards}
   @keyframes fall{0%{transform:translateY(-560%);background:var(--cue);opacity:.7}70%{background:color-mix(in srgb,var(--cue) 55%,var(--sq-live))}100%{transform:translateY(0);background:var(--sq-live);opacity:.55}}
-  .ring{position:absolute;inset:0;border:2px solid var(--sq-live);opacity:0;pointer-events:none}
+  /* v31 (60.2, build 60): SCOPED TO THE PAD, WHICH IS THE ONLY PLACE IT HAS EVER LIVED. This is Quick Tap's hit ring — the four
+     `#ring0`–`#ring3` inside `.pad` — and it was a bare `.ring` at `opacity:0`. Build 50 (v26 §B2) started naming a crowd shape
+     by its `config/shapes.js` id as a CSS class on `.fs`, and one of those ids is `ring`, so from that build on EVERY ring dealt
+     into a Find, Count or Go / No-go crowd matched this rule and was drawn at zero opacity. That is Aiden's "find the RING with
+     no ring anywhere", exactly: the ring was dealt, hit-tested and revealed after the tap — where it has its own markup and this
+     rule does not reach it — and was invisible in the field. Nothing to do with fills, strokes or the theme layer.
+     The guard against the next collision is in the gate: every shape, in every state a crowd puts it in, has to come out painted. */
+  .pad .ring{position:absolute;inset:0;border:2px solid var(--sq-live);opacity:0;pointer-events:none}
   .pad.l .ring{right:6px;border-radius:0 4px 4px 0}
   .pad.r .ring{left:6px;border-radius:4px 0 0 4px}
   .pvqt .pad{height:38%}
