@@ -3617,7 +3617,10 @@ if (section('chests')) {
           log: window.__s49.slice(), tapAt: window.__tap49 }; });
       await click('#key-cere'); await sleep(CH48.REVEAL.cardAt + 700);
       const card = await page.evaluate(() => { const h = document.getElementById('key-cere'), c = h.querySelector('.rcard'), r = c.getBoundingClientRect(), m = c.querySelector('.rmsg');
-        return { h3: c.querySelector('h3').textContent, style: c.getAttribute('style') || '', you: (c.querySelector('.ryou') || {}).textContent, next: (c.querySelector('.rnext') || {}).textContent, lists: c.querySelectorAll('ul,li,u,.rgifts').length,
+        return { h3: c.querySelector('h3').textContent, style: c.getAttribute('style') || '', you: (c.querySelector('.ryou') || {}).textContent, /* AMENDED at build 60 (v31 60.31): the next chest is a BLOCK now, not a sentence — a label in that key's colour and the
+           question under it — so what is read back is the question, out of the block where there is one and out of the old single
+           line where there is not (the last chest, which has no next key to colour). */
+          next: (c.querySelector('.rnextup b') || c.querySelector('.rnext') || {}).textContent, nextBlock: !!c.querySelector('.rnextup'), lists: c.querySelectorAll('ul,li,u,.rgifts').length,
           text: c.innerText, top: r.top, bottom: r.bottom, msg: m ? m.dataset.msg : '', rows: [...h.querySelectorAll('.rgift .rfly')].map(f => f.getBoundingClientRect().bottom), chestB: h.querySelector('.cchestg .chestart').getBoundingClientRect().bottom, vh: innerHeight }; });
       await page.evaluate(() => document.querySelector('#key-cere .rmsg').click()); await sleep(500);
       /* AMENDED AT BUILD 52 (v27 items 9 / 11): with a clip in every slot the button now lands on About and OPENS THE SHARED PLAYER on that
@@ -3664,6 +3667,8 @@ if (section('chests')) {
       const nxt = CH48.CHESTS[CH48.CHESTS.findIndex(x => x.id === id) + 1];
       if (s.card.h3 !== CP48.CARD.title || !s.card.style.includes(band) || String(s.card.you).replace(/\d+/, '{total}') !== CP48.CARD.you[id] || !s.card.next
         || s.card.next !== (nxt ? fill49(CP48.CARD.next, { chest: CP48.GRID.chest[nxt.id] }) : CP48.CARD.nDone) || s.card.lists || /%/.test(s.card.text)) why.push('card ' + JSON.stringify(s.card));
+      // v31 (60.31): and where there IS a next chest it is the block, in that chest's own colour, rather than a line of body text
+      if (nxt && !s.card.nextBlock) why.push('the next chest is not a NEXT UP block ' + JSON.stringify(s.card));
       if (s.card.top < Math.max(...s.card.rows) - 1 || s.card.top < s.card.chestB || s.card.bottom > s.card.vh + 1) why.push('card overlaps ' + JSON.stringify(s.card));
       if (s.card.msg !== slot.id || s.about.screen !== 's-about' || !(s.about.flash || s.about.playing)) why.push('the video button ' + JSON.stringify({ msg: s.card.msg, about: s.about }));
       if (why.length) bad49.push({ id, why }); }
@@ -4139,13 +4144,54 @@ if (section('chests')) {
       : bad('58.2 the gauntlet hand', JSON.stringify(hand58));
   }
 
+  /* ---- v31 (60.31, build 60): THE NEXT UP BLOCK ON A CONGRATULATIONS CARD ----
+     "Next: can you open the Skill chest?" was one grey sentence in the same size and weight as the card's other grey sentences,
+     and Aiden read past it. It is a block now — a small label in the NEXT key's own colour, the question under it in larger white
+     type, that chest's own drawing beside it — under the message and just above Continue. Driven on three chests, because the
+     claim is that EVERY card gets it in ITS OWN next key's colours, which one card cannot show. */
+  { const nu60 = [];
+    for (const [chest, next] of [['games', 'key'], ['key', 'pro'], ['pro', 'thorns']]) {
+      await boot(PLAIN48);
+      const r = await page.evaluate(async (chest, next) => { const K = await import('./progress/key.js'), P = await import('./progress.js');
+        const R = await import('./ui/router.js'), CH = await import('./ui/chest.js');
+        const wait = ms => new Promise(x => setTimeout(x, ms));
+        K.devReach(next, P.devModesAll);
+        R.show('s-key', { ceremony: chest, from: 's-testing' }); await wait(400);
+        for (let i = 0; i < 400; i++) { const t = document.querySelector('.cere .ctap');
+          if (t && getComputedStyle(t).opacity > .5) break; await wait(50); }
+        const h = document.getElementById('key-cere');
+        h.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); h.click();
+        for (let i = 0; i < 300 && !document.querySelector('.rcard'); i++) await wait(30);
+        await wait(1700);
+        const n = document.querySelector('.rnextup'); if (!n) return { chest, next, block: false };
+        const em = n.querySelector('em'), b = n.querySelector('b');
+        const go = document.querySelector('.rgo'), msg = document.querySelector('.rmsg');
+        const rgb = c => { const d = document.createElement('i'); d.style.color = c; document.body.appendChild(d);
+          const v = getComputedStyle(d).color; d.remove(); return v; };
+        const nr = n.getBoundingClientRect();
+        return { chest, next, block: true, label: em.textContent.trim(), line: b.textContent.trim(),
+          labelColour: getComputedStyle(em).color, wantColour: rgb(CH.chestCol(next)),
+          lineColour: getComputedStyle(b).color, labelPx: Math.round(parseFloat(getComputedStyle(em).fontSize)),
+          linePx: Math.round(parseFloat(getComputedStyle(b).fontSize)), icon: !!n.querySelector('.rnsym'),
+          belowMessage: msg ? Math.round(nr.top - msg.getBoundingClientRect().bottom) : null,
+          aboveContinue: go ? Math.round(go.getBoundingClientRect().top - nr.bottom) : null }; }, chest, next);
+      nu60.push(r);
+    }
+    const bad31 = nu60.filter(r => !r.block || r.labelColour !== r.wantColour || r.linePx <= r.labelPx
+      || !r.icon || !/^Can you open the .+?$/.test(r.line)
+      || !(r.belowMessage >= 0) || !(r.aboveContinue >= 0));
+    bad31.length === 0
+      ? ok(`60.31 every chest's congratulations card carries a NEXT UP block in its next key's own colours — ${nu60.map(r => r.chest + ' → ' + r.label.toLowerCase() + ' ' + r.labelColour + ' "' + r.line + '"').join('; ')} — each with that chest's own drawing, the question at ${nu60[0].linePx}px against the label's ${nu60[0].labelPx}px, under the message and above Continue`)
+      : bad('60.31 the NEXT UP block', JSON.stringify(bad31)); }
+
   /* ---- v31 (60.30, build 60): THE WIELD LINE SAYS WHAT TO DO, GOES GREEN WHEN DONE, AND LEAKS NOTHING ----
      "Only Gauntlet Mega can wield it." states a fact and asks for nothing. It is "Unlock Gauntlet Mega to wield this key" now,
      with that Gauntlet's own icon beside it, and it turns green once the Gauntlet is finished. The third clause is the one worth
      driving: R1 says a secret may be known to exist and never what it is, so the line is NOT THERE before the chest that gives
      that Gauntlet has been opened — otherwise the Author key screen, which is reachable long before the Pro chest, would name
      Gauntlet Mega to a player who has never heard of it. */
-  { const wl60 = await page.evaluate(async () => { const R = await import('./ui/router.js'), K = await import('./progress/key.js');
+  { await boot(PLAIN48);   // a clean profile: the check before this one opens chests, and R1's clause is about which are still shut
+    const wl60 = await page.evaluate(async () => { const R = await import('./ui/router.js'), K = await import('./progress/key.js');
       const S = await import('./core/store.js'), P = await import('./progress.js'), C = await import('./config/chests.js');
       const wait = ms => new Promise(x => setTimeout(x, ms));
       const read = async ix => { R.show('s-key', { tier: ix, from: 's-testing' }); await wait(700);

@@ -1962,6 +1962,16 @@
   /* the card (item 22): over everything, never under the animation, and its Continue is dead for about a second after it appears */
   .cere .rcardwrap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-top)) 12px max(16px,env(safe-area-inset-bottom));opacity:0;pointer-events:none}
   .cere.card .rcardwrap{pointer-events:auto;animation:cfade var(--card-ms) ease-out both}
+  /* ---------- v31 (60.31, build 60): THE NEXT UP BLOCK ON A CONGRATULATIONS CARD ----------
+     "Next: can you open the Skill chest?" was one grey sentence in the same size and weight as the card's other grey sentences,
+     and Aiden read past it. It is a block now, under the message and just above Continue: a small label in the NEXT key's own
+     colour (`--nc`, written by ui/reveal.js off that chest), the question under it in larger white type, and that chest's own
+     drawing beside it. Every chest's card gets it, each in its own next key's colour. */
+  .rnextup{display:block;text-align:center;margin-top:4px;padding-top:12px;border-top:1px solid color-mix(in srgb,var(--nc,var(--line)) 34%,transparent)}
+  .rnextup em{display:block;font-style:normal;font-family:var(--mono);font-size:9px;letter-spacing:.28em;text-transform:uppercase;color:var(--nc,var(--mute))}
+  .rnextup>span{display:flex;align-items:center;justify-content:center;gap:9px;margin-top:7px}
+  .rnextup b{font-family:var(--display);font-weight:700;font-size:16px;letter-spacing:.02em;color:var(--ink)}
+  .rnextup .rnsym{width:26px;height:22px;flex:none}
   .rcard{width:min(92vw,360px);max-height:100%;overflow-y:auto;background:var(--ground);border:1px solid var(--line);padding:18px 16px;display:flex;flex-direction:column;align-items:stretch;gap:9px;text-align:center}
   .rcard h3{font-family:var(--mono);font-weight:500;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--rc,var(--ink));margin:0}
   .rcard u{text-decoration:none;font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);margin-top:4px}

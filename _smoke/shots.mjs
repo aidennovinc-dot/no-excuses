@@ -1384,6 +1384,31 @@ scene('60.30', async (page, browser) => {
     return { hidden: w.hidden, text: (w.textContent || '').trim() }; }));
 });
 
+/* 60.31 — the NEXT UP block on every chest's congratulations card, in its next key's colour */
+scene('60.31', async (page, browser) => {
+  /* each pair is [the chest whose card is shown, the chest that is then NEXT]. The chests before it are opened first, or every
+     card would name the Games chest and the colour under test would never change. */
+  for (const [chest, next] of [['games', 'key'], ['key', 'pro'], ['pro', 'thorns']]) {
+    await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture());
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(420);
+    await page.evaluate(async n2 => { const K = await import('./progress/key.js'), P = await import('./progress.js');
+      K.devReach(n2, P.devModesAll); }, next);
+    await toCard(page, chest);
+    const m = await page.evaluate(() => { const n = document.querySelector('.rnextup');
+      if (!n) return { block: false, line: (document.querySelector('.rnext') || {}).textContent };
+      const em = n.querySelector('em'), b = n.querySelector('b'), sym = n.querySelector('.rnsym');
+      const go = document.querySelector('.rgo'), msg = document.querySelector('.rmsg');
+      const r = n.getBoundingClientRect();
+      return { block: true, label: em.textContent.trim(), line: b.textContent.trim(),
+        labelColour: getComputedStyle(em).color, lineColour: getComputedStyle(b).color,
+        labelPx: Math.round(parseFloat(getComputedStyle(em).fontSize)), linePx: Math.round(parseFloat(getComputedStyle(b).fontSize)),
+        icon: !!sym, belowMessage: msg ? Math.round(r.top - msg.getBoundingClientRect().bottom) : null,
+        aboveContinue: go ? Math.round(go.getBoundingClientRect().top - r.bottom) : null }; });
+    await frame(page, browser, `60.31-${chest}-card`, `the ${chest} chest's congratulations card — NEXT UP (${next}) in that key's own colour, above Continue`);
+    say(chest + ' → ' + next, m);
+  }
+});
+
 /* ---------- the runner ---------- */
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 if (ARGV.includes('--list')) { console.log(Object.keys(SCENES).join('\n')); process.exit(0); }

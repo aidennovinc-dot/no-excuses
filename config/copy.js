@@ -469,7 +469,11 @@ export const SPOT = { count:['count','the'], find:['find','the'], howMany:'how m
 export const CARD = {
   title:'Congratulations',
   you:{ games:'You unlocked all {total} game modes!', key:'You cleared every bar on the Skill key!', pro:'You cleared every bar on the Pro key!', thorns:'You cleared every bar on the Author key!' },
-  next:'Next: can you open the {chest}?', nDone:'Every chest is open. That is all of it.',
+  /* v31 (60.31, build 60): the next chest was one grey sentence among the card's other grey sentences and Aiden read past it.
+     It is a BLOCK now, under the message and just above Continue: a small "NEXT UP" label in the next key's own colour, and
+     under it the question in larger white type with that chest's own drawing beside it. `nextLabel` is the label, `next` the
+     question; `nDone` is unchanged and still stands alone, because there is no next chest to colour it with. */
+  nextLabel:'Next up', next:'Can you open the {chest}?', nDone:'Every chest is open. That is all of it.',
   go:'Continue',
   // item 5: the video this chest opened in About, as a button
   msg:'A message from Aiden' };

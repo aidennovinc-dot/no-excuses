@@ -584,7 +584,10 @@ capture(() => { if (!introSkip || !revealOn()) return false; return introSkip();
    before-release switch that takes it off a slot with no clip — the same switch the reward in the pop-out and on the map reads (ui/chest.js) */
 const msgOf = by => MESSAGES.find(x => x.by && ((by.chest && x.by.chest === by.chest) || (by.key && x.by.key === by.key))) || null;
 const msgFor = by => { const m = msgOf(by); return m && (m.file || !HIDE_UNRECORDED) ? m.id : ''; };
-const nextChest = () => { const c = CHESTS.find(x => !chestOpen(x.id)); return c ? T(CARD.next, { chest: GRID.chest[c.id] }) : CARD.nDone; };
+/* v31 (60.31, build 60): the card is handed the next chest ITSELF, not a sentence about it — ui/reveal.js draws the block in
+   that chest's own colour with its own drawing, and a card with no next chest left gets the one line that has nothing to colour. */
+const nextChest = () => { const c = CHESTS.find(x => !chestOpen(x.id));
+  return c ? { id: c.id, label: CARD.nextLabel, line: T(CARD.next, { chest: GRID.chest[c.id] }), col: chestCol(c.id) } : { line: CARD.nDone }; };
 /* v26 (item 8, build 49): SHORTER AND CELEBRATORY — "Congratulations" in the chest's own colour, the chest's one "You …" line (config/copy.js CARD.you),
    "Next: can you open the … chest?", and the video it opened. No list of what you did or got, no headings, no percentage (item 7) */
 // the chest's own colour — ui/chest.js chestCol: the card, the rings and sparks its rewards land with, and its rewards' symbols

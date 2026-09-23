@@ -39,7 +39,7 @@ import { CHEER_LOOK, CONFETTI, CONFETTI_VARY, GIFT_LOOK, REVEAL } from "../confi
 import { CARD, KEY } from "../config/copy.js";
 import { Music, Snd } from "../audio.js";
 import { esc } from "../core.js";
-import { msgPreview, symSvg } from "./chest.js";
+import { chestSvg, msgPreview, symSvg } from "./chest.js";
 
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -88,12 +88,21 @@ function confettiHtml(chest) { const C = CONFETTI[chest]; if (!C) return '';
 const wordHtml = t => String(t || '').split('').map((ch, i) =>
   ch === ' ' ? '<span class="clsp"> </span>' : `<span class="cl" style="--l:${i}">${esc(ch)}</span>`).join('');
 function cardHtml(c) { if (!c) return '';
-  let i = 0; const at = () => `style="--ci:${i++}"`;
+  // v31 (60.31, build 60): `at` takes extra properties, because a block that wants its own custom property cannot carry a
+  // SECOND style attribute — the browser keeps the first and silently drops the rest, which is how --nc went missing
+  let i = 0; const at = (extra = '') => `style="--ci:${i++}${extra}"`;
   return `<div class="rcard" style="${c.col ? `--rc:${c.col}` : ''}">`
     + `<h3 class="rtitle" ${at()}>${wordHtml(c.title || '')}<i class="cshine" aria-hidden="true"></i></h3>`
     + (c.you ? `<p class="ryou" ${at()}>${esc(c.you)}</p>` : '')
-    + (c.next ? `<p class="rnext" ${at()}>${esc(c.next)}</p>` : '')
+    /* v31 (60.31, build 60): THE NEXT UP BLOCK, under the message and just above Continue. It was one grey sentence among the
+       card's other grey sentences, in the same size and weight, and Aiden read past it. Now: a small label in the NEXT key's own
+       colour, the question under it in larger white type, and that chest's own drawing beside it — the same sprite the map draws,
+       so the thing being named and the thing on the map are visibly one thing. A card with no next chest left keeps its single
+       line, because there is nothing to colour it with. */
     + (c.msg ? `<button class="rmsg" data-act="reveal-msg" data-msg="${esc(c.msg)}" ${at()}>${msgPreview(c.msgObj || null) || `<span class="mprev"><span class="mpframe"><span class="mppic"><i class="mpplay"></i></span></span><b class="mptitle">${esc(CARD.msg)}</b></span>`}</button>` : '')
+    + (c.next ? (c.next.id
+        ? `<div class="rnextup" ${at(';--nc:' + c.next.col)}><em>${esc(c.next.label)}</em><span>${chestSvg(c.next.id, 'rnsym')}<b>${esc(c.next.line)}</b></span></div>`
+        : `<p class="rnext" ${at()}>${esc(c.next.line)}</p>`) : '')
     + `<button class="item rgo" data-act="reveal-go" ${at()} disabled>${esc(CARD.go)}</button></div>`; }
 
 /* v26 (item 6, build 49): lay the rewards out under the chest and draw each one's flight backwards from where it rests. Offsets, not rects — the
