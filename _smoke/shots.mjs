@@ -1107,6 +1107,23 @@ scene('60.17', async (page, browser) => {
   await abortRun(page); await sleep(300);
 });
 
+/* 60.18 — the Flash Streak round screen on the shared allowance layout, and the header that had lost its budget */
+scene('60.18', async (page, browser) => {
+  await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture({ allOpen: 1 }));
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(450);
+  await goRun(page, { game: 'reaction', diff: 'flash', secs: -1 });
+  await page.evaluate(async () => { window.__rx = (await import('./games/reaction/index.js')).default; });
+  // one real attempt: wait for the flash, then tap a known time after it
+  await waitFor(page, () => window.__rx && window.__rx.st === 'go' && window.__rx.armed, 25000);
+  await page.evaluate(() => { const M = window.__rx; M.onDown({ type: 'down', t: M.t0 + 420 }); });
+  await sleep(1100);   // past CFG.hold, into the drain
+  const met = await allowMetrics(page, 'rxallow');
+  const hud = await page.evaluate(() => ({ header: document.getElementById('hud-time').textContent.trim(),
+    verdict: (document.querySelector('.rxmsg') || {}).textContent, score: document.getElementById('score').textContent.trim() }));
+  await frame(page, browser, '60.18-flash-streak-round', 'Flash Streak round screen — verdict, big time, the amount over the allowance draining, the budget bar, the caption. And the header carries its budget again');
+  say('allowance', met); say('hud', hud);
+});
+
 /* ---------- the runner ---------- */
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 if (ARGV.includes('--list')) { console.log(Object.keys(SCENES).join('\n')); process.exit(0); }

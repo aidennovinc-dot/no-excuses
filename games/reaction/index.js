@@ -1,7 +1,7 @@
 /* No Excuses — Reaction — Flash and Go/No-go
    Split out of index.html at build 12. Build 17 (refactor stage 3): the engine contract, on the round base. Behaviour is identical to build 11. */
 
-import { REACTION as CP } from "../../config/copy.js";
+import { ALLOWANCE, REACTION as CP } from "../../config/copy.js";
 import { CFG, NOGO_COUNTER } from "../../config/games.js";
 import { DEALS, NOGO_TURNS, SHAPES } from "../../config/shapes.js";
 import { $, $$, T, mean, minMax, pWho, vmin, winner } from "../../core.js";
@@ -79,8 +79,14 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
        "too early" and "no tap" keep their words: they say what happened, and the number still wears the tier */
     const t=roundShow(this.ctx.audio,'reaction:flash',ms,this.tierOn()), col=t?t.col:'';
     pane.innerHTML=`<div class="rxmsg">${judged&&t?tierWord(t):word}<b${col?` style="color:${col}"`:''}>${ms}<small style="font-size:14px;letter-spacing:.2em">${CP.ms}</small></b>`
-      +(this.streak()?`<span class="sub">${T(CP.baseline,{n:this.FLASH_FREE})}</span><span class="sub" id="rxadd">+${add}${CP.ms}</span>`:'')
-      +`<span class="sub tot" id="rxtot">${this.totLine(this.streak()?this.over+add:mean(this.times))}</span>`
+      /* v31 (60.18, build 60): THE ALLOWANCE LAYOUT. It read verdict, big time, "BASELINE 150 MS", "+0 MS", "TOTAL 398 OF 1000 MS"
+         — three lines of small caps saying three things about one budget, the middle one repeating what the third already said.
+         Aiden: "it looks messy". The order is the item's now, and it is the SAME BLOCK Grow and Hidden use (games/_shared/hud.js
+         allowHtml / allowBar, built at 60.4): the amount over the allowance, a slim budget bar in place of the TOTAL text with
+         this round's addition lighting up as it drains in, and the allowance as a dim caption at the bar's end. A SET keeps its
+         running average line, which is not an allowance and has no budget to draw. */
+      +(this.streak()?hud.allowHtml({ id:'rxallow', add, unit:CP.ms.trim(), spent:this.over, budget:this.FLASH_BUD, free:this.FLASH_FREE, freeText:ALLOWANCE.freeEach })
+                     :`<span class="sub tot" id="rxtot">${this.totLine(mean(this.times))}</span>`)
       +(note?`<span class="sub">${note}</span>`:'')+`</div>`; },
   // v18 (B.10): the tier's colour for one round's own figure. Nothing in a two-player run wears it — light blue is P2 (L4)
   tierOn(){ return !this.two.on&&!this.versus(); },
@@ -103,7 +109,10 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
   // v16 (1.5): Set ramps over the last round; a Streak once its own budget is 80% spent. Music only (A.1)
   fin(){ if(this.two.on||this.versus()) return 0; return this.streak()?this.finBud(this.over,this.nogo()?this.NOGO_BUD:this.FLASH_BUD):this.finSet(); },
   hud(){ if(this.two.on) return hud.timeHtml(this.two.hudLine());
-    hud.time(this.streak()?T(CP.hudStreak,{n:this.round,over:Math.round(this.over)}):T(CP.hudSet,{n:this.round,s:this.ctx.len})); },
+    /* v31 (60.18, build 60): THE BUDGET WAS MISSING. `hudStreak` is 'attempt {n} · {over} of {bud}ms' and this call passed no
+       `bud`, so between rounds the Flash Streak header read "attempt 1 · 398 of ms". The DRAIN's own call passed it and this one did
+       not, which is why only the line between rounds was broken. Go / No-go's line has always passed both. */
+    hud.time(this.streak()?T(CP.hudStreak,{n:this.round,over:Math.round(this.over),bud:this.nogo()?this.NOGO_BUD:this.FLASH_BUD}):T(CP.hudSet,{n:this.round,s:this.ctx.len})); },
   next(){ this.clearT(); this.round++;
     // v15 (4.4): the run is over when both players have had their turns; every turn opens with the hand-over card
     if(this.two.on){ if(this.two.over()) return this.ctx.emit('finish',this.two.record()); return this.two.gate(this,()=>this.turnStart()); }
@@ -158,9 +167,13 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
      starts draining, and the drain itself runs longer — the same beat B.3c gives Timing's Streak, so the two read the
      same way. Nothing about the arithmetic moved. */
   flashAdd(add){ this.later(()=>{ if(this.st!=='show') return; this.flashDrain(add); },HOLD_MS); },
-  flashDrain(add){ hud.addUp({ audio:this.ctx.audio, from:this.over, err:add, ms:900, el:$('#rxadd'), fmt:v=>'+'+Math.round(v)+CP.ms, alive:()=>this.st==='show',
-      onFrame:tot=>{ this.over=tot; this.setTot(tot); hud.time(T(CP.hudStreak,{n:this.round,over:Math.round(this.over),bud:this.FLASH_BUD})); },
-      done:tot=>{ this.over=tot; if(this.over>=this.FLASH_BUD){ this.out=true; const m=$('#rxadd'); if(m) m.insertAdjacentHTML('afterend',`<span class="sub">${T(CP.reached,{bud:this.FLASH_BUD})}</span>`); }
+  // v31 (60.18): the figure draining and the bar filling are one animation — the same frames write both
+  flashDrain(add){ const spent=this.over, bud=this.FLASH_BUD;
+    // the block writes '+177ms' with no space, so the drain that replaces its text has to match it (CP.ms carries a leading space
+    // for the big figure above, where it belongs)
+    hud.addUp({ audio:this.ctx.audio, from:this.over, err:add, ms:900, el:$('#rxallow-add'), fmt:v=>'+'+Math.round(v)+CP.ms.trim(), alive:()=>this.st==='show',
+      onFrame:tot=>{ this.over=tot; hud.allowBar('rxallow',spent,tot-spent,bud); hud.time(T(CP.hudStreak,{n:this.round,over:Math.round(this.over),bud})); },
+      done:tot=>{ this.over=tot; if(this.over>=this.FLASH_BUD){ this.out=true; const m=$('#rxallow'); if(m) m.insertAdjacentHTML('afterend',`<span class="sub">${T(CP.reached,{bud:this.FLASH_BUD})}</span>`); }
         this.hud(); this.ctx.emit('live',this.result()); this.wait(()=>this.next()); } }); },
   onDown(ev){ if(this.versus()) return this.vsTap(ev); if(this.nogo()) return this.nogoTap(ev);
     if(this.st==='wait') return this.early();

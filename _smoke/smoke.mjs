@@ -1432,6 +1432,40 @@ if (section('the runs (v15 section 3)')) {
       ? ok('B.3a / B.4 / L5 the Stopwatch Streak budget is 5s, 7.5s past round 10; Hidden is 700ms and the screen says so')
       : bad('B.3a / B.4 the Streak budgets', JSON.stringify(s)); }
 
+  /* ---- v31 (60.18, build 60): ONE ALLOWANCE-STREAK ROUND SCREEN, AND THE HEADER THAT HAD LOST ITS BUDGET ----
+     Flash read verdict, big time, "BASELINE 150 MS", "+0 MS", "TOTAL 398 OF 1000 MS" — three lines of small caps about one
+     budget. The block is now the one Grow and Hidden use. The header bug is its own fact and its own check: REACTION.hudStreak is
+     'attempt {n} · {over} of {bud}ms' and hud() passed no {bud}, so between rounds it read "attempt 1 · 398 of ms" — the DRAIN's
+     call passed it, which is why only the line between rounds was broken. Both are driven on a real attempt. */
+  { const fl60 = await page.evaluate(async () => { const RUN = await import('./run/run.js'), ST = await import('./core/state.js');
+      const SS = await import('./core/store.js'); SS.store.intro['reaction'] = SS.store.intro['reaction:flash'] = Date.now(); SS.save();
+      const RX = (await import('./games/reaction/index.js')).default;
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      Object.assign(ST.sel, { vs: 0, practice: 0, game: 'reaction', diff: 'flash', secs: -1 }); RUN.start();
+      for (let i = 0; i < 600 && !(RX.st === 'go' && RX.armed); i++) await wait(50);
+      RX.onDown({ type: 'down', t: RX.t0 + 420 });
+      await wait(120);
+      const card = document.querySelector('.rxmsg');
+      const out = { headerBeforeDrain: document.getElementById('hud-time').textContent.trim(),
+        blocks: card ? [...card.children].map(e => e.className || e.tagName.toLowerCase()) : null,
+        hasBaselineLine: !!card && /baseline/i.test(card.textContent),
+        hasTotalLine: !!document.getElementById('rxtot') };
+      await wait(1200);
+      const a = document.getElementById('rxallow');
+      out.block = a ? { add: a.querySelector('.aadd').textContent, free: a.querySelector('.afree').textContent,
+        barW: Math.round(a.querySelector('.abar').getBoundingClientRect().width),
+        litW: Math.round(a.querySelector('.anew').getBoundingClientRect().width) } : null;
+      out.headerDuringDrain = document.getElementById('hud-time').textContent.trim();
+      await wait(900);
+      out.headerAfter = document.getElementById('hud-time').textContent.trim();
+      RUN.abort(); await wait(300); return out; });
+    const ok60 = s => /of [0-9]+ms$/.test(s);
+    (fl60.block && fl60.blocks && fl60.blocks.includes('allow') && !fl60.hasBaselineLine && !fl60.hasTotalLine
+      && /free each round/.test(fl60.block.free) && fl60.block.barW > 100 && fl60.block.litW > 0 && fl60.block.litW < fl60.block.barW
+      && ok60(fl60.headerBeforeDrain) && ok60(fl60.headerDuringDrain) && ok60(fl60.headerAfter))
+      ? ok(`60.18 the Flash Streak round screen is the SHARED allowance block — verdict, big time, "${fl60.block.add}" draining, a ${fl60.block.barW}px budget bar with this round's ${fl60.block.litW}px lit, and "${fl60.block.free}" at its end — with the BASELINE and TOTAL lines gone; and the header carries its budget at every beat ("${fl60.headerBeforeDrain}", "${fl60.headerDuringDrain}", "${fl60.headerAfter}"), where it read "398 of ms" between rounds until build 60`)
+      : bad('60.18 the Flash Streak round screen', JSON.stringify(fl60)); }
+
   /* ---- v31 (60.17, build 60): COUNT SHOWS THE TARGET SHAPE BIG AND CENTRED FIRST ----
      "It is too easy to miss which shape to count." The rule bar said it in a 20px mark beside two words at the top of the screen,
      at the same moment the crowd was being laid out. The round now opens on the shape alone. Driven, and timed off the page: the
