@@ -102,7 +102,14 @@ function playVideo(m) { if (!m || !m.file) return false;
   host._reshape = shape; shape();
   vid.addEventListener('play', () => glow(true));
   vid.addEventListener('pause', () => glow(false));
-  vid.addEventListener('ended', () => glow(false));
+  /* v31 (60.32, build 60): A CLIP THAT FINISHES CLOSES ITSELF. It dimmed its glow and then held the last frame inside a lit
+     frame until the player tapped outside, which reads as the thing having got stuck. The shared power-off plays instead —
+     `close` · `dot` · `fade`, the same three steps and the same thunk a tap gets — and the player goes, exactly as if the tap
+     had come. No hold on the last frame: the off animation starts on the `ended` event itself.
+     THE CHEST CARD'S BUTTON IS NOT A SECOND CASE. The item allows for "inline videos on a Congratulations card can't close, so
+     they go back to their play button" — there are none: `reveal-msg` takes the player to About and plays it in this same shared
+     player (item 23), so a clip opened from a card closes the way every other one does. Named in the outcome. */
+  vid.addEventListener('ended', () => { glow(false); closeVideo(); });
   /* v29 (item 10, build 55): A CLIP THAT WILL NOT PLAY SAYS SO, AND play() IS CALLED IN THE TAP'S OWN TASK.
      Nothing listened for `error` and the play() rejection was swallowed by a bare catch, so a missing file, a 404 or an iOS
      NotAllowedError all showed the same thing: a silent black rectangle inside a glowing frame that never lit, with "tap outside to

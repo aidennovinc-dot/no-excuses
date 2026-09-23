@@ -4144,6 +4144,36 @@ if (section('chests')) {
       : bad('58.2 the gauntlet hand', JSON.stringify(hand58));
   }
 
+  /* ---- v31 (60.32, build 60): A CLIP THAT FINISHES CLOSES ITSELF ----
+     It dimmed its glow and held the last frame inside a lit frame until the player tapped outside, which reads as the thing
+     having got stuck. Driven: a clip is opened, seeked to its end, and the player has to run its own power-off and go — with no
+     hold on the last frame, which is measured as the off animation being under way in the same beat the clip ends. */
+  { const vd60 = await page.evaluate(async () => { const V = await import('./ui/video.js'), R = await import('./ui/router.js');
+      const M = await import('./config/messages.js');
+      const wait = ms => new Promise(x => setTimeout(x, ms));
+      const host = () => document.getElementById('vplay');
+      R.show('s-about'); await wait(500);
+      // playVideo takes the SLOT, not its id (a slot with no `file` is one that has no clip yet and is refused)
+      const slot = M.MESSAGES.find(x => x.file) || M.MESSAGES[0];
+      const opened = V.playVideo(slot);
+      await wait(900);
+      const h = host();
+      const out = { opened, on: !!h && !h.hidden, msg: h && h.dataset.msg };
+      const v = h && h.querySelector('video');
+      if (!v) return Object.assign(out, { noVideo: true });
+      // to the end, the way the clip itself gets there
+      try { v.currentTime = Math.max(0, (v.duration || 1) - 0.05); } catch (e) {}
+      v.dispatchEvent(new Event('ended'));
+      await wait(60);
+      out.offStarted = h.classList.contains('voff');
+      await wait(M.PLAYER.off.ms + 400);
+      out.closed = h.hidden && !h.dataset.msg;
+      out.offMs = M.PLAYER.off.ms; out.steps = M.PLAYER.off.steps.map(s2 => s2.name).join(' · ');
+      return out; });
+    (vd60.on && vd60.offStarted && vd60.closed)
+      ? ok(`60.32 a clip that finishes closes itself — the shared power-off (${vd60.steps}) starts on the ended event itself, with no hold on the last frame, and ${vd60.offMs}ms later the player is gone exactly as if the player had tapped outside`)
+      : bad('60.32 the video does not close itself', JSON.stringify(vd60)); }
+
   /* ---- v31 (60.31, build 60): THE NEXT UP BLOCK ON A CONGRATULATIONS CARD ----
      "Next: can you open the Skill chest?" was one grey sentence in the same size and weight as the card's other grey sentences,
      and Aiden read past it. It is a block now — a small label in the NEXT key's own colour, the question under it in larger white
@@ -9362,7 +9392,9 @@ if (section('build 46 - batch 18, the unlock experience, sound and About')) {
     return { on: !h.hidden, kind: h.dataset.kind || '', id: h.dataset.rev || '', step: h.dataset.step || '', tap: h.classList.contains('tap'), card: h.classList.contains('card'),
       gifts: [...h.querySelectorAll('.rgifts:not(.row) .rgift b')].map(g => g.textContent), syms: [...h.querySelectorAll('.rgifts:not(.row) .rgift .sym')].map(x => x.dataset.sym),
       title: c ? c.querySelector('h3').textContent : '', did: c ? [...c.querySelectorAll('li')].map(l => l.textContent) : [], got: c ? [...c.querySelectorAll('.rgift b')].map(b => b.textContent) : [],
-      next: c ? [...c.querySelectorAll('p')].map(x => x.textContent).join(' ') : '', go: c ? (c.querySelector('.rgo').disabled ? 'off' : 'on') : '' }; });
+      /* AMENDED at build 60 (v31 60.31): the next chest is a BLOCK, not a <p>, so the card's words are read from the paragraphs
+         AND from the block's own question. What item 22 asserts — "Congratulations" and two lines, no lists — is unchanged. */
+      next: c ? [...c.querySelectorAll('p'), ...c.querySelectorAll('.rnextup b')].map(x => x.textContent).join(' ') : '', go: c ? (c.querySelector('.rgo').disabled ? 'off' : 'on') : '' }; });
 
   /* ---- 1. items 6 / 11 / 22: ONE shared reveal routine, and both kinds go through it ---- */
   {
