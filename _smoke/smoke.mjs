@@ -482,8 +482,12 @@ if (section('locked decisions (fresh profile)')) {
   const tileCol = await page.evaluate(() => { const t = document.querySelector('.tile[data-game="quick-tap"]'); return { sq: t.style.getPropertyValue('--sq-live').trim(), unplayed: t.classList.contains('unplayed') }; });
   (tileCol.unplayed && tileCol.sq.toUpperCase() === '#FFFFFF') ? ok('L7 Quick Tap tile is white before any run') : bad('L7 Quick Tap tile is white before any run', JSON.stringify(tileCol));
   await click('.tile[data-game="quick-tap"]'); await sleep(320);
-  const soloSub = await page.evaluate(() => { const sub = document.querySelector('#vs-sub'); return { hidden: sub.hasAttribute('hidden'), shown: getComputedStyle(sub).display !== 'none' }; });
-  (soloSub.hidden && !soloSub.shown) ? ok('L3 Solo shows no Pass & play / Versus') : bad('L3 Solo shows no Pass & play / Versus', JSON.stringify(soloSub));
+  /* RESTATED at build 60 (v31 60.23): the sheet's player row is ui/players.js's markup now, not index.html's, so `#vs-sub` is gone
+     and the sub-row is `.prow.sub` inside `#vs-wrap`. L3 is unchanged and so is what is asserted — on Solo the second step is not
+     there to be read — only the selector it is read through. */
+  const soloSub = await page.evaluate(() => { const sub = document.querySelector('#vs-wrap .prow.sub');
+    return { there: !!sub, hidden: !!sub && sub.hidden, shown: !!sub && getComputedStyle(sub).display !== 'none' }; });
+  (soloSub.there && soloSub.hidden && !soloSub.shown) ? ok('L3 Solo shows no Pass & play / Versus') : bad('L3 Solo shows no Pass & play / Versus', JSON.stringify(soloSub));
   await page.evaluate(() => document.querySelector('#diff-row').children[0].click()); await sleep(420);
   const lens = await page.evaluate(() => [...document.querySelectorAll('#time-row .tbtn b')].map(b => b.childNodes[0].textContent.trim()));
   (lens.length === 3 && lens[0] === 'Sprint' && lens[1] === 'Dash' && lens[2] === 'Marathon') ? ok('L2 Quick Tap lengths are Sprint / Dash / Marathon') : bad('L2 Quick Tap lengths are Sprint / Dash / Marathon', JSON.stringify(lens));
@@ -701,7 +705,7 @@ if (section('two-player (v15 section 4)')) {
     await setStorage({ 'ne.prefs': OPEN_PREFS }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(320);
     await click('[data-go="s-pick"]'); await sleep(260);
     await page.evaluate(() => document.querySelector('.tile[data-game="sequence"]').click()); await sleep(300);
-    await click('[data-vs="1"]'); await sleep(180); await click('[data-vs2="2"]'); await sleep(240);
+    await click('[data-p="f"]'); await sleep(180); await click('[data-p2="2"]'); await sleep(240);
     const sheet = await page.evaluate(() => ({
       lens: [...document.querySelectorAll('#time-row .tbtn b')].map(b => b.textContent.trim()),
       lenShown: getComputedStyle(document.querySelector('#time-row')).display !== 'none',
@@ -725,12 +729,12 @@ if (section('two-player (v15 section 4)')) {
     await setStorage({ 'ne.prefs': OPEN_PREFS }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(320);
     await click('[data-go="s-pick"]'); await sleep(260);
     await page.evaluate(() => document.querySelector('.tile[data-game="spot"]').click()); await sleep(300);
-    await click('[data-vs="1"]'); await sleep(180);
-    const offered = await page.evaluate(() => !document.querySelector('#vs-sub [data-vs2="2"]').hidden);
+    await click('[data-p="f"]'); await sleep(180);
+    const offered = await page.evaluate(() => !document.querySelector('#vs-wrap [data-p2="2"]').hidden);
     offered ? ok('4.6 Spot offers Versus on the player row even though its FIRST mode has none') : bad('4.6 Spot offers Versus', 'the chip is hidden on the mode stage');
-    await click('[data-vs2="2"]'); await sleep(200);
+    await click('[data-p2="2"]'); await sleep(200);
     await page.evaluate(() => { const c = document.querySelectorAll('#diff-row .choice'); c[1].click(); }); await sleep(460);
-    const stillVs = await page.evaluate(() => document.querySelector('#vs-sub [data-vs2="2"]').classList.contains('sel'));
+    const stillVs = await page.evaluate(() => document.querySelector('#vs-wrap [data-p2="2"]').classList.contains('sel'));
     stillVs ? ok('4.6 and keeps it once Find is the mode') : bad('4.6 Versus survives picking Find');
     await click('#go-btn');
     // the two odd shapes are the only two classes with a single member; tap one and its owner takes the round

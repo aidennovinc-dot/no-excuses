@@ -36,7 +36,10 @@ export function playersHtml({ act, act2, vs, vsOk }) {
     + `<button class="${sel(vs > 0)}" data-act="${act}" data-p="f">${ART.friend}<span>${PLAYERS.friend}</span></button></div>`;
   const row2 = `<div class="prow sub"${vs > 0 ? '' : ' hidden'}>`
     + `<button class="${sel(vs === 1)}" data-act="${act2 || act}" data-p2="1">${ART.pass}<span>${PLAYERS.pass}</span></button>`
-    + (vsOk ? `<button class="${sel(vs === 2)}" data-act="${act2 || act}" data-p2="2">${ART.versus}<span>${PLAYERS.versus}</span></button>` : '')
+    /* the Versus button is always DRAWN and hidden when this game has none, never left out: the sheet draws this markup ONCE
+       (ui/screens/pick.js renderVsRow) and marks it from then on, so a button omitted on the first sheet ever opened could never
+       come back for the next game. `playersMark` is the one thing that decides whether it shows. */
+    + `<button class="${sel(vs === 2)}" data-act="${act2 || act}" data-p2="2"${vsOk ? '' : ' hidden'}>${ART.versus}<span>${PLAYERS.versus}</span></button>`
     + `</div>`;
   return row1 + row2;
 }
