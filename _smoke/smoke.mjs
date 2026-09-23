@@ -1432,6 +1432,65 @@ if (section('the runs (v15 section 3)')) {
       ? ok('B.3a / B.4 / L5 the Stopwatch Streak budget is 5s, 7.5s past round 10; Hidden is 700ms and the screen says so')
       : bad('B.3a / B.4 the Streak budgets', JSON.stringify(s)); }
 
+  /* ---- v31 (60.16, build 60): COUNT'S DIFFICULTY IS THE DECOYS, NOT THE TARGET COUNT ----
+     "Counting to 12 of a single shape is difficult, lots of distractions is fun." Four claims, all sampled off the engine's own
+     ramp() and countRound() rather than read off the config: the target count is MOSTLY 3-9; a 12-13 spike is RARE and never
+     before its round; the decoys climb to about 20; and the dip is a real "few among many". Then the look-alikes: from LOOK_FROM
+     a majority of a round's decoys are shapes the target is mistakable for, and never a shape outside that round's own pool (A9). */
+  { const c16 = await page.evaluate(async () => { const SP = (await import('./games/spot/index.js')).default;
+      const G = await import('./config/games.js'); const CS = await import('./config/shapes.js'); const R = G.SPOT_RAMP;
+      const N = 400, out = { R, LOOK_FROM: CS.LOOK_FROM, LOOK_SHARE: CS.LOOK_SHARE, rounds: {} };
+      for (const r of [1, 5, 9, 11, 12, 18, 25]) {
+        const band = [], spike = [], ds = []; let dips = 0;
+        for (let i = 0; i < N; i++) { const x = SP.ramp(r, undefined, null); ds.push(x.decoys); if (x.dip) dips++;
+          (x.spike ? spike : band).push(x.n); }
+        out.rounds[r] = { min: Math.min(...band), max: Math.max(...band),
+          spikePc: Math.round(spike.length / N * 100),
+          spikeMin: spike.length ? Math.min(...spike) : null, spikeMax: spike.length ? Math.max(...spike) : null,
+          dip: dips === N, decoys: ds[0] };
+      }
+      // the look-alikes, dealt by countRound itself
+      const RUN = await import('./run/run.js'), ST = await import('./core/state.js'), SS = await import('./core/store.js');
+      SS.store.intro['spot'] = SS.store.intro['spot:count'] = Date.now(); SS.save();
+      const wait = ms => new Promise(x => setTimeout(x, ms));
+      Object.assign(ST.sel, { vs: 0, practice: 0, game: 'spot', diff: 'count', secs: -1 }); RUN.start();
+      for (let i = 0; i < 200 && !SP.pts.length; i++) await wait(25);
+      /* the dealer caches its deal by TURN, so one round is one target for the whole run — a sample has to walk several rounds
+         (and re-start the run, which reshuffles the deck) to see more than one target's look-alikes. */
+      const sample = async rounds => { const tally = { look: 0, other: 0, outOfPool: 0, targets: [], noLook: 0, chance: 0, decoys: 0 };
+        for (let pass = 0; pass < 6; pass++) {
+          RUN.start(); for (let i = 0; i < 200 && !SP.pts.length; i++) await wait(20);
+          for (const round of rounds) { SP.clearT(); SP.round = round; SP.countRound();
+            const t = SP.target, pool = SP.spec.pool, look = (CS.LOOKALIKE[t] || []).filter(x => pool.includes(x) && x !== t);
+            if (!tally.targets.includes(t)) tally.targets.push(t);
+            if (!look.length) tally.noLook++;
+            const rest = pool.filter(x => x !== t);
+            let decoys = 0;
+            for (const q of SP.pts) { if (q.shape === t) continue; decoys++;
+              if (!pool.includes(q.shape)) tally.outOfPool++;
+              else if (look.includes(q.shape)) tally.look++; else tally.other++; }
+            // what a UNIFORM draw from this round's own pool would have given, which is the baseline the bias is measured against
+            tally.chance += decoys * (rest.length ? look.length / rest.length : 0); tally.decoys += decoys; }
+          RUN.abort(); await wait(120); }
+        return tally; };
+      out.early = await sample([2, 3, 4]); out.late = await sample([6, 7, 8, 9]);
+      return out; });
+    const r = c16.rounds;
+    const lookPc = t => Math.round(t.look / Math.max(1, t.decoys) * 100);
+    const chancePc = t => Math.round(t.chance / Math.max(1, t.decoys) * 100);
+    (r[1].min >= 3 && [1, 5, 9, 11, 12, 18, 25].every(n => r[n].max <= c16.R.bandCap)
+      && r[1].spikePc === 0 && r[5].spikePc === 0 && r[9].spikePc === 0
+      && r[12].spikePc > 2 && r[12].spikePc < 30 && r[12].spikeMin >= c16.R.spikeLo && r[12].spikeMax <= c16.R.spikeHi
+      && c16.R.nCap >= c16.R.spikeHi && c16.R.bandCap < c16.R.nCap
+      && r[1].decoys >= 3 && r[18].decoys >= 18 && r[18].decoys <= c16.R.decoyCap
+      && r[11].dip && r[11].decoys >= 15 && r[11].min <= 5
+      && c16.early.outOfPool === 0 && c16.late.outOfPool === 0
+      && Math.abs(lookPc(c16.early) - chancePc(c16.early)) <= 8
+      && lookPc(c16.late) - chancePc(c16.late) >= 15
+      && c16.late.noLook === 0 && c16.late.targets.length > 1)
+      ? ok(`60.16 Count's difficulty is the decoys: the ordinary band stays inside 3-${c16.R.bandCap} at every round (${[1, 9, 18, 25].map(n => 'r' + n + ' ' + r[n].min + '-' + r[n].max).join(', ')}), a ${c16.R.spikeLo}-${c16.R.spikeHi} spike never fires before round ${c16.R.spikeFrom} and then only ${r[12].spikePc}% of the time (nCap ${c16.R.nCap} is the spike's ceiling and the highest button, B.15), decoys climb ${r[1].decoys} → ${r[18].decoys} to a ${c16.R.decoyCap} ceiling, a dip round is ${r[11].min}-${r[11].max} among ${r[11].decoys} — and from round ${c16.LOOK_FROM} the decoys are BIASED toward the shapes the target is mistakable for — ${lookPc(c16.late)}% of them against the ${chancePc(c16.late)}% a uniform draw from the same pool would give, over ${c16.late.targets.length} different targets, every one of which has a look-alike in its own pool, while the early rounds sit on chance (${lookPc(c16.early)}% against ${chancePc(c16.early)}%) and nothing is ever dealt outside that round's own pool`)
+      : bad('60.16 Count deals', JSON.stringify(c16)); }
+
   /* ---- v31 (60.15, build 60, L5 quoted — Aiden 2026-09-23): THE COUNT BUDGET AND A SMOOTHED RAMP ----
      "It gets very hard around round 9", and it did: hiPer 1.0 put the target band's top on nCap at ROUND 8, with the drift, the
      spin and the size variation at or near their ceilings a few rounds later — so by round 9 there was nothing left to climb.
@@ -1443,17 +1502,18 @@ if (section('the runs (v15 section 3)')) {
       const rows = []; for (let r = 1; r <= 30; r++) rows.push(Object.assign({ r }, SP.ramp(r, undefined, null)));
       const capAt = (k, v) => { const i = rows.findIndex(x => x[k] >= v); return i < 0 ? null : rows[i].r; };
       return { budget: G.COUNT_BUDGET, R,
-        hiCapAt: capAt('hi', R.nCap), sizeCapAt: capAt('sizeVar', R.sizeCap),
+        // AMENDED within build 60 by 60.16: the ORDINARY band's ceiling is `bandCap` now, and `nCap` is the spike's and the keypad's
+        hiCapAt: capAt('hi', R.bandCap || R.nCap), sizeCapAt: capAt('sizeVar', R.sizeCap),
         hi: rows.filter(x => [1, 5, 9, 14, 18].includes(x.r)).map(x => [x.r, x.hi]),
         drift: rows.filter(x => [5, 9, 18].includes(x.r)).map(x => [x.r, x.drift]),
         flash: rows.filter(x => [1, 9, 18].includes(x.r)).map(x => [x.r, x.flash]) }; });
     const hi = Object.fromEntries(cr60.hi), flash = Object.fromEntries(cr60.flash);
     (cr60.budget === 20
       && cr60.hiCapAt >= 16 && cr60.hiCapAt <= 20 && cr60.sizeCapAt >= 16 && cr60.sizeCapAt <= 20
-      && hi[9] < cr60.R.nCap && hi[18] >= cr60.R.nCap
+      && hi[9] < (cr60.R.bandCap || cr60.R.nCap) && hi[18] >= (cr60.R.bandCap || cr60.R.nCap)
       && cr60.R.hiPer <= 0.55 && cr60.R.loPer <= 0.25 && cr60.R.driftPer <= 3 && cr60.R.spinPer <= 3 && cr60.R.sizePer <= 0.025
       && flash[18] > flash[9] && flash[9] > flash[1])
-      ? ok(`60.15 (L5) the Count Streak budget is ${cr60.budget} miscounts (was 8, a placeholder) and the ramp is smoothed: the target band's top reaches nCap at round ${cr60.hiCapAt} and the size variation its ceiling at round ${cr60.sizeCapAt}, where both were there by round 9 or so — the band reads ${cr60.hi.map(x => 'r' + x[0] + ' ' + x[1]).join(', ')} — and every per-round step is at most half what it was. The FLASH deliberately does not halve: it is screen time, more of it is easier, and it still grows with the crowd (${cr60.flash.map(x => 'r' + x[0] + ' ' + x[1] + 'ms').join(', ')})`)
+      ? ok(`60.15 (L5) the Count Streak budget is ${cr60.budget} miscounts (was 8, a placeholder) and the ramp is smoothed: the target band's top reaches its ceiling at round ${cr60.hiCapAt} and the size variation its ceiling at round ${cr60.sizeCapAt}, where both were there by round 9 or so — the band reads ${cr60.hi.map(x => 'r' + x[0] + ' ' + x[1]).join(', ')} — and every per-round step is at most half what it was. The FLASH deliberately does not halve: it is screen time, more of it is easier, and it still grows with the crowd (${cr60.flash.map(x => 'r' + x[0] + ' ' + x[1] + 'ms').join(', ')})`)
       : bad('60.15 the Count budget and ramp', JSON.stringify(cr60)); }
 
   /* ---- v31 (60.14, build 60): THE STOPWATCH STREAK'S RUNNING COUNTER READS TO TWO DECIMALS ----
@@ -1728,7 +1788,7 @@ if (section('the runs (v15 section 3)')) {
     const e50 = await page.evaluate(async () => {
       const CS = await import('./config/shapes.js'); const DL = await import('./games/_shared/deal.js'); const G = await import('./config/games.js');
       const HD = (await import('./games/estimate/index.js')).default, RX = (await import('./games/reaction/index.js')).default, SP = (await import('./games/spot/index.js')).default;
-      const out = { cut: { off: 0, fiftySym: 0, fifty: 0, n: 0 }, grow: { off: 0, sameOff: 0, n: 0, p2same: null, p1diff: null }, nogo: { off: 0, n: 0, sameTurn: null }, count: { off: 0, n: 0 }, find: { off: 0 }, flash: null };
+      const out = { cut: { off: 0, fiftySym: 0, fifty: 0, n: 0 }, grow: { off: 0, sameOff: 0, n: 0, p2same: null, p1diff: null }, nogo: { off: 0, n: 0, sameTurn: null }, count: { off: 0, n: 0, spikes: 0, badSpike: 0 }, find: { off: 0 }, flash: null };
       const keep = { ctx: HD.ctx, two: HD.two, hud: HD.hud, hint: HD.hint, icon: HD.icon, later: HD.later, bg: HD.bg, shareUp: HD.shareUp };
       HD.hud = HD.hint = HD.icon = HD.later = HD.bg = HD.shareUp = () => {};
       // Cut: HD.cutRound() itself, 300 runs of ten rounds
@@ -1757,8 +1817,15 @@ if (section('the runs (v15 section 3)')) {
       out.nogo.sameTurn = a === b; RX.ctx = null; RX.two = { on: false }; RX.dealer = null; RX.spec = null;
       // Count: the target count sits in its setting's third of the band (a dip deals the floor); the flash gains flashRound a round
       const DC = DL.makeDealer('spot:count');
+      /* AMENDED at build 60 (v31 60.16): a round may now be a SPIKE — 12-13 targets, only from SPOT_RAMP.spikeFrom — which is
+         outside its setting's third by design. The rule is not loosened: every ORDINARY round is still inside its third, and a
+         spike is counted separately and has to be inside its own two numbers and never before its round. */
+      const SR60 = G.SPOT_RAMP;
       for (let k = 1; k <= 14; k++) { const S = DC.at(k); for (let i = 0; i < 40; i++) { const R = SP.ramp(k, undefined, { ...S, u: Math.random() }), t = CS.DEALS['spot:count'].tiers[S.set];
-        const want = R.dip ? [R.lo, R.lo] : [R.lo + Math.round(t[0] * (R.hi - R.lo)), R.lo + Math.round(t[1] * (R.hi - R.lo))]; out.count.n++;
+        out.count.n++;
+        if (R.spike) { out.count.spikes++;
+          if (k < SR60.spikeFrom || R.n < SR60.spikeLo || R.n > SR60.spikeHi) out.count.badSpike++; continue; }
+        const want = R.dip ? [R.lo, R.lo] : [R.lo + Math.round(t[0] * (R.hi - R.lo)), R.lo + Math.round(t[1] * (R.hi - R.lo))];
         if (R.n < want[0] || R.n > want[1]) out.count.off++; } }
       { const R = G.SPOT_RAMP, x = SP.ramp(10, 0), crowd = Math.min(R.flashCap, R.flashBase + R.flashShape * Math.max(0, x.n + x.decoys - R.flashFree));
         out.flash = { r1: SP.ramp(1, 0).flash, r10: x.flash, crowd, extra: x.flash - crowd, want: R.flashRound * (10 - R.flashRoundFrom + 1) }; }
@@ -1775,8 +1842,8 @@ if (section('the runs (v15 section 3)')) {
     (!e50.nogo.off && e50.nogo.sameTurn)
       ? ok(`v26 §B2 Go / No-go's own nextTarget / dwellMs, ${e50.nogo.n} rounds: every dwell is inside its setting's third of ± spread, and both players' turn 1 is the same go shape`)
       : bad('v26 §B2 Go / No-go deals by the standard', JSON.stringify(e50.nogo));
-    (!e50.count.off && e50.flash.extra === e50.flash.want && e50.flash.r10 > e50.flash.r1 && !e50.find.off)
-      ? ok(`v26 §B2 Spot: Count's own ramp() deals ${e50.count.n} target counts inside their setting's third, a round-10 flash is ${e50.flash.extra}ms longer than its crowd alone (${e50.flash.r10}ms), and Find's crowd is its round's count × the setting's factor`)
+    (!e50.count.off && !e50.count.badSpike && e50.count.spikes > 0 && e50.flash.extra === e50.flash.want && e50.flash.r10 > e50.flash.r1 && !e50.find.off)
+      ? ok(`v26 §B2 / v31 60.16 Spot: Count's own ramp() deals ${e50.count.n - e50.count.spikes} ordinary target counts inside their setting's third and ${e50.count.spikes} SPIKES, every one of them 12-13 and none before round 10; a round-10 flash is ${e50.flash.extra}ms longer than its crowd alone (${e50.flash.r10}ms), and Find's crowd is its round's count × the setting's factor`)
       : bad('v26 §B2 Spot deals by the standard', JSON.stringify({ count: e50.count, flash: e50.flash, find: e50.find }));
     // live: a Go / No-go beat and a Find crowd are the shared drawing on screen, and a Hidden Streak turns its wall 45° while a Set never does
     const live50 = await page.evaluate(async () => {

@@ -199,10 +199,24 @@ export const ESTIMATE = {
    · `decoyPer` 2.2 → 1.1 — the decoy line is 60.16's and is tuned there.
    THE FLASH IS UNTOUCHED: it is screen TIME and more of it is easier, so halving its per-round term would have made the game
    harder while this line was making it easier. Aiden's 15 Sept rule — screen time scales with the shapes on screen — stands. */
-export const SPOT_RAMP = { loBase:5, loPer:0.22, hiBase:7, hiPer:0.42, nCap:14,
-  decoyBase:3, decoyPer:1.1, decoyCap:34,
+/* v31 (60.16, build 60): THE DIFFICULTY IS THE DECOYS, NOT THE TARGET COUNT. Aiden: "counting to 12 of a single shape is
+   difficult, lots of distractions is fun." Until build 59 the target band climbed to nCap 14 and the decoys were the thing
+   that stopped growing, so a late round was twelve of one shape among a crowd that was no longer getting harder.
+   · TARGETS are mostly 3-9: the band is loBase 3 / hiBase 5, climbing by loPer / hiPer to 5-9 by round 18 and held there by
+     `bandCap` (9) — the ORDINARY band's ceiling, which is a different number from `nCap` and always lower;
+   · a SPIKE of `spikeLo`-`spikeHi` (12-13) is dealt from round `spikeFrom` (10) with probability `spikeP` (0.12) and never
+     before it, which is the "rare, later rounds only". `nCap` is 13 — the SPIKE's ceiling and the highest button, so nothing
+     ever asks for more than the player can answer (B.15);
+   · DECOYS climb from a handful to about `decoyCap` (20) by round 18;
+   · "FEW AMONG MANY" is the dip, which already existed: every `dipEvery` rounds from `dipFrom` the target count drops to the
+     band's floor and the decoys are multiplied by `dipDecoy` — 1.6 now, so a dip round is roughly 4 among 20.
+   Build 60 (60.15) smoothed every per-round step and put full difficulty around round 18; these are the same steps, retargeted.
+   SCREEN TIME still scales with the total shapes on screen (Aiden's 15 Sept rule, `flash*` below, untouched). */
+export const SPOT_RAMP = { loBase:3, loPer:0.12, hiBase:5, hiPer:0.24, bandCap:9, nCap:13,
+  spikeFrom:10, spikeP:0.12, spikeLo:12, spikeHi:13,
+  decoyBase:4, decoyPer:0.95, decoyCap:20,
   flashBase:1100, flashShape:15, flashFree:10, flashCap:1800, flashRound:25, flashRoundFrom:3,
-  dipFrom:5, dipEvery:3, dipDecoy:1.5,
+  dipFrom:5, dipEvery:3, dipDecoy:1.6,
   driftFrom:2, driftBase:8, driftPer:3, spinFrom:4, spinBase:14, spinPer:3,
   sizeFrom:3, sizeBase:0.12, sizePer:0.025, sizeCap:0.5, sizeMin:16 };
 // Spot · Find. v14 (6.30): the first half-second of a find is free — anything faster SUBTRACTS from the total, so a fast find

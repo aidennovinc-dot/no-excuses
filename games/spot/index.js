@@ -4,7 +4,7 @@
 
 import { SPOT as CP } from "../../config/copy.js";
 import { CFG, COUNT_ADD, COUNT_BUDGET, SPOT_FIND, SPOT_RAMP, VS_TARGET } from "../../config/games.js";
-import { DEALS, SHAPES } from "../../config/shapes.js";
+import { DEALS, LOOKALIKE, LOOK_FROM, LOOK_SHARE, SHAPES } from "../../config/shapes.js";
 import { $, $$, T, f2, minMax, pWho, winner } from "../../core.js";
 import { haptic } from "../../core/platform.js";
 import { bandPick, gauntBand, gauntDealt, gauntRound, makeDealer, within } from "../_shared/deal.js";
@@ -49,12 +49,19 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
      so a harder shape is counted in a smaller group. A dip round keeps its own rule and deals the floor. And later rounds stay up longer:
      `flashRound` ms a round from `flashRoundFrom`, on top of the crowd's own time */
   ramp(r,nIn,S){ const R=SPOT_RAMP;
-    const lo=Math.min(R.nCap,Math.round(R.loBase+R.loPer*(r-1)));
-    const hi=Math.min(R.nCap,Math.max(lo,Math.round(R.hiBase+R.hiPer*(r-1))));
+    // v31 (60.16, build 60): the ORDINARY band is held at `bandCap`, which is lower than `nCap` — the spike is the only thing
+    // that ever goes above it, and nCap is still the highest button and the spike's own ceiling (B.15)
+    const cap=R.bandCap||R.nCap;
+    const lo=Math.min(cap,Math.round(R.loBase+R.loPer*(r-1)));
+    const hi=Math.min(cap,Math.max(lo,Math.round(R.hiBase+R.hiPer*(r-1))));
     const dip=r>=R.dipFrom&&(r-R.dipFrom)%R.dipEvery===0;
-    const n=dip?lo:nIn!==undefined?Math.max(lo,Math.min(hi,nIn)):S?lo+Math.round(within(DEALS['spot:count'].tiers[S.set],S.u)*(hi-lo)):lo+rnd(hi-lo+1), decoys=Math.min(R.decoyCap,Math.round((R.decoyBase+R.decoyPer*(r-1))*(dip?R.dipDecoy:1)));
+    /* v31 (60.16, build 60): the SPIKE. A round from `spikeFrom` on may, with probability `spikeP`, ask for `spikeLo`-`spikeHi`
+       targets instead of the band's — rare, later rounds only, and never on a dip round, which is the opposite kind of round.
+       `nIn` is the catalogue's and the gate's way of asking for a named count and still outranks everything. */
+    const spike=!dip&&nIn===undefined&&r>=R.spikeFrom&&Math.random()<R.spikeP;
+    const n=dip?lo:nIn!==undefined?Math.max(lo,Math.min(hi,nIn)):spike?R.spikeLo+rnd(R.spikeHi-R.spikeLo+1):S?lo+Math.round(within(DEALS['spot:count'].tiers[S.set],S.u)*(hi-lo)):lo+rnd(hi-lo+1), decoys=Math.min(R.decoyCap,Math.round((R.decoyBase+R.decoyPer*(r-1))*(dip?R.dipDecoy:1)));
     // v24 (F.4, build 44): the flash is read off the crowd this round actually deals — more shapes, more time (config/games.js)
-    return { lo, hi, dip, n, decoys,
+    return { lo, hi, dip, spike, n, decoys,
       flash:Math.min(R.flashCap,R.flashBase+R.flashShape*Math.max(0,n+decoys-R.flashFree)+R.flashRound*Math.max(0,r-R.flashRoundFrom+1)),
       drift:r>=R.driftFrom?R.driftBase+(r-R.driftFrom)*R.driftPer:0,
       spin:r>=R.spinFrom?R.spinBase+(r-R.spinFrom)*R.spinPer:0,
@@ -85,7 +92,13 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
     const n=R.n, decoys=R.decoys; this.flash=R.flash;
     this.size=Math.max(20,Math.min(r.width,r.height)*.1*Math.min(1,Math.sqrt(6/(n+decoys))));
     // the cells are laid out for the BIGGEST a shape can be dealt, or a large one would overlap its neighbour
-    const list=Array.from({length:n},()=>this.target).concat(Array.from({length:decoys},()=>rest[rnd(rest.length)])); this.pts=scatter(list.length,[this.target],Math.round(this.size*(1+R.sizeVar)));
+    /* v31 (60.16, build 60): LOOK-ALIKE DECOYS LATER. From LOOK_FROM a share of the decoy slots are drawn from the shapes this
+       target is most easily mistaken for (config/shapes.js LOOKALIKE), intersected with THIS round's pool so the band's deck is
+       never widened (A9); the rest are uniform, as they always were. Before LOOK_FROM, and where no look-alike is in the pool,
+       nothing changes. */
+    const look=this.round>=LOOK_FROM?(LOOKALIKE[this.target]||[]).filter(x=>rest.includes(x)):[];
+    const decoy=()=>look.length&&Math.random()<LOOK_SHARE?look[rnd(look.length)]:rest[rnd(rest.length)];
+    const list=Array.from({length:n},()=>this.target).concat(Array.from({length:decoys},decoy)); this.pts=scatter(list.length,[this.target],Math.round(this.size*(1+R.sizeVar)));
     this.pts.forEach((q,i)=>{ q.shape=list[i]||this.target; q.sz=this.vary(this.size,R.sizeVar,SPOT_RAMP.sizeMin); }); this.answer=this.pts.filter(q=>q.shape===this.target).length;
     for(let i=this.pts.length-1;i>0;i--){ const j=rnd(i+1); const t=this.pts[i].shape; this.pts[i].shape=this.pts[j].shape; this.pts[j].shape=t; }
     // v31 (60.3, build 60): Count has no ONE target — every target shape is countable and they may overlap as they always have

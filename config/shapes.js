@@ -32,6 +32,35 @@ export const SHAPES = {
   stairs:   { word:'stairs',   tier:'hard' },
 };
 
+/* v31 (60.16, build 60): WHAT EACH SHAPE IS EASILY MISTAKEN FOR, at a glance and at speed. Aiden asked for "look-alike decoys
+   later" in Spot · Count: from `LOOK_FROM` a share of a round's decoys is drawn from the TARGET'S own look-alikes rather than
+   uniformly from the pool, so a late round is hard because the crowd resembles what you are counting, not because there is more
+   of it. The pairs are by silhouette at a crowd's size, which is the only thing the eye has: a bar reads as a thin diamond, a
+   ring as a circle with the hole lost behind a neighbour, a plus as a star with blunt points, a crescent as a ring half hidden.
+   Symmetric both ways on purpose — if A is mistakable for B then B is for A — and a shape not in a round's pool is simply
+   skipped, so this never widens a band's deck (A9). `LOOK_SHARE` is how much of the crowd they take.
+   Every entry reaches the pools the games actually deal from, so the rule fires on EVERY target rather than only on the ones
+   whose neighbours happen to be in the round's deck — at a crowd's size a circle and a square are both a compact blob, which is
+   the pair that covers Spot · Count's six shapes.
+   Cowork's pairs and Cowork's numbers; listed in the build 60 outcome for Aiden to overrule. */
+export const LOOKALIKE = {
+  circle:   ['ring','heart','blob','square'],
+  square:   ['diamond','tetris','stairs','circle','plus'],
+  triangle: ['diamond','star','heart'],
+  diamond:  ['square','triangle','bar'],
+  bar:      ['diamond','plus','stairs','crescent'],
+  plus:     ['star','square','tetris'],
+  ring:     ['circle','crescent','spiral'],
+  star:     ['plus','triangle','blob','cat'],
+  crescent: ['ring','circle','spiral','bar'],
+  heart:    ['circle','cat','blob','triangle'],
+  cat:      ['heart','blob','star'],
+  spiral:   ['ring','crescent','blob'],
+  blob:     ['circle','heart','cat','star'],
+  tetris:   ['stairs','square','plus'],
+  stairs:   ['tetris','square','bar'],
+};
+export const LOOK_FROM = 6, LOOK_SHARE = 0.55;
 // what a tier weighs when a round adds its shape to its setting
 export const TIER = { easy:1, medium:2, hard:3 };
 
