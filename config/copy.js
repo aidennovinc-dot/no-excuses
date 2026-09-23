@@ -4,6 +4,10 @@
 
 // the two players (v11 / L4) — the span class carries the colour, so v14 (4.1) drops the colour word beside the name
 export const PLAYER = { who:'Player {n}' };
+/* v31 (60.23, build 60): the player picker's four words, spelled ONCE. L3's two steps were written out in index.html for the pick
+   sheet and again as a string in ui/screens/result.js, which is how the two drifted apart; ui/players.js is the one component now
+   and this is the one place the words live. */
+export const PLAYERS = { solo:'solo', friend:'with a friend', pass:'pass &amp; play', versus:'versus' };
 
 export const TOAST = {
   devOpenOn:'Everything open · modes and cosmetics', devOpenOff:'Progression back on · only what you earned',

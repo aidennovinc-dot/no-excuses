@@ -372,9 +372,29 @@
   #go-btn{margin-top:2px}
   .sheet.len #lenwrap{max-height:420px}
   /* two-player pictures on the pick sheet (v10): you cannot mistake pass & play or versus for solo */
-  #vs-row .chip{display:flex;align-items:center;gap:7px}
-  #vs-row .chip svg{width:22px;height:16px;overflow:visible}
-  #vs-row .chip svg *{stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  /* ---------- v31 (60.23, build 60): THE PLAYER PICKER, ONE COMPONENT (ui/players.js) ----------
+     The pick sheet had these two rows as markup and the result screen built its own string, so the two drifted: different
+     widths, Versus alone on a second line, and a selected chip that took the sheet's orange in one place and a white outline in
+     the other. One set of rules now, on both screens and in every game.
+     · EQUAL WIDTHS: `flex:1 1 0` on every chip in a row, so neither can be wider than the other whatever it says.
+     · SELECTED IS ORANGE: `--press`, which is the one colour this app uses for "this is what you chose" (v22 §K). Unselected is
+       dim. A locked choice keeps `.x`'s strike, untouched.
+     · THE SUB-ROW SLIDES IN when With a friend is picked — height and opacity from nothing, not a pop. */
+  .prow{display:flex;gap:8px;width:100%}
+  .prow+.prow{margin-top:8px}
+  .pchip{flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;gap:7px;
+    font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:lowercase;
+    border:1px solid var(--line);background:none;color:var(--mute);padding:9px 6px;opacity:.6;transition:opacity .16s,color .16s,border-color .16s}
+  .pchip svg{width:22px;height:16px;flex:none;overflow:visible}
+  .pchip svg *{stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  .pchip.sel{opacity:1;color:var(--press);border-color:var(--press)}
+  .pchip.x{text-decoration:line-through;opacity:.35}
+  .prow.sub{overflow:hidden;max-height:60px;opacity:1;transition:max-height .22s ease-out,opacity .18s ease-out,margin-top .22s ease-out}
+  .prow.sub[hidden]{display:flex;max-height:0;opacity:0;margin-top:0;pointer-events:none}
+  @media (prefers-reduced-motion:reduce){.prow.sub{transition:none}}
+  /* v31 (60.23): and the game tiles under it take the same orange for "this is what you chose" */
+  .mch.sel{color:var(--press);border-color:var(--press)}
+  .mch.sel b{color:var(--press)}
   #vsart{display:none;flex-direction:column;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ok);text-align:center;line-height:1.6}
   #vsart.on{display:flex}
   #vsart svg{width:120px;height:56px;overflow:visible}
@@ -1344,7 +1364,7 @@
      same shape as the target */
   #hfield #hicon{position:absolute;left:50%;right:auto;bottom:auto;top:4px;width:13vmin;height:13vmin;margin-left:-6.5vmin}
   #hfield #hicon.big{width:22vmin;height:22vmin;right:auto;left:50%;top:1%;margin-left:-11vmin}
-  #vsart.on,#vs-sub:not([hidden]),#lockwrap.on #lockbox,#wheelwrap.on #wheelbox,.mch,#over-vs .chip,#over-chips2 .chip,#over-chips3 .chip,.lockline:not(:empty),#hcalc.on,#adbreak.on>div,.tbtn,#s-pass.on>*,#nextup:not([hidden]){animation:rise .18s ease-out both}
+  #vsart.on,#lockwrap.on #lockbox,#wheelwrap.on #wheelbox,.mch,#over-chips2 .chip,#over-chips3 .chip,.lockline:not(:empty),#hcalc.on,#adbreak.on>div,.tbtn,#s-pass.on>*,#nextup:not([hidden]){animation:rise .18s ease-out both}
   /* Estimate (v11): the target's outline stays up while you grow */
   #hfield #hg path{stroke:var(--cue)}
 

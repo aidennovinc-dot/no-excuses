@@ -102,8 +102,11 @@
   <!-- v21 (F.1, build 35): hidden until a game is picked — a sheet with nothing selected is out of the layout, not just off screen -->
   <div class="sheet" id="sheet" hidden>
     <div class="eyebrow" id="sheet-title"></div>
-    <div id="vs-wrap"><div class="chips" id="vs-row"><button data-act="vs" class="chip sel" data-vs="0"><svg viewBox="0 0 22 16"><rect x="7" y="1" width="8" height="14" rx="1.5"/></svg>solo</button><button data-act="vs" class="chip" data-vs="1"><svg viewBox="0 0 22 16"><rect x="1" y="2" width="7" height="12" rx="1.5"/><rect x="14" y="2" width="7" height="12" rx="1.5"/></svg>with a friend</button></div>
-    <div class="chips" id="vs-sub" hidden><button data-act="vs2" class="chip" data-vs2="1"><svg viewBox="0 0 22 16"><rect x="1" y="2" width="7" height="12" rx="1.5"/><rect x="14" y="2" width="7" height="12" rx="1.5"/><path d="M9 8h4M11 6l2 2-2 2"/></svg>pass &amp; play</button><button data-act="vs2" class="chip" data-vs2="2"><svg viewBox="0 0 22 16"><rect x="1" y="2" width="7" height="12" rx="1.5"/><rect x="14" y="2" width="7" height="12" rx="1.5"/><path d="M11 5v6"/></svg>versus</button></div></div>
+    <!-- v31 (60.23, build 60): THE PLAYER PICKER IS ONE COMPONENT. These two rows were written out here and again as a string
+         in ui/screens/result.js, which is how the two drifted — different widths, Versus alone on a second line, and a
+         selected chip that took a white outline here and the sheet's orange there. ui/players.js draws both now and
+         ui/screens/pick.js fills this host on open. -->
+    <div id="vs-wrap"></div>
     <div id="vsart"></div>
     <div id="chal" hidden></div>
     <div class="diffs" id="diff-row"></div>

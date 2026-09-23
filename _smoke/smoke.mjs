@@ -1445,6 +1445,51 @@ if (section('the runs (v15 section 3)')) {
       ? ok('B.3a / B.4 / L5 the Stopwatch Streak budget is 5s, 7.5s past round 10; Hidden is 700ms and the screen says so')
       : bad('B.3a / B.4 the Streak budgets', JSON.stringify(s)); }
 
+  /* ---- v31 (60.23, build 60): THE PLAYER PICKER IS ONE COMPONENT, ON BOTH SCREENS ----
+     L3's two steps were markup in index.html for the pick sheet and a string in ui/screens/result.js for the result screen, so
+     the two drifted: different widths, Versus alone on a second line, and a selected chip that took the sheet's orange in one
+     place and a white outline in the other. The check reads BOTH screens and compares them to each other rather than each to a
+     number — same classes, same widths, same colour — because "one component" is a claim about the pair. */
+  { /* the reader is one function, used on both hosts, so "the same component" is measured rather than asserted twice */
+    const READ60 = host => page.evaluate(h => { const el = document.querySelector(h); if (!el) return null;
+      const rgb = c => { const m = (c.match(/[\d.]+/g) || []).map(Number); return m.slice(0, 3).join(','); };
+      const rows = [...el.querySelectorAll('.prow')];
+      const pick = r => [...r.querySelectorAll('.pchip')].map(x => { const cs = getComputedStyle(x), rc = x.getBoundingClientRect();
+        return { w: Math.round(rc.width), sel: x.classList.contains('sel'), colour: rgb(cs.color), text: x.textContent.trim() }; });
+      return { rows: rows.length, top: rows[0] ? pick(rows[0]) : [],
+        sub: rows[1] ? { hidden: rows[1].hidden, chips: pick(rows[1]), maxH: getComputedStyle(rows[1]).maxHeight } : null }; }, host);
+    const PRESS60 = await page.evaluate(() => { const v = getComputedStyle(document.documentElement).getPropertyValue('--press').trim();
+      const d = document.createElement('i'); d.style.color = v; document.body.appendChild(d); const c = getComputedStyle(d).color; d.remove();
+      return (c.match(/[\d.]+/g) || []).slice(0, 3).join(','); });
+    // the PICK SHEET, solo then with a friend
+    await boot({ allOpen: 1 });
+    await openSheet('quick-tap', 0, 0);
+    const sheetSolo = await READ60('#vs-wrap');
+    await click('#vs-wrap [data-p="f"]'); await sleep(420);
+    const sheetFriend = await READ60('#vs-wrap');
+    await click('#vs-wrap [data-p="0"]'); await sleep(300);
+    // the RESULT SCREEN, the same two states, after a real run
+    await click('#go-btn'); await driveToResult('quick-tap', '60.23 a run for the result screen', 30000);
+    const resultSolo = await READ60('#over-vs');
+    await click('#over-vs [data-p="f"]'); await sleep(420);
+    const resultFriend = await READ60('#over-vs');
+    const tile60 = await page.evaluate(() => { const t = document.querySelector('#over-chips .mch.sel'); if (!t) return null;
+      const c = getComputedStyle(t).color; return (c.match(/[\d.]+/g) || []).slice(0, 3).join(','); });
+    const pc60 = { press: PRESS60, sheetSolo, sheetFriend, resultSolo, resultFriend, tile: tile60 };
+    const even = r => r && r.top.length === 2 && Math.abs(r.top[0].w - r.top[1].w) <= 1;
+    const orange = r => r && r.top.filter(c => c.sel).length > 0 && r.top.filter(c => c.sel).every(c => c.colour === PRESS60);
+    const sameWords = (x, y) => x && y && x.top.map(c => c.text).join('|') === y.top.map(c => c.text).join('|');
+    (pc60.sheetSolo && pc60.resultSolo && pc60.sheetSolo.rows === 2 && pc60.resultSolo.rows === 2
+      && [pc60.sheetSolo, pc60.resultSolo, pc60.sheetFriend, pc60.resultFriend].every(even)
+      && [pc60.sheetSolo, pc60.resultSolo, pc60.sheetFriend, pc60.resultFriend].every(orange)
+      && sameWords(pc60.sheetSolo, pc60.resultSolo)
+      && pc60.sheetSolo.sub.hidden && pc60.resultSolo.sub.hidden
+      && !pc60.sheetFriend.sub.hidden && !pc60.resultFriend.sub.hidden
+      && pc60.sheetSolo.sub.maxH === '0px' && pc60.sheetFriend.sub.maxH !== '0px'
+      && pc60.tile === PRESS60)
+      ? ok(`60.23 the player picker is ONE component on both screens — the same two rows, the same words ("${pc60.sheetSolo.top.map(c => c.text).join('" | "')}"), equal widths (${pc60.sheetSolo.top.map(c => c.w).join(' and ')}px on the sheet, ${pc60.resultSolo.top.map(c => c.w).join(' and ')}px on the result), the selected one in the same orange (${PRESS60}) on both — and so is the selected game tile under it — with the Pass & play / Versus row hidden until With a friend is picked and sliding in from 0px when it is`)
+      : bad('60.23 the player picker', JSON.stringify(pc60)); }
+
   /* ---- v31 (60.21, build 60): THE GROW RESULT'S SHAPE AND ITS PANEL NEVER OVERLAP ----
      Both were centred on the field, so a grown shape was drawn straight through the TARGET / YOURS bars and their numbers. The
      panel is at the foot of the field now (HOLD_LAYOUT.split) and the reveal scales BOTH shapes by one factor so neither can
@@ -3098,10 +3143,11 @@ if (section('button actions (every data-act at least once)')) {
   // the result screen's chips, again, share (clipboard fallback → toast), back
   await setStorage({ 'ne.prefs': OPEN_PREFS }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
   await openSheet('quick-tap', 0, 0); await tap('#go-btn'); await driveToResult('quick-tap', 'run for the result chips', 30000);
-  await tap('#over-chips [data-v="four"]', 'result · mode chip'); await tap('#over-chips2 [data-v="15"]', 'result · length chip'); await tap('#over-vs [data-v="f"]', 'result · with a friend'); await tap('#over-vs [data-chip="over-vs2"][data-v="1"]', 'result · pass & play'); await tap('#over-vs [data-v="0"]', 'result · solo');
+  // v31 (60.23, build 60): the player rows are ui/players.js's on BOTH screens now, so they are selected the same way on both
+  await tap('#over-chips [data-v="four"]', 'result · mode chip'); await tap('#over-chips2 [data-v="15"]', 'result · length chip'); await tap('#over-vs [data-p="f"]', 'result · with a friend'); await tap('#over-vs [data-p2="1"]', 'result · pass & play'); await tap('#over-vs [data-p="0"]', 'result · solo');
   await tap('#share', 'result · share'); await tap('#over-back', 'result · back'); await sleep(300);
   (await onScreen()) === 's-pick' ? ok('result back opens the pick sheet') : bad('result back opens the pick sheet', 'on ' + (await onScreen()));
-  await tap('#time-row .tbtn:nth-child(2)', 'sheet · length'); await tap('[data-vs="1"]', 'sheet · with a friend'); await tap('[data-vs2="1"]', 'sheet · pass & play'); await tap('[data-vs="0"]', 'sheet · solo');
+  await tap('#time-row .tbtn:nth-child(2)', 'sheet · length'); await tap('#vs-wrap [data-p="f"]', 'sheet · with a friend'); await tap('#vs-wrap [data-p2="1"]', 'sheet · pass & play'); await tap('#vs-wrap [data-p="0"]', 'sheet · solo');
   // build 18: the chips are one act per screen, and the overlays (lock box, Next card, the full stop) are acts too
   const expected = ['go', 'back', 'game', 'diff', 'time', 'vs', 'vs2', 'lvl-back', 'go-btn', 'quit', 'over-back', 'share', 'chip-bd', 'chip-pv', 'chip-ach', 'chip-over', 'item', 'pvlock', 'ach', 'unl', 'chip-chest', 'prac', 'dev-open', 'dev-sup', 'dev-story', 'support', 'wheel-done', 'lock-no', 'lock-go', 'nextup', 'egg', 'ptab', 'chest', 'msg'];
   const missing = expected.filter(a => !seen.has(a));

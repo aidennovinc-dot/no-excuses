@@ -3,6 +3,7 @@
    walks them before it leaves the screen. show('s-pick', {g, d, s}) opens a game's sheet straight at its mode or length row
    (the result screen's Back, an achievement row, a challenge link). Locked things ask the lock box through lock:ask. */
 import { CHEST_SOON, GAUNTLET, GRID, SHEET } from "../../config/copy.js";
+import { playersHtml, playersMark } from "../players.js";
 import { CHESTS, GAUNTLETS, MAP_INTRO, SPILL } from "../../config/chests.js";
 import { MODE_NAME, PASS_LEN, SEQ_VS, VS_LEAD, VS_TARGET } from "../../config/games.js";
 import { VS_ART } from "../../config/theme.js";
@@ -41,9 +42,12 @@ function renderVsArt(){ const box=$('#vsart'); if(!sel.vs){ box.classList.remove
    there would hide Versus on any game where only the second mode has it — Spot, whose Find gained versus this build and
    whose first mode is Count. The row offers it if ANY mode has it; the choice narrows when the mode is picked, and a mode
    without versus falls the pair back to pass & play. */
+/* v31 (60.23, build 60): ONE COMPONENT. The rows are ui/players.js's — drawn the first time and marked after that, so the
+   sheet's own slide is not restarted every time a mode is tapped. 'vs' and 'vs2' are still this screen's own actions. */
 function renderVsRow(){ const g=sel.game; const vsOk=stage==='mode'?versusAny(g):versusOf(g,sel.diff); if(sel.vs===2&&!vsOk) sel.vs=1;
-  $$('#vs-row [data-vs]').forEach(c=>c.classList.toggle('sel',(c.dataset.vs==='0')===(sel.vs===0)));
-  const sub=$('#vs-sub'); const showSub=sel.vs>0; sub.hidden=!showSub; sub.querySelector('[data-vs2="2"]').hidden=!vsOk; $$('#vs-sub [data-vs2]').forEach(c=>c.classList.toggle('sel',+c.dataset.vs2===sel.vs)); }
+  const host=$('#vs-wrap'); if(!host) return;
+  if(!host.querySelector('.prow')) host.innerHTML=playersHtml({ act:'vs', act2:'vs2', vs:sel.vs, vsOk });
+  playersMark(host,sel.vs,vsOk); }
 /* v21 (F.1, build 35): WITH NOTHING SELECTED THE SHEET LEAVES THE LAYOUT. It was only ever translated off the bottom, and
    #s-pick scrolls — a transformed box still counts towards its scroll container's overflow — so on a cold load the map
    could be dragged up to show a whole pick sheet parked under it, drawn for whatever game `sel` last held (Estimate, on a
@@ -399,8 +403,9 @@ define({
   sheetclose(){ setStage('grid'); return 'pick'; },
   time(b){ const v=+b.dataset.time; if(b.classList.contains('locked')){ ask(sel.game,sel.diff,v); return 'pick'; } sel.secs=v; $$('[data-time]').forEach(c=>c.classList.toggle('sel',c===b)); return 'pick'; },
   'go-btn'(){ if(sel.game!=='sequence') sel.practice=0; VS.reset(); start(); return 'click'; },
-  vs(b){ sel.vs=b.dataset.vs==='0'?0:(sel.vs||1); renderVsRow(); $('#sheet-title').textContent=GAMES[sel.game].name+(sel.vs===1?' · pass & play':sel.vs===2?' · versus':''); renderVsArt(); if(stage==='len') fillTimes(); return 'pick'; },
-  vs2(b){ sel.vs=+b.dataset.vs2; renderVsRow(); $('#sheet-title').textContent=GAMES[sel.game].name+(sel.vs===1?' · pass & play':' · versus'); renderVsArt(); if(stage==='len') fillTimes(); return 'pick'; },
+  // v31 (60.23, build 60): the component's own attributes — `data-p` on the top row, `data-p2` on the sub-row
+  vs(b){ sel.vs=b.dataset.p==='0'?0:(sel.vs||1); renderVsRow(); $('#sheet-title').textContent=GAMES[sel.game].name+(sel.vs===1?' · pass & play':sel.vs===2?' · versus':''); renderVsArt(); if(stage==='len') fillTimes(); return 'pick'; },
+  vs2(b){ sel.vs=+b.dataset.p2; renderVsRow(); $('#sheet-title').textContent=GAMES[sel.game].name+(sel.vs===1?' · pass & play':' · versus'); renderVsArt(); if(stage==='len') fillTimes(); return 'pick'; },
   /* v17 (B.24): a locked chest says what it takes, the same way every other locked thing does (v15 2.1).
      v23 (L.8b / L.10, build 40): a chest whose chest ahead is shut says so and stays put (G.1). The Games chest while any mode is locked
      says the chain's count and stays put — it never sends you to the keys, where there is nothing to open yet (G.3's rule, kept for the

@@ -861,7 +861,7 @@ scene('60.1', async (page, browser) => {
 /* ---------- driving a real run, for the Find and Count scenes (build 60) ---------- */
 const goRun = (page, sel) => page.evaluate(async sel => { const RUN = await import('./run/run.js'), ST = await import('./core/state.js');
   const SS = await import('./core/store.js');
-  for (const k of ['spot', 'spot:find', 'spot:count', 'timing', 'timing:hidden', 'hold', 'hold:grow', 'reaction', 'reaction:flash']) SS.store.intro[k] = Date.now();
+  for (const k of ['spot', 'spot:find', 'spot:count', 'timing', 'timing:stopwatch', 'timing:hidden', 'hold', 'hold:grow', 'hold:cut', 'reaction', 'reaction:flash', 'reaction:nogo', 'quick-tap', 'quick-tap:two', 'dots', 'dots:blind', 'sequence', 'sequence:solo']) SS.store.intro[k] = Date.now();
   SS.save(); Object.assign(ST.sel, { vs: 0, practice: 0 }, sel); RUN.start(); }, sel);
 const abortRun = page => page.evaluate(async () => (await import('./run/run.js')).abort());
 const waitFor = (page, fn, ms = 15000) => page.evaluate(async (src, ms) => { const f = new Function('return (' + src + ')')();
@@ -1238,6 +1238,35 @@ scene('60.21', async (page, browser) => {
     await sleep(900); await ptr(page, 'pointerdown', '#hfield'); await ptr(page, 'pointerup', '#hfield'); await sleep(600);
   }
   await abortRun(page); await sleep(300);
+});
+
+/* 60.23 — the player picker, the same component on the pick sheet and the result screen */
+scene('60.23', async (page, browser) => {
+  await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture({ allOpen: 1 }));
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(450);
+  const read = host => page.evaluate(h => { const el = document.querySelector(h); if (!el) return null;
+    const rows = [...el.querySelectorAll('.prow')];
+    const pick = r => [...r.querySelectorAll('.pchip')].map(x => { const rc = x.getBoundingClientRect();
+      return { text: x.textContent.trim(), w: Math.round(rc.width), y: Math.round(rc.y), sel: x.classList.contains('sel'), colour: getComputedStyle(x).color }; });
+    return { rows: rows.length, top: rows[0] ? pick(rows[0]) : [], sub: rows[1] ? { hidden: rows[1].hidden, chips: pick(rows[1]) } : null }; }, host);
+  // the pick sheet
+  await page.evaluate(async () => { const R = await import('./ui/router.js'), ST = await import('./core/state.js');
+    Object.assign(ST.sel, { game: 'quick-tap', diff: 'two', secs: 5, vs: 0 }); R.show('s-pick'); });
+  await sleep(700);
+  await page.evaluate(() => document.querySelector('.tile[data-game="quick-tap"]').click()); await sleep(500);
+  await page.evaluate(() => document.querySelector('#vs-wrap [data-p="f"]').click()); await sleep(500);
+  const sheet = await read('#vs-wrap');
+  await frame(page, browser, '60.23-sheet-picker', 'the pick sheet — Solo | With a friend equal widths, the Pass & play | Versus row slid in, the selected chip orange');
+  say('sheet', sheet);
+  // the result screen, after a real run
+  await page.evaluate(() => document.querySelector('#vs-wrap [data-p="0"]').click()); await sleep(300);
+  await goRun(page, { game: 'quick-tap', diff: 'two', secs: 5 });
+  await waitFor(page, () => (document.querySelector('.screen.on') || {}).id === 's-over', 30000);
+  await sleep(700);
+  await page.evaluate(() => { const f = document.querySelector('#over-vs [data-p="f"]'); if (f) f.click(); }); await sleep(500);
+  const result = await read('#over-vs');
+  await frame(page, browser, '60.23-result-picker', 'the result screen — the same component, the same widths, the same orange');
+  say('result', result);
 });
 
 /* ---------- the runner ---------- */

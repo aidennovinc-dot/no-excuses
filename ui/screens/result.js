@@ -3,6 +3,7 @@
    two players, L10), then — after the ad break every fourth result — the unlock and achievement toasts. Go plays again with
    whatever the chips say; Back reopens the sheet; Challenge a friend shares a link that carries the score. */
 import { RESULT, SHARE, SHEET, TOAST, VERDICT } from "../../config/copy.js";
+import { playersHtml } from "../players.js";
 import { MAP_ON_UNLOCK_MS } from "../../config/audio.js";
 import { PUB_URL } from "../../config/build.js";
 import { MODE_NAME, PASS_LEN } from "../../config/games.js";
@@ -26,7 +27,10 @@ let played=null;
 const sameAsPlayed=()=>!!played&&played.g===sel.game&&played.d===sel.diff&&played.s===sel.secs&&played.vs===sel.vs;
 // the result screen's options (v10): players, mode, length — pick, then Go. What you were just playing is pre-selected. v11: Solo / With a friend, then Pass & play / Versus; locked modes and lengths are crossed out and cannot be picked
 function renderOverChips(){ const g=GAMES[sel.game]; const vsOk=versusOf(sel.game,sel.diff); if(sel.vs===2&&!vsOk) sel.vs=1; const fresh=[];
-  $('#over-vs').innerHTML=`<button class="chip ${sel.vs===0?'sel':''}" data-act="chip-over" data-chip="over-vs" data-v="0">solo</button><button class="chip ${sel.vs?'sel':''}" data-act="chip-over" data-chip="over-vs" data-v="f">with a friend</button>`+(sel.vs?`<span class="chip lbl">·</span><button class="chip ${sel.vs===1?'sel':''}" data-act="chip-over" data-chip="over-vs2" data-v="1">pass &amp; play</button>${vsOk?`<button class="chip ${sel.vs===2?'sel':''}" data-act="chip-over" data-chip="over-vs2" data-v="2">versus</button>`:''}`:'');
+  /* v31 (60.23, build 60): THE SAME COMPONENT THE PICK SHEET USES. This was its own string of `.chip`s with a · between the
+     two rows, which is why Versus wrapped onto a line of its own and the widths never matched. ui/players.js draws it; the taps
+     are still this screen's own `chip-over`, and `data-p` / `data-p2` are what ui/actions.js reads off them. */
+  $('#over-vs').innerHTML=playersHtml({ act:'chip-over', vs:sel.vs, vsOk });
   $('#over-chips').innerHTML=g.modes.length>1?g.modes.map(d=>{ const open=isOpen(sel.game,d); const nw=open?newMark('mode:'+sel.game+':'+d,fresh):''; return `<button class="mch ${d===sel.diff?'sel':''} ${open?'':'locked'}${nw}" data-act="chip-over" data-chip="over-d" data-v="${d}"><span class="pic">${picOf(sel.game,d)}</span><b class="${open?'':'x'}">${MODE_NAME[d]}</b></button>`; }).join(''):'';
   const versus=sel.vs===2&&vsOk, c=GC(sel.game,sel.diff), lens=lensOf(sel.game,sel.diff,versus?2:0), fixed=sel.vs===1&&(PASS_LEN[sel.game]||SHARED2(sel.game,sel.diff));
   if(!lens.includes(sel.secs)||!versus&&!lenOpen(sel.game,sel.diff,sel.secs)) sel.secs=lens.find(s=>versus||lenOpen(sel.game,sel.diff,s))||lens[0];
@@ -144,7 +148,11 @@ define({
   again(){ VS.reset(); if(sel.game!=='sequence') sel.practice=0; start(); return 'click'; },
   'to-games'(){ VS.reset(); show('s-pick'); return 'click'; },
   // the result screen's chips (v11): a locked mode or length cannot be picked, and the board under them follows what is picked
-  'chip-over'(b){ const key=b.dataset.chip.split('-')[1]; const v=isNaN(b.dataset.v)?b.dataset.v:+b.dataset.v;
+  /* v31 (60.23, build 60): the player rows come from ui/players.js and carry `data-p` / `data-p2` rather than this screen's
+     own `data-chip`, so they are read first and the chip path below is left exactly as it was for the mode and length rows. */
+  'chip-over'(b){ if(b.dataset.p!==undefined){ sel.vs=b.dataset.p==='0'?0:(sel.vs||1); sel.practice=0; renderOverChips(); renderOverTop(); return 'pick'; }
+    if(b.dataset.p2!==undefined){ sel.vs=+b.dataset.p2; sel.practice=0; renderOverChips(); renderOverTop(); return 'pick'; }
+    const key=b.dataset.chip.split('-')[1]; const v=isNaN(b.dataset.v)?b.dataset.v:+b.dataset.v;
     if(key==='d'){ if(!isOpen(sel.game,v)){ emit('lock:ask',{g:sel.game,d:v}); return 'pick'; } sel.diff=v; }
     if(key==='s'){ if(sel.vs!==2&&!lenOpen(sel.game,sel.diff,v)){ emit('lock:ask',{g:sel.game,d:sel.diff,s:v}); return 'pick'; } sel.secs=v; }
     if(key==='vs'){ sel.vs=v==='f'?(sel.vs||1):v; } if(key==='vs2') sel.vs=v;
