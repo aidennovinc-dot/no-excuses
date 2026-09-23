@@ -1124,6 +1124,49 @@ scene('60.18', async (page, browser) => {
   say('allowance', met); say('hud', hud);
 });
 
+/* =======================================================================================================
+   60.19 — the in-game header, at 375, 390 and 430 wide
+   The three collisions Aiden's screenshots show: the UNLOCK pill over the GOAL pill, "Stopwatch · Streak" wrapping to three
+   lines under the score, and "BEST 831MS" touching the big number. The measurement is the only one that means anything —
+   the four rows' boxes, and whether any of them overlaps any other.
+   ======================================================================================================= */
+const headerMetrics = page => page.evaluate(() => {
+  const box = s => { const e = document.querySelector(s); if (!e) return null;
+    const cs = getComputedStyle(e); if (cs.display === 'none' || cs.visibility === 'hidden') return null;
+    const r = e.getBoundingClientRect();
+    return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height),
+      lines: Math.round(r.height / (parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2)),
+      text: (e.textContent || '').replace(/s+/g, ' ').trim().slice(0, 40) }; };
+  const rows = { goal: box('#goal'), mode: box('#hud-mode'), count: box('#hud-time'), score: box('#score'), best: box('#pbghost') };
+  const hit = (a, b) => a && b && a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+  const names = Object.keys(rows), clashes = [];
+  for (let i = 0; i < names.length; i++) for (let j = i + 1; j < names.length; j++) {
+    // the mode and the count share a row on purpose; everything else must be clear of everything else
+    if (names[i] === 'mode' && names[j] === 'count') continue;
+    if (hit(rows[names[i]], rows[names[j]])) clashes.push(names[i] + '/' + names[j]); }
+  const w = document.documentElement.clientWidth;
+  return { rows, clashes, viewport: w,
+    scoreCentred: rows.score ? Math.round(Math.abs((rows.score.x + rows.score.w / 2) - w / 2)) : null,
+    order: names.filter(n => rows[n]).sort((a, b) => rows[a].y - rows[b].y).join(' → ') }; });
+
+scene('60.19', async (page, browser) => {
+  for (const [g, d, secs, label] of [['timing', 'stopwatch', -1, 'stopwatch-streak'], ['hold', 'grow', -1, 'grow-streak'], ['reaction', 'flash', 5, 'flash-set']]) {
+    for (const w of [375, 390, 430]) {
+      await page.setViewport({ width: w, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+      await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture({ allOpen: 1 }));
+      await page.reload({ waitUntil: 'networkidle0' }); await sleep(420);
+      await goRun(page, { game: g, diff: d, secs });
+      await waitFor(page, () => document.getElementById('game').classList.contains('live'), 20000);
+      await sleep(900);
+      const m = await headerMetrics(page);
+      if (w === 390) await frame(page, browser, `60.19-${label}-390`, `${g} · ${d} header at 390 wide — badge, mode / count row, score, best`);
+      say(label + '@' + w, m);
+      await abortRun(page); await sleep(300);
+    }
+  }
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+});
+
 /* ---------- the runner ---------- */
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 if (ARGV.includes('--list')) { console.log(Object.keys(SCENES).join('\n')); process.exit(0); }

@@ -1108,12 +1108,17 @@
      right one changed width — and Sequence changes it every few seconds ("round 4 · watch" → "your turn"), which is the
      round marker sliding left and right that Aiden reported. The two outer slots take equal share and hold their own
      alignment, so the score sits still whatever either of them says. */
-  .hud{position:absolute;left:0;right:0;top:max(14px,env(safe-area-inset-top));padding:0 16px 0 60px;display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--mute);font-size:13px;letter-spacing:.14em;pointer-events:none}
-  .hud>#hud-mode,.hud>#hud-time{flex:1 1 0;min-width:0}
-  .hud>#hud-mode{text-align:left}
-  .hud>#hud-time{text-align:right}
-  .hud>#score{flex:0 0 auto;padding:0 6px}
-  #score{font-weight:700;font-size:clamp(32px,8vw,60px);color:var(--ink);letter-spacing:0}
+  /* ---------- v31 (60.19, build 60): THE RUN'S HEADER, AS A COLUMN ----------
+     One stack, four rows, in the item's order: the goal / unlock badge, a small row (mode left, round or attempt right), the big
+     score centred on its own line, and "best" dim under it with clear space. Everything is IN FLOW inside #top, so a row that is
+     not there — no goal, no best — takes no height and nothing has to be nudged down by a class.
+     B.13's fixed-width slots are RETIRED with this: they existed so the centre item of a three-item row would not move when the
+     right one changed width, and the score is not in that row any more. The mode takes the width it needs and the count the rest. */
+  #top{position:absolute;left:0;right:0;top:calc(env(safe-area-inset-top) + 11px);display:flex;flex-direction:column;align-items:center;gap:7px;padding:0 16px;pointer-events:none;z-index:4}
+  .hud{width:100%;padding-left:44px;display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--mute);font-size:11px;letter-spacing:.14em;pointer-events:none}
+  .hud>#hud-mode{flex:0 1 auto;min-width:0;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hud>#hud-time{flex:0 1 auto;min-width:0;text-align:right}
+  #score{display:block;font-weight:700;font-size:clamp(32px,8vw,60px);color:var(--ink);letter-spacing:0;line-height:1.05;text-align:center}
   #quit{position:absolute;left:8px;top:max(8px,env(safe-area-inset-top));width:44px;height:44px;display:grid;place-items:center;font-family:var(--mono);font-size:22px;color:var(--mute);z-index:6}
   #count{position:absolute;inset:0;display:none;place-items:center;font-family:var(--mono);font-weight:700;font-size:clamp(80px,26vw,180px);color:var(--ink);pointer-events:none;z-index:5;font-variant-numeric:tabular-nums}
   #count.on{display:grid}
@@ -1161,7 +1166,9 @@
      to make room only when there is something to chase, so a run with no goal looks exactly as it did */
   /* v25 (item 19, build 45): the goal box sits 11px BELOW the safe-area line, not flush on it — max(11px, inset) put its top edge on the status bar's
      own bottom, and the clock covered its first line. The same 11px as before on a phone with no inset (and in the gate) */
-  #goal{position:absolute;left:50%;top:calc(env(safe-area-inset-top) + 11px);transform:translateX(-50%);font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);border:1px solid var(--line);padding:5px 10px;white-space:nowrap;pointer-events:none;display:none;z-index:4;max-width:min(92vw,calc(100vw - 116px));overflow:hidden;text-overflow:ellipsis}
+  /* v31 (60.19, build 60): IN FLOW, inside #top. It was absolute at the same offset #top now sits at, which is why it and the
+     HUD under it could overlap and why `goalon` had to push the HUD down by a hand-written 44px. */
+  #goal{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);border:1px solid var(--line);padding:5px 10px;white-space:nowrap;pointer-events:none;display:none;z-index:4;max-width:min(92vw,calc(100vw - 116px));overflow:hidden;text-overflow:ellipsis}
   #goal.on{display:block}
   #goal b{color:var(--ink);font-weight:500}
   #goal.hit{border-color:var(--ok);color:var(--ok);animation:pop .3s ease-out}
@@ -1174,8 +1181,9 @@
   #goal.roll>i,#goal.roll>u{animation:goalroll 9s ease-in-out infinite}
   @keyframes goalroll{0%,40%{translate:0 0}50%,90%{translate:0 -22px}100%{translate:0 0}}
   #goal.hit>i::before{content:"\2713 "}
-  /* v15 (2.2): the run's own furniture moves down under the goal line rather than the goal line hiding behind it */
-  #game.goalon .hud{top:calc(env(safe-area-inset-top) + 44px)}
+  /* v15 (2.2): the run's own furniture moves down under the goal line rather than the goal line hiding behind it.
+     v31 (60.19, build 60): the HUD's own nudge is RETIRED — the header is a column and the badge takes its own height in it, so
+     there is nothing to push. The rate bar is not in that column and keeps its nudge. */
   #game.goalon #rate{top:calc(28% + env(safe-area-inset-top))}
   #game.bigc #score{visibility:hidden}
   #intro p{background:color-mix(in srgb,var(--ground) 88%,#fff);border:1px solid var(--line);padding:12px 14px;left:24px;right:24px}
@@ -1186,7 +1194,9 @@
   #rate u.on{display:block}
   /* v17 (B.13): "best" sat at +52px, which is inside the score's own box — #score runs to 60px of type — so on Sequence,
      where the score is the round number, the best-ghost was drawn behind it. It clears the score now. */
-  #pbghost{position:absolute;left:50%;top:calc(max(14px,env(safe-area-inset-top)) + 78px);translate:-50% 0;font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);display:none;pointer-events:none}
+  /* v31 (60.19, build 60): IN FLOW under the score, with its own clear space. It was pinned at a hand-measured +78px, which is
+     inside the score's own box whenever the score is short (B.13 moved it there for exactly that reason and it moved again). */
+  #pbghost{margin-top:3px;font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);display:none;pointer-events:none}
   #pbghost.on{display:block}
   #game.versus #pbghost,#game.bigc #pbghost{display:none}
   #hud-mode .p1,#hud-mode .p2{font-weight:700}

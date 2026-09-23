@@ -1432,6 +1432,56 @@ if (section('the runs (v15 section 3)')) {
       ? ok('B.3a / B.4 / L5 the Stopwatch Streak budget is 5s, 7.5s past round 10; Hidden is 700ms and the screen says so')
       : bad('B.3a / B.4 the Streak budgets', JSON.stringify(s)); }
 
+  /* ---- v31 (60.19, build 60): THE RUN'S HEADER IS A COLUMN, AND NOTHING SHARES A LINE WITH THE SCORE ----
+     Aiden's screenshots: the UNLOCK pill over the GOAL pill, "Stopwatch · Streak" wrapping to three lines under the score,
+     "attempt 1" broken across two, "BEST 831MS" touching the big number. All four are one fault — a badge absolutely positioned
+     over a single row of mode | score | count. The header is four rows in flow now. The assertion is geometric and is made at the
+     three widths the item names: every row's box against every other, with mode-and-count the one pair allowed to share a line. */
+  { const hdAll = [];
+    for (const W of [375, 390, 430]) {
+      await page.setViewport({ width: W, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+      await sleep(200);
+      const rows60 = await page.evaluate(async () => { const RUN = await import('./run/run.js'), ST = await import('./core/state.js');
+        const SS = await import('./core/store.js');
+        for (const k of ['timing', 'timing:stopwatch', 'hold', 'hold:grow', 'reaction', 'reaction:flash', 'spot', 'spot:count', 'sequence', 'sequence:solo', 'quick-tap', 'quick-tap:two', 'dots', 'dots:blind']) SS.store.intro[k] = Date.now();
+        SS.save();
+        const wait = ms => new Promise(r => setTimeout(r, ms));
+        const box = sel => { const e = document.querySelector(sel); if (!e) return null;
+          const cs = getComputedStyle(e); if (cs.display === 'none' || cs.visibility === 'hidden') return null;
+          const r = e.getBoundingClientRect(); if (!r.width || !r.height) return null;
+          return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+        const out = [];
+        for (const [g, d, secs] of [['timing', 'stopwatch', -1], ['hold', 'grow', -1], ['reaction', 'flash', 5], ['spot', 'count', 10], ['quick-tap', 'two', 15], ['dots', 'blind', 15], ['sequence', 'solo', 3]]) {
+          Object.assign(ST.sel, { vs: 0, practice: 0, game: g, diff: d, secs }); RUN.start();
+          for (let i = 0; i < 300 && !document.getElementById('game').classList.contains('live'); i++) await wait(40);
+          await wait(650);
+          const rows = { goal: box('#goal'), mode: box('#hud-mode'), count: box('#hud-time'), score: box('#score'), best: box('#pbghost') };
+          const names = Object.keys(rows), clash = [];
+          const hit = (a, b) => a && b && a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+          for (let i = 0; i < names.length; i++) for (let j = i + 1; j < names.length; j++) {
+            if (names[i] === 'mode' && names[j] === 'count') continue;
+            if (hit(rows[names[i]], rows[names[j]])) clash.push(names[i] + '/' + names[j]); }
+          const shown = names.filter(n => rows[n]);
+          out.push({ game: g + ':' + d, clash, shown: shown.length,
+            order: shown.slice().sort((a, b) => rows[a].y - rows[b].y).join('>'),
+            scoreOff: rows.score ? Math.round(Math.abs((rows.score.x + rows.score.w / 2) - document.documentElement.clientWidth / 2)) : null,
+            aboveGap: rows.score && rows.count ? Math.round(rows.score.y - (rows.count.y + rows.count.h)) : null });
+          RUN.abort(); await wait(320);
+        }
+        return out; });
+      rows60.forEach(r => hdAll.push(Object.assign({ w: W }, r)));
+    }
+    await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    await sleep(200);
+    /* a row that is not there is simply absent — Estimate’s Grow has no goal on a fresh profile, and Quick Tap solo hides
+       #score behind its own big count (`bigc`). The rule is the ORDER of whatever is shown, not that all five are. */
+    const RANK60 = { goal: 0, mode: 1, count: 1, score: 2, best: 3 };
+    const inOrder = o => { const seq = o.split('>').map(k => RANK60[k]); return seq.every((v, i) => !i || v >= seq[i - 1]); };
+    const hdBad = hdAll.filter(r => r.clash.length || r.scoreOff > 2 || (r.aboveGap !== null && r.aboveGap < 0) || !inOrder(r.order));
+    hdBad.length === 0
+      ? ok(`60.19 the run's header is four rows in flow and nothing shares a line with the big score — ${hdAll.length} readings (7 game / mode pairs × 375, 390 and 430 wide): every one is goal, then the mode-and-count row, then the score, with no box touching any other and the score centred to within ${Math.max(...hdAll.map(r => r.scoreOff))}px`)
+      : bad('60.19 the run header', JSON.stringify(hdBad.slice(0, 6))); }
+
   /* ---- v31 (60.18, build 60): ONE ALLOWANCE-STREAK ROUND SCREEN, AND THE HEADER THAT HAD LOST ITS BUDGET ----
      Flash read verdict, big time, "BASELINE 150 MS", "+0 MS", "TOTAL 398 OF 1000 MS" — three lines of small caps about one
      budget. The block is now the one Grow and Hidden use. The header bug is its own fact and its own check: REACTION.hudStreak is

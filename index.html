@@ -340,12 +340,20 @@
     <div class="vhalf bot p1"><div class="vwho" id="vwho0"><span class="p1">Player 1</span><b id="vn0">0</b></div><div class="pad l" data-vs-side="0:0"><div class="sq" id="vsq00"></div></div><div class="pad r" data-vs-side="0:1"><div class="sq" id="vsq01"></div></div><div class="pad l up" data-vs-side="0:2"><div class="sq" id="vsq02"></div></div><div class="pad r up" data-vs-side="0:3"><div class="sq" id="vsq03"></div></div></div>
     <div id="vwin"></div>
   </div>
-  <div class="hud"><span id="hud-mode"></span><span id="score">0</span><span id="hud-time">0.00</span></div>
-  <div id="pbghost"></div>
+  <!-- v31 (60.19, build 60): THE RUN'S HEADER IS A COLUMN. It was a badge absolutely positioned over a single row of
+       mode | score | count, so the UNLOCK pill covered the GOAL pill, "Stopwatch · Streak" wrapped to three lines under the
+       score, "attempt 1" broke across two, and "BEST 831MS" touched the big number. Four things, one line each, in order:
+       the goal / unlock badge, a small row with the mode on the left and the round or attempt count on the right, the big
+       score centred on its own line, and "best" dim under it. NOTHING SHARES A LINE WITH THE SCORE. -->
+  <div id="top">
+    <div id="goal"></div>
+    <div class="hud"><span id="hud-mode"></span><span id="hud-time">0.00</span></div>
+    <span id="score">0</span>
+    <div id="pbghost"></div>
+  </div>
   <button data-act="quit" id="quit" aria-label="quit">×</button>
   <div id="rate"><i></i><u id="pbmark"></u><b>0.0/s</b></div>
   <div id="edge"></div>
-  <div id="goal"></div>
   <div id="intro"><p id="intro-text"></p><div id="ghost"></div></div>
   <div id="count"></div>
   <div id="flash"></div>
