@@ -5308,17 +5308,28 @@ if (section('build 28 - v17 sections B.1 to B.18')) {
     padFromCap ? ok(`B.15 the keypad is built from SPOT_RAMP.nCap (${R.nCap}), so the band can never deal a count the player cannot answer`)
       : bad('B.15 the keypad must read the cap', 'it carries its own length');
     /* AMENDED at build 44 (v24 F.4): the flash no longer falls at all — it GROWS with the crowd a round deals, from flashBase, capped */
+    /* RESTATED at build 60 (v31 60.16): the ordinary band is held at `bandCap` and a round from `spikeFrom` on MAY, rarely, ask for
+       `spikeLo`-`spikeHi` instead. So a count is no longer always inside [lo, hi] — but the fact this check stands for is unchanged and
+       is now asserted on BOTH branches: every count a band can deal is one the keypad can answer (nCap), and the spike has bounds of
+       its own. It is sampled 40 times a round rather than once, so the rare branch is actually exercised instead of flaked past. */
     const r = await page.evaluate(async () => {
       const SP = (await import('./games/spot/index.js')).default;
-      const out = []; for (let i = 1; i <= 12; i++) { const x = SP.ramp(i); out.push({ r: i, lo: x.lo, hi: x.hi, dip: x.dip, n: x.n, decoys: x.decoys, flash: x.flash, sizeVar: +x.sizeVar.toFixed(3) }); }
+      const out = []; for (let i = 1; i <= 12; i++) { const x = SP.ramp(i); out.push({ r: i, lo: x.lo, hi: x.hi, dip: x.dip, spike: !!x.spike, n: x.n, decoys: x.decoys, flash: x.flash, sizeVar: +x.sizeVar.toFixed(3) }); }
+      return out; });
+    const many = await page.evaluate(async () => {
+      const SP = (await import('./games/spot/index.js')).default;
+      const out = []; for (let i = 1; i <= 14; i++) for (let k = 0; k < 40; k++) { const x = SP.ramp(i); out.push({ r: i, lo: x.lo, hi: x.hi, dip: x.dip, spike: !!x.spike, n: x.n }); }
       return out; });
     const dips = r.filter(x => x.dip);
     const rising = r.every((x, i) => !i || x.decoys >= r[i - 1].decoys || r[i - 1].dip);
-    const banded = r.every(x => x.n >= x.lo && x.n <= x.hi && x.hi <= G28.SPOT_RAMP.nCap);
+    const cap28 = G28.SPOT_RAMP.bandCap || G28.SPOT_RAMP.nCap;
+    const banded = many.every(x => x.hi <= cap28 && x.n <= G28.SPOT_RAMP.nCap
+      && (x.spike ? (x.n >= G28.SPOT_RAMP.spikeLo && x.n <= G28.SPOT_RAMP.spikeHi && x.r >= G28.SPOT_RAMP.spikeFrom && !x.dip) : (x.n >= x.lo && x.n <= x.hi)));
+    const spiked = many.filter(x => x.spike);
     const fewer = dips.every(x => { const prev = r[x.r - 2]; return prev && x.n <= prev.hi && x.decoys > prev.decoys; });
-    (dips.length >= 2 && rising && banded && fewer)
-      ? ok(`B.15 the target count is dealt from a rising band (round 10: ${r[9].lo}-${r[9].hi}) and rounds ${dips.map(d => d.r).join(', ')} deal the floor among more decoys - fewer targets, bigger crowd`)
-      : bad('B.15 the reworked curve', JSON.stringify({ dips: dips.length, rising, banded, fewer }));
+    (dips.length >= 2 && rising && banded && fewer && spiked.length)
+      ? ok(`B.15 the target count is dealt from a rising band capped at ${cap28} (round 10: ${r[9].lo}-${r[9].hi}) and rounds ${dips.map(d => d.r).join(', ')} deal the floor among more decoys - fewer targets, bigger crowd. RESTATED at build 60 (60.16): ${spiked.length} of 560 sampled rounds SPIKED to ${G28.SPOT_RAMP.spikeLo}-${G28.SPOT_RAMP.spikeHi}, never before round ${G28.SPOT_RAMP.spikeFrom}, never on a dip, and never above the keypad's ${G28.SPOT_RAMP.nCap}`)
+      : bad('B.15 the reworked curve', JSON.stringify({ dips: dips.length, rising, banded, fewer, spiked: spiked.length }));
     (r[2].sizeVar > 0 && r[9].sizeVar > r[2].sizeVar) ? ok(`B.15 size variation arrives at round ${G28.SPOT_RAMP.sizeFrom} and grows (±${Math.round(r[9].sizeVar * 100)}% by round 10)`)
       : bad('B.15 size variation', JSON.stringify(r.map(x => x.sizeVar)));
     // v24 (F.4, build 44): more shapes on screen, more time — every round's flash is exactly the crowd it deals, and never shorter than round 1's base
@@ -5430,10 +5441,13 @@ if (section('build 28 - v17 sections B.1 to B.18')) {
     f.floored ? ok('B.1 Spot · Find’s running total is floored at zero - the 0.5s rebate (6.30) survives, the unbounded negative does not')
       : bad('B.1 Find’s total must not go negative', 'the floor is missing');
     // and the sheet lines say what the engines actually score
+    /* RESTATED at build 60 (v31 60.22): a mode line is ONE SHORT LINE now, inside SET_LIMIT, and Find's half-second rebate is no
+       longer ON it — the fine print moved to the catalogue's "Scoring, in full" section, where "build 45" asserts it against
+       SPOT_FIND.leeway itself. What B.1 stands for is that the line says WHAT IS SCORED, and both still do. */
     const cut = G28.SET_COPY['hold:cut'].set, find = G28.SET_COPY['spot:find'].set;
-    (/average/.test(cut) && /free/.test(find))
-      ? ok(`B.1 the sheet says what is scored - Cut "${cut}", Find "${find}"`)
-      : bad('B.1 the Set lines match the engines', JSON.stringify({ cut, find }));
+    (/average/.test(cut) && /total time/.test(find) && cut.length <= G28.SET_LIMIT && find.length <= G28.SET_LIMIT)
+      ? ok(`B.1 the sheet says what is scored - Cut "${cut}" (${cut.length}), Find "${find}" (${find.length}), both inside the ${G28.SET_LIMIT}-character limit; the 0.5s rebate is stated in the catalogue's scoring section instead of on the sheet (60.22)`)
+      : bad('B.1 the Set lines match the engines', JSON.stringify({ cut, find, limit: G28.SET_LIMIT }));
   }
 
   // ---- B.2 / B.3: the Estimate round result ----
@@ -6106,10 +6120,19 @@ if (section('build 31 - v18 sections B.1 to B.14')) {
   }
   {
     // B.3c / B.7: both add-ups hold before they drain, on one shared number
-    (G31.CFG.hold === 800 && /this\.later\(\(\)=>\{ if\(this\.st!=='show'\) return; this\.drainUp\(err,hid\); \},CFG\.hold\)/.test(tm31)
-      && /this\.later\(\(\)=>\{ if\(this\.st!=='show'\) return; this\.flashDrain\(add\); \},HOLD_MS\)/.test(rx31))
-      ? ok(`B.3c / B.7 the round’s figure holds ${G31.CFG.hold}ms before it drains — one number, Timing and Reaction on the same beat`)
-      : bad('B.3c / B.7 the hold before the drain', 'CFG.hold ' + G31.CFG.hold);
+    /* DELETED and REPLACED at build 60: the two clauses here were REGEXES AGAINST HOW drainUp AND flashDrain ARE CALLED, and 60.12
+       gave drainUp a third argument (the raw miss, so the round's word can read it while the total spends less than it). The gate's
+       own rule is to delete a source-text check rather than re-spell it, so the FACT is DRIVEN now instead: each engine's own add-up
+       is called with a stub that records what delay it schedules. That proves the hold, proves it is CFG.hold, and proves both
+       engines are on the one number, without caring how either line is written. */
+    const held31 = await page.evaluate(async () => {
+      const TM = (await import('./games/timing/index.js')).default, RX = (await import('./games/reaction/index.js')).default;
+      const at = [], stub = { st: 'show', later(f, ms) { at.push(ms); }, drainUp() {}, flashDrain() {} };
+      TM.addUp.call(stub, 120, true, 170); RX.flashAdd.call(stub, 120);
+      return at; });
+    (G31.CFG.hold === 800 && held31.length === 2 && held31.every(ms => ms === G31.CFG.hold))
+      ? ok(`B.3c / B.7 the round's figure holds ${G31.CFG.hold}ms before it drains — one number, Timing and Reaction on the same beat, each driven through its own add-up (${held31.join('ms, ')}ms)`)
+      : bad('B.3c / B.7 the hold before the drain', JSON.stringify({ hold: G31.CFG.hold, held31 }));
     // B.3d / B.13: every Streak says what it is spending and what the budget is, and the Stopwatch score is the spend
     (/spentOf:'\{tot\} \/ \{bud\}s'/.test(read('config', 'copy.js'))
       && /streakScore\(\)\{ return this\.hid\(\)\?String\(this\.errs\.length\):this\.spentLine\(\); \}/.test(tm31))
@@ -6267,8 +6290,12 @@ if (section('build 32 - v19 section C and v18 sections B.15 to B.27')) {
     (/gated\(ms\)\{ return Math\.max\(0,ms-this\.NOGO_FREE\); \}/.test(s32) && /const add=this\.gated\(ms\); if\(this\.streak\(\)\) this\.over\+=add;/.test(s32) && /const all=this\.gatedAll\(\);/.test(s32) && !/this\.beatMs\(\)\)\.fill|fill\(this\.beatMs\(\)\)/.test(s32))
       ? ok('C.5 every tap goes through gated() — Streak spend and Set mean alike — and a skipped target is charged the dwell it was given')
       : bad('C.5 the gate is one function on both lengths');
-    (/hits:this\.gotAll,/.test(s32) && G32.GAMES.reaction.per.nogo.streak.scoreWord === 'targets' && /180ms gate/.test(G32.SET_COPY['reaction:nogo'].set) && !/GO_PAD|GO_SPREAD|beatMs\(\)\?1150|\['circle','square','tri'\]/.test(s32))
-      ? ok('C.6 a Streak scores in TARGETS (gotAll) and the sheet says so; the Set line names the 180ms gate; GO_PAD, GO_SPREAD, the fixed beats and the three-shape list are gone')
+    /* RESTATED at build 60 (v31 60.22): the Set line no longer NAMES the 180ms gate, because a mode line is one short line now. The
+       gate itself has not moved — it is NOGO_FREE, it is asserted three lines up in C.5, and it is written out in the catalogue's
+       scoring section, which "build 45" drives off the engine's own constant. What C.6 stands for — the Streak's UNIT and the
+       constants that were retired — is unchanged, and the line is now asserted to be inside SET_LIMIT instead. */
+    (/hits:this\.gotAll,/.test(s32) && G32.GAMES.reaction.per.nogo.streak.scoreWord === 'targets' && G32.SET_COPY['reaction:nogo'].set.length <= G32.SET_LIMIT && /targets/i.test(G32.SET_COPY['reaction:nogo'].streak) && !/GO_PAD|GO_SPREAD|beatMs\(\)\?1150|\['circle','square','tri'\]/.test(s32))
+      ? ok(`C.6 a Streak scores in TARGETS (gotAll) and the sheet says so — "${G32.SET_COPY['reaction:nogo'].streak}", and the Set line "${G32.SET_COPY['reaction:nogo'].set}" is inside the ${G32.SET_LIMIT}-character limit (60.22 moved the 180ms gate to the catalogue's scoring section; C.5 above still asserts the gate itself); GO_PAD, GO_SPREAD, the fixed beats and the three-shape list are gone`)
       : bad('C.6 the Streak unit and the retired constants');
     (B32.RUN_SCHEMA === 4 && /function up3\(raw\)/.test(store32) && /r\.d==='nogo'&&\(r\.v\|\|0\)<4/.test(store32) && /delete raw\.bars\['reaction:nogo:-1'\]/.test(store32) && /if\(\(raw\.v\|\|0\)<3\) raw=up3\(raw\);/.test(store32))
       ? ok('C.5 / C.6 a scoring unit changed, so RUN_SCHEMA is 4 and up3 retires the Go / No-go records and the Streak bar\'s cleared flag, nothing else')
@@ -7052,7 +7079,8 @@ if (section('build 35 - batch 15, bugs and the runs')) {
   /* ---- D.9, D.10, #415 and the Verdict Desk data edit ---- */
   {
     const T35 = V35.VERDICTS;
-    const AT = { 'quick-tap': [.4833, .3667, .25], dots: [.5556, .4444, .3111], hold: [.875, .75, .25], 'hold:cut': [.8875, .8, .625], sequence: [.6875, .5, .3125] };
+    // RESTATED at build 60 (v31 60.4): Estimate · Grow's triple is Aiden's own again — .875/.75 became .825/.70 when he made Grow looser on 2026-09-23. Cut did not move.
+    const AT = { 'quick-tap': [.4833, .3667, .25], dots: [.5556, .4444, .3111], hold: [.825, .7, .25], 'hold:cut': [.8875, .8, .625], sequence: [.6875, .5, .3125] };
     const atBad = Object.entries(AT).filter(([k, v]) => !T35[k] || T35[k].at.join() !== v.join()).map(([k]) => k);
     const names = V35.VERDICT_TIERS.map(t => t.name).join('|');
     (names === 'Amazing!|Great!|Good.|Meh.' && !atBad.length)
@@ -7087,7 +7115,8 @@ if (section('build 35 - batch 15, bugs and the runs')) {
     (!introBad.length && Object.keys(C35.INTRO).length === 13) ? ok('Verdict Desk: the twelve intro lines are Aiden\'s, and Quick Tap · Two keeps its own') : bad('Verdict Desk intro lines', introBad.join(', '));
     const split = ['timing:stopwatch', 'timing:hidden', 'reaction:flash', 'reaction:nogo'];
     const same = (a, b) => JSON.stringify(T35[a]) === JSON.stringify(T35[b]);
-    (split.every(k => T35[k]) && T35['timing:stopwatch'].at.join() === '0.9,0.74,0.56' && T35['timing:hidden'].at.join() === '0.9259,0.8796,0.8241' && !T35.timing && !T35.reaction && !same('reaction:flash', 'reaction:nogo'))
+    // RESTATED at build 60 (v31 60.9): Hidden's Set triple is 0.8704 / 0.8148 / 0.7222 — the Author, Pro and Skill key bars (700 / 1,000 / 1,500ms over ten rounds), so a Set "Meh." can no longer be stricter than the Skill bar. Stopwatch did not move.
+    (split.every(k => T35[k]) && T35['timing:stopwatch'].at.join() === '0.9,0.74,0.56' && T35['timing:hidden'].at.join() === '0.8704,0.8148,0.7222' && !T35.timing && !T35.reaction && !same('reaction:flash', 'reaction:nogo'))
       ? ok('D.10 Timing and Reaction are keyed per mode - four rows, no parent left, and Timing\'s numbers are Aiden\'s (AMENDED at build 37, #414 closed) - AMENDED at build 36: the export wrote the rows apart, so they are no longer seeded copies') : bad('D.10 the split', JSON.stringify(Object.keys(T35)));
     !/r\.d==='four'\?5/.test(rules35) ? ok('D.9 QUALITY[\'quick-tap\'] no longer divides Four by 5') : bad('D.9 the Four divisor is still there');
     await setStorage({ ne: { v: 4, prefs: { ...OPEN_PREFS }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
@@ -7218,9 +7247,14 @@ if (section('build 36 - the frozen clock and the verdict export')) {
     (!lineBad.length && !ws.length && Object.keys(T).length === 12)
       ? ok('Verdict export (v658): every line it carries is in, across all eleven of Aiden\'s verdict rows plus the Gauntlet\'s own; the lines it left blank keep theirs; the two half-typed lines are Aiden\'s fixes; no line carries stray whitespace')
       : bad('Verdict export lines', JSON.stringify({ lineBad, ws, keys: Object.keys(T) }));
-    const AT = { 'quick-tap': [.4833, .3667, .25], dots: [.5556, .4444, .3111], hold: [.875, .75, .25], 'hold:cut': [.8875, .8, .625], sequence: [.6875, .5, .3125],
-      'reaction:flash': [.7714, .6714, .5857], 'reaction:nogo': [.5, .44, .33], 'timing:stopwatch': [.9, .74, .56], 'timing:hidden': [.9259, .8796, .8241], 'spot:count': [.85, .6, .35], 'spot:find': [.85, .6, .35] };
-    const RA = { 'timing:stopwatch': [0.1, 0.3, 0.55], 'timing:hidden': [40, 70, 95], 'reaction:flash': [225, 255, 285], 'reaction:nogo': [299, 330, 400], 'hold:grow': [2, 5, 10], 'hold:cut': [3.5, 5.5, 9], 'spot:count': [0, 1, 2], 'spot:find': [1, 2, 4] };
+    /* RESTATED at build 60: four of these are Aiden's own new numbers of 2026-09-23 and the rest are untouched. 60.4 made Estimate ·
+       Grow looser (.875/.75 → .825/.70, and its per-round ceilings 2/5/10 → 4/8/15); 60.9 rebuilt Hidden (.9259/.8796/.8241 →
+       .8704/.8148/.7222, which IS the Author / Pro / Skill key bar in the Set's own unit, and 40/70/95 → 60/115/200 per round). */
+    const AT = { 'quick-tap': [.4833, .3667, .25], dots: [.5556, .4444, .3111], hold: [.825, .7, .25], 'hold:cut': [.8875, .8, .625], sequence: [.6875, .5, .3125],
+      'reaction:flash': [.7714, .6714, .5857], 'reaction:nogo': [.5, .44, .33], 'timing:stopwatch': [.9, .74, .56], 'timing:hidden': [.8704, .8148, .7222], 'spot:count': [.85, .6, .35], 'spot:find': [.85, .6, .35] };
+    /* RESTATED at build 60: two of these per-round ceilings are Aiden's own new numbers of 2026-09-23. 60.9 rebuilt Hidden's (40/70/95
+       became 60/115/200) and 60.4 loosened Grow's (2/5/10 became 4/8/15). The other six are untouched. */
+    const RA = { 'timing:stopwatch': [0.1, 0.3, 0.55], 'timing:hidden': [60, 115, 200], 'reaction:flash': [225, 255, 285], 'reaction:nogo': [299, 330, 400], 'hold:grow': [4, 8, 15], 'hold:cut': [3.5, 5.5, 9], 'spot:count': [0, 1, 2], 'spot:find': [1, 2, 4] };
     const atBad = Object.entries(AT).filter(([k, v]) => !T[k] || T[k].at.join() !== v.join()).map(([k]) => k);
     const raBad = Object.entries(RA).filter(([k, v]) => !V.ROUND_AT[k] || V.ROUND_AT[k].join() !== v.join()).map(([k]) => k);
     (!atBad.length && !raBad.length && Object.keys(V.ROUND_AT).length === 8)
@@ -7253,17 +7287,24 @@ if (section('build 37 - keys and chests')) {
       ? ok('a. the two Go / No-go typos are corrected - "You got it!" and "You need to be one with the shapes."') : bad('a. the typos', JSON.stringify([T['reaction:nogo'].lines.ok[1], T['reaction:nogo'].lines.bad[2]]));
     const at = { sw: T['timing:stopwatch'].at.join(), hd: T['timing:hidden'].at.join(), rsw: V.ROUND_AT['timing:stopwatch'].join(), rhd: V.ROUND_AT['timing:hidden'].join() };
     const rules = read('progress', 'rules.js');
-    (at.sw === '0.9,0.74,0.56' && at.hd === '0.9259,0.8796,0.8241' && at.rsw === '0.1,0.3,0.55' && at.rhd === '40,70,95' && /'timing':r=>1-Math\.min\(1,r\.hits\/5\), 'timing:hidden':r=>1-Math\.min\(1,r\.hits\/5400\)/.test(rules))
-      ? ok('b. Timing\'s thresholds build (#414 closed) - Stopwatch 0.90 / 0.74 / 0.56 and per round 0.1 / 0.3 / 0.55, Hidden 0.9259 / 0.8796 / 0.8241 and 40 / 70 / 95 - and the scales did not move (5s, 5400ms)')
+    /* RESTATED at build 60 (v31 60.9): HIDDEN's numbers are Aiden's again and they moved. Per round 40/70/95 became 60/115/200 (his
+       own), and the Set triple .9259/.8796/.8241 became .8704/.8148/.7222 — which is the Author, Pro and Skill key bars converted
+       onto the same 5400ms scale (700 / 1,000 / 1,500ms over ten rounds), closing the fault that a Set "Meh." was STRICTER than the
+       Skill key's own bar. Stopwatch did not move, and neither scale moved: this is still 5s and 5400ms. */
+    (at.sw === '0.9,0.74,0.56' && at.hd === '0.8704,0.8148,0.7222' && at.rsw === '0.1,0.3,0.55' && at.rhd === '60,115,200' && /'timing':r=>1-Math\.min\(1,r\.hits\/5\), 'timing:hidden':r=>1-Math\.min\(1,r\.hits\/5400\)/.test(rules))
+      ? ok('b. Timing\'s thresholds build (#414 closed) - Stopwatch 0.90 / 0.74 / 0.56 and per round 0.1 / 0.3 / 0.55, Hidden 0.8704 / 0.8148 / 0.7222 and 60 / 115 / 200 (RESTATED at build 60, v31 60.9: Hidden IS the Author / Pro / Skill key bars in the Set\'s own unit) - and the scales did not move (5s, 5400ms)')
       : bad('b. Timing thresholds', JSON.stringify(at));
     const warn = [['site', 'config', 'verdicts.js'], ['site', 'progress', 'rules.js'], ['_review', '2026-09-13_personal_verdict-desk-edits.md'], ['_review', '2026-09-14_personal_verdict-desk-export.md']]
       .filter(p => /DO NOT BUILD Timing|DO-NOT-BUILD-TIMING|DO NOT BUILD THE LINE TABLES BELOW[\s\S]*DO NOT BUILD Timing/i.test(read('..', ...p))).map(p => p.join('/'));
     !warn.length ? ok('b. the DO NOT BUILD Timing warning is gone from the config, the rules and both Verdict Desk files') : bad('b. the Timing warning still stands somewhere', warn.join(', '));
     const tq = await page.evaluate(async () => { const P = await import('./progress.js'); const tier = r => (P.tierOf(Object.assign({ misses: 0, t: 1, v: 4 }, r)) || {}).tier;
       return { sw: [tier({ g: 'timing', d: 'stopwatch', s: 5, hits: 0.5 }), tier({ g: 'timing', d: 'stopwatch', s: 5, hits: 0.51 }), tier({ g: 'timing', d: 'stopwatch', s: 5, hits: 2.19 }), tier({ g: 'timing', d: 'stopwatch', s: 5, hits: 2.3 })],
-        hd: [tier({ g: 'timing', d: 'hidden', s: 10, hits: 400 }), tier({ g: 'timing', d: 'hidden', s: 10, hits: 401 }), tier({ g: 'timing', d: 'hidden', s: 10, hits: 949 }), tier({ g: 'timing', d: 'hidden', s: 10, hits: 951 })] }; });
+        /* RESTATED at build 60 (v31 60.9): these four probes were picked to sit either side of the OLD 400 / 650 / 950 bars. They are
+           picked the same way for Aiden's new ones — one either side of the Author bar (700ms) and one either side of the Skill bar
+           (1,500ms), which is the bottom of the scale. */
+        hd: [tier({ g: 'timing', d: 'hidden', s: 10, hits: 699 }), tier({ g: 'timing', d: 'hidden', s: 10, hits: 700 }), tier({ g: 'timing', d: 'hidden', s: 10, hits: 1500 }), tier({ g: 'timing', d: 'hidden', s: 10, hits: 1501 })] }; });
     (tq.sw.join() === 'ace,good,ok,bad' && tq.hd.join() === 'ace,good,ok,bad')
-      ? ok('b. played back through the tier: a Stopwatch Set 0.50s off is Amazing!, 0.51 Great!, 2.19 Good., 2.30 Meh.; Hidden 400ms Amazing!, 401 Great!, 949 Good. (0.8241 is 949.9ms on the curve), 951 Meh.') : bad('b. Timing played back', JSON.stringify(tq));
+      ? ok('b. played back through the tier: a Stopwatch Set 0.50s off is Amazing!, 0.51 Great!, 2.19 Good., 2.30 Meh.; Hidden 699ms Amazing!, 700 Great! (0.8704 is 699.8ms on the curve), 1500 Good., 1501 Meh. — the Author, Pro and Skill key bars, 60.9') : bad('b. Timing played back', JSON.stringify(tq));
   }
 
   /* ---- c. §K: one colour for "this is what you chose" - and its three checks ---- */
@@ -7566,8 +7607,14 @@ if (section('build 38 - the tile keeps its amber, Author waits for the Pro chest
       : bad('#426 the generator keeps every cell', JSON.stringify({ again: again === bars38, cleared: cleared === bars38, json: P38.reviewJson(json38, rows38) === json38 }));
     // the scheme, cell by cell, on the copy whose desk cells were emptied: the multiplier for the row's own direction, its precision, harder tier over tier, the floors, the marker
     const off = [];
-    for (const r of rowsF) { const o = r.obj, st = P38.stepOf(o.unit), fl = P38.floorOf(r.key, o, RA38), aiden = /^(qt|dt)-/.test(o.id);
-      for (const [t, below] of [['pro', o.bar], ['author', o.pro]]) { if (t === 'pro' && aiden) continue; const v = o[t], m = P38.MULT[o.dir][t], mk = (o.placeholder || {})[t] || {}, basis = mk.basis || '';
+    /* RESTATED at build 60 (v31 60.6): AIDEN'S OWN CELLS ARE SKIPPED BY WHETHER THEY ARE HIS, not by which game they belong to. The
+       build-44 test was the id prefix (qt / dt — the twelve Pro figures he set), and 60.6 made the Cut Streak's AUTHOR cell his as
+       well ("I reached around 25, put that as an author time for now"), which a prefix cannot see. A cell with no placeholder marker
+       is a number a PERSON set: the generator may not write it, isPlaceholder() already reads it as not generated, and this scheme
+       check has nothing to say about it. Every cell the generator IS allowed to write is checked exactly as it was. */
+    const own38 = (o, t) => !((o.placeholder || {})[t]);
+    for (const r of rowsF) { const o = r.obj, st = P38.stepOf(o.unit), fl = P38.floorOf(r.key, o, RA38);
+      for (const [t, below] of [['pro', o.bar], ['author', o.pro]]) { if (own38(o, t)) continue; const v = o[t], m = P38.MULT[o.dir][t], mk = (o.placeholder || {})[t] || {}, basis = mk.basis || '';
         const prec = st === 10 ? v % 10 === 0 : st === 1 ? Number.isInteger(v) : Math.abs(v * 10 - Math.round(v * 10)) < 1e-9;
         const expect = Math.max(fl ? fl.at : -Infinity, P38.roundTo(o.bar * m, st));
         const good = prec && (o.dir === 'lower' ? v < below : v > below) && !(fl && v < fl.at) && (v === expect || /stepped to/.test(basis) || /CLAMPED/.test(basis))
@@ -7610,7 +7657,8 @@ if (section('build 38 - the tile keeps its amber, Author waits for the Pro chest
       return out; });
     // AMENDED at build 44 (v24 §E): 18 Pro placeholders (Aiden set the other 12) and 30 Author
     // AMENDED at build 45 (v25 item 14): isPlaceholder() is unchanged and still counts them — what is gone is the key screen SAYING so (every warn is empty now)
-    (ph.pro === ph.n - 12 && ph.author === ph.n && ph.clear === 0 && !ph.edited.is && ph.edited.count === ph.n - 13 && ph.edited.author
+    // RESTATED at build 60 (v31 60.6): 29 Author placeholders, not 30 — the Cut Streak's Author bar is Aiden's own number now (25), so it is not one
+    (ph.pro === ph.n - 12 && ph.author === ph.n - 1 && ph.clear === 0 && !ph.edited.is && ph.edited.count === ph.n - 13 && ph.edited.author
       && ph.warnPro === '' && ph.edited.warn === '' && ph.warnClear === '')
       ? ok(`#426 progress/key.js tells a generated number from a set one: ${ph.pro} Pro and ${ph.author} Author placeholders, none on key 1; one Pro number changed in place is a person's (${ph.edited.count} left) — and since build 45 no key screen says a word about it`)
       : bad('#426 isPlaceholder and the key screen note', JSON.stringify(ph));
