@@ -1004,8 +1004,8 @@
   /* v14 (7.1): Go is on screen the moment the result is — a player going straight back in never waits for it to animate in */
   #s-over.on>#again{animation-delay:0s}
   #again{margin-top:6px;font-size:22px;padding:16px 60px}
-  .adslot{width:min(92vw,360px);height:64px;border:1px dashed var(--line);display:grid;place-items:center;font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);flex:none}
-  .adslot.off{display:none}
+  /* v31 (60.28, build 60): `.adslot` is retired with the box it drew. The only ad this game has is the interstitial after a
+     result; a dashed banner on the result screen is a banner, and banners are ruled out. */
   .mch.locked{opacity:.35}
   /* result screen (v11): the eyebrow carries only a status; the score marks lower-is-better; a full stop hides under the top 10 */
   #over-eyebrow:empty{display:none}

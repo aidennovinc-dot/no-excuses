@@ -54,6 +54,10 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
   const o={ bg:has(DESIGNS,p.bg)?p.bg:'stars', tint:hex(p.tint,''), snd:SND.includes(p.snd)?p.snd:'space', musicG:{}, lastGame:has(GAMES,p.lastGame)?p.lastGame:'quick-tap',
     name:typeof p.name==='string'?p.name.trim().toUpperCase().slice(0,10):'', scale:has(SCALES,p.scale)?p.scale:'penta',
     allOpen:dev&&!!p.allOpen, supporter:dev&&!!p.supporter, adRuns:Number.isInteger(p.adRuns)&&p.adRuns>=0?p.adRuns:0,
+    /* v31 (60.28, build 60): `firstRun` is when this profile finished its first run ever — the clock a new player's ad-free ten
+       minutes runs from (ADS.graceMs). Written once by ui/ads.js and never again; a preference, so Fresh game keeps it, and no
+       ladder step, because an absent one means "has not finished a run yet", which is what a profile without it already means. */
+    firstRun:Number.isFinite(p.firstRun)&&p.firstRun>0?p.firstRun:0,
     // v17 (build 28): `keySeen` was missing from this list since build 26 — reset() cleared a field load() never created,
     // so the keys screen's once-per-profile arrival was shape-checked by nothing. It is a flag like the three beside it
     col:{}, story:p.story?1:0, played:p.played?1:0, gridSeen:p.gridSeen?1:0, menuSeen:p.menuSeen?1:0, keySeen:p.keySeen?1:0,

@@ -1456,6 +1456,43 @@ if (section('the runs (v15 section 3)')) {
       ? ok('B.3a / B.4 / L5 the Stopwatch Streak budget is 5s, 7.5s past round 10; Hidden is 700ms and the screen says so')
       : bad('B.3a / B.4 the Streak budgets', JSON.stringify(s)); }
 
+  /* ---- v31 (60.28, build 60): AIDEN'S AD RULES OF 2026-09-18, ALL FIVE ----
+     The app honoured ONE of them (supporters) and showed a break every FOURTH result, while telling the player in a caption that
+     it did. The caption is gone — the app does not explain its own ad policy — and so is the dashed banner on the result screen,
+     because the only ad this game has is the interstitial. The five rules are driven against `Ads.show`, which is the whole
+     policy in one place, at the boundaries of each. */
+  { const ad60 = await page.evaluate(async () => { const A = await import('./ui/ads.js'), G = await import('./config/games.js');
+      const SS = await import('./core/store.js');
+      const P = SS.prefs, keep = { sup: P.supporter, n: P.adRuns, first: P.firstRun };
+      const set = (n, first, sup) => { P.adRuns = n; P.firstRun = first; P.supporter = !!sup; };
+      const set5 = { g: 'quick-tap', d: 'two', s: 5 }, streak = { g: 'spot', d: 'find', s: -1 };
+      const long = Date.now() - G.ADS.graceMs - 1000, justNow = Date.now() - 1000;
+      const out = { ADS: G.ADS };
+      // one in five, on a settled player
+      set(0, long); out.everyFifth = [0, 1, 2, 3, 4, 5].map(n => { P.adRuns = n; return A.Ads.show(set5); });
+      // never after a Streak
+      set(0, long); out.streak = A.Ads.show(streak);
+      // never in a new player's first ten minutes, and the boundary either side of it
+      set(0, justNow); out.newPlayer = A.Ads.show(set5);
+      set(0, Date.now() - G.ADS.graceMs + 2000); out.insideGrace = A.Ads.show(set5);
+      set(0, long); out.pastGrace = A.Ads.show(set5);
+      set(0, 0); out.neverPlayed = A.Ads.show(set5);
+      // supporters never
+      set(0, long, true); out.supporter = A.Ads.show(set5);
+      Object.assign(P, { supporter: keep.sup, adRuns: keep.n, firstRun: keep.first }); SS.save();
+      // and neither the banner nor the caption is on the page any more
+      out.banner = !!document.getElementById('adslot');
+      out.caption = (document.getElementById('adbreak').textContent || '').replace(/\s+/g, ' ').trim();
+      return out; });
+    const fifth = ad60.everyFifth;
+    (ad60.ADS.everyN === 5 && ad60.ADS.streak === false && ad60.ADS.graceMs === 600000
+      && fifth[0] === true && fifth.slice(1, 5).every(x => x === false) && fifth[5] === true
+      && ad60.streak === false && ad60.newPlayer === false && ad60.insideGrace === false
+      && ad60.pastGrace === true && ad60.neverPlayed === false && ad60.supporter === false
+      && !ad60.banner && !/every fourth|never during a run/i.test(ad60.caption))
+      ? ok(`60.28 all five of Aiden's 2026-09-18 ad rules hold: at most one per ${ad60.ADS.everyN} runs (${fifth.map((v, i) => i + (v ? '✓' : '·')).join(' ')}), never after a Streak, never in a new player's first ${ad60.ADS.graceMs / 60000} minutes (nor before they have finished a run at all), never for a supporter, and the interstitial is the only ad there is — the dashed banner on the result screen is gone and the break no longer tells the player its own frequency ("${ad60.caption}")`)
+      : bad('60.28 the ad rules', JSON.stringify(ad60)); }
+
   /* ---- v31 (60.27, build 60): A STREAK'S PROGRESS IS SAVED, AND A KILLED APP IS OFFERED IT BACK ----
      A pause keeps the run in memory and needs none of this; the saved row is for the case a pause cannot cover — iOS killing
      the app outright. Four facts: a Streak writes a row every round; a quit clears it; a two-player run writes NOTHING (L10);

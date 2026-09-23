@@ -54,7 +54,8 @@ function renderOver(run){ const g=GC(run.g,run.d,run.s);
   const vb=$('#vsbox');
   if(run.vs2){ const {a,b}=run.vs2, tie=a===b; const lo=run.vs2.lower; const w1=lo?a<b:a>b; vb.innerHTML=`<div class="${!tie&&w1?'win':''}">${pWho(0)}<b>${run.vs2.txt?run.vs2.txt[0]:a}</b></div><em>vs</em><div class="${!tie&&!w1?'win':''}">${pWho(1)}<b>${run.vs2.txt?run.vs2.txt[1]:b}</b></div>`; vb.classList.add('on'); }
   else if(VS.on&&VS.stage===2&&VS.p1&&VS.p2){ const lo=g.lower, a=VS.p1.hits, b=VS.p2.hits, tie=a===b, w1=lo?a<b:a>b; vb.innerHTML=`<div class="${!tie&&w1?'win':''}">${pWho(0)}<b>${scoreTxt(run.g,a,run.d,run.s)}</b></div><em>vs</em><div class="${!tie&&!w1?'win':''}">${pWho(1)}<b>${scoreTxt(run.g,b,run.d,run.s)}</b></div>`; vb.classList.add('on'); } else vb.classList.remove('on');
-  const two=!!run.vs2||VS.on; $('#adslot').classList.toggle('off',!!prefs.supporter); $('#share').hidden=!!run.practice||two||(run.fail&&!run.hits);
+  // v31 (60.28, build 60): the dashed ad box is gone — it was a banner, and banners are ruled out
+  const two=!!run.vs2||VS.on; $('#share').hidden=!!run.practice||two||(run.fail&&!run.hits);
   renderOverTop();
   if(run.practice||two){ $('#over-stats').innerHTML=''; $('#over-rank').innerHTML=run.practice?RESULT.practiceNote:RESULT.twoNote; return; }
   const best=Scores.best(run.g,run.d,run.s), cols=colsOf(run.g,run.d,run.s);
@@ -122,7 +123,7 @@ on('run:finish',({run,isBest,two,fresh,ach,adv})=>{ const g=GC(run.g,run.d,run.s
        finish and the tier played at once, over the last three notes of Snd.end(). The tier now waits until End of run has landed (Snd.endLeft()) */
     const rest=()=>{ const gap=lastTier?Snd.endLeft():0, d=(lastTier?600:0)+gap; if(lastTier){ const t=lastTier; if(gap) setTimeout(()=>Snd.verdict(t),gap); else Snd.verdict(t); }
       msgs.forEach(([m,id,cls,html,go,g],i)=>tT.push(setTimeout(()=>{ toast(m,id,cls,!!id,go); if(g) tT.push(setTimeout(()=>Snd.mapFx(g),MAP_ON_UNLOCK_MS)); },d+i*((id||go)?3400:2600)))); renderOverChips(); };
-    if(adv) keyBreak(adv,rest); else rest(); }),250); });
+    if(adv) keyBreak(adv,rest); else rest(); },run),250); });
 /* v15 (5.1, build 26): a key unlock INTERRUPTS this screen. It was a green toast the player tapped, sitting behind
    however many unlock and achievement toasts came first, and only then did it offer the key — so the one thing the key
    is for, watching a root move, was the easiest thing in the run to miss. Now the result fades before anything can be

@@ -79,6 +79,15 @@ export const RATE_RUN_FLOOR = 2.0;
    and it smears once taps come faster than three a second; `scale` is how far the number swells at the top (guess).
    games/_shared/hud.js is the only reader. Presentation only (L10). */
 export const TICK = { ms: 90, scale: 1.12 };
+/* v31 (60.28, build 60): AIDEN'S AD RULES OF 2026-09-18, as numbers rather than as a caption on the screen. The app used to show
+   one break every FOURTH result and tell the player so; the rule is one in FIVE, and the app does not explain itself.
+   · `everyN` — at most one ad per five runs;
+   · `streak` false — never after a Streak. A Streak is the mode somebody plays for twenty minutes and an ad is the thing that
+     ends that;
+   · `graceMs` — never in a new player's first ten minutes, counted from the first run they ever finish (`prefs.firstRun`);
+   · supporters never see one (`prefs.supporter`, which ui/ads.js has always honoured);
+   · the interstitial after a result screen is the ONLY ad: the dashed banner on the result screen is gone (60.28). */
+export const ADS = { everyN: 5, streak: false, graceMs: 10 * 60 * 1000 };
 /* v31 (60.20, build 60): how a goal badge that does not fit scans. `pxPerSec` is the pace of the walk — slow enough to read at
    a glance, so a long line takes longer rather than moving faster — and `hold` is the pause at each end, about a second, which
    is Aiden's number. run/run.js measures the overflow and turns the two into one duration; the stylesheet does the rest.

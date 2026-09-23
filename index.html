@@ -321,10 +321,14 @@
   <!-- v15 (6.4): the table scrolls inside a fixed box, so filling the top 10 never pushes Game select down the screen -->
   <div id="over-top"><div class="eyebrow" id="over-top-title">top 10</div><div class="otwrap"><table><tbody id="over-runs"></tbody></table></div></div>
   <button id="egg" data-act="egg" aria-label="."></button>
-  <div class="adslot" id="adslot">ad · result screen only · supporters never see this</div>
+  <!-- v31 (60.28, build 60): THE DASHED AD BOX ON THE RESULT SCREEN IS GONE. It was a banner, and banners are ruled out —
+       the only ad this game has is the interstitial after a result. Its caption was also the app telling the player about its
+       own ad policy, which is not something a player asked to read. -->
   <button data-act="to-games" class="item big" id="to-games">Game select</button>
 </section>
-<div id="adbreak" data-act="adbreak"><div><div class="box">ad break</div>every fourth result · never during a run<br><br><button id="adskip" data-act="adskip" disabled>skip</button></div></div>
+<!-- v31 (60.28, build 60): the caption under the break is gone with it. "EVERY FOURTH RESULT · NEVER DURING A RUN" was
+     the app explaining its own ad rules to the player, and it was WRONG as well as unwanted — the frequency is one in five now. -->
+<div id="adbreak" data-act="adbreak"><div><div class="box">ad break</div><button id="adskip" data-act="adskip" disabled>skip</button></div></div>
 <div id="lockwrap" data-act="lockwrap"><div id="lockbox"><h3>Locked</h3><p id="lock-text"></p><div class="row"><button class="item big" id="lock-go" data-act="lock-go">Try to <u>unlock</u></button><button class="item sub" id="lock-no" data-act="lock-no">Not now</button></div></div></div>
 
 <div id="game" data-g="quick-tap">
