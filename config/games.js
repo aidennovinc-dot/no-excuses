@@ -173,6 +173,14 @@ export const SET_COPY = {
 export const ESTIMATE = {
   MIN_AREA: 460, TMIN: 16, TMAX: 58, GROW_FREE: 4, STREAK_BUD: 100,
 };
+/* v31 (60.21, build 60): WHERE ESTIMATE+S SHAPE SITS AND WHERE ITS PANEL DOES. Both used to be centred on the field, so a
+   grown shape was drawn straight through the TARGET / YOURS bars and their numbers. `growCy` is the share of the field+s
+   height the GROW shape is centred on — it is above the middle now — `cutCy` is Cut+s, unmoved, and `gap` is the clear space
+   demanded between the shape+s own box and the top of the panel. `reach` is how far a shape extends from its centre as a
+   share of its size: the same .78 the bottom-up fill clips to, so the two can never disagree. `split` is where the field is
+   divided — shape above, panel below — and the engine writes it onto the panel as its own top, so the number is here and not
+   in the stylesheet as well. */
+export const HOLD_LAYOUT = { growCy: 0.36, cutCy: 0.6, split: 0.58, gap: 14, reach: 0.78 };
 /* Spot · Count — REWORKED for v17 (B.15), and this is the difficulty review #366 asked for.
    Aiden's three complaints: it starts too easy (lots of time, few shapes), it ends too hard because the TIME is cut, and
    the target count climbs so predictably you can count the rounds instead of the shapes — 8, 9, 10, 11.

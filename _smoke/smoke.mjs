@@ -1432,6 +1432,43 @@ if (section('the runs (v15 section 3)')) {
       ? ok('B.3a / B.4 / L5 the Stopwatch Streak budget is 5s, 7.5s past round 10; Hidden is 700ms and the screen says so')
       : bad('B.3a / B.4 the Streak budgets', JSON.stringify(s)); }
 
+  /* ---- v31 (60.21, build 60): THE GROW RESULT'S SHAPE AND ITS PANEL NEVER OVERLAP ----
+     Both were centred on the field, so a grown shape was drawn straight through the TARGET / YOURS bars and their numbers. The
+     panel is at the foot of the field now (HOLD_LAYOUT.split) and the reveal scales BOTH shapes by one factor so neither can
+     reach it — the areas, the bars and the numbers are worked out from the real sizes before that, so the estimate is untouched.
+     Six rounds, each held to a big overshoot, measured as box against box. */
+  { const gr60 = await page.evaluate(async () => { const RUN = await import('./run/run.js'), ST = await import('./core/state.js');
+      const SS = await import('./core/store.js'), G = await import('./config/games.js'), C = await import('./core.js');
+      SS.store.intro['hold'] = SS.store.intro['hold:grow'] = Date.now(); SS.save();
+      const HD = (await import('./games/estimate/index.js')).default;
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      Object.assign(ST.sel, { vs: 0, practice: 0, game: 'hold', diff: 'grow', secs: -1 }); RUN.start();
+      const out = { split: G.HOLD_LAYOUT.split, rounds: [] };
+      for (let n = 0; n < 6; n++) {
+        for (let i = 0; i < 400 && !(document.getElementById('hbg') || {}).classList?.contains?.('on'); i++) await wait(25);
+        // a 60% overshoot: the round that used to draw through the panel
+        const ms = HD.target / (G.CFG.holdRate * C.vmin()) * 1000 * Math.sqrt(1.6);
+        HD.down({ type: 'down', x: 0, y: 0 }); await wait(ms); HD.up();
+        for (let i = 0; i < 500 && !document.getElementById('hcalc').classList.contains('on'); i++) await wait(25);
+        await wait(2400);
+        const f = document.getElementById('hfield').getBoundingClientRect(), c = document.getElementById('hcalc').getBoundingClientRect();
+        const boxes = [...document.querySelectorAll('#hg path,#ht path,#hm path')].filter(p => p.getAttribute('d'))
+          .map(p => p.getBoundingClientRect()).filter(r => r.width > 1);
+        const hit = (a, b) => a.x < b.right && b.x < a.right && a.y < b.bottom && b.y < a.bottom;
+        const rows = [...document.querySelectorAll('#hcalc b, #hcalc .hrow, #hcalc span')].map(e => e.getBoundingClientRect()).filter(r => r.width > 1);
+        out.rounds.push({ shapes: boxes.length,
+          gap: boxes.length ? Math.round(c.top - Math.max(...boxes.map(b => b.bottom))) : null,
+          panelHits: boxes.filter(b => hit(b, c)).length,
+          textHits: rows.filter(r => boxes.some(b => hit(b, r))).length,
+          panelTopShare: Math.round((c.top - f.top) / f.height * 100) / 100 });
+        HD.input(HD.ctx, { type: 'down', x: 0, y: 0 }); await wait(700);
+      }
+      RUN.abort(); await wait(300); return out; });
+    const bad60 = gr60.rounds.filter(r => !r.shapes || r.panelHits || r.textHits || r.gap === null || r.gap < 0);
+    bad60.length === 0
+      ? ok(`60.21 the Grow result's shape and its TARGET / YOURS panel never overlap — six rounds each held 60% over, every one with the panel at ${gr60.rounds[0].panelTopShare} of the field (HOLD_LAYOUT.split ${gr60.split}) and the shape clear above it by ${gr60.rounds.map(r => r.gap).join(', ')}px; no shape box touches the panel or any of its bars or numbers`)
+      : bad('60.21 the Grow result overlaps', JSON.stringify(bad60)); }
+
   /* ---- v31 (60.20, build 60): A GOAL BADGE THAT DOES NOT FIT SCANS, AND FREEZES WHILE A ROUND IS LIVE ----
      Three facts, and the third is the one that matters: movement in peripheral vision provokes false starts in Flash, Dots and
      Hidden, so the scan runs during the 3-2-1 and between rounds and NOT while a round is live. The check drives a real run with

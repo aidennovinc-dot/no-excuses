@@ -1199,6 +1199,47 @@ scene('60.20', async (page, browser) => {
   await abortRun(page); await sleep(300);
 });
 
+/* 60.21 — the Grow result: the shape and the TARGET / YOURS panel never overlap */
+const growOverlap = page => page.evaluate(() => {
+  const f = document.getElementById('hfield'), c = document.getElementById('hcalc');
+  if (!f || !c || !c.classList.contains('on')) return null;
+  // the drawn shapes' own boxes, off the SVG geometry rather than off the field
+  const paths = [...document.querySelectorAll('#hg path,#ht path,#hm path')].filter(p => p.getAttribute('d'));
+  const boxes = paths.map(p => { const r = p.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; }).filter(b => b.w > 1);
+  const cr = c.getBoundingClientRect(), panel = { x: cr.x, y: cr.y, w: cr.width, h: cr.height };
+  const rows = [...c.querySelectorAll('.hrow,#hn0,#hn1,#hb0,#hb1,b')].map(e => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; }).filter(b => b.w > 1);
+  const hit = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+  const over = (a, b) => Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+  return { shapes: boxes.length, panel: { y: Math.round(panel.y - f.getBoundingClientRect().y), h: Math.round(panel.h) },
+    lowestShape: boxes.length ? Math.round(Math.max(...boxes.map(b => b.y + b.h)) - f.getBoundingClientRect().y) : null,
+    gap: boxes.length ? Math.round(panel.y - Math.max(...boxes.map(b => b.y + b.h))) : null,
+    panelHits: boxes.filter(b => hit(b, panel)).length,
+    rowHits: rows.filter(r => boxes.some(b => hit(b, r))).length,
+    overlapPx: Math.round(boxes.reduce((a, b) => a + over(b, panel), 0)) }; });
+
+scene('60.21', async (page, browser) => {
+  await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture({ allOpen: 1 }));
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(450);
+  const holdFor = over => page.evaluate(async e => { const HD = (await import('./games/estimate/index.js')).default;
+    const { CFG } = await import('./config/games.js'); const { vmin } = await import('./core.js');
+    return HD.target / (CFG.holdRate * vmin()) * 1000 * Math.sqrt(1 + e / 100); }, over);
+  let shot = false;
+  await goRun(page, { game: 'hold', diff: 'grow', secs: 7 });
+  for (let round = 1; round <= 5 && !shot; round++) {
+    await waitFor(page, () => document.getElementById('hbg') && document.getElementById('hbg').classList.contains('on'), 20000);
+    // a big overshoot, which is the round that used to draw straight through the panel
+    const ms = await holdFor(60);
+    await ptr(page, 'pointerdown', '#hfield'); await sleep(Math.round(ms)); await ptr(page, 'pointerup', '#hfield');
+    const up = await waitFor(page, () => { const c = document.getElementById('hcalc'); return c && c.classList.contains('on') && document.querySelector('#hm path') && document.querySelector('#hm path').getAttribute('d'); }, 14000);
+    if (up) { await sleep(2400);
+      const m = await growOverlap(page);
+      await frame(page, browser, '60.21-grow-result', 'Grow result — the grown shape above, the TARGET / YOURS panel below, nothing overlapping');
+      say('layout', m); shot = true; }
+    await sleep(900); await ptr(page, 'pointerdown', '#hfield'); await ptr(page, 'pointerup', '#hfield'); await sleep(600);
+  }
+  await abortRun(page); await sleep(300);
+});
+
 /* ---------- the runner ---------- */
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 if (ARGV.includes('--list')) { console.log(Object.keys(SCENES).join('\n')); process.exit(0); }

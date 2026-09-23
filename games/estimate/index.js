@@ -2,7 +2,7 @@
    Split out of index.html at build 12. Build 17 (refactor stage 3): the engine contract. Behaviour is identical to build 11. */
 
 import { ALLOWANCE, ESTIMATE as CP } from "../../config/copy.js";
-import { CFG, ESTIMATE as EST, STREAK } from "../../config/games.js";
+import { CFG, ESTIMATE as EST, HOLD_LAYOUT as HL, STREAK } from "../../config/games.js";
 import { $, $$, T, f2, mean, minMax, vmin } from "../../core.js";
 import { haptic } from "../../core/platform.js";
 import * as hud from "../_shared/hud.js";
@@ -42,7 +42,19 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
   streak(){ return this.ctx.len===STREAK; },
   cut(){ return this.ctx.mode==='cut'; },
   live(){ return this.ctx.timers.alive(); },
-  cy(){ const f=$('#hfield').getBoundingClientRect(); return f.height*(this.cut()?.6:.5); },
+  // v31 (60.21, build 60): the two centres come from HOLD_LAYOUT — Grow's is above the middle, so the panel has the foot of the field
+  cy(){ const f=$('#hfield').getBoundingClientRect(); return f.height*(this.cut()?HL.cutCy:HL.growCy); },
+  /* how much the reveal has to shrink its two shapes so neither reaches the panel. The bars and the numbers are worked out
+     from the REAL sizes before this is applied, and both shapes take the SAME factor, so nothing about the comparison moves —
+     it is the drawing that is scaled, not the estimate. 1 whenever there is room, which is most rounds. */
+  revK(...sizes){ if(this.cut()) return 1;
+    const f=$('#hfield').getBoundingClientRect();
+    // the panel is `display:none` until calc() shows it, so its top is taken from the SPLIT rather than from its box — which is
+    // the same number the panel is positioned by (mount writes it), so the two can never drift
+    const top=f.height*HL.split;
+    const room=Math.min(this.cy(), top-HL.gap-this.cy());
+    const half=HL.reach*Math.max(...sizes.filter(n=>n>0), 1);
+    return room>0&&half>room?room/half:1; },
   path(sh,s){ const f=$('#hfield').getBoundingClientRect(); return Shapes.path(sh,s,f.width/2,this.cy()); },
   icon(sh){ const ic=$('#hicon'); ic.classList.remove('big'); ic.innerHTML='<path/><text x="50" y="98" text-anchor="middle"></text>'; if(!sh){ ic.classList.remove('on'); return; } ic.querySelector('path').setAttribute('d',Shapes.path(sh,sh.name==='bar'?84:62,50,46)); ic.querySelector('text').textContent=SHAPES[sh.name].word; ic.classList.add('on'); },
   // the cut hint: a finger drags a dotted line through a small shape. Big and centred first, then it parks top right for the round
@@ -59,7 +71,10 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
   later(f,ms){ this.ctx.timers.later(f,ms); },
   reset(){ this.st='idle'; ['ht','hg','hm'].forEach(l=>this.set(l,null,0)); $$('#hcut path').forEach(p=>p.setAttribute('d','')); ['tclipr','hclipr','aclipr','bclipr'].forEach(id=>this.clipFull(id)); $('#hline').style.opacity=0; $('#hcalc').classList.remove('on'); $('#hcalc').innerHTML=''; $('#hfield').classList.remove('show','rev'); this.bg(''); this.shareUp(0); this.icon(null); $('#hlbl').innerHTML=''; },
   // the contract: a fresh field before the countdown; the round starts after it; a stop only cancels — the last reveal stays up under the result
-  mount(ctx){ this.ctx=ctx; this.pending=null; hud.hold(false); this.reset(); },
+  mount(ctx){ this.ctx=ctx; this.pending=null; hud.hold(false);
+    // v31 (60.21, build 60): the split is written onto the panel here, so config/games.js is the one place it lives (A2)
+    const c=$('#hcalc'); if(c) c.style.setProperty('--hsplit',(HL.split*100)+'%');
+    this.reset(); },
   start(){ this.begin(); },
   stop(){ this.st='idle'; this.clearT(); this.pending=null; hud.hold(false); },
   // v14 (6.3): the reveal stays up until it is tapped. That tap is consumed here — it must not start the next round's hold
@@ -137,8 +152,11 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
     // the target comes back filled, from the bottom up, inside its outline; yours fills the same way
     // v15 (3.3): the dashed target outline STAYS, over your shape, for the whole reveal — .rev lifts it above the fill.
     // Readable without motion and it needs no dismiss, which is why it beat flashing between the two
-    this.set('hg',this.shape,this.target,{a:this.rot,x:0,y:0}); this.set('ht',this.shape,this.target,{a:this.rot,x:0,y:0}); $('#hfield').classList.add('show','rev'); this.clipTo('tclipr',0,this.target); this.clipTo('hclipr',0,size);
-    this.calc([[CP.target,tgt,'',0,'',k=>this.clipTo('tclipr',k,this.target)],[CP.yours,mine,'m',0,'',k=>this.clipTo('hclipr',k,size)]],Math.max(tgt,mine)*1.15,()=>{ const diff=Math.round(mine-tgt); return `<b class="${err<=2?'g':err>8?'r':''}" style="font-size:22px">${diff>0?'+':'−'}${Math.abs(diff).toLocaleString()} ${CP.px}</b>`; },
+    /* v31 (60.21, build 60): the panel is at the foot of the field and the two shapes are drawn at `k` so neither can reach it.
+       `tgt` and `mine` are the AREAS and were worked out above, from the real sizes — this is the drawing, not the estimate. */
+    const k=this.revK(this.target,size), tD=this.target*k, mD=size*k;
+    this.set('hg',this.shape,tD,{a:this.rot,x:0,y:0}); this.set('ht',this.shape,tD,{a:this.rot,x:0,y:0}); this.set('hm',this.mine,mD); $('#hfield').classList.add('show','rev'); this.clipTo('tclipr',0,tD); this.clipTo('hclipr',0,mD);
+    this.calc([[CP.target,tgt,'',0,'',k2=>this.clipTo('tclipr',k2,tD)],[CP.yours,mine,'m',0,'',k2=>this.clipTo('hclipr',k2,mD)]],Math.max(tgt,mine)*1.15,()=>{ const diff=Math.round(mine-tgt); return `<b class="${err<=2?'g':err>8?'r':''}" style="font-size:22px">${diff>0?'+':'−'}${Math.abs(diff).toLocaleString()} ${CP.px}</b>`; },
       ()=>{ const t=this.tierOf('hold:grow',err); return `<b class="${err<=2?'g':err>8?'r':''}" id="hpct"${t?` style="color:${t.col}"`:''}>${f2(pct)}%</b>${t?tierWord(t):word}`; }, err, {from:pct,to:100}); },
   /* v18 (B.10): the tier's colour on the round's own figure, as a ready-made style attribute. The class beside it stays:
      `g` / `r` are the engine's own dead-on / way-off marks and the tier is the four-step reading of the same number.

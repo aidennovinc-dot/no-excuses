@@ -1294,7 +1294,12 @@
   #hbg{position:absolute;left:0;right:0;top:40%;text-align:center;font-family:var(--title);font-size:clamp(14px,4.2vw,28px);letter-spacing:.16em;text-transform:uppercase;color:var(--ink);opacity:0;pointer-events:none;transition:opacity .3s;line-height:1.5;padding:0 12px}
   #hbg.on{opacity:.13}
   /* the reveal (v9): a centred panel with two bars that fill while the px² count, then the difference, then the % */
-  #hcalc{position:absolute;left:8%;right:8%;top:50%;transform:translateY(-50%);display:none;flex-direction:column;gap:12px;background:color-mix(in srgb,var(--ground) 82%,transparent);border:1px solid var(--line);padding:18px 16px;font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);pointer-events:none;z-index:3}
+  /* v31 (60.21, build 60): THE PANEL IS AT THE BOTTOM, AND THE SHAPE IS ABOVE IT. Both were centred on the field, so the shape
+     Aiden had just grown was drawn straight through the TARGET / YOURS bars and their numbers. The panel is anchored to the
+     foot of the field now and the shape sits in the space above it — `HOLD_LAYOUT` in `config/games.js` is the one place the
+     split is written, `cy()` reads it for where the shape is centred and `up()` scales the reveal so its box cannot reach the
+     panel. CUT is unchanged: its panel and its shape never shared the middle. */
+  #hcalc{position:absolute;left:8%;right:8%;top:var(--hsplit,58%);bottom:calc(3% + env(safe-area-inset-bottom));display:none;flex-direction:column;justify-content:center;overflow:hidden;gap:12px;background:color-mix(in srgb,var(--ground) 82%,transparent);border:1px solid var(--line);padding:18px 16px;font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);pointer-events:none;z-index:3}
   #hcalc.on{display:flex}
   .hrow{display:grid;grid-template-columns:56px 1fr 84px;gap:10px;align-items:center}
   .hrow .bar{height:14px;background:var(--line);position:relative;overflow:hidden}
