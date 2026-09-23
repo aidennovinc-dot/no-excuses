@@ -4,7 +4,16 @@
 takes. The paragraphs builds 14–46 appended here are in `../docs/GATE-HISTORY.md`, untouched and frozen. The rules for adding a
 check are in `../CLAUDE.md` → The gate.
 
-- **The gate:** `npm test` with no flags, once, before the push. It prints each failure, one line per section and the verdict.
+- **The gate:** `npm test` with no flags, once, before the push. It prints each failure, one line per section with its seconds,
+  the ten slowest sections and the verdict. **Build 61:** every section runs in its own worker, four at a time, on a test clock five
+  times the wall; over 12 minutes it FAILS (A10). `--workers N` and `--clock N` change either; `--clock 1` is the gate as it ran
+  until build 60. A section that fails on the fast clock is rerun once at ×1: a real failure fails there too, and one that passes
+  is printed as a **CLOCK FLAKE** by name — fix its wait in the next build.
+- **Where a section lives (build 61):** `sections/NN-name.mjs`, one module per row below, in the order `sections/index.mjs` lists
+  them; the shared helpers are `lib/gate.mjs`. `runs` is six lettered parts (`15a`–`15f`) and `build 46` six (`39a`–`39f`), under
+  their one name. A row in `index.mjs` with a `clock` runs slower than the default, and says why: `music`, `build 35`, `build 36`
+  and `39e` at ×1 (Web Audio's clock, and the animation timeline against it), `39b` at ×1 (a check timed by the driver's own
+  wall clock), `keys` at ×2 (a ceremony answered tap by tap and timed from the tap).
 - **The fix loop:** `npm test -- --only <section> --bail`. `--from 44` runs build 44 and everything after it, `--verbose` prints
   every pass line, `--labels <file>` writes every check by section. A partial run says PARTIAL RUN and never stands in for the gate.
 - **A new section** adds one row here. A check added to an existing section changes that row only if the section now stands for a

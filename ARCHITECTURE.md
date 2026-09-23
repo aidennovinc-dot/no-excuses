@@ -71,7 +71,9 @@ site/
     registry.js       imports every engine, exports ENGINES by id. A new game = one folder + one line here + config rows
     _shared/          round.js (the Set/Streak loop), timed.js, hud.js, two.js, versus.js, deal.js, shapes.js, tier.js
     quick-tap/index.js  dots/  estimate/  sequence/  timing/  reaction/  spot/
-  _smoke/             the gate: smoke.mjs, GATE.md, server.mjs, chrome.mjs, loudness.mjs, cssdiff.mjs, catalogue-load.mjs
+  _smoke/             the gate: smoke.mjs (the runner), sections/ (one module per section, index.mjs the order), lib/ (gate.mjs the
+                      shared helpers, parallel.mjs the workers, clock.mjs the test clock, args.mjs the flags), timings.json, GATE.md,
+                      server.mjs, chrome.mjs, loudness.mjs, cssdiff.mjs, catalogue-load.mjs
   scripts/            bump.mjs (A6), native.mjs (the Capacitor tree), placeholders.mjs (the key-bar generator)
   docs/               RULES-HISTORY.md, MUSIC.md, PROGRESSION.md, GATE-HISTORY.md — the full text CLAUDE.md links to
 ```
@@ -186,6 +188,7 @@ Change one only when the FEEDBACK line quotes its ID.
 | A7 | The gate runs before every push and covers every engine, every screen, a tampered-storage fixture and the security rules S1–S3 as assertions. |
 | A8 | Native shell = Capacitor 8. The web tree is the app; `platform.js` is the only file that knows which shell it's in — the deep link, `haptic()` (build 55: eleven direct `navigator.vibrate` calls across six engines are one call here, a no-op on iOS until the Capacitor Haptics plugin lands) and the update poll. |
 | A9 | Every game that deals shapes deals them by the shape difficulty standard above — one tiered list, bands with a mix and a load, a harder shape paired with an easier setting (build 50, v26 §B2). |
+| A10 | The gate and the rules file have budgets, and exceeding either FAILS the gate (build 61): a full `npm test` over **12 minutes** (it prints the ten slowest sections), and `CLAUDE.md` over **40KB** (a static check; a rule's full text moves to `docs/RULES-HISTORY.md`, never deleted). Neither budget is raised without Aiden. |
 
 ## The gate (A7) — what "passes" means
 
@@ -198,6 +201,15 @@ challenge URL with a hostile `score`; the L-asserts from `CLAUDE.md`. The catalo
 command — `npm run review` drives `../_review/scripts/`, which is outside the site tree, and since
 build 55 every gate check that reads it is SKIPPED BY NAME when it is not there, so `npm test` passes
 on a clone of `site` alone. A crash is a failure like any other: the verdict always prints.
+
+**How it runs (build 61, the gate-speed build).** `_smoke/smoke.mjs` decides how; each section is its own module in
+`_smoke/sections/` (in the order `sections/index.mjs` lists them) and everything they share is `_smoke/lib/gate.mjs`.
+`lib/parallel.mjs` runs every section in its own worker process — its own Chrome, a fresh profile — four at a time, longest
+first off `_smoke/timings.json`, and prints one verdict in the gate's order. The page runs on a TEST CLOCK (`lib/clock.mjs`,
+test only — nothing in the app reads it) five times faster than the wall by default: timers, `performance.now`, `Date.now`, event
+timestamps and rAF in the page, CSS and Web Animations through the DevTools Animation domain, and the driver's own `sleep`.
+An AudioContext's `currentTime` cannot be scaled, so a section that measures audio against the page runs at ×1, and every
+section that runs slower than the default says why on its `index.mjs` row. Under A10 the whole thing must finish in 12 minutes.
 
 ## What a feedback line costs after the refactor
 
