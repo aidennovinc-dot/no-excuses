@@ -116,7 +116,9 @@ export const VERDICT = { fail:'Run over — go again.', nothing:'Nothing landed.
    already struck through — the strikes say it, and the first run un-strikes them one at a time (v15 6.2). */
 // v23 (L.11a, build 40): `cusNeed` sits under the crossed-out Customise row until the Games chest opens
 // v24 (A.1, build 43): `keysNeed` sits under the crossed-out Keys row until the Games chest opens — the Customise treatment
-export const MENU = { next:'<em>Next unlock</em><span>{need} → {name}</span>', nextAch:'<em>Next achievement</em><span>{need} → {name}</span>', cusNeed:'open the Games chest', keysNeed:'open the Games chest' };
+// v31 (60.27, build 60): `resume` is the offer a killed app comes back to, and `resumeGaunt` the Gauntlet's own wording
+export const MENU = { next:'<em>Next unlock</em><span>{need} → {name}</span>', nextAch:'<em>Next achievement</em><span>{need} → {name}</span>', cusNeed:'open the Games chest', keysNeed:'open the Games chest',
+  resume:'<em>Resume your streak</em><span>{game} · round {n}</span>', resumeGaunt:'<em>Resume the Gauntlet</em><span>{game} · step {n}</span>' };
 /* v15 (2.4): the Unlocks screen — the chain on its own page, split off from Achievements. Everything that OPENS something
    lives here; Achievements keeps the rest. What sits behind keys 2 and 3 is register #372 and is not decided, so the key
    line below says only what is true today. */

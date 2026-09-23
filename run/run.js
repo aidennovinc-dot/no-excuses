@@ -12,7 +12,7 @@ import { Music, Snd } from "../audio.js";
 import { FLOW_AT, FLOW_FALL, FLOW_RISE } from "../config/audio.js";
 import { RUN_SCHEMA } from "../config/build.js";
 import { HUD, INTRO, INTRO_READY, TOAST } from "../config/copy.js";
-import { GOAL_SCAN, MODE_NAME, PASS_LEN, PASS_TURNS, RATE_MAX } from "../config/games.js";
+import { GOAL_SCAN, MODE_NAME, PASS_LEN, PASS_TURNS, RATE_MAX, STREAK } from "../config/games.js";
 import { P1C, P2C } from "../config/theme.js";
 import { $, T, pWho } from "../core.js";
 import { emit, on } from "../core/events.js";
@@ -157,7 +157,13 @@ function start(){
   pbShow(); setPendingAim(''); setPendingGoal(null);
   Music.start(sel.game,R,sel.secs,sel.diff);
   eng.mount(ctx);
-  const go=()=>{ R.live=true; $('#game').classList.add('live'); if(R.timed){ R.t0=performance.now(); R.end=R.t0+sel.secs*1000; } eng.start(ctx); if(R.timed||eng.tick){ cancelAnimationFrame(R.raf); R.raf=requestAnimationFrame(tick); } };
+  /* v31 (60.27, build 60): AND A RUN TAKEN OFF THE MENU'S RESUME ROW STARTS WHERE IT STOPPED. `sel.resumeAt` is the saved
+     row; an engine says how to pick it up through `resumeAt(ctx, row)`, and one that cannot simply starts fresh. Read ONCE and
+     cleared, so nothing can resume twice, and cleared even where the engine has no such thing — the offer has been taken. */
+  const go=()=>{ R.live=true; $('#game').classList.add('live'); if(R.timed){ R.t0=performance.now(); R.end=R.t0+sel.secs*1000; } eng.start(ctx);
+    const at=sel.resumeAt; sel.resumeAt=null;
+    if(at&&at.g===sel.game&&at.d===sel.diff&&at.s===sel.secs&&eng.resumeAt){ try{ eng.resumeAt(ctx,at); }catch(e){} }
+    if(R.timed||eng.tick){ cancelAnimationFrame(R.raf); R.raf=requestAnimationFrame(tick); } };
   // versus has no first-play demo: straight to the countdown
   if(eng.noIntro){ hud.countdown(ctx.timers,Snd,go); return; }
   /* v15 (§4, build 25): NO two-player run gets the ghost demo either. It is a first-play teaching moment for one player,
@@ -188,27 +194,68 @@ function abort(quiet){ if(!R.on) return;
   if(!quiet&&R.live&&eng&&ctx&&!VS.on&&!sel.vs){ try{ const res=eng.result(ctx);
     const landed=!!res&&(res.x!==undefined||(+res.hits>0)||(+res.misses>0)||(+res.rounds>0));
     if(landed) liveCheck(res); }catch(e){} }
+  // v31 (60.27, build 60): a run that is over has nothing to offer back
+  clearResume(); paused=false;
   R.on=false; R.id++; VS.reset(); Intro.clear(); cancelAnimationFrame(R.raf); ctx.timers.clearT(); Music.stop(); eng.stop(ctx); $('#count').classList.remove('on'); $('#vwin').classList.remove('on'); $('#game').classList.remove('shake','live','flowon'); $('#seqdone')?.classList.remove('on'); $('#rxbar').innerHTML=''; emit('run:abort'); }
-/* ---------- v29 (item 4, build 55): THE PHONE GOING TO SLEEP ENDS THE RUN ----------
-   There was no visibilitychange handling for the run at all (audio.js had its own, for the context alone). Everything a
-   run measures kept running while the screen was off: R.end is absolute, so a 30s Marathon locked at 10s recorded the 10s
-   of hits as a Marathon and submitted it; Stopwatch's t0 kept its start while rAF paused, so the first frame back scored
-   the whole lock time as the attempt - 47 seconds - and set `ov`, which is what tm_s10 ('let it run 10 seconds') reads,
-   so locking the phone handed out a secret achievement. Reaction's setTimeouts kept firing throttled and scored a phantom
-   no-tap; Go / No-go beat through its whole block.
-   The answer is the honest one and the one the game is named after: the run is over. It is aborted QUIETLY - nothing is
-   banked, not even a round that had landed, because the player was not there for it - and the pick sheet is what comes
-   back, with one toast, on RETURN rather than into a screen nobody is looking at. A run that is not live yet (the 3-2-1)
-   is torn down the same way. */
-let lostRun=false;
-function onHide(){ if(document.hidden){ if(!R.on) return; lostRun=true; abort(true); return; }
-  if(!lostRun) return; lostRun=false; show('s-pick'); toast(TOAST.runLost); }
+/* ---------- v31 (60.27, build 60): LEAVING THE APP PAUSES THE RUN, AND IT RESUMES WHEN YOU COME BACK ----------
+   This REVERSES v29 item 4 (build 55), which ended the run. Aiden's call of 2026-09-23: "a 20-round Streak lost to a phone
+   call." Item 4's reasoning was right about the FAULT and wrong about the remedy — everything a run measures did keep running
+   while the screen was off, and a 30s Marathon locked at 10s did record the 10s of hits as a Marathon. What it needed was for
+   the clocks to stop, not for the run to.
+
+   WHAT A PAUSE STOPS. The run's own rAF; every timeout the engine owns (core/timers.js keeps what was LEFT of each one); the
+   music; and, for a timed run, the clock — R.end is absolute, so the paused time is added back to it on return and a Marathon
+   picks up with exactly the seconds it had left. Pausing to rest mid Marathon is accepted and nothing polices it.
+
+   WHAT A RESUME DOES. A 3-2-1, then play. THE ATTEMPT IN FLIGHT IS REPLAYED FRESH, with no penalty — a Stopwatch clock that was
+   running, a Hidden ball halfway down, a Grow hold, a Flash waiting to light. An engine says how through `replay(ctx)`; one
+   that has no such thing (Quick Tap, Dots — where there is no attempt, only the clock) simply carries on.
+
+   WHAT IS SAVED. A Streak's or a Gauntlet's progress after EVERY round (`store.resume`), so that if the phone kills the app
+   outright the next open can offer it back. Pass & play and Versus pause but save nothing, because a shared run belongs to two
+   people in a room and half of it is not worth restoring (L10 — nothing about it is recorded anyway).
+
+   `pagehide` is here as well as `visibilitychange`: iOS fires it on a swipe out of the app and does not always fire the other. */
+let paused=false, pausedAt=0;
+function pauseRun(){ if(paused||!R.on) return false; paused=true; pausedAt=performance.now();
+  cancelAnimationFrame(R.raf); R.raf=0;
+  if(ctx&&ctx.timers) ctx.timers.pause();
+  Music.stop();
+  $('#game').classList.add('paused');
+  if(eng&&eng.pause) try{ eng.pause(ctx); }catch(e){}
+  return true; }
+function resumeRun(){ if(!paused) return false; paused=false;
+  $('#game').classList.remove('paused');
+  const away=Math.max(0,performance.now()-pausedAt);
+  // a timed run keeps the time it had left; nothing else about it moves
+  if(R.timed&&R.end) R.end+=away;
+  Music.start(sel.game,R,sel.secs,sel.diff);
+  const back=()=>{ if(!R.on) return;
+    if(ctx&&ctx.timers) ctx.timers.resume();
+    // THE ATTEMPT IN FLIGHT IS REPLAYED FRESH, no penalty. An engine with nothing in flight has no replay and simply carries on
+    if(eng&&eng.replay){ try{ eng.replay(ctx); }catch(e){} }
+    if(R.timed||eng.tick){ cancelAnimationFrame(R.raf); R.raf=requestAnimationFrame(tick); } };
+  /* the 3-2-1 runs on its own timers, not the run's — the run's are still paused while it counts, which is the point: nothing
+     the engine had waiting is allowed to fire under the countdown. */
+  hud.countdown(ctx.timers,Snd,back,true);
+  return true; }
+function onHide(){ if(document.hidden){ pauseRun(); return; } resumeRun(); }
 document.addEventListener('visibilitychange',onHide);
+document.addEventListener('pagehide',()=>pauseRun());
 /* v29 (item 9, build 55): AND NAVIGATING AWAY FROM A LIVE RUN ENDS IT. Nothing did. A stray toast tap during a run called show('s-pick')
    and the run went on ticking under the sheet - engine timers, music, the rAF, and a finish that threw the result screen up over
    whatever the player had gone to. The finish and Quit both clear R.on before they navigate, and a pass & play hand-over does too, so
    the only thing this catches is a route out of a run nobody asked to leave. Quiet: nothing that was not banked mid-run is banked here. */
 on('screen:change',({id})=>{ if(R.on&&id!=='game') abort(true); });
+/* v31 (60.27, build 60): A STREAK'S PROGRESS IS SAVED AFTER EVERY ROUND. Not so the run can be paused — a pause keeps the run
+   in memory and needs none of this — but so that a phone which kills the app outright has something to offer back. One row,
+   overwritten each round, cleared the moment the run finishes or is quit: the combination, the round reached, the running total
+   and when. A Gauntlet saves the same way (Cowork's call, named in the outcome). A two-player run saves NOTHING (L10). */
+function saveResume(res){ if(!R.on||VS.on||sel.vs||R.demo||sel.practice) return;
+  if(sel.secs!==STREAK&&!R.gaunt) return;
+  const round=+(res&&(res.rounds??res.hits))||0; if(round<1) return;
+  store.resume={ g:sel.game, d:sel.diff, s:sel.secs, round, hits:+res.hits||0, t:Date.now(), gaunt:R.gaunt?1:0 }; save(); }
+function clearResume(){ if(store.resume){ delete store.resume; save(); } }
 function tick(now){
   if(!R.on) return;
   if(R.flowOn) flowTick(now);
@@ -242,6 +289,7 @@ function finish(res){
   const run=Object.assign({ t:Date.now(), g:sel.game, d:sel.diff, s:sel.secs, n:prefs.name||'', v:RUN_SCHEMA },res||eng.result(ctx));
   // v29 (build 56): a Gauntlet step hands itself to run/gauntlet.js and stops here — before run:record, before the board, before every earn
   if(R.gaunt){ run.gaunt=1; emit('gaunt:step',{run,step:R.gaunt}); return; }
+  clearResume(); paused=false;   // v31 (60.27): finished, so there is nothing left to resume
   if(chalRun(run.g,run.d,run.s)) run.chal=1; emit('run:record',{run}); if(!prefs.played){ prefs.played=1; save(); }
   // pass & play (v10): neither run is recorded — the board is solo. Player 1 plays, the phone is passed, the two are compared. v11: Player 1 red, Player 2 blue
   if(VS.on&&VS.stage===1){ VS.p1=run; emit('run:pass',{run}); return; }
@@ -275,6 +323,8 @@ function finish(res){
    averages, "no wrong taps". This is also the first pass that turns a practice or challenge-link run away mid-run rather
    than only at the end, which it should always have done. */
 function liveCheck(part){ if(!R.on) return;
+  // v31 (60.27, build 60): every round a live figure lands, the Streak's or the Gauntlet's place is written down
+  saveResume(part);
   // v14 (4.15): versus hands its closeness up as part of the live payload; audio.js reads it off the run state and swaps bed
   if(part&&part.vsTension!==undefined) R.tension=part.vsTension;
   // v16 (1.4): each player's own proximity to the win condition, for their music stem. It is read ABOVE the two-player

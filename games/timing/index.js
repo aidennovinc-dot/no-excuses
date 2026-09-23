@@ -216,6 +216,20 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
      NOTHING and makes NO SOUND, and the "tap to stop" hint is dim until taps count, so nothing on screen invites one.
      HIDDEN IS NOT INCLUDED: its ball can be behind the wall for as little as 0.6s, so a second of lockout there would eat real
      answers. It keeps its own rule — a tap before the ball is behind the wall is ignored, two lines down. */
+  /* v31 (60.27, build 60): THE ATTEMPT IN FLIGHT IS REPLAYED FRESH. A Stopwatch clock that was running and a Hidden ball
+     halfway down are both unrecoverable — the player was not watching either of them — so the round is dealt again from the
+     top and nothing is charged for it. `round` is not advanced, so the same target comes back; `errs` and `tot` are
+     untouched, so the run's score is exactly what it was when the phone rang. */
+  // v31 (60.27, build 60): the round and the spent budget come back; the targets are re-dealt from the same round number
+  resumeAt(ctx,row){ if(!row||row.round<2) return; this.round=row.round; this.tot=+row.hits||0;
+    this.clearT(); this.st='arm'; this.hid()?this.hidden():this.watch(); },
+  /* v31 (60.27, build 60): and the engine's OWN frame loop stops with it. The run's rAF and the run's timers are stopped by
+     run/run.js; this one is the engine's — the clock that paints #tmclock and moves the ball — and cancelling the outstanding
+     request is enough, because nothing but the loop itself re-arms it. Measured before this existed: a Stopwatch clock went on
+     counting while the app was hidden, 0.00 to 1.30 over two seconds away. */
+  pause(){ cancelAnimationFrame(this.raf); this.raf=0; },
+  replay(){ if(this.st==='idle') return; this.clearT(); cancelAnimationFrame(this.raf); this.stopAt=0;
+    this.st='arm'; this.hid()?this.hidden():this.watch(); },
   swLocked(ev){ if(this.hid()||this.st!=='run'||!this.t0||ev===true) return false;
     const at=(ev&&typeof ev.t==='number'&&ev.t>0)?ev.t:performance.now();
     return at-this.t0<CFG.swLock; },

@@ -31,6 +31,12 @@
 
 <section class="screen on" id="s-menu">
   <div class="nextup" id="nextup" data-act="nextup" hidden></div>
+  <!-- v31 (60.27, build 60): the offer a killed app comes back to. A Streak or a Gauntlet writes where it had got to after
+       every round, and if the phone closed the app outright rather than backgrounding it, this is on the menu the next time
+       it opens: "Resume your streak — round N". A tap plays that combination from where it stopped; the row is gone once the
+       run ends, and the record is dropped after two days, because a Streak from last week is not a run anybody is coming
+       back to. A run that was only BACKGROUNDED never gets here — it is still in memory and simply resumes. -->
+  <div class="nextup resume" id="resumerow" data-act="resume" hidden></div>
   <div class="titlewrap"><div class="stline" id="st1">games of pure skill</div><div class="wmin"><div class="wordmark" id="wordmark">No Excuses</div></div><div class="stline" id="st2">the only thing to blame is yourself</div></div>
   <!-- v28 (item 8, build 53): "unlock them all" is gone. It was the one line under NO EXCUSES that made a promise the game does not keep
        any more, and with the build-51 title impact firing once per line its own fade-in went with it. The title line keeps the heavier hit -->

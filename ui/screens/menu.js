@@ -7,13 +7,16 @@
    positioned above and below the title (1.1 — line one at the top, NO EXCUSES in the middle, line two under it). The menu is
    rendered before the sequence starts, so nothing about the layout can change while it plays. */
 import { GRID, KEY, MENU, TOAST } from "../../config/copy.js";
+import { MODE_NAME } from "../../config/games.js";
+import { GAMES } from "../../games/registry.js";
+import { sel } from "../../core/state.js";
 import { $, $$, T, esc } from "../../core.js";
 import { chestOpen, meter, meterPct, msgDot, readyChest } from "../../progress/key.js";
 import { meterLook } from "../chest.js";
 import { countUp } from "../../core/count.js";
 import { emit, on } from "../../core/events.js";
 import { CHAL } from "../../core/platform.js";
-import { prefs, save } from "../../core/store.js";
+import { prefs, save, store } from "../../core/store.js";
 import { Scores, nextGoal, setPendingAim } from "../../progress.js";
 import { goWhere } from "../../run/run.js";
 import { capture, define } from "../actions.js";
@@ -64,7 +67,21 @@ function renderMenu(){ const first=firstRun(); const opening=menuWasFirst&&!firs
      told to play, not handed a target — and it labels itself Next unlock or Next achievement depending on which of the
      two nextGoal() found. Unlocks outrank achievements: the chain is offered until there is none of it left. */
   const ng=first?null:nextGoal(); const nx=$('#nextup');
-  if(ng){ nx.innerHTML=T(ng.ach?MENU.nextAch:MENU.next,{need:ng.need,name:ng.name}); nx.hidden=false; nextWhere=Object.assign({need:ng.need},ng.where); } else { nx.hidden=true; nextWhere=null; } }
+  if(ng){ nx.innerHTML=T(ng.ach?MENU.nextAch:MENU.next,{need:ng.need,name:ng.name}); nx.hidden=false; nextWhere=Object.assign({need:ng.need},ng.where); } else { nx.hidden=true; nextWhere=null; }
+  renderResume(); }
+
+/* v31 (60.27, build 60): THE OFFER A KILLED APP COMES BACK TO. A Streak or a Gauntlet writes where it had got to after every
+   round (run/run.js saveResume), and the record is cleared the moment the run finishes or is quit — so a row here means the app
+   went away in the middle of one and never came back to end it, which on iOS means the phone killed it outright. A run that was
+   merely BACKGROUNDED never reaches this: it is still in memory and simply resumes where it was.
+   The row names the game and the round; a tap plays that combination from where it stopped. It is the only thing on the menu
+   that offers a specific run, so it sits above Next unlock, which offers a target. */
+function renderResume(){ const row=$('#resumerow'); if(!row) return;
+  const r=store.resume;
+  if(!r||!GAMES[r.g]){ row.hidden=true; return; }
+  const name=GAMES[r.g].name+(MODE_NAME[r.d]?' · '+MODE_NAME[r.d]:'');
+  row.innerHTML=T(r.gaunt?MENU.resumeGaunt:MENU.resume,{game:esc(name),n:r.round});
+  row.hidden=false; }
 
 /* v23 (L.11a, build 40): CUSTOMISE IS LOCKED UNTIL THE GAMES CHEST OPENS. Crossed out — v17's crossed, not greyed — with "open the
    Games chest" under it, and a tap says so and goes nowhere. The first draw after the chest opens wipes the strike off (the menu's own
@@ -144,6 +161,12 @@ function enterMenu(){ renderMenu(); menuIn(); if(CHAL) setTimeout(()=>emit('chal
 register('s-menu',{ onShow({intro,story}){ setPendingAim(''); storyOn=false; titleStop(); $('#s-menu').classList.remove('story','run','storyend');
   renderMenu(); if(story) storyStart(); else if(intro) menuIn(); } });
 define({ nextup(){ if(nextWhere) goWhere(nextWhere); return 'click'; },
+  /* v31 (60.27, build 60): the tap that takes the offer. It sets the combination and the round to come back at, and the pick
+     sheet is where it lands — the player presses Go themselves, so the run starts when they are ready to play rather than while
+     the menu is still fading. 'resumeAt' is read once by run/run.js and cleared, so this can never fire twice. */
+  resume(){ const r=store.resume; if(!r||!GAMES[r.g]) return 'click';
+    sel.game=r.g; sel.diff=r.d; sel.secs=r.s; sel.vs=0; sel.practice=0; sel.resumeAt=r;
+    show('s-pick',{g:r.g,d:r.d,s:r.s}); return 'click'; },
   // L.11a: the Customise row. Locked, it says what opens it and stays put; open, it is an ordinary menu row
   custom(b){ if(!chestOpen('games')){ toast(TOAST.cusLocked,'','',true); return 'pick'; } show(b.dataset.go); return 'click'; },
   // v24 (A.1, build 43): the Keys row and the meter line. Locked, they say what opens them and stay put

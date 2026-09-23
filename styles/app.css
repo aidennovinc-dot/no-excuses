@@ -1062,6 +1062,10 @@
      simultaneous finger as the start of a pinch and cancel BOTH pointers — which is exactly the versus bug: two players
      tapping at the same time cancelled each other out. `none` means no gesture is ever a candidate, so every finger lands */
   #game{display:none;position:absolute;inset:0;touch-action:none}
+  /* v31 (60.27, build 60): while the run is PAUSED every CSS animation in it stops where it is — the run's own timers and its rAF
+     are stopped in code (run/run.js, core/timers.js) and this is the third clock, the one the stylesheet owns. It comes off as the
+     3-2-1 starts, so the count itself animates. */
+  #game.paused *,#game.paused *::before,#game.paused *::after{animation-play-state:paused!important;transition:none!important}
   #game.on{display:block}
   /* v14 (4.8): a pass & play run is outlined in the colour of whoever is playing it */
   /* v15 (3.12): a glow, not a solid line. The 3px rule read as a border on the screen rather than as whose turn it is.

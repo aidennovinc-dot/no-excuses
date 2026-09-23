@@ -1136,7 +1136,7 @@ const headerMetrics = page => page.evaluate(() => {
     const r = e.getBoundingClientRect();
     return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height),
       lines: Math.round(r.height / (parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2)),
-      text: (e.textContent || '').replace(/s+/g, ' ').trim().slice(0, 40) }; };
+      text: (e.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40) }; };
   const rows = { goal: box('#goal'), mode: box('#hud-mode'), count: box('#hud-time'), score: box('#score'), best: box('#pbghost') };
   const hit = (a, b) => a && b && a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
   const names = Object.keys(rows), clashes = [];
@@ -1267,6 +1267,61 @@ scene('60.23', async (page, browser) => {
   const result = await read('#over-vs');
   await frame(page, browser, '60.23-result-picker', 'the result screen — the same component, the same widths, the same orange');
   say('result', result);
+});
+
+/* =======================================================================================================
+   60.27 — leaving the app pauses the run; coming back counts it in and replays the attempt
+   THE MEASUREMENT IS ONE EVALUATE, not a sequence of frames. Taking a frame hands the tab to the lens page, which HIDES the app
+   page — and hiding the app page is the very thing under test, so a screenshot between two readings would itself pause and
+   resume the run. (That it does is its own small proof that this works.) So the clock is read across a real hide from inside
+   the page, and the frames are taken afterwards, of a run deliberately left mid-countdown.
+   ======================================================================================================= */
+scene('60.27', async (page, browser) => {
+  await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture({ allOpen: 1 }));
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(450);
+  const m = await page.evaluate(async () => { const RUN = await import('./run/run.js'), ST = await import('./core/state.js');
+    const SS = await import('./core/store.js');
+    SS.store.intro['timing'] = SS.store.intro['timing:stopwatch'] = Date.now(); SS.save();
+    const TM = (await import('./games/timing/index.js')).default;
+    const w = ms => new Promise(r => setTimeout(r, ms));
+    const read = () => ({ st: TM.st, raf: TM.raf, round: TM.round,
+      paused: document.getElementById('game').classList.contains('paused'),
+      clock: (document.getElementById('tmclock') || {}).textContent, live: RUN.R.on });
+    Object.assign(ST.sel, { vs: 0, practice: 0, game: 'timing', diff: 'stopwatch', secs: -1 }); RUN.start();
+    for (let i = 0; i < 300 && TM.st !== 'run'; i++) await w(40);
+    await w(800);
+    const out = { playing: read() };
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+    document.dispatchEvent(new Event('visibilitychange'));
+    await w(250); out.away = read();
+    await w(2000); out.awayLater = read();
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
+    document.dispatchEvent(new Event('visibilitychange'));
+    await w(300); out.counting = { n: document.getElementById('count').textContent.trim(), on: document.getElementById('count').classList.contains('on') };
+    await w(1500); out.back = read();
+    RUN.abort(); return out; });
+  say('acrossThePause', m);
+  /* NO FRAME OF THE PAUSE ITSELF. A frozen screen and a running one are the same picture, and taking the screenshot is what
+     un-freezes it — the lens page has to come forward, which makes the app page visible again. The honest evidence for a pause is
+     the measurement above (the engine's frame id at 0 and a clock that has not moved across two seconds away) and the gate's own
+     check, which drives a real hide. What 60.27 has to SHOW is the offer a killed app comes back to, and that is the next scene. */
+  await abortRun(page); await sleep(300);
+});
+
+/* 60.27 — and the offer a killed app comes back to */
+scene('60.27-resume', async (page, browser) => {
+  await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture({ allOpen: 1 }));
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(450);
+  await page.evaluate(async () => { const SS = await import('./core/store.js'), R = await import('./ui/router.js');
+    SS.store.resume = { g: 'spot', d: 'find', s: -1, round: 14, hits: 6.4, t: Date.now(), gaunt: 0 }; SS.save();
+    R.show('s-menu'); });
+  await sleep(800);
+  const row = await page.evaluate(() => { const e = document.getElementById('resumerow');
+    const r = e.getBoundingClientRect();
+    return { hidden: e.hidden, text: (e.textContent || '').replace(/\s+/g, ' ').trim(), w: Math.round(r.width), y: Math.round(r.y) }; });
+  await frame(page, browser, '60.27-c-resume-offer', 'the menu after the phone killed the app mid-Streak — "Resume your streak"');
+  say('offer', row);
+  await page.evaluate(async () => { const SS = await import('./core/store.js'); delete SS.store.resume; SS.save(); });
 });
 
 /* ---------- the runner ---------- */

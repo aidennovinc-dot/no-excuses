@@ -187,6 +187,19 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
     } },
   // v17 (B.15): the highest button IS SPOT_RAMP.nCap. The band may never deal more targets than the player can answer,
   // and writing 15 here is how that guarantee gets lost the next time the ramp is retuned
+  /* v31 (60.27, build 60): a crowd that was on screen, or a Find the player was searching, is dealt again from the top of the
+     round. A Count round waiting on the keypad is replayed too — the player has not seen the shapes since they left. */
+  /* v31 (60.27, build 60): coming back to a Streak the phone killed. The ROUND and the running total are restored and the
+     round is dealt from there — the deal itself is not saved, because Spot's dealer is a deck per run and a round dealt again
+     from the same round number is the same DIFFICULTY, which is what a resumed run owes the player. */
+  resumeAt(ctx,row){ if(!row||row.round<2) return; this.round=row.round;
+    if(this.find()) this.tot=+row.hits||0; else this.off=+row.hits||0;
+    this.clearT(); this.find()?this.findRound():this.countRound(); },
+  // v31 (60.27, build 60): the crowd's drift loop is this engine's own frame clock and stops with the run
+  pause(){ cancelAnimationFrame(this.raf); this.raf=0; },
+  replay(){ if(this.st==='idle'||this.vs) return; this.clearT();
+    if(this.find()) return this.findRound();
+    if(this.two) return; this.countRound(); },
   keypad(){ return `<div class="pad-num">${Array.from({length:SPOT_RAMP.nCap+1},(_,i)=>`<button data-num="${i}">${i}</button>`).join('')}</div>`; },
   ask(){ this.st='ask'; this.t0=performance.now(); cancelAnimationFrame(this.raf); if(this.two){ this.picks=[null,null]; $('#gen').innerHTML=`<div class="vz top p2" id="vz1">${this.keypad()}</div><div class="vmid">${CP.howMany}<br><b>${pWho(0)} ${this.vsN[0]} · ${this.vsN[1]} ${pWho(1)}</b></div><div class="vz bot p1" id="vz0">${this.keypad()}</div>`; this.later(()=>this.twoJudge(),7000); return; }
     $('#gen').innerHTML=`<div class="glbl top" style="top:14%">${CP.howMany}</div>${this.keypad()}`; },

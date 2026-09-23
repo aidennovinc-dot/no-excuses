@@ -363,7 +363,12 @@ async function poke(g) {
         clientX: r.left + q.x + sz / 2, clientY: r.top + q.y + sz / 2, pointerId: 1 }));
       return true; }).catch(() => false));
     if (hit) return;
-    await page.evaluate(n => { const b = document.querySelector(`#gen [data-num="${n}"]`); if (b) b.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: 0, clientY: 0, pointerId: 1 })); }, 14); return; }
+    /* AMENDED at build 60 (v31 60.16): this pressed `data-num="14"`, which was a hand-written copy of SPOT_RAMP.nCap — and 60.16
+       made nCap 13, so there was no such button and a Count Streak was never answered at all: the run simply never ended.
+       It presses the HIGHEST button the keypad ACTUALLY HAS now, read off the page, which is a deliberately wrong answer on every
+       round (the point: a Streak has to be able to spend its budget) and cannot go stale the next time the cap moves. */
+    await page.evaluate(() => { const b = [...document.querySelectorAll('#gen [data-num]')].pop();
+      if (b) b.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: 0, clientY: 0, pointerId: 1 })); }); return; }
 }
 // the ad break (every fourth result) has a 2s skip; press it when it is live
 /* v25 (items 6 / 11 / 22, build 46): A CHEST OPENING AND A KEY'S FIRST OPEN ARE THE SAME REVEAL NOW — the stage, the symbols rising out of it,
@@ -594,7 +599,12 @@ if (section('one Set run and one Streak run per game (first mode)')) {
     const label = `${g} · ${face || '?'}`;
     if (!face) { bad(label, 'no length button'); continue; }
     await click('#go-btn');
-    const at = await driveToResult(g, label, 90000, g === 'reaction' && li === 'streak');
+    /* AMENDED at build 60 (v31 60.15 / 60.17): Spot takes longer to play than it did, for two reasons that are both Aiden's
+       and both deliberate — a Count Streak's budget is 20 miscounts rather than 8, so it survives two and a half times as many
+       rounds, and every Count round opens on its target shape for about 1.75s before the crowd. The ASSERTION is unchanged (a Set
+       and a Streak of every game driven to its result); this is the driver's patience, not a threshold. Measured at build 60: a
+       Count Set is about 55s and its Streak longer again. */
+    const at = await driveToResult(g, label, g === 'spot' ? 240000 : 90000, g === 'reaction' && li === 'streak');
     if (g === 'timing' && li === 0) { askedSet = askedLine; askedSetTot = askedTot; }   // the Set: 6.18 and §3 below
     if (g === 'timing' && li === 'streak') askedStreakLine = askedLine;                   // the Streak keeps its baseline (§3)
     if (at === 's-over') { const r = await resultLine(); r.score ? ok(`${label} → "${r.score}" · ${r.verdict} · ${r.stats}`) : bad(label, 'result screen has no score'); }
@@ -1445,6 +1455,61 @@ if (section('the runs (v15 section 3)')) {
     (s.early === 5 && s.late === 7.5 && s.hidden === 700 && s.txt === '5.00s')
       ? ok('B.3a / B.4 / L5 the Stopwatch Streak budget is 5s, 7.5s past round 10; Hidden is 700ms and the screen says so')
       : bad('B.3a / B.4 the Streak budgets', JSON.stringify(s)); }
+
+  /* ---- v31 (60.27, build 60): A STREAK'S PROGRESS IS SAVED, AND A KILLED APP IS OFFERED IT BACK ----
+     A pause keeps the run in memory and needs none of this; the saved row is for the case a pause cannot cover — iOS killing
+     the app outright. Four facts: a Streak writes a row every round; a quit clears it; a two-player run writes NOTHING (L10);
+     and the menu offers what is there and plays it from that round. */
+  { const sv60 = await page.evaluate(async () => { const RUN = await import('./run/run.js'), ST = await import('./core/state.js');
+      const SS = await import('./core/store.js'), R = await import('./ui/router.js');
+      for (const k of ['spot', 'spot:count', 'spot:find', 'quick-tap', 'quick-tap:two']) SS.store.intro[k] = Date.now();
+      /* a length the player has not unlocked is not one the sheet will select, which is right and is why the offer has to land on
+         an OPEN combination — a saved row is always one the player played, so the fixture says so too */
+      SS.prefs.allOpen = true;
+      delete SS.store.resume; SS.save();
+      const SP = (await import('./games/spot/index.js')).default;
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const row = () => { const st = JSON.parse(localStorage.getItem('ne')) || {}; return st.resume || null; };
+      const out = {};
+      // a FIND STREAK, played far enough to land a few rounds
+      Object.assign(ST.sel, { vs: 0, practice: 0, game: 'spot', diff: 'find', secs: -1 }); RUN.start();
+      for (let n = 0; n < 4; n++) {
+        for (let i = 0; i < 400 && SP.st !== 'find'; i++) await wait(40);
+        if (SP.st !== 'find') break;
+        const q = SP.pts.find(x => x.shape === SP.odd), g = document.getElementById('gen'), r = g.getBoundingClientRect(), sz = q.sz || SP.size;
+        g.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: 1, clientX: r.left + q.x + sz / 2, clientY: r.top + q.y + sz / 2 }));
+        await wait(1500);
+        if (document.getElementById('game').classList.contains('tapon')) { const gg = document.getElementById('gen');
+          gg.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: 1, clientX: 10, clientY: 10 })); }
+        await wait(500);
+      }
+      out.saved = row(); out.round = SP.round;
+      // QUIT: the row goes, because a run that is over has nothing to offer back
+      RUN.abort(); await wait(400); out.afterQuit = row();
+      // A TWO-PLAYER RUN SAVES NOTHING (L10)
+      Object.assign(ST.sel, { vs: 1, practice: 0, game: 'spot', diff: 'count', secs: -1 }); RUN.start();
+      await wait(2500); out.twoPlayer = row();
+      RUN.abort(); ST.sel.vs = 0; await wait(400);
+      // THE MENU OFFERS IT. The row is written by hand here — the point under test is the offer, not the writing, which is above
+      SS.store.resume = { g: 'spot', d: 'find', s: -1, round: 7, hits: 4.25, t: Date.now(), gaunt: 0 }; SS.save();
+      R.show('s-menu'); await wait(600);
+      const el = document.getElementById('resumerow');
+      out.offer = { hidden: el.hidden, text: (el.textContent || '').replace(/\s+/g, ' ').trim() };
+      el.click(); await wait(700);
+      out.wentTo = (document.querySelector('.screen.on') || {}).id;
+      out.sel = { g: ST.sel.game, d: ST.sel.diff, s: ST.sel.secs, at: ST.sel.resumeAt && ST.sel.resumeAt.round };
+      // and Go picks the run up AT THAT ROUND
+      RUN.start(); await wait(2600);
+      out.resumedAt = SP.round; out.resumedTot = Math.round(SP.tot * 100) / 100;
+      RUN.abort(); delete SS.store.resume; SS.save(); await wait(300);
+      return out; });
+    (sv60.saved && sv60.saved.g === 'spot' && sv60.saved.d === 'find' && sv60.saved.s === -1 && sv60.saved.round >= 1
+      && !sv60.afterQuit && !sv60.twoPlayer
+      && !sv60.offer.hidden && /round 7/.test(sv60.offer.text) && /Find/.test(sv60.offer.text)
+      && sv60.wentTo === 's-pick' && sv60.sel.at === 7
+      && sv60.resumedAt === 7 && sv60.resumedTot === 4.25)
+      ? ok(`60.27 a Streak's progress is saved and a killed app is offered it back — a Find Streak wrote {round ${sv60.saved.round}} as it played, quitting cleared it, a PASS & PLAY run wrote nothing at all (L10), and the menu's offer ("${sv60.offer.text}") picks the run up at round ${sv60.resumedAt} with its ${sv60.resumedTot}s total intact`)
+      : bad('60.27 the saved Streak', JSON.stringify(sv60)); }
 
   /* ---- v31 (60.26, build 60): NO COUNT-UP WHOOSH ON A WHOLE-NUMBER TALLY ----
      The whoosh is for a MEASURED amount draining into a total — milliseconds, seconds, percentages — where the sweep follows the
@@ -2448,18 +2513,56 @@ if (section('the runs (v15 section 3)')) {
 
     /* item 4: nothing handled visibilitychange for the run. R.end is absolute, so a locked Marathon recorded its first ten
        seconds as a Marathon; Stopwatch's t0 kept its start while rAF paused, so the first frame back scored the whole lock
-       time as the attempt and set `ov` — which is what tm_s10 reads, so locking the phone handed out a secret achievement. */
+       time as the attempt and set `ov` — which is what tm_s10 reads, so locking the phone handed out a secret achievement.
+       AMENDED AT BUILD 60 (v31 60.27, Aiden's call of 2026-09-23, which REVERSES item 4's remedy): the run PAUSES and resumes
+       rather than ending. "A 20-round Streak lost to a phone call." Item 4 was right about the fault and wrong about the cure,
+       so this is RESTATED rather than dropped: every one of the three things it caught is still asserted impossible — nothing
+       banked, no tm_s10, and no attempt scored across the time away — and what it asserted about the REMEDY (the run over, back
+       on the pick sheet, one toast) is replaced by what the remedy is now. The Marathon half is driven too, because keeping the
+       seconds a timed run had left is the part item 4's own reasoning turned on. */
     await openSheet('timing', 0, 0); await click('#go-btn');
-    (await liveNow('timing')) || bad('item 4 the Stopwatch run never went live'); await sleep(700);
+    (await liveNow('timing')) || bad('item 4 the Stopwatch run never went live'); await sleep(900);
+    const before60 = await page.evaluate(async () => { const TM = (await import('./games/timing/index.js')).default;
+      return { st: TM.st, t0: TM.t0, round: TM.round }; });
     await page.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => true }); document.dispatchEvent(new Event('visibilitychange')); });
-    await sleep(600);
+    await sleep(2500);   // a good long time away — long enough that a clock left running would score it
+    const away60 = await page.evaluate(async () => { const RN = await import('./run/run.js');
+      return { on: RN.R.on, paused: document.getElementById('game').classList.contains('paused') }; });
     await page.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => false }); document.dispatchEvent(new Event('visibilitychange')); });
-    await sleep(700);
-    const lock55 = await page.evaluate(async () => { const RN = await import('./run/run.js'); const st = JSON.parse(localStorage.getItem('ne')) || {};
-      return { on: RN.R.on, runs: (st.runs || []).length, ach: Object.keys(st.ach || {}), screen: (document.querySelector('.screen.on') || {}).id, toast: document.getElementById('toast').classList.contains('on') }; });
-    (!lock55.on && !lock55.runs && !lock55.ach.includes('tm_s10') && lock55.screen === 's-pick' && lock55.toast)
-      ? ok('item 4 the phone going to sleep mid-Stopwatch ends the run and banks nothing — no record, no tm_s10, back on the pick sheet with one toast on RETURN rather than into a dark screen')
-      : bad('item 4 a backgrounded run keeps counting', JSON.stringify(lock55));
+    await sleep(500);
+    const counting60 = await page.evaluate(() => ({ count: document.getElementById('count').classList.contains('on') }));
+    await sleep(1600);   // past the 3-2-1
+    const back60 = await page.evaluate(async () => { const RN = await import('./run/run.js'); const TM = (await import('./games/timing/index.js')).default;
+      const st = JSON.parse(localStorage.getItem('ne')) || {};
+      return { on: RN.R.on, paused: document.getElementById('game').classList.contains('paused'),
+        runs: (st.runs || []).length, ach: Object.keys(st.ach || {}),
+        screen: (document.querySelector('.screen.on') || {}).id,
+        st: TM.st, round: TM.round, errs: TM.errs.length,
+        // the attempt is REPLAYED FRESH: a new clock, started after the return, not the one that was running when the phone slept
+        clockAge: TM.t0 ? Math.round(performance.now() - TM.t0) : null }; });
+    (away60.on && away60.paused && !back60.paused && back60.on
+      && !back60.runs && !back60.ach.includes('tm_s10') && back60.errs === 0
+      && back60.round === before60.round && back60.clockAge !== null && back60.clockAge < 2500
+      && counting60.count)
+      ? ok(`60.27 (amending v29 item 4) the phone going to sleep mid-Stopwatch PAUSES the run and it resumes — 2.5s away, the run still live and frozen while it was gone, a 3-2-1 on return, and the attempt REPLAYED FRESH on a clock ${back60.clockAge}ms old rather than one 2.5s older; still round ${back60.round}, nothing banked, and no tm_s10 from a clock left running`)
+      : bad('60.27 the pause and resume', JSON.stringify({ before60, away60, counting60, back60 }));
+
+    /* and a TIMED run keeps the seconds it had left, which is the other half of item 4's fault: R.end is absolute, so a
+       Marathon locked at 10s recorded ten seconds of hits as a Marathon. The paused time goes back onto R.end now. */
+    await openSheet('quick-tap', 0, 2); await click('#go-btn');
+    (await liveNow('quick-tap')) || bad('60.27 the Marathon never went live'); await sleep(900);
+    const leftBefore = await page.evaluate(async () => { const RN = await import('./run/run.js'); return RN.R.end - performance.now(); });
+    await page.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => true }); document.dispatchEvent(new Event('visibilitychange')); });
+    await sleep(2500);
+    await page.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => false }); document.dispatchEvent(new Event('visibilitychange')); });
+    await sleep(1700);
+    const leftAfter = await page.evaluate(async () => { const RN = await import('./run/run.js');
+      return { left: RN.R.end - performance.now(), on: RN.R.on }; });
+    // the 3-2-1 itself runs on real time, so the comparison allows for it and for the 2.5s away, not for the lock
+    (leftAfter.on && leftAfter.left > leftBefore - 3000)
+      ? ok(`60.27 a timed run keeps the seconds it had left — a Marathon with ${Math.round(leftBefore / 1000)}s to go came back with ${Math.round(leftAfter.left / 1000)}s, where the 2.5s away would have been taken off the clock before build 60 (item 4's own fault, cured by pausing rather than by ending the run)`)
+      : bad('60.27 a timed run loses its paused time', JSON.stringify({ leftBefore, leftAfter }));
+    await page.evaluate(async () => (await import('./run/run.js')).abort()); await sleep(400);
 
     // item 14: the rolling hits/sec number was unclamped while its bar was clamped — two taps 100ms apart printed 10.0/s
     const rate55 = await page.evaluate(async () => { const H = await import('./games/_shared/hud.js'); const G = await import('./config/games.js');

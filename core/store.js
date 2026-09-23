@@ -328,7 +328,17 @@ const validGaunt=r=>isObj(r)&&typeof r.id==='string'&&r.id.length<=8&&typeof r.t
   &&typeof r.score==='number'&&Number.isFinite(r.score)&&Array.isArray(r.web)
   &&r.web.every(w=>isObj(w)&&typeof w.key==='string'&&w.key.length<=40&&(w.pct===null||(typeof w.pct==='number'&&Number.isFinite(w.pct))));
 const cleanGaunt=raw=>(Array.isArray(raw)?raw.filter(validGaunt):[]).slice(0,GAUNT_CAP);
-  return { st:{ v:VERSION, prefs:cleanPrefs(raw.prefs), runs:cleanRuns(raw.runs), ach:cleanMap(raw.ach), unlock:cleanMap(raw.unlock), intro:cleanMap(raw.intro), seen:isObj(raw.seen)?cleanMap(raw.seen):null, bars:cleanMap(raw.bars), gaunt:cleanGaunt(raw.gaunt) }, legacy }; }
+/* v31 (60.27, build 60): THE RESUME ROW. A Streak or a Gauntlet writes where it had got to after every round, so a phone that
+   kills the app outright has something to offer back. One row, overwritten each round, deleted the moment the run finishes or is
+   quit — so an absent one means "nothing to resume", which is what a profile without it already means and is why this takes no
+   ladder step. It is shape-checked like everything else in the store (S3): anything malformed is simply dropped, and a row older
+   than RESUME_MAX_AGE is dropped too, because a Streak from last week is not a run anybody is coming back to. */
+const RESUME_MAX_AGE=1000*60*60*24*2;
+const validResume=r=>isObj(r)&&typeof r.g==='string'&&r.g.length<=20&&typeof r.d==='string'&&r.d.length<=20
+  &&typeof r.s==='number'&&Number.isFinite(r.s)&&typeof r.round==='number'&&Number.isFinite(r.round)&&r.round>=1&&r.round<=9999
+  &&typeof r.t==='number'&&Number.isFinite(r.t)&&Date.now()-r.t<RESUME_MAX_AGE;
+const cleanResume=raw=>validResume(raw)?{ g:raw.g, d:raw.d, s:raw.s, round:Math.round(raw.round), hits:Number.isFinite(+raw.hits)?+raw.hits:0, t:raw.t, gaunt:raw.gaunt?1:0 }:null;
+  return { st:{ v:VERSION, prefs:cleanPrefs(raw.prefs), runs:cleanRuns(raw.runs), ach:cleanMap(raw.ach), unlock:cleanMap(raw.unlock), intro:cleanMap(raw.intro), seen:isObj(raw.seen)?cleanMap(raw.seen):null, bars:cleanMap(raw.bars), gaunt:cleanGaunt(raw.gaunt), resume:cleanResume(raw.resume) }, legacy }; }
 
 const { st: store, legacy } = load();
 const prefs = store.prefs;
@@ -364,6 +374,6 @@ const musicOn=g=>!opened('games')||prefs.musicG[g]!==false;
    profile showed all 27 of them open. Supporter is a dev switch today (S5 gates it out of a release build entirely) and
    Fresh game is the switch for seeing the app as a new player does, so it belongs in this list. When it becomes a real
    purchase at the native build it will be restored from the store rather than from prefs, and this line stays correct. */
-function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; store.gaunt=[]; Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,keysSeen:0,chests:cleanChests(null),cusSeen:0,readySeen:cleanChests(null),spill:cleanChests(null),keyWhole:{},revealed:{},msgSeen:{},gauntSeen:{},paid:0,menuOpened:{},keyIntro:{},retro:{},retroCol:{},devKeys:{}}); delete prefs.mig11; delete prefs.mig31; delete prefs.mig32; delete prefs.mig35; delete prefs.meterSeen; delete prefs.devMeter; save(); emit('store:reset'); }
+function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; store.gaunt=[]; store.resume=null;   /* v31 (60.27): a Fresh game has nothing to come back to */ Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,keysSeen:0,chests:cleanChests(null),cusSeen:0,readySeen:cleanChests(null),spill:cleanChests(null),keyWhole:{},revealed:{},msgSeen:{},gauntSeen:{},paid:0,menuOpened:{},keyIntro:{},retro:{},retroCol:{},devKeys:{}}); delete prefs.mig11; delete prefs.mig31; delete prefs.mig32; delete prefs.mig35; delete prefs.meterSeen; delete prefs.devMeter; save(); emit('store:reset'); }
 
 export { RUNS_CAP, everywhere, look, lookCol, musicOn, opened, prefs, reset, save, setKeyDone, store, trimRuns };

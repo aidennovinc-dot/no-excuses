@@ -80,6 +80,15 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
   // v14 (6.3): the reveal stays up until it is tapped. That tap is consumed here — it must not start the next round's hold
   input(ctx,ev){ if(this.pending){ if(ev.type!=='down') return; const f=this.pending; this.pending=null; hud.hold(false); ctx.audio.click(); return f(); }
     if(ev.type==='down') this.down(ev); else if(ev.type==='move') this.cutMove(ev); else if(ev.type==='up') this.up(); },
+  /* v31 (60.27, build 60): a hold that was in progress is abandoned and the round is dealt again. A reveal that had already
+     landed is NOT replayed — its figure is in `errs` and the run has moved on — so this only ever fires on a live round. */
+  // v31 (60.27, build 60): the rounds played and the budget spent come back, and the next round is dealt
+  resumeAt(ctx,row){ if(!row||row.round<2) return; this.round=row.round; this.total=+row.hits||0;
+    this.errs=Array.from({length:Math.max(0,row.round-1)},()=>0);
+    this.clearT(); this.reset(); this.play(); },
+  // v31 (60.27, build 60): the growing shape's own frame loop stops with the run; the hold is replayed from the top anyway
+  pause(){ cancelAnimationFrame(this.raf); this.raf=0; },
+  replay(){ if(this.st!=='wait'&&this.st!=='hold') return; this.clearT(); this.pending=null; hud.hold(false); this.reset(); this.play(); },
   wait(f){ this.pending=f; hud.hold(true); },
   // first play (v6): Grow — the ghost waits for the target, holds for the right length, lets go, and the reveal plays; Cut has no demo, the one-liner sits for 1.8s
   // v15 (3.2): the demo's own reveal used to be cut off — done fired on a flat 1300ms while the count-and-fill panel needs

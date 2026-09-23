@@ -76,8 +76,12 @@ function cue(html,stay,p){ const t=$('#turn'); t.classList.remove('on','stay','p
 // by run/run.js for a Quick Tap or Dots hand-over; the games that alternate INSIDE one run move it every turn
 function pturn(p){ const g=$('#game'); g.classList.toggle('pturn',p!==null&&p!==undefined); if(p===null||p===undefined) return; g.style.setProperty('--pc',p?P2C:P1C); }
 // 3-2-1, then go. The steps ride the run's timers, so an abort mid-count stops it
-function countdown(timers,audio,cb){ const c=$('#count'); let n=3; c.classList.add('on');
-  const step=()=>{ if(n>0){ c.innerHTML=`<span>${n}</span>`; audio.tick(); n--; timers.later(step,CFG.countStep); } else { c.classList.remove('on'); c.innerHTML=''; audio.go(); cb(); } };
+/* v31 (60.27, build 60): `own` counts on its OWN clock rather than the run's. A resume counts a run back in while that run's
+   timers are still paused — which is the point: nothing the engine had waiting may fire under the 3-2-1. Every other caller
+   passes nothing and gets exactly what it always got. */
+function countdown(timers,audio,cb,own){ const c=$('#count'); let n=3; c.classList.add('on');
+  const wait=own?(f,ms)=>setTimeout(f,ms):(f,ms)=>timers.later(f,ms);
+  const step=()=>{ if(n>0){ c.innerHTML=`<span>${n}</span>`; audio.tick(); n--; wait(step,CFG.countStep); } else { c.classList.remove('on'); c.innerHTML=''; audio.go(); cb(); } };
   step(); }
 // what every start clears in the shell: the slots the engines share and whatever the last run left in them
 /* ---------- v31 (60.18, build 60): THE ALLOWANCE-STREAK ROUND SCREEN, ONE BLOCK FOR ALL THREE ----------

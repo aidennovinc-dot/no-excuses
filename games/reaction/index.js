@@ -175,6 +175,14 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
       onFrame:tot=>{ this.over=tot; hud.allowBar('rxallow',spent,tot-spent,bud); hud.time(T(CP.hudStreak,{n:this.round,over:Math.round(this.over),bud})); },
       done:tot=>{ this.over=tot; if(this.over>=this.FLASH_BUD){ this.out=true; const m=$('#rxallow'); if(m) m.insertAdjacentHTML('afterend',`<span class="sub">${T(CP.reached,{bud:this.FLASH_BUD})}</span>`); }
         this.hud(); this.ctx.emit('live',this.result()); this.wait(()=>this.next()); } }); },
+  /* v31 (60.27, build 60): a Flash waiting to light, or a Go / No-go block mid-beat, is replayed from the top of the round.
+     Nothing is pushed to `times` and `over` is untouched, so the attempt costs nothing. */
+  // v31 (60.27, build 60): the attempts made and the budget spent come back, and the next attempt is dealt
+  resumeAt(ctx,row){ if(!row||row.round<2) return; this.round=row.round; this.over=+row.hits||0;
+    this.times=Array.from({length:Math.max(0,row.round-1)},()=>this.FLASH_FREE);
+    this.clearT(); if(this.nogo()) return this.nogoBegin(); this.again(); },
+  replay(){ if(this.st==='idle'||this.versus()) return; this.clearT();
+    if(this.nogo()) return this.nogoBegin(); this.again(); },
   onDown(ev){ if(this.versus()) return this.vsTap(ev); if(this.nogo()) return this.nogoTap(ev);
     if(this.st==='wait') return this.early();
     if(this.st!=='go'||!this.armed) return;
