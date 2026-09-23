@@ -4,6 +4,12 @@
 
 // the two players (v11 / L4) — the span class carries the colour, so v14 (4.1) drops the colour word beside the name
 export const PLAYER = { who:'Player {n}' };
+/* v31 (60.25, build 60): HOW LONG A TOAST HOLDS, and the gap between one and the next. Aiden asked for longer and for a QUEUE —
+   until build 59 a new toast called clearTimeout and simply replaced whatever was up, so a run that unlocked two things showed
+   the first for however long it took the second to arrive. 5,000 / 4,500 / 3,000ms are his numbers: a TAPPABLE toast (an
+   achievement, or an unlock that leads to its own row) longest, an unlock next, a plain one shortest. 'gap' is the beat between
+   one leaving and the next arriving, so two do not read as one. ui/toast.js is the only reader. */
+export const TOAST_MS = { tap: 5000, unlock: 4500, plain: 3000, gap: 260 };
 /* v31 (60.23, build 60): the player picker's four words, spelled ONCE. L3's two steps were written out in index.html for the pick
    sheet and again as a string in ui/screens/result.js, which is how the two drifted apart; ui/players.js is the one component now
    and this is the one place the words live. */

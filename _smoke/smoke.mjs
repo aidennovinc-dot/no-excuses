@@ -441,7 +441,8 @@ async function openSheet(g, mi, li, vs = 0) {
   await page.reload({ waitUntil: 'networkidle0' }); await sleep(320);
   await click('[data-go="s-pick"]'); await sleep(260);
   await page.evaluate(g => document.querySelector(`.tile[data-game="${g}"]`).click(), g); await sleep(260);
-  if (vs) { await click('[data-vs="1"]'); await sleep(200); await click(`[data-vs2="${vs}"]`); await sleep(200); }
+  // v31 (60.23, build 60): the player rows are ui/players.js's on both screens and carry data-p / data-p2
+  if (vs) { await click('#vs-wrap [data-p="f"]'); await sleep(200); await click(`#vs-wrap [data-p2="${vs}"]`); await sleep(200); }
   await page.evaluate(mi => { const c = document.querySelectorAll('#diff-row .choice'); (c[mi] || c[0]).click(); }, mi); await sleep(420);
   const face = await page.evaluate(li => { const t = [...document.querySelectorAll('#time-row .tbtn')]; const b = li === 'streak' ? t.find(x => x.dataset.time === '-1') : t[li]; if (!b) return null; b.click(); return b.querySelector('b').textContent.trim(); }, li); await sleep(160);
   return face;
@@ -1445,6 +1446,46 @@ if (section('the runs (v15 section 3)')) {
       ? ok('B.3a / B.4 / L5 the Stopwatch Streak budget is 5s, 7.5s past round 10; Hidden is 700ms and the screen says so')
       : bad('B.3a / B.4 the Streak budgets', JSON.stringify(s)); }
 
+  /* ---- v31 (60.25, build 60): TOASTS HOLD LONGER AND THEY QUEUE ----
+     The old function called clearTimeout and wrote straight over whatever was on screen, so a run that unlocked two things
+     showed the first for however long it took the second to arrive. The three numbers are Aiden's; the QUEUE is the part worth
+     driving, so three toasts are fired in one breath and the screen is sampled while they play out. */
+  { const tq60 = await page.evaluate(async () => { const TS = await import('./ui/toast.js'), CP = await import('./config/copy.js');
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const t = document.getElementById('toast');
+      const seen = []; let last = '';
+      TS.toastClear(); await wait(60);
+      // three at once: a plain one, an unlock, and a tappable one — the order they are fired in is the order they must be read in
+      TS.toast('first up', '', '', false, '', true);
+      TS.toast('second up', '', 'ok', false, '', true);
+      TS.toast('third up', 'qt_r5', '', false, '', true);
+      const t0 = performance.now(); const spans = {};
+      for (let i = 0; i < 260; i++) { const on = t.classList.contains('on'), txt = on ? t.textContent.trim() : '';
+        if (txt !== last) { const at = Math.round(performance.now() - t0);
+          if (last) spans[last] = at - (spans['_' + last] || 0);
+          if (txt) spans['_' + txt] = at;
+          seen.push({ at, txt: txt || '(none)' }); last = txt; }
+        await wait(60); if (performance.now() - t0 > 15000) break; }
+      const out = { MS: CP.TOAST_MS, seen, held: {} };
+      for (const k of ['first up', 'second up', 'third up']) if (spans[k]) out.held[k] = spans[k];
+      // and a TAP takes the rest of the queue with it
+      TS.toastClear(); await wait(80);
+      TS.toast('one', '', '', false, '', true); TS.toast('two', '', '', false, '', true);
+      await wait(200);
+      const before = t.textContent.trim();
+      t.dataset.ach = 'qt_r5'; t.click(); await wait(900);
+      out.afterTap = { text: t.textContent.trim(), on: t.classList.contains('on'), before };
+      TS.toastClear();
+      return out; });
+    const order = tq60.seen.filter(x => x.txt !== '(none)').map(x => x.txt).join(' → ');
+    const near = (a, b) => Math.abs(a - b) <= 500;
+    (order === 'first up → second up → third up'
+      && near(tq60.held['first up'], tq60.MS.plain) && near(tq60.held['second up'], tq60.MS.unlock) && near(tq60.held['third up'], tq60.MS.tap)
+      && tq60.MS.plain === 3000 && tq60.MS.unlock === 4500 && tq60.MS.tap === 5000
+      && !tq60.afterTap.on)
+      ? ok(`60.25 toasts hold longer and they QUEUE — three fired in one breath were read in order (${order}), each for its own time (${Object.entries(tq60.held).map(([k, v]) => k + ' ' + v + 'ms').join(', ')} against ${tq60.MS.plain} / ${tq60.MS.unlock} / ${tq60.MS.tap}), where until build 59 the third would simply have written over the other two; and a tap dismisses the one on screen AND empties what was still queued behind it`)
+      : bad('60.25 the toast queue', JSON.stringify(tq60)); }
+
   /* ---- v31 (60.24, build 60): TAPPING OUTSIDE THE SHEET STEPS BACK ONE LEVEL ----
      This REVERSES v28 item 14 (build 53), which made a tap on the dimmed map close the sheet outright. Aiden's call of
      2026-09-23. Four paths, and the fourth is the one that is easy to get wrong: a game whose first step has no choice — a
@@ -1535,20 +1576,19 @@ if (section('the runs (v15 section 3)')) {
      panel is at the foot of the field now (HOLD_LAYOUT.split) and the reveal scales BOTH shapes by one factor so neither can
      reach it — the areas, the bars and the numbers are worked out from the real sizes before that, so the estimate is untouched.
      Six rounds, each held to a big overshoot, measured as box against box. */
-  { const gr60 = await page.evaluate(async () => { const RUN = await import('./run/run.js'), ST = await import('./core/state.js');
-      const SS = await import('./core/store.js'), G = await import('./config/games.js'), C = await import('./core.js');
-      SS.store.intro['hold'] = SS.store.intro['hold:grow'] = Date.now(); SS.save();
+  { /* the run is opened and started THE WAY A PLAYER DOES — openSheet then Go — rather than by poking run/run.js from
+       whatever screen the check before this one happened to leave the app on. Estimate's field only has a box once the game
+       layer is up, and a half-made two-player selection would send the reveal down the shared-score path, which draws no panel
+       at all; going in through the sheet settles both. */
+    await openSheet('hold', 0, 'streak');
+    await click('#go-btn'); await sleep(900);
+    const gr60 = await page.evaluate(async () => { const G = await import('./config/games.js'), C = await import('./core.js');
       const HD = (await import('./games/estimate/index.js')).default;
       const wait = ms => new Promise(r => setTimeout(r, ms));
-      /* the run's own field only has a box while the game layer is up, and the check before this one leaves the app on the
-         result screen — so the screen is shown the way Go shows it before anything is measured. */
-      (await import('./ui/router.js')).show('s-menu'); await wait(200);
-      // and a two-player run left half-set by an earlier check would take the shared-score path, where there is no #hcalc panel
-      ST.VS.reset();
-      Object.assign(ST.sel, { vs: 0, practice: 0, game: 'hold', diff: 'grow', secs: -1 }); RUN.start();
       const out = { split: G.HOLD_LAYOUT.split, rounds: [] };
       for (let n = 0; n < 6; n++) {
         for (let i = 0; i < 400 && !(document.getElementById('hbg') || {}).classList?.contains?.('on'); i++) await wait(25);
+        if (!HD.ctx) break;
         // a 60% overshoot: the round that used to draw through the panel
         const ms = HD.target / (G.CFG.holdRate * C.vmin()) * 1000 * Math.sqrt(1.6);
         HD.down({ type: 'down', x: 0, y: 0 }); await wait(ms); HD.up();
@@ -1566,11 +1606,11 @@ if (section('the runs (v15 section 3)')) {
           panelTopShare: Math.round((c.top - f.top) / f.height * 100) / 100 });
         HD.input(HD.ctx, { type: 'down', x: 0, y: 0 }); await wait(700);
       }
-      RUN.abort(); await wait(300); return out; });
+      (await import('./run/run.js')).abort(); await wait(300); return out; });
     const bad60 = gr60.rounds.filter(r => !r.shapes || r.panelHits || r.textHits || r.gap === null || r.gap < 0);
-    bad60.length === 0
-      ? ok(`60.21 the Grow result's shape and its TARGET / YOURS panel never overlap — six rounds each held 60% over, every one with the panel at ${gr60.rounds[0].panelTopShare} of the field (HOLD_LAYOUT.split ${gr60.split}) and the shape clear above it by ${gr60.rounds.map(r => r.gap).join(', ')}px; no shape box touches the panel or any of its bars or numbers`)
-      : bad('60.21 the Grow result overlaps', JSON.stringify(bad60)); }
+    (gr60.rounds.length >= 4 && bad60.length === 0)
+      ? ok(`60.21 the Grow result's shape and its TARGET / YOURS panel never overlap — ${gr60.rounds.length} rounds each held 60% over, every one with the panel at ${gr60.rounds[0].panelTopShare} of the field (HOLD_LAYOUT.split ${gr60.split}) and the shape clear above it by ${gr60.rounds.map(r => r.gap).join(', ')}px; no shape box touches the panel or any of its bars or numbers`)
+      : bad('60.21 the Grow result overlaps', JSON.stringify({ rounds: gr60.rounds.length, bad60 })); }
 
   /* ---- v31 (60.20, build 60): A GOAL BADGE THAT DOES NOT FIT SCANS, AND FREEZES WHILE A ROUND IS LIVE ----
      Three facts, and the third is the one that matters: movement in peripheral vision provokes false starts in Flash, Dots and
