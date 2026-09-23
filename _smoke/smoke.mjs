@@ -4139,6 +4139,39 @@ if (section('chests')) {
       : bad('58.2 the gauntlet hand', JSON.stringify(hand58));
   }
 
+  /* ---- v31 (60.30, build 60): THE WIELD LINE SAYS WHAT TO DO, GOES GREEN WHEN DONE, AND LEAKS NOTHING ----
+     "Only Gauntlet Mega can wield it." states a fact and asks for nothing. It is "Unlock Gauntlet Mega to wield this key" now,
+     with that Gauntlet's own icon beside it, and it turns green once the Gauntlet is finished. The third clause is the one worth
+     driving: R1 says a secret may be known to exist and never what it is, so the line is NOT THERE before the chest that gives
+     that Gauntlet has been opened — otherwise the Author key screen, which is reachable long before the Pro chest, would name
+     Gauntlet Mega to a player who has never heard of it. */
+  { const wl60 = await page.evaluate(async () => { const R = await import('./ui/router.js'), K = await import('./progress/key.js');
+      const S = await import('./core/store.js'), P = await import('./progress.js'), C = await import('./config/chests.js');
+      const wait = ms => new Promise(x => setTimeout(x, ms));
+      const read = async ix => { R.show('s-key', { tier: ix, from: 's-testing' }); await wait(700);
+        const w = document.getElementById('key-wield');
+        return { hidden: w.hidden, done: w.classList.contains('done'),
+          sym: w.querySelectorAll('.kwsym').length, text: (w.textContent || '').replace(/\s+/g, ' ').trim() }; };
+      const out = {};
+      // the Pro key with only the Skill chest open: Gauntlet Mini is out, so the line is there and not yet met
+      /* devReach writes a `dev` Gauntlet row of its own to satisfy the chest it is filling (58.2), so the board is emptied AFTER
+         it rather than before — otherwise the line under test would already be met. */
+      K.devReach('pro', P.devModesAll); S.store.gaunt = []; S.save();
+      out.proBefore = await read(1);
+      // and the Author key at the same moment: Gauntlet Mega is still inside the Pro chest, so it says nothing at all (R1)
+      out.authorHidden = await read(2);
+      // finish Gauntlet Mini: the Pro key's line goes green
+      S.store.gaunt = [{ id: 'g1', t: Date.now(), score: 90, tier: 'clear', web: [] }]; S.save();
+      out.proDone = await read(1);
+      S.store.gaunt = []; S.save();
+      out.gaunts = C.GAUNTLETS.map(g => g.id + '@' + g.chest);
+      return out; });
+    (!wl60.proBefore.hidden && wl60.proBefore.sym === 1 && /^Unlock Gauntlet Mini to wield this key$/.test(wl60.proBefore.text) && !wl60.proBefore.done
+      && wl60.authorHidden.hidden && !wl60.authorHidden.text
+      && !wl60.proDone.hidden && wl60.proDone.done && /Gauntlet Mini can wield this key/.test(wl60.proDone.text))
+      ? ok(`60.30 the key's wield line asks for something and answers when it is done — the Pro key reads "${wl60.proBefore.text}" with Gauntlet Mini's own icon beside it, turns green as "${wl60.proDone.text}" the moment that Gauntlet is finished, and the AUTHOR key says nothing at all while Gauntlet Mega is still inside the Pro chest (R1: a secret may be known to exist, never what it is)`)
+      : bad('60.30 the wield line', JSON.stringify(wl60)); }
+
   /* ---- v31 (60.29, build 60): A KEY THEME'S BACKGROUND RUNS EDGE TO EDGE ----
      Aiden: Lantern shows black bars about 50px wide left and right and ends before the bottom. Both were one rule — the key's
      radial ground was painted on #key-main, which sits inside the screen's own 24px padding and ends where the panel does, so a

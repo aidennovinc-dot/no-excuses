@@ -71,7 +71,7 @@
    shows up on this screen the same day. A combination with no bar renders as "no bar set" rather than vanishing (C.6). */
 import { Music, Snd } from "../../audio.js";
 import { HIDE_UNRECORDED } from "../../config/build.js";
-import { CHESTS } from "../../config/chests.js";
+import { CHESTS, GAUNTLETS } from "../../config/chests.js";
 import { CARD, GAUNTLET, GRID, KEY, SHEET } from "../../config/copy.js";
 import { KEY_NOTE } from "../../config/key-bars.js";
 import { EARN_SKIP_AT, KEY_ART, KEY_EARN, KEY_FINISH, KEY_INTRO } from "../../config/keys.js";
@@ -82,13 +82,13 @@ import { emit, on } from "../../core/events.js";
 import { everywhere, prefs, save } from "../../core/store.js";
 import { GAMES, lenFull, lenName } from "../../games/registry.js";
 import { isOpen, lenOpen, modeCount } from "../../progress.js";
-import { bandPct, barOf, barsFaked, barsMissing, chestOpen, chestState, gameKey, isCleared, keyChest, keyFinished, keyGaunt, keyState, keyTiers, meter, openChest, retroTier, skey, tierOpen } from "../../progress/key.js";
+import { bandPct, barOf, barsFaked, barsMissing, chestOpen, chestState, gameKey, gauntDone, isCleared, keyChest, keyFinished, keyGaunt, keyState, keyTiers, meter, openChest, retroTier, skey, tierOpen } from "../../progress/key.js";
 import { goWhere } from "../../run/run.js";
 import { scoreTxt } from "../format.js";
 import { capture, define, lock } from "../actions.js";
 import { setKeyLayer } from "../atmosphere.js";
 import { chestStage } from "../ceremony.js";
-import { chestCol, chestSvg, giftsOf } from "../chest.js";
+import { chestCol, chestSvg, giftsOf, symSvg } from "../chest.js";
 import { playReveal, revealGo, revealOn, revealTap, stopReveal } from "../reveal.js";
 import { register, show } from "../router.js";
 import { toast } from "../toast.js";
@@ -336,9 +336,19 @@ function render() { const tiers = keyTiers();
      tier is open rather than only once the key is whole, because a player holding the key with the Gauntlet unfinished is
      exactly the person who needs the reason. `keyGaunt` is that standing fact; `keyChest` answers the live state and still
      drives the hint above. It hides while a game's panel is open, which is the one time this screen is short of room. */
+  /* v31 (60.30, build 60): THE LINE SAYS WHAT TO DO, AND IT GOES GREEN WHEN IT IS DONE. It read "Only Gauntlet Mega can wield
+     it.", which states a fact and asks for nothing. It carries the Gauntlet's OWN ICON now — the same symbol its map tile wears,
+     so the two read as one thing — and "Unlock Gauntlet Mega to wield this key", turning green and changing to "… can wield this
+     key" once that Gauntlet is finished (L8: green is done, everywhere).
+     AND IT IS NOT THERE BEFORE ITS CHEST HAS REVEALED THAT GAUNTLET (R1): a secret may be known to exist, never what it is, and
+     a Gauntlet is not on the map, in the Messages list or anywhere else until the chest it comes out of has been opened. Saying
+     the Author key needs Gauntlet Mega, on a screen reachable before the Pro chest, would be exactly that leak. */
   { const gid = keyGaunt(t.id), wi = $('#key-wield');
-    if (wi) { const on = !!gid && !openGame; wi.hidden = !on;
-      wi.textContent = on ? T(KEY.wield, { name: GAUNTLET.name[gid] || gid }) : ''; } }
+    if (wi) { const out = gid ? GAUNTLETS.find(x => x.id === gid) : null;
+      const shown = !!gid && !openGame && !!out && chestOpen(out.chest);
+      const done = shown && gauntDone(gid);
+      wi.hidden = !shown; wi.classList.toggle('done', !!done);
+      wi.innerHTML = shown ? symSvg(out.sym, 'kwsym') + '<span>' + esc(T(done ? KEY.wieldDone : KEY.wield, { name: GAUNTLET.name[gid] || gid })) + '</span>' : ''; } }
   /* a real config mismatch outranks Testing's in-memory fill — one is a fault, the other a dev switch (S5).
      v25 (item 14, build 45, superseding #428 on this screen): THE RED "N OF THE 30 NUMBERS ON THIS KEY ARE PLACEHOLDERS" LINE IS GONE. This screen
      is written for the player; it covered the requirements under it, and which numbers are placeholders is Aiden's to know, not the player's —

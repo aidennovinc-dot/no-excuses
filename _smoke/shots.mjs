@@ -1361,6 +1361,29 @@ scene('60.29', async (page, browser) => {
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 });
 
+/* 60.30 — the Pro key's wield line: what to do, the Gauntlet's own icon, and green once it is met */
+scene('60.30', async (page, browser) => {
+  for (const [label, gaunt] of [['todo', []], ['done', [{ id: 'g1', t: Date.now(), score: 90, tier: 'clear', web: [] }]]]) {
+    await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture());
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(420);
+    await page.evaluate(async g => { const K = await import('./progress/key.js'), P = await import('./progress.js'), S = await import('./core/store.js');
+      K.devReach('pro', P.devModesAll); S.store.gaunt = g; S.save();
+      const R = await import('./ui/router.js'); R.show('s-key', { tier: 1, from: 's-testing' }); }, gaunt);
+    await sleep(1500);
+    const line = await page.evaluate(() => { const w = document.getElementById('key-wield'); const r = w.getBoundingClientRect();
+      return { hidden: w.hidden, done: w.classList.contains('done'), colour: getComputedStyle(w).color,
+        icon: w.querySelectorAll('.kwsym').length, text: (w.textContent || '').replace(/\s+/g, ' ').trim(),
+        w: Math.round(r.width), y: Math.round(r.y) }; });
+    await frame(page, browser, `60.30-pro-wield-${label}`, `the Pro key's wield line, Gauntlet Mini ${label === 'done' ? 'finished' : 'still to do'}`);
+    say(label, line);
+  }
+  // and the Author key at the same moment, which must say nothing at all (R1)
+  await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-key', { tier: 2, from: 's-testing' }); });
+  await sleep(1200);
+  say('authorKey', await page.evaluate(() => { const w = document.getElementById('key-wield');
+    return { hidden: w.hidden, text: (w.textContent || '').trim() }; }));
+});
+
 /* ---------- the runner ---------- */
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 if (ARGV.includes('--list')) { console.log(Object.keys(SCENES).join('\n')); process.exit(0); }

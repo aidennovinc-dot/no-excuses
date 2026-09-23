@@ -375,7 +375,11 @@ export const KEY = { title:'the key', hint:'tap a game · solo runs only',
      only can be wielded by the mega gauntlet or something like that." This is that line, on the Keys screen, standing from the
      moment the tier is open rather than only once the key is whole. The Gauntlet's NAME comes from GAUNTLET.name, which is the
      one place either is spelled (v28 item 10), so "the Mega Gauntlet" of his dictation reads "Gauntlet Mega" here. */
-  wield:'Only {name} can wield it.',
+  /* v31 (60.30, build 60): the line is what the player has to DO, not a fact about the key. "Only Gauntlet Mega can wield it."
+     says nothing actionable; "Unlock Gauntlet Mega to wield this key" does, and it turns green the moment it is met — L8's colour
+     for done, which is what every other requirement in the app uses. `wieldDone` is the met form, and the Gauntlet's own icon
+     goes beside both, so the line and the tile on the map are recognisably the same thing. */
+  wield:'Unlock {name} to wield this key', wieldDone:'{name} can wield this key',
   ask:'Open the {chest}?', askYes:'Open', askNo:'Not yet',
   /* v30 (59.14, build 59): "TAP TO OPEN" — not "tap the KEY to open". Aiden tapped beside the key and landed on the home page:
      "really wherever the user clicks it should just take them to the chest because that's going to be what they want to do and it

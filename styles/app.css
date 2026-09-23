@@ -734,7 +734,13 @@
   @media (prefers-reduced-motion:reduce){#key-hint.kprompt{animation:none}}
   /* v30 (59.6, build 59): the key's own standing line about the Gauntlet that must wield it. It is the KEY'S STORY, not a
      warning and not a state, so it takes the muted ink rather than the miss red and sits a step under the hint above it. */
-  #key-wield{color:var(--mute);text-transform:none;letter-spacing:.06em;max-width:34ch;margin-top:2px}
+  /* v31 (60.30, build 60): the Gauntlet's own icon beside the line — the same symbol its map tile wears — and L8's green once
+     the Gauntlet is finished. Green is done everywhere in this app; a requirement that has been met says so in it. */
+  #key-wield{display:flex;align-items:center;justify-content:center;gap:8px;color:var(--mute);text-transform:none;letter-spacing:.06em;max-width:34ch;margin-top:2px}
+  #key-wield[hidden]{display:none}
+  #key-wield .kwsym{width:20px;height:20px;flex:none}
+  #key-wield .kwsym *{stroke:currentColor;fill:none}
+  #key-wield.done{color:var(--ok)}
   #s-key.kdue #key-wield,#s-key.kearning #key-wield{visibility:hidden}
   /* v30 (59.14, build 59): SET THIS MUSIC IS HIDDEN WHILE THE EARN MOMENT IS ON. Every other control on the screen is swallowed by
      the tap-anywhere rule, and Cowork's call — named in the outcome — is to hide this one for the moment rather than make it the
