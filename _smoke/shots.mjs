@@ -1078,6 +1078,35 @@ scene('60.14', async (page, browser) => {
   say('counter', line);
 });
 
+/* 60.17 — Spot · Count shows the target shape big and centred first */
+scene('60.17', async (page, browser) => {
+  await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture({ allOpen: 1 }));
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(450);
+  await goRun(page, { game: 'spot', diff: 'count', secs: 10 });
+  await waitFor(page, () => !!document.getElementById('cshow'), 20000);
+  await sleep(500);
+  const big = await page.evaluate(() => { const c = document.getElementById('cshow'), sh = c && c.querySelector('.cshape');
+    const w = c && c.querySelector('.cword'); const g = document.getElementById('gen').getBoundingClientRect();
+    const r = sh && sh.getBoundingClientRect();
+    return { shape: r && { w: Math.round(r.width), h: Math.round(r.height) }, field: { w: Math.round(g.width), h: Math.round(g.height) },
+      centred: r ? Math.abs((r.left + r.width / 2) - (g.left + g.width / 2)) < 3 : null,
+      words: w && w.textContent.trim(), crowd: document.querySelectorAll('#gen .fs').length }; });
+  await frame(page, browser, '60.17-count-shape-big', 'Spot · Count — the target shape alone, big and centred, with the instruction under it, before any of the crowd');
+  say('opening', big);
+  /* and after the slide: the card has gone and the crowd is up. A SECOND RUN, because taking a frame hands the tab to the lens
+     page and a hidden page ends the run it was playing (v29 item 4) — until 60.27, which pauses and resumes instead. */
+  await abortRun(page); await sleep(400);
+  await goRun(page, { game: 'spot', diff: 'count', secs: 10 });
+  await waitFor(page, () => document.querySelectorAll('#gen .fs').length > 3, 20000);
+  const after = await page.evaluate(async () => { const SP = (await import('./games/spot/index.js')).default;
+    const bar = document.querySelector('#rxbar i.shp'); const b = bar && bar.getBoundingClientRect();
+    return { crowd: document.querySelectorAll('#gen .fs').length, card: !!document.getElementById('cshow'),
+      barShape: b && { w: Math.round(b.width), h: Math.round(b.height) }, target: SP.target, flashMs: SP.flash }; });
+  await frame(page, browser, '60.17-count-crowd', 'the crowd, once the shape has shrunk into the instruction line — its screen time starts here');
+  say('after', after);
+  await abortRun(page); await sleep(300);
+});
+
 /* ---------- the runner ---------- */
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 if (ARGV.includes('--list')) { console.log(Object.keys(SCENES).join('\n')); process.exit(0); }

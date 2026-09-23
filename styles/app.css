@@ -1408,6 +1408,19 @@
      not the game — the lines are gone and .rxbox with them, so the lit pane is the plain fill defined above */
   .rxpane.hit .rxmsg{z-index:2}
   /* the rule (v10) lives at the top-middle for the whole attempt, and arrives a word at a time */
+  /* ---------- v31 (60.17, build 60): SPOT · COUNT'S OPENING CARD ----------
+     The shape alone, large and centred, with the instruction under it, before any of the crowd. It holds, then shrinks onto the
+     rule bar's own mark and the crowd arrives. The transform is written by the engine as three custom properties measured off
+     the bar itself, so the card lands ON the line rather than near it, and the word fades as the shape travels. */
+  .cshow{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;pointer-events:none;z-index:4}
+  .cshow .cshape{display:block;width:var(--cbig,34vmin);height:var(--cbig,34vmin);transform-origin:50% 50%;
+    transition:transform var(--cslide,520ms) cubic-bezier(.4,0,.2,1)}
+  .cshow .cshape .shp-svg{fill:var(--sq-live)}
+  .cshow .cword{font-family:var(--mono);font-size:15px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);transition:opacity calc(var(--cslide,520ms) * .6) ease-out}
+  .cshow .cword b{color:var(--ok);font-weight:700}
+  .cshow.go .cshape{transform:translate(var(--cdx,0),var(--cdy,0)) scale(var(--ck,.16))}
+  .cshow.go .cword{opacity:0}
+  @media (prefers-reduced-motion:reduce){.cshow .cshape,.cshow .cword{transition:none}}
   #rxbar{position:absolute;left:0;right:0;top:calc(16.5% + env(safe-area-inset-top));text-align:center;font-family:var(--mono);font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink);line-height:1.8;z-index:3;pointer-events:none}
   #rxbar .w{display:inline-block;opacity:0;animation:wordin .4s ease-out both;margin-right:.4em}
   #rxbar i.shp{display:inline-block;width:20px;height:20px;vertical-align:-4px;margin:0 4px}

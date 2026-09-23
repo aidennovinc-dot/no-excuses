@@ -1432,6 +1432,58 @@ if (section('the runs (v15 section 3)')) {
       ? ok('B.3a / B.4 / L5 the Stopwatch Streak budget is 5s, 7.5s past round 10; Hidden is 700ms and the screen says so')
       : bad('B.3a / B.4 the Streak budgets', JSON.stringify(s)); }
 
+  /* ---- v31 (60.17, build 60): COUNT SHOWS THE TARGET SHAPE BIG AND CENTRED FIRST ----
+     "It is too easy to miss which shape to count." The rule bar said it in a 20px mark beside two words at the top of the screen,
+     at the same moment the crowd was being laid out. The round now opens on the shape alone. Driven, and timed off the page: the
+     card's size and centring, that NO crowd is on screen while it is up, that it lands on the rule bar's own mark, and — the part
+     that matters most — that the shapes' SCREEN TIME is not shortened by any of it. */
+  { const ci60 = await page.evaluate(async () => { const RUN = await import('./run/run.js'), ST = await import('./core/state.js');
+      const SS = await import('./core/store.js'), G = await import('./config/games.js');
+      SS.store.intro['spot'] = SS.store.intro['spot:count'] = Date.now(); SS.save();
+      const SP = (await import('./games/spot/index.js')).default;
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      Object.assign(ST.sel, { vs: 0, practice: 0, game: 'spot', diff: 'count', secs: 10 }); RUN.start();
+      const t0 = performance.now(); const out = { SHOW: G.COUNT_SHOW };
+      // the card
+      for (let i = 0; i < 200 && !document.getElementById('cshow'); i++) await wait(25);
+      const card = document.getElementById('cshow'), sh = card && card.querySelector('.cshape');
+      const g = document.getElementById('gen').getBoundingClientRect();
+      out.cardAt = Math.round(performance.now() - t0);
+      if (sh) { const r = sh.getBoundingClientRect();
+        out.card = { w: Math.round(r.width), h: Math.round(r.height),
+          offCentreX: Math.round(Math.abs((r.left + r.width / 2) - (g.left + g.width / 2))),
+          share: Math.round(r.width / g.width * 100),
+          words: card.querySelector('.cword').textContent.replace(/\s+/g, ' ').trim(),
+          crowdWhileUp: document.querySelectorAll('#gen .fs').length }; }
+      // the slide: the class goes on, and the transform it takes lands on the bar's mark
+      for (let i = 0; i < 200 && card && !card.classList.contains('go'); i++) await wait(25);
+      out.slideAt = Math.round(performance.now() - t0);
+      const bar = document.querySelector('#rxbar i.shp'); const b = bar && bar.getBoundingClientRect();
+      if (sh && b) { const r = sh.getBoundingClientRect();
+        // the transform is set but not yet applied at the moment the class lands, so read what it was TOLD to do
+        const cs = getComputedStyle(card);
+        out.lands = { k: +(+cs.getPropertyValue('--ck')).toFixed(3), barW: Math.round(b.width),
+          wantK: +(b.width / r.width).toFixed(3) }; }
+      // the crowd, and the screen time it is given
+      for (let i = 0; i < 400 && document.querySelectorAll('#gen .fs').length < 4; i++) await wait(25);
+      out.crowdAt = Math.round(performance.now() - t0);
+      out.crowd = document.querySelectorAll('#gen .fs').length; out.cardGone = !document.getElementById('cshow');
+      out.flash = SP.flash;
+      // the ask is what ends the looking time; it has to be flash ms after the shapes were drawn, not after the card
+      const askAt = await (async () => { for (let i = 0; i < 400; i++) { if (SP.st === 'ask') return Math.round(performance.now() - t0); await wait(25); } return null; })();
+      out.askAt = askAt; out.lookedFor = askAt === null ? null : askAt - out.crowdAt;
+      RUN.abort(); await wait(300); return out; });
+    const S = ci60.SHOW;
+    (ci60.card && ci60.card.share >= 25 && ci60.card.offCentreX <= 3 && ci60.card.crowdWhileUp === 0
+      && /count the/i.test(ci60.card.words)
+      && ci60.slideAt - ci60.cardAt >= S.hold - 150 && ci60.slideAt - ci60.cardAt <= S.hold + 400
+      && ci60.crowdAt - ci60.slideAt >= S.slide + S.gap - 200
+      && ci60.cardGone && ci60.crowd >= 4
+      && ci60.lands && Math.abs(ci60.lands.k - ci60.lands.wantK) < 0.02
+      && ci60.lookedFor !== null && Math.abs(ci60.lookedFor - ci60.flash) <= 250)
+      ? ok(`60.17 Spot · Count opens on the target shape alone — ${ci60.card.w}px, ${ci60.card.share}% of the field's width, centred to within ${ci60.card.offCentreX}px, "${ci60.card.words}" under it and NO crowd on screen — holds ${ci60.slideAt - ci60.cardAt}ms, then shrinks by ${ci60.lands.k} onto the rule bar's own ${ci60.lands.barW}px mark, and the crowd arrives ${ci60.crowdAt - ci60.slideAt}ms later. The shapes' SCREEN TIME starts when they appear: they were up for ${ci60.lookedFor}ms against a ${ci60.flash}ms flash, so none of the opening comes out of the looking time`)
+      : bad('60.17 the Count opening card', JSON.stringify(ci60)); }
+
   /* ---- v31 (60.16, build 60): COUNT'S DIFFICULTY IS THE DECOYS, NOT THE TARGET COUNT ----
      "Counting to 12 of a single shape is difficult, lots of distractions is fun." Four claims, all sampled off the engine's own
      ramp() and countRound() rather than read off the config: the target count is MOSTLY 3-9; a 12-13 spike is RARE and never

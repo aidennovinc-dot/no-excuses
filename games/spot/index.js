@@ -3,12 +3,12 @@
    Build 17 (refactor stage 3): the engine contract, on the round base. */
 
 import { SPOT as CP } from "../../config/copy.js";
-import { CFG, COUNT_ADD, COUNT_BUDGET, SPOT_FIND, SPOT_RAMP, VS_TARGET } from "../../config/games.js";
+import { CFG, COUNT_ADD, COUNT_BUDGET, COUNT_SHOW, SPOT_FIND, SPOT_RAMP, VS_TARGET } from "../../config/games.js";
 import { DEALS, LOOKALIKE, LOOK_FROM, LOOK_SHARE, SHAPES } from "../../config/shapes.js";
 import { $, $$, T, f2, minMax, pWho, winner } from "../../core.js";
 import { haptic } from "../../core/platform.js";
 import { bandPick, gauntBand, gauntDealt, gauntRound, makeDealer, within } from "../_shared/deal.js";
-import { shapeI } from "../_shared/shapes.js";
+import { Shapes, shapeI } from "../_shared/shapes.js";
 import * as hud from "../_shared/hud.js";
 import { roundShow } from "../_shared/tier.js";
 import { genRect, rnd, roundEngine, rxBar, scatter, shapeHtml } from "../_shared/round.js";
@@ -104,9 +104,32 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
     // v31 (60.3, build 60): Count has no ONE target — every target shape is countable and they may overlap as they always have
     this.keep=null;
     this.pts.forEach(q=>{ q.vx=(Math.random()-.5)*R.drift; q.vy=(Math.random()-.5)*R.drift; q.a=0; q.va=(Math.random()-.5)*R.spin; this.clamp(q,r); });
-    // v17 (B.14): the whole rule arrives at once, so the 1500ms it sits there is 1500ms of looking at the shape
+    /* v17 (B.14): the whole rule arrives at once, so the 1500ms it sits there is 1500ms of looking at the shape.
+       v31 (60.17, build 60): AND THE SHAPE IS SHOWN BIG AND CENTRED BEFORE ANY OF IT. Aiden: "it is too easy to miss which shape
+       to count." The round opens on the shape alone, large, with the instruction under it; it holds for COUNT_SHOW.hold, then
+       shrinks and slides into the rule bar's own position over COUNT_SHOW.slide; COUNT_SHOW.gap later the crowd appears. The
+       rule bar is drawn UNDER the card from the start and is simply uncovered, so the shape the player has been looking at and
+       the shape in the line are the same drawing in the same place. The flash timer is set when the CROWD is drawn, so none of
+       this comes out of the looking time. */
     this.st='wait'; $('#gen').innerHTML=''; rxBar([...CP.count,shapeI(this.target),`<b>${this.many(this.target)}</b>`],true);
-    this.later(()=>{ this.st='flash'; $('#gen').innerHTML=this.pts.map(q=>shapeHtml(q,this.size)).join(''); if(R.drift||R.spin) this.move('flash'); this.later(()=>this.ask(),this.flash); },1500); },
+    this.countIntro(()=>{ this.st='flash'; $('#gen').innerHTML=this.pts.map(q=>shapeHtml(q,this.size)).join(''); if(R.drift||R.spin) this.move('flash'); this.later(()=>this.ask(),this.flash); }); },
+  /* the opening card. It is drawn into #gen, so it is cleared with everything else when the crowd is dealt, and it carries the
+     rule bar's own words under the big shape — one string, from the same CP.count that the bar uses. The shrink is a CSS
+     transition onto the bar's measured box, so the card really does land where the line is rather than near it. */
+  countIntro(then){ const bar=$('#rxbar i.shp'), g=$('#gen');
+    if(!bar||!g){ return this.later(then,1500); }
+    const words=[...CP.count,'<b>'+this.many(this.target)+'</b>'].join(' ');
+    g.innerHTML=`<div class="cshow" id="cshow"><i class="cshape">${Shapes.svg(this.target)}</i><span class="cword">${words}</span></div>`;
+    const card=$('#cshow');
+    // the two numbers the stylesheet needs come from the config, not from it (A2) — the defaults there are only a fallback
+    card.style.setProperty('--cslide',COUNT_SHOW.slide+'ms'); card.style.setProperty('--cbig',COUNT_SHOW.size+'vmin');
+    this.later(()=>{ if(this.st!=='wait'||!card) return;
+      const a=card.getBoundingClientRect(), s=$('#cshow .cshape').getBoundingClientRect(), b=bar.getBoundingClientRect();
+      const k=b.width/Math.max(1,s.width);
+      card.style.setProperty('--cdx',(b.left+b.width/2-(s.left+s.width/2))+'px');
+      card.style.setProperty('--cdy',(b.top+b.height/2-(s.top+s.height/2))+'px');
+      card.style.setProperty('--ck',k); card.classList.add('go');
+      this.later(()=>{ if(this.st==='wait') then(); },COUNT_SHOW.slide+COUNT_SHOW.gap); },COUNT_SHOW.hold); },
   // drift and spin share one loop; it dies the moment the state moves on
   move(state){ const els=$$('#gen .fs'), r=genRect(); let last=performance.now(); const loop=now=>{ if(this.st!==state) return; const dt=(now-last)/1000; last=now;
       if(state==='find'){ const c=$('#spclock'); if(c) c.textContent=f2((now-this.t0)/1000); }

@@ -241,6 +241,12 @@ export const SPOT_FIND = { leeway:0.5, nBase:16, nSpan:54, drift:34, sizeVar:0.3
 export const COUNT_BUDGET = 20;
 // v24 (F.5, build 44): a Count round's miscount HOLDS for CFG.hold, then walks into the total over `ms` — was 480ms and no hold ("far too quick")
 export const COUNT_ADD = { ms: 1400 };
+/* v31 (60.17, build 60): THE TARGET SHAPE IS SHOWN BIG AND CENTRED FIRST. Aiden: "it is too easy to miss which shape to count."
+   The rule bar said it in 20px beside two words at the top of the screen, at the same moment the crowd was being laid out.
+   Now the round opens on the shape alone, large and centred, with "count the bars" under it; it holds for `hold`, then shrinks
+   and slides into the instruction line over `slide`; the crowd appears `gap` after it lands. THE SCREEN TIME STARTS WHEN THE
+   SHAPES DO — the flash timer is set at the moment they are drawn, so none of this is taken out of the looking time. */
+export const COUNT_SHOW = { hold: 1000, slide: 520, gap: 240, size: 34 /* vmin */ };
 /* v24 (F.3, build 44): what Go / No-go's big number counts while a run is played. 'targets' — the correct taps, "7/15" in a Set and "7" in
    a Streak (guess: Aiden asked for "a running counter" and went to bed before choosing). 'score' is build 43: the live average in a Set,
    which reads 0 whenever the taps are quick and looked stuck. Presentation only (L10); the result still scores the average. */
