@@ -12,7 +12,7 @@ import { Music, Snd } from "../audio.js";
 import { FLOW_AT, FLOW_FALL, FLOW_RISE } from "../config/audio.js";
 import { RUN_SCHEMA } from "../config/build.js";
 import { HUD, INTRO, INTRO_READY, TOAST } from "../config/copy.js";
-import { MODE_NAME, PASS_LEN, PASS_TURNS, RATE_MAX } from "../config/games.js";
+import { GOAL_SCAN, MODE_NAME, PASS_LEN, PASS_TURNS, RATE_MAX } from "../config/games.js";
 import { P1C, P2C } from "../config/theme.js";
 import { $, T, pWho } from "../core.js";
 import { emit, on } from "../core/events.js";
@@ -52,6 +52,14 @@ const active=()=>R.on;
 // v14 (3.3): every requirement names its game (3.2), which is noise once you are inside that game — the in-run goal line takes
 // the name back out, so "30 hits in any Quick Tap run" reads "30 hits in any run" while you are playing Quick Tap. The line
 // scrolls between the requirement and what it unlocks (the CSS) rather than trying to fit both at once
+/* v31 (60.20, build 60): and each of those two lines SCANS SIDEWAYS if it does not fit. One read per line, off the drawn text. */
+function goalScan(){ const gl=$('#goal'); if(!gl) return;
+  for(const el of gl.children){ const over=Math.max(0,el.scrollWidth-el.clientWidth);
+    el.classList.toggle('scan',over>2);
+    if(over>2){ el.style.setProperty('--gover',over+'px');
+      // the walk is paced, not timed: GOAL_SCAN.pxPerSec across, GOAL_SCAN.hold at each end, so a long line is not a blur
+      el.style.setProperty('--gscan',(2*(over/GOAL_SCAN.pxPerSec*1000+GOAL_SCAN.hold))+'ms'); }
+    else { el.style.removeProperty('--gover'); el.style.removeProperty('--gscan'); } } }
 const here=need=>{ const n=GAMES[sel.game].name; return String(need).split(n+' · ').join('').split(n+' ').join(''); };
 
 /* ---------- first play of a mode (v6): a ghost finger plays two or three beats under a one-liner, then the countdown. Tap to skip ---------- */
@@ -125,7 +133,14 @@ function start(){
   R.goal=VS.on||sel.vs||pendingGaunt?null:((pendingGoal&&UNLOCKS.find(u=>u.key===pendingGoal))||auto); const gl=$('#goal'); gl.classList.remove('hit'); gl.classList.toggle('roll',!!R.goal); gl.classList.toggle('on',!!R.goal||(!!pendingAim&&!sel.vs)); if(R.goal){ gl.innerHTML=R.goal.kt?T(HUD.keyGoal,{need:R.goal.need,name:R.goal.name,key:R.goal.keyName}):T(HUD.goal,{need:here(R.goal.need),name:unlockName(R.goal.key)}); } else if(pendingAim&&!sel.vs) gl.innerHTML=T(HUD.aim,{aim:here(pendingAim)}); else gl.innerHTML='';
   // v15 (2.2): the thing being chased sits at the TOP of the screen during a run, so it is visible while playing. The HUD
   // steps down to make room only when there is a goal to show — a run with nothing to chase looks exactly as it did
+  /* v31 (60.20, build 60): A BADGE THAT DOES NOT FIT SCANS. Aiden's goal lines are longer than the pill and were simply cut
+     off, so the half that says what it unlocks was unreadable. Each of the two lines is measured against its own box and, where
+     it overflows, carries `scan` and its own overflow in px; the stylesheet walks it there and back with a pause at each end.
+     IT ONLY MOVES WHEN THE PLAYER IS NOT LOOKING AT THE FIELD — the 3-2-1 and between rounds. Movement in peripheral vision
+     provokes false starts in Flash, Dots and Hidden, so a live round freezes it AT ITS START (the stylesheet, one rule).
+     A badge that fits never gets the class and never moves. Measured after a frame, because the text has only just been written. */
   $('#game').classList.toggle('goalon',gl.classList.contains('on'));
+  requestAnimationFrame(()=>goalScan());
   $('#bar').style.display=g.timed?'':'none'; $('#bar').style.transform='scaleX(1)';
   $('#hud-time').textContent=g.timed?sel.secs.toFixed(2):'';
   hud.reset(); applyPrefs(sel.game); $('#game').classList.toggle('timed',!!g.timed&&!versus);

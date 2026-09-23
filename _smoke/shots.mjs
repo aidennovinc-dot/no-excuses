@@ -1167,6 +1167,38 @@ scene('60.19', async (page, browser) => {
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 });
 
+/* 60.20 — a goal badge that does not fit scans, and freezes while the round is live */
+scene('60.20', async (page, browser) => {
+  await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture({ allOpen: 1 }));
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(450);
+  await page.evaluate(async () => { const P = await import('./progress.js');
+    P.setPendingAim('reach round 24 in Reaction · Flash · Streak without a single early tap'); });
+  await goRun(page, { game: 'reaction', diff: 'flash', secs: -1 });
+  await sleep(160);
+  const during = await page.evaluate(() => { const gl = document.getElementById('goal'), e = gl.children[0];
+    const cs = e && getComputedStyle(e);
+    return { text: e && e.textContent.trim(), over: e && Math.round(e.scrollWidth - e.clientWidth),
+      anim: cs && cs.animationName, dur: cs && cs.animationDuration, live: document.getElementById('game').classList.contains('live') }; });
+  await frame(page, browser, '60.20-goal-countdown', 'the goal badge during the 3-2-1 — the line is wider than the pill and is walking');
+  say('countdown', during);
+  /* a SECOND run for the live frame: taking a frame hands the tab to the lens page, and a hidden page ends the run it was
+     playing (v29 item 4) — the same thing 60.17's scene works around, until 60.27 pauses and resumes instead. */
+  await abortRun(page); await sleep(400);
+  await page.evaluate(async () => { const P = await import('./progress.js');
+    P.setPendingAim('reach round 24 in Reaction · Flash · Streak without a single early tap'); });
+  await goRun(page, { game: 'reaction', diff: 'flash', secs: -1 });
+  // measured INSIDE the wait, because the live class comes and goes with the round and a sleep between the two can miss it
+  const live = await page.evaluate(async () => { const g = document.getElementById('game');
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    for (let i = 0; i < 400; i++) { if (g.classList.contains('live') && !g.classList.contains('tapon')) break; await wait(25); }
+    const e = document.getElementById('goal').children[0]; const cs = e && getComputedStyle(e);
+    return { anim: cs && cs.animationName, translate: cs && cs.translate,
+      live: g.classList.contains('live'), tapon: g.classList.contains('tapon') }; });
+  await frame(page, browser, '60.20-goal-live', 'the same badge the moment the round goes live — frozen at its start');
+  say('live', live);
+  await abortRun(page); await sleep(300);
+});
+
 /* ---------- the runner ---------- */
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 if (ARGV.includes('--list')) { console.log(Object.keys(SCENES).join('\n')); process.exit(0); }

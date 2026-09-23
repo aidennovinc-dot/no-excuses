@@ -1177,6 +1177,18 @@
      cramming both in. run/run.js takes the game's own name back out of the requirement while you are inside that game */
   #goal{height:22px;padding:0 10px;text-overflow:clip}
   #goal>i,#goal>u{display:block;font-style:normal;text-decoration:none;line-height:22px;white-space:nowrap;text-align:center}
+  /* ---------- v31 (60.20, build 60): A BADGE THAT DOES NOT FIT SCANS ----------
+     The line walks from its start to its own overflow and back, pausing at each end — the keyframes hold 0 for the first fifth
+     and the far end for the fifth in the middle, which is GOAL_SCAN.hold at each end of a GOAL_SCAN.pxPerSec walk. Only the line
+     that overflows gets the class, so a badge that fits never moves at all.
+     AND IT FREEZES AT ITS START WHILE A ROUND IS LIVE: 'animation:none' rather than 'paused', because paused would leave it
+     stopped wherever it happened to be. 'tapon' is the held card between rounds, which is a moment the player is reading rather
+     than watching the field, so the scan runs there and through the 3-2-1 — the two moments the item names. */
+  #goal>.scan{overflow:visible;text-align:left}
+  #goal.on>.scan{animation:goalscan var(--gscan,6000ms) linear infinite}
+  @keyframes goalscan{0%,20%{translate:0 0}50%,70%{translate:calc(-1 * var(--gover,0px)) 0}100%{translate:0 0}}
+  #game.live:not(.tapon) #goal>.scan{animation:none;translate:0 0}
+  @media (prefers-reduced-motion:reduce){#goal>.scan{animation:none;translate:0 0}}
   #goal>u{color:var(--mute)}
   #goal.roll>i,#goal.roll>u{animation:goalroll 9s ease-in-out infinite}
   @keyframes goalroll{0%,40%{translate:0 0}50%,90%{translate:0 -22px}100%{translate:0 0}}

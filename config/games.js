@@ -79,6 +79,11 @@ export const RATE_RUN_FLOOR = 2.0;
    and it smears once taps come faster than three a second; `scale` is how far the number swells at the top (guess).
    games/_shared/hud.js is the only reader. Presentation only (L10). */
 export const TICK = { ms: 90, scale: 1.12 };
+/* v31 (60.20, build 60): how a goal badge that does not fit scans. `pxPerSec` is the pace of the walk — slow enough to read at
+   a glance, so a long line takes longer rather than moving faster — and `hold` is the pause at each end, about a second, which
+   is Aiden's number. run/run.js measures the overflow and turns the two into one duration; the stylesheet does the rest.
+   It never runs while a round is live: movement in peripheral vision provokes false starts in Flash, Dots and Hidden. */
+export const GOAL_SCAN = { pxPerSec: 26, hold: 1000 };
 // v11: a Streak length scores rounds survived — higher wins — whatever the mode's Set scores. `streak` on a game is that override
 export const STREAK_CFG = { lower:false, suffix:'', scoreWord:'rounds' };
 

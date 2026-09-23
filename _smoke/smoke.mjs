@@ -1432,6 +1432,54 @@ if (section('the runs (v15 section 3)')) {
       ? ok('B.3a / B.4 / L5 the Stopwatch Streak budget is 5s, 7.5s past round 10; Hidden is 700ms and the screen says so')
       : bad('B.3a / B.4 the Streak budgets', JSON.stringify(s)); }
 
+  /* ---- v31 (60.20, build 60): A GOAL BADGE THAT DOES NOT FIT SCANS, AND FREEZES WHILE A ROUND IS LIVE ----
+     Three facts, and the third is the one that matters: movement in peripheral vision provokes false starts in Flash, Dots and
+     Hidden, so the scan runs during the 3-2-1 and between rounds and NOT while a round is live. The check drives a real run with
+     a goal long enough to overflow, reads the animation off the element at each of those moments, and separately proves that a
+     badge which FITS is never given one. */
+  { const gs60 = await page.evaluate(async () => { const RUN = await import('./run/run.js'), ST = await import('./core/state.js');
+      const SS = await import('./core/store.js'), G = await import('./config/games.js');
+      SS.store.intro['reaction'] = SS.store.intro['reaction:flash'] = Date.now(); SS.save();
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const read = () => { const gl = document.getElementById('goal');
+        const rows = [...gl.children].map(e => { const cs = getComputedStyle(e);
+          return { scan: e.classList.contains('scan'), over: Math.max(0, e.scrollWidth - e.clientWidth),
+            anim: cs.animationName, dur: cs.animationDuration, text: (e.textContent || '').trim().slice(0, 30) }; });
+        return { on: gl.classList.contains('on'), live: document.getElementById('game').classList.contains('live'),
+          tapon: document.getElementById('game').classList.contains('tapon'), rows }; };
+      /* the badge is driven by the app's own aim mechanism (`pendingAim`, the thing Try to unlock writes), with a line long enough
+         to overflow the pill — so what is measured is a real goal badge on a real run, not markup written into the page. */
+      const P = await import('./progress.js');
+      P.setPendingAim('reach round 24 in Reaction · Flash · Streak without a single early tap');
+      Object.assign(ST.sel, { vs: 0, practice: 0, game: 'reaction', diff: 'flash', secs: -1 }); RUN.start();
+      await wait(160);
+      const out = { CFG: G.GOAL_SCAN, countdown: read() };
+      for (let i = 0; i < 300 && !document.getElementById('game').classList.contains('live'); i++) await wait(40);
+      await wait(250); out.live = read();
+      // between rounds: the held card. Tap the flash, then read while the card is up
+      const RX = (await import('./games/reaction/index.js')).default;
+      for (let i = 0; i < 600 && !(RX.st === 'go' && RX.armed); i++) await wait(50);
+      RX.onDown({ type: 'down', t: RX.t0 + 300 });
+      for (let i = 0; i < 100 && !document.getElementById('game').classList.contains('tapon'); i++) await wait(40);
+      out.between = read();
+      RUN.abort(); await wait(300);
+      // and a badge that FITS: write a short line into the same pill and re-measure through the app's own path
+      const gl = document.getElementById('goal'); gl.classList.add('on');
+      gl.innerHTML = '<i>goal</i><u>x</u>'; await wait(60);
+      for (const e of gl.children) { const over = Math.max(0, e.scrollWidth - e.clientWidth); e.classList.toggle('scan', over > 2); }
+      out.short = read(); gl.classList.remove('on'); gl.innerHTML = '';
+      return out; });
+    const anyScan = r => r && r.rows.some(x => x.scan);
+    const moving = r => r && r.rows.filter(x => x.scan).every(x => x.anim === 'goalscan');
+    const frozen = r => r && r.rows.filter(x => x.scan).every(x => x.anim === 'none');
+    (gs60.CFG.hold === 1000 && gs60.CFG.pxPerSec > 0
+      && anyScan(gs60.countdown) && moving(gs60.countdown)
+      && anyScan(gs60.live) && frozen(gs60.live) && gs60.live.live && !gs60.live.tapon
+      && anyScan(gs60.between) && moving(gs60.between) && gs60.between.tapon
+      && !anyScan(gs60.short))
+      ? ok(`60.20 a goal badge that does not fit scans and freezes while the round is live — the overflowing line ("${(gs60.live.rows.find(r => r.scan) || {}).text}…", ${(gs60.live.rows.find(r => r.scan) || {}).over}px over) walks during the 3-2-1 (${(gs60.countdown.rows.find(r => r.scan) || {}).dur}, ${gs60.CFG.pxPerSec}px/s with a ${gs60.CFG.hold}ms pause at each end), freezes at its start the moment the round goes live, and walks again on the held card between rounds; a badge that FITS is never given the class`)
+      : bad('60.20 the goal badge scan', JSON.stringify(gs60)); }
+
   /* ---- v31 (60.19, build 60): THE RUN'S HEADER IS A COLUMN, AND NOTHING SHARES A LINE WITH THE SCORE ----
      Aiden's screenshots: the UNLOCK pill over the GOAL pill, "Stopwatch · Streak" wrapping to three lines under the score,
      "attempt 1" broken across two, "BEST 831MS" touching the big number. All four are one fault — a badge absolutely positioned
