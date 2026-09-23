@@ -63,6 +63,16 @@ function hideSheet(){ const sh=$('#sheet'), dim=$('#mapdim'); sh.hidden=true; sh
    the sheet is actually selected — a game with more than one mode, and a `.choice.sel` present — and only then does the pressed
    tile demote. With the mode row up and nothing tapped the tile is still what the player chose; a one-mode game (Sequence) has
    no mode row to tap, so its tile keeps the amber on its length row. Exactly one amber thing on screen either way. */
+/* v31 (60.24, build 60): ONE STEP BACK, wherever it is asked for — the Back key and a tap on the dimmed map both come here.
+   The order is the item's: a length step goes back to the mode step (or straight to the map where the game has one mode and so
+   no mode step to go back to); on the mode step, WITH A FRIEND's sub-row is itself a step, so it collapses to the player row
+   before the sheet does; and the mode step then closes to the map. Answers whether it took a step, so the caller can decide what
+   "nothing left" means — Back leaves the screen, a tap outside closes the sheet. */
+function stepBack(){
+  if(stage==='len'){ setStage(GAMES[sel.game].modes.length===1?'grid':'mode'); return true; }
+  if(stage==='mode'){ if(sel.vs>0){ sel.vs=0; renderVsRow(); $('#sheet-title').textContent=GAMES[sel.game].name; renderVsArt(); return true; }
+    setStage('grid'); return true; }
+  return false; }
 function setStage(st){ stage=st; clearTimeout(sheetT); const sh=$('#sheet'), dim=$('#mapdim'); $('#diff-row').classList.remove('picking'); $('#grid').classList.toggle('dim',st!=='grid');
   $('#grid').classList.toggle('chosen',st!=='grid'&&GAMES[sel.game].modes.length>1&&!!$('#diff-row .choice.sel'));
   if(st==='grid'){ $$('.tile').forEach(t=>t.classList.remove('keep')); if(dim){ dim.classList.remove('on'); setTimeout(()=>{ if(stage==='grid') dim.hidden=true; },SHEET_OUT); }
@@ -369,7 +379,7 @@ register('s-pick',{
   // v25 (item 10, build 45): the map never keeps a sideways offset — see #s-pick in styles/app.css
   // v29 Section A (58.2, build 58): `gaunt` scrolls a Gauntlet's own tile into view — where a whole key whose chest is waiting on one now sends you
   onShow({g,d,s,spillDemo:sd,chest,gaunt}){ $('#s-pick').scrollLeft=0; if(g){ sel.game=g; prefs.lastGame=g; save(); applyPrefs(g); } renderTiles(); setStage('grid'); if(g) openSheet(g,d,s); if(sd) setTimeout(()=>spillDemo(sd),350); if(chest) setTimeout(()=>chestInView(chest),150); if(gaunt) setTimeout(()=>tileInView(gaunt),150); },
-  onBack(){ if(stage==='len'){ setStage(GAMES[sel.game].modes.length===1?'grid':'mode'); return true; } if(stage==='mode'){ setStage('grid'); return true; } return false; },
+  onBack(){ return stepBack(); },
 });
 /* B.26 → v23 (L.6 / L.11b, build 41): Testing's "replay chest opening" plays the CEREMONY on the key screen, and its tap lands here, where
    the SPILL replays over whatever state the chest is really in — lid up, the words shooting out, the burst from the lid — before the tile
@@ -400,7 +410,11 @@ define({
     $$('.choice').forEach(c=>c.classList.toggle('sel',c===b)); setStage('len'); fillTimes(); return 'pick'; },
   'lvl-back'(){ setStage('mode'); return 'click'; },
   // item 14: a tap on the dimmed map closes the sheet outright — not one stage back, which is what Back still does
-  sheetclose(){ setStage('grid'); return 'pick'; },
+  /* v31 (60.24, build 60): TAPPING OUTSIDE THE SHEET STEPS BACK ONE LEVEL, which REVERSES v28 item 14's "a tap closes the sheet
+     outright" (build 53). Aiden's call of 2026-09-23. It is the same step Back takes — one function, so the two can never disagree
+     — and it is the whole of the item: the mode step goes back to the game step, the game step closes to the map, the With a
+     friend sub-row steps back to the player row first, and a game whose first step has no choice closes straight to the map. */
+  sheetclose(){ if(!stepBack()) setStage('grid'); return 'pick'; },
   time(b){ const v=+b.dataset.time; if(b.classList.contains('locked')){ ask(sel.game,sel.diff,v); return 'pick'; } sel.secs=v; $$('[data-time]').forEach(c=>c.classList.toggle('sel',c===b)); return 'pick'; },
   'go-btn'(){ if(sel.game!=='sequence') sel.practice=0; VS.reset(); start(); return 'click'; },
   // v31 (60.23, build 60): the component's own attributes — `data-p` on the top row, `data-p2` on the sub-row

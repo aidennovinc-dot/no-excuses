@@ -1445,6 +1445,46 @@ if (section('the runs (v15 section 3)')) {
       ? ok('B.3a / B.4 / L5 the Stopwatch Streak budget is 5s, 7.5s past round 10; Hidden is 700ms and the screen says so')
       : bad('B.3a / B.4 the Streak budgets', JSON.stringify(s)); }
 
+  /* ---- v31 (60.24, build 60): TAPPING OUTSIDE THE SHEET STEPS BACK ONE LEVEL ----
+     This REVERSES v28 item 14 (build 53), which made a tap on the dimmed map close the sheet outright. Aiden's call of
+     2026-09-23. Four paths, and the fourth is the one that is easy to get wrong: a game whose first step has no choice — a
+     one-mode game, which opens straight on its lengths — has no mode step to go back to and must close to the map in one tap.
+     Driven on two games, a many-mode one and Sequence, which is the one-mode case. */
+  { const sb60 = await page.evaluate(async () => { const R = await import('./ui/router.js'), ST = await import('./core/state.js');
+      const SS = await import('./core/store.js'); SS.prefs.allOpen = true; SS.save();
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const where = () => { const sh = document.getElementById('sheet');
+        return { screen: (document.querySelector('.screen.on') || {}).id,
+          sheet: sh.hidden ? 'hidden' : (sh.classList.contains('len') ? 'len' : 'mode'),
+          sub: !!document.querySelector('#vs-wrap .prow.sub:not([hidden])'), vs: ST.sel.vs }; };
+      const outside = () => { const d = document.getElementById('mapdim'); d.click(); };
+      const out = {};
+      R.show('s-pick'); await wait(500);
+      // a many-mode game: length → mode → (with a friend collapses) → map
+      document.querySelector('.tile[data-game="quick-tap"]').click(); await wait(450);
+      document.querySelector('#diff-row .choice').click(); await wait(400);
+      out.many = [where()];
+      outside(); await wait(400); out.many.push(where());
+      document.querySelector('#vs-wrap [data-p="f"]').click(); await wait(400); out.many.push(where());
+      outside(); await wait(400); out.many.push(where());
+      outside(); await wait(500); out.many.push(where());
+      // a one-mode game: its first step is the lengths, so one tap outside closes it
+      R.show('s-pick'); await wait(400);
+      document.querySelector('.tile[data-game="sequence"]').click(); await wait(500);
+      out.one = [where()];
+      outside(); await wait(500); out.one.push(where());
+      // leave the app where the checks after this one expect to find it: the menu, with no sheet up
+      R.show('s-menu'); await wait(400);
+      return out; });
+    const m = sb60.many, o = sb60.one;
+    (m[0].sheet === 'len' && m[1].sheet === 'mode' && m[1].screen === 's-pick'
+      && m[2].sub && m[2].vs > 0
+      && !m[3].sub && m[3].vs === 0 && m[3].sheet === 'mode'
+      && m[4].sheet === 'hidden' && m[4].screen === 's-pick'
+      && o[0].sheet === 'len' && o[1].sheet === 'hidden')
+      ? ok('60.24 tapping outside the sheet steps back ONE LEVEL, not straight out (reversing v28 item 14): on a many-mode game the lengths go back to the modes, With a friend collapses to the player row before the sheet does, and the next tap closes to the map — while a one-mode game, whose first step has no choice, closes to the map in one tap. The same step Back takes, from one function')
+      : bad('60.24 the sheet steps back', JSON.stringify(sb60)); }
+
   /* ---- v31 (60.23, build 60): THE PLAYER PICKER IS ONE COMPONENT, ON BOTH SCREENS ----
      L3's two steps were markup in index.html for the pick sheet and a string in ui/screens/result.js for the result screen, so
      the two drifted: different widths, Versus alone on a second line, and a selected chip that took the sheet's orange in one
@@ -1500,6 +1540,11 @@ if (section('the runs (v15 section 3)')) {
       SS.store.intro['hold'] = SS.store.intro['hold:grow'] = Date.now(); SS.save();
       const HD = (await import('./games/estimate/index.js')).default;
       const wait = ms => new Promise(r => setTimeout(r, ms));
+      /* the run's own field only has a box while the game layer is up, and the check before this one leaves the app on the
+         result screen — so the screen is shown the way Go shows it before anything is measured. */
+      (await import('./ui/router.js')).show('s-menu'); await wait(200);
+      // and a two-player run left half-set by an earlier check would take the shared-score path, where there is no #hcalc panel
+      ST.VS.reset();
       Object.assign(ST.sel, { vs: 0, practice: 0, game: 'hold', diff: 'grow', secs: -1 }); RUN.start();
       const out = { split: G.HOLD_LAYOUT.split, rounds: [] };
       for (let n = 0; n < 6; n++) {
