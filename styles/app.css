@@ -655,7 +655,17 @@
      on the theme's own ground. Roots green, Frost white-blue, Thorn black with white accents. A CLEARED SEGMENT STAYS
      GREEN — cleared is `--ok` everywhere in the app (L8) and a theme is dressing, not a new state. */
   #s-key{--ktint:var(--ink);--kground:transparent}
-  #key-main{background:radial-gradient(circle at 50% 34%,var(--kground),transparent 68%)}
+  /* v31 (60.29, build 60): THE KEY'S GROUND RUNS EDGE TO EDGE. It was painted on #key-main, which is inside the screen's own
+     24px padding and ends where the panel does — so a lighter wash sat in a box with the theme's darker background showing down
+     each side and under it. That is Aiden's "black bars about 50px wide left and right" and his "it ends before the bottom",
+     both, and both are this one rule. The wash is drawn by an inset pseudo-element pulled out past the padding and past the safe
+     areas, under everything on the screen, so it reaches all four edges of the phone at every width. */
+  #key-main{position:relative}
+  #key-main::before{content:"";position:fixed;left:0;right:0;top:0;bottom:0;z-index:-1;pointer-events:none;
+    background:radial-gradient(circle at 50% 44%,var(--kground),transparent 72%)}
+  /* v31 (60.29, build 60): and the wheel sits clear of the key cards. The ring's OUTER circle reached to within a few pixels of
+     the row of cards above it; `--kgap` is the clear space between them, so the two never read as one object. */
+  #key-main{margin-top:var(--kgap,18px)}
   #key-keys.one .kkey{pointer-events:none}
   .kkey i{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ktint);opacity:.75;margin-top:1px}
   /* v29 Section A (57.11g, build 57): CLEAR SPACE BEHIND THE TEXT. Aiden's line: on the Pro key screen the background's lines "cross TAP THE KEY…,

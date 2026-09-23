@@ -1324,6 +1324,43 @@ scene('60.27-resume', async (page, browser) => {
   await page.evaluate(async () => { const SS = await import('./core/store.js'); delete SS.store.resume; SS.save(); });
 });
 
+/* =======================================================================================================
+   60.29 — a key theme's background runs edge to edge, on every key screen and at every width
+   Aiden: Lantern shows black bars about 50px wide left and right and ends before the bottom. The measurement is the item's own
+   test — the four edges of the SCREENSHOT, at 375, 390 and 430 wide with real safe-area insets, on all three keys.
+   ======================================================================================================= */
+const edgeDark = (im, side, floor = 26) => { // how many pixels deep the dark border runs in from one edge, at the middle
+  const mid = side === 'top' || side === 'bottom' ? Math.floor(im.w / 2) : Math.floor(im.h / 2);
+  let n = 0;
+  for (let i = 0; i < (side === 'left' || side === 'right' ? im.w : im.h); i++) {
+    const x = side === 'left' ? i : side === 'right' ? im.w - 1 - i : mid;
+    const y = side === 'top' ? i : side === 'bottom' ? im.h - 1 - i : mid;
+    const px4 = ((y * im.w + x) * 4), p = [im.data[px4], im.data[px4 + 1], im.data[px4 + 2]];
+    if (Math.max(...p) > floor) break; n++; }
+  return n; };
+
+scene('60.29', async (page, browser) => {
+  for (const W of [375, 390, 430]) {
+    await page.setViewport({ width: W, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    for (const [tier, ix, label] of [['clear', 0, 'lantern'], ['pro', 1, 'circuit'], ['author', 2, 'thorns']]) {
+      await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fixture());
+      await page.reload({ waitUntil: 'networkidle0' }); await sleep(420);
+      await page.evaluate(async c => { const K = await import('./progress/key.js'), P = await import('./progress.js');
+        K.devReach(c, P.devModesAll); }, tier === 'clear' ? 'key' : tier === 'pro' ? 'pro' : 'thorns');
+      await page.evaluate(async i => { const R = await import('./ui/router.js'); R.show('s-key', { tier: i, from: 's-testing' }); }, ix);
+      await sleep(1600);
+      const im = await frame(page, browser, `60.29-${label}-${W}`, `the ${label} key screen at ${W} wide, with a 47px top and 34px bottom safe-area inset`);
+      const edges = { left: edgeDark(im, 'left'), right: edgeDark(im, 'right'), top: edgeDark(im, 'top'), bottom: edgeDark(im, 'bottom') };
+      say('edges', { device: 'px at dpr 2', ...edges,
+        worst: Math.max(...Object.values(edges)) });
+      say('wheel', await page.evaluate(() => { const r = document.getElementById('key-ring'), k = document.getElementById('key-keys');
+        if (!r || !k) return null; const a = r.getBoundingClientRect(), b = k.getBoundingClientRect();
+        return { cardsBottom: Math.round(b.bottom), ringTop: Math.round(a.top), gap: Math.round(a.top - b.bottom) }; }));
+    }
+  }
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+});
+
 /* ---------- the runner ---------- */
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 if (ARGV.includes('--list')) { console.log(Object.keys(SCENES).join('\n')); process.exit(0); }

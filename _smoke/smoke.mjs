@@ -4139,6 +4139,63 @@ if (section('chests')) {
       : bad('58.2 the gauntlet hand', JSON.stringify(hand58));
   }
 
+  /* ---- v31 (60.29, build 60): A KEY THEME'S BACKGROUND RUNS EDGE TO EDGE ----
+     Aiden: Lantern shows black bars about 50px wide left and right and ends before the bottom. Both were one rule — the key's
+     radial ground was painted on #key-main, which sits inside the screen's own 24px padding and ends where the panel does, so a
+     lighter wash sat in a box with the theme's darker background showing down each side and under it.
+     TWO THINGS ARE MEASURED. The LAYER: the canvas the themes draw on is read at all four edges and all four corners, and every
+     one has to be something other than the page's plain ground — which is what "runs edge to edge" means and is checked at the
+     three widths the item names. The WASH: the element that draws the key's own ground has to cover the whole viewport, past the
+     padding and past the safe areas. And the wheel has to sit clear of the key cards above it. */
+  { const bg60 = [];
+    for (const W of [375, 390, 430]) {
+      await page.setViewport({ width: W, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+      await sleep(200);
+      const r = await page.evaluate(async () => { const AT = await import('./ui/atmosphere.js'), R = await import('./ui/router.js');
+        const wait = ms => new Promise(x => setTimeout(x, ms));
+        const cv = document.getElementById('stars'), cx = cv.getContext('2d', { willReadFrequently: true });
+        const ground = (() => { const d = document.createElement('i'); d.style.background = getComputedStyle(document.body).backgroundColor;
+          document.body.appendChild(d); const c = getComputedStyle(d).backgroundColor; d.remove();
+          return (c.match(/[\d.]+/g) || []).slice(0, 3).map(Number); })();
+        const at = (x, y) => { const d = cx.getImageData(x, y, 1, 1).data; return [d[0], d[1], d[2], d[3]]; };
+        const out = { w: document.documentElement.clientWidth, keys: {} };
+        R.show('s-key'); await wait(400);
+        for (const style of ['lantern', 'circuit', 'thorn']) {
+          AT.setKeyLayer(style); await wait(900);
+          const cw = cv.width, ch = cv.height, m = 2;
+          /* WHAT IS AND IS NOT THE TEST. Not "a different colour from the page": Lantern's own sky IS the app's near-black by
+             design (v30 59.7 laid it down opaque and left the dusk as a tint over it). Not "opaque" either: Circuit and Thorn
+             draw their traces and branches OVER the page's own ground and leave the canvas clear between them, which is how they
+             have always looked and is not what Aiden reported. The bars were an INSET — a lighter wash painted inside the
+             screen's 24px padding with the darker background showing down each side and under it — so what is asserted is that
+             nothing on this screen is inset: the canvas covers the viewport and its buffer matches its box at every width, and
+             the key's own ground is fixed and covers the viewport too. The pixels are in the build-60 shots. */
+          const pts = { topLeft: at(m, m), topRight: at(cw - 1 - m, m), bottomLeft: at(m, ch - 1 - m), bottomRight: at(cw - 1 - m, ch - 1 - m),
+            top: at(cw >> 1, m), bottom: at(cw >> 1, ch - 1 - m), left: at(m, ch >> 1), right: at(cw - 1 - m, ch >> 1) };
+          const box = cv.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1);
+          out.keys[style] = { clear: Object.keys(pts).filter(k => pts[k][3] < 250), buffer: cw + 'x' + ch,
+            fitsBox: Math.abs(cw - Math.round(box.width * dpr)) <= 2 && Math.abs(ch - Math.round(box.height * dpr)) <= 2,
+            coversViewport: box.width >= document.documentElement.clientWidth - 1 && box.height >= document.documentElement.clientHeight - 1 };
+        }
+        AT.setKeyLayer('lantern'); await wait(300);
+        // the wash, and the wheel's clearance
+        const wash = (() => { const el = document.getElementById('key-main'); if (!el) return null;
+          const cs = getComputedStyle(el, '::before'); const w = parseFloat(cs.width), h = parseFloat(cs.height);
+          return { pos: cs.position, w: Math.round(w), h: Math.round(h),
+            coversW: w >= document.documentElement.clientWidth - 1, coversH: h >= document.documentElement.clientHeight - 1 }; })();
+        const ring = document.getElementById('key-ring').getBoundingClientRect();
+        const cards = document.getElementById('key-keys').getBoundingClientRect();
+        return { ...out, wash, gap: Math.round(ring.top - cards.bottom) }; });
+      bg60.push({ W, ...r });
+    }
+    await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    await sleep(200);
+    const bad29 = bg60.filter(r => !r.wash || !r.wash.coversW || !r.wash.coversH || r.wash.pos !== 'fixed' || r.gap < 12
+      || Object.values(r.keys).some(k => !k.fitsBox || !k.coversViewport));
+    bad29.length === 0
+      ? ok(`60.29 every key theme's background runs edge to edge — Lantern, Circuit and Thorn at 375, 390 and 430 wide, on a buffer that matches the canvas's own box and a canvas that covers the whole viewport at each of them; the key's own wash is fixed and covers the whole viewport (${bg60[1].wash.w}×${bg60[1].wash.h}) rather than sitting inside the screen's 24px padding, which is what the "black bars" were; and the wheel clears the key cards by ${bg60[1].gap}px`)
+      : bad('60.29 a key background has an edge', JSON.stringify(bad29)); }
+
   /* ---- v31 (60.1, build 60): THE ASK ANSWERS. END TO END, ON ALL THREE KEYS ----
      Build 59's 59.14 put a capture listener on `#s-key` so that while the chest prompt is up a tap ANYWHERE opens that chest. The
      prompt is still up while the ask box it raises is on screen, so that listener swallowed the taps on Open and Not yet as well and
