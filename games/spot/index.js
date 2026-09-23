@@ -327,7 +327,12 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
          about a second in all, measured. The miscount now HOLDS on the card for CFG.hold, the beat Timing and Reaction already use before a
          figure drains, and then walks into the total over COUNT_ADD.ms. A right answer adds nothing and does not wait. */
       this.later(()=>{ if(this.st!=='show') return;
-        hud.countUp({ audio:off?this.ctx.audio:null, from:this.off-off, to:this.off, ms:off?COUNT_ADD.ms:0, fmt:v=>String(Math.round(v)), alive:()=>this.st==='show',
+        /* v31 (60.26, build 60): NO WHOOSH. The count-up whoosh is for a MEASURED amount draining into a total — milliseconds,
+           seconds, percentages, pixels — where the sweep follows the fill and says "this much is being spent". A miscount is a
+           WHOLE NUMBER: "1 off" is one thing, not an amount, and the whoosh made it sound like a cost being paid. The hold and
+           the walk are untouched (F.5); only the sound goes. Audited with it: the only other whole-number tallies in the app —
+           Go / No-go's target counter and every round count — go through hud.score / hud.tick, which has never had one. */
+        hud.countUp({ audio:null, from:this.off-off, to:this.off, ms:off?COUNT_ADD.ms:0, fmt:v=>String(Math.round(v)), alive:()=>this.st==='show',
           set:t=>{ if(this.streak()) hud.time(T(CP.hudCountStreak,{n:this.round,off:t,bud:COUNT_BUDGET})); else hud.score(t); },
           done:()=>{ hud.scorePop(); this.ctx.emit('live',this.result()); this.after(()=>this.next(),600); } }); },off?CFG.hold:0); return; }
     if(this.st==='vsfind') return this.vsTap(ev);

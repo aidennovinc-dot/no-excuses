@@ -1446,6 +1446,45 @@ if (section('the runs (v15 section 3)')) {
       ? ok('B.3a / B.4 / L5 the Stopwatch Streak budget is 5s, 7.5s past round 10; Hidden is 700ms and the screen says so')
       : bad('B.3a / B.4 the Streak budgets', JSON.stringify(s)); }
 
+  /* ---- v31 (60.26, build 60): NO COUNT-UP WHOOSH ON A WHOLE-NUMBER TALLY ----
+     The whoosh is for a MEASURED amount draining into a total — milliseconds, seconds, percentages — where the sweep follows the
+     fill. A miscount is a whole number: "1 off" is one thing, not an amount, and the whoosh made it sound like a cost. Driven by
+     counting the whooshes the app actually schedules: a Count round answered WRONG must fire none while its miscount walks in,
+     and a Find round — which spends real seconds — must still fire one, so the rule is shown to be about the KIND of tally
+     rather than about Spot. */
+  { const wh60 = await page.evaluate(async () => { const MU = await import('./audio.js');
+      const RUN = await import('./run/run.js'), ST = await import('./core/state.js'), SS = await import('./core/store.js');
+      for (const k of ['spot', 'spot:count', 'spot:find']) SS.store.intro[k] = Date.now(); SS.save();
+      const SP = (await import('./games/spot/index.js')).default;
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const real = MU.Snd.whoosh; let n = 0;
+      MU.Snd.whoosh = function (...a) { n++; return real.apply(this, a); };
+      const out = {};
+      // a COUNT round, answered wrong on purpose so the miscount tally runs
+      Object.assign(ST.sel, { vs: 0, practice: 0, game: 'spot', diff: 'count', secs: 10 }); RUN.start();
+      for (let i = 0; i < 600 && SP.st !== 'ask'; i++) await wait(50);
+      n = 0;
+      { const want = SP.answer, wrong = want === 0 ? 1 : Math.max(0, want - 1);
+        const b = document.querySelector(`.pad-num [data-num="${wrong}"]`);
+        if (b) b.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: 1 })); }
+      await wait(3200);
+      out.count = { whooshes: n, off: SP.off };
+      RUN.abort(); await wait(400);
+      // a FIND round, where the seconds really are an amount
+      Object.assign(ST.sel, { vs: 0, practice: 0, game: 'spot', diff: 'find', secs: 10 }); RUN.start();
+      for (let i = 0; i < 600 && SP.st !== 'find'; i++) await wait(50);
+      await wait(900); n = 0;
+      { const q = SP.pts.find(x => x.shape === SP.odd), g = document.getElementById('gen'), r = g.getBoundingClientRect(), sz = q.sz || SP.size;
+        g.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: 1, clientX: r.left + q.x + sz / 2, clientY: r.top + q.y + sz / 2 })); }
+      await wait(1600);
+      out.find = { whooshes: n };
+      RUN.abort(); await wait(300);
+      MU.Snd.whoosh = real;
+      return out; });
+    (wh60.count.whooshes === 0 && wh60.count.off > 0 && wh60.find.whooshes > 0)
+      ? ok(`60.26 a whole-number tally makes no whoosh — a Count round answered wrong walked ${wh60.count.off} miscount(s) into the total with ${wh60.count.whooshes} whooshes, while a Find round's seconds still draw ${wh60.find.whooshes}; Go / No-go's counter and every round count go through hud.score, which has never had one`)
+      : bad('60.26 the whole-number whoosh', JSON.stringify(wh60)); }
+
   /* ---- v31 (60.25, build 60): TOASTS HOLD LONGER AND THEY QUEUE ----
      The old function called clearTimeout and wrote straight over whatever was on screen, so a run that unlocked two things
      showed the first for however long it took the second to arrive. The three numbers are Aiden's; the QUEUE is the part worth
@@ -1580,7 +1619,9 @@ if (section('the runs (v15 section 3)')) {
        whatever screen the check before this one happened to leave the app on. Estimate's field only has a box once the game
        layer is up, and a half-made two-player selection would send the reveal down the shared-score path, which draws no panel
        at all; going in through the sheet settles both. */
-    await openSheet('hold', 0, 'streak');
+    /* a SET, not a Streak: six rounds held 60% over spend 56% of a Grow Streak's budget EACH (60.4's allowance), so the run
+       would be over after two and the rest would measure an empty field. A Set is seven rounds whatever they score. */
+    await openSheet('hold', 0, 0);
     await click('#go-btn'); await sleep(900);
     const gr60 = await page.evaluate(async () => { const G = await import('./config/games.js'), C = await import('./core.js');
       const HD = (await import('./games/estimate/index.js')).default;
