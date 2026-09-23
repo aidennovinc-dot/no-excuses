@@ -190,12 +190,21 @@ export const ESTIMATE = {
    1100ms, a thirty-five-shape round 10 about 1475ms (all guesses). The crowd stays the difficulty; the clock stops working against it. */
 /* v26 §B2 (build 50): "later rounds should last a bit longer" — on top of the crowd's own time, every round from `flashRoundFrom` adds
    `flashRound` ms (guess), still inside `flashCap`: round 10 about 200ms longer than build 49 dealt it. */
-export const SPOT_RAMP = { loBase:5, loPer:0.45, hiBase:7, hiPer:1.0, nCap:14,
-  decoyBase:3, decoyPer:2.2, decoyCap:34,
+/* v31 (60.15, build 60): THE RAMP IS SMOOTHED. Aiden: Count "gets very hard around round 9" — and it did: `hiPer` 1.0 put the
+   target band's top on `nCap` at ROUND 8, and the drift, the spin and the size variation were all at or near their ceilings a
+   few rounds later, so by round 9 there was nothing left to climb and the run was simply at full difficulty. Every per-round
+   step is roughly halved and the last of them now reaches its ceiling around ROUND 18, which is Aiden's number:
+   · `hiPer` 1.0 → 0.42, so the top of the target band meets nCap (14) at round 18 rather than 8;
+   · `loPer` 0.45 → 0.22, `driftPer` and `spinPer` 6 → 3, `sizePer` 0.045 → 0.025 (its cap at round 18.2);
+   · `decoyPer` 2.2 → 1.1 — the decoy line is 60.16's and is tuned there.
+   THE FLASH IS UNTOUCHED: it is screen TIME and more of it is easier, so halving its per-round term would have made the game
+   harder while this line was making it easier. Aiden's 15 Sept rule — screen time scales with the shapes on screen — stands. */
+export const SPOT_RAMP = { loBase:5, loPer:0.22, hiBase:7, hiPer:0.42, nCap:14,
+  decoyBase:3, decoyPer:1.1, decoyCap:34,
   flashBase:1100, flashShape:15, flashFree:10, flashCap:1800, flashRound:25, flashRoundFrom:3,
   dipFrom:5, dipEvery:3, dipDecoy:1.5,
-  driftFrom:2, driftBase:8, driftPer:6, spinFrom:4, spinBase:14, spinPer:6,
-  sizeFrom:3, sizeBase:0.12, sizePer:0.045, sizeCap:0.5, sizeMin:16 };
+  driftFrom:2, driftBase:8, driftPer:3, spinFrom:4, spinBase:14, spinPer:3,
+  sizeFrom:3, sizeBase:0.12, sizePer:0.025, sizeCap:0.5, sizeMin:16 };
 // Spot · Find. v14 (6.30): the first half-second of a find is free — anything faster SUBTRACTS from the total, so a fast find
 // is rewarded rather than merely cheap. v17 (B.1) floors the running total at zero: the rebate was unbounded and the Streak
 // could not end. v14 (6.29): the crowd and the movement both ramp harder than they did; the opening is unchanged
@@ -213,7 +222,9 @@ export const SPOT_FIND = { leeway:0.5, nBase:16, nSpan:54, drift:34, sizeVar:0.3
   keepOut:1.15, soften:1.7, space:1.0, push:2.4 };
 /* v24 (F.6, build 44, L5 amended at Aiden's direct request): a Spot · Count Streak's miscount budget. 5 → 8 — Aiden asked for more room
    and named no figure, so 8 is a PLACEHOLDER (guess), logged in UNVERIFIED.md. games/spot/index.js and the copy read this one number. */
-export const COUNT_BUDGET = 8;
+/* v31 (60.15, build 60, L5 quoted): 8 → 20, AIDEN'S OWN NUMBER, 2026-09-23. It is no longer a guess and the UNVERIFIED entry
+   closes with it. Twenty miscounts against a ramp that now reaches full difficulty at round 18 rather than 8 (SPOT_RAMP above). */
+export const COUNT_BUDGET = 20;
 // v24 (F.5, build 44): a Count round's miscount HOLDS for CFG.hold, then walks into the total over `ms` — was 480ms and no hold ("far too quick")
 export const COUNT_ADD = { ms: 1400 };
 /* v24 (F.3, build 44): what Go / No-go's big number counts while a run is played. 'targets' — the correct taps, "7/15" in a Set and "7" in

@@ -1432,6 +1432,30 @@ if (section('the runs (v15 section 3)')) {
       ? ok('B.3a / B.4 / L5 the Stopwatch Streak budget is 5s, 7.5s past round 10; Hidden is 700ms and the screen says so')
       : bad('B.3a / B.4 the Streak budgets', JSON.stringify(s)); }
 
+  /* ---- v31 (60.15, build 60, L5 quoted — Aiden 2026-09-23): THE COUNT BUDGET AND A SMOOTHED RAMP ----
+     "It gets very hard around round 9", and it did: hiPer 1.0 put the target band's top on nCap at ROUND 8, with the drift, the
+     spin and the size variation at or near their ceilings a few rounds later — so by round 9 there was nothing left to climb.
+     The check is where each thing REACHES ITS CEILING, driven through the engine's own ramp() rather than read off the config,
+     because the ceilings are what "full difficulty" means. The flash is asserted to have MOVED THE OTHER WAY on purpose: it is
+     screen time, more of it is easier, and Aiden's 15 Sept rule (time scales with the shapes on screen) is untouched. */
+  { const cr60 = await page.evaluate(async () => { const SP = (await import('./games/spot/index.js')).default;
+      const G = await import('./config/games.js'); const R = G.SPOT_RAMP;
+      const rows = []; for (let r = 1; r <= 30; r++) rows.push(Object.assign({ r }, SP.ramp(r, undefined, null)));
+      const capAt = (k, v) => { const i = rows.findIndex(x => x[k] >= v); return i < 0 ? null : rows[i].r; };
+      return { budget: G.COUNT_BUDGET, R,
+        hiCapAt: capAt('hi', R.nCap), sizeCapAt: capAt('sizeVar', R.sizeCap),
+        hi: rows.filter(x => [1, 5, 9, 14, 18].includes(x.r)).map(x => [x.r, x.hi]),
+        drift: rows.filter(x => [5, 9, 18].includes(x.r)).map(x => [x.r, x.drift]),
+        flash: rows.filter(x => [1, 9, 18].includes(x.r)).map(x => [x.r, x.flash]) }; });
+    const hi = Object.fromEntries(cr60.hi), flash = Object.fromEntries(cr60.flash);
+    (cr60.budget === 20
+      && cr60.hiCapAt >= 16 && cr60.hiCapAt <= 20 && cr60.sizeCapAt >= 16 && cr60.sizeCapAt <= 20
+      && hi[9] < cr60.R.nCap && hi[18] >= cr60.R.nCap
+      && cr60.R.hiPer <= 0.55 && cr60.R.loPer <= 0.25 && cr60.R.driftPer <= 3 && cr60.R.spinPer <= 3 && cr60.R.sizePer <= 0.025
+      && flash[18] > flash[9] && flash[9] > flash[1])
+      ? ok(`60.15 (L5) the Count Streak budget is ${cr60.budget} miscounts (was 8, a placeholder) and the ramp is smoothed: the target band's top reaches nCap at round ${cr60.hiCapAt} and the size variation its ceiling at round ${cr60.sizeCapAt}, where both were there by round 9 or so — the band reads ${cr60.hi.map(x => 'r' + x[0] + ' ' + x[1]).join(', ')} — and every per-round step is at most half what it was. The FLASH deliberately does not halve: it is screen time, more of it is easier, and it still grows with the crowd (${cr60.flash.map(x => 'r' + x[0] + ' ' + x[1] + 'ms').join(', ')})`)
+      : bad('60.15 the Count budget and ramp', JSON.stringify(cr60)); }
+
   /* ---- v31 (60.14, build 60): THE STOPWATCH STREAK'S RUNNING COUNTER READS TO TWO DECIMALS ----
      "0.2 / 5.0s" becomes "0.16 / 5.00s". An attempt is scored to a hundredth (onDown rounds err to 100ths), so a whole round
      could land and a counter printed to a tenth not move — one tenth of a 5s budget is two percent of the run. Driven, not read
@@ -8214,13 +8238,17 @@ if (section('build 44 - batch 17, the key roster, Aiden\'s bars, the goal and si
       : bad('F.3 the Go / No-go counter', JSON.stringify({ flag: G44.NOGO_COUNTER, ng }));
   }
 
-  /* ---- 6. §F.5 / F.6: Spot · Count's add-up holds then walks, and its Streak budget is one number, 8 ---- */
+  /* ---- 6. §F.5 / F.6: Spot · Count's add-up holds then walks, and its Streak budget is ONE NUMBER ----
+     AMENDED at build 60 (v31 60.15, L5 quoted — Aiden 2026-09-23): the number is 20, not 8. F.6's 8 was Cowork's placeholder,
+     logged in UNVERIFIED.md; 20 is Aiden's own, against a ramp that now reaches full difficulty at round 18 rather than 8.
+     The RULE this check stands for is untouched and is the reason it is not loosened: the budget is COUNT_BUDGET everywhere it
+     is read or printed, never a literal, so the screen and the run-ender can never disagree. */
   {
-    const budget = G44.COUNT_BUDGET === 8 && (spot44.match(/off>=COUNT_BUDGET/g) || []).length === 2 && !/off>=5\b/.test(spot44) && /this\.find\(\)\?10:COUNT_BUDGET/.test(spot44) && /lim:COUNT_BUDGET\+' miscounts'/.test(spot44);
+    const budget = G44.COUNT_BUDGET === 20 && (spot44.match(/off>=COUNT_BUDGET/g) || []).length === 2 && !/off>=5\b/.test(spot44) && /this\.find\(\)\?10:COUNT_BUDGET/.test(spot44) && /lim:COUNT_BUDGET\+' miscounts'/.test(spot44);
     const copy = /of5:' · \{off\} of \{bud\}'/.test(read('config', 'copy.js')) && /hudCountStreak:'Round \{n\} · \{off\} of \{bud\} off'/.test(read('config', 'copy.js'));
     const walk = /ms:off\?COUNT_ADD\.ms:0/.test(spot44) && /off\?CFG\.hold:0\)/.test(spot44) && /String\(this\.off-off\)/.test(spot44) && G44.COUNT_ADD.ms > 480;
     (budget && copy && walk)
-      ? ok(`F.5 / F.6 Spot · Count: a miscount holds CFG.hold (${G44.CFG.hold}ms) and walks into the total over ${G44.COUNT_ADD.ms}ms, the Set's number waiting on the old total; the Streak's budget is COUNT_BUDGET (${G44.COUNT_BUDGET}, a placeholder) everywhere it is read or printed`)
+      ? ok(`F.5 / F.6 Spot · Count: a miscount holds CFG.hold (${G44.CFG.hold}ms) and walks into the total over ${G44.COUNT_ADD.ms}ms, the Set's number waiting on the old total; the Streak's budget is COUNT_BUDGET (${G44.COUNT_BUDGET}, Aiden's own number since build 60) everywhere it is read or printed`)
       : bad('F.5 / F.6 Spot · Count', JSON.stringify({ budget, copy, walk }));
   }
 
@@ -8233,7 +8261,12 @@ if (section('build 44 - batch 17, the key roster, Aiden\'s bars, the goal and si
       SP.pile.call({ size: 40 }, grid, 0.5); let pairs = 0;
       for (let i = 0; i < grid.length; i++) for (let j = i + 1; j < grid.length; j++) if (Math.abs(grid[i].x - grid[j].x) < 40 && Math.abs(grid[i].y - grid[j].y) < 40) pairs++;
       return { onTarget: at(128.8, 122, q => q.shape === 'circle'), nearest: at(128.8, 122, () => false), offTarget: at(150, 124, q => q.shape === 'circle'), pairs }; });
-    const wired = /this\.pile\(this\.pts,SPOT_FIND\.overlap\+p\*SPOT_FIND\.overlapPer\)/.test(spot44) && (spot44.match(/this\.hitAt\(ev,/g) || []).length === 2 && G44.SPOT_FIND.overlap > 0;
+    /* AMENDED at build 60 (v31 60.3): the first clause was a SOURCE-TEXT check on how findRound calls pile(), and 60.3 gave pile
+       a third argument (the indices that must stay clear), so it failed on the refactor. The gate's own rule is to DELETE such a
+       check and name it in the outcome rather than re-spell it. What it stood for — that the crowd is actually dealt overlapping —
+       is measured two lines up by `pairs`, off a real pile() call, and 60.3's own check in "the runs" asserts that decoys are STILL
+       piled while the target is not. */
+    const wired = (spot44.match(/this\.hitAt\(ev,/g) || []).length === 2 && G44.SPOT_FIND.overlap > 0;
     (hit.onTarget === 0 && hit.nearest === 1 && hit.offTarget === 1 && hit.pairs >= 1 && wired)
       ? ok(`F.7 Spot · Find: a tap inside the target's own box counts even when a decoy's centre is nearer (the old nearest-centre test gave it to the decoy), a tap off the target still goes to the nearest shape, and ${Math.round(G44.SPOT_FIND.overlap * 100)}% of the crowd is dealt on a neighbour from round 1 (${hit.pairs} overlapping pair(s) from half of a clean grid) - solo and versus both hit through hitAt`)
       : bad('F.7 overlap and tap precedence', JSON.stringify({ hit, wired }));
