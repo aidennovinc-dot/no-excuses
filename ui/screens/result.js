@@ -4,6 +4,7 @@
    whatever the chips say; Back reopens the sheet; Challenge a friend shares a link that carries the score. */
 import { RESULT, SHARE, SHEET, TOAST, VERDICT } from "../../config/copy.js";
 import { playersHtml } from "../players.js";
+import { welcomeCheck } from "../welcome.js";
 import { MAP_ON_UNLOCK_MS } from "../../config/audio.js";
 import { PUB_URL } from "../../config/build.js";
 import { MODE_NAME, PASS_LEN } from "../../config/games.js";
@@ -13,7 +14,7 @@ import { VS, sel } from "../../core/state.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, SHARED2, isStreak, lenName, versusOf } from "../../games/registry.js";
 import { Scores, achById, got, isOpen, lenLock, lenOpen, lensOf, markSeen, newMark, tierOf, unlockHtml, unlockToast, verdict } from "../../progress.js";
-import { start } from "../../run/run.js";
+import { R, start } from "../../run/run.js";
 import { Snd } from "../../audio.js";
 import { define, lock } from "../actions.js";
 import { Ads } from "../ads.js";
@@ -122,7 +123,13 @@ on('run:finish',({run,isBest,two,fresh,ach,adv})=>{ const g=GC(run.g,run.d,run.s
     /* v26 (§B1, build 49): AND NOT ON TOP OF "END OF RUN" EITHER. Aiden asked whether the two overlap, and they did — this screen comes up 250ms after the
        finish and the tier played at once, over the last three notes of Snd.end(). The tier now waits until End of run has landed (Snd.endLeft()) */
     const rest=()=>{ const gap=lastTier?Snd.endLeft():0, d=(lastTier?600:0)+gap; if(lastTier){ const t=lastTier; if(gap) setTimeout(()=>Snd.verdict(t),gap); else Snd.verdict(t); }
-      msgs.forEach(([m,id,cls,html,go,g],i)=>tT.push(setTimeout(()=>{ toast(m,id,cls,!!id,go); if(g) tT.push(setTimeout(()=>Snd.mapFx(g),MAP_ON_UNLOCK_MS)); },d+i*((id||go)?3400:2600)))); renderOverChips(); };
+      msgs.forEach(([m,id,cls,html,go,g],i)=>tT.push(setTimeout(()=>{ toast(m,id,cls,!!id,go); if(g) tT.push(setTimeout(()=>Snd.mapFx(g),MAP_ON_UNLOCK_MS)); },d+i*((id||go)?3400:2600))));
+      /* v31 (60.33, build 60): AND THE WELCOME CEREMONY, once this screen has finished counting. It is asked after the toasts are
+         queued AND after whatever they cost, so the first thing the game ever gives a player is not competing with a verdict sound
+         and a row of green toasts for the same second. ui/welcome.js owns every reason NOT to play it - once per save, never while a
+         run is live, never if the clip has already been watched - so this line says only WHEN, never WHETHER. */
+      tT.push(setTimeout(()=>welcomeCheck(R.on),d+msgs.length*3400+900));
+      renderOverChips(); };
     if(adv) keyBreak(adv,rest); else rest(); },run),250); });
 /* v15 (5.1, build 26): a key unlock INTERRUPTS this screen. It was a green toast the player tapped, sitting behind
    however many unlock and achievement toasts came first, and only then did it offer the key — so the one thing the key

@@ -1409,6 +1409,33 @@ scene('60.31', async (page, browser) => {
   }
 });
 
+/* 60.33 - the Welcome ceremony. The first thing the game ever gives a player was one green toast among the others; this is the
+   moment that replaced it, caught twice: mid power-on, and settled on its card. The safe-area gap under the last button is
+   measured rather than asserted, because the card is the lowest thing on the screen. */
+scene('60.33', async (page, browser) => {
+  const f = fixture();
+  // the run that opens the slot: Quick Tap at the Sprint length, solo (config/messages.js MESSAGES[0].by.run)
+  f.runs = [{ t: Date.now(), g: 'quick-tap', d: 'two', s: 5, hits: 14, misses: 0, v: 4 }];
+  await page.evaluate(x => localStorage.setItem('ne', JSON.stringify(x)), f);
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(420);
+  await page.evaluate(async () => { const W = await import('./ui/welcome.js'); W.welcomeCheck(false); });
+  await sleep(320);
+  await frame(page, browser, '60.33-intro', 'the ceremony mid power-on - the picture flickering into being on PLAYER.on, the shared television intro');
+  say('steps', await page.evaluate(async () => { const M = await import('./config/messages.js');
+    const h = document.getElementById('welcome');
+    return M.PLAYER.on.steps.map(x => x.name + ' @' + h.style.getPropertyValue('--w-' + x.name + '-at').trim()); }));
+  await sleep(1000);
+  await frame(page, browser, '60.33-card', 'the card it settles into - A message from Aiden, the clip title, Play and Later');
+  say('card', await page.evaluate(() => { const h = document.getElementById('welcome');
+    const card = h.querySelector('.wcard'), stage = h.querySelector('.wframe');
+    const btns = [...h.querySelectorAll('.wrow .item')], last = btns[btns.length - 1];
+    const r = card.getBoundingClientRect(), sr = stage.getBoundingClientRect();
+    return { label: card.querySelector('em').textContent.trim(), title: card.querySelector('b').textContent.trim(),
+      buttons: btns.map(x => x.textContent.trim() + ' ' + Math.round(x.getBoundingClientRect().width) + 'x' + Math.round(x.getBoundingClientRect().height)),
+      picture: Math.round(sr.width) + 'x' + Math.round(sr.height), card: Math.round(r.width) + 'x' + Math.round(r.height),
+      underLastButton: Math.round(innerHeight - last.getBoundingClientRect().bottom) + 'px' }; }));
+});
+
 /* ---------- the runner ---------- */
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 if (ARGV.includes('--list')) { console.log(Object.keys(SCENES).join('\n')); process.exit(0); }

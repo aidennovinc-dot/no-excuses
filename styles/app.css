@@ -2085,6 +2085,28 @@
      the colour of the chest that unlocked the clip. Build 46's in-row player is gone with the row-by-row `.msgrow.playing` layout it needed.
      Item 9: title above, captions below, "tap outside to close" at the foot, and NOTHING over the picture — no knobs, no antenna, no scanlines,
      and no native control bar, so a tap on the picture is the only control and it pauses and plays. */
+  /* ---------- v31 (60.33, build 60): THE WELCOME CEREMONY ----------
+     The first thing the game ever gives a player arrived as one green toast among the others. It gets a moment of its own now:
+     the screen goes dark, the SHARED television power-on flickers a picture into being — the same three named steps the video
+     player uses, written onto the host by ui/welcome.js as --w-<step>-at / -ms, so one set of timings drives both — a sting lands
+     on it, and the card rises. Nothing here is skippable by a stray tap: the two buttons are the only way out. */
+  #welcome{position:fixed;inset:0;z-index:59;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;
+    background:var(--ground);padding:24px;padding-block:max(24px,env(safe-area-inset-top)) max(24px,env(safe-area-inset-bottom));cursor:default}
+  #welcome[hidden]{display:none}
+  .wstage{width:min(78vw,300px);aspect-ratio:16/9;display:grid;place-items:center}
+  .wframe{display:block;width:100%;height:100%;border:1px solid var(--ink);border-radius:6px;overflow:hidden;
+    transform:scaleX(.04) scaleY(.002);opacity:0}
+  .wpic{display:block;width:100%;height:100%;background:linear-gradient(160deg,color-mix(in srgb,var(--ink) 22%,transparent),transparent 70%)}
+  #welcome.won .wframe{animation:wline var(--w-line-ms,200ms) ease-out var(--w-line-at,180ms) both,
+    wopen var(--w-open-ms,240ms) cubic-bezier(.2,.8,.25,1) var(--w-open-at,380ms) both}
+  @keyframes wline{0%{transform:scaleX(.04) scaleY(.002);opacity:0}40%{opacity:1}100%{transform:scaleX(1) scaleY(.004);opacity:1}}
+  @keyframes wopen{0%{transform:scaleX(1) scaleY(.004);opacity:1}100%{transform:scaleX(1) scaleY(1);opacity:1}}
+  .wcard{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;opacity:0;translate:0 10px;transition:opacity .26s ease-out,translate .26s ease-out}
+  #welcome.wgo .wcard{opacity:1;translate:0 0}
+  .wcard em{font-style:normal;font-family:var(--mono);font-size:9px;letter-spacing:.28em;text-transform:uppercase;color:var(--mute)}
+  .wcard b{font-family:var(--title);font-size:clamp(20px,6vw,30px);letter-spacing:.14em;text-transform:uppercase;color:var(--ink)}
+  .wrow{display:flex;gap:10px;margin-top:6px}
+  @media (prefers-reduced-motion:reduce){#welcome.won .wframe{animation:none;transform:none;opacity:1}.wcard{transition:none}}
   #vplay{position:fixed;inset:0;z-index:58;display:flex;flex-direction:column;align-items:center;justify-content:center;
     padding-block:max(18px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-bottom));cursor:default}
   #vplay[hidden]{display:none}

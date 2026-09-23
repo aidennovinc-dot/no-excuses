@@ -4,6 +4,9 @@
 
 // the two players (v11 / L4) — the span class carries the colour, so v14 (4.1) drops the colour word beside the name
 export const PLAYER = { who:'Player {n}' };
+/* v31 (60.33, build 60): the Welcome ceremony's words. `from` is the small label over the clip's own title, which is what
+   msgTitle() gives; `fallback` is only ever used if a slot has no title at all. */
+export const WELCOME = { from:'A message from Aiden', fallback:'Welcome', play:'Play', later:'Later' };
 /* v31 (60.25, build 60): HOW LONG A TOAST HOLDS, and the gap between one and the next. Aiden asked for longer and for a QUEUE —
    until build 59 a new toast called clearTimeout and simply replaced whatever was up, so a run that unlocked two things showed
    the first for however long it took the second to arrive. 5,000 / 4,500 / 3,000ms are his numbers: a TAPPABLE toast (an

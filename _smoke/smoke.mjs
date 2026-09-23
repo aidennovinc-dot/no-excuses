@@ -4144,6 +4144,62 @@ if (section('chests')) {
       : bad('58.2 the gauntlet hand', JSON.stringify(hand58));
   }
 
+  /* ---- v31 (60.33, build 60): THE WELCOME CEREMONY ----
+     The first thing the game ever gives a player arrived as one green toast among the others and a dot on a menu row, which Aiden
+     called far too easy to miss. It is a moment of its own now, and each clause is driven rather than read: nothing at all before the
+     first Quick Tap - Sprint opens the slot; then a full-screen moment carrying the SHARED television intro (PLAYER.on's own named
+     steps, written onto the host as custom properties, so the thing announcing the clip and the thing that plays it are one object);
+     PLAY opens the shared player; LATER closes it and leaves the Messages row green, because nothing here marks the clip watched; it
+     refuses while a run is live; it fires ONCE per save; and its sound is its own, neither the unlock's nor the achievement click. */
+  { const wc60 = await page.evaluate(async () => { const W = await import('./ui/welcome.js'), S = await import('./core/store.js');
+      const M = await import('./config/messages.js'), K = await import('./progress/key.js'), A = await import('./audio.js');
+      const wait = ms => new Promise(x => setTimeout(x, ms));
+      const slot = M.MESSAGES[0], host = () => document.getElementById('welcome');
+      const out = { slot: slot.id };
+      S.prefs.allOpen = 0; S.prefs.supporter = 0; S.prefs.msgSeen = {}; delete S.prefs.welcomeSeen;
+      // a save that has not played its first game: the slot is shut, so there is nothing to announce
+      S.store.runs = []; S.save();
+      out.beforeFirstRun = { open: K.msgOpen(slot), played: W.welcomeCheck(false), seen: !!S.prefs.welcomeSeen };
+      // the run that opens it (v27 item 8: Quick Tap, the Sprint length)
+      S.store.runs = [{ t: Date.now(), g: slot.by.run.g, d: 'two', s: slot.by.run.s, hits: 12, misses: 0, v: 4 }]; S.save();
+      out.open = K.msgOpen(slot);
+      out.duringRun = { played: W.welcomeCheck(true), seen: !!S.prefs.welcomeSeen };   // a live run is refused, and nothing is spent
+      out.played = W.welcomeCheck(false);
+      await wait(Math.max(900, M.PLAYER.on.ms + 400));
+      const h = host();
+      out.up = { shown: !!h && !h.hidden, stage: !!h.querySelector('.wframe'),
+        label: (h.querySelector('.wcard em') || {}).textContent, title: (h.querySelector('.wcard b') || {}).textContent,
+        buttons: [...h.querySelectorAll('.wrow .item')].map(b => b.dataset.act + ':' + b.textContent.trim()),
+        steps: M.PLAYER.on.steps.map(x => x.name + '=' + h.style.getPropertyValue('--w-' + x.name + '-at').trim()) };
+      W.closeWelcome(); out.again = W.welcomeCheck(false);                             // ONCE PER SAVE
+      // LATER leaves the Messages row green, because it does not mark the clip watched
+      delete S.prefs.welcomeSeen; S.save(); W.welcomeCheck(false); await wait(300);
+      document.querySelector('[data-act="wlater"]').click(); await wait(200);
+      out.afterLater = { closed: host().hidden, seen: !!(S.prefs.msgSeen || {})[slot.id], dot: K.msgDot() };
+      // PLAY hands it to the shared player, so the clip behaves as every other message does
+      delete S.prefs.welcomeSeen; S.save(); W.welcomeCheck(false); await wait(300);
+      document.querySelector('[data-act="wplay"]').click(); await wait(500);
+      const vp = document.getElementById('vplay');
+      out.afterPlay = { closed: host().hidden, player: !!vp && !vp.hidden && vp.dataset.msg === slot.id };
+      (await import('./ui/video.js')).closeVideo(); await wait(800);
+      // and the sound is its own: recorded through Snd.plan and compared with the three it must never be
+      const sig = ev => ev.map(e => [e[1], e[3], e[4]].join(':')).join('|');
+      const mine = sig(A.Snd.plan(() => A.Snd.welcome()));
+      const others = [sig(A.Snd.plan(() => A.Snd.unlockFx())), sig(A.Snd.plan(() => A.Snd.click())), sig(A.Snd.chestPlan('games').map(e => e.slice(0, 8)))];
+      out.fx = { notes: A.Snd.plan(() => A.Snd.welcome()).length, clash: others.includes(mine), empty: !mine };
+      S.store.runs = []; S.prefs.msgSeen = {}; delete S.prefs.welcomeSeen; S.save();
+      return out; });
+    (!wc60.beforeFirstRun.open && wc60.beforeFirstRun.played === false && !wc60.beforeFirstRun.seen && wc60.open
+      && wc60.duringRun.played === false && !wc60.duringRun.seen && wc60.played === true && wc60.again === false
+      && wc60.up.shown && wc60.up.stage && /message from/i.test(wc60.up.label || '') && wc60.up.title
+      && wc60.up.buttons.length === 2 && wc60.up.buttons.some(b => /^wplay:/.test(b)) && wc60.up.buttons.some(b => /^wlater:/.test(b))
+      && wc60.up.steps.length >= 3 && wc60.up.steps.every(x => /=\d+ms$/.test(x))
+      && wc60.afterLater.closed && !wc60.afterLater.seen && wc60.afterLater.dot
+      && wc60.afterPlay.closed && wc60.afterPlay.player
+      && !wc60.fx.empty && !wc60.fx.clash && wc60.fx.notes >= 3)
+      ? ok(`60.33 the Welcome message gets a moment of its own - nothing at all before the first Quick Tap run opens the slot, then a full-screen ceremony carrying the player's own television intro (${wc60.up.steps.join(', ')}) and a card ("${wc60.up.label}" - "${wc60.up.title}", ${wc60.up.buttons.join(', ')}); PLAY hands the clip to the shared player, LATER closes it and leaves the Messages row green because the clip is still unwatched, it refuses while a run is live and spends nothing doing so, it fires exactly ONCE per save, and its ${wc60.fx.notes}-note sound is neither the unlock's, the achievement click nor a chest's`)
+      : bad('60.33 the Welcome ceremony', JSON.stringify(wc60)); }
+
   /* ---- v31 (60.32, build 60): A CLIP THAT FINISHES CLOSES ITSELF ----
      It dimmed its glow and held the last frame inside a lit frame until the player tapped outside, which reads as the thing
      having got stuck. Driven: a clip is opened, seeked to its end, and the player has to run its own power-off and go — with no

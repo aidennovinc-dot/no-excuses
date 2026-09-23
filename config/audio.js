@@ -438,6 +438,11 @@ export const CHEST_STING = {
   thorns: { track: 'theme:thorns', cut: 4.2, tail: [[4.2, -12, 1800, 'sine', .04, 400], [4.2, 0, 1800, 'sawtooth', .009, 220, 1100], [4.2, 7, 1800, 'sawtooth', .009, 220, 1100], [4.2, 15, 1800, 'sawtooth', .007, 220, 1100], [4.25, 19, 1750, 'sine', .012, 500]] },
 };
 export const CHEST_READY_FX = [[0, 146.8, 146.8, 460, 'sine', .03, 50], [.24, 220, 220, 700, 'sine', .03, 80]];
+/* v31 (60.33, build 60): THE WELCOME CEREMONY'S OWN SOUND. Distinct from the unlock sound and from the achievement click, the
+   way a chest's and a key's are (v23 L.6, v24 C.5) — this is the first thing the game ever gives a player and it should not
+   arrive sounding like a colour swatch. A television finding its signal: a soft low thump as the picture opens, then a rising
+   third settling on the tonic, all under half a second so it lands on the picture rather than behind it. */
+export const WELCOME_FX = [[0, 98, 78, 300, 'sine', .05, 60], [.06, 329.6, 329.6, 260, 'triangle', .022, 120], [.20, 392, 392, 320, 'triangle', .024, 140], [.34, 523.3, 523.3, 520, 'sine', .028, 180]];
 
 /* ---------- v28 (item 13, build 53): THE GAMES CHEST CRACKING ON THE MAP — RETIRED AT BUILD 57 (v29 Section A, 57.2) ----------
    CRACK_FX was the crack that arrived on the map as each game was finished, and CRACK_BURST the seventh bursting it. 57.2 reverses the

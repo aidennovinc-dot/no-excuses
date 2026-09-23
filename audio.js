@@ -7,7 +7,7 @@
    finish ramp that lands the last downbeat on the clock (B.28), an end cadence in the track's own key (B.30), a flow-state
    layer over the two tap games (B.27) and a duck for Sequence (B.30). Still no percussion. */
 
-import { CHEER_FX, CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, COVER_AT, COVER_FX, DUCK, DUCK_TAIL, FLOW_STEM, GIFT_FX, HUSH, KEY_EARN_CIRCUIT, KEY_EARN_FX, KEY_INTRO_FX, KEY_STEP_FX, KEY_THEMES, MAP_FX, MAP_LOCKED, POP_FX, ROUND_FX, ROUND_VERDICT, SCALES, SET_SECS, STEMS, STING_RING, TITLE_FX, TRACKS, TRACK_PICK, VERDICT_FX, VIDEO_FX, WHOOSH_VARIANTS } from "./config/audio.js";
+import { CHEER_FX, CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, COVER_AT, COVER_FX, DUCK, DUCK_TAIL, FLOW_STEM, GIFT_FX, HUSH, KEY_EARN_CIRCUIT, KEY_EARN_FX, KEY_INTRO_FX, KEY_STEP_FX, KEY_THEMES, MAP_FX, MAP_LOCKED, POP_FX, ROUND_FX, ROUND_VERDICT, SCALES, SET_SECS, STEMS, STING_RING, TITLE_FX, TRACKS, TRACK_PICK, VERDICT_FX, VIDEO_FX, WELCOME_FX, WHOOSH_VARIANTS } from "./config/audio.js";
 import { KEY_EARN } from "./config/keys.js";
 import { STREAK } from "./config/games.js";
 import { emit, on } from "./core/events.js";
@@ -288,6 +288,8 @@ const Snd = (()=>{
         else if(kind==='sting'){ if(sting) tone(f0,f1,ms,w,g,t+at,am,true,undefined,{lp:lp||0,hold:.55}); }
         else tone(f0,f1,ms,w,g,t+at,am,false,undefined,lp?{lp}:undefined); } },
     chestReady(){ this.fx(CHEST_READY_FX); },
+    // v31 (60.33, build 60): the Welcome ceremony's own sound — neither unlockFx nor click, and the gate asserts it is neither
+    welcome(){ this.fx(WELCOME_FX); },
     /* v28 (item 13, build 53): the Games chest cracking on the MAP — RETIRED AT BUILD 57 (v29 Section A, 57.2). `crack(i)` and `crackBurst()`
        existed for the map arrival 57.2 reverses; the cracking is inside the opening now, on the seven squares' own ticks (CHEST_FX.games), and
        both they and CRACK_FX / CRACK_BURST are gone rather than left unplayed. */
