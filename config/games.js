@@ -86,6 +86,11 @@ export const TICK = { ms: 90, scale: 1.12 };
 export const GOAL_SCAN = { pxPerSec: 26, hold: 1000 };
 // v11: a Streak length scores rounds survived — higher wins — whatever the mode's Set scores. `streak` on a game is that override
 export const STREAK_CFG = { lower:false, suffix:'', scoreWord:'rounds' };
+/* v31 (60.22, build 60): HOW LONG A MODE LINE MAY BE. Aiden: "one short line, about 40 characters maximum" — three of them had
+   grown scoring fine print (Flash's 1000ms rule, Go / No-go's missed target and wrong tap, Find's half-second). A pick sheet says
+   what the mode is and how it is won; the rules live in the review catalogue's scoring section. The gate fails any `set` or
+   `streak` line over this, so the next one cannot creep back in. */
+export const SET_LIMIT = 40;
 
 export const GAMES = {
   // v9: every mode line says what to DO, first. Quick Tap lost Lead and gained Four (a 2×2 of pads). v11: Blind is Two
@@ -145,18 +150,27 @@ export const SET_COPY = {
   'hold:grow':        { rounds:7,  set:'7 rounds, lowest average % off wins',            streak:'Highest round wins!' },
   'hold:cut':         { rounds:10, set:'10 rounds, lowest average % off wins',           streak:'Highest round wins!' },
   // v18 (B.2, L5): Stopwatch's Set is the SUM of the differences, not their average — Aiden withdrew the average
-  'timing:stopwatch': { rounds:5,  set:'5 rounds, lowest total time difference wins',    streak:'Highest round wins!' },
+  // v31 (60.22, build 60): 43 characters became 36. "time off" is the same unit "time difference" was — seconds off the target,
+  // summed (B.2) — said in fewer words so the line meets SET_LIMIT. The scoring is untouched
+  'timing:stopwatch': { rounds:5,  set:'5 rounds, lowest total time off wins',    streak:'Highest round wins!' },
   // v18 (B.4, L5): the same total, in milliseconds — pixels do not travel across screen sizes
-  'timing:hidden':    { rounds:10, set:'10 rounds, lowest total milliseconds off wins',  streak:'Highest round wins!' },
-  // v18 (B.6): a slow attempt is scored at 1000ms and counts; there is no retake to hide it
-  'reaction:flash':   { rounds:5,  set:'5 rounds, lowest average time wins — over 1000ms scores 1000ms', streak:'Highest round wins!' },
+  // v31 (60.22, build 60): 45 characters became 35 — "ms" is the unit the score itself is printed in (B.4)
+  'timing:hidden':    { rounds:10, set:'10 rounds, lowest total ms off wins',  streak:'Highest round wins!' },
+  /* v18 (B.6): a slow attempt is scored at 1000ms and counts; there is no retake to hide it.
+     v31 (60.22, build 60): AND THE SHEET DOES NOT SAY SO. A mode line is ONE SHORT LINE — what the mode is and how it is won — and
+     the scoring fine print belongs in the review catalogue's scoring section, not on a pick sheet. `SET_LIMIT` below is the ceiling
+     and the gate fails a line over it. The rule itself is unchanged: an attempt over 1000ms still scores 1000ms and still counts. */
+  'reaction:flash':   { rounds:5,  set:'5 rounds, lowest average time wins', streak:'Highest round wins!' },
   // v18 (B.1b): a round is three correct taps of one shape, so a Set is fifteen; the 150ms is the whole of a wrong tap now (B.1c)
   /* v29 (item 16, build 55): "3 taps" was not what the Set does. It deals 3 TARGETS a round and moves on whether or not they were tapped -
      a skipped target is charged its full dwell and scored with the rest (B.1b / C.5, deliberate) - so a player who never taps still finishes
      the Set. The line says targets now, which is the contract the engine keeps; L5 in CLAUDE.md says the same. */
-  'reaction:nogo':    { rounds:5,  set:'5 rounds of 3 targets, lowest average over the 180ms gate wins — a target you miss is charged in full, a wrong tap adds 150ms', streak:'Most targets wins!' },
+  // v31 (60.22, build 60): one short line. The gate (the 180ms), the missed target and the wrong tap are all still exactly as
+  // L5 and C.5 / C.6 say — they are in the catalogue's scoring section now instead of on the sheet
+  'reaction:nogo':    { rounds:5,  set:'5 rounds, lowest average time wins', streak:'Most targets wins!' },
   'spot:count':       { rounds:10, set:'10 rounds, lowest total miscount wins',          streak:'Highest round wins!' },
-  'spot:find':        { rounds:10, set:'10 rounds, lowest total time wins — 0.5s free each find', streak:'Highest round wins!' },
+  // v31 (60.22, build 60): one short line. SPOT_FIND.leeway is unchanged and is still half a second free on every find
+  'spot:find':        { rounds:10, set:'10 rounds, lowest total time wins', streak:'Highest round wins!' },
 };
 
 // Estimate · Cut's pools and shares, and the list of shapes with an axis of symmetry, moved to config/shapes.js at v26 §B2 (build 50):

@@ -560,7 +560,20 @@ if (section('pick sheets (all unlocked)')) {
 
 // ---- 2b. the Set and Streak lines on every sheet come from the one table (L5 / v14 section 5) ----
 if (section('sheet copy comes from SET_COPY (L5)')) {
-  const { SET_COPY, GAMES: TABLE } = await import(pathToFileURL(path.join(root, 'config', 'games.js')).href);
+  const { SET_COPY, GAMES: TABLE, SET_LIMIT } = await import(pathToFileURL(path.join(root, 'config', 'games.js')).href);
+  /* ---- v31 (60.22, build 60): A MODE LINE IS ONE SHORT LINE ----
+     Aiden: "one short line, about 40 characters maximum". Three of them had grown scoring fine print — Flash's 1000ms rule,
+     Go / No-go's missed target and wrong tap, Find's half-second — and two more (Stopwatch and Hidden) were already over the
+     limit without anyone noticing. A pick sheet says what the mode is and how it is won; the rules are in the review
+     catalogue's "Scoring, in full" section, generated from the config so they cannot drift. This is the guard the item asks
+     for, and it is measured on EVERY line rather than on the three that were named. */
+  { const long60 = [];
+    for (const key of Object.keys(SET_COPY)) for (const f of ['set', 'streak']) {
+      const v = SET_COPY[key][f]; if (typeof v === 'string' && v.length > SET_LIMIT) long60.push(key + '.' + f + ' = ' + v.length + ' — "' + v + '"'); }
+    const longest = Math.max(...Object.keys(SET_COPY).flatMap(k => [SET_COPY[k].set.length, SET_COPY[k].streak.length]));
+    (long60.length === 0 && SET_LIMIT === 40)
+      ? ok(`60.22 every mode line on every pick sheet is one short line — ${Object.keys(SET_COPY).length * 2} lines, the longest ${longest} characters against a ${SET_LIMIT} limit; the scoring rules that used to be on three of them are in the catalogue's "Scoring, in full" section`)
+      : bad('60.22 a mode line is over the limit', JSON.stringify(long60)); }
   for (const key of Object.keys(SET_COPY)) {
     const [g, d] = key.split(':'); const mi = TABLE[g].modes.indexOf(d); const want = SET_COPY[key];
     await openSheet(g, mi, 0);
@@ -8657,7 +8670,32 @@ if (section('build 45 - batch 18, fixes, state and the catalogue')) {
     const order = iB > iC && iB < iS && (iG < 0 || iB < iG);
     const sheetZ = /\.sheet\{[^}]*z-index:5\}/.test(flat45);
     const clip = /#s-pick,#s-about,#s-over,#s-custom,#s-testing\{clip-path:inset\(env\(safe-area-inset-top\) 0 0 0\)\}/.test(flat45);
-    const goal = /#goal\{[^}]*top:calc\(env\(safe-area-inset-top\) \+ 11px\)/.test(flat45) && /#game\.goalon \.hud\{top:calc\(env\(safe-area-inset-top\) \+ 44px\)\}/.test(flat45);
+    /* v25 (item 19): the goal box sits 11px BELOW the safe-area line and the HUD below IT, so the phone's clock never covers
+       either. AMENDED at build 60 (v31 60.19): this was two regexes against how those two rules are SPELLED, and 60.19 made the
+       header a column — #goal is in flow inside #top and `goalon`'s hand-written 44px nudge of the HUD is retired, so both
+       failed on the refactor. The gate's own rule is not to re-spell such a check, and its other rule is to drive the page
+       instead. So the FACT is measured now, which is stronger than the spelling ever was: the badge's top edge is at least 11px
+       below the safe-area line, and the mode / count row is below the badge rather than under it. */
+    const goalBox = await page.evaluate(async () => { const RUN = await import('./run/run.js'), ST = await import('./core/state.js');
+      const SS = await import('./core/store.js'), P = await import('./progress.js');
+      SS.store.intro['reaction'] = SS.store.intro['reaction:flash'] = Date.now(); SS.save();
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      P.setPendingAim('a goal long enough to be drawn');
+      Object.assign(ST.sel, { vs: 0, practice: 0, game: 'reaction', diff: 'flash', secs: 5 }); RUN.start();
+      await wait(250);
+      const probe = document.createElement('div');
+      probe.style.cssText = 'position:fixed;top:0;width:1px;height:env(safe-area-inset-top)'; document.body.appendChild(probe);
+      const inset = parseFloat(getComputedStyle(probe).height) || 0; probe.remove();
+      const g = document.getElementById('game').getBoundingClientRect();
+      const b = document.getElementById('goal').getBoundingClientRect();
+      const h = document.querySelector('.hud').getBoundingClientRect();
+      RUN.abort(); await wait(300);
+      return { inset, badgeTop: Math.round(b.top - g.top), badgeBottom: Math.round(b.bottom - g.top), hudTop: Math.round(h.top - g.top), shown: b.height > 1 }; });
+    const goal = goalBox.shown && goalBox.badgeTop >= goalBox.inset + 11 && goalBox.hudTop >= goalBox.badgeBottom;
+    /* the measurement above plays a run, which leaves the app on the map with no sheet — and the next reading wants one up.
+       Put it back the way the block above opened it, so the two are measuring the state each of them is about. */
+    await click('[data-go="s-pick"]'); await sleep(600);
+    await page.evaluate(() => document.querySelector('.tile[data-game="quick-tap"]').click()); await sleep(420);
     // live, with a sheet up: the stamp is under the sheet, and nothing the map layers over the sheet is above it
     // AMENDED at build 48 (v26 item 12): the label shows on the home menu only, so on the map it is un-hidden for the measurement and put back
     const live = await page.evaluate(() => { const b = document.getElementById('build'), wasHidden = b.hidden; b.hidden = false; b.style.pointerEvents = 'auto';
@@ -8669,8 +8707,8 @@ if (section('build 45 - batch 18, fixes, state and the catalogue')) {
       return { stack, sheet, top: Math.max(0, ...layers), grid: z(document.getElementById('grid')) }; });
     const iSheet = live.stack.findIndex(s => /sheet/.test(s)), iBuild = live.stack.indexOf('build');
     (stampZ && order && sheetZ && clip && goal && iSheet === 0 && iBuild > iSheet && live.sheet > live.top && !live.grid)
-      ? ok(`items 4 / 5 / 8 / 19 the stamp is drawn before every screen and paints under them (the sheet is over it, ${live.stack.slice(0, 3).join(' > ')}); the sheet sits at z ${live.sheet} over the map's ${live.top}; the five scrolling screens are clipped at the safe-area line and the goal box and its HUD sit below it`)
-      : bad('items 4 / 5 / 8 / 19 the stamp, the sheet and the safe area', JSON.stringify({ stampZ, order, sheetZ, clip, goal, live }));
+      ? ok(`items 4 / 5 / 8 / 19 the stamp is drawn before every screen and paints under them (the sheet is over it, ${live.stack.slice(0, 3).join(' > ')}); the sheet sits at z ${live.sheet} over the map's ${live.top}; the five scrolling screens are clipped at the safe-area line, and the goal badge's top edge is ${goalBox.badgeTop}px down against a ${goalBox.inset}px inset with the mode / count row at ${goalBox.hudTop}px, below it (v31 60.19 measures this where build 45 read the stylesheet)`)
+      : bad('items 4 / 5 / 8 / 19 the stamp, the sheet and the safe area', JSON.stringify({ stampZ, order, sheetZ, clip, goal, goalBox, live }));
   }
 
   /* ---- 4. item 10: the map is the phone's width, whatever stands beside the chests ---- */
@@ -8787,7 +8825,7 @@ if (section('build 45 - batch 18, fixes, state and the catalogue')) {
   /* ---- 9. items 20 / 21: the catalogue's sound list and Round formats, built by the same two functions npm run review uses ---- */
   rv6: {
     if (!REVIEW) { noReview("items 20 / 21 the catalogue's sound list and Round formats"); break rv6; }
-    const { roundsRef, soundsRef } = REVIEW ? await import(pathToFileURL(path.join(REVIEW_DIR, 'scripts', 'catalogue.ref.mjs')).href) : { roundsRef: null, soundsRef: null };
+    const { roundsRef, scoringRef, soundsRef } = REVIEW ? await import(pathToFileURL(path.join(REVIEW_DIR, 'scripts', 'catalogue.ref.mjs')).href) : { roundsRef: null, scoringRef: null, soundsRef: null };
     await boot({}, { unlock: ALLUNL }, { plain: PLAIN45 });
     const snd = await page.evaluate(soundsRef);
     const rows = snd.groups.flatMap(g => g.rows);
@@ -8828,6 +8866,28 @@ if (section('build 45 - batch 18, fixes, state and the catalogue')) {
     (want21.every(id => rf.some(g => g.id === id)) && rf.length === want21.length && shaped && drawn && diamond && figures)
       ? ok(`item 21 Round formats: ${rf.length} games, ${bands} bands, every figure read from the game's own config and engine (spot checks: Count round 7 deals ${live21.decoys7} decoys, Find round 5 deals ${live21.find5} shapes, a Hidden Streak's round 5 stretches × ${live21.hid5}); the shapes are drawn by the app's own code, and Go / No-go's square at 45° is flagged as the diamond (#444)`)
       : bad('item 21 Round formats', JSON.stringify({ ids: rf.map(g => g.id), shaped, drawn, diamond, figures, c7, f5, h5 }));
+    /* ---- v31 (60.22, build 60): AND THE RULES 60.22 TAKES OFF THE SHEETS HAVE A HOME ----
+       A pick sheet's mode line is one short line now, so the scoring fine print has to live somewhere. It is a catalogue section
+       built the same way these two are — off the app's own config and engines at capture time — so the check is the same shape:
+       drive it against the build under test and fail on a rule that says nothing, a mode that is missing, or a figure that does
+       not match the module it claims to come from. */
+    const sc = await page.evaluate(scoringRef);
+    const live22 = await page.evaluate(async () => { const G = await import('./config/games.js');
+      const RX = (await import('./games/reaction/index.js')).default;
+      return { limit: G.SET_LIMIT, free: G.SPOT_FIND.leeway, lock: G.CFG.swLock, bud: G.COUNT_BUDGET, max: RX.FLASH_MAX, gate: RX.NOGO_FREE }; });
+    const ruleOf = (key, rx) => { const m = sc.modes.find(x => x.id === 'sc-' + key.replace(':', '-')); return m && m.rules.some(r => rx.test(r[0])); };
+    const shaped22 = sc.modes.length === 8 && sc.modes.every(m => m.set && m.streak && m.limit === live22.limit
+      && m.longest <= m.limit && Array.isArray(m.rules) && m.rules.every(r => r.length === 2 && r[0].length > 10 && r[1].length > 3));
+    const carries = ruleOf('reaction:flash', new RegExp(live22.max + 'ms'))
+      && ruleOf('reaction:nogo', new RegExp(live22.gate + 'ms gate'))
+      && ruleOf('spot:find', new RegExp(live22.free + 's of every find is FREE'))
+      && ruleOf('spot:count', new RegExp('reach ' + live22.bud))
+      && ruleOf('timing:stopwatch', new RegExp('first ' + live22.lock + 'ms'));
+    const tpl22 = rvRead('scripts', 'catalogue.template.html'), gen22 = rvRead('scripts', 'catalogue.mjs');
+    (shaped22 && carries && /id="scoring"/.test(tpl22) && /id="sc-host"/.test(tpl22) && /REF\.scoring/.test(tpl22) && /page\.evaluate\(scoringRef\)/.test(gen22))
+      ? ok(`60.22 the catalogue's "Scoring, in full" section carries what came off the sheets — ${sc.modes.length} modes, each with its two lines measured against the ${sc.limit}-character limit and ${sc.modes.reduce((n, m) => n + m.rules.length, 0)} rules between them, every figure read off the module it names (Flash's ${live22.max}ms, Go / No-go's ${live22.gate}ms gate, Find's ${live22.free}s, Count's ${live22.bud}, the Stopwatch's ${live22.lock}ms lock) — and the section and its host are in the template, so every future board keeps it (#441)`)
+      : bad('60.22 the catalogue scoring section', JSON.stringify({ shaped22, carries, modes: sc.modes.length, tpl: /id="scoring"/.test(tpl22), gen: /scoringRef/.test(gen22) }));
+
     // and the page has somewhere to put both, carried in the template so every future board keeps them (#441)
     const tpl45 = rvRead('scripts', 'catalogue.template.html'), gen45 = rvRead('scripts', 'catalogue.mjs');
     (/id="sounds"/.test(tpl45) && /id="snd-host"/.test(tpl45) && /id="rounds"/.test(tpl45) && /id="rf-host"/.test(tpl45) && /REF\.sounds/.test(tpl45) && /REF\.rounds/.test(tpl45)
