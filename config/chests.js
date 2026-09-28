@@ -318,5 +318,7 @@ export const GAUNTLETS = [
    Drawn out to about 7 seconds, one tile at a time: the seven games top to bottom, then the two Gauntlets, then the four chests last. Each tile's own
    sound is read off its own animation (ui/screens/pick.js), so re-timing here moves the sound with it. `at` is the first tile, `gap` the beat between
    game tiles, `chestAt` the extra pause before the chests and `chestGap` the beat between them, `ms` one tile's arrival and `lineLag` how long after
-   its tile lands a connector starts drawing. Plays once (`prefs.gridSeen`); Fresh game replays it. No skip. All (guess). */
-export const MAP_INTRO = { at: 350, gap: 520, chestAt: 250, chestGap: 380, ms: 620, lineLag: 120 };
+   its tile lands a connector starts drawing. Plays once (`prefs.gridSeen`); Fresh game replays it. No skip. All (guess).
+   build 64 (62.1): TWICE AS FAST. Aiden: "quite slow". Every delay and duration halved — the games, the Gauntlets, the chests and the
+   connectors' own draw (`lineMs`, the stylesheet's .5s before), so the whole open is about 3.5s and keeps its order and its spacing. */
+export const MAP_INTRO = { at: 175, gap: 260, chestAt: 125, chestGap: 190, ms: 310, lineLag: 60, lineMs: 250 };

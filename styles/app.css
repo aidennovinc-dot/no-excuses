@@ -2335,6 +2335,8 @@
   .gtboard li i{font-style:normal;color:var(--mute)}
   /* item 2: the map's first open, drawn out — each tile's arrival takes MAP_INTRO.ms (--tin, set by ui/screens/pick.js) */
   .grid .tile.reveal{animation-duration:var(--tin,.5s)}
+  /* build 64 (62.1): a connector on the first open draws in MAP_INTRO.lineMs (--glin), halved with everything else */
+  .grid .gl{animation-duration:var(--glin,.5s)}
   /* item 6: THE REWARDS FLY OUT OF THE CHEST. The row sits where they rest, close under the chest (ui/reveal.js places it); each reward walks the eleven
      points of its own curve, out of the lid, down to the right and round, swelling on the way (--gpop), turning (--gspin) and glowing (--gglow) as its
      chest's GIFT_LOOK says, and lands with rings and sparks in the chest's colour. Its title fades in as it lands */

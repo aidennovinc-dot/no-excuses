@@ -289,7 +289,7 @@ function renderFill(){ const shown=tierOpen('clear');
     svg.style.setProperty('--kf',k.frac.toFixed(3)); t.classList.toggle('kdone',k.total>0&&k.done===k.total); t.classList.toggle('kpart',k.done>0&&k.done<k.total); }); }
 // locked games are greyed with the condition on the tile (v6). Each tile wears its own game's colours (v10). v11: a padlock badge; the first visit reveals the grid tile by tile; a padlock wipes off when its game opens
 function renderTiles(){ const reveal=!prefs.gridSeen; if(reveal){ prefs.gridSeen=1; save(); } const runs=Scores.runs(); const fresh=[], arriving=[];
-  $('#grid').style.setProperty('--tin',MAP_INTRO.ms+'ms');
+  $('#grid').style.setProperty('--tin',MAP_INTRO.ms+'ms'); $('#grid').style.setProperty('--glin',MAP_INTRO.lineMs+'ms');
   $$('.tile[data-game]').forEach((t,i)=>{ const g=t.dataset.game, open=gameOpen(g); t.classList.toggle('locked',!open); t.querySelector('.pic').dataset.need=open?'':T(SHEET.tileUnlock,{need:needFor(g,GAMES[g].modes[0])});
     // v13 (1.2 / L7): white until the game has been played once — colour arrives with the first recorded run
     const played=runs.some(r=>r.g===g), c=colOf(g); t.classList.toggle('unplayed',!played);

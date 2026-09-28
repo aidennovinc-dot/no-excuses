@@ -438,7 +438,9 @@ export async function run() {
     // the chests follow the seventh game by `chestAt` alone: no slot is held for a Gauntlet that is not there
     const noHole = order[7] && order[7].k === 'chest' && order[7].d === order[6].d + MI49.gap + MI49.chestAt;
     (first.length === 11 && first.every(t => t.d >= 0 && t.ms === MI49.ms) && kinds === 'game,game,game,game,game,game,game,chest,chest,chest,chest' && gamesInOrder && noHole
-      && new Set(first.map(t => t.d)).size === 11 && total >= 5000 && total <= 8000 && again.every(t => t.d < 0) && replay.length === 11 && replay.every(t => t.d >= 0))
+      // AMENDED AT BUILD 64 (62.1): twice as fast — the length is the config's own sum (last chest's delay + one arrival), and it is under 4s
+      && new Set(first.map(t => t.d)).size === 11 && total === MI49.at + 7 * MI49.gap + MI49.chestAt + 3 * MI49.chestGap + MI49.ms && total <= 4000
+      && again.every(t => t.d < 0) && replay.length === 11 && replay.every(t => t.d >= 0))
       ? ok(`v26 item 2 / v27 item 2 the map's first open is drawn out to ${(total / 1000).toFixed(1)}s: the seven games one at a time top to bottom, then the four chests last, each arriving over ${MI49.ms}ms at a moment of its own - and NEITHER GAUNTLET is on it, with no beat left where one would have been (the first chest lands ${MI49.chestAt}ms after the seventh game); the next open has no intro, and Testing's fresh game plays it again`)
       : bad('v26 item 2 the map intro', JSON.stringify({ first, total, again: again.filter(t => t.d >= 0).length, replay: replay.length }));
 
