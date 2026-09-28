@@ -40,7 +40,7 @@ const ARGV = process.argv.slice(2);
 /* ---------- the profile every scene starts from ----------
    A played-in profile with nothing revealed: the title sequence and the map's first open are already seen, so a scene opens
    on the screen it asked for instead of sitting through a 7s intro. Chests and bars are whatever the scene sets. */
-const PLAIN = { story: 1, gridSeen: 1, played: 1, menuSeen: 1, keySeen: 1, keysSeen: 1, menuOpened: {}, snd: 'off',
+const PLAIN = { tut: 2, story: 1, gridSeen: 1, played: 1, menuSeen: 1, keySeen: 1, keysSeen: 1, menuOpened: {}, snd: 'off',
   musicG: {}, spill: {}, readySeen: {}, msgSeen: {}, keyIntro: { clear: 1, pro: 1, author: 1 } };
 const fixture = (prefs = {}, bars = {}) => ({ v: 7, prefs: Object.assign({}, PLAIN, prefs), runs: [], ach: {}, unlock: {}, intro: {}, seen: {}, bars });
 
@@ -1442,7 +1442,7 @@ scene('60.33', async (page, browser) => {
 const INTRO_ALL = (() => { const o = {}; for (const g of ['quick-tap', 'dots', 'hold', 'sequence', 'timing', 'reaction', 'spot']) o[g] = 1;
   for (const k of ['quick-tap:two', 'quick-tap:four', 'dots:blind', 'dots:lead', 'hold:grow', 'hold:cut', 'sequence:solo',
     'timing:stopwatch', 'timing:hidden', 'reaction:flash', 'reaction:nogo', 'spot:count', 'spot:find']) o[k] = 1; return o; })();
-const OPEN = { allOpen: 1, tut: 1 };
+const OPEN = { allOpen: 1 };
 // a played-in, everything-open profile, then a run of game `g` started from its sheet (mode index `mi`, length index `li`)
 async function load(page, prefs = OPEN, extra = {}) {
   const f = Object.assign(fixture(prefs), { intro: INTRO_ALL }, extra);
@@ -1470,6 +1470,15 @@ scene('61.2', async (page, browser) => {
   await page.evaluate(() => { for (const a of document.getAnimations()) try { a.pause(); } catch (e) {} });
   await frame(page, browser, '61.2-restart-hold', 'Restart, top right opposite Exit, held about three quarters of the way: the line drawing round the word');
   await page.evaluate(() => document.getElementById('restart').dispatchEvent(new PointerEvent('pointerup', { bubbles: true })));
+});
+
+scene('61.3', async (page, browser) => {
+  await load(page, { tut: 0 }); await show(page, 's-pick'); await sleep(1500);
+  for (let i = 0; i < 80 && !(await page.evaluate(() => { const t = document.getElementById('tut'); return !!t && !t.hidden; })); i++) await sleep(100);
+  await page.evaluate(() => document.querySelector('#tut .tnext').click()); await sleep(400);
+  await page.evaluate(() => document.querySelector('.tile[data-game="quick-tap"]').click()); await sleep(900);
+  await frame(page, browser, '61.3-walkthrough-modes', 'First-run walkthrough, step 3 of 5: the modes ringed in yellow, one short box, Skip and Next');
+  say('box', await page.evaluate(() => document.querySelector('#tut p').textContent));
 });
 
 /* ---------- the runner ---------- */

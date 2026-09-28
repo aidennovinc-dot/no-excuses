@@ -67,7 +67,7 @@
   :root{
     --ground:#050506; --ink:#E8E6E1; --mute:#6E6C68;
     --panel:color-mix(in srgb,var(--ground) 94%,#fff); --line:color-mix(in srgb,var(--ground) 86%,#fff); --sq:color-mix(in srgb,var(--ground) 90%,#fff);
-    --sq-live:#FFFFFF; --cue:#C8322A; --miss:#B3261E; --ok:#3DD68C;
+    --sq-live:#FFFFFF; --cue:#C8322A; --miss:#B3261E; --ok:#3DD68C; --tut:#FFD84D;
     --glow:rgba(232,230,225,.30);
     --stamp:11px; --stampat:max(6px,env(safe-area-inset-bottom)); --stampclear:calc(var(--stampat) + var(--stamp) + 16px);
     --title:"Syncopate","Michroma",var(--display); --display:"Archivo",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
@@ -1162,6 +1162,18 @@
   .hud>#hud-mode{flex:0 1 auto;min-width:0;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .hud>#hud-time{flex:0 1 auto;min-width:0;text-align:right}
   #score{display:block;font-weight:700;font-size:clamp(32px,8vw,60px);color:var(--ink);letter-spacing:0;line-height:1.05;text-align:center}
+  /* build 62 (61.3): the first-run walkthrough — a yellow ring round one thing, the rest dimmed, and a short box beside it. Only the box
+     takes taps; the ring and the dim let every tap through to the screen under them. */
+  #tut{position:fixed;inset:0;z-index:80;pointer-events:none}
+  #tut[hidden]{display:none}
+  #tut .tring{position:fixed;border:2px solid var(--tut);border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.5),0 0 18px var(--tut);pointer-events:none;transition:left .2s,top .2s,width .2s,height .2s}
+  #tut .tbox{position:fixed;pointer-events:auto;background:#141414;border:2px solid var(--tut);border-radius:12px;padding:14px 16px 10px;color:var(--ink);font-family:var(--mono);font-size:14px;line-height:1.4}
+  #tut .tbox p{margin:0 0 8px}
+  #tut .trow{display:flex;justify-content:space-between;gap:12px}
+  #tut .trow button{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;padding:8px 4px;color:var(--mute);min-height:36px}
+  #tut .trow .tnext{color:var(--tut)}
+  #tut .trow [hidden]{display:none}
+  #tut-replay{margin-top:18px}
   /* build 62 (61.2): Restart, opposite Exit. Held, a line sweeps round the word (a conic mask on the pill's border); when it closes
      the run restarts. Released early, it snaps back. */
   @property --rs{syntax:'<percentage>';inherits:false;initial-value:0%}

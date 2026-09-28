@@ -62,6 +62,9 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
        because a fresh save meets that moment again — and takes no ladder step, since an absent one means "not yet", which is what
        a profile without it already means. Written the instant the ceremony starts, so a reload mid-moment cannot replay it. */
     welcomeSeen:p.welcomeSeen?1:0,
+    /* build 62 (61.3): `tut`, the first-run walkthrough — absent/0 not yet (shown only to a profile with no runs), -1 asked for again,
+       1 walkthrough done with the after-result tip to come, 2 done. A preference: Fresh game keeps it. No ladder step: absent means "not yet". */
+    tut:[-1,1,2].includes(p.tut)?p.tut:0,
     // v17 (build 28): `keySeen` was missing from this list since build 26 — reset() cleared a field load() never created,
     // so the keys screen's once-per-profile arrival was shape-checked by nothing. It is a flag like the three beside it
     col:{}, story:p.story?1:0, played:p.played?1:0, gridSeen:p.gridSeen?1:0, menuSeen:p.menuSeen?1:0, keySeen:p.keySeen?1:0,

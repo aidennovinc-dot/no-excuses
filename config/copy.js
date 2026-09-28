@@ -284,6 +284,13 @@ export const TWO = { ready:'hand the phone over<br>tap when ready', hud:'{who} �
 // v15 (3.8 answer, build 25): a Streak's score IS the round it reached, and it used to sit there as a bare number. It says
 // so now — the retune in 3.8 is unmeasured play, and the only way to report whether it runs long is to read the round off
 // the result screen. `word` is the mode's own scoreWord (rounds, or shapes on Go / No-go)
+/* build 62 (61.3): the first-run walkthrough, one line per step, each under ~12 words. Step 4 says both ways two people play (pass & play
+   takes turns, versus is head to head); the brief's "Take turns on one phone" named only the first. */
+export const TUTORIAL = { next:'Next', skip:'Skip', replay:'Replay tutorial',
+  steps:[ 'Quick skill games. Hit targets to unlock more.', 'Start here.',
+    "Each game has modes. 15s and 30s are locked — you'll earn them.",
+    'Playing with someone? Take turns or go head to head.', 'Go.' ],
+  pickFirst:'Pick a mode, then Go.', locked:'Want to unlock this? Tap to see how.' };
 export const RESULT = { streakUnit:'<span class="unit">{word} reached</span>',
   practice:'practice', fail:'run over', best:'new best', pass:'pass & play', versus:'versus', dash:'—', lowerMark:'<span class="dn">▼</span>',
   rank:'rank <b>{n}</b> of 10 · {name}', outside:'outside the top 10 · {name}', you:'you', practiceNote:'practice · nothing recorded', twoNote:'two players · nothing recorded',

@@ -24,4 +24,45 @@ export async function run() {
   const lenTitle = await page.evaluate(() => document.querySelector('#len-title').textContent.trim());
   lenTitle === 'Mode' ? ok('L9 the length row is labelled Mode') : bad('L9 the length row is labelled Mode', lenTitle);
   await click('#grid'); await sleep(200);
+
+  /* build 62 (61.3): THE FIRST-RUN WALKTHROUGH, walked on a profile with no runs: five steps in order, each ringed in yellow and under
+     ~12 words, the tile step waiting for the tile itself, Go ending it; then the one tip on a locked mode after the first result, answered
+     by the lock box and its rule; Replay from Customise brings it back and Skip ends it for good */
+  {
+    await page.evaluate(() => { localStorage.clear(); localStorage.setItem('ne', JSON.stringify({ v: 7, prefs: { story: 1, gridSeen: 1, played: 1, snd: 'off' }, runs: [], ach: {}, unlock: {}, intro: { 'quick-tap': 1, 'quick-tap:two': 1 }, seen: {}, bars: {} })); });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(300); await click('[data-go="s-pick"]');
+    const C = await page.evaluate(async () => (await import('./config/copy.js')).TUTORIAL);
+    const box = () => page.evaluate(() => { const t = document.getElementById('tut'); if (!t || t.hidden) return null; const r = t.querySelector('.tring').getBoundingClientRect();
+      return { text: t.querySelector('p').textContent, next: !t.querySelector('.tnext').hidden, ring: [Math.round(r.width), Math.round(r.height)], col: getComputedStyle(t.querySelector('.tring')).borderTopColor }; });
+    const waitText = async (want, n = 80) => { for (let i = 0; i < n; i++) { const b = await box(); if (b && b.text === want) return b; await sleep(100); } return await box(); };
+    const seen = [];
+    seen.push(await waitText(C.steps[0])); await click('#tut .tnext');
+    seen.push(await waitText(C.steps[1])); await click('.tile[data-game="quick-tap"]');
+    seen.push(await waitText(C.steps[2])); await click('#tut .tnext');
+    seen.push(await waitText(C.steps[3])); await click('#tut .tnext');
+    await page.evaluate(() => document.querySelector('#diff-row .choice').click()); await sleep(450);
+    seen.push(await waitText(C.steps[4]));
+    const words = C.steps.map(s => s.split(/\s+/).filter(w => /\w/.test(w)).length);
+    const walked = seen.every((b, i) => b && b.text === C.steps[i]) && seen[1].next === false && seen[4].next === false && seen[0].next && words.every(n => n <= 12);
+    await click('#go-btn'); await sleep(500);
+    const after = await page.evaluate(() => ({ tut: JSON.parse(localStorage.getItem('ne')).prefs.tut, hidden: document.getElementById('tut').hidden, game: document.getElementById('game').classList.contains('on') }));
+    (walked && after.tut === 1 && after.hidden && after.game)
+      ? ok(`61.3 the walkthrough: ${C.steps.length} steps in order, each ${Math.max(...words)} words or fewer, ringed ${seen[0].col}; the tile step waits for the tile and Go ends it (tut 1)`)
+      : bad('61.3 the walkthrough', JSON.stringify({ seen, words, after }));
+    await click('#quit'); await sleep(400);
+    const tip = await waitText(C.locked, 120);
+    await page.evaluate(() => (document.querySelector('#over-chips2 .chip.locked') || document.querySelector('#over-chips .mch.locked')).click()); await sleep(400);
+    const rule = await page.evaluate(() => ({ box: document.getElementById('lockwrap').classList.contains('on') || getComputedStyle(document.getElementById('lockwrap')).display !== 'none', text: document.getElementById('lock-text').textContent.trim(),
+      tut: JSON.parse(localStorage.getItem('ne')).prefs.tut, hidden: document.getElementById('tut').hidden }));
+    (tip && tip.text === C.locked && rule.box && /\d/.test(rule.text) && rule.tut === 2 && rule.hidden)
+      ? ok(`61.3 after the first result one tip rings a locked mode; tapping it opens the lock box with its rule ("${rule.text.slice(0, 60)}") and the tutorial is done (tut 2)`)
+      : bad('61.3 the locked-mode tip', JSON.stringify({ tip, rule }));
+    await click('#lock-no'); await sleep(200);
+    await click('#tut-replay'); await sleep(300);
+    const again = await waitText(C.steps[0]); await click('#tut .tskip'); await sleep(250);
+    const skipped = await page.evaluate(() => ({ tut: JSON.parse(localStorage.getItem('ne')).prefs.tut, hidden: document.getElementById('tut').hidden }));
+    (again && again.text === C.steps[0] && skipped.tut === 2 && skipped.hidden)
+      ? ok('61.3 Replay tutorial (Customise) brings it back from step one, whatever has been played, and Skip ends it for good')
+      : bad('61.3 replay and skip', JSON.stringify({ again, skipped }));
+  }
 }
