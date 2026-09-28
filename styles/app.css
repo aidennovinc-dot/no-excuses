@@ -2144,6 +2144,11 @@
     wopen var(--w-open-ms,240ms) cubic-bezier(.2,.8,.25,1) var(--w-open-at,380ms) both}
   @keyframes wline{0%{transform:scaleX(.04) scaleY(.002);opacity:0}40%{opacity:1}100%{transform:scaleX(1) scaleY(.004);opacity:1}}
   @keyframes wopen{0%{transform:scaleX(1) scaleY(.004);opacity:1}100%{transform:scaleX(1) scaleY(1);opacity:1}}
+  /* build 62 (61.21): the picture is the chest card's powered-off player, so the frame round it is that player's own */
+  .wframe.wprev{border:0;border-radius:0;overflow:visible;display:flex;align-items:center}
+  .wstage:has(.wprev){aspect-ratio:auto}
+  .wstage .mprev{--mp-max:min(44vh,420px)}
+  .wstage,.wcard{cursor:pointer}
   .wcard{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;opacity:0;translate:0 10px;transition:opacity .26s ease-out,translate .26s ease-out}
   #welcome.wgo .wcard{opacity:1;translate:0 0}
   .wcard em{font-style:normal;font-family:var(--mono);font-size:9px;letter-spacing:.28em;text-transform:uppercase;color:var(--mute)}

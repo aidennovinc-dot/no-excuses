@@ -789,6 +789,20 @@ export async function run() {
       && !wc60.fx.empty && !wc60.fx.clash && wc60.fx.notes >= 3)
       ? ok(`60.33 the Welcome message gets a moment of its own - nothing at all before the first Quick Tap run opens the slot, then a full-screen ceremony carrying the player's own television intro (${wc60.up.steps.join(', ')}) and a card ("${wc60.up.label}" - "${wc60.up.title}", ${wc60.up.buttons.join(', ')}); PLAY hands the clip to the shared player, LATER closes it and leaves the Messages row green because the clip is still unwatched, it refuses while a run is live and spends nothing doing so, it fires exactly ONCE per save, and its ${wc60.fx.notes}-note sound is neither the unlock's, the achievement click nor a chest's`)
       : bad('60.33 the Welcome ceremony', JSON.stringify(wc60)); }
+  /* build 62 (61.21): THE WHOLE WELCOME CARD PLAYS IT, and its picture is a chest card's powered-off player. A REAL tap (by coordinates) on
+     the centre of the card starts the clip; a tap on the ground round it does nothing; LATER still closes it */
+  { const w61 = async () => page.evaluate(async () => { const W = await import('./ui/welcome.js'), S = await import('./core/store.js'), M = await import('./config/messages.js');
+      const slot = M.MESSAGES[0]; S.prefs.msgSeen = {}; delete S.prefs.welcomeSeen; S.store.runs = [{ t: Date.now(), g: slot.by.run.g, d: 'two', s: slot.by.run.s, hits: 12, misses: 0, v: 4 }]; S.save();
+      W.welcomeCheck(false); await new Promise(r => setTimeout(r, M.PLAYER.on.ms + 700)); const h = document.getElementById('welcome'), c = h.querySelector('.wcard').getBoundingClientRect();
+      return { look: !!h.querySelector('.wstage .mprev .mpframe .mpplay'), card: [c.x + c.width / 2, c.y + c.height * .3] }; });
+    const a = await w61(); await page.mouse.click(8, 8); await sleep(250);
+    const ground = await page.evaluate(() => !document.getElementById('welcome').hidden);
+    await page.mouse.click(a.card[0], a.card[1]); await sleep(600);
+    const played = await page.evaluate(() => { const vp = document.getElementById('vplay'); return { closed: document.getElementById('welcome').hidden, player: !!vp && !vp.hidden }; });
+    await page.evaluate(async () => (await import('./ui/video.js')).closeVideo()); await sleep(700);
+    (a.look && ground && played.closed && played.player)
+      ? ok('61.21 the Welcome card wears a chest reward video\'s powered-off player (frame, glow, play mark); a tap on the middle of the card plays the clip, and a tap on the ground round it does nothing — LATER is the only way to skip')
+      : bad('61.21 the Welcome card', JSON.stringify({ a, ground, played })); }
 
   /* ---- v31 (60.32, build 60): A CLIP THAT FINISHES CLOSES ITSELF ----
      It dimmed its glow and held the last frame inside a lit frame until the player tapped outside, which reads as the thing

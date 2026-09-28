@@ -1582,6 +1582,12 @@ scene('61.20', async (page, browser) => {
   say('bg', await page.evaluate(async () => (await import('./core/store.js')).look('bg')));
 });
 
+scene('61.21', async (page, browser) => {
+  await load(page, {}, { runs: [{ t: Date.now(), g: 'quick-tap', d: 'two', s: 5, hits: 14, misses: 0, v: 4 }] });
+  await page.evaluate(async () => { const W = await import('./ui/welcome.js'); W.welcomeCheck(false); }); await sleep(1600);
+  await frame(page, browser, '61.21-welcome-card', 'The Welcome card: the picture is a chest reward video waiting to play (frame, glow, play mark); the whole card plays it, LATER skips');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

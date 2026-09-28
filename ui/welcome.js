@@ -28,6 +28,7 @@ import { prefs, save } from "../core/store.js";
 import { msgOpen, msgTitle } from "../progress/key.js";
 import { define } from "./actions.js";
 import { playVideo } from "./video.js";
+import { msgPreview } from "./chest.js";
 
 let host = null, ts = [];
 const clearT = () => { ts.forEach(clearTimeout); ts = []; };
@@ -50,8 +51,12 @@ function playWelcome() {
   const m = slotOf(); if (!m) return false;
   build(); clearT();
   for (const s of PLAYER.on.steps) { host.style.setProperty('--w-' + s.name + '-at', s.at + 'ms'); host.style.setProperty('--w-' + s.name + '-ms', s.ms + 'ms'); }
-  host.innerHTML = `<div class="wstage"><i class="wframe"><i class="wpic"></i></i></div>`
-    + `<div class="wcard" data-act="wcard">`
+  /* build 62 (61.21): THE WHOLE CARD PLAYS IT, and it looks like a chest reward video. The picture was a blank grey gradient and only the PLAY
+     button started the clip — a tap on the card did nothing and a tap on the picture closed the lot. Now the picture is the powered-off
+     player a chest's card shows (msgPreview: framed, the chest glow on its edge, the play mark in the middle), the picture and the card both
+     play, and LATER is the only way to skip — a tap on the ground round them does nothing. */
+  host.innerHTML = `<div class="wstage" data-act="wplay"><i class="wframe wprev">${msgPreview(m, { title: false })}</i></div>`
+    + `<div class="wcard" data-act="wplay">`
     + `<em>${esc(WELCOME.from)}</em><b>${esc(msgTitle(m) || WELCOME.fallback)}</b>`
     + `<div class="wrow"><button class="item wplay" data-act="wplay">${esc(WELCOME.play)}</button>`
     + `<button class="item sub wlater" data-act="wlater">${esc(WELCOME.later)}</button></div></div>`;
@@ -78,7 +83,8 @@ function welcomeCheck(live) {
 }
 
 define({
-  wclose() { closeWelcome(); return 'click'; },
+  // build 62 (61.21): LATER is the only way out — the ground round the card no longer closes it
+  wclose() { return undefined; },
   // a tap on the card itself does nothing: the two buttons are the only way out, so neither is missed by a stray tap
   wcard() { return 'pick'; },
   wplay() { const m = slotOf(); closeWelcome(); if (m) playVideo(m); return 'click'; },
