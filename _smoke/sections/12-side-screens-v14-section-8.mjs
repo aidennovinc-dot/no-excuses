@@ -146,4 +146,18 @@ export async function run() {
       ? ok(`61.9 under a "${pro.heads[0]}" header no row repeats the game's name (${pro.rows.length} Pro chest rows)`)
       : bad('61.9 the game name repeated under its header', JSON.stringify(pro.rows.filter(r => r.game).slice(0, 3)));
   }
+  /* 61.10: each Quick Tap row on the Pro chest draws ITS best ÷ ITS target — three different bests give three different bars, each the
+     ratio, read against Aiden's Pro targets in config (never a copy of them) */
+  {
+    const KB = await import(pathToFileURL(path.join(root, 'config', 'key-bars.js')).href), B = KB.KEY_BARS;
+    const bests = { 'quick-tap:two:5': 11, 'quick-tap:two:15': 20, 'quick-tap:four:5': 6 }, t0 = Date.now() - 5000;
+    const runs = Object.entries(bests).map(([k, h], i) => { const [g, d, s] = k.split(':'); return { t: t0 + i, g, d, s: +s, hits: h, misses: 0, v: 4 }; });
+    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS, chests: { games: 1, key: 1, pro: 1, thorns: 1 } }, runs, ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    const pro = await tab62('c-pro'), K = await page.evaluate(async () => (await import('./progress/key.js')).keyAch().filter(a => a.kt === 'pro' && a.combo).map(a => ({ key: a.combo, id: a.id })));
+    const got10 = Object.keys(bests).map(k => { const id = (K.find(c => c.key === k) || {}).id, row = pro.rows.find(r => r.id === id); return { k, want: Math.round(Math.min(.99, bests[k] / B[k].pro) * 100) + '%', bar: row && row.bar }; });
+    (got10.every(x => x.bar === x.want) && new Set(got10.map(x => x.bar)).size === 3)
+      ? ok(`61.10 each Pro chest row's bar is its best ÷ its target: ${got10.map(x => x.k.replace('quick-tap:', '') + ' ' + x.bar).join(', ')} — no longer one capped ~88% for every row`)
+      : bad('61.10 the row bars', JSON.stringify(got10));
+  }
 }

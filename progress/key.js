@@ -169,6 +169,13 @@ function credit(c, tier = 'clear') { if (isCleared(c.key, tier)) return 1;
   if (!bar || !best) return 0;
   const ratio = c.bar.dir === 'lower' ? bar / best : best / bar;
   return Number.isFinite(ratio) ? Math.max(0, Math.min(0.9, ratio)) : 0; }
+/* build 62 (61.10): A ROW'S BAR IS ITS OWN BEST ÷ ITS OWN TARGET. The chest rows drew credit(), which stops at 0.9 ON PURPOSE (the last stretch
+   of the meter is real clearing) — so every row a player was within a tenth of drew the same ~88% bar, whatever the row. Uncapped here, and
+   short of full only until the bar is actually cleared. */
+function rowCredit(c, tier) { if (isCleared(c.key, tier)) return 1;
+  const bar = barOf(c, tier), best = bestOf(c); if (bar === null || best === null || !bar || !best) return 0;
+  const r = c.bar.dir === 'lower' ? bar / best : best / bar;
+  return Number.isFinite(r) ? Math.max(0, Math.min(0.99, r)) : 0; }
 // the number for one tier. `done` and `total` come with it because the keys screen shows both (A.6.5, amended by B.15)
 function keyPct(tier = 'clear') { const st = keyState(tier);
   if (isShell(tier)) return { done: 0, total: 0, pct: 0, tier };
@@ -401,7 +408,7 @@ function keyAch() { const out = [];
     for (const c of COMBOS) { if (!c.bar) continue; const r = rosterRow(c, tier);
       out.push(Object.assign({ id: r.id, g: c.g, tier: `key${i + 1}`, kt: tier, combo: c.key, name: r.name,
         how: tierOpen(tier) ? wantOf(c, tier) : T(KEY_ACH.shut, { key: k.name }), at: MODE_NAME[c.d] ? { d: c.d, s: c.s } : { s: c.s },
-        test: () => tierOpen(tier) && !isShell(tier) && isCleared(c.key, tier), progress: () => credit(c, tier) }, r.unlocks ? { unlocks: r.unlocks } : {})); }
+        test: () => tierOpen(tier) && !isShell(tier) && isCleared(c.key, tier), progress: () => rowCredit(c, tier) }, r.unlocks ? { unlocks: r.unlocks } : {})); }
     for (const g in GAMES) out.push({ id: `key_${tier}_${g}`, g, tier: `key${i + 1}`, kt: tier, name: T(KEY_ACH.game, { game: GAMES[g].name, key: k.name }), how: T(KEY_ACH.gameHow, { game: GAMES[g].name, key: k.name }), at: {},
       test: () => { const k = gameKey(g, tier); return tierOpen(tier) && !isShell(tier) && k.total > 0 && k.done === k.total; } });
     out.push({ id: `key_${tier}_all`, g: 'all', tier: `key${i + 1}`, kt: tier, name: T(KEY_ACH.whole, { key: k.name }), how: T(KEY_ACH.wholeHow, { key: k.name }),
