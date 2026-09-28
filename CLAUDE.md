@@ -49,7 +49,7 @@ having written nothing. Gate checks read bars and names from `config/`, never a 
 - **Seconds live on the pick sheet as a subtitle, never on the result screen**; lengths are named (Sprint, Dash, Marathon, Set, Streak).
 - **Every Go button says Go**, versus too (`goLabel`). **Try to unlock lands on the highest open mode and length** (`whereOf` in `run/run.js`).
 - **One colour for "this is what you chose"** — `--press` (v22 §K); the pressed tile keeps its amber until a mode is chosen (`.grid.chosen`); `.picked` keeps `--ok`.
-- **A newly unlocked MODE is green until a run of it is on record** (`newPlay`); selected beats green (D.1 / D.2).
+- **A newly unlocked MODE or LENGTH is green until a run of it is on record** (`newPlay(g,d,s)`), on the sheet and the result screen's chips alike (62.13); selected beats green (D.1 / D.2).
 - **No player colour is ever written where customisation lives** — only Customise's swatch and wheel write `prefs.col`; a game is white until coloured (F.4, L4).
 - **A new game is one entry in `GAMES`** (`config/games.js`), an engine in `games/`, formatters in `ui/format.js` and a quality predicate in `progress/rules.js`, all under one id.
 
@@ -92,6 +92,7 @@ having written nothing. Gate checks read bars and names from `config/`, never a 
 - **Testing: a switch and a reset per chest, plus "set meter to N%", and each leaves the game where PLAY would** (G.8 / L.8f, S5): `devReach` / `devOpen` / `devBack` / `devMeterTo`, `devModesAll`; no snapshot, no override.
 - **Testing is on the menu from the first load; `TARGET` in `config/build.js` strips it from the native build** (`npm run native`, `[data-dev]` cut, A.3, S5).
 - **Customise and Keys are LOCKED until the Games chest opens** (L.11a, v24 A.1): crossed out, defaults apply meanwhile (`look()` / `lookCol()` / `opened()`).
+- **Scores, Progress and About are locked until the walkthrough's last box** banks Off the Rails (`tutDone()` in `ui/tutorial.js`, 62.14); a pre-build-64 profile that played counts as done.
 - **Every home menu item is green from available until opened once** (`prefs.menuOpened`, D.5); Fresh game clears it; Testing never green.
 - **The front % counts up when it has risen** (`prefs.meterSeen`, `core/count.js`, one of seven whooshes, D.4 / L.8e).
 
@@ -118,13 +119,15 @@ having written nothing. Gate checks read bars and names from `config/`, never a 
 **Screens and presentation**
 - **Customise is its own screen; Progress is ONE TAB PER CHEST** (58.3): Games · Skill · Pro · Author chest, Customise unlocks, Achievements; each chest tab opens with what it needs (`chestNeeds()`); one partition, `tabFor()` in `ui/screens/progress.js`; `prefs.progTab` `c-<chest>` / `cul` / `ach`.
 - **R3: a list appears the moment it is asked for** — no entry animation on any Progress tab or filter (v28 item 1). No secrets (61.14): every row shows its name and what earns it; Achievements is one flat list (61.13); a score-target row has no name (61.12).
-- **Each Progress tab says `N of M unlocked`** (v28 item 4). **Every Customise-unlock row shows the thing it unlocks** (`unlockArt()`, v28 item 6). **A Progress label is white until earned, green once, never red** (L.2).
+- **Each Progress tab says `N of M unlocked`** (v28 item 4); the Games chest's line is its 13 modes, "Streak not counted" (A1). **Every Customise-unlock row shows the thing it unlocks** (`unlockArt()`, v28 item 6). **A Progress label is white until earned, green once, never red** (L.2).
 - **A locked cosmetic says what opens it UNDER its own row** (one `.lockline` per `.cgroup`, B.30).
 - **The version label shows on the HOME MENU only; the build stamp is drawn behind every screen** (`#build` at `z-index:0`, every scroller ends with a `--stampclear` `::after`).
+- **No background draws in the status-bar strip (A2), and html / body wear the layer's own bottom colour (`--underlay`, 62.15)**, so a strip the fixed layer misses on a phone is no `--ground` band.
 - **Nothing scrolls under the phone's clock, nothing in a run sits flush on the safe area** (`clip-path:inset(env(safe-area-inset-top) …)`, items 8 / 19). **The map is the phone's width and never scrolls sideways** (item 10).
 - **The game-select grid is a snake placed from `Object.keys(GAMES)`**; lines measured by `offsetLeft` / `offsetTop`; the Games chest is the last stop and the key chests sit under it in one column (L.10c).
-- **A sound tied to an animation reads the animation** (`getComputedTiming().delay`, items 1 / 2): the title's four beats (`TITLE_FX`, one impact each) and the map's first open, drawn out to ~7s once (`MAP_INTRO`, `introAt()`).
-- **The About screen carries eight message slots, as data** (`config/messages.js`, `msgOpen()`, `msgShown()`): four kinds of lock — `run`, `chest`, `gauntlet`, `support` (`prefs.paid`, nothing writes it); a Gauntlet's row is absent until its Gauntlet is out (R1); an unwatched real clip pulses.
+- **A sound tied to an animation reads the animation** (`getComputedTiming().delay`, items 1 / 2): the title's four beats (`TITLE_FX`, one impact each) and the map's first open, drawn out to ~3.5s once (`MAP_INTRO`, `introAt()`, halved at 62.1), its sounds × `MAP_INTRO_GAIN` (62.2).
+- **The first-run walkthrough owns every tap while it is up** (`ui/tutorial.js`, 62.3–62.11): Aiden's 12 boxes on the map (Dots / Quick Tap / Two / Sprint the only live taps, lines quoting a rule built from config), a first run with no Exit or Restart, 8 boxes on its result; one centred box, no Skip; `prefs.tut` / `prefs.tutRun` resume it; Replay is in Testing (62.5).
+- **The About screen carries eight message slots, as data** (`config/messages.js`, `msgOpen()`, `msgShown()`): five kinds of lock — `run`, `chest`, `gauntlet`, `support` (`prefs.paid`, nothing writes it), `game` (Welcome waits for Dots, 62.12); a Gauntlet's row is absent until its Gauntlet is out (R1); an unwatched real clip pulses.
 - **Every message plays in ONE shared player that switches on like a television** (`ui/video.js`, `PLAYER`): 16:9, inset `PLAYER.inset`%, glow in the unlocking chest's colour, captions below off a hidden track, nothing over the picture; power-on / power-off are named steps (`VIDEO_FX`); a clip that finishes closes itself (60.32); every slot points at `video/test-card.mp4` until a real clip exists.
 - **The Welcome video gets a ceremony of its own** (60.33, `ui/welcome.js`, `wplay` / `wlater` / `wclose`).
 

@@ -1495,3 +1495,45 @@ Every other achievement's name is a title in one gold, `--gold` #F2C14E, over 10
 with a true count; there are no secrets — every row says its name and what earns it, and "???" is left only where a chest is still shut. A
 Customise-unlock row is three lines: the thing and its name, the requirement with its mode words taken off the front, and → game · mode ·
 length; the name as shown loses trailing mode words (config keeps it whole); a whole-number percentage drops its decimals everywhere.
+
+## Build 64 (FEEDBACK-v33, 2026-09-29): the rules this build added or amended, in full
+
+**The first-run walkthrough, rewritten (62.3–62.11, REPLACING 61.3's five steps and its after-result tip).** `ui/tutorial.js`. Twelve boxes on
+the games menu in Aiden's words (`TUTORIAL.steps`, typos fixed only): welcome, the list, most are locked, tap Dots (its lock box opens, moved
+to the top half with its buttons hidden, and box 5 says its rule back), tap Quick Tap (ringed, "Start here" on the ring), the variants, tap
+Two, the modes, only Sprint is open, With a friend (ringed, not tappable — it lives on the variant step, so the player row is shown on the
+length step for that box and the next, Cowork's call), tap Sprint — which starts the run, no box for Go. Boxes 5 and 10 are built from the
+Dots unlock rule in `config/unlocks.js` and Quick Tap's lengths, never a typed 35 or 5. Then eight boxes on the first result
+(`TUTORIAL.over`): TRY AGAIN and the second length ringed, an arrow at BACK, none of them live. **The walkthrough owns every tap while it is
+up** — one capture ahead of `ui/actions.js`: before its first box and between boxes nothing responds (62.3 — a tap on a game while the map
+drew in opened its sheet and the walkthrough never showed); a box that asks for a tap lets that one through; any other box moves on at a tap
+anywhere, and that tap reaches nothing under it (62.4 / 62.8). No Skip. One box, centred between the safe areas, the same spot every time
+(min-height); a target it would cover is scrolled clear (62.7). A box about the whole list draws no ring (62.6). It stands aside for an
+overlay that owns the screen (Welcome, the video player, an ad) and for a challenge link, and a profile that has played never meets it.
+
+**The first run (62.10).** No Exit and no Restart on it (`#game.tutrun`). `prefs.tut`: 0 not yet, -1 asked for again (Testing), 1 first run
+recorded with its result's boxes to come — `prefs.tutRun` holds that run so a reopened app emits its `run:record` / `run:finish` again and
+lands on the result at box one — 2 done. Closed mid-run nothing is recorded and it starts from box one. Both are preferences: Fresh game
+keeps them, so a player gets the walkthrough once. Replay is a chip in Testing, not a row in Customise (62.5).
+
+**Off the Rails (62.14).** `ACH` row `rails`, `noRun`, `gives` "Scores · Progress · About" (the Achievements row's own line, `ACH_SCREEN.gives`),
+banked on the last box's tap with its toast; `ACH_TEST.rails` is false, so no run earns it. Scores, Progress and About are locked until it —
+`firstRun()` in `ui/screens/menu.js` reads `tutDone()` where it read "one run on record" (no L-ID pinned that rule). `tutDone()` also counts a
+profile from before build 64 that played and never met the walkthrough, and a build-62 profile left on its old tip. Fresh game re-banks
+Off the Rails silently when the walkthrough is already done. Customise and Keys still wait for the Games chest.
+
+**The Welcome message waits for Dots (62.12).** A fifth kind of lock, `{ game }` — any mode of that game open, read the strict way
+(`gameUnlocked()` in `progress.js`, a challenge link opens nothing); About's locked line is "opens when you unlock Dots".
+
+**Green until played, lengths too (62.13).** `newPlay(g,d,s)`: a banked length (the three-part key `bankLen` writes) with no run of it is green
+on the sheet's length row and the result screen's length chips, and a never-played mode is green on the result screen's mode chips, until a
+run of it is on record. The result screen never asked `newPlay` before; its chips carried L8's once-only first-seen mark, spent on the draw.
+
+**The background layer, two more (A2, 62.15).** The status-bar strip is one more thing the layer clears (outright, with a 16px fade under it),
+on every screen and background. And html / body take `--underlay`, the colour the layer paints at its bottom-left corner when it is opaque
+(read twice a second), so a strip the fixed canvas does not reach on an installed iPhone app — which desktop Chrome with the insets emulated
+cannot show — is the layer's own colour rather than a band of `--ground`.
+
+**Smaller.** The map's first open is twice as fast, connectors included (`MAP_INTRO` halved, `lineMs`); its sounds are × `MAP_INTRO_GAIN`
+(2.6, tune by ear), locked tiles still muted by `MAP_LOCKED`. The Games chest tab's line counts the 13 modes the chest opens on, "Streak not
+counted" on a second line (A1).

@@ -30,6 +30,7 @@ check are in `../CLAUDE.md` → The gate.
   Each is skipped BY NAME when it is not there (`... — SKIPPED: ../_review is not in this checkout`), and its section keeps every
   other check it has, so `npm test` passes on a clone of `site` alone — which is what Codemagic gets.
 
+- **Build 64 (FEEDBACK-v33) added no section.** Its checks sit with their features: `locked decisions` 62.3–62.11 / 62.14 (the walkthrough, rewritten) · `side screens` A1 · `keys` A2 / 62.1 / 62.15 / 62.12 · `build 46` 62.2 · `chests` 62.12 · `chain` 62.13.
 - **Build 62 (FEEDBACK-v32) added no section.** Its checks sit with their features: `runs` 61.1 / 61.2 / 61.20 · `locked decisions` 61.3 · `keys` 61.6 / 61.7 / 61.11 / 61.22 · `side screens` 61.9–61.16 / 61.18 / 61.26 · `build 38` and `build 44` 61.4 / 61.5 / 61.28 · `music` 61.19 · `chests` 61.21 / 61.23 · `build 37` 61.24 / 61.25.
 
 | `--only` | Section, as printed | Stands for |
