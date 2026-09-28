@@ -138,7 +138,8 @@ function achRow(a,tab,{g,all,fsGame,fresh}){
   /* v28 (item 1 / R3, build 53): NO ENTRY ANIMATION ON A LIST. The earned rows used to slide in on a 70ms stagger, so a tab or a filter
      tap painted over about a second. Motion belongs to rewards, not to menus. */
   const nw=isDone?newMark('ach:'+a.id,fresh):'';
-  const cls=`${isDone?'done':'lock'}${nw} ${jump?'jump':''}`, name=secret?ACH_SCREEN.hidden:a.name;
+  // build 62 (61.15): an achievement's own name is a TITLE, in gold, wherever it is shown (a nameless score-target row has none)
+  const cls=`${isDone?'done':'lock'}${nw} ${jump?'jump':''}`, name=secret?ACH_SCREEN.hidden:`<b class="aname">${esc(a.name)}</b>`;
   // v23 (L.4d): what it unlocks first, white until earned and green once (L.2); the achievement and its criterion under it
   // build 62 (61.12): a score-target row is its mode and length and what it asks — no name, no second line, no → line
   if(nameless(a)&&tab!=='cul') return `<button data-act="ach" class="a nameless ${cls}" data-ach="${a.id}" id="${tab}-${a.id}"><span>${isDone?'✓ ':''}${esc(achWhere(a,' · '))} — ${line}</span><em>${isDone?ACH_SCREEN.done:''}</em>${bar}</button>`;

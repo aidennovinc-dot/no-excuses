@@ -173,4 +173,19 @@ export async function run() {
       ? ok(`61.12 a score-target row reads "${r12.title}" with no name ("${t12.name}" is still in config) and toasts "${t12.toast}"; "${t12.named}" keeps its name`)
       : bad('61.12 nameless score-target rows', JSON.stringify({ r12, t12 }));
   }
+  /* 61.15: every achievement NAME is gold — Achievements, Customise unlocks and the toast — one token, at least 4.5:1 on every design's ground;
+     a nameless row has no gold at all */
+  {
+    const TH = await import(pathToFileURL(path.join(root, 'config', 'theme.js')).href);
+    const ach = await tab62('ach'), cul = await tab62('cul'), pro = await tab62('c-pro');
+    const g15 = await page.evaluate(async () => { const P = await import('./progress.js'), a = P.achAll().find(x => x.unlocks), d = document.createElement('div'); d.innerHTML = P.achToast(a); document.body.appendChild(d);
+      const c = getComputedStyle(d.querySelector('.aname')).color; d.remove(); const tok = getComputedStyle(document.documentElement).getPropertyValue('--gold').trim();
+      const t = document.createElement('i'); t.style.color = tok; document.body.appendChild(t); const rgb = getComputedStyle(t).color; t.remove(); return { toast: c, rgb, tok }; });
+    const lum = h => { const n = h.match(/[\da-f]{2}/gi).map(x => parseInt(x, 16) / 255).map(v => v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4)); return .2126 * n[0] + .7152 * n[1] + .0722 * n[2]; };
+    const ratios = Object.entries(TH.DESIGNS).map(([k, v]) => [k, +((lum(g15.tok) + .05) / (lum(v.tint) + .05)).toFixed(1)]);
+    const named = ach.rows.concat(cul.rows);
+    (named.length && named.every(r => r.gold.length === 1 && r.gold[0] === g15.rgb) && g15.toast === g15.rgb && pro.rows.filter(r => r.title.includes(' — ')).every(r => !r.gold.length) && ratios.every(([, r]) => r >= 4.5))
+      ? ok(`61.15 every achievement name is ${g15.tok} (${named.length} rows and the toast); nameless rows carry none; contrast on every design's ground ${ratios.map(([k, r]) => k + ' ' + r).join(', ')}`)
+      : bad('61.15 gold names', JSON.stringify({ g15, ratios, off: named.filter(r => r.gold[0] !== g15.rgb).slice(0, 3) }));
+  }
 }

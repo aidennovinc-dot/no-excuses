@@ -67,7 +67,7 @@
   :root{
     --ground:#050506; --ink:#E8E6E1; --mute:#6E6C68;
     --panel:color-mix(in srgb,var(--ground) 94%,#fff); --line:color-mix(in srgb,var(--ground) 86%,#fff); --sq:color-mix(in srgb,var(--ground) 90%,#fff);
-    --sq-live:#FFFFFF; --cue:#C8322A; --miss:#B3261E; --ok:#3DD68C; --tut:#FFD84D;
+    --sq-live:#FFFFFF; --cue:#C8322A; --miss:#B3261E; --ok:#3DD68C; --tut:#FFD84D; --gold:#F2C14E;
     --glow:rgba(232,230,225,.30);
     --stamp:11px; --stampat:max(6px,env(safe-area-inset-bottom)); --stampclear:calc(var(--stampat) + var(--stamp) + 16px);
     --title:"Syncopate","Michroma",var(--display); --display:"Archivo",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
@@ -1180,6 +1180,9 @@
   #tut .trow .tnext{color:var(--tut)}
   #tut .trow [hidden]{display:none}
   #tut-replay{margin-top:18px}
+  /* build 62 (61.15): ONE gold for every achievement name — the Achievements tab, Customise unlocks and the unlock toast. #F2C14E is over 10:1
+     against every key theme's ground (Lantern #1A1024, Circuit #05080E, Thorn #020202), and the art is cleared from behind text (61.7) */
+  .aname{color:var(--gold);font-weight:inherit}
   /* build 62 (61.11): "Play …?" over a requirement list. The dim closes it; the list under it is never re-drawn */
   #askplay{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.6);display:grid;place-items:center;padding:16px}
   #askplay[hidden]{display:none}

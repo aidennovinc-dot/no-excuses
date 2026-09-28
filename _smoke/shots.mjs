@@ -1565,6 +1565,11 @@ scene('61.14', async (page, browser) => {
   await frame(page, browser, '61.14-no-secrets', 'Achievements, the old Secret rows: every one named and saying what earns it, no ???, no SECRET label');
 });
 
+scene('61.15', async (page, browser) => {
+  await load(page, { ...CHESTS_OPEN, bg: 'lantern' }); await show(page, 's-prog', { tab: 'ach' }); await sleep(900);
+  await frame(page, browser, '61.15-gold-names', 'Achievements on the Lantern background: every name in one gold');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

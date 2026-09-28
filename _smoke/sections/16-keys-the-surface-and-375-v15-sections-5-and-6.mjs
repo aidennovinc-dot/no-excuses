@@ -734,12 +734,15 @@ export async function run() {
   {
     await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS, keySeen: 1, chests: { games: 1, key: 1, pro: 1, thorns: 1 } }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
-    const lay = await page.evaluate(async () => { const AT = await import('./ui/atmosphere.js'), R = await import('./ui/router.js'), TH = await import('./config/theme.js');
+    const lay = await page.evaluate(async () => { const AT = await import('./ui/atmosphere.js'), R = await import('./ui/router.js'), TH = await import('./config/theme.js'), KY = await import('./config/keys.js');
       const w = ms => new Promise(r => setTimeout(r, ms)), cv = document.getElementById('stars'), cx = cv.getContext('2d', { willReadFrequently: true });
       R.show('s-key', { tier: 2 }); await w(500); const out = {};
       for (const style of ['lantern', 'circuit', 'thorn']) { AT.setKeyLayer(style); await w(900);
         const cr = cv.getBoundingClientRect(), k = cv.width / cr.width, els = [...document.querySelectorAll('#s-key button, #s-key .krow, #s-key p, #s-key .eyebrow')].filter(e => e.getBoundingClientRect().height > 0);
-        const lit = els.filter(e => { const r = e.getBoundingClientRect(); const d = cx.getImageData(Math.round((r.x + r.width / 2 - cr.left) * k), Math.round((r.y + r.height / 2 - cr.top) * k), 1, 1).data; return d[3] > 255 * (1 - TH.BG_LAYER.clear) + 8; });
+        // cleared: see-through, or — on a layer that paints its own opaque sky (Lantern) — that plain sky and nothing drawn on it
+        const sky = (KY.KEY_LAYER[style].sky || '').split(',').map(Number);
+        const lit = els.filter(e => { const r = e.getBoundingClientRect(); const d = cx.getImageData(Math.round((r.x + r.width / 2 - cr.left) * k), Math.round((r.y + r.height / 2 - cr.top) * k), 1, 1).data;
+          return d[3] > 255 * (1 - TH.BG_LAYER.clear) + 8 && !(sky.length === 3 && sky.every((v, i) => Math.abs(d[i] - v) <= 8)); });
         out[style] = { n: els.length, lit: lit.map(e => e.id || e.className).slice(0, 4) }; }
       AT.setKeyLayer(null); const cr = cv.getBoundingClientRect();
       return { out, pe: getComputedStyle(cv).pointerEvents, covers: cr.top <= 0 && cr.bottom >= innerHeight && cr.width >= innerWidth - 1 }; });

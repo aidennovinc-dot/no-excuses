@@ -175,7 +175,9 @@ function measure(){ holes=[]; holesT=performance.now(); if(inRun) return;
     const r=el.getBoundingClientRect(); if(!r.width||!r.height||r.bottom<0||r.top>vh||r.width*r.height>big) continue;
     if(getComputedStyle(el).visibility==='hidden') continue;
     holes.push([(r.left-p-cvLeft)*dpr,(r.top-p-cvTop)*dpr,(r.width+p*2)*dpr,(r.height+p*2)*dpr]); } }
-function punch(){ if(!holes.length) return; cx.save(); cx.globalCompositeOperation='destination-out'; cx.globalAlpha=BG_LAYER.clear; cx.fillStyle='#000';
+// a layer that lays down its own opaque sky (Lantern) has its holes filled with that sky — clearing them would show --ground through as cards
+function punch(ly){ if(!holes.length) return; const sky=ly&&KEY_LAYER[ly]&&KEY_LAYER[ly].sky; cx.save();
+  cx.globalCompositeOperation=sky?'source-over':'destination-out'; cx.globalAlpha=BG_LAYER.clear; cx.fillStyle=sky?`rgb(${sky})`:'#000';
   cx.beginPath(); for(const [x,y,w,h] of holes){ if(cx.roundRect) cx.roundRect(x,y,w,h,8*dpr); else cx.rect(x,y,w,h); } cx.fill(); cx.restore(); }
 function draw(t){ if(paused){ running=false; return; }
   if(inRun&&(odd=!odd)){ requestAnimationFrame(draw); return; }
@@ -186,7 +188,7 @@ function draw(t){ if(paused){ running=false; return; }
   if(!ly) (DRAW[bg]||DRAW.stars)(t);
   if(ly){ if(!geo) geo=build(); LAYER[ly](t); }
   cx.globalAlpha=1;
-  if(inRun){ cx.fillStyle=`rgba(0,0,0,${BG_LAYER.dim})`; cx.fillRect(0,0,W,H); } else punch();
+  if(inRun){ cx.fillStyle=`rgba(0,0,0,${BG_LAYER.dim})`; cx.fillRect(0,0,W,H); } else punch(ly);
   requestAnimationFrame(draw); }
 function resume(){ if(running) return; running=true; requestAnimationFrame(draw); }
 function startAtmosphere(){ addEventListener('resize',size); size(); running=true; draw(0); }
