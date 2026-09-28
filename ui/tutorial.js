@@ -29,7 +29,8 @@ const mapSettled=()=>!$('#grid').getAnimations({subtree:true}).some(a=>{ try{ re
 
 /* each step: where it lives, what it rings, and whether a Next button moves it on (a step without one waits for the player) */
 const STEPS=[
-  { ok:()=>onScreen('s-pick')&&!sheetUp()&&mapSettled(), el:()=>$('#grid'), text:0, next:1 },
+  // build 64 (62.6): `ring:0` — a step about the whole list draws no outline round it ("there's no point"); a step with one thing to tap keeps it
+  { ok:()=>onScreen('s-pick')&&!sheetUp()&&mapSettled(), el:()=>$('#grid'), text:0, next:1, ring:0 },
   { ok:()=>onScreen('s-pick')&&!sheetUp()&&mapSettled(), el:()=>$('#grid .tile[data-game="quick-tap"]'), text:1 },
   { ok:()=>onScreen('s-pick')&&sheetUp(), el:()=>vis($('#time-row'))?$('#time-row'):$('#diff-row'), text:2, next:1 },
   { ok:()=>onScreen('s-pick')&&sheetUp(), el:()=>$('#vs-wrap'), text:3, next:1 },
@@ -41,8 +42,8 @@ function build(){ if(host) return host;
   host.innerHTML='<div class="tring"></div><div class="tbox" data-act="tut-box"><p></p><div class="trow"><button class="tskip" data-act="tut-skip"></button><button class="tnext" data-act="tut-next"></button></div></div>';
   document.body.appendChild(host); host.querySelector('.tskip').textContent=TUTORIAL.skip; host.querySelector('.tnext').textContent=TUTORIAL.next; return host; }
 function hide(){ if(host) host.hidden=true; }
-function place(el,text,next){ const h=build(), r=el.getBoundingClientRect(), pad=6, ring=h.querySelector('.tring'), box=h.querySelector('.tbox');
-  h.hidden=false; h.querySelector('p').textContent=text; h.querySelector('.tnext').hidden=!next;
+function place(el,text,next,noRing){ const h=build(), r=el.getBoundingClientRect(), pad=6, ring=h.querySelector('.tring'), box=h.querySelector('.tbox');
+  h.hidden=false; h.querySelector('p').textContent=text; h.querySelector('.tnext').hidden=!next; ring.hidden=!!noRing;
   Object.assign(ring.style,{ left:(r.left-pad)+'px', top:(r.top-pad)+'px', width:(r.width+pad*2)+'px', height:(r.height+pad*2)+'px' });
   const bw=Math.min(320,innerWidth-32), bh=box.offsetHeight||90, below=r.bottom+pad+12, fitsBelow=below+bh<innerHeight-24;
   const top=fitsBelow?below:Math.max(16,r.top-pad-12-bh), left=Math.max(16,Math.min(innerWidth-16-bw,r.left+r.width/2-bw/2));
@@ -62,7 +63,7 @@ function tick(){
   if(step===1&&sheetUp()) step=2;
   const s=STEPS[step]; if(!s||!s.ok()) return hide();
   const el=s.el(); if(!vis(el)) return hide();
-  place(el,step===4&&el.id!=='go-btn'?TUTORIAL.pickFirst:TUTORIAL.steps[s.text],!!s.next); }
+  place(el,step===4&&el.id!=='go-btn'?TUTORIAL.pickFirst:TUTORIAL.steps[s.text],!!s.next,s.ring===0); }
 function stop(){ clearInterval(timer); timer=0; }
 function run(){ if(!timer&&prefs.tut!==2) timer=setInterval(tick,200); }
 

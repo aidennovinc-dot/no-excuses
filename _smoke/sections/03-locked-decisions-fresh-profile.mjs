@@ -36,7 +36,7 @@ export async function run() {
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(300); await click('[data-go="s-pick"]');
     const C = await page.evaluate(async () => (await import('./config/copy.js')).TUTORIAL);
     const box = () => page.evaluate(() => { const t = document.getElementById('tut'); if (!t || t.hidden) return null; const r = t.querySelector('.tring').getBoundingClientRect();
-      return { text: t.querySelector('p').textContent, next: !t.querySelector('.tnext').hidden, ring: [Math.round(r.width), Math.round(r.height)], col: getComputedStyle(t.querySelector('.tring')).borderTopColor }; });
+      return { text: t.querySelector('p').textContent, next: !t.querySelector('.tnext').hidden, ring: [Math.round(r.width), Math.round(r.height)], col: getComputedStyle(t.querySelector('.tring')).borderTopColor, drawn: getComputedStyle(t.querySelector('.tring')).display !== 'none' }; });
     const waitText = async (want, n = 80) => { for (let i = 0; i < n; i++) { const b = await box(); if (b && b.text === want) return b; await sleep(100); } return await box(); };
     /* build 64 (62.3): a new profile's map drawing itself in — taps on a game, the ground and Back, before the first box, all do nothing:
        no sheet, no navigation, and the first box still arrives */
@@ -65,6 +65,10 @@ export async function run() {
     (stray.screen === 's-pick' && !stray.sheet && !stray.lock && stray.box === C.steps[0] && !stray2.sheet && !stray2.lock && stray2.box === C.steps[1])
       ? ok('62.4 while a box is up, a tap on another game, the ground or Back does nothing — only what the box asks for (or the box) responds')
       : bad('62.4 only the step\'s target responds', JSON.stringify({ stray, stray2 }));
+    // build 64 (62.6): the step about the whole list draws no outline; the step that wants one tile rings it
+    (!seen[0].drawn && onTile && onTile.drawn && onTile.ring[0] > 0 && onTile.ring[0] < 200)
+      ? ok(`62.6 no outline round the whole games list; the step that wants a tap rings its tile (${onTile.ring.join('×')})`)
+      : bad('62.6 the list step\'s outline', JSON.stringify({ first: seen[0], onTile }));
     seen.push(onTile); await click('.tile[data-game="quick-tap"]');
     seen.push(await waitText(C.steps[2])); await click('#tut .tnext');
     seen.push(await waitText(C.steps[3])); await click('#tut .tnext');
