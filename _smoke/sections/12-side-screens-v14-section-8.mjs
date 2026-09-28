@@ -45,7 +45,8 @@ export async function run() {
   /* v14 8.5 is REVERSED at build 58 (v29 Section A 58.3, Aiden's own line): a secret's description is hidden until it is earned. The tier
      heading says "what earns them is not written down" and every row underneath then wrote it down. The progress bar is the hint now, and
      the only one; an earned secret is described in full, which is asserted where 58.3 is (the block at the foot of this section). */
-  (ach.secret === '') ? ok('8.5 / 58.3 an unearned secret row carries NO description at all — the progress bar is the only hint (v14 8.5 reversed)') : bad('58.3 an unearned secret is silent', JSON.stringify(ach.secret));
+  // RESTATED at build 62 (61.14, Aiden: no secret achievements): an unearned secret row says what earns it, like every other row
+  (ach.secret && ach.secret.length > 0) ? ok(`61.14 an unearned "secret" row says what earns it: "${ach.secret}"`) : bad('61.14 an unearned secret says what earns it', JSON.stringify(ach.secret));
   (ach.left && /still to play/.test(ach.left)) ? ok('8.1 "Finish a run in every game" names the games left') : bad('8.1 which games are left', ach.left);
   await click('#s-prog .back'); await sleep(400);
   // 8.10: Testing is its own item below About, and About no longer carries it
@@ -126,11 +127,12 @@ export async function run() {
       delete S.store.ach[id]; S.save();
       return { shut, open }; }, someSecret);
     // the game name still leads the title (v14 8.3), so the name reads "Quick Tap???" until it is earned
-    const hidden58 = /\?\?\?/.test(sec58.shut.name || '') && sec58.shut.line === '' && sec58.shut.bar;
+    // RESTATED at build 62 (61.14): nothing is kept back — before it is earned the row already has its real name and its line, and no "???"
+    const hidden58 = !/\?\?\?/.test(sec58.shut.name || '') && sec58.shut.name.includes(sec58.open.name.replace(/^.*✓ /, '')) && sec58.shut.line === sec58.open.line && sec58.shut.bar;
     const told58 = sec58.open.name && !/\?\?\?/.test(sec58.open.name) && sec58.open.line.length > 0;
     const extras58 = sec58.shut.kt === 0 && sec58.shut.n > 0 && sec58.shut.n < 40;
     (hidden58 && told58 && extras58)
-      ? ok(`58.3 a Secret is "${sec58.shut.name}" with NO description at all and the progress bar as the only hint until it is earned, and then it says what it was ("${sec58.open.name}" \u00b7 ${sec58.open.line}); and Achievements holds only the extras that fit nowhere else \u2014 ${sec58.shut.n} rows, not one of them a key row, "${sec58.shut.hint}"`)
+      ? ok(`61.14 a one-time Secret is "${sec58.shut.name}" with its line before it is earned, exactly as after it ("${sec58.open.name}" \u00b7 ${sec58.open.line}); and Achievements holds only the extras that fit nowhere else \u2014 ${sec58.shut.n} rows, not one of them a key row, "${sec58.shut.hint}"`)
       : bad('58.3 the Secrets and the Achievements tab', JSON.stringify({ hidden58, told58, extras58, someSecret, sec58 }));
   }
   /* build 62 (61.9 – 61.16): THE PROGRESS ROWS. One profile, every chest tab, Customise unlocks and Achievements read back */

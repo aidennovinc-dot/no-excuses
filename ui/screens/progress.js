@@ -111,7 +111,9 @@ function gamesHtml(gsel){
    leads with its name, as it always has. On Customise unlocks it leads with what it pays out (v23 L.4d), and the
    achievement's name and criterion sit under it. */
 function achRow(a,tab,{g,all,fsGame,fresh}){
-  const isDone=!!g[a.id], secret=a.tier==='secret'&&!isDone;
+  /* build 62 (61.14): NO SECRETS. Every row shows its name and what earns it, earned or not, on every tab — the "???" row, the SECRET label and
+     58.3's silent secret are gone. "???" is left only where a chest has not been opened yet (A.1: `PROGRESS_SCREEN.shut`). */
+  const isDone=!!g[a.id], secret=false;
   const p=a.progress&&!isDone?Math.min(1,a.progress(all,fsGame)):null;
   // v14 (8.3): the game name leads the title. v14 (8.4): so it is written once — the jump line below repeats it only for
   // the rows that have no game of their own ("Every game", "Full set") or that name no mode and no length to point at
@@ -278,5 +280,5 @@ define({
   ach(b){ const a=findAch(b.dataset.ach); if(!a) return 'click';
     if(got()[a.id]&&a.unlocks){ const h=unlockHear(a); if(h){ if(h.k==='scale') Snd.scaleHear(h.v); else { Snd.hit(h.v); setTimeout(()=>Snd.hit(h.v),150); } }
       if(!chestOpen('games')){ toast(TOAST.cusLocked,'','',true); return 'pick'; } show('s-custom',{g:a.g==='all'?null:a.g,unlocks:a.unlocks}); return 'click'; }
-    if((a.g!=='all'||a.id==='fullset')&&a.tier!=='secret') jumpTo(a); return 'click'; },
+    if(a.g!=='all'||a.id==='fullset') jumpTo(a); return 'click'; },
 });

@@ -1559,6 +1559,12 @@ scene('61.13', async (page, browser) => {
   say('count', await page.evaluate(() => document.getElementById('ach-hint').textContent));
 });
 
+scene('61.14', async (page, browser) => {
+  await load(page, CHESTS_OPEN); await show(page, 's-prog', { tab: 'ach' }); await sleep(600);
+  await page.evaluate(() => { const l = document.getElementById('achlist'); l.scrollTop = l.scrollHeight; }); await sleep(300);
+  await frame(page, browser, '61.14-no-secrets', 'Achievements, the old Secret rows: every one named and saying what earns it, no ???, no SECRET label');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

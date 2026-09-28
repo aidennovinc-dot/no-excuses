@@ -154,7 +154,9 @@ const Snd = (()=>{
     click(k){ k=k||1; look('snd')==='click' ? tone(1500*k,1100*k,14,'square',.03) : look('snd')==='wood' ? tone(1000*k,600*k,22,'triangle',.05) : look('snd')==='sigh' ? tone(700*k,380*k,60,'sine',.03) : tone(2400*k,1800*k,14,'sine',.035); },
     select(){ this.click(1.12); },
     /* build 62 (61.2): the Restart hold's rise, `ms` long. Handed back so a release can cut it; silent when sound is off */
-    rise(ms){ const a=AC(); if(!a||rec||look('snd')==='off') return null; const R=RESTART_FX, t=a.currentTime, d=Math.max(.05,ms/1000);
+    rise(ms){ const a=AC(); if(!a) return null; const R=RESTART_FX;
+      if(rec){ tone(R.f0,R.f1,ms,R.wave,R.gain,0,30); return null; }
+      if(look('snd')==='off') return null; const t=a.currentTime, d=Math.max(.05,ms/1000);
       const o=a.createOscillator(), g=a.createGain(); o.type=R.wave; o.frequency.setValueAtTime(R.f0,t); o.frequency.exponentialRampToValueAtTime(R.f1,t+d);
       g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(R.gain,t+.03); g.gain.setValueAtTime(R.gain,t+d-.02); g.gain.exponentialRampToValueAtTime(.0001,t+d);
       o.connect(g).connect(a.destination); o.start(t); o.stop(t+d+.02);
