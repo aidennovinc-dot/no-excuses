@@ -13,6 +13,7 @@ import { KEYS, KEY_LAYER } from "../config/keys.js";
 import { $ } from "../core.js";
 import { on } from "../core/events.js";
 import { look } from "../core/store.js";
+import { BG_LAYER } from "../config/theme.js";
 
 const cv=$('#stars'), cx=cv.getContext('2d'); let W,H,pts=[],dpr=1, paused=false, running=false, over=null, geo=null;
 // v29 (item 16, build 55): DPR IS CAPPED AT 2. It was uncapped, so a Pro / Pro Max drew this canvas at 3x - 1290x2796, 3.6 megapixels -
@@ -23,7 +24,7 @@ const cv=$('#stars'), cx=cv.getContext('2d'); let W,H,pts=[],dpr=1, paused=false
    measured from the window stretched or short-changed the drawing against the box it is painted into. Reading the box the
    browser actually gave us means the two can never disagree, whatever the viewport is doing. */
 function size(){ dpr=Math.min(2,devicePixelRatio||1);
-  const bw=cv.clientWidth||innerWidth, bh=cv.clientHeight||innerHeight;
+  const bw=cv.clientWidth||innerWidth, bh=cv.clientHeight||innerHeight, br=cv.getBoundingClientRect(); cvTop=br.top; cvLeft=br.left; holesT=0;
   W=cv.width=Math.round(bw*dpr); H=cv.height=Math.round(bh*dpr); geo=null;
   pts=Array.from({length:70},()=>({x:Math.random()*W,y:Math.random()*H,r:(Math.random()*1.4+.4)*dpr,s:(Math.random()*.15+.05)*dpr,a:Math.random()*.5+.15,ph:Math.random()*6.28,l:(30+Math.random()*60)*dpr,v:(.6+Math.random()*1.2)*dpr,R:(120+Math.random()*160)*dpr})); }
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -156,16 +157,43 @@ const LAYER={
    b. THE PICKED COLOUR IS PAINTED HERE, on the background layer, beneath every screen — which is the whole of what 57.11b asks for. It used to be
       `--ground`, and every panel, border and target colour is mixed from that, so it coloured the text and the buttons too. It survives a change of
       pattern because the pattern and the colour are two settings now (config/theme.js ITEMS.bg / ITEMS.bgcol). */
-function draw(t){ if(paused){ running=false; return; } cx.clearRect(0,0,W,H);
+/* build 62 (61.7 / 61.20 / 61.22): ONE LAYER RULE FOR EVERY BACKGROUND. Three phone screenshots, one cause: the art is a canvas BEHIND the
+   screens, but every control and every line of text is transparent, so a lantern, a circuit trace or a thorn vine showed straight through
+   "NOT YET", a music chip or a button and read as drawn on top of it. So, here and nowhere else:
+   · the canvas covers the whole phone, both safe areas included (styles/app.css #stars), and never takes a tap;
+   · behind every piece of text and every control on the screen that is up, the art is taken out (BG_LAYER.clear, BG_LAYER.pad round it) —
+     measured off the live page, so no screen and no background needs a rule of its own, and the art decorates only what is left, the edges;
+   · in a game the chosen background stays, under a dark overlay (BG_LAYER.dim), drawn on alternate frames to spare the run. */
+let holes=[], holesT=0, inRun=false, odd=false, cvTop=0, cvLeft=0;
+const TEXTY=/\S/;
+function measure(){ holes=[]; holesT=performance.now(); if(inRun) return;
+  const s=document.querySelector('.screen.on'); if(!s) return;
+  const vw=innerWidth, vh=innerHeight, big=vw*vh*.45, p=BG_LAYER.pad;
+  for(const el of s.querySelectorAll('*')){ if(el instanceof SVGElement) continue;
+    const ctl=el.matches('button,input,.chip,.mch,.kkey,.krow,.lockline,[data-act]');
+    if(!ctl&&![...el.childNodes].some(n=>n.nodeType===3&&TEXTY.test(n.nodeValue))) continue;
+    const r=el.getBoundingClientRect(); if(!r.width||!r.height||r.bottom<0||r.top>vh||r.width*r.height>big) continue;
+    if(getComputedStyle(el).visibility==='hidden') continue;
+    holes.push([(r.left-p-cvLeft)*dpr,(r.top-p-cvTop)*dpr,(r.width+p*2)*dpr,(r.height+p*2)*dpr]); } }
+function punch(){ if(!holes.length) return; cx.save(); cx.globalCompositeOperation='destination-out'; cx.globalAlpha=BG_LAYER.clear; cx.fillStyle='#000';
+  cx.beginPath(); for(const [x,y,w,h] of holes){ if(cx.roundRect) cx.roundRect(x,y,w,h,8*dpr); else cx.rect(x,y,w,h); } cx.fill(); cx.restore(); }
+function draw(t){ if(paused){ running=false; return; }
+  if(inRun&&(odd=!odd)){ requestAnimationFrame(draw); return; }
+  if(!inRun&&t-holesT>400) measure();
+  cx.clearRect(0,0,W,H);
   const col=look('tint'); if(col){ cx.globalAlpha=1; cx.fillStyle=col; cx.fillRect(0,0,W,H); }
   const bg=look('bg'), own=LAYER[bg]?bg:null, ly=over||own;
   if(!ly) (DRAW[bg]||DRAW.stars)(t);
   if(ly){ if(!geo) geo=build(); LAYER[ly](t); }
-  cx.globalAlpha=1; requestAnimationFrame(draw); }
+  cx.globalAlpha=1;
+  if(inRun){ cx.fillStyle=`rgba(0,0,0,${BG_LAYER.dim})`; cx.fillRect(0,0,W,H); } else punch();
+  requestAnimationFrame(draw); }
 function resume(){ if(running) return; running=true; requestAnimationFrame(draw); }
 function startAtmosphere(){ addEventListener('resize',size); size(); running=true; draw(0); }
 // C.6: the key screen's own layer, or null to give the chosen background back
 function setKeyLayer(style){ over=LAYER[style]?style:null; }
-on('screen:change',({id})=>{ const run=id==='game'; cv.style.opacity=run?0:1; paused=run; if(!run) resume(); });
+// build 62 (61.20): a game keeps the background, dimmed — it used to hide the canvas and stop drawing for the whole run
+on('screen:change',({id})=>{ inRun=id==='game'; holes=[]; holesT=0; resume(); });
+addEventListener('scroll',()=>{ holesT=0; },true);
 
 export { DRAW, LAYER, setKeyLayer, startAtmosphere };

@@ -1527,6 +1527,11 @@ try {
 console.log('safe area: ' + SAB);
 await page.goto(srv.base + '/index.html', { waitUntil: 'networkidle0' });
 
+scene('61.7', async (page, browser) => {
+  await load(page, { ...OPEN, chests: { games: 1, key: 1, pro: 1, thorns: 1 } }); await show(page, 's-key', { tier: 2 }); await sleep(2600);
+  await frame(page, browser, '61.7-author-key-thorns', 'Author key screen, Thorn layer: the vines cleared from behind every row, status label and hint line');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

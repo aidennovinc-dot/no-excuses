@@ -718,6 +718,24 @@ export async function run() {
       ? ok(`57.11 all ${bgs.length} backgrounds draw (${drew.map(d => d.bg + ' ' + d.lit + '%').join(', ')}) and only the three KEY layers are layers at all — the starfield is the default background's alone; and the wheel is a second SETTING: the colour is painted on the background layer (rgb ${split57.px.join(',')} on the canvas), \`--ground\` and \`--line\` do not move with it (${split57.on.g}), it survives a change of pattern, and Customise carries ${split57.rows.pat} patterns with no wheel among them plus a colour row of "no colour" and the wheel`)
       : bad('57.11 the backgrounds', JSON.stringify({ drew, starOnly, split57 }));
   }
+  /* build 62 (61.7 / 61.22): THE BACKGROUND LAYER RULE. Every key layer, on the key screen: the art is taken out from behind every piece of text
+     and every control (read off the canvas at each one's centre), the canvas never takes a tap, and it covers the whole viewport */
+  {
+    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS, keySeen: 1, chests: { games: 1, key: 1, pro: 1, thorns: 1 } }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    const lay = await page.evaluate(async () => { const AT = await import('./ui/atmosphere.js'), R = await import('./ui/router.js'), TH = await import('./config/theme.js');
+      const w = ms => new Promise(r => setTimeout(r, ms)), cv = document.getElementById('stars'), cx = cv.getContext('2d', { willReadFrequently: true });
+      R.show('s-key', { tier: 2 }); await w(500); const out = {};
+      for (const style of ['lantern', 'circuit', 'thorn']) { AT.setKeyLayer(style); await w(900);
+        const cr = cv.getBoundingClientRect(), k = cv.width / cr.width, els = [...document.querySelectorAll('#s-key button, #s-key .krow, #s-key p, #s-key .eyebrow')].filter(e => e.getBoundingClientRect().height > 0);
+        const lit = els.filter(e => { const r = e.getBoundingClientRect(); const d = cx.getImageData(Math.round((r.x + r.width / 2 - cr.left) * k), Math.round((r.y + r.height / 2 - cr.top) * k), 1, 1).data; return d[3] > 255 * (1 - TH.BG_LAYER.clear) + 8; });
+        out[style] = { n: els.length, lit: lit.map(e => e.id || e.className).slice(0, 4) }; }
+      AT.setKeyLayer(null); const cr = cv.getBoundingClientRect();
+      return { out, pe: getComputedStyle(cv).pointerEvents, covers: cr.top <= 0 && cr.bottom >= innerHeight && cr.width >= innerWidth - 1 }; });
+    (Object.values(lay.out).every(o => o.n > 3 && !o.lit.length) && lay.pe === 'none' && lay.covers)
+      ? ok(`61.7 / 61.22 on the key screen no key layer draws behind text or a control (${Object.entries(lay.out).map(([s, o]) => s + ' ' + o.n + ' clear').join(', ')}); the canvas takes no tap and covers the phone`)
+      : bad('61.7 / 61.22 the background layer rule', JSON.stringify(lay));
+  }
   /* build 62 (61.6): AN ACHIEVEMENT TOAST THAT HAS GONE CATCHES NOTHING. It kept pointer-events after it faded, invisible over the top of every
      screen, so a tap on the Keys screen's Pro tile opened Achievements. Reproduced: a tappable toast shows and fades, then the Keys screen */
   {

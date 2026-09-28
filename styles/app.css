@@ -160,7 +160,10 @@
      and it has never had a control on it. It sat in front of nothing (it is the first element in the body, so every positioned
      screen paints over it), but 60.1 asks for theme and atmosphere layers to sit behind the UI and take no taps, and a fixed,
      full-viewport element with no `pointer-events` is one stacking change away from eating a tap. It takes none now. */
-  #stars{position:fixed;inset:0;width:100dvw;height:100dvh;display:block;pointer-events:none;transition:opacity .3s}
+  /* build 62 (61.22): the background covers the WHOLE phone. A fixed 100dvh box stopped a home-indicator's height short of the bottom on
+     an installed iPhone app, and the flat band under it was --ground (Lantern's purple, Thorn's black). It now starts above the top inset
+     and runs past the bottom one, so there is no edge to find on any screen at any scroll */
+  #stars{position:fixed;left:0;top:calc(0px - env(safe-area-inset-top));width:100vw;height:calc(100lvh + env(safe-area-inset-top) + env(safe-area-inset-bottom));display:block;pointer-events:none;transition:opacity .3s}
 
 /* ==================================================================
    title — the sequence that opens the menu (ui/screens/menu.js)
@@ -661,7 +664,7 @@
      both, and both are this one rule. The wash is drawn by an inset pseudo-element pulled out past the padding and past the safe
      areas, under everything on the screen, so it reaches all four edges of the phone at every width. */
   #key-main{position:relative}
-  #key-main::before{content:"";position:fixed;left:0;right:0;top:0;bottom:0;z-index:-1;pointer-events:none;
+  #key-main::before{content:"";position:fixed;left:0;right:0;top:calc(0px - env(safe-area-inset-top));bottom:calc(0px - env(safe-area-inset-bottom));z-index:-1;pointer-events:none;
     background:radial-gradient(circle at 50% 44%,var(--kground),transparent 72%)}
   /* v31 (60.29, build 60): and the wheel sits clear of the key cards. The ring's OUTER circle reached to within a few pixels of
      the row of cards above it; `--kgap` is the clear space between them, so the two never read as one object. */

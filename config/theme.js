@@ -18,6 +18,10 @@ export const KEYFILL = { name:'lilac', v:'#F3D9FF' };
    GRADIENT now rather than a near-black, and its ground is the bottom of that gradient (57.11d), and Circuit's is a shade lighter than black so the
    traces have something to sit on (57.11e).
    57.11c: GRID IS BLUE. Aiden asked for "more blue": the ground is a real navy rather than a blue-black, and the lines are a blue you can see. */
+/* build 62 (61.7 / 61.20 / 61.22): THE BACKGROUND LAYER RULE's two numbers. `dim` — in a game the chosen background stays, under a dark
+   overlay of this strength, so targets, dots and numbers stay the brightest thing on screen. `clear` — how much of the art is taken out from
+   behind every piece of text and every control on a screen (1 = all of it), and `pad`, how far round each one, in CSS px. */
+export const BG_LAYER = { dim: .5, clear: .94, pad: 6 };
 export const DESIGNS = { stars:{tint:'#050506'}, grid:{tint:'#0A1430'}, rain:{tint:'#0B1008'}, orbs:{tint:'#0E0608'}, lantern:{tint:'#1A1024'}, circuit:{tint:'#05080E'}, thorn:{tint:'#020202'} };
 // Customise: every item, and the achievement id that earns it (`by`). No `by` = open from the start
 // v24 (C.6, build 43): `key` is the other kind of lock — the key tier that has to be FINISHED (every bar on it cleared) before the item opens
