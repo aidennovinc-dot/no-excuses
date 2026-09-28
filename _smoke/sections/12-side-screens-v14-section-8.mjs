@@ -188,4 +188,17 @@ export async function run() {
       ? ok(`61.15 every achievement name is ${g15.tok} (${named.length} rows and the toast); nameless rows carry none; contrast on every design's ground ${ratios.map(([k, r]) => k + ' ' + r).join(', ')}`)
       : bad('61.15 gold names', JSON.stringify({ g15, ratios, off: named.filter(r => r.gold[0] !== g15.rgb).slice(0, 3) }));
   }
+  /* 61.16: a Customise-unlock row is three lines — [thing] Name / the requirement alone / → game · mode · length — and says its mode ONCE;
+     no row says what kind of thing it unlocks (the header does); no requirement anywhere shows a whole percent with decimals */
+  {
+    const A = await import(pathToFileURL(path.join(root, 'config', 'achievements.js')).href), clean = A.ACH.find(a => a.id === 'qt_clean30');
+    const cul = await tab62('cul'), c16 = cul.rows.find(r => r.id === clean.id), chests = [await tab62('c-games'), await tab62('c-key'), await tab62('c-pro'), await tab62('c-thorns')];
+    const txt = c16 ? c16.lines.filter(Boolean) : [], all = txt.join(' | ');
+    const once = w => all.split(w).length === 2;
+    const pct = cul.rows.concat(...chests.map(c => c.rows)).filter(r => /\d\.0+%/.test(r.lines.join(' '))).map(r => r.id);
+    (c16 && txt.length === 3 && txt[0] === 'Clean' && txt[1] === 'No misses, at least 50 hits' && txt[2] === '→ Quick Tap · Four · Marathon' && once('Marathon') && once('Four')
+      && cul.rows.every(r => !/unlocks/i.test(r.title)) && !pct.length)
+      ? ok(`61.16 a Customise-unlock row reads "${txt.join('" / "')}" — Marathon and Four once each, no "unlocks …" on any row, no ".00%" anywhere`)
+      : bad('61.16 the Customise-unlock rows', JSON.stringify({ txt, pct: pct.slice(0, 4), title: (cul.rows.find(r => /unlocks/i.test(r.title)) || {}).title }));
+  }
 }

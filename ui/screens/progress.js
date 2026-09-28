@@ -38,7 +38,7 @@ import { emit } from "../../core/events.js";
 import { sel } from "../../core/state.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, lenName } from "../../games/registry.js";
-import { Scores, UNLOCKS, achAll, achById, achTab, achWhere, gameOpen, got, isOpen, lenLock, lenOpen, markSeen, nameless, newMark, setPendingAim, unlockHear, unlockHtml, unlockName, unlocked } from "../../progress.js";
+import { Scores, UNLOCKS, achAll, achById, achTab, achWhere, gameOpen, got, isOpen, lenLock, lenOpen, markSeen, nameless, newMark, setPendingAim, unlockArt, unlockHear, unlockHtml, unlockName, unlocked } from "../../progress.js";
 import { COMBOS, barOf, chestOpen, keyAch, keyState, tierOpen } from "../../progress/key.js";
 import { askPlay } from "../askplay.js";
 import { Snd } from "../../audio.js";
@@ -105,6 +105,17 @@ function gamesHtml(gsel){
   return { html:`<h4>${UNLOCKS_SCREEN.games}</h4>${chain}`+`<h4>${UNLOCKS_SCREEN.lens}</h4>${lens.join('')||''}`+keyRow, open, total };
 }
 
+/* build 62 (61.16): SAY THE MODE ONCE. A Customise-unlock row read "Clean · Marathon · Four · Marathon, no misses, at least 50 hits" — the
+   mode and length in the name, again in the requirement and again on the → line. The → line carries them now and nothing else does: the
+   words it names come off the front of the requirement and off the end of the NAME AS SHOWN (config/ keeps the name whole). And a whole
+   number of percent drops its decimals everywhere a requirement is shown: "30% or less", never "30.00%". */
+const pctTidy=s=>String(s).replace(/(\d+)\.0+%/g,'$1%');
+const said=words=>words.filter(Boolean).map(w=>String(w).toLowerCase());
+function reqOf(a,words){ let s=String(a.how||''); const drop=said(words);
+  for(let k=0;k<4;k++){ const m=s.match(/^([^,·—]+?)\s*[,·—]\s*/); if(!m||!drop.includes(m[1].trim().toLowerCase())) break; s=s.slice(m[0].length); }
+  s=pctTidy(s); return s.charAt(0).toUpperCase()+s.slice(1); }
+function shownName(a,words){ const drop=said(words), bits=String(a.name).split(' · ');
+  while(bits.length>1&&drop.includes(bits[bits.length-1].toLowerCase())) bits.pop(); return bits.join(' · '); }
 /* ---------- one achievement row, for any tab that lists achievements ----------
    Build 39 lifts this out of renderAch so every tab builds a row's WORDS the same way: L.1 is deferred, so a row that
    moved tabs must say exactly what it said before. What differs is the headline. On an achievement or a chest tab a row
@@ -134,7 +145,7 @@ function achRow(a,tab,{g,all,fsGame,fresh}){
      kind of thing earns it, and the tier heading above it says "what earns them is not written down" — so the heading and the rows
      disagreed, thirteen times. The progress bar is the hint now and the only one; `hint` is left in config/achievements.js because
      an EARNED secret is still described by its `how`, and the day Aiden wants the hints back it is this line that changes. */
-  const line=secret?'':a.how+(a.id==='fullset'?T(ACH_SCREEN.inGame,{game:GAMES[fsGame].name}):'')+leftTxt;
+  const line=secret?'':pctTidy(a.how)+(a.id==='fullset'?T(ACH_SCREEN.inGame,{game:GAMES[fsGame].name}):'')+leftTxt;
   /* v28 (item 1 / R3, build 53): NO ENTRY ANIMATION ON A LIST. The earned rows used to slide in on a 70ms stagger, so a tab or a filter
      tap painted over about a second. Motion belongs to rewards, not to menus. */
   const nw=isDone?newMark('ach:'+a.id,fresh):'';
@@ -143,6 +154,10 @@ function achRow(a,tab,{g,all,fsGame,fresh}){
   // v23 (L.4d): what it unlocks first, white until earned and green once (L.2); the achievement and its criterion under it
   // build 62 (61.12): a score-target row is its mode and length and what it asks — no name, no second line, no → line
   if(nameless(a)&&tab!=='cul') return `<button data-act="ach" class="a nameless ${cls}" data-ach="${a.id}" id="${tab}-${a.id}"><span>${isDone?'✓ ':''}${esc(achWhere(a,' · '))} — ${line}</span><em>${isDone?ACH_SCREEN.done:''}</em>${bar}</button>`;
+  /* build 62 (61.16): a Customise-unlock row is THREE lines — the thing and its name in gold, the requirement alone, → where it is played
+     (game · mode · length). "unlocks target colour" is gone from every row: the section's header already says it */
+  if(tab==='cul'){ const [k,v]=a.unlocks, w=[GAMES[wg].name].concat(wbits.filter(x=>x!==GAMES[wg].name));
+    return `<button data-act="ach" class="a cu ${cls}" data-ach="${a.id}" id="cul-${a.id}"><span class="rw">${isDone?'✓ ':''}${unlockArt(k,v)}<b class="aname">${esc(shownName(a,w))}</b></span><em>${isDone?ACH_SCREEN.done:''}</em><small>${esc(reqOf(a,w))}${leftTxt}</small>${jump?`<small class="go">→ ${w.join(' · ')}</small>`:''}${bar}</button>`; }
   if(tab==='cul') return `<button data-act="ach" class="a cu ${cls}" data-ach="${a.id}" id="cul-${a.id}"><span class="rw">${isDone?'✓ ':''}${unlockHtml(a)}</span><em>${isDone?ACH_SCREEN.done:''}</em><small>${gname}${name} · ${line}</small>${where}${bar}</button>`;
   return `<button data-act="ach" class="a ${cls}" data-ach="${a.id}" id="${tab}-${a.id}"><span>${gname}${isDone?'✓ ':''}${name}</span><em>${isDone?ACH_SCREEN.done:secret?ACH_SCREEN.secret:''}</em><small>${line}</small>${where}${bar}</button>`;
 }

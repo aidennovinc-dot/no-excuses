@@ -1183,6 +1183,7 @@
   /* build 62 (61.15): ONE gold for every achievement name — the Achievements tab, Customise unlocks and the unlock toast. #F2C14E is over 10:1
      against every key theme's ground (Lantern #1A1024, Circuit #05080E, Thorn #020202), and the art is cleared from behind text (61.7) */
   .aname{color:var(--gold);font-weight:inherit}
+  .a.cu .rw .rwsw{margin-right:8px}
   /* build 62 (61.11): "Play …?" over a requirement list. The dim closes it; the list under it is never re-drawn */
   #askplay{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.6);display:grid;place-items:center;padding:16px}
   #askplay[hidden]{display:none}

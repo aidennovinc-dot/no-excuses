@@ -1570,6 +1570,12 @@ scene('61.15', async (page, browser) => {
   await frame(page, browser, '61.15-gold-names', 'Achievements on the Lantern background: every name in one gold');
 });
 
+scene('61.16', async (page, browser) => {
+  await load(page, CHESTS_OPEN); await show(page, 's-prog', { tab: 'cul' }); await sleep(700);
+  await page.evaluate(() => document.getElementById('cul-qt_clean30')?.scrollIntoView({ block: 'center' })); await sleep(300);
+  await frame(page, browser, '61.16-customise-rows', 'Customise unlocks: [swatch] Clean / No misses, at least 50 hits / → Quick Tap · Four · Marathon — the mode said once');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }
