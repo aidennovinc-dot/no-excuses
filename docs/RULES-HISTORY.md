@@ -1449,3 +1449,49 @@ only when it names the ID (e.g. `A6:`); otherwise it goes under "Proposed" in FE
 
 No bundler, no build step — GitHub Pages serves the modules directly, so every import path stays
 relative (`./games/dots/index.js`).
+
+
+## Build 62 (FEEDBACK-v32, 2026-09-28): the rules this build added or amended, in full
+
+**The data-only fast lane (61.28).** Aiden's reviews are mostly numbers and words now — author times, bar numbers, achievement names and
+lines — and a full build for one of those cost hours of ceremony. `npm run data` (`scripts/data.mjs`) takes a diff that touches ONLY the data
+files (`DATA`: `config/key-bars.js`, `config/achievements.js`, `config/copy.js`, `config/verdicts.js`) against `origin/main`, committed or not.
+Any other file and it refuses in one line: that is a normal build. It validates — every data file imports clean; every `KEY_BARS` row has its
+id, dir and unit and a number in each tier it fills, and each filled tier is strictly harder than the one below it in the row's own direction
+(higher: bar < pro < author; lower: bar > pro > author); every achievement in `ACH` and `KEY_ROSTER` that `unlocks` something has a name; no
+two names are alike — and a failure stops it before anything is written. It then runs the static checks and every gate section whose own
+source names a changed file (`--only`, `--bail`), bumps `BUILD` by one through `scripts/bump.mjs`, commits `data build N — <files>`, pushes to
+`main`, and appends three lines to the newest `../_review/FEEDBACK-vNN.md`: what changed and that it validated, the sections and their time,
+the commit and the paste-to-pushed time. No full gate, no screenshots, no catalogue, no board. `--dry` does everything short of the bump.
+Target: under ten minutes from paste to pushed. A `copy.js` edit is read by most sections, so it runs most of the gate; a bar or a name runs
+a handful.
+
+**What makes it safe.** The gate reads bar values and achievement names from `config/`, never a copy of them — build 62 restated the four
+checks that still held one: build 44's §E table of Aiden's 42 numbers and its × 1 / 3 / 6 and 9 / 26 / 51 shape clauses (DELETED; what is
+asserted now is that all 30 rows are his, `conf:'set'`, and every Pro and Author figure of his is harder than the tier under it); build 38's
+placeholder counts (read off the markers in the file); and 61.12's and 61.16's expected row wording (built from the config the row is built
+from). The locked decisions that pin a value on purpose stay pinned — **L1** (the title's words), **L2** (Quick Tap's lengths Sprint / Dash /
+Marathon) and **L9** (the length row is labelled "Mode") — and a data edit that breaks one fails the lane like anything else.
+
+**The background layer (61.7 / 61.20 / 61.22).** One rule in `ui/atmosphere.js` for every background: the canvas covers the whole phone,
+from above the top safe area to below the bottom one (`#stars` is `top:-env(top)` and `100lvh + both insets` tall, re-sized by a
+ResizeObserver, since an inset can arrive without a resize); it never takes a tap; behind every piece of text and every control on the
+screen that is up the art is taken out (`BG_LAYER.clear`, `BG_LAYER.pad` round each one), measured off the live page every 400ms and on
+every scroll — a layer that lays down its own opaque sky (Lantern) has its holes filled with that sky rather than cleared; and in a game the
+chosen background stays, drawn on alternate frames, under a dark overlay of `BG_LAYER.dim` (0.5). The thorn vines across "NOT YET", the
+lanterns over Customise's rows and the circuit traces through PLAYING EVERYWHERE were all art showing through transparent controls.
+
+**Music in a run (61.19).** A run no longer starts its own track: what the menu is playing (`menuTrack()`, which already resolves a key theme
+set everywhere) carries on into the 3-2-1 and the run at `RUN_MUSIC.vol` of the menu level (0.5, Cowork's call) — the bed's gain is one
+reading, `lv()`, that a hush, a duck and the run level all go to. The run's rules still ride on it (the arc, the last five seconds, the stems,
+the flow hum, Sequence's duck) because they read `st`, `shape` and `mode`. Pause keeps its bar (`Music.pause` / `resume`); the end of a run,
+an Exit and a Restart call `Music.endRun`, which puts it back to full without starting it again. An engine that reports `counting()`
+(Timing's stopwatch clock and hidden ball, 61.19 Cowork's call) has the bed drop to nothing while it is true. Customise's "Menu music" is
+"Music on / off" — B.28 keeps on / off off the one Music row, and v28 item 2 keeps that row the only one called Music.
+
+**Presentation of achievements (61.12–61.16).** A score-target row (a key's clearance bar, `combo`, paying out nothing) shows no name — it
+reads "Two · Sprint — 13 hits or more" and toasts "Pro · Two Sprint cleared" (`achToast`, `TOAST.cleared`); its name stays in `KEY_ROSTER`.
+Every other achievement's name is a title in one gold, `--gold` #F2C14E, over 10:1 on every design's ground. Achievements is one flat list
+with a true count; there are no secrets — every row says its name and what earns it, and "???" is left only where a chest is still shut. A
+Customise-unlock row is three lines: the thing and its name, the requirement with its mode words taken off the front, and → game · mode ·
+length; the name as shown loses trailing mode words (config keeps it whole); a whole-number percentage drops its decimals everywhere.

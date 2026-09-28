@@ -28,6 +28,16 @@ line here and puts the full text and its history there, in the same commit. A ru
 pins the green "new build" bar on every phone; the gate asserts all agree and no other copy exists. `RUN_SCHEMA` (4) sits beside
 `BUILD` and moves only when a scoring unit changes, with a store ladder step the same day.
 
+## Data-only fast lane: `npm run data` (61.28, build 62) — full text in `docs/RULES-HISTORY.md` → Build 62
+
+A diff that touches ONLY the data files — `config/key-bars.js`, `config/achievements.js`, `config/copy.js`, `config/verdicts.js` (`DATA` in
+`scripts/data.mjs` is the list) — goes through `npm run data`: it validates (each file loads; every bar harder bar → pro → author in its own
+direction; every achievement that unlocks something is named; no two names alike), runs only the gate sections whose source names a changed
+file plus the static checks, bumps, commits, pushes and appends three lines to the newest FEEDBACK file. No full gate, no screenshots, no
+catalogue, no board. **Anything outside those files is a normal build.** A data build that fails validation stops and says why in one line,
+having written nothing. Gate checks read bars and names from `config/`, never a copy; the pins kept on purpose are **L1** (the title's words),
+**L2** (Quick Tap's lengths) and **L9** ("Mode"), and a data edit that breaks one fails like any other. `--dry` stops before the bump.
+
 ## Standing design rules — one line each; full text in `docs/RULES-HISTORY.md`
 
 **Players, modes and the pick sheet**
@@ -107,7 +117,7 @@ pins the green "new build" bar on every phone; the gate asserts all agree and no
 
 **Screens and presentation**
 - **Customise is its own screen; Progress is ONE TAB PER CHEST** (58.3): Games · Skill · Pro · Author chest, Customise unlocks, Achievements; each chest tab opens with what it needs (`chestNeeds()`); one partition, `tabFor()` in `ui/screens/progress.js`; `prefs.progTab` `c-<chest>` / `cul` / `ach`.
-- **R3: a list appears the moment it is asked for** — no entry animation on any Progress tab or filter (v28 item 1). Secret sits last, drawn like a locked row, and says NOTHING until earned (58.3).
+- **R3: a list appears the moment it is asked for** — no entry animation on any Progress tab or filter (v28 item 1). No secrets (61.14): every row shows its name and what earns it; Achievements is one flat list (61.13); a score-target row has no name (61.12).
 - **Each Progress tab says `N of M unlocked`** (v28 item 4). **Every Customise-unlock row shows the thing it unlocks** (`unlockArt()`, v28 item 6). **A Progress label is white until earned, green once, never red** (L.2).
 - **A locked cosmetic says what opens it UNDER its own row** (one `.lockline` per `.cgroup`, B.30).
 - **The version label shows on the HOME MENU only; the build stamp is drawn behind every screen** (`#build` at `z-index:0`, every scroller ends with a `--stampclear` `::after`).
@@ -120,7 +130,7 @@ pins the green "new build" bar on every phone; the gate asserts all agree and no
 
 **Sound and music**
 - **Music is an arrangement, not seven numbers**: `voices` + `beats` / `per` / `form` / `vol` in `config/audio.js`; three named options per game (`TRACK_OPTS`, `TRACK_PICK`), no two alike; Quick Tap · Held is the build-26 loop; no percussion; a level is measured by `_smoke/loudness.mjs`.
-- **Customise's music is ONE row and the WHOLE music choice** (v28 items 2 / 3, v29 item 4): the game's three tracks plus one per key, titled by theme (Lantern / Circuit / Thorns), a key track locked until that KEY is earned; whatever is picked plays on the MENU too (`prefs.menuTrack`, `prefs.everywhere`, `menuTrack()`), while a game screen plays its own.
+- **Customise's music is ONE row and the WHOLE music choice** (v28 items 2 / 3, v29 item 4): the game's three tracks plus one per key, titled by theme (Lantern / Circuit / Thorns), a key track locked until that KEY is earned; whatever is picked plays on the MENU too (`prefs.menuTrack`, `prefs.everywhere`, `menuTrack()`) and carries on through every run at `RUN_MUSIC.vol` (61.19).
 - **A key theme is in its motif from the first beat** (L.7a): the KEY-THEME RULE — nothing under 700ms above 300 Hz, nothing above C5 under 1200ms; Key < Pro < Thorns (all gated).
 - **No two tracks ever overlap** (`cut()` in `audio.js`, B.29). **Music is arranged to the length of the run**; an open-ended form holds 180s before an exact repeat; the finish ramp is music only (`R.fin`).
 - **Flow state is one number with two consumers** — `tps()` → `R.flow` / `--flow` → the hum; a switch at `FLOW_AT` 2.7 taps/s (B.9); solo Quick Tap and Dots only. **Versus stems are presentation** (`STEMS`, L10).

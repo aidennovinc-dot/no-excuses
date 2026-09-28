@@ -28,11 +28,18 @@ export async function run() {
     const x136 = (m, t) => [1, 3, 6].every((x, i) => B[`${m}:${[5, 15, 30][i]}`][t] === B[`${m}:5`][t] * x);
     /* RESTATED at build 62 (61.5): Dots · Lead's Pro is Aiden's 17 / 34 / 68 (FEEDBACK-v32, confirmed 2026-09-28), which breaks × 1 / 3 / 6 ON
        PURPOSE — so the shape holds in the other three modes and Lead is asserted NOT to follow it, never "corrected" back into it */
-    const shape = ['quick-tap:two', 'quick-tap:four', 'dots:blind'].every(m => x136(m, 'pro')) && !x136('dots:lead', 'pro') && ['dots:blind', 'dots:lead'].every(m => x136(m, 'bar')) && !x136('quick-tap:two', 'bar');
-    const curve = [5, 15, 30].every(s => B[`quick-tap:two:${s}`].bar === B[`quick-tap:four:${s}`].bar) && [9, 26, 51].every((v, i) => B[`quick-tap:two:${[5, 15, 30][i]}`].bar === v) && B['quick-tap:two:5'].pro === 13 && B['quick-tap:four:5'].pro === 12;
-    (!off.length && set === 42 && Object.keys(B).length === 30 && shape && curve)
-      ? ok(`v24 §E all ${set} of Aiden's numbers are in config/key-bars.js exactly as he set them (30 key 1, 12 Pro, conf 'set', no marker on his Pro); every length is the Sprint figure × 1 / 3 / 6 at Pro and at Dots' key 1, while Quick Tap's key 1 is his 9 / 26 / 51 for both Two and Four, which split at Pro, 13 against 12`)
-      : bad('v24 §E Aiden\'s bars', JSON.stringify({ off, set, shape, curve }));
+    /* RESTATED at build 62 (61.28, the data-only fast lane): THE GATE READS AIDEN'S NUMBERS FROM CONFIG, IT DOES NOT HOLD A COPY. `AIDEN` above
+       was his 42 figures typed in, and the shape and curve clauses were facts ABOUT those figures — so every number he changes (61.4, 61.5) was
+       a test edit too, which is exactly what the lane exists to stop. What is asserted now is what cannot move with his data: every one of the
+       30 rows is his (conf 'set', a real key-1 number), and wherever a Pro or Author figure is his (no desk marker) it is harder than the tier
+       under it. The typed table and the × 1 / 3 / 6 and 9 / 26 / 51 clauses are DELETED, named in the build 62 outcome. */
+    const rowsE = Object.entries(B), offE = [];
+    for (const [k, r] of rowsE) { if (r.conf !== 'set' || typeof r.bar !== 'number') offE.push(k + ' bar');
+      for (const [t, below] of [['pro', r.bar], ['author', r.pro]]) { const v = r[t]; if (v === null || v === undefined || (r.placeholder && r.placeholder[t])) continue;
+        if (r.dir === 'lower' ? !(v < below) : !(v > below)) offE.push(k + ' ' + t); } }
+    (!offE.length && rowsE.length === 30)
+      ? ok(`v24 §E / 61.28 all ${rowsE.length} rows of config/key-bars.js are Aiden's (conf 'set'), and every Pro and Author figure of his is harder than the tier under it — read from config, never typed into the gate`)
+      : bad('v24 §E Aiden\'s bars', JSON.stringify({ offE }));
   }
 
   /* ---- 2. §D.2: one achievement on every key requirement at every tier - 90 rows, named off KEY_ROSTER, 23 older ids kept with their rewards ---- */

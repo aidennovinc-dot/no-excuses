@@ -167,9 +167,12 @@ export async function run() {
   {
     const pro = await tab62('c-pro'), t12 = await page.evaluate(async () => { const P = await import('./progress.js'), K = await import('./progress/key.js');
       const rows = K.keyAch().filter(a => a.kt === 'pro' && a.combo), a = rows.find(x => x.combo === 'quick-tap:two:5'), named = P.achAll().find(x => x.unlocks);
-      return { id: a.id, name: a.name, toast: P.achToast(a), named: named.name, namedToast: P.achToast(named) }; });
+      // what the row and the toast SHOULD say, built from config (61.28: no copy of a name or a line in the gate)
+      const C = await import('./config/copy.js'), KY = await import('./config/keys.js'), tier = KY.KEYS.find(k => k.id === 'pro').name.replace(/ key$/i, '');
+      return { id: a.id, name: a.name, toast: P.achToast(a), named: named.name, namedToast: P.achToast(named),
+        wantTitle: P.achWhere(a, ' · ') + ' — ' + a.how, wantToast: C.TOAST.cleared.replace('{tier}', tier).replace('{where}', P.achWhere(a, ' ')) }; });
     const r12 = pro.rows.find(r => r.id === t12.id);
-    (r12 && /^Two · Sprint — \d+ hits or more$/.test(r12.title) && !r12.title.includes(t12.name) && r12.lines.filter(Boolean).length === 1 && t12.name && t12.toast === 'Pro · Two Sprint cleared' && t12.namedToast.includes(t12.named))
+    (r12 && r12.title === t12.wantTitle && !r12.title.includes(t12.name) && r12.lines.filter(Boolean).length === 1 && t12.name && t12.toast === t12.wantToast && t12.namedToast.includes(t12.named))
       ? ok(`61.12 a score-target row reads "${r12.title}" with no name ("${t12.name}" is still in config) and toasts "${t12.toast}"; "${t12.named}" keeps its name`)
       : bad('61.12 nameless score-target rows', JSON.stringify({ r12, t12 }));
   }
@@ -208,7 +211,10 @@ export async function run() {
     const txt = c16 ? c16.lines.filter(Boolean) : [], all = txt.join(' | ');
     const once = w => all.split(w).length === 2;
     const pct = cul.rows.concat(...chests.map(c => c.rows)).filter(r => /\d\.0+%/.test(r.lines.join(' '))).map(r => r.id);
-    (c16 && txt.length === 3 && txt[0] === 'Clean' && txt[1] === 'No misses, at least 50 hits' && txt[2] === '→ Quick Tap · Four · Marathon' && once('Marathon') && once('Four')
+    // 61.28: the words are read from config — the name as shown is its first part, the line the `how` after its mode words, the → line the game's own
+    const G16 = await page.evaluate(async () => { const R = await import('./games/registry.js'), GG = await import('./config/games.js'); return { game: R.GAMES['quick-tap'].name, mode: GG.MODE_NAME.four, len: R.lenName('quick-tap', 30, 'four') }; });
+    const want16 = [clean.name.split(' · ')[0], null, `→ ${G16.game} · ${G16.mode} · ${G16.len}`];
+    (c16 && txt.length === 3 && txt[0] === want16[0] && !txt[1].includes(G16.mode) && !txt[1].includes(G16.len) && /^[A-Z0-9]/.test(txt[1]) && txt[2] === want16[2] && once(G16.len) && once(G16.mode)
       && cul.rows.every(r => !/unlocks/i.test(r.title)) && !pct.length)
       ? ok(`61.16 a Customise-unlock row reads "${txt.join('" / "')}" — Marathon and Four once each, no "unlocks …" on any row, no ".00%" anywhere`)
       : bad('61.16 the Customise-unlock rows', JSON.stringify({ txt, pct: pct.slice(0, 4), title: (cul.rows.find(r => /unlocks/i.test(r.title)) || {}).title }));

@@ -153,8 +153,11 @@ export async function run() {
     // AMENDED at build 44 (v24 §E): 18 Pro placeholders (Aiden set the other 12) and 30 Author
     // AMENDED at build 45 (v25 item 14): isPlaceholder() is unchanged and still counts them — what is gone is the key screen SAYING so (every warn is empty now)
     // RESTATED at build 60 (v31 60.6): 29 Author placeholders, not 30 — the Cut Streak's Author bar is Aiden's own number now (25), so it is not one
-    // RESTATED at build 62 (61.4): 17 Author placeholders, not 29 — Aiden's own Author numbers for Quick Tap Two / Four and Dots Blind / Lead (twelve cells) are ported
-    (ph.pro === ph.n - 12 && ph.author === ph.n - 13 && ph.clear === 0 && !ph.edited.is && ph.edited.count === ph.n - 13 && ph.edited.author
+    /* RESTATED at build 62 (61.4, then 61.28): the expected counts are READ OFF config/key-bars.js — every cell still carrying its own marker at
+       the value it marks — rather than typed in, so porting one of Aiden's numbers never needs a test edit */
+    const KB38 = await import(pathToFileURL(path.join(root, 'config', 'key-bars.js')).href);
+    const marked38 = t => Object.values(KB38.KEY_BARS).filter(r => r.placeholder && r.placeholder[t] && r.placeholder[t].v === r[t]).length;
+    (ph.pro === marked38('pro') && ph.author === marked38('author') && ph.clear === 0 && !ph.edited.is && ph.edited.count === ph.n - 13 && ph.edited.author
       && ph.warnPro === '' && ph.edited.warn === '' && ph.warnClear === '')
       ? ok(`#426 progress/key.js tells a generated number from a set one: ${ph.pro} Pro and ${ph.author} Author placeholders, none on key 1; one Pro number changed in place is a person's (${ph.edited.count} left) — and since build 45 no key screen says a word about it`)
       : bad('#426 isPlaceholder and the key screen note', JSON.stringify(ph));
