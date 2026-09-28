@@ -90,13 +90,13 @@ export async function run() {
     const R3 = [unl53, cul53, ach53].every(t => !t.moving && !t.delays);
     const counted = [unl53, cul53, ach53].every(t => /^\d+ of \d+ unlocked$/.test(t.hint.trim()));
     const noLede = !unl53.lede;
-    const secretLast = ach53.heads.length && ach53.heads[ach53.heads.length - 1].t === 'secret' && (!filtered.length || filtered[filtered.length - 1] === 'secret');
-    const secretPlain = ach53.heads.filter(h => h.t === 'secret').every(h => h.col === (ach53.heads.find(x => x.t !== 'secret') || h).col);
+    /* RESTATED at build 62 (61.13): Achievements is ONE flat list — no Pro or Secret heading, in any filter — and its count is every row it lists */
+    const secretLast = ach53.heads.length === 0 && filtered.length === 0 && new RegExp('^0 of ' + ach53.rows + ' unlocked$').test(ach53.hint.trim());
     const stacked = ach53.heads.every(h => h.disp !== 'flex');
     const art = cul53.art.length && cul53.art.every(r => r.sw === 1);
-    (R3 && counted && noLede && secretLast && secretPlain && stacked && art)
+    (R3 && counted && noLede && secretLast && stacked && art)
       ? ok(`v28 items 1 / 4 / 6 Progress: every tab draws its rows with no entry animation at all (${unl53.rows}/${cul53.rows}/${ach53.rows} rows, none moving, none delayed - R3); the grey helper text is gone and each tab says how much of itself is done ("${unl53.hint}" / "${cul53.hint}" / "${ach53.hint}"); Secret is the last group in every filter and is drawn like any other locked row rather than in the cue red (${cue}); every heading stacks its description under its title instead of pushing it to the edge; and all ${cul53.art.length} Customise-unlock rows carry the thing they unlock`)
-      : bad('v28 items 1 / 4 / 6 the Progress screen', JSON.stringify({ R3, counted, noLede, secretLast, secretPlain, stacked, art, unl53, cul53, ach53, filtered }));
+      : bad('v28 items 1 / 4 / 6 the Progress screen', JSON.stringify({ R3, counted, noLede, secretLast, stacked, art, unl53, cul53, ach53, filtered }));
   }
 
   /* ---- v29 Section A (58.3, build 58): A SECRET SAYS NOTHING UNTIL IT IS EARNED, and Achievements is only the extras ----

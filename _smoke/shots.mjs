@@ -1553,6 +1553,12 @@ scene('61.12', async (page, browser) => {
   await frame(page, browser, '61.12-nameless-rows', 'Pro chest: score-target rows read "Two · Sprint — 13 hits or more", no name, no second line');
 });
 
+scene('61.13', async (page, browser) => {
+  await load(page, CHESTS_OPEN); await show(page, 's-prog', { tab: 'ach' }); await sleep(600);
+  await frame(page, browser, '61.13-achievements-flat', 'Achievements: one flat list, no Pro or Secret sections, "N of 18 unlocked", filter chips kept');
+  say('count', await page.evaluate(() => document.getElementById('ach-hint').textContent));
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

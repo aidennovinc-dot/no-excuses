@@ -214,16 +214,15 @@ function renderAch(){
   $('#ach-g').innerHTML=`<button class="chip" data-act="chip-ach" data-chip="ach-g" data-v="all">${ACH_SCREEN.all}</button>`+Object.entries(GAMES).map(([id,x])=>`<button class="chip" data-act="chip-ach" data-chip="ach-g" data-v="${id}">${x.name}</button>`).join(''); chips('ach','g',gsel);
   const list=allAch().filter(a=>tabFor(a)==='ach'&&(gsel==='all'||a.g===gsel||a.g==='all'));
   const ctx={g,all,fsGame:gsel==='all'?sel.game:gsel,fresh};
-  $('#achlist').innerHTML = Object.keys(TIERS).filter(groupShown).map(t=>{
-    const items=list.filter(a=>a.tier===t), done=items.filter(a=>g[a.id]).length;
-    if(!items.length) return '';
-    return `<h4 class="${t}">${TIERS[t][0]} · ${done}/${items.length}<span>${TIERS[t][1]}</span></h4>`+items.map(a=>achRow(a,'ach',ctx)).join(''); }).join('');
+  /* build 62 (61.13): ONE FLAT LIST. The Pro and Secret sections and their taglines are gone — Aiden: "I don't know why there's a pro section.
+     It should just all be achievements." The rows keep the order they had (TIERS is still the order), under no heading at all. */
+  const rows=Object.keys(TIERS).filter(groupShown).flatMap(t=>list.filter(a=>a.tier===t));
+  $('#achlist').innerHTML=rows.map(a=>achRow(a,'ach',ctx)).join('');
   /* v28 (item 4, build 53): ONE COUNT LINE FOR THE TAB, where the grey "tap one to go play it" was. R1 narrows the total: a SECRET row is not
      counted until at least one has been found, so the line can never say how many secrets there are. Once one is found they all count — the
      player knows the kind of thing exists by then, which is exactly what R1 allows. The count follows the filter, because it sits under it. */
-  const secretFound=allAch().some(a=>a.tier==='secret'&&g[a.id]);
-  const counted=list.filter(a=>a.tier!=='secret'||secretFound||g[a.id]);
-  tabCount('ach',counted.filter(a=>g[a.id]).length,counted.length);
+  // build 62 (61.13): the count is the TRUE total of what is listed — every row counts, secret or not
+  tabCount('ach',rows.filter(a=>g[a.id]).length,rows.length);
   markSeen(fresh);
 }
 // a locked row: straight to the sheet it is earned on, at the mode and length it names; a locked mode or length asks the box first
