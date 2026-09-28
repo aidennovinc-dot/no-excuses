@@ -188,6 +188,18 @@ export async function run() {
       ? ok(`61.15 every achievement name is ${g15.tok} (${named.length} rows and the toast); nameless rows carry none; contrast on every design's ground ${ratios.map(([k, r]) => k + ' ' + r).join(', ')}`)
       : bad('61.15 gold names', JSON.stringify({ g15, ratios, off: named.filter(r => r.gold[0] !== g15.rgb).slice(0, 3) }));
   }
+  /* 61.18: choosing a tap sound in Customise plays it ONCE, as a game tap — no select, no click of the button's own — and OFF plays nothing */
+  {
+    const s18 = await page.evaluate(async () => { const A = await import('./audio.js'), S = await import('./core/store.js'), R = await import('./ui/router.js'), w = ms => new Promise(r => setTimeout(r, ms));
+      R.show('s-custom'); await w(500); const out = {};
+      for (const v of ['click', 'wood', 'space', 'off']) { const b = document.querySelector(`#c-snd [data-v="${v}"]`); if (!b) { out[v] = 'none'; continue; }
+        const n = { hit: 0, select: 0, click: 0 }, keep = {}; for (const k in n) { keep[k] = A.Snd[k]; A.Snd[k] = function (...x) { n[k]++; if (k === 'hit') n.pack = S.prefs.snd; return keep[k].apply(this, x); }; }
+        b.click(); await w(350); for (const k in keep) A.Snd[k] = keep[k]; out[v] = n; }
+      return out; });
+    (['click', 'wood', 'space', 'off'].every(v => s18[v].hit === 1 && !s18[v].select && !s18[v].click && s18[v].pack === v))
+      ? ok('61.18 a tap sound picked in Customise plays once, in that pack, as a game tap does — no click of its own; OFF picks off and so plays nothing')
+      : bad('61.18 the tap-sound preview', JSON.stringify(s18));
+  }
   /* 61.16: a Customise-unlock row is three lines — [thing] Name / the requirement alone / → game · mode · length — and says its mode ONCE;
      no row says what kind of thing it unlocks (the header does); no requirement anywhere shows a whole percent with decimals */
   {

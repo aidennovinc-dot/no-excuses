@@ -213,6 +213,7 @@ define({
        here, at the tap. (Found by the gate, not by the review, which had noted the dependency for the track row alone.) */
     save(); applyPrefs(F.g); renderCustom();
     if(k==='scale') Snd.scaleHear();
-    // v13 (12.2): the pack is demonstrated with the app's own tap sounds, in the pack just picked — a select, then a hit
-    if(k==='snd'){ Snd.select(); setTimeout(()=>Snd.hit(),150); } return 'pick'; },
+    /* v13 (12.2) → build 62 (61.18): the pack is demonstrated by ONE hit, exactly as a tap sounds in a game, and the button makes no click of
+       its own. It was a select, a hit 150ms later and the dispatcher's own select on top — two or three clicks for one choice. OFF is silent. */
+    if(k==='snd'){ Snd.hit(); return undefined; } return 'pick'; },
 });
