@@ -1463,6 +1463,15 @@ scene('61.1', async (page, browser) => {
   await frame(page, browser, '61.1-abandoned', 'Exit mid-run: the result screen marked abandoned, Retry straight under the line');
 });
 
+scene('61.2', async (page, browser) => {
+  await load(page); await runOf(page, 'quick-tap'); await sleep(600);
+  // the hold, frozen three-quarters of the way round: the line has drawn most of the pill
+  await page.evaluate(() => document.getElementById('restart').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))); await sleep(360);
+  await page.evaluate(() => { for (const a of document.getAnimations()) try { a.pause(); } catch (e) {} });
+  await frame(page, browser, '61.2-restart-hold', 'Restart, top right opposite Exit, held about three quarters of the way: the line drawing round the word');
+  await page.evaluate(() => document.getElementById('restart').dispatchEvent(new PointerEvent('pointerup', { bubbles: true })));
+});
+
 /* ---------- the runner ---------- */
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 if (ARGV.includes('--list')) { console.log(Object.keys(SCENES).join('\n')); process.exit(0); }

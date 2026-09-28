@@ -145,6 +145,20 @@ export async function run() {
       : bad('61.1 Exit mid-run', JSON.stringify({ ...ab, before, after }));
     await click('#again'); await sleep(400);
     (await page.evaluate(() => document.getElementById('game').classList.contains('on'))) ? ok('61.1 Retry on an abandoned run starts the same run again') : bad('61.1 Retry starts a run');
+    /* build 62 (61.2): HOLD TO RESTART. Released at half the hold: nothing. Held the whole hold: the same run starts again with its
+       3-2-1, on the game screen, recording nothing. The page times both holds itself, so the test clock scales them together */
+    for (let i = 0; i < 140 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) { await clearReady('quick-tap'); await sleep(100); }
+    const rs = await page.evaluate(async () => { const RN = await import('./run/run.js'), G = await import('./config/games.js'), b = document.getElementById('restart');
+      const w = ms => new Promise(r => setTimeout(r, ms)), ev = t => b.dispatchEvent(new PointerEvent(t, { bubbles: true }));
+      const runs = () => ((JSON.parse(localStorage.getItem('ne')) || {}).runs || []).length, n0 = runs();
+      const id0 = RN.R.id; ev('pointerdown'); await w(G.RESTART.holdMs / 2); const mid = b.classList.contains('hold'); ev('pointerup'); await w(G.RESTART.holdMs);
+      const early = { id: RN.R.id === id0, on: RN.R.on, hold: b.classList.contains('hold') };
+      ev('pointerdown'); await w(G.RESTART.holdMs + 120);
+      return { mid, early, again: RN.R.id !== id0 && RN.R.on, count: document.getElementById('count').classList.contains('on'), live: document.getElementById('game').classList.contains('live'),
+        screen: document.querySelector('.screen.on')?.id || 'game', runs: runs() - n0, label: b.textContent.trim(), right: Math.round(innerWidth - b.getBoundingClientRect().right) }; });
+    (rs.mid && rs.early.id && rs.early.on && !rs.early.hold && rs.again && rs.count && !rs.live && rs.screen === 'game' && rs.runs === 0 && rs.label === 'Restart')
+      ? ok(`61.2 "${rs.label}" top right (${rs.right}px in): let go at half the hold and the run carries on; hold it all and the run starts again on its 3-2-1, nothing recorded`)
+      : bad('61.2 hold to restart', JSON.stringify(rs));
     await click('#quit'); await sleep(300);
   }
 }

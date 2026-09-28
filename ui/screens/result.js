@@ -88,7 +88,7 @@ function abandonRun(){ abandoned=true; played={g:sel.game,d:sel.diff,s:sel.secs,
   const vd=$('#verdict'); vd.textContent=RESULT.abandonedLine; vd.className='verdict'; vd.style.color='';
   $('#vsbox').classList.remove('on'); $('#over-stats').innerHTML=''; $('#over-rank').innerHTML=''; $('#share').hidden=true;
   renderOverChips(); renderOverTop(); show('s-over'); }
-on('run:abort',({quiet,gaunt}={})=>{ if(!quiet&&!gaunt) abandonRun(); });
+on('run:abort',({quiet,gaunt,again}={})=>{ if(!quiet&&!gaunt&&!again) abandonRun(); });
 on('run:finish',({run,isBest,two,fresh,ach,adv})=>{ const g=GC(run.g,run.d,run.s);
   abandoned=false; $('#s-over').classList.remove('abandoned');
   // the header (v11) carries only a status — the board title under the top 10 names the game, mode and length

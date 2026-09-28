@@ -145,7 +145,7 @@ function start(){
   $('#hud-time').textContent=g.timed?sel.secs.toFixed(2):'';
   hud.reset(); applyPrefs(sel.game); $('#game').classList.toggle('timed',!!g.timed&&!versus);
   if(ctx) ctx.timers.clearT();
-  R.id++; Object.assign(R,{on:true,live:false,gaunt:pendingGaunt,timed:!!g.timed&&!vx,t0:0,end:0,goalHit:false,fresh:[],lenNext:null,lenDone:false,demo:false,tension:0,fin:0,vsP:[0,0],flow:0,flowT:0,
+  $('#game').classList.toggle('gaunt',!!pendingGaunt); R.id++; Object.assign(R,{on:true,live:false,gaunt:pendingGaunt,timed:!!g.timed&&!vx,t0:0,end:0,goalHit:false,fresh:[],lenNext:null,lenDone:false,demo:false,tension:0,fin:0,vsP:[0,0],flow:0,flowT:0,
     flowOn:!VS.on&&!sel.vs&&(sel.game==='quick-tap'||sel.game==='dots')});
   $('#game').classList.remove('flowon'); $('#game').style.setProperty('--flow','0');
   /* v17 (B.5, L6): the next length this run could open, and the test that says so. It is computed ONCE per run because a
@@ -186,7 +186,7 @@ function start(){
    during the 3-2-1. The engines no longer report a best round they do not have (see their result()); this is the other
    half - a result with no hits, no misses and no rounds is not a run and banks nothing.
    `quiet` - the phone going to sleep mid-run is not a quit and banks NOTHING, not even a round that landed. */
-function abort(quiet){ if(!R.on) return; const gaunt=!!R.gaunt;
+function abort(quiet,again){ if(!R.on) return; const gaunt=!!R.gaunt;
   /* `landed` reads the engine's own report of whether a round exists, and a ROUND THAT SCORED ZERO is a real result -
      0.00% off on Estimate, a clean Find - so a count is not enough on its own. Estimate and Timing leave `x` OUT while
      no round has landed (their result()), which is the precise signal; the other engines always report an `x`, so for
@@ -198,7 +198,11 @@ function abort(quiet){ if(!R.on) return; const gaunt=!!R.gaunt;
   clearResume(); paused=false;
   R.on=false; R.id++; VS.reset(); Intro.clear(); cancelAnimationFrame(R.raf); ctx.timers.clearT(); Music.stop(); eng.stop(ctx); $('#count').classList.remove('on'); $('#vwin').classList.remove('on'); $('#game').classList.remove('shake','live','flowon'); $('#seqdone')?.classList.remove('on'); $('#rxbar').innerHTML='';
   // build 62 (61.1): the player's own Exit lands on the result screen marked abandoned; a quiet end and a Gauntlet keep their routes
-  emit('run:abort',{quiet:!!quiet,gaunt}); }
+  emit('run:abort',{quiet:!!quiet,gaunt,again:!!again}); }
+/* build 62 (61.2): RESTART. The run in hand is dropped the way Exit drops it (the quit pass keeps only what already landed), then the
+   same selection starts again with its normal 3-2-1. `again` tells the screens this abort is not theirs to route. A Gauntlet is one
+   way through and has no Restart. */
+function restart(){ if(!R.on||R.gaunt) return false; abort(false,true); start(); return true; }
 /* ---------- v31 (60.27, build 60): LEAVING THE APP PAUSES THE RUN, AND IT RESUMES WHEN YOU COME BACK ----------
    This REVERSES v29 item 4 (build 55), which ended the run. Aiden's call of 2026-09-23: "a 20-round Streak lost to a phone
    call." Item 4's reasoning was right about the FAULT and wrong about the remedy — everything a run measures did keep running
@@ -382,4 +386,4 @@ function goWhere(w){ if(!w) return; sel.game=w.g; prefs.lastGame=w.g; save();
 
 const introActive=()=>Intro.active();
 const introTap=()=>Intro.tap();
-export { R, abort, active, goWhere, input, introActive, introTap, liveCheck, setGauntStep, start, whereOf };
+export { R, abort, restart, active, goWhere, input, introActive, introTap, liveCheck, setGauntStep, start, whereOf };

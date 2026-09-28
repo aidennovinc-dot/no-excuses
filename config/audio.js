@@ -437,6 +437,9 @@ export const CHEST_STING = {
   pro: { track: 'theme:pro', cut: 3.9, tail: [[3.9, -24, 1600, 'sine', .03, 250], [3.9, -12, 1500, 'triangle', .016, 200], [3.9, -5, 1500, 'triangle', .012, 200], [3.9, 2, 1500, 'triangle', .012, 200], [3.9, 9, 1500, 'triangle', .01, 200], [3.95, 14, 1450, 'sine', .014, 260], [4.0, 19, 1450, 'sine', .01, 300]] },
   thorns: { track: 'theme:thorns', cut: 4.2, tail: [[4.2, -12, 1800, 'sine', .04, 400], [4.2, 0, 1800, 'sawtooth', .009, 220, 1100], [4.2, 7, 1800, 'sawtooth', .009, 220, 1100], [4.2, 15, 1800, 'sawtooth', .007, 220, 1100], [4.25, 19, 1750, 'sine', .012, 500]] },
 };
+/* build 62 (61.2): the Restart hold's rising tone. It lasts exactly as long as the fill (RESTART.holdMs in config/games.js) and a
+   release before the line closes cuts it off. One oscillator gliding up, quiet, so it reads as "keep holding" rather than an alarm. */
+export const RESTART_FX = { f0: 330, f1: 990, wave: 'triangle', gain: .06 };
 export const CHEST_READY_FX = [[0, 146.8, 146.8, 460, 'sine', .03, 50], [.24, 220, 220, 700, 'sine', .03, 80]];
 /* v31 (60.33, build 60): THE WELCOME CEREMONY'S OWN SOUND. Distinct from the unlock sound and from the achievement click, the
    way a chest's and a key's are (v23 L.6, v24 C.5) — this is the first thing the game ever gives a player and it should not

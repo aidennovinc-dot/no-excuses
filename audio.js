@@ -10,6 +10,7 @@
 import { CHEER_FX, CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, COVER_AT, COVER_FX, DUCK, DUCK_TAIL, FLOW_STEM, GIFT_FX, HUSH, KEY_EARN_CIRCUIT, KEY_EARN_FX, KEY_INTRO_FX, KEY_STEP_FX, KEY_THEMES, MAP_FX, MAP_LOCKED, POP_FX, ROUND_FX, ROUND_VERDICT, SCALES, SET_SECS, STEMS, STING_RING, TITLE_FX, TRACKS, TRACK_PICK, VERDICT_FX, VIDEO_FX, WELCOME_FX, WHOOSH_VARIANTS } from "./config/audio.js";
 import { KEY_EARN } from "./config/keys.js";
 import { STREAK } from "./config/games.js";
+import { RESTART_FX } from "./config/audio.js";
 import { emit, on } from "./core/events.js";
 import { sel } from "./core/state.js";
 import { everywhere, look, musicOn, prefs } from "./core/store.js";
@@ -152,6 +153,12 @@ const Snd = (()=>{
     // one click family (v11): every menu tap is click(); picking an option is select() — the same tone, a step higher (×1.12)
     click(k){ k=k||1; look('snd')==='click' ? tone(1500*k,1100*k,14,'square',.03) : look('snd')==='wood' ? tone(1000*k,600*k,22,'triangle',.05) : look('snd')==='sigh' ? tone(700*k,380*k,60,'sine',.03) : tone(2400*k,1800*k,14,'sine',.035); },
     select(){ this.click(1.12); },
+    /* build 62 (61.2): the Restart hold's rise, `ms` long. Handed back so a release can cut it; silent when sound is off */
+    rise(ms){ const a=AC(); if(!a||rec||look('snd')==='off') return null; const R=RESTART_FX, t=a.currentTime, d=Math.max(.05,ms/1000);
+      const o=a.createOscillator(), g=a.createGain(); o.type=R.wave; o.frequency.setValueAtTime(R.f0,t); o.frequency.exponentialRampToValueAtTime(R.f1,t+d);
+      g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(R.gain,t+.03); g.gain.setValueAtTime(R.gain,t+d-.02); g.gain.exponentialRampToValueAtTime(.0001,t+d);
+      o.connect(g).connect(a.destination); o.start(t); o.stop(t+d+.02);
+      return { stop(){ try{ const n=a.currentTime; g.gain.cancelScheduledValues(n); g.gain.setTargetAtTime(.0001,n,.008); o.stop(n+.04); }catch(e){} } }; },
     tick(){ tone(880,880,70,'sine',.07); },
     go(){ tone(1320,1320,140,'sine',.08); },
     /* v16 (1.5): the end of a game. It always fired — run/run.js calls it on every finish, every game, every mode — but it

@@ -391,7 +391,7 @@ function spillDemo(id){ const b=$(`#grid .chest[data-chest="${id}"]`), w=$(`#gri
   w.hidden=false; w.innerHTML=wordsHtml(id); setVars(w,spillVars()); w.classList.add('spill'); layoutGrid(); chestInView(id);
   setTimeout(()=>{ b.classList.remove('spill'); w.classList.remove('spill'); renderChests(); layoutGrid(); drawLines(false); },SPILL_DEMO_MS); }
 on('challenge',c=>{ show('s-pick',{g:c.g,d:c.d,s:c.s}); showChallenge(c); });
-on('run:abort',({quiet,gaunt}={})=>{ if(quiet||gaunt) show('s-pick'); });
+on('run:abort',({quiet,gaunt,again}={})=>{ if(!again&&(quiet||gaunt)) show('s-pick'); });
 // v24 (A.2, build 43): Fresh game starts the map at the top, whatever the last profile left it scrolled to
 on('store:reset',()=>{ const p=$('#s-pick'); if(p) p.scrollTop=0; });
 // the snake and its lines are measured, so a rotation has to re-measure them. Only while the grid is the screen on show

@@ -1162,6 +1162,14 @@
   .hud>#hud-mode{flex:0 1 auto;min-width:0;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .hud>#hud-time{flex:0 1 auto;min-width:0;text-align:right}
   #score{display:block;font-weight:700;font-size:clamp(32px,8vw,60px);color:var(--ink);letter-spacing:0;line-height:1.05;text-align:center}
+  /* build 62 (61.2): Restart, opposite Exit. Held, a line sweeps round the word (a conic mask on the pill's border); when it closes
+     the run restarts. Released early, it snaps back. */
+  @property --rs{syntax:'<percentage>';inherits:false;initial-value:0%}
+  #restart{position:absolute;right:6px;top:max(8px,env(safe-area-inset-top));height:44px;padding:0 12px;display:grid;place-items:center;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);z-index:6;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  #restart::before{content:"";position:absolute;inset:6px 2px;border:2px solid var(--ink);border-radius:999px;--rs:0%;-webkit-mask:conic-gradient(#000 var(--rs),transparent 0);mask:conic-gradient(#000 var(--rs),transparent 0);transition:--rs .12s linear;pointer-events:none}
+  #restart.hold{color:var(--ink)}
+  #restart.hold::before{--rs:100%;transition:--rs var(--hold,500ms) linear}
+  #game.gaunt #restart{display:none}
   #quit{position:absolute;left:8px;top:max(8px,env(safe-area-inset-top));width:44px;height:44px;display:grid;place-items:center;font-family:var(--mono);font-size:22px;color:var(--mute);z-index:6}
   #count{position:absolute;inset:0;display:none;place-items:center;font-family:var(--mono);font-weight:700;font-size:clamp(80px,26vw,180px);color:var(--ink);pointer-events:none;z-index:5;font-variant-numeric:tabular-nums}
   #count.on{display:grid}
@@ -1211,7 +1219,7 @@
      own bottom, and the clock covered its first line. The same 11px as before on a phone with no inset (and in the gate) */
   /* v31 (60.19, build 60): IN FLOW, inside #top. It was absolute at the same offset #top now sits at, which is why it and the
      HUD under it could overlap and why `goalon` had to push the HUD down by a hand-written 44px. */
-  #goal{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);border:1px solid var(--line);padding:5px 10px;white-space:nowrap;pointer-events:none;display:none;z-index:4;max-width:min(92vw,calc(100vw - 116px));overflow:hidden;text-overflow:ellipsis}
+  #goal{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);border:1px solid var(--line);padding:5px 10px;white-space:nowrap;pointer-events:none;display:none;z-index:4;max-width:min(92vw,calc(100vw - 180px));overflow:hidden;text-overflow:ellipsis}
   #goal.on{display:block}
   #goal b{color:var(--ink);font-weight:500}
   #goal.hit{border-color:var(--ok);color:var(--ok);animation:pop .3s ease-out}
