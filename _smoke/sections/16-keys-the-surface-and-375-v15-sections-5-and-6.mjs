@@ -750,6 +750,29 @@ export async function run() {
       ? ok(`61.7 / 61.22 on the key screen no key layer draws behind text or a control (${Object.entries(lay.out).map(([s, o]) => s + ' ' + o.n + ' clear').join(', ')}); the canvas takes no tap and covers the phone`)
       : bad('61.7 / 61.22 the background layer rule', JSON.stringify(lay));
   }
+  /* build 64 (A2): THE STATUS-BAR STRIP IS CLEAR. With a phone's top inset on (47px), no key layer draws anything between the top of the canvas
+     and the bottom of the inset — sampled across the whole strip on the Author key screen, each layer in turn */
+  {
+    const cdp = await page.createCDPSession(); let sent = true;
+    try { await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 47, bottom: 34, left: 0, right: 0 } }); } catch (e) { sent = false; }
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    const strip = sent && await page.evaluate(async () => { const AT = await import('./ui/atmosphere.js'), R = await import('./ui/router.js'), TH = await import('./config/theme.js'), KY = await import('./config/keys.js');
+      const w = ms => new Promise(r => setTimeout(r, ms)), cv = document.getElementById('stars'), cx = cv.getContext('2d', { willReadFrequently: true });
+      const pr = document.createElement('div'); pr.style.cssText = 'position:fixed;top:0;height:env(safe-area-inset-top)'; document.body.appendChild(pr); const ti = pr.getBoundingClientRect().height; pr.remove();
+      R.show('s-key', { tier: 2 }); await w(500); const out = {};
+      for (const style of ['lantern', 'circuit', 'thorn']) { AT.setKeyLayer(style); await w(900);
+        const cr = cv.getBoundingClientRect(), k = cv.width / cr.width, sky = (KY.KEY_LAYER[style].sky || '').split(',').map(Number), y1 = Math.floor((ti - cr.top) * k) - 2;
+        const d = cx.getImageData(0, 0, cv.width, Math.max(1, y1)).data; let lit = 0, n = 0;
+        for (let i = 0; i < d.length; i += 4 * 7) { n++; if (d[i + 3] > 255 * (1 - TH.BG_LAYER.clear) + 8 && !(sky.length === 3 && [0, 1, 2].every(j => Math.abs(d[i + j] - sky[j]) <= 8))) lit++; }
+        out[style] = { n, lit }; }
+      AT.setKeyLayer(null); return { ti, out }; });
+    try { await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0, bottom: 0, left: 0, right: 0 } }); } catch (e) {}
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+    (!sent) ? ok('A2 the status-bar strip — SKIPPED: this Chrome has no safe-area override')
+      : (strip.ti === 47 && Object.values(strip.out).every(o => o.n > 1000 && o.lit === 0))
+      ? ok(`A2 with a 47px top inset no key layer draws in the status-bar strip (${Object.entries(strip.out).map(([s, o]) => s + ' ' + o.n + ' samples clear').join(', ')})`)
+      : bad('A2 the status-bar strip', JSON.stringify(strip));
+  }
   /* build 62 (61.22): EVERY BACKGROUND FILLS THE WHOLE PAGE AND SITS BEHIND EVERYTHING, on the long screens, scrolled to the bottom, with a top
      and a bottom safe-area inset: the canvas runs from above the top inset to below the bottom one, and no art is left behind any text or
      control. Lantern, Circuit and Thorn, on Customise ("Settings"), the Skill key screen and the Games chest tab */

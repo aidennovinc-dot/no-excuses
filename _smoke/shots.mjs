@@ -1658,6 +1658,12 @@ scene('A1', async (page, browser) => {
   await frame(page, browser, 'A1-games-chest-count', 'Games chest tab: the count line is the thirteen modes, "Streak not counted"');
 });
 
+scene('A2', async (page, browser) => {
+  await load(page, { ...OPEN, chests: { games: 1, key: 1, pro: 1, thorns: 1 } }); await show(page, 's-key', { tier: 2 }); await sleep(2600);
+  const im = await frame(page, browser, 'A2-author-key-top-strip', 'Author key screen, Thorn layer: nothing drawn in the top 47px under the clock');
+  say('litInStrip', litIn(im, { x0: 0, y0: 0, x1: im.w, y1: 47 * 2 }));
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

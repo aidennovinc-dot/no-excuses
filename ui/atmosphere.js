@@ -164,11 +164,19 @@ const LAYER={
    · behind every piece of text and every control on the screen that is up, the art is taken out (BG_LAYER.clear, BG_LAYER.pad round it) —
      measured off the live page, so no screen and no background needs a rule of its own, and the art decorates only what is left, the edges;
    · in a game the chosen background stays, under a dark overlay (BG_LAYER.dim), drawn on alternate frames to spare the run. */
-let holes=[], holesT=0, inRun=false, odd=false, cvTop=0, cvLeft=0;
+let holes=[], strip=0, holesT=0, inRun=false, odd=false, cvTop=0, cvLeft=0, topIn=null;
 const TEXTY=/\S/;
-function measure(){ holes=[]; holesT=performance.now(); if(inRun) return;
+// the top safe area, read off a probe the way the stylesheet sees it (env() has no script API)
+function insetTop(){ if(!topIn){ topIn=document.createElement('div'); topIn.style.cssText='position:fixed;top:0;left:0;width:0;height:env(safe-area-inset-top);visibility:hidden;pointer-events:none'; document.body.appendChild(topIn); }
+  return topIn.getBoundingClientRect().height; }
+function measure(){ holes=[]; strip=0; holesT=performance.now(); if(inRun) return;
   // where the canvas is NOW — the safe-area insets can change without a resize (rotation, an installed app's first frame)
   { const br=cv.getBoundingClientRect(); cvTop=br.top; cvLeft=br.left; }
+  /* build 64 (A2, Cowork's call on Aiden's "I don't care"): THE STATUS-BAR STRIP IS CLEAR. The Author key's thorn vines curved across the top,
+     behind the phone's clock and battery. The strip from the top of the canvas to the bottom of the top inset is one more hole, so no layer
+     draws there — the same rule that clears the art from behind text, on every screen and every background, not a thorn-only exception. The
+     strip is cleared outright (a hole behind text keeps BG_LAYER.clear's trace of the art; the clock is not text of ours). */
+  { const ti=insetTop(); if(ti>0) strip=(ti-cvTop)*dpr; }
   const s=document.querySelector('.screen.on'); if(!s) return;
   const vw=innerWidth, vh=innerHeight, big=vw*vh*.45, p=BG_LAYER.pad;
   for(const el of s.querySelectorAll('*')){ if(el instanceof SVGElement) continue;
@@ -178,8 +186,12 @@ function measure(){ holes=[]; holesT=performance.now(); if(inRun) return;
     if(getComputedStyle(el).visibility==='hidden') continue;
     holes.push([(r.left-p-cvLeft)*dpr,(r.top-p-cvTop)*dpr,(r.width+p*2)*dpr,(r.height+p*2)*dpr]); } }
 // a layer that lays down its own opaque sky (Lantern) has its holes filled with that sky — clearing them would show --ground through as cards
-function punch(ly){ if(!holes.length) return; const sky=ly&&KEY_LAYER[ly]&&KEY_LAYER[ly].sky; cx.save();
-  cx.globalCompositeOperation=sky?'source-over':'destination-out'; cx.globalAlpha=BG_LAYER.clear; cx.fillStyle=sky?`rgb(${sky})`:'#000';
+function punch(ly){ if(!holes.length&&!strip) return; const sky=ly&&KEY_LAYER[ly]&&KEY_LAYER[ly].sky; cx.save();
+  cx.globalCompositeOperation=sky?'source-over':'destination-out'; cx.fillStyle=sky?`rgb(${sky})`:'#000';
+  // the strip, then a short fade under it so the art thins out into it rather than stopping on a line
+  if(strip){ cx.globalAlpha=1; cx.fillRect(0,0,W,strip); const f=16*dpr, c=sky?`rgba(${sky},`:'rgba(0,0,0,', g=cx.createLinearGradient(0,strip,0,strip+f);
+    g.addColorStop(0,c+'1)'); g.addColorStop(1,c+'0)'); cx.fillStyle=g; cx.fillRect(0,strip,W,f); cx.fillStyle=sky?`rgb(${sky})`:'#000'; }
+  cx.globalAlpha=BG_LAYER.clear;
   cx.beginPath(); for(const [x,y,w,h] of holes){ if(cx.roundRect) cx.roundRect(x,y,w,h,8*dpr); else cx.rect(x,y,w,h); } cx.fill(); cx.restore(); }
 function draw(t){ if(paused){ running=false; return; }
   if(inRun&&(odd=!odd)){ requestAnimationFrame(draw); return; }
