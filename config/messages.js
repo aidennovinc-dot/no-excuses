@@ -18,6 +18,7 @@
      { chest:'games' }  that chest opened                 (progress/key.js chestOpen)
      { gauntlet:'g1' }  that Gauntlet played for the first time (progress/key.js, prefs.gauntSeen — written by ui/screens/gauntlet.js)
      { support:1 }      a support payment has gone through (progress/key.js, prefs.paid — THE HOOK IS NAMED AND NOTHING SETS IT YET)
+     { game:'dots' }    that game unlocked, any mode of it (progress.js gameUnlocked — the strict read, a challenge link opens nothing) — build 64, 62.12
    Nothing else is a lock, so ui/screens/about.js has one test and the congratulations card (item 22) asks the same one.
    `{ key:'…' }` (a key finished) was a fifth shape until build 52 and no row uses it any more, so it is gone from the test as well —
    a config shape nothing reads is the kind of thing that gets re-wired by accident (build 51's lesson, KEY_REVEAL).
@@ -49,7 +50,8 @@ export const MESSAGES = [
      videoWidth / videoHeight off the file itself on loadedmetadata, which is authoritative and needs no config — but the card
      draws a powered-OFF frame with no video element in it, so there is nothing there to measure. A row without `ratio` is 16:9,
      which is what the test card is; a new clip that is not 16:9 sets this. (The build session's call, per 59.10.) */
-  { id: 'intro', title: 'Welcome', by: { run: { g: 'quick-tap', s: 5 } }, file: 'video/welcome-test.mp4', ratio: [9, 16] },
+  // build 64 (62.12): Welcome waits for DOTS to unlock now, not the first Quick Tap · Sprint — the walkthrough owns that first run and its result
+  { id: 'intro', title: 'Welcome', by: { game: 'dots' }, file: 'video/welcome-test.mp4', ratio: [9, 16] },
   { id: 'games', title: "You've seen them all!", by: { chest: 'games' }, file: 'video/test-card.mp4', cc: 'video/test-card.vtt' },
   { id: 'skill', title: 'The skill chest is open', by: { chest: 'key' }, file: 'video/test-card.mp4', cc: 'video/test-card.vtt' },
   { id: 'pro', title: 'Have you gone pro?', by: { chest: 'pro' }, file: 'video/test-card.mp4', cc: 'video/test-card.vtt' },

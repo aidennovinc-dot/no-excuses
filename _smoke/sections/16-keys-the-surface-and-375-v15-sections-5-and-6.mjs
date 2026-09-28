@@ -496,12 +496,15 @@ export async function run() {
       const before = K.msgOpen(w);
       P.Scores.runs().unshift({ t: Date.now(), g: 'quick-tap', d: 'two', s: 15, hits: 9, misses: 0, v: 4 });
       R.show('s-menu'); await wait(120); R.show('s-about'); await wait(300); const wrongLen = K.msgOpen(w);
+      // AMENDED AT BUILD 64 (62.12): the first Sprint no longer opens it either — Dots unlocking does
       P.Scores.runs().unshift({ t: Date.now(), g: 'quick-tap', d: 'two', s: 5, hits: 7, misses: 0, v: 4 });
+      R.show('s-menu'); await wait(120); R.show('s-about'); await wait(300); const sprint = K.msgOpen(w);
+      P.unlocked()['dots:' + (await import('./games/registry.js')).GAMES.dots.modes[0]] = Date.now();
       R.show('s-menu'); await wait(120); R.show('s-about'); await wait(300);
       const row = document.querySelector('#msglist .msgrow[data-msg="intro"]');
-      return { before, wrongLen, after: K.msgOpen(w), open: !row.classList.contains('locked'), lede: document.getElementById('msg-lede').textContent }; });
+      return { before, wrongLen: wrongLen || sprint, after: K.msgOpen(w), open: !row.classList.contains('locked'), lede: document.getElementById('msg-lede').textContent }; });
     // both Gauntlets played: eight rows, and the support row is the only one still locked
-    await boot({ chests: { games: 1, key: 1, pro: 1, thorns: 1 }, gauntSeen: { g1: 1, g2: 1 }, paid: 1 }, { runs: SPRINT52 });
+    await boot({ chests: { games: 1, key: 1, pro: 1, thorns: 1 }, gauntSeen: { g1: 1, g2: 1 }, paid: 1 }, { runs: SPRINT52, unlock: { 'dots:blind': Date.now() } });
     await go52('s-about'); await sleep(500); const allG = await rows();
     // the support hook is prefs.paid and NOTHING in the app writes it: the support button says its piece and the thank-you stays shut
     await boot({ chests: { games: 1 } });
@@ -510,16 +513,16 @@ export async function run() {
       R.show('s-menu'); await wait(120); R.show('s-about'); await wait(300);
       return { paid: JSON.parse(localStorage.getItem('ne')).prefs.paid || 0, shut: document.querySelector('#msglist .msgrow[data-msg="thanks"]').classList.contains('locked') }; });
     const ids52 = MS52.MESSAGES.map(m => m.id);
-    const shapes = MS52.MESSAGES.every(m => m.by && Object.keys(m.by).length === 1 && ['run', 'chest', 'gauntlet', 'support'].includes(Object.keys(m.by)[0]))
+    const shapes = MS52.MESSAGES.every(m => m.by && Object.keys(m.by).length === 1 && ['run', 'chest', 'gauntlet', 'support', 'game'].includes(Object.keys(m.by)[0]))
       && !MS52.MESSAGES.some(m => m.by.key) && MS52.MESSAGES.filter(m => m.by.gauntlet).length === 2 && MS52.MESSAGES.filter(m => m.by.chest).length === 4;
     const item7 = TITLES[1] === "You've seen them all!" && !TITLES.some(t => /is whole|Every game is open/.test(t));
     const of8 = [fresh52, oneG, allG].every(r => / of 8$/.test(r.lede)) && /0 of 8/.test(fresh52.lede) && /8 of 8/.test(allG.lede);
     const hidden = fresh52.ids.join() === ids52.filter(i => !['g1', 'g2'].includes(i)).join() && oneG.ids.join() === ids52.filter(i => i !== 'g2').join() && allG.ids.join() === ids52.join()
       && ![fresh52, oneG, allG].some(r => r.qm || r.gap);
-    const locks = fresh52.locked.every(Boolean) && oneG.need.some(n => /opens when you play Gauntlet/i.test(n)) && fresh52.need.some(n => /finish a quick tap/i.test(n))
+    const locks = fresh52.locked.every(Boolean) && oneG.need.some(n => /opens when you play Gauntlet/i.test(n)) && fresh52.need.some(n => /unlock dots/i.test(n))
       && allG.locked.filter(Boolean).length === 0 && /support the game/i.test(oneG.need[oneG.ids.indexOf('thanks')]);
     (shapes && item7 && of8 && hidden && locks && welcome.before === false && welcome.wrongLen === false && welcome.after === true && welcome.open && !supTap.paid && supTap.shut)
-      ? ok(`v27 items 7 / 8 About carries Aiden's new eight (${TITLES.join(' | ')}): Welcome waits for the first solo Quick Tap . Sprint (a Dash does not open it), the four chests keep the middle, and the three "... is whole" key rows are gone. R1 holds - a Gauntlet's row is NOT IN THE LIST until its Gauntlet has come out of its chest (${fresh52.ids.length} rows, then ${oneG.ids.length}, then ${allG.ids.length}), with no gap and no "???" - while the counter always says "of 8". The thank-you is listed and locked on "opens when you support the game", and tapping Support does not open it`)
+      ? ok(`v27 items 7 / 8 About carries Aiden's new eight (${TITLES.join(' | ')}): Welcome waits for Dots to unlock (62.12 — a Quick Tap Dash or Sprint does not open it), the four chests keep the middle, and the three "... is whole" key rows are gone. R1 holds - a Gauntlet's row is NOT IN THE LIST until its Gauntlet has come out of its chest (${fresh52.ids.length} rows, then ${oneG.ids.length}, then ${allG.ids.length}), with no gap and no "???" - while the counter always says "of 8". The thank-you is listed and locked on "opens when you support the game", and tapping Support does not open it`)
       : bad('v27 items 7 / 8 the message line-up', JSON.stringify({ shapes, item7, of8, hidden, locks, welcome, supTap, fresh52, oneG, allG }));
   }
 

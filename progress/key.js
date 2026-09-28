@@ -45,7 +45,7 @@ import { GAUNTLET, KEY, KEY_ACH } from "../config/copy.js";
 import { T } from "../core.js";
 import { opened, prefs, save, setKeyDone, store } from "../core/store.js";
 import { GAMES, GC } from "../games/registry.js";
-import { Scores, gamesDone, modeCount } from "../progress.js";
+import { Scores, gameUnlocked, gamesDone, modeCount } from "../progress.js";
 import { scoreTxt } from "../ui/format.js";
 
 const keyOf = (g, d, s) => `${g}:${d}:${s}`;
@@ -367,7 +367,7 @@ const gauntChest = id => { const g = GAUNTLETS.find(x => x.id === id); return g 
 const msgRun = r => !!r && Scores.runs().some(x => x.g === r.g && (r.d === undefined || x.d === r.d) && (r.s === undefined || x.s === r.s));
 const msgOpen = m => { if (!m) return false; const b = m.by; if (!b) return true;
   if (prefs.allOpen || prefs.supporter) return true;
-  return b.chest ? chestOpen(b.chest) : b.gauntlet ? !!(prefs.gauntSeen || {})[b.gauntlet] : b.support ? !!prefs.paid : b.run ? msgRun(b.run) : false; };
+  return b.chest ? chestOpen(b.chest) : b.gauntlet ? !!(prefs.gauntSeen || {})[b.gauntlet] : b.support ? !!prefs.paid : b.run ? msgRun(b.run) : b.game ? gameUnlocked(b.game) : false; };
 /* R1 (item 2 extended by item 8, build 52): IS THIS MESSAGE EVEN IN THE LIST? A secret may be known to exist, never what it is — so a Gauntlet's
    row is not drawn at all until that Gauntlet has come out of its chest: no row, no gap, no "???". Everything else is always listed, locked or
    open, including the support thank-you, which says what opens it. THE COUNTER IS NOT NARROWED BY THIS — ui/screens/about.js counts against

@@ -504,7 +504,7 @@ export const MSG = { title:'messages', lede:'Short messages from Aiden, as you g
      name is spelled twice — a chest fills `locked` with GRID.chestNeed × GRID.chest, and the three below take their own names the same way.
      v27 (item 8, build 52): FOUR KINDS OF LOCK, so four lines. `keyNeed` is gone with the three key rows it was written for.
      `lockedPaid` is Aiden's own sentence from item 8 ("Opens when you support the game"), lower-cased to sit in a column of lower-case lines. */
-  lockedRun:'opens when you finish a {game} · {len}', lockedGaunt:'opens when you play {name}', lockedPaid:'opens when you support the game',
+  lockedRun:'opens when you finish a {game} · {len}', lockedGame:'opens when you unlock {game}', lockedGaunt:'opens when you play {name}', lockedPaid:'opens when you support the game',
   noFile:'Not recorded yet — this slot is waiting for its clip.', capOff:'captions', capOn:'captions on',
   /* v27 (items 9 / 10, build 52): THE SHARED VIDEO PLAYER (ui/video.js). `close` is the line in dim grey at the foot of the screen — the whole of how
      the player is dismissed, because item 9 wants nothing over the picture and no knobs; a tap on the picture itself pauses and plays. */

@@ -748,10 +748,11 @@ export async function run() {
       const out = { slot: slot.id };
       S.prefs.allOpen = 0; S.prefs.supporter = 0; S.prefs.msgSeen = {}; delete S.prefs.welcomeSeen;
       // a save that has not played its first game: the slot is shut, so there is nothing to announce
-      S.store.runs = []; S.save();
+      S.store.runs = []; S.store.unlock = {}; S.save();
       out.beforeFirstRun = { open: K.msgOpen(slot), played: W.welcomeCheck(false), seen: !!S.prefs.welcomeSeen };
-      // the run that opens it (v27 item 8: Quick Tap, the Sprint length)
-      S.store.runs = [{ t: Date.now(), g: slot.by.run.g, d: 'two', s: slot.by.run.s, hits: 12, misses: 0, v: 4 }]; S.save();
+      // AMENDED AT BUILD 64 (62.12): what opens it is Dots unlocking, no longer the first Quick Tap · Sprint
+      S.store.runs = [{ t: Date.now(), g: 'quick-tap', d: 'two', s: 5, hits: 12, misses: 0, v: 4 }]; S.save(); out.sprintOnly = K.msgOpen(slot);
+      S.store.unlock['dots:blind'] = Date.now(); S.save();
       out.open = K.msgOpen(slot);
       out.duringRun = { played: W.welcomeCheck(true), seen: !!S.prefs.welcomeSeen };   // a live run is refused, and nothing is spent
       out.played = W.welcomeCheck(false);
@@ -777,9 +778,9 @@ export async function run() {
       const mine = sig(A.Snd.plan(() => A.Snd.welcome()));
       const others = [sig(A.Snd.plan(() => A.Snd.unlockFx())), sig(A.Snd.plan(() => A.Snd.click())), sig(A.Snd.chestPlan('games').map(e => e.slice(0, 8)))];
       out.fx = { notes: A.Snd.plan(() => A.Snd.welcome()).length, clash: others.includes(mine), empty: !mine };
-      S.store.runs = []; S.prefs.msgSeen = {}; delete S.prefs.welcomeSeen; S.save();
+      S.store.runs = []; S.store.unlock = {}; S.prefs.msgSeen = {}; delete S.prefs.welcomeSeen; S.save();
       return out; });
-    (!wc60.beforeFirstRun.open && wc60.beforeFirstRun.played === false && !wc60.beforeFirstRun.seen && wc60.open
+    (!wc60.beforeFirstRun.open && wc60.beforeFirstRun.played === false && !wc60.beforeFirstRun.seen && wc60.sprintOnly === false && wc60.open
       && wc60.duringRun.played === false && !wc60.duringRun.seen && wc60.played === true && wc60.again === false
       && wc60.up.shown && wc60.up.stage && /message from/i.test(wc60.up.label || '') && wc60.up.title
       && wc60.up.buttons.length === 2 && wc60.up.buttons.some(b => /^wplay:/.test(b)) && wc60.up.buttons.some(b => /^wlater:/.test(b))
@@ -811,7 +812,7 @@ export async function run() {
   /* build 62 (61.21): THE WHOLE WELCOME CARD PLAYS IT, and its picture is a chest card's powered-off player. A REAL tap (by coordinates) on
      the centre of the card starts the clip; a tap on the ground round it does nothing; LATER still closes it */
   { const w61 = async () => page.evaluate(async () => { const W = await import('./ui/welcome.js'), S = await import('./core/store.js'), M = await import('./config/messages.js');
-      const slot = M.MESSAGES[0]; S.prefs.msgSeen = {}; delete S.prefs.welcomeSeen; S.store.runs = [{ t: Date.now(), g: slot.by.run.g, d: 'two', s: slot.by.run.s, hits: 12, misses: 0, v: 4 }]; S.save();
+      const slot = M.MESSAGES[0]; S.prefs.msgSeen = {}; delete S.prefs.welcomeSeen; S.store.unlock['dots:blind'] = Date.now(); S.save();
       W.welcomeCheck(false); await new Promise(r => setTimeout(r, M.PLAYER.on.ms + 700)); const h = document.getElementById('welcome'), c = h.querySelector('.wcard').getBoundingClientRect();
       return { look: !!h.querySelector('.wstage .mprev .mpframe .mpplay'), card: [c.x + c.width / 2, c.y + c.height * .3] }; });
     const a = await w61(); await page.mouse.click(8, 8); await sleep(250);

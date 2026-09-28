@@ -273,6 +273,8 @@ function modeCount(){ let open=0, total=0, free=0; for(const g in GAMES) for(con
    unlocked, which is the same count the chest itself waits for, so seven games finished and the chest ready are the same moment by
    construction. Read the strict way modeCount() reads, so a challenge link that opened one mode for one run cracks nothing. */
 const gameDone=g=>!!GAMES[g]&&GAMES[g].modes.every(d=>modeOpen(g,d,true));
+// build 64 (62.12): a game UNLOCKED — any mode of it open, read the same strict way, so a challenge link's one-off run unlocks nothing (the Welcome message waits for Dots)
+const gameUnlocked=g=>!!GAMES[g]&&GAMES[g].modes.some(d=>modeOpen(g,d,true));
 const gamesDone=()=>Object.keys(GAMES).filter(gameDone).length;
 
 /* v23 (L.8f / G.8, build 40): Testing's GAMES CHEST switch and reset (S5, dev only). The Games chest opens on every mode in the chain,
@@ -288,4 +290,4 @@ function devModesAll(on){ const u=unlocked(), dk=Object.assign({},prefs.devKeys)
   prefs.devKeys=dk; save(); return devModesOn(); }
 function devModesReset(){ const u=unlocked(); for(const k of modeRows()) delete u[k]; if(prefs.devKeys) delete prefs.devKeys.games; save(); }
 
-export { ACH, Scores, UNLOCKS, achAll, achById, achTab, achToast, achWhere, nameless, bankLen, chalRun, checkAch, checkUnlocks, devModesAll, devModesOn, devModesReset, freeMode, gameDone, gameOpen, gamesDone, goalFor, got, isNew, isOpen, lenLock, lenNeed, lenNextLive, lenNextOf, lenOpen, lensOf, markSeen, modeCount, needFor, newMark, newPlay, nextAch, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, tierMin, tierOf, unlockArt, unlockHear, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict, verdictKey };
+export { ACH, Scores, UNLOCKS, achAll, achById, achTab, achToast, achWhere, nameless, bankLen, chalRun, checkAch, checkUnlocks, devModesAll, devModesOn, devModesReset, freeMode, gameDone, gameOpen, gameUnlocked, gamesDone, goalFor, got, isNew, isOpen, lenLock, lenNeed, lenNextLive, lenNextOf, lenOpen, lensOf, markSeen, modeCount, needFor, newMark, newPlay, nextAch, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, tierMin, tierOf, unlockArt, unlockHear, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict, verdictKey };

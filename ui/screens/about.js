@@ -74,6 +74,7 @@ const needOf=m=>{ const b=(m&&m.by)||null; if(!b) return '';
   if(b.run){ const g=GAMES[b.run.g]; return g?T(MSG.lockedRun,{game:g.name,len:lenName(b.run.g,b.run.s,b.run.d)}):''; }
   if(b.gauntlet) return T(MSG.lockedGaunt,{name:GAUNTLET.name[b.gauntlet]||b.gauntlet});
   if(b.support) return MSG.lockedPaid;
+  if(b.game){ const g=GAMES[b.game]; return g?T(MSG.lockedGame,{game:g.name}):''; }
   return ''; };
 /* R1 (item 8): the list draws only the slots that are SHOWN — a Gauntlet's row is not there at all until its Gauntlet has come out of its chest,
    no row and no gap — but the COUNTER COUNTS ALL EIGHT, both ends, so it always reads "N of 8" and a player knows two secrets exist without
