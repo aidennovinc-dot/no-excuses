@@ -161,4 +161,23 @@ export async function run() {
       : bad('61.2 hold to restart', JSON.stringify(rs));
     await click('#quit'); await sleep(300);
   }
+  /* build 62 (61.20): THE CHOSEN BACKGROUND SHOWS DURING A GAME, UNDER A DARK OVERLAY. All seven, one after another, during one live run: the
+     canvas is up and drawing, takes no tap, and is darker than the same background on the menu — by the overlay, not by editing the art */
+  {
+    await openSheet('quick-tap', 0, 0); await click('#go-btn');
+    for (let i = 0; i < 140 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) { await clearReady('quick-tap'); await sleep(100); }
+    const bright = () => page.evaluate(async () => { const cv = document.getElementById('stars'), d = cv.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, cv.width, cv.height).data;
+      let s = 0, n = 0; for (let i = 0; i < d.length; i += 4 * 211) { n++; s += Math.max(d[i], d[i + 1], d[i + 2]) * d[i + 3] / 255; } return { b: +(s / n).toFixed(2), op: getComputedStyle(cv).opacity, pe: getComputedStyle(cv).pointerEvents }; });
+    const setBg = bg => page.evaluate(async bg => { const S = await import('./core/store.js'); S.prefs.bg = bg; S.prefs.tint = ''; await new Promise(r => setTimeout(r, 500)); }, bg);
+    const BGS = await page.evaluate(async () => Object.keys((await import('./config/theme.js')).DESIGNS)), dim = await page.evaluate(async () => (await import('./config/theme.js')).BG_LAYER.dim);
+    const inRun = {}; for (const bg of BGS) { await setBg(bg); inRun[bg] = await bright(); }
+    await click('#quit'); await sleep(400); await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-menu'); }); await sleep(400);
+    await page.evaluate(() => { document.querySelectorAll('.screen.on').forEach(s => s.style.visibility = 'hidden'); });
+    const onMenu = {}; for (const bg of BGS) { await setBg(bg); onMenu[bg] = await bright(); }
+    await page.evaluate(() => { document.querySelectorAll('.screen').forEach(s => s.style.visibility = ''); });
+    const rows = BGS.map(bg => ({ bg, run: inRun[bg].b, menu: onMenu[bg].b, r: onMenu[bg].b ? +(inRun[bg].b / onMenu[bg].b).toFixed(2) : null, op: inRun[bg].op, pe: inRun[bg].pe }));
+    (rows.every(x => x.op === '1' && x.pe === 'none' && x.run > 0 && (x.menu < 1 || x.r <= 1 - dim + .2)))
+      ? ok(`61.20 all ${rows.length} backgrounds draw behind a live run, take no tap, and sit under the ${dim * 100}% overlay (run ÷ menu brightness: ${rows.map(x => x.bg + ' ' + x.r).join(', ')})`)
+      : bad('61.20 the background in a game', JSON.stringify(rows));
+  }
 }

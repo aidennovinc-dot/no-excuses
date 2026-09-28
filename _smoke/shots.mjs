@@ -1576,6 +1576,12 @@ scene('61.16', async (page, browser) => {
   await frame(page, browser, '61.16-customise-rows', 'Customise unlocks: [swatch] Clean / No misses, at least 50 hits / → Quick Tap · Four · Marathon — the mode said once');
 });
 
+scene('61.20', async (page, browser) => {
+  await load(page, { ...CHESTS_OPEN, bg: 'lantern' }); await runOf(page, 'quick-tap'); await sleep(1500);
+  await frame(page, browser, '61.20-lantern-mid-run', 'Quick Tap mid-run on the Lantern background: the art stays, under a 50% dark overlay; pads, dot and numbers the brightest things');
+  say('bg', await page.evaluate(async () => (await import('./core/store.js')).look('bg')));
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }
