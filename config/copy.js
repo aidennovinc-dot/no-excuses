@@ -142,7 +142,7 @@ export const UNLOCKS_SCREEN = { title:'unlocks',
 /* v23 (L.4, build 39): Customise is its own menu row again (v21 G.6) and the middle tab is the LIST of what can be earned
    there — CUSTOMISE UNLOCKS (guess; "Rewards" retired because it does not say unlock). A cosmetic's requirement is on that
    tab and nowhere else. `culGroup` heads its groups, one per Customise row a payout lands in (guess on the words). */
-export const PROGRESS_SCREEN = { title:'progress', unl:'Game unlocks', cul:'Customise unlocks', ach:'Achievements',
+export const PROGRESS_SCREEN = { title:'progress', unl:'Game unlocks', cul:'Customise unlocks', ach:'Achievements', howOpen:'How to open this chest →',
   /* v28 (item 4, build 53): `unlHint`, `culHint`, `achHint` and `culLocked` are RETIRED — four lines of grey helper text saying what tapping a
      row does, on a screen made of rows. One line replaces all of them, per tab: how much of that tab is unlocked. On Achievements the total
      leaves Secret out until one has been found (R1) — the line may never say how many secrets there are. */

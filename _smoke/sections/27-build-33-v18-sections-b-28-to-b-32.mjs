@@ -40,12 +40,16 @@ export async function run() {
       walk[t] = await page.evaluate(t => ({ shown: [...document.querySelectorAll('#s-prog .ptab')].filter(p => !p.hidden).map(p => p.id),
         rows: document.querySelectorAll(t.startsWith('c-') ? '#chest-list .urow, #chest-list .a' : t === 'cul' ? '#cul-list .a' : '#achlist .a').length,
         needs: document.getElementById('p-chest').hidden ? null : document.querySelectorAll('#chest-need .urow').length,
+        link: document.getElementById('p-chest').hidden ? null : document.querySelectorAll('#chest-need .chestlink').length,
+        gap: (() => { const h = document.getElementById('chest-hint').getBoundingClientRect(), g = document.getElementById('chest-g').getBoundingClientRect(), n = document.getElementById('chest-need').getBoundingClientRect(); return Math.round(g.top - h.bottom - (n.height || 0)); })(),
         stored: JSON.parse(localStorage.getItem('ne')).prefs.progTab }), t); }
     const one58 = ['c-games', 'c-key', 'c-pro', 'c-thorns'].every(t => walk[t].shown.join() === 'p-chest')
       && walk.cul.shown.join() === 'p-cul' && walk.ach.shown.join() === 'p-ach';
     const rows58 = ['c-games', 'c-key', 'c-pro', 'c-thorns', 'cul', 'ach'].every(t => walk[t].rows > 0);
-    // 58.2 / 58.3: the Pro and Author chest tabs list TWO requirements — the key and a finished Gauntlet — and the other two list one
-    const needs58 = walk['c-games'].needs === 1 && walk['c-key'].needs === 1 && walk['c-pro'].needs === 2 && walk['c-thorns'].needs === 2 && walk.cul.needs === null && walk.ach.needs === null;
+    /* RESTATED at build 62 (61.8, which supersedes 61.27): NO chest tab lists its requirements any more — the Keys screen carries them (60.30).
+       A key chest keeps one "How to open this chest" link; the Games chest has none; the count line sits straight above the filter chips */
+    const needs58 = ['c-games', 'c-key', 'c-pro', 'c-thorns'].every(t => walk[t].needs === 0) && walk['c-games'].link === 0
+      && ['c-key', 'c-pro', 'c-thorns'].every(t => walk[t].link === 1) && walk.cul.needs === null && walk.ach.needs === null;
     (one58 && rows58 && needs58 && walk.ach.stored === 'ach')
       ? ok(`B.31 / 58.3 one tab at a time across six — ${walk['c-games'].rows} on the Games chest, ${walk['c-key'].rows} on the Skill chest, ${walk['c-pro'].rows} on the Pro chest, ${walk['c-thorns'].rows} on the Author chest, ${walk.cul.rows} customise unlocks and ${walk.ach.rows} achievements — the Pro and Author tabs listing two requirements each and the others one, and the last tab open is remembered`)
       : bad('B.31 / 58.3 the tabs render', JSON.stringify({ one58, rows58, needs58, walk }));

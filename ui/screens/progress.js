@@ -29,7 +29,7 @@
    Next card do. A tap on a locked row opens the same lock box the pick sheet opens.
 
    The screen remembers which tab was last open in `prefs.progTab`; only the tab that is up renders. */
-import { ACH_SCREEN, GRID, GAUNTLET, ITEM_WORD, PROGRESS_SCREEN, TIERS, UNLOCKS_SCREEN } from "../../config/copy.js";
+import { ACH_SCREEN, GRID, ITEM_WORD, PROGRESS_SCREEN, TIERS, UNLOCKS_SCREEN } from "../../config/copy.js";
 import { CHESTS } from "../../config/chests.js";
 import { KEYS } from "../../config/keys.js";
 import { MODE_NAME } from "../../config/games.js";
@@ -38,8 +38,8 @@ import { emit } from "../../core/events.js";
 import { sel } from "../../core/state.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, lenName } from "../../games/registry.js";
-import { Scores, UNLOCKS, achAll, achById, achTab, gameOpen, got, isOpen, lenLock, lenOpen, markSeen, modeCount, newMark, setPendingAim, unlockHear, unlockHtml, unlockName, unlocked } from "../../progress.js";
-import { chestNeeds, chestOpen, keyAch, keyState, tierOpen } from "../../progress/key.js";
+import { Scores, UNLOCKS, achAll, achById, achTab, gameOpen, got, isOpen, lenLock, lenOpen, markSeen, newMark, setPendingAim, unlockHear, unlockHtml, unlockName, unlocked } from "../../progress.js";
+import { chestOpen, keyAch, keyState, tierOpen } from "../../progress/key.js";
 import { Snd } from "../../audio.js";
 import { toast } from "../toast.js";
 import { TOAST } from "../../config/copy.js";
@@ -139,18 +139,13 @@ function achRow(a,tab,{g,all,fsGame,fresh}){
   return `<button data-act="ach" class="a ${cls}" data-ach="${a.id}" id="${tab}-${a.id}"><span>${gname}${isDone?'✓ ':''}${name}</span><em>${isDone?ACH_SCREEN.done:secret?ACH_SCREEN.secret:''}</em><small>${line}</small>${where}${bar}</button>`;
 }
 
-/* ---------- 58.3: WHAT THIS CHEST NEEDS ----------
-   `chestNeeds` in progress/key.js is the one read, and it is the same one the map tile uses — the key (or every mode) it has
-   always named, and since 58.2 a finished Gauntlet on the Pro and Author chests. Each row carries its own tick, so the tab
-   says what is left rather than only what is missing first. L.2: white until met, green once, never red. */
-function needHtml(c,m){
-  return chestNeeds(c.id).map(r=>{
-    const name=r.k==='gaunt'?T(PROGRESS_SCREEN.needGaunt,{name:GAUNTLET.name[r.gaunt]||r.gaunt})
-      :r.k==='modes'?T(PROGRESS_SCREEN.needModes,{open:m.open,total:m.total})
-      :T(PROGRESS_SCREEN.needKey,{key:(KEYS.find(k=>k.id===r.tier)||{}).name||r.tier});
-    return `<div class="urow ${r.done?'done':'lock'}"><span>${name}</span><em>${r.done?PROGRESS_SCREEN.met:PROGRESS_SCREEN.todo}</em></div>`;
-  }).join('');
-}
+/* ---------- build 62 (61.8, SUPERSEDING 61.27): WHAT THIS CHEST NEEDS IS NOT LISTED HERE ANY MORE ----------
+   58.3 put the chest's requirements above its filter chips, ticked. On the phone they ran into their own status ("Pro — every bar
+   clearedNOT YET"), the second line was cut in half by the chips, and all of it repeated the Keys screen, which already carries the
+   key's progress and its Gauntlet (60.30). Aiden: "Does it need to exist?" No. A key chest keeps one small link to its key's screen;
+   the Games chest, opened by its own list below, has nothing. The count line now sits straight above the chips. */
+function needHtml(c){ const i=KEYS.findIndex(k=>k.id===c.needs); if(i<0) return '';
+  return `<button class="chestlink" data-act="chest-how" data-kt="${i}">${PROGRESS_SCREEN.howOpen}</button>`; }
 
 /* ---------- 58.3: a chest tab ----------
    The Games chest lists the chain and the lengths, which is what opens it. A key chest lists that key's own rows, grouped by
@@ -160,8 +155,7 @@ const F={};                                     // the per-tab game filter, reme
 function renderChest(tab){
   const c=chestOfTab(tab); if(!c) return;
   const g=got(), all=Scores.runs(); const fresh=[]; const gsel=F[tab]||'all';
-  const m=modeCount();
-  $('#chest-need').innerHTML=needHtml(c,m);
+  $('#chest-need').innerHTML=needHtml(c);
   $('#chest-g').innerHTML=`<button class="chip" data-act="chip-chest" data-chip="chest-g" data-v="all">${ACH_SCREEN.all}</button>`+Object.entries(GAMES).map(([id,x])=>`<button class="chip" data-act="chip-chest" data-chip="chest-g" data-v="${id}">${x.name}</button>`).join(''); chips('chest','g',gsel);
   const list=$('#chest-list');
   const tier=tierOfChest(c);
@@ -255,6 +249,8 @@ register('s-prog',{ onShow(o){ const a=o.ach?findAch(o.ach):null; const t=a?tabF
   setTab(t,o); } });
 define({
   ptab(b){ setTab(b.dataset.tab); return 'pick'; },
+  // build 62 (61.8): the one line left where the requirements were — to the Keys screen, on the key that opens this chest
+  'chest-how'(b){ show('s-key',{tier:+b.dataset.kt}); return 'click'; },
   // a locked row asks the lock box, exactly as the pick sheet does (v15 2.1); an open one goes where it is played
   // v24 (A.1, build 43): the key row goes where the Keys menu row goes, and waits for the Games chest the same way
   unl(b){ if(b.dataset.key) { if(!chestOpen('games')){ toast(TOAST.keysLocked,'','',true); return 'pick'; } show('s-key'); return 'click'; }

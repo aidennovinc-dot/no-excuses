@@ -1532,6 +1532,13 @@ scene('61.7', async (page, browser) => {
   await frame(page, browser, '61.7-author-key-thorns', 'Author key screen, Thorn layer: the vines cleared from behind every row, status label and hint line');
 });
 
+const CHESTS_OPEN = { ...OPEN, chests: { games: 1, key: 1, pro: 1, thorns: 1 } };
+scene('61.8', async (page, browser) => {
+  await load(page, CHESTS_OPEN); await show(page, 's-prog', { tab: 'c-pro' }); await sleep(700);
+  say('need', await page.evaluate(() => { const n = document.getElementById('chest-need'), b = n.querySelector('button'); return { html: n.innerHTML.slice(0, 120), disp: getComputedStyle(n).display, h: n.getBoundingClientRect().height, b: b && [getComputedStyle(b).display, getComputedStyle(b).opacity, getComputedStyle(b).color, b.getBoundingClientRect().height] }; }));
+  await frame(page, browser, '61.8-pro-chest-tab', 'Pro chest tab: the requirement lines are gone, one small link to the key, the count straight above the filter chips');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }
