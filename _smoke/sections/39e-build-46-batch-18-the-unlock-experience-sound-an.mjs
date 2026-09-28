@@ -46,7 +46,7 @@ export async function run() {
     // AMENDED at build 49 (§B1): a game ARRIVING on the map now plays its sound, so the fixture seeds Quick Tap as seen - which Fresh game's seedSeen does for a real new profile
     await boot({ gridSeen: 0 }, { unlock: { 'quick-tap:four': NOW46 }, seen: { 'game:quick-tap': 1, 'mode:quick-tap:two': 1, 'mode:quick-tap:four': 1 } });
     const map = await page.evaluate(async () => { const A = await import('./audio.js'); const wait = ms => new Promise(r => setTimeout(r, ms));
-      const fired = []; const o = A.Snd.mapFx; A.Snd.mapFx = function (g, lk) { fired.push([g, !!lk]); return o.apply(this, arguments); };
+      const fired = []; const o = A.Snd.mapFx; A.Snd.mapFx = function (g, lk, at, loud) { fired.push([g, !!lk, !!loud]); return o.apply(this, arguments); };
       /* AMENDED at build 49 (v26 items 2 / 13): the first open is drawn out to about 7 seconds.
          AMENDED at build 51 (v27 item 2 / R1): and the two Gauntlets are NOT in it - a new profile has opened no chest, so neither tile exists
          and neither takes a beat. Eleven sounds, not thirteen. */
@@ -59,6 +59,16 @@ export async function run() {
     (offAnim && kinds === 'line,title,line,begin' && onTime && map.first.length === 11 && open >= 2 && locked >= 6 && !map.again.length)
       ? ok(`items 1 / 2 the title plays its impact under each line, the title line heavier (${kinds}), each scheduled off that line's own CSS animation delay (${title.want.join('/')}ms); the map's first open plays ${map.first.length} sounds - ${open} open tiles, ${locked} locked ones lower and muted, and the chests - each off its own tile's animation, and the second visit is silent`)
       : bad('items 1 / 2 the title and map sounds', JSON.stringify({ offAnim, title, map }));
+    /* build 64 (62.2): every sound of the map's first open is the LOUD one — each MAP_FX gain × MAP_INTRO_GAIN (× MAP_LOCKED.gain on a locked
+       tile), read off the config — and a key reveal's node (no flag) keeps MAP_FX as it is */
+    const loud = await page.evaluate(async () => { const A = await import('./audio.js'), C = await import('./config/audio.js'), k = C.MAP_INTRO_GAIN;
+      const rows = Object.keys(C.MAP_FX).map(g => ({ g, open: A.Snd.mapPlan(g, false, true).map(e => e[5]), lock: A.Snd.mapPlan(g, true, true).map(e => e[5]),
+        plain: A.Snd.mapPlan(g, false).map(e => e[5]), want: C.MAP_FX[g].map(e => e[5]) }));
+      const near = (a, b) => Math.abs(a - b) < 1e-3;
+      return { k, ok: rows.every(r => r.open.every((x, i) => near(x, r.want[i] * k)) && r.lock.every((x, i) => near(x, r.want[i] * k * C.MAP_LOCKED.gain)) && r.plain.every((x, i) => near(x, r.want[i]))) }; });
+    (loud.k > 1 && loud.ok && map.first.length && map.first.every(f => f[2]))
+      ? ok(`62.2 every sound of the map's first open plays ${loud.k}× louder than MAP_FX (${map.first.length} of ${map.first.length} flagged), locked tiles still muted by MAP_LOCKED; a key node keeps MAP_FX's level`)
+      : bad('62.2 the map intro sounds louder', JSON.stringify({ loud, first: map.first }));
   }
 
 }

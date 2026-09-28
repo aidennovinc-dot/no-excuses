@@ -7,7 +7,7 @@
    finish ramp that lands the last downbeat on the clock (B.28), an end cadence in the track's own key (B.30), a flow-state
    layer over the two tap games (B.27) and a duck for Sequence (B.30). Still no percussion. */
 
-import { CHEER_FX, CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, COVER_AT, COVER_FX, DUCK, DUCK_TAIL, FLOW_STEM, GIFT_FX, HUSH, KEY_EARN_CIRCUIT, KEY_EARN_FX, KEY_INTRO_FX, KEY_STEP_FX, KEY_THEMES, MAP_FX, MAP_LOCKED, POP_FX, ROUND_FX, ROUND_VERDICT, SCALES, SET_SECS, STEMS, STING_RING, TITLE_FX, TRACKS, TRACK_PICK, VERDICT_FX, VIDEO_FX, WELCOME_FX, WHOOSH_VARIANTS } from "./config/audio.js";
+import { CHEER_FX, CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, COVER_AT, COVER_FX, DUCK, DUCK_TAIL, FLOW_STEM, GIFT_FX, HUSH, KEY_EARN_CIRCUIT, KEY_EARN_FX, KEY_INTRO_FX, KEY_STEP_FX, KEY_THEMES, MAP_FX, MAP_INTRO_GAIN, MAP_LOCKED, POP_FX, ROUND_FX, ROUND_VERDICT, SCALES, SET_SECS, STEMS, STING_RING, TITLE_FX, TRACKS, TRACK_PICK, VERDICT_FX, VIDEO_FX, WELCOME_FX, WHOOSH_VARIANTS } from "./config/audio.js";
 import { KEY_EARN } from "./config/keys.js";
 import { STREAK } from "./config/games.js";
 import { RESTART_FX, RUN_MUSIC } from "./config/audio.js";
@@ -314,9 +314,10 @@ const Snd = (()=>{
        reveal. A locked tile plays the same events down MAP_LOCKED.semi semitones and quieter, so it is recognisably the same game.
        `gift(i)` — item 6, the small sound a symbol lands with as it rises out of a chest, a step higher for each one after the first. */
     titleFx(kind){ this.fx(TITLE_FX[kind]||TITLE_FX.line); },
-    mapPlan(g,locked){ const ev=MAP_FX[g]||[]; if(!locked) return ev.map(e=>e.slice());
-      const r=Math.pow(2,MAP_LOCKED.semi/12); return ev.map(([at,f0,f1,ms,w,gn,am,lp])=>[at,+(f0*r).toFixed(2),+(f1*r).toFixed(2),ms,w,+(gn*MAP_LOCKED.gain).toFixed(4),am||0,lp?Math.round(lp*r):0]); },
-    mapFx(g,locked,at){ this.fx(this.mapPlan(g,locked),at); },
+    // build 64 (62.2): `loud` is the map's first open, every gain × MAP_INTRO_GAIN
+    mapPlan(g,locked,loud){ const ev=MAP_FX[g]||[], k=loud?MAP_INTRO_GAIN:1; if(!locked) return ev.map(e=>{ const x=e.slice(); x[5]=+(x[5]*k).toFixed(4); return x; });
+      const r=Math.pow(2,MAP_LOCKED.semi/12); return ev.map(([at,f0,f1,ms,w,gn,am,lp])=>[at,+(f0*r).toFixed(2),+(f1*r).toFixed(2),ms,w,+(gn*MAP_LOCKED.gain*k).toFixed(4),am||0,lp?Math.round(lp*r):0]); },
+    mapFx(g,locked,at,loud){ this.fx(this.mapPlan(g,locked,loud),at); },
     giftPlan(i){ const r=Math.pow(2,(GIFT_FX.step*(i||0))/12);
       return GIFT_FX.notes.map(([at,f0,f1,ms,w,g,am,lp])=>[at,+(f0*r).toFixed(2),+(f1*r).toFixed(2),ms,w,g,am||0,lp||0]); },
     gift(i){ this.fx(this.giftPlan(i)); },

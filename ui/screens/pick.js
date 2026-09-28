@@ -327,7 +327,7 @@ function mapSounds(){ mapT.forEach(clearTimeout); mapT=[];
   $$('#grid .tile').forEach(t=>{ const an=(t.getAnimations?t.getAnimations():[])[0]; if(!an||!an.effect) return;
     const d=an.effect.getComputedTiming().delay||0, g=t.dataset.game, chest=t.dataset.chest;
     mapT.push(setTimeout(()=>{ if(!$('#s-pick').classList.contains('on')) return;
-      if(chest) Snd.mapFx('chest'); else if(g) Snd.mapFx(g,!gameOpen(g)); else if(t.dataset.gauntlet) Snd.mapFx('gauntlet',t.classList.contains('locked')); },d)); }); }
+      if(chest) Snd.mapFx('chest',false,undefined,true); else if(g) Snd.mapFx(g,!gameOpen(g),undefined,true); else if(t.dataset.gauntlet) Snd.mapFx('gauntlet',t.classList.contains('locked'),undefined,true); },d)); }); }
 /* v26 (§B1, build 49): AND THE SAME SOUND WHEN A GAME UNLOCKS. A game (or a Gauntlet) newly open ARRIVES on the map the first time it is seen (v15 6.3),
    and it lands with its own sound, read off its own arrival animation like the first open's */
 // v27 (item 2, build 51): a Gauntlet coming out of its chest runs `gauntarrive` on the spill's beat instead of `tilearrive` — one more name here

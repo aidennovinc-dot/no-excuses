@@ -708,6 +708,10 @@ export const MAP_FX = {
   gauntlet: [[0, 160, 90, 110, 'triangle', .05, 3, 900], [.02, 740, 730, 700, 'sine', .014, 6, 3000], [.02, 1043, 1030, 520, 'sine', .009, 6, 3200]],
 };
 export const MAP_LOCKED = { semi: -7, gain: .45 };
+/* build 64 (62.2): THE MAP'S FIRST OPEN IS LOUDER. Aiden: each game's sound as it arrives was too quiet under the menu music. One multiplier on
+   every MAP_FX gain, for that intro only (a key reveal's nodes and a game arriving later keep MAP_FX as it is); a locked tile still takes
+   MAP_LOCKED on top, so it stays the quieter of the two. Tune by ear (guess). */
+export const MAP_INTRO_GAIN = 2.6;
 // v26 (§B1, build 49): "also play on unlock" — how long after a game's unlock toast (and its own unlock sound) that game's map sound follows (guess)
 export const MAP_ON_UNLOCK_MS = 480;
 
