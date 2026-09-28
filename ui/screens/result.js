@@ -22,7 +22,7 @@ import { colsOf, goLabel, picOf, scoreTxt } from "../format.js";
 import { register, show } from "../router.js";
 import { toast } from "../toast.js";
 
-let lastRun=null, eggTaps=0, lastTier=null;
+let lastRun=null, eggTaps=0, lastTier=null, abandoned=false;
 // v14 (7.1): what the run that just finished was — the button reads Try again while the chips still say the same thing
 let played=null;
 const sameAsPlayed=()=>!!played&&played.g===sel.game&&played.d===sel.diff&&played.s===sel.secs&&played.vs===sel.vs;
@@ -38,10 +38,10 @@ function renderOverChips(){ const g=GAMES[sel.game]; const vsOk=versusOf(sel.gam
   $('#over-chips2').innerHTML=lens.length>1&&!fixed&&(!versus||c.vsLens)?lens.map(s=>{ const L=versus?null:lenLock(sel.game,sel.diff,s); const nw=L?'':newMark('len:'+sel.game+':'+sel.diff+':'+s,fresh); return `<button class="chip ${s===sel.secs?'sel':''} ${L?'locked x':''}${nw}" data-act="chip-over" data-chip="over-s" data-v="${s}">${lenName(sel.game,s,sel.diff,versus)}</button>`; }).join(''):'';
   $('#over-chips3').innerHTML='';
   markSeen(fresh);
-  $('#again').textContent=sameAsPlayed()?SHEET.tryAgain:goLabel(sel.game,sel.diff,versus); }
+  $('#again').textContent=sameAsPlayed()?(abandoned?RESULT.retry:SHEET.tryAgain):goLabel(sel.game,sel.diff,versus); }
 // the top 10 under the result (v11) follows the mode and length picked in the chips, not only the run just played
 // v13 (3.5): a two-player run is never on a board (L10), so the whole top-10 block goes — the side-by-side pair and the chips stay
-function renderOverTop(){ const run=lastRun; const g=GC(sel.game,sel.diff,sel.secs); const two=sel.vs>0; $('#over-top').hidden=two||!!(run&&run.practice); $('#over-top').style.display=two||(run&&run.practice)?'none':''; if(two) return;
+function renderOverTop(){ const run=lastRun; const g=GC(sel.game,sel.diff,sel.secs); const two=sel.vs>0; $('#over-top').hidden=two||abandoned||!!(run&&run.practice); $('#over-top').style.display=two||abandoned||(run&&run.practice)?'none':''; if(two||abandoned) return;
   const top=Scores.of(sel.game,sel.diff,sel.secs).slice(0,10);
   $('#over-top-title').textContent=T(RESULT.top,{where:`${g.name}${MODE_NAME[sel.diff]?' · '+MODE_NAME[sel.diff]:''} · ${lenName(sel.game,sel.secs,sel.diff)}`})+(g.lower?RESULT.closestFirst:'');
   /* v18 (B.10): THAT RUN'S ROW wears the tier colour on its score, the same colour the big number above it is wearing.
@@ -79,7 +79,18 @@ function shareRun(){ const r=lastRun; if(!r) return; const c=GC(r.g,r.d,r.s); co
 register('s-over',{});
 on('run:record',({run})=>{ lastRun=run; played={g:run.g,d:run.d,s:run.s,vs:sel.vs}; });
 on('store:reset',()=>{ lastRun=null; played=null; lastTier=null; });
+/* build 62 (61.1): EXIT MID-RUN LANDS HERE, MARKED ABANDONED, with Retry front and centre. It used to drop the player on the games
+   menu. Nothing about the run is recorded: run/run.js never reaches its finish, so there is no record, no best, no bar, no key and
+   no unlock from it. An earn that already fired mid-run stays banked (v15 2.5), because that one was announced as it happened. */
+function abandonRun(){ abandoned=true; played={g:sel.game,d:sel.diff,s:sel.secs,vs:sel.vs}; lastTier=null;
+  $('#s-over').classList.add('abandoned'); $('#over-eyebrow').textContent=RESULT.abandoned;
+  const sc=$('#over-score'); sc.hidden=false; sc.innerHTML=RESULT.dash; sc.style.color=''; sc.classList.remove('sm');
+  const vd=$('#verdict'); vd.textContent=RESULT.abandonedLine; vd.className='verdict'; vd.style.color='';
+  $('#vsbox').classList.remove('on'); $('#over-stats').innerHTML=''; $('#over-rank').innerHTML=''; $('#share').hidden=true;
+  renderOverChips(); renderOverTop(); show('s-over'); }
+on('run:abort',({quiet,gaunt}={})=>{ if(!quiet&&!gaunt) abandonRun(); });
 on('run:finish',({run,isBest,two,fresh,ach,adv})=>{ const g=GC(run.g,run.d,run.s);
+  abandoned=false; $('#s-over').classList.remove('abandoned');
   // the header (v11) carries only a status — the board title under the top 10 names the game, mode and length
   $('#over-eyebrow').textContent=run.practice?RESULT.practice:run.fail?RESULT.fail:isBest?RESULT.best:run.vs2?(sel.vs===1?RESULT.pass:RESULT.versus):VS.on?RESULT.pass:'';
   // practice shows no score at all (v5). Versus shows the pair of counts. Lower-is-better scores wear a ▼ (v11)

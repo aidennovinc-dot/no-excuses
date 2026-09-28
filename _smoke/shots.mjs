@@ -1436,6 +1436,33 @@ scene('60.33', async (page, browser) => {
       underLastButton: Math.round(innerHeight - last.getBoundingClientRect().bottom) + 'px' }; }));
 });
 
+/* =======================================================================================================
+   BUILD 62 — one 390-wide frame per visual item, top and bottom safe-area insets on (47 / 34)
+   ======================================================================================================= */
+const INTRO_ALL = (() => { const o = {}; for (const g of ['quick-tap', 'dots', 'hold', 'sequence', 'timing', 'reaction', 'spot']) o[g] = 1;
+  for (const k of ['quick-tap:two', 'quick-tap:four', 'dots:blind', 'dots:lead', 'hold:grow', 'hold:cut', 'sequence:solo',
+    'timing:stopwatch', 'timing:hidden', 'reaction:flash', 'reaction:nogo', 'spot:count', 'spot:find']) o[k] = 1; return o; })();
+const OPEN = { allOpen: 1, tut: 1 };
+// a played-in, everything-open profile, then a run of game `g` started from its sheet (mode index `mi`, length index `li`)
+async function load(page, prefs = OPEN, extra = {}) {
+  const f = Object.assign(fixture(prefs), { intro: INTRO_ALL }, extra);
+  await page.evaluate(x => localStorage.setItem('ne', JSON.stringify(x)), f);
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(420); }
+async function runOf(page, g, mi = 0, li = 0) {
+  await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-pick'); }); await sleep(500);
+  await page.evaluate(g => document.querySelector(`.tile[data-game="${g}"]`).click(), g); await sleep(400);
+  await page.evaluate(mi => { const c = document.querySelectorAll('#diff-row .choice'); (c[mi] || c[0]).click(); }, mi); await sleep(450);
+  await page.evaluate(li => { const t = document.querySelectorAll('#time-row .tbtn'); (t[li] || t[0]).click(); }, li); await sleep(200);
+  await page.evaluate(() => document.getElementById('go-btn').click());
+  for (let i = 0; i < 80 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) await sleep(100); }
+const show = (page, id, opts) => page.evaluate(async (id, o) => { const R = await import('./ui/router.js'); R.show(id, o); }, id, opts);
+
+scene('61.1', async (page, browser) => {
+  await load(page); await runOf(page, 'quick-tap'); await sleep(600);
+  await page.evaluate(() => document.getElementById('quit').click()); await sleep(3400);
+  await frame(page, browser, '61.1-abandoned', 'Exit mid-run: the result screen marked abandoned, Retry straight under the line');
+});
+
 /* ---------- the runner ---------- */
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 if (ARGV.includes('--list')) { console.log(Object.keys(SCENES).join('\n')); process.exit(0); }

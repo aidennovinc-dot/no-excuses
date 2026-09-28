@@ -981,6 +981,9 @@
   @keyframes rvin{0%{opacity:0;translate:0 10px}100%{opacity:1;translate:0 0}}
   #s-over.on .stats span{animation:rvin .4s ease-out both}
   #s-over.on .stats span:nth-child(2){animation-delay:.25s}
+  /* build 62 (61.1): an abandoned run puts Retry straight under its line; everything else follows it */
+  #s-over.abandoned>.change,#s-over.abandoned>#over-back,#s-over.abandoned>.row,#s-over.abandoned>#over-top,#s-over.abandoned>#egg,#s-over.abandoned>#to-games{order:1}
+  #s-over.abandoned #over-eyebrow{color:var(--mute)}
   #s-over.on .stats span:nth-child(3){animation-delay:.5s}
   #s-over.on .stats span:nth-child(4){animation-delay:.75s}
   #to-games{margin-top:22px;font-size:20px;padding:16px 44px}

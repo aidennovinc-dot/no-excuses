@@ -186,7 +186,7 @@ function start(){
    during the 3-2-1. The engines no longer report a best round they do not have (see their result()); this is the other
    half - a result with no hits, no misses and no rounds is not a run and banks nothing.
    `quiet` - the phone going to sleep mid-run is not a quit and banks NOTHING, not even a round that landed. */
-function abort(quiet){ if(!R.on) return;
+function abort(quiet){ if(!R.on) return; const gaunt=!!R.gaunt;
   /* `landed` reads the engine's own report of whether a round exists, and a ROUND THAT SCORED ZERO is a real result -
      0.00% off on Estimate, a clean Find - so a count is not enough on its own. Estimate and Timing leave `x` OUT while
      no round has landed (their result()), which is the precise signal; the other engines always report an `x`, so for
@@ -196,7 +196,9 @@ function abort(quiet){ if(!R.on) return;
     if(landed) liveCheck(res); }catch(e){} }
   // v31 (60.27, build 60): a run that is over has nothing to offer back
   clearResume(); paused=false;
-  R.on=false; R.id++; VS.reset(); Intro.clear(); cancelAnimationFrame(R.raf); ctx.timers.clearT(); Music.stop(); eng.stop(ctx); $('#count').classList.remove('on'); $('#vwin').classList.remove('on'); $('#game').classList.remove('shake','live','flowon'); $('#seqdone')?.classList.remove('on'); $('#rxbar').innerHTML=''; emit('run:abort'); }
+  R.on=false; R.id++; VS.reset(); Intro.clear(); cancelAnimationFrame(R.raf); ctx.timers.clearT(); Music.stop(); eng.stop(ctx); $('#count').classList.remove('on'); $('#vwin').classList.remove('on'); $('#game').classList.remove('shake','live','flowon'); $('#seqdone')?.classList.remove('on'); $('#rxbar').innerHTML='';
+  // build 62 (61.1): the player's own Exit lands on the result screen marked abandoned; a quiet end and a Gauntlet keep their routes
+  emit('run:abort',{quiet:!!quiet,gaunt}); }
 /* ---------- v31 (60.27, build 60): LEAVING THE APP PAUSES THE RUN, AND IT RESUMES WHEN YOU COME BACK ----------
    This REVERSES v29 item 4 (build 55), which ended the run. Aiden's call of 2026-09-23: "a 20-round Streak lost to a phone
    call." Item 4's reasoning was right about the FAULT and wrong about the remedy — everything a run measures did keep running

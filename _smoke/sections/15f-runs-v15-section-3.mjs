@@ -130,4 +130,21 @@ export async function run() {
       ? ok(`item 14 the HUD's rolling figure is held to the same ceiling as its bar — two taps 100ms apart read ${rate55.txt} against RATE_MAX ${rate55.max}, not 10.0/s`)
       : bad('item 14 the rate number is unclamped', JSON.stringify(rate55));
   }
+  /* build 62 (61.1): EXIT MID-RUN LANDS ON THE RESULT SCREEN, MARKED ABANDONED, Retry above everything else, and nothing is recorded */
+  {
+    await openSheet('quick-tap', 0, 0); await click('#go-btn');
+    for (let i = 0; i < 140 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) { await clearReady('quick-tap'); await sleep(100); }
+    const runsOf = () => page.evaluate(() => ((JSON.parse(localStorage.getItem('ne')) || {}).runs || []).length);
+    const before = await runsOf(); await poke('quick-tap'); await poke('quick-tap'); await sleep(200); await click('#quit'); await sleep(500);
+    const ab = await page.evaluate(async () => { const C = await import('./config/copy.js'); const s = document.getElementById('s-over'), a = document.getElementById('again');
+      return { on: s.classList.contains('on'), ab: s.classList.contains('abandoned'), eyebrow: document.getElementById('over-eyebrow').textContent, want: C.RESULT.abandoned,
+        again: a.textContent, retry: C.RESULT.retry, aTop: a.getBoundingClientRect().top, cTop: s.querySelector('.change').getBoundingClientRect().top }; });
+    const after = await runsOf();
+    (ab.on && ab.ab && ab.eyebrow === ab.want && ab.again === ab.retry && ab.aTop < ab.cTop && after === before)
+      ? ok(`61.1 Exit mid-run lands on the result screen marked "${ab.eyebrow}", "${ab.again}" above the chips, and no run is recorded (${before} → ${after})`)
+      : bad('61.1 Exit mid-run', JSON.stringify({ ...ab, before, after }));
+    await click('#again'); await sleep(400);
+    (await page.evaluate(() => document.getElementById('game').classList.contains('on'))) ? ok('61.1 Retry on an abandoned run starts the same run again') : bad('61.1 Retry starts a run');
+    await click('#quit'); await sleep(300);
+  }
 }
