@@ -1649,6 +1649,15 @@ scene('61.26', async (page, browser) => {
   await frame(page, browser, '61.26-games-chest-skill-key', 'Foot of the Games chest tab: the Skill key lit, "Skill key unlocked" — the grey paragraph and 30/30 are gone');
 });
 
+/* =======================================================================================================
+   BUILD 64 — one 390-wide frame per visual item, the same 47 / 34 insets; the walkthrough one frame per box
+   ======================================================================================================= */
+scene('A1', async (page, browser) => {
+  await load(page, { ...OPEN, allOpen: 0, chests: { games: 1 } }); await show(page, 's-prog', { tab: 'c-games' }); await sleep(600);
+  say('line', await page.evaluate(() => document.getElementById('chest-hint').textContent));
+  await frame(page, browser, 'A1-games-chest-count', 'Games chest tab: the count line is the thirteen modes, "Streak not counted"');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }
@@ -1656,7 +1665,10 @@ for (const name of (want.length ? want : Object.keys(SCENES))) {
   await SCENES[name](page, browser);
 }
 
-fs.writeFileSync(path.join(OUT, 'manifest.json'), JSON.stringify({ sab: SAB, when: new Date().toISOString(), pageErrors: errs, frames: manifest }, null, 2));
+// build 64: a run of some scenes keeps the rows an earlier run of OTHER scenes wrote to the same folder (one item per commit)
+const MF = path.join(OUT, 'manifest.json'), prior = fs.existsSync(MF) ? (JSON.parse(fs.readFileSync(MF, 'utf8')).frames || []) : [];
+const frames = prior.filter(r => !manifest.some(m => m.frame === r.frame)).concat(manifest);
+fs.writeFileSync(MF, JSON.stringify({ sab: SAB, when: new Date().toISOString(), pageErrors: errs, frames }, null, 2));
 if (errs.length) console.log('\nPAGE ERRORS\n  ' + errs.join('\n  '));
 console.log('\n' + manifest.length + ' frames → ' + path.relative(ROOT, OUT));
 await browser.close(); srv.close();

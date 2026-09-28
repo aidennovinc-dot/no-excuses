@@ -38,7 +38,7 @@ import { emit } from "../../core/events.js";
 import { sel } from "../../core/state.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, lenName } from "../../games/registry.js";
-import { Scores, UNLOCKS, achAll, achById, achTab, achWhere, gameOpen, got, isOpen, lenLock, lenOpen, markSeen, nameless, newMark, setPendingAim, unlockArt, unlockHear, unlockHtml, unlockName, unlocked } from "../../progress.js";
+import { Scores, UNLOCKS, achAll, achById, achTab, achWhere, gameOpen, got, isOpen, lenLock, lenOpen, markSeen, modeCount, nameless, newMark, setPendingAim, unlockArt, unlockHear, unlockHtml, unlockName, unlocked } from "../../progress.js";
 import { COMBOS, barOf, chestOpen, keyAch, keyState, tierOpen } from "../../progress/key.js";
 import { askPlay } from "../askplay.js";
 import { Snd } from "../../audio.js";
@@ -183,7 +183,10 @@ function renderChest(tab){
   $('#chest-g').innerHTML=`<button class="chip" data-act="chip-chest" data-chip="chest-g" data-v="all">${ACH_SCREEN.all}</button>`+Object.entries(GAMES).map(([id,x])=>`<button class="chip" data-act="chip-chest" data-chip="chest-g" data-v="${id}">${x.name}</button>`).join(''); chips('chest','g',gsel);
   const list=$('#chest-list');
   const tier=tierOfChest(c);
-  if(!tier){ const out=gamesHtml(gsel); list.className='unl scroll'; list.innerHTML=out.html; tabCount('chest',out.open,out.total); return; }
+  /* build 64 (A1, Aiden's answer to build 62): THE GAMES CHEST COUNTS MODES, AND ITS LINE SAYS SO. The tab counted every row on it, Streaks
+     included; the chest opens on the thirteen modes (modeCount(), what the map tile and the Keys screen print), so the line is that count and
+     says Streak is outside it — "13 of 13" over locked Streak rows no longer reads as a wrong sum. */
+  if(!tier){ const out=gamesHtml(gsel), m=modeCount(); list.className='unl scroll'; list.innerHTML=out.html; $('#chest-hint').textContent=T(PROGRESS_SCREEN.gamesCount,{open:m.open,total:m.total}); return; }
   list.className='ach scroll';
   const key='key'+(KEYS.findIndex(k=>k.id===tier)+1);
   if(!groupShown(key)){ list.innerHTML=`<h4>${PROGRESS_SCREEN.shut}</h4>`; tabCount('chest',0,0); return; }

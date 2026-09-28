@@ -1204,6 +1204,8 @@
   /* build 62 (61.8): all that is left of a chest tab's requirement lines — one small link to the key's screen */
   #chest-need .chestlink{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);padding:4px 8px;min-height:30px}
   #chest-need{flex:none;min-height:0;overflow:visible}
+  /* build 64 (A1): the Games chest's count is two lines — the count, then "Streak not counted" — rather than one that wraps mid-phrase */
+  #chest-hint{white-space:pre-line}
   #chest-need:empty{display:none}
   /* build 62 (61.2): Restart, opposite Exit. Held, a line sweeps round the word (a conic mask on the pill's border); when it closes
      the run restarts. Released early, it snaps back. */

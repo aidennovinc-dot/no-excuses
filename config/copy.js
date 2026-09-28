@@ -150,6 +150,8 @@ export const PROGRESS_SCREEN = { title:'progress', unl:'Game unlocks', cul:'Cust
      row does, on a screen made of rows. One line replaces all of them, per tab: how much of that tab is unlocked. On Achievements the total
      leaves Secret out until one has been found (R1) — the line may never say how many secrets there are. */
   count:'{done} of {total} unlocked',
+  // build 64 (A1): the Games chest tab's own line — the thirteen modes the chest opens on; its Streak rows are on the tab and not in the count
+  gamesCount:'Every game and mode — {open} of {total}\nStreak not counted',
   keyLocked:'open the Games chest',
   /* v29 Section A (58.3, build 58): the six tabs' own words. `needs` heads the two-or-one requirement rows at the top of a
      chest tab; `needKey` / `needModes` / `needGaunt` are those rows, and `met` / `todo` the state each wears (L.2: white

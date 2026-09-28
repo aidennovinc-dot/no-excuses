@@ -89,7 +89,8 @@ export async function run() {
       return [...document.querySelectorAll('#achlist h4')].map(h => h.className); });
     const cue = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--cue').trim());
     const R3 = [unl53, cul53, ach53].every(t => !t.moving && !t.delays);
-    const counted = [unl53, cul53, ach53].every(t => /^\d+ of \d+ unlocked$/.test(t.hint.trim()));
+    // build 64 (A1): the Games chest tab counts its modes in its own words ("Every game and mode — 13 of 13", then "Streak not counted"); the other two keep "N of M unlocked"
+    const counted = [cul53, ach53].every(t => /^\d+ of \d+ unlocked$/.test(t.hint.trim())) && /\d+ of \d+/.test(unl53.hint);
     const noLede = !unl53.lede;
     /* RESTATED at build 62 (61.13): Achievements is ONE flat list — no Pro or Secret heading, in any filter — and its count is every row it lists */
     const secretLast = ach53.heads.length === 0 && filtered.length === 0 && new RegExp('^0 of ' + ach53.rows + ' unlocked$').test(ach53.hint.trim());
@@ -147,6 +148,14 @@ export async function run() {
     (pro.heads.length > 3 && pro.rows.length && pro.rows.every(r => !r.game))
       ? ok(`61.9 under a "${pro.heads[0]}" header no row repeats the game's name (${pro.rows.length} Pro chest rows)`)
       : bad('61.9 the game name repeated under its header', JSON.stringify(pro.rows.filter(r => r.game).slice(0, 3)));
+  }
+  /* build 64 (A1): the Games chest tab's line is the MODE count the chest opens on, worded so its Streak rows sit outside it */
+  {
+    const gm = await tab62('c-games'), want = await page.evaluate(async () => { const P = await import('./progress.js'), C = await import('./config/copy.js'), m = P.modeCount();
+      return { line: C.PROGRESS_SCREEN.gamesCount.replace('{open}', m.open).replace('{total}', m.total), total: m.total }; });
+    (gm.count === want.line && /streak/i.test(gm.count))
+      ? ok(`A1 the Games chest tab says "${gm.count}" — the ${want.total} modes the chest counts, Streak named as outside it`)
+      : bad('A1 the Games chest count line', JSON.stringify({ got: gm.count, want }));
   }
   /* 61.10: each Quick Tap row on the Pro chest draws ITS best ÷ ITS target — three different bests give three different bars, each the
      ratio, read against Aiden's Pro targets in config (never a copy of them) */
