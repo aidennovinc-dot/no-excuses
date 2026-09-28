@@ -608,7 +608,10 @@ let keyWait = false;
 function keyReveal(tier, o = {}) {
   clearTimeout(earnT); earnPlan = null; earnClear();
   if (!$('#s-key').classList.contains('on') || $('#key-main').hidden) { $('#s-key').classList.remove('kdue'); return false; }
-  if (!o.demo) { const seen = prefs.revealed || {}; seen['key:' + tier] = 1; prefs.revealed = seen; save(); }
+  /* build 62 (61.24): A KEY'S CELEBRATION PLAYS ONCE, EVER. The earn moment was marked seen as it started — but the key's CREATION intro (57.6)
+     had stood aside for it, stored nothing, and played on the next plain visit: a second key-in-a-ring celebration for a key already opened.
+     Reproduced (a finished Author key: earn on visit one, the intro on visit two). The earn moment now marks the intro seen with it. */
+  if (!o.demo) { const seen = prefs.revealed || {}; seen['key:' + tier] = 1; prefs.revealed = seen; prefs.keyIntro = Object.assign({}, prefs.keyIntro, { [tier]: 1 }); save(); }
   if (autoBack) keyWait = true;
   /* BUILD 41'S LESSON, ONE MOMENT FURTHER ON: a moment that waits for a tap cannot live under an input lock, and cannot be followed on a TIMER.
      Two things hold a lock over this screen — the result interlude (which used to hand itself back after 3.9s) and a chest tapped on the map

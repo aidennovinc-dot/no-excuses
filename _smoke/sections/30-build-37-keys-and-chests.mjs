@@ -7,6 +7,23 @@ import { own, sleep, names, check, ok, bad, root, read, strip, at, page, until, 
 export const SECTION = ["build 37 - keys and chests"];
 
 export async function run() {
+  /* build 62 (61.24): A KEY'S CELEBRATION PLAYS ONCE, EVER. A finished Author key: the first visit plays its earn moment; the second, and one after
+     a reload, play nothing — the creation intro used to stand aside on visit one and play on visit two */
+  {
+    const KB = await import(pathToFileURL(path.join(root, 'config', 'key-bars.js')).href), now = Date.now();
+    const bars = Object.fromEntries(Object.keys(KB.KEY_BARS).flatMap(k => [[k, now], [k + '|pro', now], [k + '|author', now]]));
+    await setStorage({ ne: { v: 7, prefs: { tut: 2, story: 1, gridSeen: 1, played: 1, menuSeen: 1, keySeen: 1, keysSeen: 1, snd: 'off', musicG: {}, chests: { games: 1, key: 1, pro: 1, thorns: 1 }, keyIntro: {} }, runs: [], ach: {}, unlock: {}, intro: {}, seen: {}, bars } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    // every 100ms of a 6s visit: is a key moment on screen (the reveal routine plays both the earn moment and the creation intro), and which
+    const visit = () => page.evaluate(async () => { const R = await import('./ui/router.js'), RV = await import('./ui/reveal.js'), w = ms => new Promise(r => setTimeout(r, ms));
+      R.show('s-menu'); await w(200); const seen = []; const k = document.getElementById('s-key'); R.show('s-key', { tier: 2 });
+      for (let i = 0; i < 60; i++) { await w(100); if (RV.revealOn()) { const m = k.classList.contains('kearning') ? 'earn' : 'intro'; if (!seen.includes(m)) seen.push(m); } }
+      const S = await import('./core/store.js'); return { seen, intro: !!(S.prefs.keyIntro || {}).author }; });
+    const v1 = await visit(), v2 = await visit(); await page.reload({ waitUntil: 'networkidle0' }); await sleep(400); const v3 = await visit();
+    (v1.seen.includes('earn') && v1.intro && !v2.seen.length && v2.intro && !v3.seen.length)
+      ? ok('61.24 a finished key celebrates ONCE: visit one plays the earn moment and marks the creation intro seen with it; visit two, and a visit after a reload, play nothing')
+      : bad('61.24 a key celebration replayed', JSON.stringify({ v1, v2, v3 }));
+  }
   const imp37 = (...p) => import(pathToFileURL(path.join(root, ...p)).href);
   const CP37 = await imp37('config', 'copy.js');   // build 51 (v27 item 4): the four chest names come from the config, never spelled here
   const css37 = read('styles', 'app.css'), pick37 = read('ui', 'screens', 'pick.js'), keyjs37 = read('progress', 'key.js'), menu37 = read('ui', 'screens', 'menu.js'), hud37 = read('games', '_shared', 'hud.js'), prog37 = read('progress.js');

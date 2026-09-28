@@ -1613,6 +1613,23 @@ scene('61.23', async (page, browser) => {
   await frame(page, browser, '61.23-pro-congratulations', 'The Pro chest congratulations box at 390 with 47 / 34 insets: heading, line, video, caption and NEXT UP all in view, nothing scrolls inside it');
 });
 
+// 61.24: a finished Author key, its screen visited three times (twice, then after a reload). Which moments start on each visit?
+scene('61.24', async (page, browser) => {
+  const KB = await import('../config/key-bars.js'); const now = Date.now();
+  const bars = Object.fromEntries(Object.keys(KB.KEY_BARS).flatMap(k => [[k, now], [k + '|pro', now], [k + '|author', now]]));
+  const P = { ...OPEN, allOpen: 0, chests: { games: 1, key: 1, pro: 1, thorns: 1 }, keyIntro: {} };
+  await page.evaluate((p, b) => localStorage.setItem('ne', JSON.stringify({ v: 7, prefs: Object.assign({ tut: 2, story: 1, gridSeen: 1, played: 1, menuSeen: 1, keySeen: 1, keysSeen: 1, snd: 'off', musicG: {} }, p), runs: [], ach: {}, unlock: {}, intro: {}, seen: {}, bars: b })), P, bars);
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(500);
+  const visit = async label => { await show(page, 's-menu'); await sleep(300);
+    await page.evaluate(() => { window.__m = []; const k = document.getElementById('s-key'); const mo = new MutationObserver(() => { for (const c of ['kearning', 'kintro', 'kdue', 'karrive']) if (k.classList.contains(c) && !window.__m.includes(c)) window.__m.push(c); }); mo.observe(k, { attributes: true }); window.__mo = mo; });
+    await show(page, 's-key', { tier: 2 }); await sleep(6500);
+    const r = await page.evaluate(async () => { const S = await import('./core/store.js'); window.__mo.disconnect(); return { moments: window.__m, intro: S.prefs.keyIntro, revealed: S.prefs.revealed, whole: S.prefs.keyWhole }; });
+    say(label, r); };
+  await visit('first'); await visit('second');
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(500); await visit('afterReload');
+  await frame(page, browser, '61.24-author-key-third-visit', 'The Author key screen on a third visit, after a reload: the celebration does not play again');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }
