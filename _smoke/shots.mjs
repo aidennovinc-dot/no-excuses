@@ -1599,6 +1599,20 @@ scene('61.22', async (page, browser) => {
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 });
 
+// 61.23: the Pro chest's congratulations card, opened from Testing, tapped through to its card. Measured: does the card scroll?
+async function proCard(page) {
+  await load(page, { ...OPEN, chests: { games: 1, key: 1 } }); await show(page, 's-testing'); await sleep(400);
+  await page.evaluate(() => document.querySelector('[data-act="dev-chest"][data-chest="pro"]').click());
+  for (let i = 0; i < 80; i++) { const st = await page.evaluate(() => { const h = document.querySelector('.cere'); if (!h) return 'none'; if (h.querySelector('.rcard .rgo:not([disabled])')) return 'card';
+      if (h.classList.contains('tap') || /tap/.test(h.dataset.step || '')) h.click(); return h.dataset.step || 'x'; }); if (st === 'card') break; await sleep(250); }
+  await sleep(4000);
+  return page.evaluate(() => { const c = document.querySelector('.rcard'); if (!c) return null; const fr = c.querySelector('.mpframe');
+    return { scroll: c.scrollHeight - c.clientHeight, card: Math.round(c.getBoundingClientRect().height), pic: fr ? Math.round(fr.getBoundingClientRect().height) : 0, bottom: Math.round(innerHeight - c.getBoundingClientRect().bottom), oy: getComputedStyle(c).overflowY }; }); }
+scene('61.23', async (page, browser) => {
+  say('card', await proCard(page));
+  await frame(page, browser, '61.23-pro-congratulations', 'The Pro chest congratulations box at 390 with 47 / 34 insets: heading, line, video, caption and NEXT UP all in view, nothing scrolls inside it');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

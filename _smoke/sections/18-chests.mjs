@@ -789,6 +789,25 @@ export async function run() {
       && !wc60.fx.empty && !wc60.fx.clash && wc60.fx.notes >= 3)
       ? ok(`60.33 the Welcome message gets a moment of its own - nothing at all before the first Quick Tap run opens the slot, then a full-screen ceremony carrying the player's own television intro (${wc60.up.steps.join(', ')}) and a card ("${wc60.up.label}" - "${wc60.up.title}", ${wc60.up.buttons.join(', ')}); PLAY hands the clip to the shared player, LATER closes it and leaves the Messages row green because the clip is still unwatched, it refuses while a run is live and spends nothing doing so, it fires exactly ONCE per save, and its ${wc60.fx.notes}-note sound is neither the unlock's, the achievement click nor a chest's`)
       : bad('60.33 the Welcome ceremony', JSON.stringify(wc60)); }
+  /* build 62 (61.23): EVERY CONGRATULATIONS BOX FITS WITHOUT SCROLLING, AND A TAP OUTSIDE IT CLOSES IT. The Pro chest's card was 3px taller than
+     the phone at 390, so it scrolled; now the picture gives more before the box ever would. Driven for all three key chests: opened from
+     Testing, tapped through to the card, measured, then closed by a REAL tap on the dim ground above it */
+  { const c61 = [];
+    for (const id of ['key', 'pro', 'thorns']) {
+      await page.evaluate(id => { const n = JSON.parse(localStorage.getItem('ne')); n.prefs.chests = { games: 1, key: id !== 'key' ? 1 : 0, pro: id === 'thorns' ? 1 : 0 }; n.prefs.allOpen = true; localStorage.setItem('ne', JSON.stringify(n)); }, id);
+      await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+      await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-testing'); }); await sleep(400);
+      await page.evaluate(id => document.querySelector(`[data-act="dev-chest"][data-chest="${id}"]`).click(), id);
+      const got = await page.evaluate(async () => { const w = ms => new Promise(r => setTimeout(r, ms));
+        for (let i = 0; i < 1000; i++) { const h = document.querySelector('.cere'); if (h && h.querySelector('.rcard .rgo:not([disabled])')) break; if (h && (h.classList.contains('tap') || /tap/.test(h.dataset.step || ''))) h.click(); await w(60); }
+        await w(900); const c = document.querySelector('.rcard'); if (!c) return null;
+        return { over: c.scrollHeight - c.clientHeight, bar: getComputedStyle(c).scrollbarWidth, bottom: Math.round(innerHeight - c.getBoundingClientRect().bottom), next: !!c.querySelector('.rnextup, .rnext'), go: !!c.querySelector('.rgo') }; });
+      await page.mouse.click(12, 12); await sleep(500);
+      const closed = await page.evaluate(async () => !(await import('./ui/reveal.js')).revealOn());
+      c61.push({ id, ...got, closed }); }
+    (c61.every(c => c.over <= 0 && c.bar === 'none' && c.bottom >= 0 && c.next && c.go && c.closed))
+      ? ok(`61.23 every key chest's congratulations box fits at 390 with no scroll and no scrollbar (${c61.map(c => c.id + ' ' + c.bottom + 'px clear').join(', ')}), NEXT UP and Continue in view, and a tap on the dim ground outside it closes it`)
+      : bad('61.23 the congratulations box', JSON.stringify(c61)); }
   /* build 62 (61.21): THE WHOLE WELCOME CARD PLAYS IT, and its picture is a chest card's powered-off player. A REAL tap (by coordinates) on
      the centre of the card starts the clip; a tap on the ground round it does nothing; LATER still closes it */
   { const w61 = async () => page.evaluate(async () => { const W = await import('./ui/welcome.js'), S = await import('./core/store.js'), M = await import('./config/messages.js');

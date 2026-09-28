@@ -2015,6 +2015,9 @@
   .rnextup>span{display:flex;align-items:center;justify-content:center;gap:9px;margin-top:7px}
   .rnextup b{font-family:var(--display);font-weight:700;font-size:16px;letter-spacing:.02em;color:var(--ink)}
   .rnextup .rnsym{width:26px;height:22px;flex:none}
+  /* build 62 (61.23): a congratulations box never shows a scrollbar — ui/reveal.js shrinks the picture until it fits */
+  .rcard::-webkit-scrollbar{display:none}
+  .rcard{scrollbar-width:none}
   .rcard{width:min(92vw,360px);max-height:100%;overflow-y:auto;background:var(--ground);border:1px solid var(--line);padding:18px 16px;display:flex;flex-direction:column;align-items:stretch;gap:9px;text-align:center}
   .rcard h3{font-family:var(--mono);font-weight:500;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--rc,var(--ink));margin:0}
   .rcard u{text-decoration:none;font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);margin-top:4px}

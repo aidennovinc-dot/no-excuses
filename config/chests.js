@@ -236,7 +236,9 @@ export const SYMBOLS = {
 /* v30 (59.2, build 59): `cardPicMin` is how short the card's picture may be squeezed before it stops reading as a picture.
    Continue must be on screen without scrolling, and the frame is what gives way to put it there (ui/reveal.js); this is the
    floor that stops it giving way to nothing. 96px is a little over half the 16:9 frame's natural height on a 390px phone (guess). */
-export const REVEAL = { giftAt: 260, giftGap: 400, giftMs: 1150, hold: 420, cardAt: 240, cardGo: 1000, fadeMs: 700, under: 10, cardGap: 18, cardStep: 170, cardBlockMs: 260, cardPicMin: 96 };
+export const REVEAL = { giftAt: 260, giftGap: 400, giftMs: 1150, hold: 420, cardAt: 240, cardGo: 1000, fadeMs: 700, under: 10, cardGap: 18, cardStep: 170, cardBlockMs: 260, cardPicMin: 96, cardPicFloor: 36 };
+/* build 62 (61.23): `cardPicFloor` — when the picture at cardPicMin and the tightened spacing still leave the box taller than the phone, the
+   picture keeps shrinking, down to this, rather than the box scrolling. Aiden: never a scrollbar in a congratulations box. */
 
 /* ---------- v28 (item 17, build 53): THE CONFETTI ON THE CONGRATULATIONS SCREEN, ONE PER CHEST ----------
    Item 17: "confetti plus a celebratory sound, so it makes the player feel like they've accomplished something", DIFFERENT FOR EACH CHEST and

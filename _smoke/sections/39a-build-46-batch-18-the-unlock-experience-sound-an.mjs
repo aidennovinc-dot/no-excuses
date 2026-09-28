@@ -35,7 +35,9 @@ export async function run() {
     const oneRoutine = !/playCeremony|ceremonyTap|stopCeremony|ceremonyOn/.test(cere + keyjs) && /export function chestStage|const chestStage|function chestStage/.test(cere)
       && (keyjs.match(/playReveal\(/g) || []).length >= 3 && /kind: 'chest'/.test(keyjs) && /kind: 'key'/.test(keyjs);
     // and the routine itself is the one that swallows the taps, holds, and ends on the card
-    const inRev = /function tap\(\)/.test(rev) && /cur\.ready/.test(rev) && /REVEAL\.cardGo/.test(rev) && /reduced\(\)/.test(rev);
+    /* DELETED AT BUILD 62 (61.23), NOT RE-SPELLED: `/function tap\(\)/`, a source-text clause on how reveal.js spells its tap — 61.23 gives it an
+       argument (a tap outside the box closes it). The three clauses left, and the driven checks in `chests`, still say what it stood for. */
+    const inRev = /cur\.ready/.test(rev) && /REVEAL\.cardGo/.test(rev) && /reduced\(\)/.test(rev);
     // presentation only (L10): neither the routine nor the drawer writes anything
     const l10 = !/\bsave\(|localStorage|store\.bars/.test(rev + cere);
     (oneRoutine && inRev && l10)

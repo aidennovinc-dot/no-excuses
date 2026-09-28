@@ -193,7 +193,10 @@ function play(host, o = {}) { stop(); if (!host) return false;
    v27 (item 14, build 51): UNLESS THE STAGE OFFERS A SKIP. A chest's ceremony does not and is still unskippable; a KEY's does — item 14 asks
    for a tap that jumps to the end at any point — and it answers whether it took the tap. This is the only route in while a reveal is up: the
    host covers the screen and carries its own `data-act`, so `ui/actions.js` never reaches its captures. */
-function tap() { if (!cur) return false;
+/* build 62 (61.23): `out` — the tap landed OUTSIDE the congratulations box. Once the box is up and its Continue is live, that closes it
+   exactly as Continue does; the only other ways out were the video or scrolling inside the box. */
+function tap(out) { if (!cur) return false;
+  if (out && cur.carded) return go();
   if (!cur.ready) { const st = cur.stage, c0 = cur;
     if (st && st.skip) { let took = false; try { took = !!st.skip(); } catch (e) { took = false; } if (took) { c0.jump(); return true; } }
     return false; }
@@ -232,7 +235,13 @@ function tap() { if (!cur) return false;
          lowest, so even at the picture's floor its card ran about 14px past the bottom. `tight` takes that out of the gaps
          and the padding and nothing out of the words. The card stays BELOW the rewards either way: centring it instead was
          tried and is worse, because the wrap then holds the card over the chest, the gift row and the spill's light. */
-      if (over() > 0) { card.classList.add('tight'); squeeze(); } } }
+      if (over() > 0) { card.classList.add('tight'); squeeze(); }
+      /* build 62 (61.23): AND THEN THE PICTURE GIVES MORE. The Pro chest's card was still 3px over at the picture's floor, so it scrolled —
+         heading, line, video, caption and NEXT UP were never all in view. Past cardPicMin the picture keeps shrinking to cardPicFloor. */
+      const give = () => { for (let i = 0; fr && i < 3 && over() > 0; i++) { const h = fr.getBoundingClientRect().height, next = Math.max(REVEAL.cardPicFloor, Math.floor(h - over() - 2));
+        if (next >= Math.round(h)) break; fr.style.setProperty('--mp-max', next + 'px'); } };
+      // once more when the card has finished staging: the word settling can add a pixel or two after the first fit
+      give(); c.timers.push(setTimeout(() => { if (cur === c) give(); }, REVEAL.cardAt + REVEAL.cardGo + 40)); } }
   c.host.classList.add('card');
   /* v28 (item 17, build 53): the celebration — confetti and one sound, different per chest and escalating, on the card's TITLE beat and before
      the message row, which is where item 17 puts it: "the screen the player taps through to after a chest opens", never on the map and never

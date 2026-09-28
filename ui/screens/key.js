@@ -781,7 +781,7 @@ define({
   /* v23 (L.6, build 41) → v25 (items 6 / 11 / 22, build 46): the reveal's own tap. NOTHING AT ALL until "tap to continue" — swallowed, never
      queued — and then it brings up the congratulations card. `reveal-go` is that card's Continue, dead for about a second after it appears;
      `reveal-msg` is item 23's button, and it takes the player to About with that message ready to play. */
-  'cere-tap'() { return revealTap() ? 'click' : undefined; },
+  'cere-tap'(el, e) { const out = !!(e && e.target && e.target.closest && !e.target.closest('.rcard')); return revealTap(out) ? 'click' : undefined; },
   'reveal-go'() { return revealGo() ? 'click' : undefined; },
   'reveal-msg'(el) { const id = el.dataset.msg; revealGo(); show('s-about', { msg: id }); return 'click'; },
   /* v23 (L.12, build 40): a whole key goes to its chest on the map when that chest is open, with its words beside it.
