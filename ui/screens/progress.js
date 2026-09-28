@@ -115,7 +115,9 @@ function achRow(a,tab,{g,all,fsGame,fresh}){
   // v14 (8.3): the game name leads the title. v14 (8.4): so it is written once — the jump line below repeats it only for
   // the rows that have no game of their own ("Every game", "Full set") or that name no mode and no length to point at
   const wg=a.g==='all'?fsGame:a.g;
-  const gname=a.g==='all'?'':`<i>${GAMES[a.g].name}</i>`;
+  /* build 62 (61.9): the game leads the title only where games are MIXED with no header — the Achievements tab. A chest tab already groups
+     its rows under "QUICK TAP · 0/6", and a Customise-unlocks row names its game on its own → line */
+  const gname=a.g==='all'||tab!=='ach'?'':`<i>${GAMES[a.g].name}</i>`;
   // v28 (item 1, build 53): a Secret row's bar is the ordinary one — `s` was the red cue bar, and red means a miss everywhere else (L.2)
   const bar=p!==null?`<div class="pbar"><i style="width:${Math.round(p*100)}%"></i></div>`:'';
   const jump=a.g!=='all'||a.id==='fullset';

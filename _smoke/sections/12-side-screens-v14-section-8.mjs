@@ -133,4 +133,17 @@ export async function run() {
       ? ok(`58.3 a Secret is "${sec58.shut.name}" with NO description at all and the progress bar as the only hint until it is earned, and then it says what it was ("${sec58.open.name}" \u00b7 ${sec58.open.line}); and Achievements holds only the extras that fit nowhere else \u2014 ${sec58.shut.n} rows, not one of them a key row, "${sec58.shut.hint}"`)
       : bad('58.3 the Secrets and the Achievements tab', JSON.stringify({ hidden58, told58, extras58, someSecret, sec58 }));
   }
+  /* build 62 (61.9 – 61.16): THE PROGRESS ROWS. One profile, every chest tab, Customise unlocks and Achievements read back */
+  await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS, chests: { games: 1, key: 1, pro: 1, thorns: 1 } }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+  await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+  const tab62 = t => page.evaluate(async t => { const R = await import('./ui/router.js'); R.show('s-prog', { tab: t }); await new Promise(r => setTimeout(r, 400));
+    const list = document.querySelector(t.startsWith('c-') ? '#chest-list' : t === 'cul' ? '#cul-list' : '#achlist');
+    return { heads: [...list.querySelectorAll('h4')].map(h => h.textContent), rows: [...list.querySelectorAll('.a')].map(b => ({ id: b.dataset.ach, title: (b.querySelector('span') || {}).textContent || '', lines: [...b.children].map(c => c.textContent), game: !!b.querySelector('span i'), gold: [...b.querySelectorAll('.aname')].map(x => getComputedStyle(x).color), bar: (b.querySelector('.pbar i') || {}).style?.width || null })),
+      count: (document.getElementById(t.startsWith('c-') ? 'chest-hint' : t + '-hint') || {}).textContent || '' }; }, t);
+  {
+    const pro = await tab62('c-pro');
+    (pro.heads.length > 3 && pro.rows.length && pro.rows.every(r => !r.game))
+      ? ok(`61.9 under a "${pro.heads[0]}" header no row repeats the game's name (${pro.rows.length} Pro chest rows)`)
+      : bad('61.9 the game name repeated under its header', JSON.stringify(pro.rows.filter(r => r.game).slice(0, 3)));
+  }
 }
