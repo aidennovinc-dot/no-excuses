@@ -213,4 +213,17 @@ export async function run() {
       ? ok(`61.16 a Customise-unlock row reads "${txt.join('" / "')}" — Marathon and Four once each, no "unlocks …" on any row, no ".00%" anywhere`)
       : bad('61.16 the Customise-unlock rows', JSON.stringify({ txt, pct: pct.slice(0, 4), title: (cul.rows.find(r => /unlocks/i.test(r.title)) || {}).title }));
   }
+  /* 61.26: the foot of the Games chest tab is the Skill key's art and one line — lit, "Skill key unlocked", once the Games chest has opened it,
+     and dim, "Unlock all games to open the Skill key", before; no grey paragraph, no count */
+  {
+    const read26 = () => page.evaluate(async () => { const C = (await import('./config/copy.js')).PROGRESS_SCREEN, R = await import('./ui/router.js'); R.show('s-prog', { tab: 'c-games' }); await new Promise(r => setTimeout(r, 400));
+      const b = document.querySelector('#chest-list .keyblock'); return b ? { art: b.querySelectorAll('.kbart path').length, lit: b.classList.contains('lit'), txt: b.textContent.trim(), shut: C.skillShut, open: C.skillOpen } : null; });
+    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS, allOpen: false, chests: { games: 1 } }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400); const open26 = await read26();
+    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS, allOpen: false, chests: {} }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400); const shut26 = await read26();
+    (open26 && shut26 && open26.art > 0 && open26.lit && open26.txt === open26.open && !shut26.lit && shut26.txt === shut26.shut)
+      ? ok(`61.26 the Games chest tab ends on the Skill key's art and one line: "${shut26.txt}" dim before, "${open26.txt}" lit after`)
+      : bad('61.26 the Skill key block', JSON.stringify({ open26, shut26 }));
+  }
 }

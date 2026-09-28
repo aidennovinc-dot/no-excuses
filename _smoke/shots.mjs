@@ -1643,6 +1643,12 @@ scene('61.25', async (page, browser) => {
   await frame(page, browser, '61.25-key-list', 'Skill key, Quick Tap picked: the requirement list takes the room, SET THIS MUSIC near the bottom above the safe area');
 });
 
+scene('61.26', async (page, browser) => {
+  await load(page, { ...OPEN, allOpen: 0, chests: { games: 1 } }); await show(page, 's-prog', { tab: 'c-games' }); await sleep(600);
+  await page.evaluate(() => { const l = document.getElementById('chest-list'); l.scrollTop = l.scrollHeight; }); await sleep(300);
+  await frame(page, browser, '61.26-games-chest-skill-key', 'Foot of the Games chest tab: the Skill key lit, "Skill key unlocked" — the grey paragraph and 30/30 are gone');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

@@ -145,6 +145,7 @@ export const UNLOCKS_SCREEN = { title:'unlocks',
 // build 62 (61.11): the box a requirement row opens before it leaves the list
 export const ASK_PLAY = { title:'Play {name}?', target:'Target {n}', best:'Best {n}', none:'—', play:'Play' };
 export const PROGRESS_SCREEN = { title:'progress', unl:'Game unlocks', cul:'Customise unlocks', ach:'Achievements', howOpen:'How to open this chest →',
+  skillShut:'Unlock all games to open the Skill key', skillOpen:'Skill key unlocked',
   /* v28 (item 4, build 53): `unlHint`, `culHint`, `achHint` and `culLocked` are RETIRED — four lines of grey helper text saying what tapping a
      row does, on a screen made of rows. One line replaces all of them, per tab: how much of that tab is unlocked. On Achievements the total
      leaves Secret out until one has been found (R1) — the line may never say how many secrets there are. */

@@ -42,7 +42,7 @@ export async function run() {
   // unlocks (build 23, v15 2.4): its own menu item now, above Achievements. The key row is the one that leads somewhere
   // with a single Back, which is why it is the row this taps
   await tap('[data-go="s-prog"]'); await sleep(300);
-  await tap('#chest-list .urow.key', 'unlocks · the key row'); await sleep(400);
+  await tap('#chest-list .keyblock', 'unlocks · the key row');   // AMENDED at build 62 (61.26): the key row is the Skill key block await sleep(400);
   (await onScreen()) === 's-key' ? ok('the Unlocks screen\'s key row opens the key') : bad('unlocks · key row', 'on ' + (await onScreen()));
   await tap('#s-key .back', 'key · back'); await sleep(300);
   // achievements: filter chip, a row that jumps to a sheet (Quick Tap · Clean · Sprint · Four)

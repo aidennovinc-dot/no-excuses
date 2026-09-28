@@ -31,7 +31,7 @@
    The screen remembers which tab was last open in `prefs.progTab`; only the tab that is up renders. */
 import { ACH_SCREEN, GRID, ITEM_WORD, PROGRESS_SCREEN, TIERS, UNLOCKS_SCREEN } from "../../config/copy.js";
 import { CHESTS } from "../../config/chests.js";
-import { KEYS } from "../../config/keys.js";
+import { KEYS, KEY_ART } from "../../config/keys.js";
 import { MODE_NAME } from "../../config/games.js";
 import { $, $$, T, esc } from "../../core.js";
 import { emit } from "../../core/events.js";
@@ -93,11 +93,12 @@ function gamesHtml(gsel){
     total++; if(!L) open++; if(!mine(g)) continue;
     lens.push(row('u'+(L?' lock':' done'),name,L?L.need:'',L?UNLOCKS_SCREEN.locked:UNLOCKS_SCREEN.done,` data-g="${g}" data-d="${d}" data-s="${s}"`)); } }
   // v23 (L.10a, build 40): key 1 is quiet until the Games chest — the key row says what opens it, with no count
-  const k=keyState(), kq=!tierOpen('clear');
-  const keyRow=gsel!=='all'?'':`<h4>${UNLOCKS_SCREEN.keys}</h4>`+
-    // v17 (B.9): the count in the key line is read from the same keyState() the row's own figure comes from — a literal
-    // would have gone stale the day Sequence lost 5 keys, which is the day it did
-    row('u key'+(!kq&&k.done>=k.total?' done':' lock'),UNLOCKS_SCREEN.keys,kq?PROGRESS_SCREEN.keyLocked:T(UNLOCKS_SCREEN.keyLine,{n:k.total}),kq?UNLOCKS_SCREEN.locked:`${k.done}/${k.total}`,' data-key="1"');
+  const kq=!tierOpen('clear');
+  /* build 62 (61.26): THE SKILL KEY IS ITS ART AND ONE LINE. The grey paragraph ("The first key is earned here…", 30/30) is gone: the key's own
+     glyph, dim with "Unlock all games to open the Skill key" until the Games chest opens it, then lit in its colour with "Skill key unlocked"
+     (Cowork's wording for the earned state). Still the way in to the Keys screen, as the row it replaces was. */
+  const sk=KEYS[0], lit=!kq;
+  const keyRow=gsel!=='all'?'':`<button data-act="unl" class="keyblock${lit?' lit':''}" data-key="1" style="--kt:${sk.tint}"><svg class="kbart" viewBox="0 0 48 48" aria-hidden="true">${KEY_ART[sk.id].map(d=>`<path d="${d}"></path>`).join('')}</svg><span>${lit?PROGRESS_SCREEN.skillOpen:PROGRESS_SCREEN.skillShut}</span></button>`;
   markSeen(fresh);
   /* item 4: the chain rows and the length rows, open against the lot. The key row is not counted — it is a way in to another screen with
      its own count on it (`19/30`), not a thing this tab unlocks. The count is the WHOLE tab, not the filter's slice, because this tab's
