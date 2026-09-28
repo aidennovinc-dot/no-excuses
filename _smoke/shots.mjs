@@ -1588,6 +1588,17 @@ scene('61.21', async (page, browser) => {
   await frame(page, browser, '61.21-welcome-card', 'The Welcome card: the picture is a chest reward video waiting to play (frame, glow, play mark); the whole card plays it, LATER skips');
 });
 
+// 61.22 is about the bottom inset, so it gets the three widths: Customise ("Settings") on Lantern, scrolled to the very bottom
+scene('61.22', async (page, browser) => {
+  for (const W of [375, 390, 430]) {
+    await page.setViewport({ width: W, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    await load(page, { ...CHESTS_OPEN, bg: 'lantern' }); await show(page, 's-custom'); await sleep(700);
+    await page.evaluate(() => { for (const s of document.querySelectorAll('.screen.on, .screen.on .scroll')) s.scrollTop = s.scrollHeight; }); await sleep(900);
+    await frame(page, browser, '61.22-settings-lantern-' + W, `Customise on Lantern at ${W} wide, scrolled to the bottom, 47 / 34 insets: the lanterns run under the home indicator and sit behind every row`);
+  }
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

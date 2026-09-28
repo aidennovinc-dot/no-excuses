@@ -750,6 +750,34 @@ export async function run() {
       ? ok(`61.7 / 61.22 on the key screen no key layer draws behind text or a control (${Object.entries(lay.out).map(([s, o]) => s + ' ' + o.n + ' clear').join(', ')}); the canvas takes no tap and covers the phone`)
       : bad('61.7 / 61.22 the background layer rule', JSON.stringify(lay));
   }
+  /* build 62 (61.22): EVERY BACKGROUND FILLS THE WHOLE PAGE AND SITS BEHIND EVERYTHING, on the long screens, scrolled to the bottom, with a top
+     and a bottom safe-area inset: the canvas runs from above the top inset to below the bottom one, and no art is left behind any text or
+     control. Lantern, Circuit and Thorn, on Customise ("Settings"), the Skill key screen and the Games chest tab */
+  {
+    const cdp = await page.createCDPSession(); let insets = true;
+    try { await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 47, bottom: 34, left: 0, right: 0 } }); } catch (e) { insets = false; }
+    const res = await page.evaluate(async () => { const S = await import('./core/store.js'), R = await import('./ui/router.js'), KY = await import('./config/keys.js'), TH = await import('./config/theme.js');
+      const w = ms => new Promise(r => setTimeout(r, ms)), cv = document.getElementById('stars'), cx = cv.getContext('2d', { willReadFrequently: true });
+      const inset = side => { const d = document.createElement('div'); d.style.cssText = 'position:fixed;width:1px;height:env(safe-area-inset-' + side + ')'; document.body.appendChild(d); const h = parseFloat(getComputedStyle(d).height) || 0; d.remove(); return h; };
+      const top = inset('top'), bottom = inset('bottom'), out = [];
+      S.prefs.chests = { games: 1, key: 1, pro: 1, thorns: 1 };
+      for (const bg of ['lantern', 'circuit', 'thorn']) { S.prefs.bg = bg; S.prefs.tint = '';
+        for (const [id, o] of [['s-custom', {}], ['s-key', { tier: 0 }], ['s-prog', { tab: 'c-games' }]]) { R.show(id, o); await w(450);
+          for (const sc of document.querySelectorAll('.screen.on, .screen.on .scroll')) sc.scrollTop = sc.scrollHeight; await w(700);
+          // the key screen draws its OWN key's layer over the chosen one (the Skill key's is Lantern), so that is the sky it clears to there
+          const drawn = id === 's-key' ? KY.KEYS[0].style : bg;
+          const cr = cv.getBoundingClientRect(), k = cv.width / cr.width, sky = ((KY.KEY_LAYER[drawn] || {}).sky || '').split(',').map(Number);
+          const els = [...document.querySelectorAll('.screen.on button, .screen.on .clabel, .screen.on h4, .screen.on .eyebrow')].filter(e => { const r = e.getBoundingClientRect(); return r.height > 0 && r.bottom > 0 && r.top < innerHeight; });
+          const lit = els.filter(e => { const r = e.getBoundingClientRect(); const d = cx.getImageData(Math.round((r.x + r.width / 2 - cr.left) * k), Math.round((r.y + r.height / 2 - cr.top) * k), 1, 1).data;
+            return d[3] > 255 * (1 - TH.BG_LAYER.clear) + 8 && !(sky.length === 3 && sky.every((v, i) => Math.abs(d[i] - v) <= 8)); }).map(e => e.textContent.trim().slice(0, 14));
+          out.push({ bg, id, n: els.length, lit, covers: cr.top <= -top + 1 && cr.bottom >= innerHeight + bottom - 1 && cr.width >= innerWidth - 1 }); } }
+      S.prefs.bg = 'stars'; R.show('s-menu'); return { top, bottom, out }; });
+    try { await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0, bottom: 0, left: 0, right: 0 } }); } catch (e) {}
+    const off = res.out.filter(x => !x.covers || x.lit.length || !x.n);
+    (insets && res.top === 47 && res.bottom === 34 && !off.length)
+      ? ok(`61.22 with a 47px top and 34px bottom inset, Lantern, Circuit and Thorn fill Customise, the Skill key screen and the Games chest tab from above the top inset to below the bottom one, scrolled to the end, with no art behind any of ${res.out.reduce((n, x) => n + x.n, 0)} controls and labels`)
+      : bad('61.22 the background covers the page and sits behind everything', JSON.stringify({ insets, top: res.top, bottom: res.bottom, off }));
+  }
   /* build 62 (61.6): AN ACHIEVEMENT TOAST THAT HAS GONE CATCHES NOTHING. It kept pointer-events after it faded, invisible over the top of every
      screen, so a tap on the Keys screen's Pro tile opened Achievements. Reproduced: a tappable toast shows and fades, then the Keys screen */
   {

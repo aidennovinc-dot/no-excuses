@@ -167,6 +167,8 @@ const LAYER={
 let holes=[], holesT=0, inRun=false, odd=false, cvTop=0, cvLeft=0;
 const TEXTY=/\S/;
 function measure(){ holes=[]; holesT=performance.now(); if(inRun) return;
+  // where the canvas is NOW — the safe-area insets can change without a resize (rotation, an installed app's first frame)
+  { const br=cv.getBoundingClientRect(); cvTop=br.top; cvLeft=br.left; }
   const s=document.querySelector('.screen.on'); if(!s) return;
   const vw=innerWidth, vh=innerHeight, big=vw*vh*.45, p=BG_LAYER.pad;
   for(const el of s.querySelectorAll('*')){ if(el instanceof SVGElement) continue;
@@ -191,7 +193,8 @@ function draw(t){ if(paused){ running=false; return; }
   if(inRun){ cx.fillStyle=`rgba(0,0,0,${BG_LAYER.dim})`; cx.fillRect(0,0,W,H); } else punch(ly);
   requestAnimationFrame(draw); }
 function resume(){ if(running) return; running=true; requestAnimationFrame(draw); }
-function startAtmosphere(){ addEventListener('resize',size); size(); running=true; draw(0); }
+// build 62 (61.22): the canvas is sized from its own box, so a change to that box (an inset arriving) re-sizes it as a resize would
+function startAtmosphere(){ addEventListener('resize',size); if(window.ResizeObserver) new ResizeObserver(()=>size()).observe(cv); size(); running=true; draw(0); }
 // C.6: the key screen's own layer, or null to give the chosen background back
 function setKeyLayer(style){ over=LAYER[style]?style:null; }
 // build 62 (61.20): a game keeps the background, dimmed — it used to hide the canvas and stop drawing for the whole run
