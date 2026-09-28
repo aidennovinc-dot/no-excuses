@@ -14,6 +14,7 @@ import { TUTORIAL } from "../config/copy.js";
 import { $ } from "../core.js";
 import { on } from "../core/events.js";
 import { prefs, save, store } from "../core/store.js";
+import { Snd } from "../audio.js";
 import { define } from "./actions.js";
 import { show } from "./router.js";
 
@@ -39,8 +40,9 @@ const STEPS=[
 
 function build(){ if(host) return host;
   host=document.createElement('div'); host.id='tut'; host.hidden=true;
-  host.innerHTML='<div class="tring"></div><div class="tbox" data-act="tut-box"><p></p><div class="trow"><button class="tskip" data-act="tut-skip"></button><button class="tnext" data-act="tut-next"></button></div></div>';
-  document.body.appendChild(host); host.querySelector('.tskip').textContent=TUTORIAL.skip; host.querySelector('.tnext').textContent=TUTORIAL.next; return host; }
+  // build 64 (62.8): the box is its line and nothing else — no Skip, no Next; a tap anywhere moves a text box on (the capture below)
+  host.innerHTML='<div class="tring"></div><div class="tbox"><p></p></div>';
+  document.body.appendChild(host); return host; }
 function hide(){ if(host) host.hidden=true; }
 /* build 64 (62.7): THE BOX SITS IN THE CENTRE, THE SAME SPOT ON EVERY STEP. It used to follow its target, and on the step about the whole list
    that pinned it to the very top, under the clock. Now it is centred between the two safe areas and never moves; its height is held by a
@@ -56,7 +58,7 @@ function clear(el,bt,bb){ const map=el.closest('#grid')&&$('#s-pick'); if(!map) 
   // the map could not move that way far enough (the top or the end of the list): the other side of the box
   const n=el.getBoundingClientRect(); if(n.bottom>bt-gap&&n.top<bb+gap){ map.scrollTop=before; map.scrollTop+=up?-(bb+gap-r.top):r.bottom-(bt-gap); } }
 function place(el,text,next,noRing){ const h=build(), pad=6, ring=h.querySelector('.tring'), box=h.querySelector('.tbox');
-  h.hidden=false; h.querySelector('p').textContent=text; h.querySelector('.tnext').hidden=!next; ring.hidden=!!noRing;
+  h.hidden=false; h.querySelector('p').textContent=text; h.classList.toggle('text',!!next); ring.hidden=!!noRing;
   const bw=Math.min(320,innerWidth-32), bh=box.offsetHeight||90, s=insets(), top=Math.round(s.top+(innerHeight-s.top-s.bottom-bh)/2);
   Object.assign(box.style,{ width:bw+'px', left:Math.round((innerWidth-bw)/2)+'px', top:top+'px' });
   if(!noRing) clear(el,top,top+bh);
@@ -89,28 +91,24 @@ on('store:reset',()=>{ step=0; });
    map is up for a walkthrough until its first box is on screen, every tap is swallowed here — capture, ahead of ui/actions.js's own handler —
    so nothing opens, nothing goes Back and nothing skips it. */
 /* build 64 (62.4): AND WHILE A BOX IS UP, ONLY WHAT IT ASKS FOR TAKES A TAP. A step that waits for the player lets through a tap on its own
-   target and nothing else; every other step, and the tip, lets through only its own box (and the tip its ringed chip). No navigation, no
-   Back off the ground, nothing opened by accident. */
+   target and nothing else, and the tip its ringed chip. No navigation, no Back off the ground, nothing opened by accident.
+   build 64 (62.8): NO SKIP. A box that only says something moves on at a tap ANYWHERE — the tap is spent on the walkthrough and reaches
+   nothing under it; a box that asks for a tap moves on only when that tap lands. */
 const owns=()=>(wanted()&&onScreen('s-pick'))||tipOn;
 function lets(t){ const box=host&&!host.hidden; if(!box) return false;
-  if(t.closest('#tut .tbox')) return true;
   if(tipOn) return !!t.closest('.chip.locked,.mch.locked');
   const s=STEPS[step]; if(!s||s.next) return false; const el=s.el(); return !!el&&el.contains(t); }
-document.addEventListener('click',e=>{ if(!owns()||lets(e.target)) return; e.stopPropagation(); e.preventDefault(); },true);
+document.addEventListener('click',e=>{ if(!owns()||lets(e.target)) return; e.stopPropagation(); e.preventDefault();
+  const s=!tipOn&&host&&!host.hidden&&STEPS[step]; if(s&&s.next){ Snd.click(); next(); } },true);
 /* the tip is answered by a tap on the locked chip it rings — capture, so the chip's own lock box still opens underneath */
 document.addEventListener('click',e=>{ if(!tipOn) return; const el=$('#over-chips2 .chip.locked')||$('#over-chips .mch.locked'); if(el&&e.target.closest('.chip.locked,.mch.locked')) finish(2); },true);
 
-function next(){ if(tipOn){ const el=$('#over-chips2 .chip.locked')||$('#over-chips .mch.locked'); finish(2); if(el) el.click(); return; } step++; tick(); }
-function skip(){ finish(2); }
+function next(){ step++; tick(); }
 /* Testing → replay tutorial (build 64, 62.5 — it was the foot of Customise until then; a player gets the walkthrough once): the walkthrough's
    state goes back to the start and the games menu opens, so it begins at step one whatever the profile has played */
 function replay(){ prefs.tut=-1; save(); step=0; tipOn=false; run(); }
 
 define({
-  'tut-next'(){ next(); return 'click'; },
-  'tut-skip'(){ skip(); return 'click'; },
-  // a tap on the box itself moves on where Next would; on a step that waits for the player it does nothing (and never goes Back)
-  'tut-box'(){ if(tipOn||(STEPS[step]&&STEPS[step].next)) next(); },
   'tut-replay'(){ replay(); show('s-pick'); return 'click'; },
 });
 run();

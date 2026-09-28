@@ -37,7 +37,7 @@ export async function run() {
     const C = await page.evaluate(async () => (await import('./config/copy.js')).TUTORIAL);
     const box = () => page.evaluate(() => { const t = document.getElementById('tut'); if (!t || t.hidden) return null; const r = t.querySelector('.tring').getBoundingClientRect();
       const b = t.querySelector('.tbox').getBoundingClientRect(), over = !(r.bottom <= b.top || r.top >= b.bottom);
-      return { text: t.querySelector('p').textContent, next: !t.querySelector('.tnext').hidden, ring: [Math.round(r.width), Math.round(r.height)], col: getComputedStyle(t.querySelector('.tring')).borderTopColor, drawn: getComputedStyle(t.querySelector('.tring')).display !== 'none',
+      return { text: t.querySelector('p').textContent, next: t.classList.contains('text'), buttons: t.querySelectorAll('button').length, ring: [Math.round(r.width), Math.round(r.height)], col: getComputedStyle(t.querySelector('.tring')).borderTopColor, drawn: getComputedStyle(t.querySelector('.tring')).display !== 'none',
         centre: [Math.round(b.x + b.width / 2 - innerWidth / 2), Math.round(b.y + b.height / 2 - innerHeight / 2)], top: Math.round(b.top), covers: over && getComputedStyle(t.querySelector('.tring')).display !== 'none' }; });
     const waitText = async (want, n = 80) => { for (let i = 0; i < n; i++) { const b = await box(); if (b && b.text === want) return b; await sleep(100); } return await box(); };
     /* build 64 (62.3): a new profile's map drawing itself in — taps on a game, the ground and Back, before the first box, all do nothing:
@@ -61,10 +61,12 @@ export async function run() {
        (which used to go Back) and Back itself, on the step that points at the list */
     const stray = await page.evaluate(() => { document.querySelector('.tile[data-game="dots"]').click(); document.getElementById('grid').click(); document.querySelector('#s-pick .back').click();
       return { screen: document.querySelector('.screen.on')?.id, sheet: !document.getElementById('sheet').hidden, lock: document.getElementById('lockwrap').classList.contains('on'), box: document.querySelector('#tut p').textContent }; });
-    await click('#tut .tnext');
+    // build 64 (62.8): no Skip and no Next — a tap anywhere (here the far corner of the map, not the box) moves a text box on
+    await page.evaluate(() => document.elementFromPoint(12, innerHeight - 12).click());
     const onTile = await waitText(C.steps[1]);
     const stray2 = await page.evaluate(() => { document.querySelector('.tile[data-game="dots"]').click(); return { sheet: !document.getElementById('sheet').hidden, lock: document.getElementById('lockwrap').classList.contains('on'), box: document.querySelector('#tut p').textContent }; });
-    (stray.screen === 's-pick' && !stray.sheet && !stray.lock && stray.box === C.steps[0] && !stray2.sheet && !stray2.lock && stray2.box === C.steps[1])
+    // (62.8 since: the first of those taps moves the text box on, and is spent there — the tile step then ignores the other two)
+    (stray.screen === 's-pick' && !stray.sheet && !stray.lock && stray.box === C.steps[1] && !stray2.sheet && !stray2.lock && stray2.box === C.steps[1])
       ? ok('62.4 while a box is up, a tap on another game, the ground or Back does nothing — only what the box asks for (or the box) responds')
       : bad('62.4 only the step\'s target responds', JSON.stringify({ stray, stray2 }));
     // build 64 (62.6): the step about the whole list draws no outline; the step that wants one tile rings it
@@ -72,8 +74,10 @@ export async function run() {
       ? ok(`62.6 no outline round the whole games list; the step that wants a tap rings its tile (${onTile.ring.join('×')})`)
       : bad('62.6 the list step\'s outline', JSON.stringify({ first: seen[0], onTile }));
     seen.push(onTile); await click('.tile[data-game="quick-tap"]');
-    seen.push(await waitText(C.steps[2])); await click('#tut .tnext');
-    seen.push(await waitText(C.steps[3])); await click('#tut .tnext');
+    seen.push(await waitText(C.steps[2])); await page.evaluate(() => document.elementFromPoint(12, 60).click());
+    seen.push(await waitText(C.steps[3])); await click('#tut .tbox p');
+    // on a box that asks for a tap, a tap anywhere else does nothing: still step 5 after a tap on the map
+    const held = await (async () => { await sleep(300); const b = await box(); await page.evaluate(() => document.elementFromPoint(12, 60).click()); await sleep(250); return { before: b && b.text, after: (await box() || {}).text }; })();
     await page.evaluate(() => document.querySelector('#diff-row .choice').click()); await sleep(450);
     seen.push(await waitText(C.steps[4]));
     // build 64 (62.7): every box is centred — within a pixel or two of the middle of the phone — at the same top, and never over its target
@@ -82,6 +86,9 @@ export async function run() {
       : bad('62.7 the centred box', JSON.stringify(seen.map(b => b && { t: b.text, c: b.centre, top: b.top, covers: b.covers })));
     const words = C.steps.map(s => s.split(/\s+/).filter(w => /\w/.test(w)).length);
     const walked = seen.every((b, i) => b && b.text === C.steps[i]) && seen[1].next === false && seen[4].next === false && seen[0].next && words.every(n => n <= 12);
+    (seen.every(b => b && b.buttons === 0) && [C.pickFirst, C.steps[4]].includes(held.before) && held.after === held.before)
+      ? ok('62.8 no Skip and no Next on any box; a text box moves on at a tap anywhere, and a box that asks for a tap ignores every other one')
+      : bad('62.8 tap to advance', JSON.stringify({ buttons: seen.map(b => b && b.buttons), held }));
     await click('#go-btn'); await sleep(500);
     const after = await page.evaluate(() => ({ tut: JSON.parse(localStorage.getItem('ne')).prefs.tut, hidden: document.getElementById('tut').hidden, game: document.getElementById('game').classList.contains('on') }));
     (walked && after.tut === 1 && after.hidden && after.game)
@@ -101,10 +108,10 @@ export async function run() {
     (where.testing && !where.custom) ? ok('62.5 Replay tutorial is in the Testing menu and gone from Customise') : bad('62.5 where Replay tutorial lives', JSON.stringify(where));
     await page.evaluate(async () => (await import('./ui/router.js')).show('s-testing')); await sleep(200);
     await click('#tut-replay'); await sleep(300);
-    const again = await waitText(C.steps[0]); await click('#tut .tskip'); await sleep(250);
-    const skipped = await page.evaluate(() => ({ tut: JSON.parse(localStorage.getItem('ne')).prefs.tut, hidden: document.getElementById('tut').hidden }));
-    (again && again.text === C.steps[0] && skipped.tut === 2 && skipped.hidden)
-      ? ok('61.3 / 62.5 Replay tutorial (Testing) lands on the games menu with the walkthrough back at step one, whatever has been played, and Skip ends it for good')
-      : bad('61.3 replay and skip', JSON.stringify({ again, skipped }));
+    const again = await waitText(C.steps[0]); const on = await page.evaluate(() => document.querySelector('.screen.on')?.id);
+    (again && again.text === C.steps[0] && on === 's-pick')
+      ? ok('61.3 / 62.5 Replay tutorial (Testing) lands on the games menu with the walkthrough back at step one, whatever has been played')
+      : bad('61.3 / 62.5 replay', JSON.stringify({ again, on }));
+    await page.evaluate(async () => { const S = await import('./core/store.js'); S.prefs.tut = 2; S.save(); });
   }
 }
