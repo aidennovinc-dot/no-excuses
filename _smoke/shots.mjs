@@ -1670,6 +1670,15 @@ scene('62.5', async (page, browser) => {
   say('customiseHasIt', await page.evaluate(() => !!document.querySelector('#s-custom [data-act="tut-replay"]')));
 });
 
+// the walkthrough's box, waited for by its text (any box when `want` is empty)
+const tutBox = async (page, want = '', n = 100) => { for (let i = 0; i < n; i++) { const t = await page.evaluate(() => { const h = document.getElementById('tut'); return h && !h.hidden ? h.querySelector('p').textContent : null; });
+  if (t && (!want || t === want)) return t; await sleep(100); } return null; };
+scene('62.7', async (page, browser) => {
+  await load(page, { tut: 0, played: 0 }); await show(page, 's-pick'); say('box', await tutBox(page));
+  say('box', await page.evaluate(() => { const b = document.querySelector('#tut .tbox').getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom), centreOff: Math.round((b.top + b.bottom) / 2 - (47 + (innerHeight - 47 - 34) / 2)) }; }));
+  await frame(page, browser, '62.7-box-centred', 'Walkthrough step 1: the box in the centre of the phone, clear of both safe areas, no outline round the list (62.6)');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

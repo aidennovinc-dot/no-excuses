@@ -42,12 +42,26 @@ function build(){ if(host) return host;
   host.innerHTML='<div class="tring"></div><div class="tbox" data-act="tut-box"><p></p><div class="trow"><button class="tskip" data-act="tut-skip"></button><button class="tnext" data-act="tut-next"></button></div></div>';
   document.body.appendChild(host); host.querySelector('.tskip').textContent=TUTORIAL.skip; host.querySelector('.tnext').textContent=TUTORIAL.next; return host; }
 function hide(){ if(host) host.hidden=true; }
-function place(el,text,next,noRing){ const h=build(), r=el.getBoundingClientRect(), pad=6, ring=h.querySelector('.tring'), box=h.querySelector('.tbox');
+/* build 64 (62.7): THE BOX SITS IN THE CENTRE, THE SAME SPOT ON EVERY STEP. It used to follow its target, and on the step about the whole list
+   that pinned it to the very top, under the clock. Now it is centred between the two safe areas and never moves; its height is held by a
+   min-height so one line or two does not shift it. A target the box would cover is moved instead: the map scrolls until the tile is clear of
+   the box, above it if it sat above the centre, below it if below. The insets come off a probe, as the stylesheet sees them. */
+let inset=null;
+function insets(){ if(!inset){ inset=document.createElement('div'); inset.style.cssText='position:fixed;left:0;width:0;top:env(safe-area-inset-top);bottom:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none'; document.body.appendChild(inset); }
+  const r=inset.getBoundingClientRect(); return { top:r.top, bottom:innerHeight-r.bottom }; }
+function clear(el,bt,bb){ const map=el.closest('#grid')&&$('#s-pick'); if(!map) return; const r=el.getBoundingClientRect(), gap=16;
+  if(r.bottom<=bt-gap||r.top>=bb+gap) return;
+  const up=r.top+r.height/2<(bt+bb)/2, before=map.scrollTop;
+  map.scrollTop+=up?r.bottom-(bt-gap):-(bb+gap-r.top);
+  // the map could not move that way far enough (the top or the end of the list): the other side of the box
+  const n=el.getBoundingClientRect(); if(n.bottom>bt-gap&&n.top<bb+gap){ map.scrollTop=before; map.scrollTop+=up?-(bb+gap-r.top):r.bottom-(bt-gap); } }
+function place(el,text,next,noRing){ const h=build(), pad=6, ring=h.querySelector('.tring'), box=h.querySelector('.tbox');
   h.hidden=false; h.querySelector('p').textContent=text; h.querySelector('.tnext').hidden=!next; ring.hidden=!!noRing;
-  Object.assign(ring.style,{ left:(r.left-pad)+'px', top:(r.top-pad)+'px', width:(r.width+pad*2)+'px', height:(r.height+pad*2)+'px' });
-  const bw=Math.min(320,innerWidth-32), bh=box.offsetHeight||90, below=r.bottom+pad+12, fitsBelow=below+bh<innerHeight-24;
-  const top=fitsBelow?below:Math.max(16,r.top-pad-12-bh), left=Math.max(16,Math.min(innerWidth-16-bw,r.left+r.width/2-bw/2));
-  Object.assign(box.style,{ width:bw+'px', left:left+'px', top:Math.min(top,innerHeight-bh-16)+'px' }); }
+  const bw=Math.min(320,innerWidth-32), bh=box.offsetHeight||90, s=insets(), top=Math.round(s.top+(innerHeight-s.top-s.bottom-bh)/2);
+  Object.assign(box.style,{ width:bw+'px', left:Math.round((innerWidth-bw)/2)+'px', top:top+'px' });
+  if(!noRing) clear(el,top,top+bh);
+  const r=el.getBoundingClientRect();
+  Object.assign(ring.style,{ left:(r.left-pad)+'px', top:(r.top-pad)+'px', width:(r.width+pad*2)+'px', height:(r.height+pad*2)+'px' }); }
 function finish(v){ prefs.tut=v; save(); step=0; tipOn=false; hide(); if(v===2) stop(); }
 
 function tick(){

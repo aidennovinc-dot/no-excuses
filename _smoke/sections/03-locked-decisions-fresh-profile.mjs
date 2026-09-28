@@ -36,7 +36,9 @@ export async function run() {
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(300); await click('[data-go="s-pick"]');
     const C = await page.evaluate(async () => (await import('./config/copy.js')).TUTORIAL);
     const box = () => page.evaluate(() => { const t = document.getElementById('tut'); if (!t || t.hidden) return null; const r = t.querySelector('.tring').getBoundingClientRect();
-      return { text: t.querySelector('p').textContent, next: !t.querySelector('.tnext').hidden, ring: [Math.round(r.width), Math.round(r.height)], col: getComputedStyle(t.querySelector('.tring')).borderTopColor, drawn: getComputedStyle(t.querySelector('.tring')).display !== 'none' }; });
+      const b = t.querySelector('.tbox').getBoundingClientRect(), over = !(r.bottom <= b.top || r.top >= b.bottom);
+      return { text: t.querySelector('p').textContent, next: !t.querySelector('.tnext').hidden, ring: [Math.round(r.width), Math.round(r.height)], col: getComputedStyle(t.querySelector('.tring')).borderTopColor, drawn: getComputedStyle(t.querySelector('.tring')).display !== 'none',
+        centre: [Math.round(b.x + b.width / 2 - innerWidth / 2), Math.round(b.y + b.height / 2 - innerHeight / 2)], top: Math.round(b.top), covers: over && getComputedStyle(t.querySelector('.tring')).display !== 'none' }; });
     const waitText = async (want, n = 80) => { for (let i = 0; i < n; i++) { const b = await box(); if (b && b.text === want) return b; await sleep(100); } return await box(); };
     /* build 64 (62.3): a new profile's map drawing itself in — taps on a game, the ground and Back, before the first box, all do nothing:
        no sheet, no navigation, and the first box still arrives */
@@ -74,6 +76,10 @@ export async function run() {
     seen.push(await waitText(C.steps[3])); await click('#tut .tnext');
     await page.evaluate(() => document.querySelector('#diff-row .choice').click()); await sleep(450);
     seen.push(await waitText(C.steps[4]));
+    // build 64 (62.7): every box is centred — within a pixel or two of the middle of the phone — at the same top, and never over its target
+    (seen.every(b => b && Math.abs(b.centre[0]) <= 2 && Math.abs(b.centre[1]) <= 2 && b.top === seen[0].top && !b.covers))
+      ? ok(`62.7 every box sits in the centre of the phone at the same spot (top ${seen[0].top}px) and none covers the thing it points at`)
+      : bad('62.7 the centred box', JSON.stringify(seen.map(b => b && { t: b.text, c: b.centre, top: b.top, covers: b.covers })));
     const words = C.steps.map(s => s.split(/\s+/).filter(w => /\w/.test(w)).length);
     const walked = seen.every((b, i) => b && b.text === C.steps[i]) && seen[1].next === false && seen[4].next === false && seen[0].next && words.every(n => n <= 12);
     await click('#go-btn'); await sleep(500);
