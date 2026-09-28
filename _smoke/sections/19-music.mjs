@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { own, GAMES, sleep, names, part, section, check, ok, bad, root, boot, NOW, at, page, until, onScreen, inGame, click, down, up, skipAd, readySeen, verdict, finish, poke, ONLY, named } from '../lib/gate.mjs';
+import { own, GAMES, sleep, names, part, section, check, ok, bad, root, boot, NOW, at, page, until, onScreen, inGame, click, down, up, skipAd, readySeen, verdict, finish, poke, ONLY, named, openSheet, clearReady } from '../lib/gate.mjs';
 
 export const SECTION = ["music"];
 
@@ -279,5 +279,35 @@ export async function run() {
     (!ac55.none && (ac55.st0 === 'running' ? ac55.n === 0 : ac55.n <= 1))
       ? ok(`item 12 AC() no longer resumes by itself — twelve sounds through a ${ac55.st0} context asked for ${ac55.n} resume${ac55.n === 1 ? '' : 's'}; every one goes through revive()'s single-flight ladder (F.2)`)
       : bad('item 12 AC() still resumes on every call', JSON.stringify(ac55));
+  }
+  /* build 62 (61.19): THE MUSIC CARRIES ON THROUGH A RUN. The menu's track keeps playing into the run (same track, the bar count never goes back
+     to 0) at RUN_MUSIC.vol; Pause keeps its place; the end of the run puts it back to full without starting it again; Music off stays off;
+     and a real Timing run drops it out while the count is running */
+  {
+    await boot({ chests: { games: 1 } }, {}, {});
+    const m19 = await page.evaluate(async () => { const M = (await import('./audio.js')).Music, A = await import('./config/audio.js'), st = await import('./core/state.js'), S = await import('./core/store.js');
+      const w = ms => new Promise(r => setTimeout(r, ms)); st.sel.vs = 0; S.prefs.musicG.menu = true;
+      M.stop(); M.menu('menu'); await w(2600); const menu = M.probe();
+      M.start('quick-tap', { on: true, live: false }, 15, 'two'); await w(300); const run = M.probe();
+      M.pause(); await w(200); const paused = M.probe(); M.resume(); await w(300); const back = M.probe();
+      M.endRun(); await w(200); const after = M.probe(); M.menu('menu'); const again = M.probe();
+      S.prefs.musicG.menu = false; M.start('dots', { on: true, live: false }, 5, 'blind'); const off = M.probe(); S.prefs.musicG.menu = true; M.stop();
+      return { vol: A.RUN_MUSIC.vol, menu, run, paused, back, after, again, off }; });
+    const same = x => x.track === m19.menu.track;
+    (m19.menu.playing && same(m19.run) && m19.run.bar >= m19.menu.bar && m19.run.level === m19.vol && m19.paused.bar >= m19.run.bar && same(m19.back) && m19.back.bar >= m19.paused.bar
+      && same(m19.after) && m19.after.level === 1 && m19.again.bar >= m19.after.bar && !m19.off.playing)
+      ? ok(`61.19 the menu's track (${m19.menu.track}) carries on into a run at ${m19.vol} of the menu level, bar ${m19.menu.bar} → ${m19.run.bar}, never back to the top; Pause keeps its place; the result puts it back to full without restarting it; Music off stays silent`)
+      : bad('61.19 music through a run', JSON.stringify(m19));
+    // a real Timing · Stopwatch run: while the clock is running the bed is at 0, and it comes back when the attempt is answered
+    await openSheet('timing', 0, 0); await click('#go-btn');
+    for (let i = 0; i < 140 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) { await clearReady('timing'); await sleep(100); }
+    const tq = await page.evaluate(async () => { const M = (await import('./audio.js')).Music, E = (await import('./games/timing/index.js')).default, w = ms => new Promise(r => setTimeout(r, ms));
+      for (let i = 0; i < 300 && E.st !== 'run'; i++) await w(25); await w(200); const during = { st: E.st, ...M.probe() };
+      return { during }; });
+    await click('#quit'); await sleep(300);
+    const qAfter = await page.evaluate(async () => (await import('./audio.js')).Music.probe());
+    (tq.during.st === 'run' && tq.during.quiet && tq.during.level === 0 && !qAfter.quiet && qAfter.level === 1)
+      ? ok('61.19 (Cowork) in a Timing run the music drops to nothing while the count is running, and is back at full once the run is over')
+      : bad('61.19 the Timing drop-out', JSON.stringify({ tq, qAfter }));
   }
 }

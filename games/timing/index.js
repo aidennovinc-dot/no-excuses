@@ -228,6 +228,8 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
      request is enough, because nothing but the loop itself re-arms it. Measured before this existed: a Stopwatch clock went on
      counting while the app was hidden, 0.00 to 1.30 over two seconds away. */
   pause(){ cancelAnimationFrame(this.raf); this.raf=0; },
+  // build 62 (61.19): the count is running — a stopwatch clock or a hidden ball on its way — so run/run.js has the music drop out
+  counting(){ return this.st==='run'; },
   replay(){ if(this.st==='idle') return; this.clearT(); cancelAnimationFrame(this.raf); this.stopAt=0;
     this.st='arm'; this.hid()?this.hidden():this.watch(); },
   swLocked(ev){ if(this.hid()||this.st!=='run'||!this.t0||ev===true) return false;

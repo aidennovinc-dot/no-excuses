@@ -439,6 +439,10 @@ export const CHEST_STING = {
 };
 /* build 62 (61.2): the Restart hold's rising tone. It lasts exactly as long as the fill (RESTART.holdMs in config/games.js) and a
    release before the line closes cuts it off. One oscillator gliding up, quiet, so it reads as "keep holding" rather than an alarm. */
+/* build 62 (61.19): THE MUSIC CARRIES ON THROUGH A RUN, under the taps. `vol` is the one mixing constant — the run's level against the menu's
+   (about half, Cowork's call; tune it by ear). In a Timing game the music drops out while the count is running and comes back after, so nobody
+   can count the beat (Cowork's call, listed for Aiden to overrule). */
+export const RUN_MUSIC = { vol: .5 };
 export const RESTART_FX = { f0: 330, f1: 990, wave: 'triangle', gain: .06 };
 export const CHEST_READY_FX = [[0, 146.8, 146.8, 460, 'sine', .03, 50], [.24, 220, 220, 700, 'sine', .03, 80]];
 /* v31 (60.33, build 60): THE WELCOME CEREMONY'S OWN SOUND. Distinct from the unlock sound and from the achievement click, the

@@ -64,11 +64,11 @@ export async function run() {
     // the Author key is not earned here, so its theme is KEPT and never applied - the same shape as build 42's shut chest
     await boot({ chests: { games: 1, key: 1 }, everywhere: 'thorns' }, { bars: tier42('clear') }, { plain: PLAIN42 });
     const shut = await page.evaluate(async () => { const S = await import('./core/store.js'); const M = await import('./audio.js'); const st = await import('./core/state.js');
-      st.sel.vs = 0; M.Music.start('dots', { on: true, live: false }, 20); const id = M.Music.probe().track; M.Music.stop(); return { stored: S.prefs.everywhere, eff: S.everywhere(), id }; });
+      st.sel.vs = 0; M.Music.start('dots', { on: true, live: false }, 20); const id = M.Music.probe().track; M.Music.stop(); return { stored: S.prefs.everywhere, eff: S.everywhere(), id, menu: M.Music.menuTrack() }; });
     await boot({ chests: { games: 1 }, everywhere: 'constructor' }, {}, { plain: PLAIN42 });
     const junk = await page.evaluate(async () => (await import('./core/store.js')).prefs.everywhere);
     // AMENDED at build 57 (v29 Section A, 57.6): the ladder ends at v7
-    (stat && a.v === 7 && a.first === 'game' && a.eff === 'game' && b.v === 7 && b.stored === 'pro' && b.eff === 'pro' && kept === 'key' && shut.stored === 'thorns' && shut.eff === 'game' && shut.id === 'dots:waltz' && junk === 'game')
+    (stat && a.v === 7 && a.first === 'game' && a.eff === 'game' && b.v === 7 && b.stored === 'pro' && b.eff === 'pro' && kept === 'key' && shut.stored === 'thorns' && shut.eff === 'game' && shut.id === shut.menu && shut.id !== 'theme:thorns' && junk === 'game')
       ? ok('L.7c / v28 item 2 one store key, prefs.everywhere, and one ladder step (v5 → v6): a v5 record arrives with it as Per game, and one that already carries a theme keeps it (up6 adds, never replaces); a theme round-trips a reload; "constructor" is dropped; and a theme whose KEY IS NOT EARNED is KEPT and never applied - everywhere() reads Per game and a Dots run plays Waltz')
       : bad('L.7c the store key', JSON.stringify({ stat, a, b, kept, shut, junk }));
   }
@@ -175,12 +175,15 @@ export async function run() {
        spelled differently and the check failed on the refactor; the repo rule is to delete such a check and name it, never to adjust it to the
        new spelling. Nothing is lost: `rm.menu.track` below DRIVES the page and proves the same fact harder (the menu really plays the theme),
        and the build-42 Customise check proves the other half — a game's track picked in the Music row is what menuTrack() then resolves to. */
-    const one = /const t=pickRun\(g\); run\(t,g,shapeFor\(t,g,d,len\)\)/.test(srcAud) && (srcAud.match(/pickRun\(/g) || []).length === 1;
-    (one && rm.timed.track === 'theme:pro' && rm.timed.arc && rm.timed.fin && rm.timed.flow && !rm.timed.stems
+    /* DELETED AT BUILD 62 (61.19), NOT RE-SPELLED: `one` was a source-text check on how Music.start spells its call to pickRun. 61.19 has a run
+       carry on the menu's track instead of starting its own, so the line changed; the rule is to delete such a check and name it. What it stood
+       for — one path, the run's rules riding on whatever plays — is what `rm` below drives: the theme, the arc, the clock, the flow, the stems. */
+    // (the condition below no longer reads it)
+    (rm.timed.track === 'theme:pro' && rm.timed.arc && rm.timed.fin && rm.timed.flow && !rm.timed.stems
       && rm.set.track === 'theme:pro' && rm.set.arc && Math.abs(rm.set.arcBars - rm.set.want) < .02 && !rm.set.flow
       && rm.open.track === 'theme:pro' && !rm.open.arc && rm.vs.track === 'theme:pro' && rm.vs.stems && !rm.vs.flow && rm.menu.track === 'theme:pro')
       ? ok(`L.7d with Pro set everywhere, every run plays theme:pro through the one path a game's track takes (pickRun, then shapeFor): a 20s Quick Tap run gets the arc, lands its last five seconds on the clock and arms the flow hum; an Estimate Grow Set gets the arc sized to SET_SECS (${rm.set.arcBars} bars); an open-ended run gets the long form; a versus run gets both stems; Sequence's duck keys on the game, not the track; and the MENU LOOP PLAYS IT TOO (v28 item 2 - build 42's guess that it should not was Aiden's to settle, and he did)`)
-      : bad('L.7d the theme as run music', JSON.stringify({ one, rm }));
+      : bad('L.7d the theme as run music', JSON.stringify({ rm }));
   }
 
   /* ---- 6. L.7e: the catalogue - the new themes on the music cards and linked both ways with their key screen cards, the old three once more marked retired, the Everywhere row photographed ---- */

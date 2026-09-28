@@ -10,7 +10,7 @@
 import { CHEER_FX, CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, COVER_AT, COVER_FX, DUCK, DUCK_TAIL, FLOW_STEM, GIFT_FX, HUSH, KEY_EARN_CIRCUIT, KEY_EARN_FX, KEY_INTRO_FX, KEY_STEP_FX, KEY_THEMES, MAP_FX, MAP_LOCKED, POP_FX, ROUND_FX, ROUND_VERDICT, SCALES, SET_SECS, STEMS, STING_RING, TITLE_FX, TRACKS, TRACK_PICK, VERDICT_FX, VIDEO_FX, WELCOME_FX, WHOOSH_VARIANTS } from "./config/audio.js";
 import { KEY_EARN } from "./config/keys.js";
 import { STREAK } from "./config/games.js";
-import { RESTART_FX } from "./config/audio.js";
+import { RESTART_FX, RUN_MUSIC } from "./config/audio.js";
 import { emit, on } from "./core/events.js";
 import { sel } from "./core/state.js";
 import { everywhere, look, musicOn, prefs } from "./core/store.js";
@@ -446,8 +446,13 @@ const Music=(()=>{
      tick, on the new context, which is the re-point) and re-anchor the clock where the new one is. The track, its bar and
      its form carry on from where they were. */
   rebinds.push(c=>{ mg=null; sg=[null,null]; fg=null; duckT=0; if(tr){ next=c.currentTime+.05; fin=null; } });
+  /* build 62 (61.19): the bed's level is ONE reading — hushed by a ceremony, silent while a Timing count runs, RUN_MUSIC.vol in a run, 1 in
+     the menus — and every ramp goes to it, so a duck or a hush comes back to where the music should be, never to full in the middle of a run */
+  let inRun=false, quiet=false;
+  const lv=()=>hushed||quiet?0:inRun?RUN_MUSIC.vol:1;
+  function level(k){ const a=ac; if(!a||!mg) return; try{ mg.gain.cancelScheduledValues(a.currentTime); mg.gain.setTargetAtTime(lv(),a.currentTime,k||.12); }catch(e){ mg.gain.value=lv(); } }
   function nodes(){ const a=AC(); if(!a) return null;
-    if(!mg||mg.context!==a){ mg=a.createGain(); mg.gain.value=hushed?0:1; mg.connect(a.destination); }
+    if(!mg||mg.context!==a){ mg=a.createGain(); mg.gain.value=lv(); mg.connect(a.destination); }
     if(!sg[0]||sg[0].context!==a){ sg=[0,1].map(()=>{ const g=a.createGain(); g.gain.value=0; g.connect(a.destination); return g; });
       fg=a.createGain(); fg.gain.value=0; fg.connect(a.destination); } return a; }
   /* v18 (B.29) — SILENCE IS NOT THE SAME AS "STOP SCHEDULING", and that is the whole of the bug. `loop()` schedules a
@@ -509,19 +514,20 @@ const Music=(()=>{
     // the arc is re-anchored the moment the clock starts, so it spans the run and not the run plus its countdown
     if(shape&&shape.arc&&!shape.livened&&st&&st.live&&secs>0){ arcFrom(bar,secs); shape.livened=1; }
     while(next<a.currentTime+.25){ const barSec=barSecNow(a); if(!barSec) break;
-      const sh=shapeAt(bar), r=tense(), vol=arcEnv(sh)*(fin||r>1?1.35:1)*(st&&st.on&&!st.live?.25:1);
+      // build 62 (61.19): no separate hush under the 3-2-1 any more — the music carries on through it at the run's level (the bed's gain)
+      const sh=shapeAt(bar), r=tense(), vol=arcEnv(sh)*(fin||r>1?1.35:1), under=vol*(inRun?RUN_MUSIC.vol:1);
       schedule(tr,next,barSec,vol,mg,hits,sh);
       /* v16 (1.4): the two versus stems. Same track, so the same root, tempo and bar — only the voicing is the stem's own,
          and each rides its own gain node whose level follows that player's proximity to winning (st.vsP). Presentation only (L10). */
       if(stems) for(const p of [0,1]){ const want=Math.max(0,Math.min(1,(st&&st.vsP&&st.vsP[p])||0));
         try{ sg[p].gain.setTargetAtTime(want*want,a.currentTime,.25); }catch(e){ sg[p].gain.value=want*want; }
-        schedule(Object.assign({},tr,STEMS[p]),next,barSec,vol,sg[p],sHits[p],sh); }
+        schedule(Object.assign({},tr,STEMS[p]),next,barSec,under,sg[p],sHits[p],sh); }
       /* B.27: the flow layer, over the music and never instead of it. Same track, so the same chords; its own gain node,
          whose level is the run's own smoothed taps-per-second reading (run/run.js owns the smoothing, and the edge glow
          reads the same number). Solo Quick Tap and Dots only — the glow is P2's light blue (L4). */
       if(flow){ const want=Math.max(0,Math.min(1,(st&&st.flow)||0));
         try{ fg.gain.setTargetAtTime(want,a.currentTime,.12); }catch(e){ fg.gain.value=want; }
-        schedule(Object.assign({},tr,FLOW_STEM),next,barSec,vol,fg,fHits,sh); }
+        schedule(Object.assign({},tr,FLOW_STEM),next,barSec,under,fg,fHits,sh); }
       next+=barSec; bar++; } }
   // B.29: a track that replaces another cuts it first — nodes() then builds the incoming track its own clean bed
   function run(t,id,sh){ if(tr) cut(); const a=nodes(); if(!a) return; tr=t; mode=id; bar=0; hits=[]; sHits=[[],[]]; fHits=[]; shape=sh||null; fin=null;
@@ -537,9 +543,25 @@ const Music=(()=>{
     // the countdown is not the run, but the music is already playing under it — the anchor is re-set when the clock starts
     return { arc:1, b0:0, bars:Math.max(1,(known+3)/barSecOf(t)) }; }
   return {
+    /* build 62 (61.19): A RUN NO LONGER STARTS ITS OWN TRACK. What the menu is playing carries on into the 3-2-1 and the run, at the run's
+       level, and is only started here if nothing is playing yet. The run's rules still ride on it — the arc sized to the run, the last five
+       seconds landing on the clock, the versus stems, the flow hum, Sequence's duck — because they read `st`, `shape` and `mode`, not the
+       track. Music off (Customise) is off here too. */
     start(g,state,len,d){ st=state||null; secs=(len>0&&len!==STREAK)?len:0; stems=sel.vs===2;
       flow=!sel.vs&&(g==='quick-tap'||g==='dots');
-      if(!musicOn(g)){ this.stop(); return; } const t=pickRun(g); run(t,g,shapeFor(t,g,d,len)); },
+      if(!musicOn('menu')){ this.stop(); return; } inRun=true; quiet=false;
+      const want=TR[menuTrack()]||pickRun(g);
+      if(tr&&tr===want&&timer){ mode=g; shape=shapeFor(tr,g,d,len); if(shape.arc) shape.b0=bar; fin=null; level(); return; }
+      run(want,g,shapeFor(want,g,d,len)); level(); },
+    // the run is over (finished, quit or restarted): the same track plays on at the menu's level, the run's layers fall away
+    endRun(){ inRun=false; quiet=false; st=null; secs=0; stems=false; flow=false; fin=null;
+      const a=ac; try{ for(const n of [sg[0],sg[1],fg]) if(n&&a) n.gain.setTargetAtTime(0,a.currentTime,.2); }catch(e){}
+      if(tr){ shape={ p:phaseOf(tr) }; const id=menuTrack(); if(TR[id]===tr) mode=id; } level(.4); },
+    // Pause pauses it where it is; resume carries on from the same bar
+    pause(){ clearInterval(timer); timer=0; const keep=tr; cut(); tr=keep; },
+    resume(){ if(!tr||timer) return; const a=nodes(); if(!a) return; next=a.currentTime+.05; fin=null; timer=setInterval(loop,80); loop(); },
+    // a Timing count running: the bed drops out, and comes back when the count stops
+    quiet(on){ on=!!on; if(on===quiet) return; quiet=on; level(on?.04:.3); },
     /* v16 (1.2 / 1.3): the front of the app has music too — one menu loop, and one per key tier. Called from the screen
        change below and from ui/screens/key.js when a tier is selected. Idempotent: asking for the loop that is already
        playing does nothing, so moving between menu screens never restarts it. */
@@ -554,13 +576,13 @@ const Music=(()=>{
        hook is only armed while a Sequence track is playing, so nothing else in the app pays for it. */
     duck(sec,at){ const a=ac; if(!a||!mg||mode!=='sequence') return; const t0=Math.max(a.currentTime,at||a.currentTime), back=t0+sec+DUCK_TAIL;
       if(back<=duckT) return; duckT=back;
-      try{ mg.gain.cancelScheduledValues(t0); mg.gain.setTargetAtTime(DUCK,t0,.06); mg.gain.setTargetAtTime(1,back,.25); }catch(e){} },
+      try{ mg.gain.cancelScheduledValues(t0); mg.gain.setTargetAtTime(DUCK*lv(),t0,.06); mg.gain.setTargetAtTime(lv(),back,.25); }catch(e){} },
     /* v23 (§L.6, build 41): a chest ceremony HUSHES the music fully and its tap brings it back. A flag as well as a ramp, because the key
        screen can ask for a different loop mid-ceremony and a bed built while hushed has to start silent (nodes()). No stem or flow layer
        plays on the key screen, so the bed is the whole of it. */
     // build 55: the parameter was `on`, which shadowed the imported event helper — the phantom-import pattern the refactor removed
     hush(v){ hushed=!!v; const a=ac; if(!a||!mg) return;
-      try{ mg.gain.cancelScheduledValues(a.currentTime); mg.gain.setTargetAtTime(hushed?0:1,a.currentTime,hushed?HUSH.down:HUSH.up); }catch(e){ mg.gain.value=hushed?0:1; } },
+      try{ mg.gain.cancelScheduledValues(a.currentTime); mg.gain.setTargetAtTime(lv(),a.currentTime,hushed?HUSH.down:HUSH.up); }catch(e){ mg.gain.value=lv(); } },
     /* the review catalogue's Play button (v16 §1.1). One pass of a track as a flat list of tone events —
        [t, freq, freqEnd, ms, wave, gain, attackMs, lowpassHz, q, hold] — so the page plays exactly what the app plays and
        there is no second copy of the arrangement engine to drift. `o` picks which version (B.29 / B.27):
@@ -578,12 +600,12 @@ const Music=(()=>{
     tracks(){ return Object.keys(TR); },
     // v21 (F.2): what the gate reads after a rebuild — is the bed on the live context, and is the clock anchored to it
     // v23 (L.7d, build 42): and which track is playing, and which run-music rules it is under — what the gate reads for a key theme in a run
-    probe(){ return { bed:!!mg&&mg.context===ac, playing:!!tr, next, now:ac?ac.currentTime:0, hushed, track:tr?Object.keys(TR).find(k=>TR[k]===tr)||'':'',
+    probe(){ return { bed:!!mg&&mg.context===ac, playing:!!tr, next, bar, level:lv(), inRun, quiet, now:ac?ac.currentTime:0, hushed, track:tr?Object.keys(TR).find(k=>TR[k]===tr)||'':'',
       arc:!!(shape&&shape.arc), arcBars:shape&&shape.arc?+shape.bars.toFixed(2):0, stems, flow, fin:!!fin }; },
     // what B.29 asks to be reported: one row per track, the arc a known run gets and the long form's own length
     lengths(){ return Object.keys(TR).map(id=>({ id, name:TR[id].name, form:formOf(TR[id]), barSec:+barSecOf(TR[id]).toFixed(2), formSec:+(formOf(TR[id])*barSecOf(TR[id])).toFixed(1), phase:phaseOf(TR[id]), longSec:longSec(TR[id]) })); },
     // B.29: stopping cuts what is already in the air too — the bar that was scheduled a moment ago is the whole problem
-    stop(){ clearInterval(timer); timer=0; cut(); tr=null; mode=''; shape=null; fin=null; duckT=0; } };
+    stop(){ clearInterval(timer); timer=0; cut(); tr=null; mode=''; shape=null; fin=null; duckT=0; inRun=false; quiet=false; } };
 })();
 duckHook=(sec,at)=>Music.duck(sec,at);
 

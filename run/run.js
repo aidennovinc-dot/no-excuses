@@ -157,6 +157,8 @@ function start(){
   pbShow(); setPendingAim(''); setPendingGoal(null);
   Music.start(sel.game,R,sel.secs,sel.diff);
   eng.mount(ctx);
+  /* build 62 (61.19): an engine that says it is COUNTING (Timing's hidden ball and stopwatch) has the music drop out while it does */
+  clearInterval(countT); countT=eng.counting?setInterval(()=>Music.quiet(R.on&&!paused&&!!eng.counting()),50):0;
   /* v31 (60.27, build 60): AND A RUN TAKEN OFF THE MENU'S RESUME ROW STARTS WHERE IT STOPPED. `sel.resumeAt` is the saved
      row; an engine says how to pick it up through `resumeAt(ctx, row)`, and one that cannot simply starts fresh. Read ONCE and
      cleared, so nothing can resume twice, and cleared even where the engine has no such thing — the offer has been taken. */
@@ -196,7 +198,7 @@ function abort(quiet,again){ if(!R.on) return; const gaunt=!!R.gaunt;
     if(landed) liveCheck(res); }catch(e){} }
   // v31 (60.27, build 60): a run that is over has nothing to offer back
   clearResume(); paused=false;
-  R.on=false; R.id++; VS.reset(); Intro.clear(); cancelAnimationFrame(R.raf); ctx.timers.clearT(); Music.stop(); eng.stop(ctx); $('#count').classList.remove('on'); $('#vwin').classList.remove('on'); $('#game').classList.remove('shake','live','flowon'); $('#seqdone')?.classList.remove('on'); $('#rxbar').innerHTML='';
+  R.on=false; R.id++; VS.reset(); Intro.clear(); cancelAnimationFrame(R.raf); ctx.timers.clearT(); clearInterval(countT); Music.endRun(); eng.stop(ctx); $('#count').classList.remove('on'); $('#vwin').classList.remove('on'); $('#game').classList.remove('shake','live','flowon'); $('#seqdone')?.classList.remove('on'); $('#rxbar').innerHTML='';
   // build 62 (61.1): the player's own Exit lands on the result screen marked abandoned; a quiet end and a Gauntlet keep their routes
   emit('run:abort',{quiet:!!quiet,gaunt,again:!!again}); }
 /* build 62 (61.2): RESTART. The run in hand is dropped the way Exit drops it (the quit pass keeps only what already landed), then the
@@ -222,11 +224,11 @@ function restart(){ if(!R.on||R.gaunt) return false; abort(false,true); start();
    people in a room and half of it is not worth restoring (L10 — nothing about it is recorded anyway).
 
    `pagehide` is here as well as `visibilitychange`: iOS fires it on a swipe out of the app and does not always fire the other. */
-let paused=false, pausedAt=0;
+let paused=false, pausedAt=0, countT=0;
 function pauseRun(){ if(paused||!R.on) return false; paused=true; pausedAt=performance.now();
   cancelAnimationFrame(R.raf); R.raf=0;
   if(ctx&&ctx.timers) ctx.timers.pause();
-  Music.stop();
+  Music.pause();
   $('#game').classList.add('paused');
   if(eng&&eng.pause) try{ eng.pause(ctx); }catch(e){}
   return true; }
@@ -235,7 +237,7 @@ function resumeRun(){ if(!paused) return false; paused=false;
   const away=Math.max(0,performance.now()-pausedAt);
   // a timed run keeps the time it had left; nothing else about it moves
   if(R.timed&&R.end) R.end+=away;
-  Music.start(sel.game,R,sel.secs,sel.diff);
+  Music.resume();
   const back=()=>{ if(!R.on) return;
     if(ctx&&ctx.timers) ctx.timers.resume();
     // THE ATTEMPT IN FLIGHT IS REPLAYED FRESH, no penalty. An engine with nothing in flight has no replay and simply carries on
@@ -291,7 +293,7 @@ function flowTick(now){ const tps=eng&&eng.tps?eng.tps(now):0;
    well (games/_shared/round.js); this is the belt. The intro's 'Ready?' tap does not come through here. */
 function input(ev){ if(!R.on||!R.live) return; ev.t=tapTime(ev.raw); eng.input(ctx,ev); }
 function finish(res){
-  R.on=false; R.live=false; R.flow=0; cancelAnimationFrame(R.raf); ctx.timers.clearT(); Music.stop(); eng.stop(ctx); Snd.end(); $('#seqdone')?.classList.remove('on'); $('#game').classList.remove('flowon');
+  R.on=false; R.live=false; R.flow=0; cancelAnimationFrame(R.raf); ctx.timers.clearT(); clearInterval(countT); Music.endRun(); eng.stop(ctx); Snd.end(); $('#seqdone')?.classList.remove('on'); $('#game').classList.remove('flowon');
   const run=Object.assign({ t:Date.now(), g:sel.game, d:sel.diff, s:sel.secs, n:prefs.name||'', v:RUN_SCHEMA },res||eng.result(ctx));
   // v29 (build 56): a Gauntlet step hands itself to run/gauntlet.js and stops here — before run:record, before the board, before every earn
   if(R.gaunt){ run.gaunt=1; emit('gaunt:step',{run,step:R.gaunt}); return; }

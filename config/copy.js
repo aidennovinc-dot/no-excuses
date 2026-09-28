@@ -329,7 +329,7 @@ export const ABOUT = { tier:['No ads, ever.','Every colour, background and sound
 /* v18 (B.28, build 33): one music row, called Music, and it is the track. `music` / `track` / `preview` are gone with
    the three controls they labelled — the row is the track's own name and a tap plays it. `lockLine` is B.30's line,
    which now sits under the row it is about instead of over it. */
-export const CUSTOM = { menu:'Menu music', lockLine:'Locked · {name} — {how} · <u>show me</u>', wheel:'{word} · {game} · drag to pick',
+export const CUSTOM = { menu:'Music on / off', lockLine:'Locked · {name} — {how} · <u>show me</u>', wheel:'{word} · {game} · drag to pick',
   /* v28 (items 2 / 3, build 53): the Everywhere row is gone — `perGame`, `openChest` and `themeOn` went with it. The Music row holds the key
      tracks now, and a locked one names the KEY that opens it (config/keys.js `name` — Skill key / Pro / Author, item 3), not its chest. There is
      no "show me" on that line: a key is not an achievement row and there is nothing on Progress to show. */

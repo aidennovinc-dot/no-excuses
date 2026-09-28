@@ -208,7 +208,9 @@
          tracks, and a key track chosen is the music every run and the menu play. A key track is locked until its KEY is earned and says so
          under the row, the one lockline B.30 allows -->
     <div class="cgroup"><div class="clabel">Music</div><div class="chips" data-set="track" id="c-track"></div><div class="lockline" data-act="pvlock" id="lk-track"></div></div>
-    <div class="cgroup"><div class="clabel">Menu music</div><div class="chips" data-set="menumusic" id="c-menumusic"></div></div>
+    <!-- build 62 (61.19): "Menu music" read wrong once music plays in games too. B.28 keeps on / off off the Music row itself, and v28 item 2
+         keeps ONE row called Music, so the switch is "Music on / off" -->
+    <div class="cgroup"><div class="clabel">Music on / off</div><div class="chips" data-set="menumusic" id="c-menumusic"></div></div>
     <button data-act="tut-replay" class="item sub" id="tut-replay">Replay tutorial</button>
 </section>
 
