@@ -1630,6 +1630,19 @@ scene('61.24', async (page, browser) => {
   await frame(page, browser, '61.24-author-key-third-visit', 'The Author key screen on a third visit, after a reload: the celebration does not play again');
 });
 
+// 61.25: the Skill key screen with Quick Tap picked — how many requirement rows show before scrolling, and where the music button sits
+const keyList = page => page.evaluate(() => { const l = document.getElementById('key-list'), m = document.getElementById('key-music'), rows = [...l.querySelectorAll('.krow')];
+  const lr = l.getBoundingClientRect(), full = rows.filter(r => { const b = r.getBoundingClientRect(); return b.top >= lr.top - 1 && b.bottom <= lr.bottom + 1; }).length;
+  const mr = m.getBoundingClientRect(); return { rows: rows.length, full, list: Math.round(lr.height), music: m.hidden ? 'hidden' : Math.round(innerHeight - mr.bottom) + 'px above the bottom' }; });
+scene('61.25', async (page, browser) => {
+  const KB = await import('../config/key-bars.js'); const now = Date.now();
+  await load(page, { ...OPEN, allOpen: 0, chests: { games: 1, key: 1, pro: 1, thorns: 1 }, revealed: { 'key:clear': 1 }, keyIntro: { clear: 1, pro: 1, author: 1 } }, { bars: Object.fromEntries(Object.keys(KB.KEY_BARS).map(k => [k, now])) });
+  await show(page, 's-key', { tier: 0 }); await sleep(900);
+  await page.evaluate(() => document.querySelector('.knode[data-kg="quick-tap"]').dispatchEvent(new MouseEvent('click', { bubbles: true }))); await sleep(700);
+  say('layout', await keyList(page));
+  await frame(page, browser, '61.25-key-list', 'Skill key, Quick Tap picked: the requirement list takes the room, SET THIS MUSIC near the bottom above the safe area');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }
