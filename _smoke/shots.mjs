@@ -1737,9 +1737,7 @@ scene('62.13', async (page, browser) => {
    second frame FORCES the phone's failure — the canvas stopped 34px short — to show what that strip is now: the layer's own bottom colour, not
    Lantern's purple --ground. Pixels read off each PNG: the strip (bottom 20px) against the layer 80px above it */
 scene('62.15', async (page, browser) => {
-  // networkidle0 never settles on this profile in this harness (the page itself is idle — checked), so this one waits for load
-  await page.evaluate(x => localStorage.setItem('ne', JSON.stringify(x)), Object.assign(fixture({ ...OPEN, bg: 'lantern' }), { intro: INTRO_ALL }));
-  await page.reload({ waitUntil: 'load' }); await sleep(1500); await show(page, 's-custom'); await sleep(900);
+  await load(page, { ...OPEN, bg: 'lantern' }); await show(page, 's-custom'); await sleep(900);
   await page.evaluate(() => { const s = document.getElementById('s-custom'); s.scrollTop = s.scrollHeight; }); await sleep(1400);
   const read = im => { const at = y => px(im, 20, y); return { strip: at(im.h - 20), above: at(im.h - 160) }; };
   say('ground', await page.evaluate(() => { const p = document.createElement('div'); p.style.background = 'var(--ground)'; document.body.appendChild(p); const c = getComputedStyle(p).backgroundColor; p.remove(); return { ground: c, html: getComputedStyle(document.documentElement).backgroundColor }; }));

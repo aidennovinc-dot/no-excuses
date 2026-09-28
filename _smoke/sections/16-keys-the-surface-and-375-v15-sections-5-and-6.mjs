@@ -788,14 +788,17 @@ export async function run() {
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
     const ul = await page.evaluate(async () => { const AT = await import('./ui/atmosphere.js'), R = await import('./ui/router.js');
       const w = ms => new Promise(r => setTimeout(r, ms)), cv = document.getElementById('stars'), cx = cv.getContext('2d', { willReadFrequently: true });
-      const bg = el => getComputedStyle(el).backgroundColor, px = () => { const d = cx.getImageData(2, cv.height - 2, 1, 1).data; return `rgb(${d[0]}, ${d[1]}, ${d[2]})`; };
-      R.show('s-key', { tier: 0 }); await w(400); AT.setKeyLayer('lantern'); await w(1400);
-      const lantern = { html: bg(document.documentElement), body: bg(document.body), px: px() };
+      // the canvas's own bottom row, a few points along it (a lantern can be passing one of them): the one nearest what the page wears
+      const bg = el => getComputedStyle(el).backgroundColor, rgb = s => s.match(/\d+/g).slice(0, 3).map(Number);
+      const px = want => [.18, .25, .32, .4].map(f => [...cx.getImageData(Math.round(cv.width * f), cv.height - 2, 1, 1).data].slice(0, 3)).sort((a, b) => Math.max(...a.map((v, i) => Math.abs(v - want[i]))) - Math.max(...b.map((v, i) => Math.abs(v - want[i]))))[0];
+      R.show('s-key', { tier: 0 }); await w(400); AT.setKeyLayer('lantern'); await w(900);
+      const html = bg(document.documentElement), near = px(rgb(html)), off = Math.max(...near.map((v, i) => Math.abs(v - rgb(html)[i])));
+      const lantern = { html, body: bg(document.body), px: `rgb(${near.join(', ')})`, off };
       AT.setKeyLayer(null); R.show('s-menu'); await w(1400);
       const probe = document.createElement('div'); probe.style.background = 'var(--ground)'; document.body.appendChild(probe); const ground = bg(probe); probe.remove();
       return { lantern, stars: { html: bg(document.documentElement), ground } }; });
-    (ul.lantern.html === ul.lantern.px && ul.lantern.body === ul.lantern.px && ul.lantern.html !== ul.stars.ground && ul.stars.html === ul.stars.ground)
-      ? ok(`62.15 under Lantern the page itself is the layer's bottom colour (${ul.lantern.px}), so a strip the layer misses is no flat --ground band; under the starfield it stays --ground (${ul.stars.ground})`)
+    (ul.lantern.off <= 4 && ul.lantern.body === ul.lantern.html && ul.lantern.html !== ul.stars.ground && ul.stars.html === ul.stars.ground)
+      ? ok(`62.15 under Lantern the page itself wears the layer's bottom colour (${ul.lantern.html} against the canvas's ${ul.lantern.px}), so a strip the layer misses is no flat --ground band; under the starfield it stays --ground (${ul.stars.ground})`)
       : bad('62.15 the page under the layer', JSON.stringify(ul));
   }
   /* build 62 (61.22): EVERY BACKGROUND FILLS THE WHOLE PAGE AND SITS BEHIND EVERYTHING, on the long screens, scrolled to the bottom, with a top
