@@ -291,7 +291,7 @@ export const TWO = { ready:'hand the phone over<br>tap when ready', hud:'{who} Â
 // the result screen. `word` is the mode's own scoreWord (rounds, or shapes on Go / No-go)
 /* build 62 (61.3): the first-run walkthrough, one line per step, each under ~12 words. Step 4 says both ways two people play (pass & play
    takes turns, versus is head to head); the brief's "Take turns on one phone" named only the first. */
-export const TUTORIAL = { next:'Next', skip:'Skip', replay:'Replay tutorial',
+export const TUTORIAL = { next:'Next', skip:'Skip',
   steps:[ 'Quick skill games. Hit targets to unlock more.', 'Start here.',
     "Each game has modes. 15s and 30s are locked â€” you'll earn them.",
     'Playing with someone? Take turns or go head to head.', 'Go.' ],

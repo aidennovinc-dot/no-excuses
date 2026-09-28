@@ -1664,6 +1664,12 @@ scene('A2', async (page, browser) => {
   say('litInStrip', litIn(im, { x0: 0, y0: 0, x1: im.w, y1: 47 * 2 }));
 });
 
+scene('62.5', async (page, browser) => {
+  await load(page); await show(page, 's-testing'); await sleep(500);
+  await frame(page, browser, '62.5-testing-replay', 'Testing: "replay tutorial" beside fresh game and open everything; Customise no longer has it');
+  say('customiseHasIt', await page.evaluate(() => !!document.querySelector('#s-custom [data-act="tut-replay"]')));
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

@@ -1182,7 +1182,6 @@
   #tut .trow button{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;padding:8px 4px;color:var(--mute);min-height:36px}
   #tut .trow .tnext{color:var(--tut)}
   #tut .trow [hidden]{display:none}
-  #tut-replay{margin-top:18px}
   /* build 62 (61.26): the Skill key at the foot of the Games chest tab — its art and one line; dim until the key is open, then lit */
   .unl .keyblock{display:flex;flex-direction:column;align-items:center;gap:10px;padding:22px 0 10px;width:100%;border:0;background:none;text-align:center}
   .keyblock .kbart{width:58px;height:58px;overflow:visible}

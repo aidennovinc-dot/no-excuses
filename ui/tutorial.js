@@ -18,7 +18,8 @@ import { define } from "./actions.js";
 import { show } from "./router.js";
 
 let step=0, host=null, timer=0, overAt=0, tipOn=false;
-const wanted=()=>prefs.tut===-1||(!prefs.tut&&!(store.runs||[]).length);
+// build 64: a profile that has played (`prefs.played`, cleared only by Fresh game) is not new either — the walkthrough now holds every tap, so it must never reach one
+const wanted=()=>prefs.tut===-1||(!prefs.tut&&!prefs.played&&!(store.runs||[]).length);
 // a fixed element has no offsetParent, so "on screen" is: not hidden, laid out, and not made invisible
 const vis=el=>!!el&&!el.hidden&&el.getClientRects().length>0&&el.getBoundingClientRect().height>0&&getComputedStyle(el).visibility!=='hidden';
 const onScreen=id=>{ const s=$('#'+id); return !!s&&s.classList.contains('on'); };
@@ -78,7 +79,8 @@ document.addEventListener('click',e=>{ if(!tipOn) return; const el=$('#over-chip
 
 function next(){ if(tipOn){ const el=$('#over-chips2 .chip.locked')||$('#over-chips .mch.locked'); finish(2); if(el) el.click(); return; } step++; tick(); }
 function skip(){ finish(2); }
-// Customise → Replay tutorial: back to the map, from step one, whatever the profile has played
+/* Testing → replay tutorial (build 64, 62.5 — it was the foot of Customise until then; a player gets the walkthrough once): the walkthrough's
+   state goes back to the start and the games menu opens, so it begins at step one whatever the profile has played */
 function replay(){ prefs.tut=-1; save(); step=0; tipOn=false; run(); }
 
 define({

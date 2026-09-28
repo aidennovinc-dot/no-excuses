@@ -32,7 +32,7 @@ export async function run() {
      ~12 words, the tile step waiting for the tile itself, Go ending it; then the one tip on a locked mode after the first result, answered
      by the lock box and its rule; Replay from Customise brings it back and Skip ends it for good */
   {
-    await page.evaluate(() => { localStorage.clear(); localStorage.setItem('ne', JSON.stringify({ v: 7, prefs: { story: 1, gridSeen: 1, played: 1, snd: 'off' }, runs: [], ach: {}, unlock: {}, intro: { 'quick-tap': 1, 'quick-tap:two': 1 }, seen: {}, bars: {} })); });
+    await page.evaluate(() => { localStorage.clear(); localStorage.setItem('ne', JSON.stringify({ v: 7, prefs: { story: 1, gridSeen: 1, snd: 'off' }, runs: [], ach: {}, unlock: {}, intro: { 'quick-tap': 1, 'quick-tap:two': 1 }, seen: {}, bars: {} })); });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(300); await click('[data-go="s-pick"]');
     const C = await page.evaluate(async () => (await import('./config/copy.js')).TUTORIAL);
     const box = () => page.evaluate(() => { const t = document.getElementById('tut'); if (!t || t.hidden) return null; const r = t.querySelector('.tring').getBoundingClientRect();
@@ -76,11 +76,15 @@ export async function run() {
       ? ok(`61.3 after the first result one tip rings a locked mode; tapping it opens the lock box with its rule ("${rule.text.slice(0, 60)}") and the tutorial is done (tut 2)`)
       : bad('61.3 the locked-mode tip', JSON.stringify({ tip, rule }));
     await click('#lock-no'); await sleep(200);
+    // build 64 (62.5): Replay lives in the Testing menu and nowhere in Customise
+    const where = await page.evaluate(() => ({ testing: !!document.querySelector('#s-testing #tut-replay'), custom: !!document.querySelector('#s-custom [data-act="tut-replay"]') }));
+    (where.testing && !where.custom) ? ok('62.5 Replay tutorial is in the Testing menu and gone from Customise') : bad('62.5 where Replay tutorial lives', JSON.stringify(where));
+    await page.evaluate(async () => (await import('./ui/router.js')).show('s-testing')); await sleep(200);
     await click('#tut-replay'); await sleep(300);
     const again = await waitText(C.steps[0]); await click('#tut .tskip'); await sleep(250);
     const skipped = await page.evaluate(() => ({ tut: JSON.parse(localStorage.getItem('ne')).prefs.tut, hidden: document.getElementById('tut').hidden }));
     (again && again.text === C.steps[0] && skipped.tut === 2 && skipped.hidden)
-      ? ok('61.3 Replay tutorial (Customise) brings it back from step one, whatever has been played, and Skip ends it for good')
+      ? ok('61.3 / 62.5 Replay tutorial (Testing) lands on the games menu with the walkthrough back at step one, whatever has been played, and Skip ends it for good')
       : bad('61.3 replay and skip', JSON.stringify({ again, skipped }));
   }
 }
