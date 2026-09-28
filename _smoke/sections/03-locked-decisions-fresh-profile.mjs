@@ -8,6 +8,9 @@ export const SECTION = ["locked decisions (fresh profile)"];
 
 export async function run() {
   sawStory ? ok('L1 title sequence plays before the menu') : bad('L1 title sequence plays before the menu');
+  /* build 64 (62.3 / 62.4): a fresh profile's map belongs to the walkthrough, which lets no tap through but its own — so the L checks below,
+     which are about the fresh profile's UNLOCKS and not its walkthrough, mark it finished first (the walkthrough is walked further down) */
+  await page.evaluate(async () => { const S = await import('./core/store.js'); S.prefs.tut = 2; S.save(); });
   await click('[data-go="s-pick"]'); await sleep(400);
   const tileCol = await page.evaluate(() => { const t = document.querySelector('.tile[data-game="quick-tap"]'); return { sq: t.style.getPropertyValue('--sq-live').trim(), unplayed: t.classList.contains('unplayed') }; });
   (tileCol.unplayed && tileCol.sq.toUpperCase() === '#FFFFFF') ? ok('L7 Quick Tap tile is white before any run') : bad('L7 Quick Tap tile is white before any run', JSON.stringify(tileCol));
@@ -35,6 +38,21 @@ export async function run() {
     const box = () => page.evaluate(() => { const t = document.getElementById('tut'); if (!t || t.hidden) return null; const r = t.querySelector('.tring').getBoundingClientRect();
       return { text: t.querySelector('p').textContent, next: !t.querySelector('.tnext').hidden, ring: [Math.round(r.width), Math.round(r.height)], col: getComputedStyle(t.querySelector('.tring')).borderTopColor }; });
     const waitText = async (want, n = 80) => { for (let i = 0; i < n; i++) { const b = await box(); if (b && b.text === want) return b; await sleep(100); } return await box(); };
+    /* build 64 (62.3): a new profile's map drawing itself in — taps on a game, the ground and Back, before the first box, all do nothing:
+       no sheet, no navigation, and the first box still arrives */
+    {
+      await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('ne')); s.prefs.gridSeen = 0; localStorage.setItem('ne', JSON.stringify(s)); });
+      await page.reload({ waitUntil: 'networkidle0' }); await sleep(300); await click('[data-go="s-pick"]'); await sleep(250);
+      const early = await page.evaluate(() => { const t = document.querySelector('.tile[data-game="quick-tap"]'), b = t.getBoundingClientRect(), hit = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2);
+        const drawing = t.getAnimations().some(a => a.playState === 'running'); hit.click(); document.getElementById('grid').click(); document.querySelector('#s-pick .back')?.click();
+        return { drawing, box: !document.getElementById('tut') || document.getElementById('tut').hidden }; });
+      await sleep(300);
+      const mid = await page.evaluate(() => ({ screen: document.querySelector('.screen.on')?.id, sheet: !document.getElementById('sheet').hidden }));
+      const first = await waitText(C.steps[0], 120);
+      (early.drawing && early.box && mid.screen === 's-pick' && !mid.sheet && first && first.text === C.steps[0])
+        ? ok('62.3 taps on a game, the map and Back while the map is still drawing in do nothing — no sheet, no Back — and the first box still arrives')
+        : bad('62.3 a tap during the games-menu intro', JSON.stringify({ early, mid, first }));
+    }
     const seen = [];
     seen.push(await waitText(C.steps[0])); await click('#tut .tnext');
     seen.push(await waitText(C.steps[1])); await click('.tile[data-game="quick-tap"]');

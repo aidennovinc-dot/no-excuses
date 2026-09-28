@@ -68,6 +68,11 @@ function run(){ if(!timer&&prefs.tut!==2) timer=setInterval(tick,200); }
 // Go pressed from the walkthrough: the run has started, so the walkthrough is over and the tip waits for the result
 on('screen:change',({id})=>{ if(id==='s-over') overAt=Date.now(); if(id==='game'&&wanted()&&step>=1) finish(1); if(id==='game') hide(); });
 on('store:reset',()=>{ step=0; });
+/* build 64 (62.3): A TAP BEFORE THE FIRST BOX DOES NOTHING. Tapping a game while the map was still drawing itself in opened that game's sheet;
+   step one waits for the bare map, so it never showed, and the run the player then played ended the walkthrough for good. From the moment the
+   map is up for a walkthrough until its first box is on screen, every tap is swallowed here — capture, ahead of ui/actions.js's own handler —
+   so nothing opens, nothing goes Back and nothing skips it. */
+document.addEventListener('click',e=>{ if(!wanted()||!onScreen('s-pick')||step>0||(host&&!host.hidden)) return; e.stopPropagation(); e.preventDefault(); },true);
 /* the tip is answered by a tap on the locked chip it rings — capture, so the chip's own lock box still opens underneath */
 document.addEventListener('click',e=>{ if(!tipOn) return; const el=$('#over-chips2 .chip.locked')||$('#over-chips .mch.locked'); if(el&&e.target.closest('.chip.locked,.mch.locked')) finish(2); },true);
 
