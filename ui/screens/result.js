@@ -13,7 +13,7 @@ import { emit, on } from "../../core/events.js";
 import { VS, sel } from "../../core/state.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, SHARED2, isStreak, lenName, versusOf } from "../../games/registry.js";
-import { Scores, achById, achToast, got, isOpen, lenLock, lenOpen, lensOf, markSeen, newMark, tierOf, unlockHtml, unlockToast, verdict } from "../../progress.js";
+import { Scores, achById, achToast, got, isOpen, lenLock, lenOpen, lensOf, markSeen, newMark, newPlay, tierOf, unlockHtml, unlockToast, verdict } from "../../progress.js";
 import { R, start } from "../../run/run.js";
 import { Snd } from "../../audio.js";
 import { define, lock } from "../actions.js";
@@ -32,10 +32,10 @@ function renderOverChips(){ const g=GAMES[sel.game]; const vsOk=versusOf(sel.gam
      two rows, which is why Versus wrapped onto a line of its own and the widths never matched. ui/players.js draws it; the taps
      are still this screen's own `chip-over`, and `data-p` / `data-p2` are what ui/actions.js reads off them. */
   $('#over-vs').innerHTML=playersHtml({ act:'chip-over', vs:sel.vs, vsOk });
-  $('#over-chips').innerHTML=g.modes.length>1?g.modes.map(d=>{ const open=isOpen(sel.game,d); const nw=open?newMark('mode:'+sel.game+':'+d,fresh):''; return `<button class="mch ${d===sel.diff?'sel':''} ${open?'':'locked'}${nw}" data-act="chip-over" data-chip="over-d" data-v="${d}"><span class="pic">${picOf(sel.game,d)}</span><b class="${open?'':'x'}">${MODE_NAME[d]}</b></button>`; }).join(''):'';
+  $('#over-chips').innerHTML=g.modes.length>1?g.modes.map(d=>{ const open=isOpen(sel.game,d); const nw=open?newMark('mode:'+sel.game+':'+d,fresh):'', np=open&&newPlay(sel.game,d)?' newplay':''; return `<button class="mch ${d===sel.diff?'sel':''} ${open?'':'locked'}${nw}${np}" data-act="chip-over" data-chip="over-d" data-v="${d}"><span class="pic">${picOf(sel.game,d)}</span><b class="${open?'':'x'}">${MODE_NAME[d]}</b></button>`; }).join(''):'';
   const versus=sel.vs===2&&vsOk, c=GC(sel.game,sel.diff), lens=lensOf(sel.game,sel.diff,versus?2:0), fixed=sel.vs===1&&(PASS_LEN[sel.game]||SHARED2(sel.game,sel.diff));
   if(!lens.includes(sel.secs)||!versus&&!lenOpen(sel.game,sel.diff,sel.secs)) sel.secs=lens.find(s=>versus||lenOpen(sel.game,sel.diff,s))||lens[0];
-  $('#over-chips2').innerHTML=lens.length>1&&!fixed&&(!versus||c.vsLens)?lens.map(s=>{ const L=versus?null:lenLock(sel.game,sel.diff,s); const nw=L?'':newMark('len:'+sel.game+':'+sel.diff+':'+s,fresh); return `<button class="chip ${s===sel.secs?'sel':''} ${L?'locked x':''}${nw}" data-act="chip-over" data-chip="over-s" data-v="${s}">${lenName(sel.game,s,sel.diff,versus)}</button>`; }).join(''):'';
+  $('#over-chips2').innerHTML=lens.length>1&&!fixed&&(!versus||c.vsLens)?lens.map(s=>{ const L=versus?null:lenLock(sel.game,sel.diff,s); const nw=L?'':newMark('len:'+sel.game+':'+sel.diff+':'+s,fresh), np=!L&&!versus&&newPlay(sel.game,sel.diff,s)?' newplay':''; return `<button class="chip ${s===sel.secs?'sel':''} ${L?'locked x':''}${nw}${np}" data-act="chip-over" data-chip="over-s" data-v="${s}">${lenName(sel.game,s,sel.diff,versus)}</button>`; }).join(''):'';
   $('#over-chips3').innerHTML='';
   markSeen(fresh);
   $('#again').textContent=sameAsPlayed()?(abandoned?RESULT.retry:SHEET.tryAgain):goLabel(sel.game,sel.diff,versus); }

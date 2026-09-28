@@ -38,7 +38,11 @@ function newMark(key,bag){ if(!isNew(key)) return ''; if(bag) bag.push(key); ret
    it is on record, and that is read off the RUN STORE, not a flag, so it can never disagree with the board. "Newly
    unlocked" is an earned unlock in the store: a mode open from the start (Quick Tap · Two), or open only because OPEN
    EVERYTHING is on, has nothing to announce. A two-player or practice run is never recorded, so it does not clear it. */
-const newPlay=(g,d)=>!!unlocked()[g+':'+d]&&!Scores.runs().some(r=>r.g===g&&r.d===d);
+/* build 64 (62.13): AND A LENGTH. Dash unlocked by a first Sprint showed plain grey on the result screen: this rule only ever knew modes, and the
+   result screen never asked it at all — its chips carried L8's once-only first-seen mark, spent the moment they were drawn. With `s` it is the
+   same test for a length: banked (bankLen writes the three-part key) and never played. Every place a mode or length is drawn asks it. */
+const newPlay=(g,d,s)=>s===undefined?!!unlocked()[g+':'+d]&&!Scores.runs().some(r=>r.g===g&&r.d===d)
+  :!!unlocked()[g+':'+d+':'+s]&&!Scores.runs().some(r=>r.g===g&&r.d===d&&r.s===s);
 function openKeys(){ const k=[]; for(const g in GAMES){ if(gameOpen(g)) k.push('game:'+g); for(const d of GAMES[g].modes){ if(!isOpen(g,d)) continue; k.push('mode:'+g+':'+d); for(const sc of GC(g,d).lens) if(lenOpen(g,d,sc)) k.push('len:'+g+':'+d+':'+sc); } }
   if(practiceOpen()) k.push('len:sequence:solo:practice'); const a=got(); for(const id in a) k.push('ach:'+id);
   /* v17 (B.10): THE COSMETICS. This walk never included them, so on a brand-new profile the first open of Customise lit

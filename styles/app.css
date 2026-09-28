@@ -1642,6 +1642,12 @@
   /* D.1: a newly unlocked MODE stays green until a run of it is on record — the same green line L8's first-seen mark draws
      on game select, no new treatment. On its row in the sheet and on its game's tile. */
   .choice.newplay{border-color:var(--ok)}
+  /* build 64 (62.13): the same green on a never-played length (the sheet's row, the result screen's chips) and a result screen mode chip; selected beats it (D.2) */
+  .tbtn.newplay{border-color:var(--ok)}
+  .chip.newplay,.mch.newplay{border-color:var(--ok);color:var(--ok)}
+  .tbtn.sel.newplay{border-color:var(--ink)}
+  .chip.sel.newplay{border-color:var(--ink);color:var(--ink)}
+  .mch.sel.newplay{border-color:var(--ink);color:var(--press)}
   .tile.newplay .pic{border-color:var(--ok)}
   /* D.2: SELECTED BEATS GREEN. `.newthing` carries `border-color:…!important`, so the selected line lost to it however the
      classes in fillSheet were ordered — the class list was never the problem, the cascade was. A selected mode wears its

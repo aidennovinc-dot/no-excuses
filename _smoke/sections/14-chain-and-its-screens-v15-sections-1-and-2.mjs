@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { BASE, GAMES, sleep, check, ok, bad, finished, root, read, at, page, until, click, setStorage, SEEN_INTRO, finish, driveToResult, openSheet, named } from '../lib/gate.mjs';
+import { BASE, GAMES, sleep, check, ok, bad, finished, root, read, at, page, until, click, setStorage, SEEN_INTRO, finish, driveToResult, openSheet, named, boot } from '../lib/gate.mjs';
 
 export const SECTION = ["the chain and its screens (v15 sections 1 and 2)"];
 
@@ -188,4 +188,29 @@ export async function run() {
     // RESTATED at build 62 (61.26): TWO headings, games-and-modes and lengths — the third, "Skill key", went with the grey paragraph under it; the key is its own art at the foot now
     (u.screen === 's-prog' && u.rows > 0 && u.heads === 2 && !u.stray.length) ? ok(`2.4 the Games chest tab lists ${u.rows} rows under ${u.heads} headings, then the Skill key`) : bad('2.4 the Games chest tab', JSON.stringify(u));
     (!u.stray.length) ? ok('2.4 / L6 every requirement on the Unlocks screen comes from UNLOCKS or lenNeed — no second copy') : bad('2.4 a requirement written twice', u.stray.join(' | ')); }
+
+  /* build 64 (62.13): A LENGTH UNLOCKED AND NEVER PLAYED IS GREEN EVERYWHERE, the result screen's chips included — Aiden's Dash after his first
+     Sprint was plain grey there. One Sprint on record, Dash banked: green on the sheet (twice, so it is not L8's once-only mark), green on the
+     result screen's chip (and still after the chips redraw), and plain once a Dash is on record */
+  {
+    const t0 = Date.now() - 60000, m = 'two', sprint = { t: t0, g: 'quick-tap', d: m, s: 5, hits: 14, misses: 0, v: 4 };
+    await boot({}, { runs: [sprint], unlock: { 'quick-tap:two:15': t0 } });
+    const sheet = () => page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-pick'); await new Promise(r => setTimeout(r, 300));
+      document.querySelector('.tile[data-game="quick-tap"]').click(); await new Promise(r => setTimeout(r, 400)); document.querySelector('#diff-row .choice[data-diff="two"]').click(); await new Promise(r => setTimeout(r, 400));
+      const b = document.querySelector('#time-row .tbtn[data-time="15"]'); const out = { np: b.classList.contains('newplay'), col: getComputedStyle(b).borderTopColor }; R.show('s-menu'); return out; });
+    const s1 = await sheet(), s2 = await sheet();
+    const over = async runs => page.evaluate(async ({ sprint, runs }) => { const S = await import('./core/store.js'), ST = await import('./core/state.js'), E = await import('./core/events.js');
+      if (runs) S.store.runs = runs; ST.sel.game = 'quick-tap'; ST.sel.diff = 'two'; ST.sel.secs = 5; ST.sel.vs = 0;
+      E.emit('run:record', { run: sprint }); E.emit('run:finish', { run: sprint, isBest: false, two: false, fresh: [], ach: [], adv: null });
+      for (let i = 0; i < 60 && !document.getElementById('s-over').classList.contains('on'); i++) await new Promise(r => setTimeout(r, 100));
+      await new Promise(r => setTimeout(r, 300));
+      const dash = () => document.querySelector('#over-chips2 .chip[data-v="15"]'), first = { np: dash().classList.contains('newplay'), col: getComputedStyle(dash()).borderTopColor };
+      document.querySelector('#over-chips2 .chip[data-v="5"]').click(); await new Promise(r => setTimeout(r, 200));
+      return { first, again: dash().classList.contains('newplay') }; }, { sprint, runs });
+    const ok62 = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--ok').trim());
+    const o1 = await over(null), o2 = await over([sprint, { ...sprint, t: t0 + 1000, s: 15, hits: 30 }]);
+    (s1.np && s2.np && o1.first.np && o1.again && !o2.first.np && !o2.again)
+      ? ok(`62.13 a banked, never-played Dash is green on the sheet (twice) and on the result screen's chip (${o1.first.col}), still after the chips redraw, and plain once a Dash is on record`)
+      : bad('62.13 the never-played length', JSON.stringify({ s1, s2, o1, o2, ok62 }));
+  }
 }

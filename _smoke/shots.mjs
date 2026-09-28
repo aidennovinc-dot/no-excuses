@@ -1722,6 +1722,17 @@ scene('62.11', async (page, browser) => {
   await frame(page, browser, '62.14-menu-open', 'The menu after the walkthrough: Scores, Progress and About open, Customise and Keys still locked behind the Games chest');
 });
 
+// 62.13: one Sprint on record and Dash banked from it — the result screen of that Sprint, Dash's chip green
+scene('62.13', async (page, browser) => {
+  const t0 = Date.now() - 60000, sprint = { t: t0, g: 'quick-tap', d: 'two', s: 5, hits: 14, misses: 2, v: 4 };
+  await load(page, { story: 1 }, { runs: [sprint], unlock: { 'quick-tap:two:15': t0 } });
+  await page.evaluate(async sprint => { const ST = await import('./core/state.js'), E = await import('./core/events.js'); ST.sel.game = 'quick-tap'; ST.sel.diff = 'two'; ST.sel.secs = 5; ST.sel.vs = 0;
+    E.emit('run:record', { run: sprint }); E.emit('run:finish', { run: sprint, isBest: true, two: false, fresh: [], ach: [], adv: null }); }, sprint);
+  await sleep(5000);
+  say('dash', await page.evaluate(() => { const b = document.querySelector('#over-chips2 .chip[data-v="15"]'); return { cls: b.className, border: getComputedStyle(b).borderTopColor }; }));
+  await frame(page, browser, '62.13-dash-green', 'Result of the Sprint that unlocked Dash: the DASH chip green until a Dash is played');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }
