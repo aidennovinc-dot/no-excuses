@@ -17,7 +17,7 @@ export async function run() {
   /* ---- 1. §E: Aiden's 42 numbers, exactly as he set them, and the two shapes in them ---- */
   {
     const AIDEN = { 'quick-tap:two:5': [9, 13], 'quick-tap:two:15': [26, 39], 'quick-tap:two:30': [51, 78], 'quick-tap:four:5': [9, 12], 'quick-tap:four:15': [26, 36], 'quick-tap:four:30': [51, 72],
-      'dots:blind:5': [7, 11], 'dots:blind:15': [21, 33], 'dots:blind:30': [42, 66], 'dots:lead:5': [9, 15], 'dots:lead:15': [27, 45], 'dots:lead:30': [54, 90],
+      'dots:blind:5': [7, 11], 'dots:blind:15': [21, 33], 'dots:blind:30': [42, 66], 'dots:lead:5': [9, 17], 'dots:lead:15': [27, 34], 'dots:lead:30': [54, 68],
       'hold:grow:7': [30], 'hold:grow:-1': [7], 'hold:cut:10': [15], 'hold:cut:-1': [10], 'sequence:solo:3': [6], 'sequence:solo:7': [6], 'timing:stopwatch:5': [2.5], 'timing:stopwatch:-1': [9],
       'timing:hidden:10': [1500], 'timing:hidden:-1': [6], 'reaction:flash:5': [295], 'reaction:flash:-1': [6], 'reaction:nogo:5': [400], 'reaction:nogo:-1': [10], 'spot:count:10': [12], 'spot:count:-1': [8], 'spot:find:10': [18], 'spot:find:-1': [8] };
     const B = KB44.KEY_BARS, off = [];
@@ -26,7 +26,9 @@ export async function run() {
     /* the shapes in his data, as they are: × 1 / 3 / 6 at Pro in all four modes and at key 1 in Dots. Quick Tap's key 1 is NOT × 1 / 3 / 6 —
        it is 9 / 26 / 51, one curve for Two and Four — and the gate says so rather than "correcting" it (the build 44 prompt claimed otherwise) */
     const x136 = (m, t) => [1, 3, 6].every((x, i) => B[`${m}:${[5, 15, 30][i]}`][t] === B[`${m}:5`][t] * x);
-    const shape = ['quick-tap:two', 'quick-tap:four', 'dots:blind', 'dots:lead'].every(m => x136(m, 'pro')) && ['dots:blind', 'dots:lead'].every(m => x136(m, 'bar')) && !x136('quick-tap:two', 'bar');
+    /* RESTATED at build 62 (61.5): Dots · Lead's Pro is Aiden's 17 / 34 / 68 (FEEDBACK-v32, confirmed 2026-09-28), which breaks × 1 / 3 / 6 ON
+       PURPOSE — so the shape holds in the other three modes and Lead is asserted NOT to follow it, never "corrected" back into it */
+    const shape = ['quick-tap:two', 'quick-tap:four', 'dots:blind'].every(m => x136(m, 'pro')) && !x136('dots:lead', 'pro') && ['dots:blind', 'dots:lead'].every(m => x136(m, 'bar')) && !x136('quick-tap:two', 'bar');
     const curve = [5, 15, 30].every(s => B[`quick-tap:two:${s}`].bar === B[`quick-tap:four:${s}`].bar) && [9, 26, 51].every((v, i) => B[`quick-tap:two:${[5, 15, 30][i]}`].bar === v) && B['quick-tap:two:5'].pro === 13 && B['quick-tap:four:5'].pro === 12;
     (!off.length && set === 42 && Object.keys(B).length === 30 && shape && curve)
       ? ok(`v24 §E all ${set} of Aiden's numbers are in config/key-bars.js exactly as he set them (30 key 1, 12 Pro, conf 'set', no marker on his Pro); every length is the Sprint figure × 1 / 3 / 6 at Pro and at Dots' key 1, while Quick Tap's key 1 is his 9 / 26 / 51 for both Two and Four, which split at Pro, 13 against 12`)
