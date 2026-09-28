@@ -65,6 +65,9 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
     /* build 62 (61.3): `tut`, the first-run walkthrough — absent/0 not yet (shown only to a profile with no runs), -1 asked for again,
        1 walkthrough done with the after-result tip to come, 2 done. A preference: Fresh game keeps it. No ladder step: absent means "not yet". */
     tut:[-1,1,2].includes(p.tut)?p.tut:0,
+    /* build 64 (62.10): `tutRun`, the walkthrough's first run, kept while its result's boxes are still to come (tut 1) so a reopened app lands on
+       it. A run record, held to the same test a stored run is; absent otherwise. */
+    tutRun:validRun(p.tutRun)?p.tutRun:undefined,
     // v17 (build 28): `keySeen` was missing from this list since build 26 — reset() cleared a field load() never created,
     // so the keys screen's once-per-profile arrival was shape-checked by nothing. It is a flag like the three beside it
     col:{}, story:p.story?1:0, played:p.played?1:0, gridSeen:p.gridSeen?1:0, menuSeen:p.menuSeen?1:0, keySeen:p.keySeen?1:0,

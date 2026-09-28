@@ -181,7 +181,8 @@ export async function run() {
      one-mode game, which opens straight on its lengths — has no mode step to go back to and must close to the map in one tap.
      Driven on two games, a many-mode one and Sequence, which is the one-mode case. */
   { const sb60 = await page.evaluate(async () => { const R = await import('./ui/router.js'), ST = await import('./core/state.js');
-      const SS = await import('./core/store.js'); SS.prefs.allOpen = true; SS.save();
+      // build 64: this part opens on an empty profile, whose map the walkthrough would otherwise hold
+      const SS = await import('./core/store.js'); SS.prefs.allOpen = true; SS.prefs.tut = 2; SS.save();
       const wait = ms => new Promise(r => setTimeout(r, ms));
       const where = () => { const sh = document.getElementById('sheet');
         return { screen: (document.querySelector('.screen.on') || {}).id,

@@ -160,7 +160,9 @@ function achRow(a,tab,{g,all,fsGame,fresh}){
   if(tab==='cul'){ const [k,v]=a.unlocks, w=[GAMES[wg].name].concat(wbits.filter(x=>x!==GAMES[wg].name));
     return `<button data-act="ach" class="a cu ${cls}" data-ach="${a.id}" id="cul-${a.id}"><span class="rw">${isDone?'✓ ':''}${unlockArt(k,v)}<b class="aname">${esc(shownName(a,w))}</b></span><em>${isDone?ACH_SCREEN.done:''}</em><small>${esc(reqOf(a,w))}${leftTxt}</small>${jump?`<small class="go">→ ${w.join(' · ')}</small>`:''}${bar}</button>`; }
   if(tab==='cul') return `<button data-act="ach" class="a cu ${cls}" data-ach="${a.id}" id="cul-${a.id}"><span class="rw">${isDone?'✓ ':''}${unlockHtml(a)}</span><em>${isDone?ACH_SCREEN.done:''}</em><small>${gname}${name} · ${line}</small>${where}${bar}</button>`;
-  return `<button data-act="ach" class="a ${cls}" data-ach="${a.id}" id="${tab}-${a.id}"><span>${gname}${isDone?'✓ ':''}${name}</span><em>${isDone?ACH_SCREEN.done:secret?ACH_SCREEN.secret:''}</em><small>${line}</small>${where}${bar}</button>`;
+  // build 64 (62.14): an achievement that opens part of the app says what, on a line of its own
+  const gives=a.gives?`<small class="gives">${esc(T(ACH_SCREEN.gives,{what:a.gives}))}</small>`:'';
+  return `<button data-act="ach" class="a ${cls}" data-ach="${a.id}" id="${tab}-${a.id}"><span>${gname}${isDone?'✓ ':''}${name}</span><em>${isDone?ACH_SCREEN.done:secret?ACH_SCREEN.secret:''}</em><small>${line}</small>${gives}${where}${bar}</button>`;
 }
 
 /* ---------- build 62 (61.8, SUPERSEDING 61.27): WHAT THIS CHEST NEEDS IS NOT LISTED HERE ANY MORE ----------

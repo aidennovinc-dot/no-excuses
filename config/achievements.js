@@ -26,6 +26,10 @@ export const ACH = [
   // v29 (item 11, build 55): `noRun` - earned off a screen, never by playing, so the Next card never offers it and Try never pins it
   { id:'named',   g:'all', tier:'earned', name:'Signed in',   how:'Put a name on your profile, top of the Scores screen', unlocks:['bg','grid'], noRun:1 },
   { id:'every',   g:'all', tier:'earned', name:'Every game',  how:'Finish a run in every game', unlocks:['lead','#FFB020'] },
+  /* build 64 (62.14): FINISHING THE WALKTHROUGH. Earned on its last tap ("Good luck!", ui/tutorial.js), never by a run (`noRun`), and what it
+     gives is the menu itself: Scores, Progress and About are locked until it (`gives` is the row's own line). Name is Cowork's — the walkthrough
+     is on rails and finishing it takes you off them. Counts toward no key: ACH rows never do. */
+  { id:'rails',   g:'all', tier:'earned', name:'Off the Rails', how:'Finish the walkthrough', gives:'Scores · Progress · About', noRun:1 },
   { id:'fullset', g:'all', tier:'pro',    name:'Full set',    how:'In one game, every mode at every length', unlocks:['wheel'] },
   // v8: the first "big" unlock — a sound pack that is mostly a joke
   // v26 (§B1, build 49): Grand tour no longer unlocks the Sigh sounds — Sigh is held for an achievement still to be chosen (config/theme.js ITEMS.snd)

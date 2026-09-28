@@ -22,6 +22,7 @@ import { goWhere } from "../../run/run.js";
 import { capture, define } from "../actions.js";
 import { register, show } from "../router.js";
 import { toast } from "../toast.js";
+import { tutDone } from "../tutorial.js";
 import { Snd } from "../../audio.js";
 
 // first experience (v10): until one run is on the record only Play is live. v11: the rest are crossed out, and the strike wipes off the moment they open
@@ -29,7 +30,10 @@ import { Snd } from "../../audio.js";
    the key screen use — but this rule outranked it: Testing's chest switches open the Games chest without a run on the record, so the menu kept
    every row but Play crossed out while the map showed the chest opened and Keys and Customise had nothing locking them. Earned by play, a run is
    always on the record first, so the real path never met it; the Testing path always did. */
-const firstRun=()=>!prefs.played&&!Scores.runs().length&&!prefs.allOpen&&!chestOpen('games');
+/* build 64 (62.14): AND NOW THE WALKTHROUGH IS WHAT OPENS THEM. Scores, Progress and About stay locked until its last box ("Good luck!") banks
+   Off the Rails — the first run no longer does it. tutDone() (ui/tutorial.js) also counts a profile from before build 64 that played and never
+   met the walkthrough, so nobody already in the game is locked back out. Customise and Keys still wait for the Games chest. */
+const firstRun=()=>!tutDone()&&!prefs.allOpen&&!chestOpen('games');
 let menuWasFirst=firstRun(), nextWhere=null, storyOn=false;
 // v23 (L.11a): whether Customise was locked the last time the menu drew it, so the strike wipes off once, the first draw after the Games chest
 let cusWasLocked=!chestOpen('games');

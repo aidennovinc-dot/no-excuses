@@ -1679,6 +1679,49 @@ scene('62.7', async (page, browser) => {
   await frame(page, browser, '62.7-box-centred', 'Walkthrough step 1: the box in the centre of the phone, clear of both safe areas, no outline round the list (62.6)');
 });
 
+/* 62.9 / 62.10 / 62.11: the whole walkthrough, one frame per box, driven by real taps at real coordinates — the twelve on the games menu, the
+   first run (Exit and Restart looked for), then the eight on its result. A box that asks for a tap gets it on its target; every other box
+   gets a tap in the bottom-left corner of the phone, which is on nothing in particular */
+const tutState = page => page.evaluate(() => { const h = document.getElementById('tut'), r = h && h.querySelector('.tring'), b = h && h.querySelector('.tbox');
+  return { text: h && !h.hidden ? h.querySelector('p').textContent : null, ring: r && getComputedStyle(r).display !== 'none' ? (() => { const q = r.getBoundingClientRect(); return [Math.round(q.x), Math.round(q.y), Math.round(q.width), Math.round(q.height)]; })() : null,
+    box: b ? (() => { const q = b.getBoundingClientRect(); return [Math.round(q.top), Math.round(q.bottom)]; })() : null, screen: document.querySelector('.screen.on')?.id }; });
+// (before 62.12 moved it, the Welcome card came up on the first result — "Later" is what a player would tap)
+const nextBox = async (page, prev, n = 120) => { for (let i = 0; i < n; i++) { const s = await tutState(page); if (s.text && s.text !== prev) return s;
+  await page.evaluate(() => { const w = document.getElementById('welcome'); if (w && !w.hidden && w.getClientRects().length) w.querySelector('[data-act="wlater"]')?.click(); }); await sleep(100); } return tutState(page); };
+const tapEl = async (page, sel) => { const p = await page.evaluate(s => { const e = document.querySelector(s); if (!e) return null; const r = e.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }, sel); if (p) await page.touchscreen.tap(p[0], p[1]); return !!p; };
+const TARGET = { 3: '#grid .tile[data-game="dots"]', 5: '#grid .tile[data-game="quick-tap"]', 7: '#diff-row .choice[data-diff="two"]', 11: '#time-row .tbtn[data-time="5"]' };
+scene('62.9', async (page, browser) => {
+  await load(page, { tut: 0, played: 0 }); await show(page, 's-pick');
+  let prev = null;
+  for (let i = 0; i < 12; i++) {
+    const s = await nextBox(page, prev); prev = s.text;
+    await frame(page, browser, `62.9-box-${String(i + 1).padStart(2, '0')}`, `Walkthrough box ${i + 1}: "${s.text}"`); say('box', s);
+    if (TARGET[i]) await tapEl(page, TARGET[i]); else await page.touchscreen.tap(14, 830);
+    await sleep(500);
+  }
+  // the first run: live, with no Exit and no Restart (62.10); taps on both pads until it ends
+  for (let i = 0; i < 80 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) await sleep(100);
+  say('firstRun', await page.evaluate(() => ({ tutrun: document.getElementById('game').classList.contains('tutrun'), exit: getComputedStyle(document.getElementById('quit')).display, restart: getComputedStyle(document.getElementById('restart')).display })));
+  await frame(page, browser, '62.10-first-run', 'The walkthrough\'s first run: no Exit (top left) and no Restart (top right)');
+  for (let i = 0; i < 90 && (await page.evaluate(() => document.getElementById('game').classList.contains('on'))); i++) {
+    await page.evaluate(k => { const p = document.querySelectorAll('#qt .pad')[k % 2]; p.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: 100, clientY: 400 })); }, i); await sleep(120); }
+  say('stored', await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('ne')); return { tut: s.prefs.tut, tutRun: !!s.prefs.tutRun, hits: s.prefs.tutRun && s.prefs.tutRun.hits }; }));
+});
+scene('62.11', async (page, browser) => {
+  let prev = null;
+  for (let i = 0; i < 8; i++) {
+    const s = await nextBox(page, prev, 200); prev = s.text;
+    await frame(page, browser, `62.11-box-${i + 1}`, `First result, box ${i + 1}: "${s.text}"`); say('box', s);
+    await page.touchscreen.tap(14, 830); await sleep(450);
+  }
+  await sleep(600);
+  say('after', await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('ne')); return { tut: s.prefs.tut, rails: !!(s.ach || {}).rails, tut2: !document.getElementById('tut') || document.getElementById('tut').hidden, screen: document.querySelector('.screen.on')?.id }; }));
+  await frame(page, browser, '62.14-off-the-rails', 'After "Good luck!": the result screen works again and Off the Rails is banked (its toast)');
+  await show(page, 's-menu'); await sleep(1400);
+  say('menu', await page.evaluate(() => [...document.querySelectorAll('#s-menu .item')].map(b => (b.dataset.go || b.dataset.act) + (b.classList.contains('dim') ? ' dim' : ''))));
+  await frame(page, browser, '62.14-menu-open', 'The menu after the walkthrough: Scores, Progress and About open, Customise and Keys still locked behind the Games chest');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

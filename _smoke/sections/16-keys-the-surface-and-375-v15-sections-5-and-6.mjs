@@ -377,9 +377,12 @@ export async function run() {
        opens saved, and Testing's fresh game clearing them */
     const menu48 = () => page.evaluate(() => Object.fromEntries([...document.querySelectorAll('#s-menu .item')].filter(b => b.dataset.dev === undefined).map(b => [b.dataset.go, b.classList.contains('newthing') ? 'green' : b.classList.contains('dim') || b.classList.contains('keylock') || b.classList.contains('cuslock') ? 'shut' : 'plain'])));
     const unl48 = Object.fromEntries((await page.evaluate(async () => (await import('./progress.js')).UNLOCKS.map(u => u.key))).filter(k => k !== 'quick-tap:four').map(k => [k, NOW]));
-    await boot({ played: 0, menuOpened: {} }, { unlock: unl48 });
+    /* AMENDED AT BUILD 64 (62.14): what opens Scores, Progress and About is the walkthrough's last box, no longer the first run — so the profile
+       starts with it unfinished (m0: all shut), and it is marked finished before the run this check plays */
+    await boot({ played: 0, tut: 0, menuOpened: {} }, { unlock: unl48 });
     await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-menu'); }); await sleep(300);
     const m0 = await menu48();
+    await page.evaluate(async () => { const S = await import('./core/store.js'); S.prefs.tut = 2; S.save(); });
     await click('#s-menu [data-go="s-pick"]'); await sleep(900);
     await page.evaluate(() => document.querySelector('.tile[data-game="quick-tap"]').click()); await sleep(420);
     await page.evaluate(() => document.querySelectorAll('#diff-row .choice')[0].click()); await sleep(320);
@@ -407,7 +410,7 @@ export async function run() {
       && m1['s-pick'] === 'plain' && ['s-board', 's-prog', 's-about'].every(k => m1[k] === 'green') && m1['s-key'] === 'shut' && m1['s-custom'] === 'shut'
       && m2['s-key'] === 'green' && m2['s-custom'] === 'green' && m3['s-key'] === 'plain' && m3['s-custom'] === 'green' && m4['s-key'] === 'plain' && m4['s-custom'] === 'green'
       && m5['s-custom'] === 'plain' && m5['s-board'] === 'green' && m6['s-pick'] === 'green' && JSON.stringify(fresh6) === '{}')
-      ? ok('v26 item 3 every menu item is green from the moment it is available until it is opened once: Play from the first load; Scores, Progress and About once the first run is on record; Keys and Customise once the Games chest is EARNED BY A RUN and opened on the map - opening each one spends its green, a reload keeps that, and Testing\'s fresh game gives every item its green back')
+      ? ok('v26 item 3 every menu item is green from the moment it is available until it is opened once: Play from the first load; Scores, Progress and About once the walkthrough is finished (62.14); Keys and Customise once the Games chest is EARNED BY A RUN and opened on the map - opening each one spends its green, a reload keeps that, and Testing\'s fresh game gives every item its green back')
       : bad('v26 item 3 the green menu items', JSON.stringify({ m0, run48, m1, m2, m3, m4, m5, m6, fresh6 }));
 
     // item 12: the version label is on the home menu and nowhere else

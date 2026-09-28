@@ -289,13 +289,21 @@ export const TWO = { ready:'hand the phone over<br>tap when ready', hud:'{who} �
 // v15 (3.8 answer, build 25): a Streak's score IS the round it reached, and it used to sit there as a bare number. It says
 // so now — the retune in 3.8 is unmeasured play, and the only way to report whether it runs long is to read the round off
 // the result screen. `word` is the mode's own scoreWord (rounds, or shapes on Go / No-go)
-/* build 62 (61.3): the first-run walkthrough, one line per step, each under ~12 words. Step 4 says both ways two people play (pass & play
-   takes turns, versus is head to head); the brief's "Take turns on one phone" named only the first. */
+/* build 64 (62.9 / 62.11): THE FIRST-RUN WALKTHROUGH, Aiden's copy (FEEDBACK-v33), typos fixed only — it replaces build 62's five steps and
+   its after-result tip. `steps` are the twelve boxes on the games menu and `over` the eight on the first result. Four slots are filled from
+   config by ui/tutorial.js and never typed here: {need} and {count} are the Dots unlock rule (config/unlocks.js — "35 hits…" today),
+   {secs} / {first} / {names} / {all} are Quick Tap's lengths and their seconds, {game} is "Quick Tap · Two". `start` labels the ring on
+   Quick Tap in step 6. Step 9 names the three lengths as well as their seconds (Cowork: the buttons show names). */
 export const TUTORIAL = {
-  steps:[ 'Quick skill games. Hit targets to unlock more.', 'Start here.',
-    "Each game has modes. 15s and 30s are locked — you'll earn them.",
-    'Playing with someone? Take turns or go head to head.', 'Go.' ],
-  pickFirst:'Pick a mode, then Go.', locked:'Want to unlock this? Tap to see how.' };
+  steps:[ 'Welcome to No Excuses', "Here you'll be able to play all the games on offer", "But you'll notice most are locked…",
+    'Tap a game to see how it can be unlocked', "Wow! {need}, that's a lot", "Let's see if we can!",
+    'Each game has variants, you can unlock these later', "Let's start with {game}",
+    'Each variant has modes: {names} — {all} seconds', "Only a {first} is unlocked. There's no way you can get {count} in only {secs} seconds!",
+    'If you want to play with a friend, that option is always available!', "Oh well, let's try our first run!" ],
+  start:'Start here',
+  over:[ 'Congratulations! You finished your first run', 'You can try again', "Or try a longer run (if you've unlocked it)",
+    'Or return to the games menu', "Well, that's all for the tutorial", 'There\'s PLENTY more for you to see and unlock…',
+    "But you're smart, you'll figure it out", 'Good luck!' ] };
 export const RESULT = { streakUnit:'<span class="unit">{word} reached</span>',
   practice:'practice', fail:'run over', best:'new best', pass:'pass & play', versus:'versus', dash:'—', lowerMark:'<span class="dn">▼</span>',
   rank:'rank <b>{n}</b> of 10 · {name}', outside:'outside the top 10 · {name}', you:'you', practiceNote:'practice · nothing recorded', twoNote:'two players · nothing recorded',
@@ -339,7 +347,8 @@ export const CUSTOM = { menu:'Music on / off', lockLine:'Locked · {name} — {h
   lockPlain:'Locked · {how}' };
 // v14 (8.1): a row whose requirement is a SET of things says which are left, not just how far along the bar is.
 // v14 (8.5): a secret row shows its own `hint` where an ordinary row shows `how`; `stretch` is the fallback for one without
-export const ACH_SCREEN = { all:'All', done:'done', secret:'secret', hidden:'???', progress:' · {p}% of the way there', stretch:'A stretch past the stretch. You will know.', inGame:' · in {game}', left:' · still to play: {names}' };
+// build 64 (62.14): `gives` — the line under an achievement that opens something other than a cosmetic ("Unlocks Scores · Progress · About")
+export const ACH_SCREEN = { gives:'Unlocks {what}', all:'All', done:'done', secret:'secret', hidden:'???', progress:' · {p}% of the way there', stretch:'A stretch past the stretch. You will know.', inGame:' · in {game}', left:' · still to play: {names}' };
 
 /* the key (build 22, v14 §9.2–9.7). A second progression system, not a picture of the first: seven roots growing inward
    as clearance bars are cleared. "clearance bar", never "minimum bar" — nineteen of the thirty-one are ceilings (C.7) */
