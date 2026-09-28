@@ -54,8 +54,18 @@ export async function run() {
         : bad('62.3 a tap during the games-menu intro', JSON.stringify({ early, mid, first }));
     }
     const seen = [];
-    seen.push(await waitText(C.steps[0])); await click('#tut .tnext');
-    seen.push(await waitText(C.steps[1])); await click('.tile[data-game="quick-tap"]');
+    seen.push(await waitText(C.steps[0]));
+    /* build 64 (62.4): with a box up, a tap on anything but what it asks for does nothing — here a game that is not the step's, the ground
+       (which used to go Back) and Back itself, on the step that points at the list */
+    const stray = await page.evaluate(() => { document.querySelector('.tile[data-game="dots"]').click(); document.getElementById('grid').click(); document.querySelector('#s-pick .back').click();
+      return { screen: document.querySelector('.screen.on')?.id, sheet: !document.getElementById('sheet').hidden, lock: document.getElementById('lockwrap').classList.contains('on'), box: document.querySelector('#tut p').textContent }; });
+    await click('#tut .tnext');
+    const onTile = await waitText(C.steps[1]);
+    const stray2 = await page.evaluate(() => { document.querySelector('.tile[data-game="dots"]').click(); return { sheet: !document.getElementById('sheet').hidden, lock: document.getElementById('lockwrap').classList.contains('on'), box: document.querySelector('#tut p').textContent }; });
+    (stray.screen === 's-pick' && !stray.sheet && !stray.lock && stray.box === C.steps[0] && !stray2.sheet && !stray2.lock && stray2.box === C.steps[1])
+      ? ok('62.4 while a box is up, a tap on another game, the ground or Back does nothing — only what the box asks for (or the box) responds')
+      : bad('62.4 only the step\'s target responds', JSON.stringify({ stray, stray2 }));
+    seen.push(onTile); await click('.tile[data-game="quick-tap"]');
     seen.push(await waitText(C.steps[2])); await click('#tut .tnext');
     seen.push(await waitText(C.steps[3])); await click('#tut .tnext');
     await page.evaluate(() => document.querySelector('#diff-row .choice').click()); await sleep(450);

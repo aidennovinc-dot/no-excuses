@@ -73,7 +73,15 @@ on('store:reset',()=>{ step=0; });
    step one waits for the bare map, so it never showed, and the run the player then played ended the walkthrough for good. From the moment the
    map is up for a walkthrough until its first box is on screen, every tap is swallowed here — capture, ahead of ui/actions.js's own handler —
    so nothing opens, nothing goes Back and nothing skips it. */
-document.addEventListener('click',e=>{ if(!wanted()||!onScreen('s-pick')||step>0||(host&&!host.hidden)) return; e.stopPropagation(); e.preventDefault(); },true);
+/* build 64 (62.4): AND WHILE A BOX IS UP, ONLY WHAT IT ASKS FOR TAKES A TAP. A step that waits for the player lets through a tap on its own
+   target and nothing else; every other step, and the tip, lets through only its own box (and the tip its ringed chip). No navigation, no
+   Back off the ground, nothing opened by accident. */
+const owns=()=>(wanted()&&onScreen('s-pick'))||tipOn;
+function lets(t){ const box=host&&!host.hidden; if(!box) return false;
+  if(t.closest('#tut .tbox')) return true;
+  if(tipOn) return !!t.closest('.chip.locked,.mch.locked');
+  const s=STEPS[step]; if(!s||s.next) return false; const el=s.el(); return !!el&&el.contains(t); }
+document.addEventListener('click',e=>{ if(!owns()||lets(e.target)) return; e.stopPropagation(); e.preventDefault(); },true);
 /* the tip is answered by a tap on the locked chip it rings — capture, so the chip's own lock box still opens underneath */
 document.addEventListener('click',e=>{ if(!tipOn) return; const el=$('#over-chips2 .chip.locked')||$('#over-chips .mch.locked'); if(el&&e.target.closest('.chip.locked,.mch.locked')) finish(2); },true);
 
