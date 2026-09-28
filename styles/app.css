@@ -77,7 +77,9 @@
   *{box-sizing:border-box;margin:0;padding:0}
   /* v13 (3.1): a `.chips` row set display:flex, which outranks the browser's own [hidden] rule — that is why Solo still showed Pass & play / Versus */
   [hidden]{display:none!important}
-  html,body{height:100%;background:var(--ground);color:var(--ink);font-family:var(--display);overflow:hidden;touch-action:manipulation;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  /* build 64 (62.15): --underlay is the background layer's own bottom colour when it paints one (ui/atmosphere.js), so a strip the fixed layer
+     does not reach on an installed iPhone app shows that, not a flat band of --ground */
+  html,body{height:100%;background:var(--underlay,var(--ground));color:var(--ink);font-family:var(--display);overflow:hidden;touch-action:manipulation;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
   body{position:fixed;inset:0}
   .screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;padding-top:max(24px,env(safe-area-inset-top))}
   .screen.on{display:flex}

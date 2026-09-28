@@ -203,7 +203,18 @@ function draw(t){ if(paused){ running=false; return; }
   if(ly){ if(!geo) geo=build(); LAYER[ly](t); }
   cx.globalAlpha=1;
   if(inRun){ cx.fillStyle=`rgba(0,0,0,${BG_LAYER.dim})`; cx.fillRect(0,0,W,H); } else punch(ly);
+  underlay(t);
   requestAnimationFrame(draw); }
+/* build 64 (62.15): THE PAGE UNDER THE LAYER WEARS THE LAYER'S OWN BOTTOM COLOUR. On an installed iPhone app a flat band of --ground (Lantern's
+   purple) still showed under the last row of a long screen after 61.22 stretched the canvas past both insets — so something on the phone stops
+   the fixed canvas short of the home-indicator strip, and whatever is there is the page's own background. Desktop Chrome (even with the insets
+   emulated) and Playwright's Windows WebKit (no safe areas, no standalone mode) cannot show which, so this closes the gap whatever the cause:
+   twice a second the colour the layer paints at its bottom-left corner becomes html's and body's background (--underlay). Only an OPAQUE
+   pixel counts — a layer with its own sky, or the colour wheel's tint; the starfield is see-through and --ground IS its colour already. */
+let ulT=-1e9, ulWas='';
+function underlay(t){ if(t-ulT<500) return; ulT=t; let c='';
+  try{ const d=cx.getImageData(2,Math.max(0,H-2),1,1).data; if(d[3]===255) c=`rgb(${d[0]},${d[1]},${d[2]})`; }catch(e){}
+  if(c===ulWas) return; ulWas=c; const s=document.documentElement.style; if(c) s.setProperty('--underlay',c); else s.removeProperty('--underlay'); }
 function resume(){ if(running) return; running=true; requestAnimationFrame(draw); }
 // build 62 (61.22): the canvas is sized from its own box, so a change to that box (an inset arriving) re-sizes it as a resize would
 function startAtmosphere(){ addEventListener('resize',size); if(window.ResizeObserver) new ResizeObserver(()=>size()).observe(cv); size(); running=true; draw(0); }

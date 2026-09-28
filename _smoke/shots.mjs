@@ -1733,6 +1733,22 @@ scene('62.13', async (page, browser) => {
   await frame(page, browser, '62.13-dash-green', 'Result of the Sprint that unlocked Dash: the DASH chip green until a Dash is played');
 });
 
+/* 62.15: Customise scrolled to the bottom with Lantern chosen. Desktop Chrome draws the canvas to the very bottom even with the insets on, so the
+   second frame FORCES the phone's failure — the canvas stopped 34px short — to show what that strip is now: the layer's own bottom colour, not
+   Lantern's purple --ground. Pixels read off each PNG: the strip (bottom 20px) against the layer 80px above it */
+scene('62.15', async (page, browser) => {
+  // networkidle0 never settles on this profile in this harness (the page itself is idle — checked), so this one waits for load
+  await page.evaluate(x => localStorage.setItem('ne', JSON.stringify(x)), Object.assign(fixture({ ...OPEN, bg: 'lantern' }), { intro: INTRO_ALL }));
+  await page.reload({ waitUntil: 'load' }); await sleep(1500); await show(page, 's-custom'); await sleep(900);
+  await page.evaluate(() => { const s = document.getElementById('s-custom'); s.scrollTop = s.scrollHeight; }); await sleep(1400);
+  const read = im => { const at = y => px(im, 20, y); return { strip: at(im.h - 20), above: at(im.h - 160) }; };
+  say('ground', await page.evaluate(() => { const p = document.createElement('div'); p.style.background = 'var(--ground)'; document.body.appendChild(p); const c = getComputedStyle(p).backgroundColor; p.remove(); return { ground: c, html: getComputedStyle(document.documentElement).backgroundColor }; }));
+  say('pixels', read(await frame(page, browser, '62.15-customise-bottom', 'Customise scrolled to the bottom, Lantern: the layer runs to the bottom edge under MUSIC ON / OFF (47 / 34 insets)')));
+  await page.evaluate(() => { document.getElementById('stars').style.height = 'calc(100lvh + env(safe-area-inset-top) - 34px)'; }); await sleep(1400);
+  say('pixels', read(await frame(page, browser, '62.15-short-layer', 'The same, with the canvas forced 34px short as on the phone: the strip is the layer\'s own bottom colour, no purple band')));
+  await page.evaluate(() => { document.getElementById('stars').style.height = ''; });
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

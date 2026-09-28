@@ -781,6 +781,23 @@ export async function run() {
       ? ok(`A2 with a 47px top inset no key layer draws in the status-bar strip (${Object.entries(strip.out).map(([s, o]) => s + ' ' + o.n + ' samples clear').join(', ')})`)
       : bad('A2 the status-bar strip', JSON.stringify(strip));
   }
+  /* build 64 (62.15): THE PAGE UNDER THE LAYER. Wherever the fixed canvas might stop short on a phone, what shows is html's own background — so
+     with a layer that paints an opaque sky (Lantern) the page wears the layer's bottom colour, and with the see-through starfield it stays --ground */
+  {
+    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS, keySeen: 1, chests: { games: 1, key: 1, pro: 1, thorns: 1 } }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    const ul = await page.evaluate(async () => { const AT = await import('./ui/atmosphere.js'), R = await import('./ui/router.js');
+      const w = ms => new Promise(r => setTimeout(r, ms)), cv = document.getElementById('stars'), cx = cv.getContext('2d', { willReadFrequently: true });
+      const bg = el => getComputedStyle(el).backgroundColor, px = () => { const d = cx.getImageData(2, cv.height - 2, 1, 1).data; return `rgb(${d[0]}, ${d[1]}, ${d[2]})`; };
+      R.show('s-key', { tier: 0 }); await w(400); AT.setKeyLayer('lantern'); await w(1400);
+      const lantern = { html: bg(document.documentElement), body: bg(document.body), px: px() };
+      AT.setKeyLayer(null); R.show('s-menu'); await w(1400);
+      const probe = document.createElement('div'); probe.style.background = 'var(--ground)'; document.body.appendChild(probe); const ground = bg(probe); probe.remove();
+      return { lantern, stars: { html: bg(document.documentElement), ground } }; });
+    (ul.lantern.html === ul.lantern.px && ul.lantern.body === ul.lantern.px && ul.lantern.html !== ul.stars.ground && ul.stars.html === ul.stars.ground)
+      ? ok(`62.15 under Lantern the page itself is the layer's bottom colour (${ul.lantern.px}), so a strip the layer misses is no flat --ground band; under the starfield it stays --ground (${ul.stars.ground})`)
+      : bad('62.15 the page under the layer', JSON.stringify(ul));
+  }
   /* build 62 (61.22): EVERY BACKGROUND FILLS THE WHOLE PAGE AND SITS BEHIND EVERYTHING, on the long screens, scrolled to the bottom, with a top
      and a bottom safe-area inset: the canvas runs from above the top inset to below the bottom one, and no art is left behind any text or
      control. Lantern, Circuit and Thorn, on Customise ("Settings"), the Skill key screen and the Games chest tab */
