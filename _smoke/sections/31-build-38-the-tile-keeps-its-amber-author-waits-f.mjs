@@ -120,6 +120,10 @@ export async function run() {
     /* NEVER OVERWRITE A NUMBER A PERSON ENTERED. Two cells hand-set to odd values - one through --set, which drops its marker,
        one typed over a placeholder with its now-stale marker left behind - then the generator runs over the table twice */
     let hand = P38.setCell(bars38, 'qt-two-5', 'pro', 13.37);
+    /* build 62 (61.4): the stale marker is PLANTED. This case used the real file's last desk marker on Dots · Lead · 30s, and 61.4 ported
+       Aiden's own number there (the desk markers are all gone now), so the fixture gives the row the marker it had and the case is the same */
+    { const r = P38.rowsOf(hand).find(x => x.key === 'dots:lead:30'), row = hand.slice(r.from, r.to);
+      if (!/placeholder:/.test(row)) hand = hand.slice(0, r.from) + row.replace(/ \}(,?)\s*$/, ", placeholder:{ author:{ v:" + r.obj.author + ", conf:'low', by:'desk', basis:'PROPOSED on the Key Unlocks Desk (planted fixture)' } } }$1") + hand.slice(r.to); }
     { const r = P38.rowsOf(hand).find(x => x.key === 'dots:lead:30'), f = P38.fieldsOf(hand, r.from, r.to).find(x => x.name === 'author'); hand = hand.slice(0, f.from) + '101.5' + hand.slice(f.to); }
     const g1 = P38.generate(hand, RA38), g2 = P38.generate(g1.out, RA38);
     const barsText = src => P38.rowsOf(src).map(r => spanOf(src, r.key, 'bar')).join();
@@ -149,7 +153,8 @@ export async function run() {
     // AMENDED at build 44 (v24 §E): 18 Pro placeholders (Aiden set the other 12) and 30 Author
     // AMENDED at build 45 (v25 item 14): isPlaceholder() is unchanged and still counts them — what is gone is the key screen SAYING so (every warn is empty now)
     // RESTATED at build 60 (v31 60.6): 29 Author placeholders, not 30 — the Cut Streak's Author bar is Aiden's own number now (25), so it is not one
-    (ph.pro === ph.n - 12 && ph.author === ph.n - 1 && ph.clear === 0 && !ph.edited.is && ph.edited.count === ph.n - 13 && ph.edited.author
+    // RESTATED at build 62 (61.4): 17 Author placeholders, not 29 — Aiden's own Author numbers for Quick Tap Two / Four and Dots Blind / Lead (twelve cells) are ported
+    (ph.pro === ph.n - 12 && ph.author === ph.n - 13 && ph.clear === 0 && !ph.edited.is && ph.edited.count === ph.n - 13 && ph.edited.author
       && ph.warnPro === '' && ph.edited.warn === '' && ph.warnClear === '')
       ? ok(`#426 progress/key.js tells a generated number from a set one: ${ph.pro} Pro and ${ph.author} Author placeholders, none on key 1; one Pro number changed in place is a person's (${ph.edited.count} left) — and since build 45 no key screen says a word about it`)
       : bad('#426 isPlaceholder and the key screen note', JSON.stringify(ph));
