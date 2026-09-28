@@ -55,7 +55,8 @@ export async function run() {
         rewards: rows.filter(a => a.unlocks).map(a => a.id).sort(), ach: P.ACH.length, live: rows.filter(a => a.live).length }; });
     const KEPT23 = ['qt_bclean5', 'qt_clean5', 'dt_bpin', 'dt_pin', 'hd_steady', 'hd_money', 'sq_7', 'tm_close', 'rx_200', 'sp_5', 'sp_fast', 'qt_br4', 'qt_r5', 'dt_blind', 'dt_land', 'hd_est', 'sq_12', 'tm_run', 'tm_wall', 'rx_run', 'rx_clean', 'sp_15', 'sp_clean'].sort();
     const REWARD9 = ['dt_land', 'dt_pin', 'hd_est', 'hd_money', 'hd_steady', 'qt_clean5', 'qt_r5', 'sq_12', 'sq_7'].sort();
-    (ro.n === 90 && ro.pairs === 90 && ro.ids === 90 && ro.sets === 24 && ro.named && ro.kept.join() === KEPT23.join() && !ro.inAch.length && !ro.orphanBy.length && ro.rewards.join() === REWARD9.join() && ro.ach === 28 && !ro.live)
+    // AMENDED AT BUILD 64 (62.14): 29 rows left in ACH — Off the Rails, the walkthrough's own, joined the 28
+    (ro.n === 90 && ro.pairs === 90 && ro.ids === 90 && ro.sets === 24 && ro.named && ro.kept.join() === KEPT23.join() && !ro.inAch.length && !ro.orphanBy.length && ro.rewards.join() === REWARD9.join() && ro.ach === 29 && !ro.live)
       ? ok(`D.2 the key roster: ${ro.n} rows, one per combination per tier, every name off KEY_ROSTER; the 23 rows that replace an older achievement keep its id and are gone from ACH (${ro.ach} rows left), the 9 that carried a reward still carry it, every Customise item's \`by\` still resolves, none is live:1 - beside the ${ro.sets} key sets`)
       : bad('D.2 the key roster', JSON.stringify(Object.assign({}, ro, { kept: ro.kept.length, rewards: ro.rewards })));
     // earned by clearing the bar, and banked the moment it is

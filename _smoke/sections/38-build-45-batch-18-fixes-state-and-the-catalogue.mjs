@@ -15,7 +15,8 @@ export async function run() {
   const KB45 = await import(pathToFileURL(path.join(root, 'config', 'key-bars.js')).href);
   const ALLUNL = Object.fromEntries(U45.UNLOCKS.map(u => [u.key, NOW45]));
   const VH45 = 844;   // the phone the gate drives
-  const PLAIN45 = { story: 1, gridSeen: 1, played: 1, menuSeen: 1, keySeen: 1, keysSeen: 1, snd: 'off', musicG: {}, spill: { games: 1, key: 1, pro: 1, thorns: 1 }, readySeen: { games: 1, key: 1, pro: 1, thorns: 1 }, keyIntro: { clear: 1, pro: 1, author: 1 } };
+  // AMENDED AT BUILD 64: `tut: 2` — these fixtures start at `played: 0` with no runs, which the walkthrough (62.3 / 62.4) would otherwise hold
+  const PLAIN45 = { tut: 2, story: 1, gridSeen: 1, played: 1, menuSeen: 1, keySeen: 1, keysSeen: 1, snd: 'off', musicG: {}, spill: { games: 1, key: 1, pro: 1, thorns: 1 }, readySeen: { games: 1, key: 1, pro: 1, thorns: 1 }, keyIntro: { clear: 1, pro: 1, author: 1 } };
   const menu45 = () => page.evaluate(() => { const k = document.querySelector('#s-menu .item[data-go="s-key"]'), c = document.querySelector('[data-go="s-custom"]');
     return { keys: k.className, cus: c.className, need: !document.getElementById('keys-need').hidden || !document.getElementById('cus-need').hidden }; });
   const menuOpen45 = m => !/\bdim\b/.test(m.keys) && !/keylock/.test(m.keys) && !/\bdim\b/.test(m.cus) && !/cuslock/.test(m.cus) && !m.need;

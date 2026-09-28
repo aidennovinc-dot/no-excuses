@@ -1530,8 +1530,9 @@ on the sheet's length row and the result screen's length chips, and a never-play
 run of it is on record. The result screen never asked `newPlay` before; its chips carried L8's once-only first-seen mark, spent on the draw.
 
 **The background layer, two more (A2, 62.15).** The status-bar strip is one more thing the layer clears (outright, with a 16px fade under it),
-on every screen and background. And html / body take `--underlay`, the colour the layer paints at its bottom-left corner when it is opaque
-(read twice a second), so a strip the fixed canvas does not reach on an installed iPhone app — which desktop Chrome with the insets emulated
+on every screen and background. And html / body take `--underlay`, the colour the layer paints along its bottom edge when it paints its own
+ground (Lantern's, worked out from its KEY_LAYER numbers; the colour wheel's tint) — never read back off the canvas, since a pixel read twice a
+second kept headless Chrome from ever calling the page network-idle, so a strip the fixed canvas does not reach on an installed iPhone app — which desktop Chrome with the insets emulated
 cannot show — is the layer's own colour rather than a band of `--ground`.
 
 **Smaller.** The map's first open is twice as fast, connectors included (`MAP_INTRO` halved, `lineMs`); its sounds are × `MAP_INTRO_GAIN`

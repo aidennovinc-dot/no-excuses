@@ -338,10 +338,11 @@ export async function run() {
     // A.6.5 / A.6.7: the same line on the menu as on the keys screen, and nothing on a profile with no runs
     const m = await page.evaluate(async () => {
       const S = await import('./core/store.js'); const P = await import('./progress.js');
-      S.store.runs = []; S.prefs.played = 0; S.prefs.allOpen = false; S.save();
+      // AMENDED AT BUILD 64 (62.14): the first menu is the one before the walkthrough is finished, and "played" includes it (tut 0, then 2)
+      S.store.runs = []; S.prefs.played = 0; S.prefs.tut = 0; S.prefs.allOpen = false; S.save();
       const R = await import('./ui/router.js'); R.show('s-menu'); await new Promise(r => setTimeout(r, 250));
       const first = document.getElementById('menu-key').hidden;
-      S.store.runs = [{ t: Date.now(), g: 'quick-tap', d: 'two', s: 5, hits: 6, misses: 0, v: 2 }]; S.prefs.played = 1; S.save();
+      S.store.runs = [{ t: Date.now(), g: 'quick-tap', d: 'two', s: 5, hits: 6, misses: 0, v: 2 }]; S.prefs.played = 1; S.prefs.tut = 2; S.save();
       R.show('s-menu'); await new Promise(r => setTimeout(r, 250));
       const el = document.getElementById('menu-key');
       return { first, hidden: el.hidden, text: el.textContent.trim() }; });

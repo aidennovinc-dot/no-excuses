@@ -35,7 +35,8 @@ export async function run() {
        at the test card (item 11), and the player is not built inside the row (item 9 makes it one shared overlay). What item 23 still stands for
        is the part that has not moved: the list IS the screen, it is data in config/messages.js, and A CLIP ARRIVES BY FILLING IN A FILE NAME —
        so it is driven by EMPTYING one instead, which is the same claim from the other end. */
-    await boot({}, { unlock: ALL46 });
+    // AMENDED AT BUILD 64 (62.12): Welcome opens when Dots unlocks, so the fresh profile here has every mode but Dots's
+    await boot({}, { unlock: Object.fromEntries(Object.entries(ALL46).filter(([k]) => !k.startsWith('dots:'))) });
     await show46('s-about'); await sleep(600);
     const fresh = await page.evaluate(() => ({ rows: [...document.querySelectorAll('#msglist .msgrow')].map(r => ({ id: r.dataset.msg, locked: r.classList.contains('locked'),
       title: r.querySelector('.msgtxt b').textContent, state: r.querySelector('.msgtxt small').textContent, frame: !!r.querySelector('.msgframe'), video: !!r.querySelector('video') })),
@@ -71,7 +72,7 @@ export async function run() {
     const order = MS46.MESSAGES.map(m => m.id).join();
     const shown46 = MS46.MESSAGES.filter(m => !(m.by && m.by.gauntlet)).map(m => m.id).join();
     (fresh.rows.length === 6 && shown46 === fresh.rows.map(r => r.id).join() && fresh.rows.every(r => r.locked) && / of 8$/.test(fresh.lede)
-      && fresh.rows.every(r => r.frame && !r.video) && /opens when you finish/i.test(fresh.rows[0].state) && /opens with/i.test(fresh.rows[1].state)
+      && fresh.rows.every(r => r.frame && !r.video) && /opens when you unlock dots/i.test(fresh.rows[0].state) && /opens with/i.test(fresh.rows[1].state)
       && all.length === 8 && all.every(l => !l) && withFile.soon && withFile.noPlayer
       && withFile.has && withFile.inline && withFile.full && withFile.cc && withFile.src === 'video/test-card.mp4' && withFile.seen && withFile.dotWithOthers && !withFile.dot)
       ? ok(`item 23 / v27 item 8 About carries the eight message slots in unlock order (${order}) as data in config/messages.js - six of them on a new profile, because R1 keeps a Gauntlet's row out of the list until its chest opens while the counter still says "of 8" - each saying what opens it, and all eight open once every chest is open, both Gauntlets have been played, a Quick Tap . Sprint is on record and a payment has gone through; a clip is still nothing but a file name - emptying one puts "video coming soon" back and opens no player, filling it in plays it, playsinline with its captions track and never autoplaying, and watching it takes the dot off the About row`)
