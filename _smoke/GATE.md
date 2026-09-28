@@ -30,6 +30,8 @@ check are in `../CLAUDE.md` → The gate.
   Each is skipped BY NAME when it is not there (`... — SKIPPED: ../_review is not in this checkout`), and its section keeps every
   other check it has, so `npm test` passes on a clone of `site` alone — which is what Codemagic gets.
 
+- **Build 62 (FEEDBACK-v32) added no section.** Its checks sit with their features: `runs` 61.1 / 61.2 / 61.20 · `locked decisions` 61.3 · `keys` 61.6 / 61.7 / 61.11 / 61.22 · `side screens` 61.9–61.16 / 61.18 / 61.26 · `build 38` and `build 44` 61.4 / 61.5 / 61.28 · `music` 61.19 · `chests` 61.21 / 61.23 · `build 37` 61.24 / 61.25.
+
 | `--only` | Section, as printed | Stands for |
 |---|---|---|
 | `static` | static checks | A6 one build number, now `index.html` ×2 (v18 S.2 `v0.N`; **v29 item 7, build 55** — the third copy went with the inline script), **v29 items 7 / 15 / 16 (build 55)** the S4 CSP meta and no inline script, S7's https / native gates on the poll, A8's one `haptic()` and no `navigator.vibrate` in `games/` or `run/`, one name per achievement across `ACH` and `KEY_ROSTER`; A2 `config/` is data, A3 engine imports, A4 no screen imports a screen; v16 §1 / 1.6 / §5 (music data, the unlock sound, one-line intro) with v17 B.30; L5's Reaction budgets (v14 C.1–C.4, v18 B.1c / B.3, v19 C.5 / C.6, v24 F.1) **v31 (build 60)** — 60.16 Count deals look-alike decoys; 60.23 the player picker is one component under `ui/`. |

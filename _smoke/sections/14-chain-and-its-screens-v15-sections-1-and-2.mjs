@@ -185,6 +185,7 @@ export async function run() {
       for (const g in G.GAMES) for (const d of G.GAMES[g].modes) G.GC(g, d).lens.forEach((s, i) => { if (i) known.add(P.lenNeed(g, d, s)); });
       return { screen: document.querySelector('.screen.on')?.id, rows: rows.length, heads: document.querySelectorAll('#chest-list h4').length,
         stray: needs.filter(n => n && !known.has(n)) }; });
-    (u.screen === 's-prog' && u.rows > 0 && u.heads === 3) ? ok(`2.4 the Games chest tab lists ${u.rows} rows under ${u.heads} headings`) : bad('2.4 the Games chest tab', JSON.stringify(u));
+    // RESTATED at build 62 (61.26): TWO headings, games-and-modes and lengths — the third, "Skill key", went with the grey paragraph under it; the key is its own art at the foot now
+    (u.screen === 's-prog' && u.rows > 0 && u.heads === 2 && !u.stray.length) ? ok(`2.4 the Games chest tab lists ${u.rows} rows under ${u.heads} headings, then the Skill key`) : bad('2.4 the Games chest tab', JSON.stringify(u));
     (!u.stray.length) ? ok('2.4 / L6 every requirement on the Unlocks screen comes from UNLOCKS or lenNeed — no second copy') : bad('2.4 a requirement written twice', u.stray.join(' | ')); }
 }
