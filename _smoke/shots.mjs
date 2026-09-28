@@ -1481,6 +1481,29 @@ scene('61.3', async (page, browser) => {
   say('box', await page.evaluate(() => document.querySelector('#tut p').textContent));
 });
 
+// 61.6: Achievements → back → Keys → Author tab → a REAL tap (by coordinates) on the Pro tile. What is under the finger, and where it goes
+scene('61.6', async (page, browser) => {
+  await load(page); await show(page, 's-menu'); await sleep(400);
+  const tapAt = async sel => { const b = await page.evaluate(s => { const r = document.querySelector(s).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }, sel); await page.touchscreen.tap(b[0], b[1]); await sleep(700); return b; };
+  const under = sel => page.evaluate(s => { const r = document.querySelector(s).getBoundingClientRect(); const e = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+    const a = e && e.closest('[data-act]'); return { el: e ? e.tagName + '.' + (e.className.baseVal ?? e.className) : null, act: a ? a.dataset.act : null, screen: document.querySelector('.screen.on')?.id }; }, sel);
+  // the old CSS, put back on the element for one look: a faded tappable toast that still takes pointer events. Is it over the Pro tile?
+  const old = await page.evaluate(async () => { const T = await import('./ui/toast.js'); T.toast('Achievement: Grand tour · unlocks target colour · tap to see it in Customise', 'x1'); await new Promise(r => setTimeout(r, 6000));
+    const t = document.getElementById('toast'); t.style.pointerEvents = 'auto'; t.dataset.ach = 'x1'; const R = await import('./ui/router.js'); R.show('s-key'); await new Promise(r => setTimeout(r, 600));
+    const out = [...document.querySelectorAll('#s-key .kkey')].map(b => { const r = b.getBoundingClientRect(), e = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return e && e.closest('[data-act]')?.dataset.act; });
+    const tr = t.getBoundingClientRect(), kr = document.querySelector('#s-key .kkey[data-kt="1"]').getBoundingClientRect();
+    out.push('toast y ' + Math.round(tr.top) + '–' + Math.round(tr.bottom) + ' x ' + Math.round(tr.left) + '–' + Math.round(tr.right) + ' · pro tile y ' + Math.round(kr.top) + '–' + Math.round(kr.bottom));
+    t.style.pointerEvents = ''; t.dataset.ach = ''; R.show('s-menu'); return out; });
+  say('withOldCss', old); await sleep(400);
+  await tapAt('#s-menu [data-go="s-prog"]'); await tapAt('#s-prog [data-tab="ach"]'); await sleep(300);
+  await tapAt('#s-prog .back'); await tapAt('#s-menu [data-go="s-key"]');
+  await tapAt('#s-key .kkey[data-kt="2"]');
+  say('underPro', await under('#s-key .kkey[data-kt="1"]'));
+  await tapAt('#s-key .kkey[data-kt="1"]');
+  say('after', await page.evaluate(() => ({ screen: document.querySelector('.screen.on')?.id, sel: document.querySelector('#s-key .kkey.sel')?.dataset.kt })));
+  await frame(page, browser, '61.6-keys-pro-tab', 'Keys: Achievements, back, Keys, Author tab, then a real tap on the Pro tile');
+});
+
 /* ---------- the runner ---------- */
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 if (ARGV.includes('--list')) { console.log(Object.keys(SCENES).join('\n')); process.exit(0); }

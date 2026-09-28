@@ -1059,7 +1059,10 @@
   #toast{position:absolute;left:50%;top:max(20px,env(safe-area-inset-top));transform:translate(-50%,-30px);background:var(--panel);border:1px solid var(--ink);padding:10px 16px;font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;opacity:0;transition:.22s;pointer-events:none;max-width:88vw;text-align:center;line-height:1.5;z-index:9}
   #toast.on{opacity:1;transform:translate(-50%,0)}
   /* on the result screen the toast sits low so it never covers the score and try-again (v8); an achievement toast is tappable */
-  #toast.tap{pointer-events:auto;cursor:pointer;border-color:var(--ok)}
+  /* build 62 (61.6): tappable ONLY while it is showing. `.tap` outlived the fade, so an achievement toast that had gone kept catching taps,
+     invisible, across the top of every screen — over the Keys screen's middle (Pro) tile, which is why that tap opened Achievements */
+  #toast.tap{cursor:pointer;border-color:var(--ok)}
+  #toast.tap.on{pointer-events:auto}
   #toast.tap::after{content:' · tap';color:var(--mute)}
   /* a green toast for an unlock the moment it lands (v10) */
   #toast.ok{border-color:var(--ok);color:var(--ok)}

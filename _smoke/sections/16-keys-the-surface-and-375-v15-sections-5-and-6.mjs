@@ -718,4 +718,19 @@ export async function run() {
       ? ok(`57.11 all ${bgs.length} backgrounds draw (${drew.map(d => d.bg + ' ' + d.lit + '%').join(', ')}) and only the three KEY layers are layers at all — the starfield is the default background's alone; and the wheel is a second SETTING: the colour is painted on the background layer (rgb ${split57.px.join(',')} on the canvas), \`--ground\` and \`--line\` do not move with it (${split57.on.g}), it survives a change of pattern, and Customise carries ${split57.rows.pat} patterns with no wheel among them plus a colour row of "no colour" and the wheel`)
       : bad('57.11 the backgrounds', JSON.stringify({ drew, starOnly, split57 }));
   }
+  /* build 62 (61.6): AN ACHIEVEMENT TOAST THAT HAS GONE CATCHES NOTHING. It kept pointer-events after it faded, invisible over the top of every
+     screen, so a tap on the Keys screen's Pro tile opened Achievements. Reproduced: a tappable toast shows and fades, then the Keys screen */
+  {
+    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS, keySeen: 1 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    const t61 = await page.evaluate(async () => { const T = await import('./ui/toast.js'), C = await import('./config/copy.js'), R = await import('./ui/router.js');
+      const w = ms => new Promise(r => setTimeout(r, ms)); const A = (await import('./config/achievements.js')).ACH;
+      T.toast('Achievement: a long one · unlocks target colour · tap to see it in Customise', A[0].id); await w(C.TOAST_MS.tap + C.TOAST_MS.gap + 400);
+      R.show('s-key'); await w(500); const out = [], t = document.getElementById('toast');
+      for (const b of document.querySelectorAll('#s-key .kkey')) { const r = b.getBoundingClientRect(), e = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); out.push(e && e.closest('[data-act]') ? e.closest('[data-act]').dataset.act : null); }
+      return { out, pe: getComputedStyle(t).pointerEvents, ach: t.dataset.ach }; });
+    (t61.out.length === 3 && t61.out.every(a => a === 'key-tier') && t61.pe === 'none' && !t61.ach)
+      ? ok('61.6 a tappable toast that has faded catches nothing (pointer-events ' + t61.pe + ', no link left on it): every key tile, Pro included, is what is under the finger')
+      : bad('61.6 a faded toast over the key tiles', JSON.stringify(t61));
+  }
 }

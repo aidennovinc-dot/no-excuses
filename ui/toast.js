@@ -36,10 +36,11 @@ function nextToast(){ const t=$('#toast');
   if(it.html) t.innerHTML=it.msg; else t.textContent=it.msg;
   t.dataset.ach=it.ach||''; t.dataset.goto=it.go||''; t.classList.toggle('tap',!!it.ach||!!it.go); t.classList.toggle('ok',it.cls==='ok'); t.classList.add('on');
   if(!it.quiet) it.cls==='ok'?Snd.unlockFx():Snd.click();
-  toastT=setTimeout(()=>{ t.classList.remove('on'); toastT=setTimeout(nextToast,TOAST_MS.gap); },holdOf(it)); }
+  toastT=setTimeout(()=>{ t.classList.remove('on'); t.dataset.ach=''; t.dataset.goto=''; toastT=setTimeout(nextToast,TOAST_MS.gap); },holdOf(it)); }
 function toast(msg,ach,cls,html,go,quiet){ Q.push({msg,ach,cls,html,go,quiet}); if(!showing) nextToast(); }
 // a tap, or a screen the toast no longer belongs on, empties the queue: nothing that was going to be said is said late
-function toastClear(){ clearTimeout(toastT); Q.length=0; showing=false; const t=$('#toast'); if(t) t.classList.remove('on'); }
+// build 62 (61.6): a toast that has gone takes its link with it, so nothing can answer a tap on where it was
+function toastClear(){ clearTimeout(toastT); Q.length=0; showing=false; const t=$('#toast'); if(t){ t.classList.remove('on'); t.dataset.ach=''; t.dataset.goto=''; } }
 /* where an unlock key points. 'sequence:practice' is the one key that is not a mode — Practice from is a row on
    Sequence's own sheet — so it opens Sequence at the mode it belongs to rather than at a mode called "practice". */
 function unlockWhere(key){ const [g,d,s]=String(key).split(':');
