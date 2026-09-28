@@ -45,6 +45,11 @@ const mods = {}; for (const f of DATA) mods[f] = await load(f);
   if (bad) stop(`achievement ${bad.id || '?'} unlocks ${bad.unlocks.join(' ')} and has no name`);
   const names = rows.filter(a => a && a.name).map(a => a.name.trim().toLowerCase()), dup = names.find((n, i) => names.indexOf(n) !== i);
   if (dup) stop(`two achievements are both called "${dup}"`); }
+/* the review copy of the bars (../_review/key-bars.json) is written by the placeholders tool, and the gate checks the two agree — so a hand edit
+   of key-bars.js brings it up to date here. The tool must find nothing else to do: a bar edit that leaves it work is refused. */
+if (changed.includes('config/key-bars.js') && fs.existsSync(path.join(ROOT, '..', '_review'))) { const f = path.join(ROOT, 'config', 'key-bars.js'), before = fs.readFileSync(f, 'utf8');
+  try { execSync('node scripts/placeholders.mjs', { cwd: ROOT, stdio: 'ignore' }); } catch (e) { stop('npm run placeholders failed on the new bars'); }
+  if (fs.readFileSync(f, 'utf8') !== before) { fs.writeFileSync(f, before); stop('npm run placeholders wanted to change config/key-bars.js — set a number with npm run placeholders -- --set'); } }
 console.log(`validated ${DATA.filter(f => changed.includes(f)).join(', ')} · ${changed.length} file${changed.length > 1 ? 's' : ''} changed`);
 
 /* 3. ONLY THE GATE SECTIONS THAT READ THOSE FILES, plus the static checks. A section reads a file when its own source names it. */
