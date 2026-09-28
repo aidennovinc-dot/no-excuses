@@ -92,6 +92,7 @@ import { chestCol, chestSvg, giftsOf, symSvg } from "../chest.js";
 import { playReveal, revealGo, revealOn, revealTap, stopReveal } from "../reveal.js";
 import { register, show } from "../router.js";
 import { toast } from "../toast.js";
+import { askPlay } from "../askplay.js";
 
 const R_RING = 128, R_HUB = 34, CX = 150, CY = 150;
 let openGame = null, cameFrom = null, pending = null, openKey = 0, auto = null, demo = false;
@@ -802,5 +803,6 @@ define({
     if (!lenOpen(g, d, sc)) { emit('lock:ask', { g, d, s: sc }); return 'pick'; }
     const c = gameKey(g, tierId()).list.find(x => x.key === el.dataset.kk);
     const name = `${GAMES[g].name}${MODE_NAME[d] ? ' · ' + MODE_NAME[d] : ''} · ${lenName(g, sc, d)}`;
-    goWhere({ g, d, s: sc, need: T(KEY.aim, { name, want: c ? wantTxt(c) : '' }) }); return 'click'; },
+    // build 62 (61.11): a row asks before it leaves the Keys screen
+    askPlay({ g, d, s: sc, target: c ? barOf(c, tierId()) : null, go: () => goWhere({ g, d, s: sc, need: T(KEY.aim, { name, want: c ? wantTxt(c) : '' }) }) }); return 'click'; },
 });

@@ -39,7 +39,8 @@ import { sel } from "../../core/state.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, lenName } from "../../games/registry.js";
 import { Scores, UNLOCKS, achAll, achById, achTab, gameOpen, got, isOpen, lenLock, lenOpen, markSeen, newMark, setPendingAim, unlockHear, unlockHtml, unlockName, unlocked } from "../../progress.js";
-import { chestOpen, keyAch, keyState, tierOpen } from "../../progress/key.js";
+import { COMBOS, barOf, chestOpen, keyAch, keyState, tierOpen } from "../../progress/key.js";
+import { askPlay } from "../askplay.js";
 import { Snd } from "../../audio.js";
 import { toast } from "../toast.js";
 import { TOAST } from "../../config/copy.js";
@@ -224,7 +225,10 @@ function renderAch(){
   markSeen(fresh);
 }
 // a locked row: straight to the sheet it is earned on, at the mode and length it names; a locked mode or length asks the box first
-function jumpTo(a){ const g=a.g==='all'?(A.g==='all'?sel.game:A.g):a.g; const d=a.at?.d||GAMES[g].modes[0]; if(!isOpen(g,d)) return emit('lock:ask',{g,d}); if(a.at?.s!==undefined&&!lenOpen(g,d,a.at.s)) return emit('lock:ask',{g,d,s:a.at.s}); setPendingAim(a.how); show('s-pick',{g,d:a.at?.d,s:a.at?.s}); }
+function jumpTo(a){ const g=a.g==='all'?(A.g==='all'?sel.game:A.g):a.g; const d=a.at?.d||GAMES[g].modes[0]; if(!isOpen(g,d)) return emit('lock:ask',{g,d}); if(a.at?.s!==undefined&&!lenOpen(g,d,a.at.s)) return emit('lock:ask',{g,d,s:a.at.s});
+  // build 62 (61.11): it asks first — "Play …?", the row's target and the player's best, one PLAY
+  const c=a.combo&&COMBOS.find(x=>x.key===a.combo);
+  askPlay({ g, d, s:a.at?.s, target:c?barOf(c,a.kt):null, go:()=>{ setPendingAim(a.how); show('s-pick',{g,d:a.at?.d,s:a.at?.s}); } }); }
 
 /* ---------- v28 (item 4, build 53): ONE COUNT LINE PER TAB, WHERE THE GREY HELPER TEXT WAS ----------
    Three lines went: "tap a locked row to see what it takes" and the paragraph under it on Game unlocks, "tap an earned one to use it" /
@@ -258,7 +262,7 @@ define({
   unl(b){ if(b.dataset.key) { if(!chestOpen('games')){ toast(TOAST.keysLocked,'','',true); return 'pick'; } show('s-key'); return 'click'; }
     const {g,d,s}=b.dataset; const len=s===undefined?undefined:+s;
     if(b.classList.contains('lock')){ emit('lock:ask',{g,d,s:len}); return 'pick'; }
-    show('s-pick',{g,d,s:len}); return 'click'; },
+    askPlay({ g, d, s:len, target:null, go:()=>show('s-pick',{g,d,s:len}) }); return 'click'; },
   'chip-ach'(b){ A.g=b.dataset.v; renderAch(); return 'pick'; },
   // 58.3: the per-game filter inside a chest tab, remembered per tab so switching tabs does not lose it
   'chip-chest'(b){ F[tabOf(prefs.progTab)]=b.dataset.v; renderChest(tabOf(prefs.progTab)); return 'pick'; },

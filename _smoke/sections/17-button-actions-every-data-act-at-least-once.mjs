@@ -53,7 +53,10 @@ export async function run() {
   await tap('#prog-tabs [data-tab="ach"]'); await sleep(300); await tap('#ach-g [data-v="quick-tap"]'); await sleep(300);
   // AMENDED at build 58 (58.3): `qt_bclean5` is a key-1 roster row and lives on the Skill chest tab now; Committed is Quick Tap, pays out nothing, and jumps
   await tap('#ach-qt_sab', 'achievements · jump row');   // AMENDED at build 39 (v23 L.4c): Clean · Sprint · Four pays out a colour, so it is on Customise unlocks await sleep(300);
-  (await onScreen()) === 's-pick' ? ok('achievement row jumps to its pick sheet') : bad('achievement row jumps to its pick sheet', 'on ' + (await onScreen()));
+  await sleep(300);
+  // AMENDED at build 62 (61.11): the row asks "Play …?" first, and its Play is what jumps
+  await tap('#askplay [data-act="askp-play"]', 'play this · play'); await sleep(300);
+  (await onScreen()) === 's-pick' ? ok('achievement row asks, then jumps to its pick sheet') : bad('achievement row jumps to its pick sheet', 'on ' + (await onScreen()));
   await tap('#lvl-back', 'sheet · mode back'); await tap('#diff-row .choice:nth-child(2)', 'sheet · mode');
   await tap('#prac-row [data-prac]', 'sheet · practice from'); await tap('#grid', 'sheet · grid');
   // v17 (B.24, build 29): the chest is a control on the grid like any other. Locked here, so it says what it takes

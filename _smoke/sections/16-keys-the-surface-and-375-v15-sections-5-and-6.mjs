@@ -101,7 +101,18 @@ export async function run() {
      is the goal line at the top of the run — not a second mechanism, and not the chain's automatic offer instead */
   await page.evaluate(() => document.querySelector('.knode[data-kg="quick-tap"]').dispatchEvent(new MouseEvent('click', { bubbles: true }))); await sleep(360);
   const want = await page.evaluate(() => { const r = document.querySelector('#key-list .krow'); return r ? r.querySelector('i').textContent.trim() : null; });
-  await page.evaluate(() => document.querySelector('#key-list .krow').click()); await sleep(900);
+  /* build 62 (61.11): the row ASKS first. A tap outside the box closes it with the list where it was; PLAY goes */
+  const list = await page.evaluate(() => { const l = document.getElementById('key-list'); l.scrollTop = 30; return l.scrollTop; });
+  await page.evaluate(() => document.querySelector('#key-list .krow').click()); await sleep(250);
+  const ask = await page.evaluate(async () => { const C = (await import('./config/copy.js')).ASK_PLAY, h = document.getElementById('askplay');
+    return { on: !!h && !h.hidden, title: h && h.querySelector('h3').textContent, line: h && h.querySelector('p').textContent, t: C.target.split(' ')[0], b: C.best.split(' ')[0] }; });
+  await page.evaluate(() => document.getElementById('askplay').click()); await sleep(250);
+  const shut = await page.evaluate(() => ({ hidden: document.getElementById('askplay').hidden, screen: document.querySelector('.screen.on')?.id, top: document.getElementById('key-list').scrollTop }));
+  (ask.on && /^Play Quick Tap · .+ · .+\?$/.test(ask.title) && ask.line.startsWith(ask.t + ' ') && ask.line.includes(' · ' + ask.b + ' ') && shut.hidden && shut.screen === 's-key' && shut.top === list)
+    ? ok(`61.11 a Keys row asks "${ask.title}" with "${ask.line}" and one Play; a tap outside closes it and the list is still where it was`)
+    : bad('61.11 the Play-this box on the Keys screen', JSON.stringify({ ask, shut, list }));
+  await page.evaluate(() => document.querySelector('#key-list .krow').click()); await sleep(250);
+  await page.evaluate(() => document.querySelector('#askplay [data-act="askp-play"]').click()); await sleep(900);
   const pin = await page.evaluate(() => ({ game: document.getElementById('game').classList.contains('on'),
     on: document.getElementById('goal').classList.contains('on'), goal: document.getElementById('goal').textContent.replace(/\s+/g, ' ').trim() }));
   const num = (want || '').match(/[\d.]+/);
