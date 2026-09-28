@@ -13,7 +13,7 @@ import { emit, on } from "../../core/events.js";
 import { VS, sel } from "../../core/state.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, SHARED2, isStreak, lenName, versusOf } from "../../games/registry.js";
-import { Scores, achById, got, isOpen, lenLock, lenOpen, lensOf, markSeen, newMark, tierOf, unlockHtml, unlockToast, verdict } from "../../progress.js";
+import { Scores, achById, achToast, got, isOpen, lenLock, lenOpen, lensOf, markSeen, newMark, tierOf, unlockHtml, unlockToast, verdict } from "../../progress.js";
 import { R, start } from "../../run/run.js";
 import { Snd } from "../../audio.js";
 import { define, lock } from "../actions.js";
@@ -127,7 +127,7 @@ on('run:finish',({run,isBest,two,fresh,ach,adv})=>{ const g=GC(run.g,run.d,run.s
        unlock sound, which is untouched) — the sound its tile lands with on the map, so a new game is introduced by its own voice the moment it opens */
     const gameOf=k=>{ const g=String(k).split(':')[0]; return GAMES[g]&&unlockToast(k)===T(TOAST.unlockGame,{name:GAMES[g].name})?g:''; };
     const msgs=(fresh||[]).map(u=>[unlockToast(u.key),'','ok',false,u.key,gameOf(u.key)])
-      .concat((ach||[]).map(a=>[T(TOAST.achievement,{name:a.name})+(a.unlocks?' · '+unlockHtml(a):''),a.id,'']));
+      .concat((ach||[]).map(a=>[achToast(a),a.id,'']));
     /* the tier's sound plays HERE, not at the finish: Snd.end() already owns the moment the run stops, and the ad break
        can stand between the two. A run that earned something pushes its toasts back by the length of the sound, so the
        verdict and an unlock never land on top of each other — the unlock is the bigger sound and it gets clear air. */
@@ -177,5 +177,5 @@ define({
     if(key==='vs'){ sel.vs=v==='f'?(sel.vs||1):v; } if(key==='vs2') sel.vs=v;
     sel.practice=0; renderOverChips(); renderOverTop(); return 'pick'; },
   // the full stop under the top 10: three taps earn Excuses
-  egg(){ eggTaps++; if(eggTaps>=3&&!got().egg){ got().egg=Date.now(); save(); const a=achById('egg'); toast(T(TOAST.achievement,{name:a.name})+' · '+unlockHtml(a),a.id,'',true); } },
+  egg(){ eggTaps++; if(eggTaps>=3&&!got().egg){ got().egg=Date.now(); save(); const a=achById('egg'); toast(achToast(a),a.id,'',true); } },
 });

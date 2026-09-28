@@ -32,7 +32,7 @@ export const TOAST = {
      below is the one spelling and every one of them composes off it. */
   pracLocked:'Locked · {name} · 8 notes in 7 keys', locked:'Locked · {name}',
   supAlready:'Already a supporter · thank you', supLater:'Purchases arrive in the app build · About → testing → supporter to try it',
-  achievement:'Achievement · {name}', copied:'Copied · paste it anywhere',
+  achievement:'Achievement · {name}', cleared:'{tier} · {where} cleared', copied:'Copied · paste it anywhere',
   mig11:'Build 11 · {n} old Estimate / Timing / Reaction / Count run{s} retired — the scoring changed',
   // v18 (B.2 / B.4): Stopwatch · Set became a total and Hidden became milliseconds, so records in the old units go
   mig31:'Build 31 · {n} old Timing run{s} retired — Stopwatch · Set is a total now and Hidden is in milliseconds',

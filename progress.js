@@ -12,7 +12,8 @@ import { BG_NAME, ITEM_WORD, PROGRESS, TOAST, UNLOCK_WORD, VERDICT } from "./con
 import { VERDICTS, VERDICT_FAIL_TIER, VERDICT_TIERS } from "./config/verdicts.js";
 import { MODE_NAME, STREAK } from "./config/games.js";
 import { LEN_LIVE, LEN_RULES, UNLOCKS as UNLOCK_ROWS } from "./config/unlocks.js";
-import { T } from "./core.js";
+import { T, esc } from "./core.js";
+import { KEYS } from "./config/keys.js";
 import { CHAL } from "./core/platform.js";
 import { prefs, save, store, trimRuns } from "./core/store.js";
 import { GAMES, GC, lenName } from "./games/registry.js";
@@ -202,6 +203,18 @@ function unlockArt(k,v){ if(k==='wheel'||v==='wheel') return '<i class="rwsw whe
   return ''; }
 // what a row unlocks, as words plus the thing itself
 function unlockHtml(a){ if(!a.unlocks) return ''; const [k,v]=a.unlocks; return unlockWord(a)+unlockArt(k,v); }
+/* build 62 (61.12): WHAT AN ACHIEVEMENT IS CALLED WHERE IT IS SHOWN. A score-target row on a key — one clearance bar (`combo`) that pays out
+   nothing — has no name on screen any more: it IS the mode and length it is played on ("Two · Sprint — 13 hits or more"), and its toast is
+   "Pro · Two Sprint cleared". Its name stays in config/ (KEY_ROSTER) so it can come back. An achievement that unlocks something keeps its
+   name: Aiden, "they're unique and special". */
+const nameless=a=>!!a&&!!a.combo&&!a.unlocks;
+function achWhere(a,sep){ const g=a&&a.g!=='all'?a.g:null; if(!g||!GAMES[g]) return ''; const bits=[];
+  if(a.at&&a.at.d&&MODE_NAME[a.at.d]) bits.push(MODE_NAME[a.at.d]);
+  if(a.at&&a.at.s!==undefined) bits.push(lenName(g,a.at.s,(a.at&&a.at.d)||GAMES[g].modes[0]));
+  return bits.join(sep); }
+function achToast(a){ if(nameless(a)){ const k=KEYS.find(x=>x.id===a.kt);
+    return T(TOAST.cleared,{tier:esc(k?k.name.replace(/ key$/i,''):''),where:esc(achWhere(a,' '))}); }
+  return T(TOAST.achievement,{name:`<b class="aname">${esc(a.name)}</b>`})+(a.unlocks?' · '+unlockHtml(a):''); }
 // the sound an earned row plays when it is tapped: the pack or the scale it unlocks, nothing else
 const unlockHear=a=>{ if(!a||!a.unlocks) return null; const [k,v]=a.unlocks; return (k==='snd'||k==='scale')&&v!=='wheel'?{k,v}:null; };
 
@@ -275,4 +288,4 @@ function devModesAll(on){ const u=unlocked(), dk=Object.assign({},prefs.devKeys)
   prefs.devKeys=dk; save(); return devModesOn(); }
 function devModesReset(){ const u=unlocked(); for(const k of modeRows()) delete u[k]; if(prefs.devKeys) delete prefs.devKeys.games; save(); }
 
-export { ACH, Scores, UNLOCKS, achAll, achById, achTab, bankLen, chalRun, checkAch, checkUnlocks, devModesAll, devModesOn, devModesReset, freeMode, gameDone, gameOpen, gamesDone, goalFor, got, isNew, isOpen, lenLock, lenNeed, lenNextLive, lenNextOf, lenOpen, lensOf, markSeen, modeCount, needFor, newMark, newPlay, nextAch, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, tierMin, tierOf, unlockArt, unlockHear, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict, verdictKey };
+export { ACH, Scores, UNLOCKS, achAll, achById, achTab, achToast, achWhere, nameless, bankLen, chalRun, checkAch, checkUnlocks, devModesAll, devModesOn, devModesReset, freeMode, gameDone, gameOpen, gamesDone, goalFor, got, isNew, isOpen, lenLock, lenNeed, lenNextLive, lenNextOf, lenOpen, lensOf, markSeen, modeCount, needFor, newMark, newPlay, nextAch, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, tierMin, tierOf, unlockArt, unlockHear, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict, verdictKey };

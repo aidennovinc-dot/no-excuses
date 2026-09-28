@@ -160,4 +160,15 @@ export async function run() {
       ? ok(`61.10 each Pro chest row's bar is its best ÷ its target: ${got10.map(x => x.k.replace('quick-tap:', '') + ' ' + x.bar).join(', ')} — no longer one capped ~88% for every row`)
       : bad('61.10 the row bars', JSON.stringify(got10));
   }
+  /* 61.12: a score-target row has no name — "Two · Sprint — 13 hits or more" — and no second line; the name is still in config (KEY_ROSTER);
+     a nameless row's toast is "Pro · Two Sprint cleared"; an achievement that unlocks something keeps its name */
+  {
+    const pro = await tab62('c-pro'), t12 = await page.evaluate(async () => { const P = await import('./progress.js'), K = await import('./progress/key.js');
+      const rows = K.keyAch().filter(a => a.kt === 'pro' && a.combo), a = rows.find(x => x.combo === 'quick-tap:two:5'), named = P.achAll().find(x => x.unlocks);
+      return { id: a.id, name: a.name, toast: P.achToast(a), named: named.name, namedToast: P.achToast(named) }; });
+    const r12 = pro.rows.find(r => r.id === t12.id);
+    (r12 && /^Two · Sprint — \d+ hits or more$/.test(r12.title) && !r12.title.includes(t12.name) && r12.lines.filter(Boolean).length === 1 && t12.name && t12.toast === 'Pro · Two Sprint cleared' && t12.namedToast.includes(t12.named))
+      ? ok(`61.12 a score-target row reads "${r12.title}" with no name ("${t12.name}" is still in config) and toasts "${t12.toast}"; "${t12.named}" keeps its name`)
+      : bad('61.12 nameless score-target rows', JSON.stringify({ r12, t12 }));
+  }
 }

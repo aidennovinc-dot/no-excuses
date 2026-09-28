@@ -1546,6 +1546,13 @@ scene('61.11', async (page, browser) => {
   await frame(page, browser, '61.11-play-this', 'A Pro chest row tapped: "Play Quick Tap · Two · Sprint?", target and best, one Play; the list waits underneath');
 });
 
+scene('61.12', async (page, browser) => {
+  await load(page, CHESTS_OPEN, { runs: [{ t: Date.now() - 9000, g: 'quick-tap', d: 'two', s: 5, hits: 11, misses: 0, v: 4 }] });
+  await show(page, 's-prog', { tab: 'c-pro' }); await sleep(600);
+  await page.evaluate(() => { document.getElementById('chest-list').scrollTop = 0; });
+  await frame(page, browser, '61.12-nameless-rows', 'Pro chest: score-target rows read "Two · Sprint — 13 hits or more", no name, no second line');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

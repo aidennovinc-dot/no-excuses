@@ -7,7 +7,7 @@ import { $, T, esc } from "../../core.js";
 import { on } from "../../core/events.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, lenName } from "../../games/registry.js";
-import { ACH, Scores, got, lensOf, tierOf, unlockHtml } from "../../progress.js";
+import { ACH, Scores, achToast, got, lensOf, tierOf, unlockHtml } from "../../progress.js";
 import { RADAR_PAST, radarOf, radarRungs } from "../../progress/key.js";
 import { define } from "../actions.js";
 import { chips } from "../chips.js";
@@ -62,5 +62,5 @@ on('store:reset',()=>{ curT=null; });
 // the name: typed on the board, kept upper-case, ten characters. Signed in is earned the moment a name goes in (v8)
 $('#pname').value=prefs.name;
 $('#pname').addEventListener('input',e=>{ prefs.name=e.target.value.trim().toUpperCase().slice(0,10); save();
-  if(prefs.name&&!got().named){ got().named=Date.now(); save(); const a=ACH.find(x=>x.id==='named'); toast(T(TOAST.achievement,{name:a.name})+' · '+unlockHtml(a),a.id,'',true); } });
+  if(prefs.name&&!got().named){ got().named=Date.now(); save(); const a=ACH.find(x=>x.id==='named'); toast(achToast(a),a.id,'',true); } });
 $('#pname').addEventListener('click',e=>e.stopPropagation());

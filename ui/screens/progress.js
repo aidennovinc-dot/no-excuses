@@ -33,12 +33,12 @@ import { ACH_SCREEN, GRID, ITEM_WORD, PROGRESS_SCREEN, TIERS, UNLOCKS_SCREEN } f
 import { CHESTS } from "../../config/chests.js";
 import { KEYS } from "../../config/keys.js";
 import { MODE_NAME } from "../../config/games.js";
-import { $, $$, T } from "../../core.js";
+import { $, $$, T, esc } from "../../core.js";
 import { emit } from "../../core/events.js";
 import { sel } from "../../core/state.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, lenName } from "../../games/registry.js";
-import { Scores, UNLOCKS, achAll, achById, achTab, gameOpen, got, isOpen, lenLock, lenOpen, markSeen, newMark, setPendingAim, unlockHear, unlockHtml, unlockName, unlocked } from "../../progress.js";
+import { Scores, UNLOCKS, achAll, achById, achTab, achWhere, gameOpen, got, isOpen, lenLock, lenOpen, markSeen, nameless, newMark, setPendingAim, unlockHear, unlockHtml, unlockName, unlocked } from "../../progress.js";
 import { COMBOS, barOf, chestOpen, keyAch, keyState, tierOpen } from "../../progress/key.js";
 import { askPlay } from "../askplay.js";
 import { Snd } from "../../audio.js";
@@ -138,6 +138,8 @@ function achRow(a,tab,{g,all,fsGame,fresh}){
   const nw=isDone?newMark('ach:'+a.id,fresh):'';
   const cls=`${isDone?'done':'lock'}${nw} ${jump?'jump':''}`, name=secret?ACH_SCREEN.hidden:a.name;
   // v23 (L.4d): what it unlocks first, white until earned and green once (L.2); the achievement and its criterion under it
+  // build 62 (61.12): a score-target row is its mode and length and what it asks — no name, no second line, no → line
+  if(nameless(a)&&tab!=='cul') return `<button data-act="ach" class="a nameless ${cls}" data-ach="${a.id}" id="${tab}-${a.id}"><span>${isDone?'✓ ':''}${esc(achWhere(a,' · '))} — ${line}</span><em>${isDone?ACH_SCREEN.done:''}</em>${bar}</button>`;
   if(tab==='cul') return `<button data-act="ach" class="a cu ${cls}" data-ach="${a.id}" id="cul-${a.id}"><span class="rw">${isDone?'✓ ':''}${unlockHtml(a)}</span><em>${isDone?ACH_SCREEN.done:''}</em><small>${gname}${name} · ${line}</small>${where}${bar}</button>`;
   return `<button data-act="ach" class="a ${cls}" data-ach="${a.id}" id="${tab}-${a.id}"><span>${gname}${isDone?'✓ ':''}${name}</span><em>${isDone?ACH_SCREEN.done:secret?ACH_SCREEN.secret:''}</em><small>${line}</small>${where}${bar}</button>`;
 }

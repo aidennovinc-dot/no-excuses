@@ -21,7 +21,7 @@ import { look, prefs, save, store } from "../core/store.js";
 import { makeTimers, tapTime } from "../core/timers.js";
 import * as hud from "../games/_shared/hud.js";
 import { ENGINES, GAMES, GC, SHARED2, VERSUS, lenName, versusOf } from "../games/registry.js";
-import { Scores, UNLOCKS, bankLen, chalRun, checkAch, checkUnlocks, goalFor, isOpen, lenNextLive, lenNextOf, lenOpen, lensOf, pendingAim, pendingGoal, setPendingAim, setPendingGoal, unlockHtml, unlockName, unlockToast, unlocked } from "../progress.js";
+import { Scores, UNLOCKS, achToast, bankLen, chalRun, checkAch, checkUnlocks, goalFor, isOpen, lenNextLive, lenNextOf, lenOpen, lensOf, pendingAim, pendingGoal, setPendingAim, setPendingGoal, unlockHtml, unlockName, unlockToast, unlocked } from "../progress.js";
 import { checkKey, checkKeyAch, keyGoal } from "../progress/key.js";
 import { scoreTxt } from "../ui/format.js";
 import { game as showGame, show } from "../ui/router.js";
@@ -360,7 +360,7 @@ function liveCheck(part){ if(!R.on) return;
      state is derived from run history, and a quit run is never submitted, so a player who was told "Unlock: Streak" and
      then quit found it locked. bankLen writes the three-part key the toast names; lenLock reads it back. */
   if(R.lenNext&&!R.lenDone&&!run.chal&&!run.practice&&R.lenNext.test(run)){ R.lenDone=true; R.fresh.push(R.lenNext.key); bankLen(R.lenNext.key); toast(unlockToast(R.lenNext.key),'','ok'); }
-  for(const a of checkAch(run,true)) toast(T(TOAST.achievement,{name:a.name})+(a.unlocks?' · '+unlockHtml(a):''),a.id,'',true);
+  for(const a of checkAch(run,true)) toast(achToast(a),a.id,'',true);
   /* v17 (B.5): the goal line no longer raises its own toast. It used to be the ONLY place a length unlock announced, and
      it announced two different wrong things: a duplicate whenever the pass above had already said it, and — on a length
      whose rule is the default "finish one run of the length before" — an immediate "Unlock: Marathon" on the first live
