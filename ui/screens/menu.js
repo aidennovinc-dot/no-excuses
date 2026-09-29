@@ -23,6 +23,7 @@ import { capture, define } from "../actions.js";
 import { register, show } from "../router.js";
 import { toast } from "../toast.js";
 import { tutDone } from "../tutorial.js";
+import { menuKey, menuOpen } from "../../progress/menu.js";
 import { Snd } from "../../audio.js";
 
 // first experience (v10): until one run is on the record only Play is live. v11: the rest are crossed out, and the strike wipes off the moment they open
@@ -30,11 +31,12 @@ import { Snd } from "../../audio.js";
    the key screen use — but this rule outranked it: Testing's chest switches open the Games chest without a run on the record, so the menu kept
    every row but Play crossed out while the map showed the chest opened and Keys and Customise had nothing locking them. Earned by play, a run is
    always on the record first, so the real path never met it; the Testing path always did. */
-/* build 64 (62.14): AND NOW THE WALKTHROUGH IS WHAT OPENS THEM. Scores, Progress and About stay locked until its last box ("Good luck!") banks
-   Off the Rails — the first run no longer does it. tutDone() (ui/tutorial.js) also counts a profile from before build 64 that played and never
-   met the walkthrough, so nobody already in the game is locked back out. Customise and Keys still wait for the Games chest. */
+/* build 64 (62.14): AND NOW THE WALKTHROUGH IS WHAT OPENS THEM. tutDone() (ui/tutorial.js) also counts a profile from before build 64 that played and
+   never met the walkthrough, so nobody already in the game is locked back out. Customise and Keys still wait for the Games chest.
+   build 65 (64.7): Scores, Progress and About left this rule — each opens at its own moment (progress/menu.js) — so `first` is now what keeps
+   the meter line, the Next card and Customise / Keys' own lines back until the walkthrough is behind the player. */
 const firstRun=()=>!tutDone()&&!prefs.allOpen&&!chestOpen('games');
-let menuWasFirst=firstRun(), nextWhere=null, storyOn=false;
+let menuWasFirst=firstRun(), nextWhere=null, storyOn=false, dimWas={};
 // v23 (L.11a): whether Customise was locked the last time the menu drew it, so the strike wipes off once, the first draw after the Games chest
 let cusWasLocked=!chestOpen('games');
 // v14 (1.3): the first menu a profile ever sees reveals its items one at a time; every open after that is instant
@@ -47,8 +49,12 @@ function renderMenu(){ const first=firstRun(); const opening=menuWasFirst&&!firs
   /* v24 (A.3, build 43): TESTING IS LIVE FROM THE FIRST LOAD. It sat under the first-run dimming with every other row, so Aiden had to play a
      Quick Tap run before he could reach it. A [data-dev] row is never dimmed and never un-struck; a native build has no such row at all
      (config/build.js TARGET, scripts/native.mjs) */
-  $$('#s-menu .item').forEach((b,i)=>{ const dev=b.dataset.dev!==undefined, x=first&&b.dataset.go!=='s-pick'&&!dev; b.classList.toggle('dim',x); b.classList.remove('unx'); b.style.removeProperty('--ud');
-    if(opening&&b.dataset.go!=='s-pick'&&!dev){ const d=i*90; b.style.setProperty('--ud',d+'ms'); b.classList.add('unx'); b.style.pointerEvents='none'; setTimeout(()=>{ b.classList.remove('unx'); b.style.removeProperty('--ud'); b.style.pointerEvents=''; },700+d); } });
+  /* build 65 (64.7): Scores, Progress and About each open at their own moment (progress/menu.js menuOpen); the first-run dimming still holds
+     Customise and Keys until the walkthrough is behind the player. An item that has just opened wipes its strike off, one after another */
+  let k=0;
+  $$('#s-menu .item').forEach((b,i)=>{ const dev=b.dataset.dev!==undefined, go=b.dataset.go, gov=!!menuKey(go), x=!dev&&go!=='s-pick'&&(gov?!menuOpen(go):first), was=dimWas[go];
+    b.classList.toggle('dim',x); b.classList.remove('unx'); b.style.removeProperty('--ud'); dimWas[go]=x;
+    if((gov?was===true&&!x:opening&&go!=='s-pick')&&!dev){ const d=(k++)*90; b.style.setProperty('--ud',d+'ms'); b.classList.add('unx'); b.style.pointerEvents='none'; setTimeout(()=>{ b.classList.remove('unx'); b.style.removeProperty('--ud'); b.style.pointerEvents=''; },700+d); } });
   renderCustomise(first); renderKeys(first);
   /* v26 (item 3, build 48): EVERY HOME MENU ITEM IS GREEN FROM THE MOMENT IT IS AVAILABLE UNTIL IT HAS BEEN OPENED ONCE. FEEDBACK-v20 (D.5) asked
      for it and only Customise and Keys ever had it. Available is: not dimmed by the first run, and for Keys and Customise not locked behind the
@@ -175,7 +181,7 @@ define({ nextup(){ if(nextWhere) goWhere(nextWhere); return 'click'; },
   custom(b){ if(!chestOpen('games')){ toast(TOAST.cusLocked,'','',true); return 'pick'; } show(b.dataset.go); return 'click'; },
   // v24 (A.1, build 43): the Keys row and the meter line. Locked, they say what opens them and stay put
   keys(){ if(!chestOpen('games')){ toast(TOAST.keysLocked,'','',true); return 'pick'; } show('s-key'); return 'click'; } });
-on('store:reset',()=>{ menuWasFirst=true; cusWasLocked=true; keysWasLocked=true; });
+on('store:reset',()=>{ menuWasFirst=true; cusWasLocked=true; keysWasLocked=true; dimWas={}; });
 /* v26 (item 3, build 48): AN ITEM IS OPENED WHEN ITS SCREEN IS OPENED FROM THIS MENU — the row itself, or the meter line under it, which opens
    Keys. A screen reached some other way (a run's key interlude, a chest ceremony, a Testing replay, Progress's key row) was not opened from its
    item, so the item stays green. The router announces a screen before it draws it, so the item is spent on the tap that opens it. */

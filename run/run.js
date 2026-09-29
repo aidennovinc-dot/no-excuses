@@ -26,6 +26,7 @@ import { checkKey, checkKeyAch, keyGoal } from "../progress/key.js";
 import { scoreTxt } from "../ui/format.js";
 import { game as showGame, show } from "../ui/router.js";
 import { applyPrefs } from "../ui/theme.js";
+import { menuEarn } from "../progress/menu.js";
 import { toast, toastTake } from "../ui/toast.js";
 
 /* ---------- run state. `id` steps on every start and abort, so anything a dead run left behind can tell it is dead ---------- */
@@ -325,6 +326,8 @@ function finish(res){
      the result, so Dash "turned green with no toast". Mid-run toasts still up or queued are taken off, so none is said twice in a row. */
   const live=two?[]:R.fresh.filter(k=>typeof k==='string').map(key=>({key})); toastTake(R.fresh);
   const fresh=live.concat(two?[]:checkUnlocks(run)).concat(freshLen.filter(f=>!R.fresh.includes(f.key))), ach=two?[]:checkAch(run).concat(checkKeyAch(run));
+  // build 65 (64.7): and the home menu item this run's game opens — Progress with the first Estimate run, Scores with the first Reaction run
+  if(!two&&!run.demo&&!run.practice&&!run.chal) fresh.push(...menuEarn(run));
   // the result screen takes it from here: the header, the ad break, the unlock and achievement toasts (ui/screens/result.js)
   emit('run:finish',{run,isBest,two,fresh,ach,adv});
 }

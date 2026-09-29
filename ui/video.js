@@ -28,6 +28,7 @@ import { MSG } from "../config/copy.js";
 import { PLAYER } from "../config/messages.js";
 import { Snd } from "../audio.js";
 import { $, esc } from "../core.js";
+import { emit } from "../core/events.js";
 import { prefs, save } from "../core/store.js";
 import { define } from "./actions.js";
 import { msgCol } from "./chest.js";
@@ -140,9 +141,11 @@ function closeVideo() { if (!host || host.hidden || closing) return false;
   for (const s of PLAYER.off.steps) if (s.name === 'dot') at(s.at, () => Snd.videoFx('off'));
   // v29 (item 10, build 55): the source is RELEASED before the frame is emptied. innerHTML='' alone leaves the iOS decoder alive until GC,
   // so eight opens in a row held eight decoders. pause / removeAttribute('src') / load() is the documented way to let one go.
-  at(PLAYER.off.ms, () => { host.classList.remove('voff', 'vfail'); host.hidden = true; delete host.dataset.msg;
+  at(PLAYER.off.ms, () => { host.classList.remove('voff', 'vfail'); host.hidden = true;
     if (vid) { try { vid.pause(); vid.removeAttribute('src'); vid.load(); } catch (e) { } }
-    host.querySelector('.vpic').innerHTML = ''; host.querySelector('.vcc').textContent = ''; vid = null; closing = 0; });
+    const was = host.dataset.msg; delete host.dataset.msg; host.querySelector('.vpic').innerHTML = ''; host.querySelector('.vcc').textContent = ''; vid = null; closing = 0;
+    // build 65 (64.7 / 64.14): the clip is over and the player gone — ended or tapped away, the same event. The first-time tutorials start here
+    emit('video:closed', { id: was || '' }); });
   return true; }
 
 const videoOn = () => !!(host && !host.hidden);

@@ -24,6 +24,7 @@ import { Snd } from "../audio.js";
 import { MESSAGES, PLAYER } from "../config/messages.js";
 import { WELCOME } from "../config/copy.js";
 import { $, esc } from "../core.js";
+import { emit } from "../core/events.js";
 import { prefs, save } from "../core/store.js";
 import { msgOpen, msgTitle } from "../progress/key.js";
 import { define } from "./actions.js";
@@ -88,7 +89,8 @@ define({
   // a tap on the card itself does nothing: the two buttons are the only way out, so neither is missed by a stray tap
   wcard() { return 'pick'; },
   wplay() { const m = slotOf(); closeWelcome(); if (m) playVideo(m); return 'click'; },
-  wlater() { closeWelcome(); return 'click'; },
+  // build 65 (64.7): put off, the clip still opens About, so the player can watch it there
+  wlater() { closeWelcome(); emit('welcome:later', {}); return 'click'; },
 });
 
 export { closeWelcome, welcomeCheck };

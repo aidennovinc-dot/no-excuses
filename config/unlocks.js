@@ -88,3 +88,11 @@ export const LEN_LIVE = {
   'hold:cut':       [0,1],
   'reaction:flash': [0,0],
 };
+/* build 65 (64.7): WHEN THE HOME MENU'S SCORES, PROGRESS AND ABOUT OPEN — each at its own moment, replacing build 64's "all three on the
+   walkthrough's last box" (62.14). `game` opens it with that game's first real run; `video` with that About message finishing (the Welcome clip,
+   `intro` in config/messages.js). `name` is the item as the menu spells it, for its toast. progress/menu.js reads this. */
+export const MENU_UNLOCK = {
+  about: { go:'s-about', name:'About', video:'intro' },
+  prog:  { go:'s-prog',  name:'Progress', game:'hold' },
+  board: { go:'s-board', name:'Scores', game:'reaction' },
+};

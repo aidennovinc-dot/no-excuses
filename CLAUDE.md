@@ -92,7 +92,7 @@ having written nothing. Gate checks read bars and names from `config/`, never a 
 - **Testing: a switch and a reset per chest, plus "set meter to N%", and each leaves the game where PLAY would** (G.8 / L.8f, S5): `devReach` / `devOpen` / `devBack` / `devMeterTo`, `devModesAll`; no snapshot, no override.
 - **Testing is on the menu from the first load; `TARGET` in `config/build.js` strips it from the native build** (`npm run native`, `[data-dev]` cut, A.3, S5).
 - **Customise and Keys are LOCKED until the Games chest opens** (L.11a, v24 A.1): crossed out, defaults apply meanwhile (`look()` / `lookCol()` / `opened()`).
-- **Scores, Progress and About are locked until the walkthrough's last box** banks Off the Rails (`tutDone()` in `ui/tutorial.js`, 62.14); a pre-build-64 profile that played counts as done.
+- **Scores, Progress and About each open at their own moment** (64.7, `MENU_UNLOCK` in `config/unlocks.js`, `progress/menu.js`): About when the Welcome clip finishes (then the main menu), Progress with the first Estimate run, Scores with the first Reaction run; each toasts; `prefs.menuUnl`; a pre-build-65 profile with its walkthrough behind it keeps all three; Off the Rails opens nothing.
 - **Every home menu item is green from available until opened once** (`prefs.menuOpened`, D.5); Fresh game clears it; Testing never green.
 - **The front % counts up when it has risen** (`prefs.meterSeen`, `core/count.js`, one of seven whooshes, D.4 / L.8e).
 

@@ -1583,3 +1583,11 @@ rank sits in front of the score in ink. The Scores screen's table is untouched.
 **64.6 — Restart you can see; the clock under the mode label.** The countdown was drawn over RESTART, top right. Restart is now an outlined pill
 (`#restart::after`, a 1.5px line the hold ring draws over) of the ✕'s height and row, still in the corner where no pad tap reaches it; the HUD is a
 column, so the clock sits under "Two · Sprint" on the left, clear of it. The hold behaviour is unchanged.
+
+**64.7 — Scores, Progress and About open at their own moments (REPLACING 62.14).** `MENU_UNLOCK` in `config/unlocks.js` names them: About when
+the Welcome clip (`intro`) finishes — ended or closed, `video:closed` from `ui/video.js` — and the player is taken to the main menu; Progress with the
+first real Estimate run; Scores with the first real Reaction run (`menuEarn()` in `progress/menu.js`, called from the finish with every other earn).
+Each toasts "Unlock: <item>" in the result's queue (About on its own) and arms its tutorial. `prefs.menuUnl` holds them — progress, cleared by Fresh
+game; a profile saved before build 65 with its walkthrough behind it (62.14's `tutDone()`) keeps all three; open-everything and the Games chest open
+all three. Cowork's calls: Off the Rails stays, named, gold, feeding no key, and opens nothing; a Welcome put off with Later still opens About
+(the clip waits there), its tutorial showing the next time the player is on the menu.

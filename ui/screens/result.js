@@ -135,7 +135,8 @@ on('run:finish',({run,isBest,two,fresh,ach,adv})=>{ const g=GC(run.g,run.d,run.s
     /* v26 (§B1, build 49): a toast that unlocks a whole GAME is followed by that game's own map sound (config/audio.js MAP_FX, MAP_ON_UNLOCK_MS after the
        unlock sound, which is untouched) — the sound its tile lands with on the map, so a new game is introduced by its own voice the moment it opens */
     const gameOf=k=>{ const g=String(k).split(':')[0]; return GAMES[g]&&unlockToast(k)===T(TOAST.unlockGame,{name:GAMES[g].name})?g:''; };
-    const msgs=(fresh||[]).map(u=>[unlockToast(u.key),'','ok',false,u.key,gameOf(u.key)])
+    // build 65 (64.7): a home menu item (`menu`) toasts by its own name and leads nowhere — the menu is where it is
+    const msgs=(fresh||[]).map(u=>u.menu?[T(TOAST.unlock,{name:u.name}),'','ok',false,'','']:[unlockToast(u.key),'','ok',false,u.key,gameOf(u.key)])
       .concat((ach||[]).map(a=>[achToast(a),a.id,'']));
     /* the tier's sound plays HERE, not at the finish: Snd.end() already owns the moment the run stops, and the ad break
        can stand between the two. A run that earned something pushes its toasts back by the length of the sound, so the

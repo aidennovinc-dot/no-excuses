@@ -20,9 +20,10 @@
    preference: Fresh game keeps it, so a player gets the walkthrough once.
    EVERY OTHER TUTORIAL is in `prefs.tuts`: `{ id: n }` armed and at step n, `{ id: 'done' }` finished. Also a preference. Testing's "reset
    all first-time tutorials" empties it, puts the walkthrough back to its start, and re-arms every tutorial whose thing is already open. */
-import { TUTORIAL } from "../config/copy.js";
+import { TOAST, TUTORIAL } from "../config/copy.js";
 import { MODE_NAME } from "../config/games.js";
-import { LEN_RULES } from "../config/unlocks.js";
+import { LEN_RULES, MENU_UNLOCK } from "../config/unlocks.js";
+import { bankMenu } from "../progress/menu.js";
 import { $, T } from "../core.js";
 import { emit, on } from "../core/events.js";
 import { CHAL } from "../core/platform.js";
@@ -160,6 +161,10 @@ function place(el,text,o={}){ const h=build(), pad=6, ring=h.querySelector('.tri
   if(!el) return;
   if(!ring.hidden) clear(el,top,top+bh);
   const r=el.getBoundingClientRect();
+  /* build 65 (64.4): a screen that cannot scroll (the result, which fits one screen now) cannot move its target out from under the box, so for that
+     box alone the BOX moves: just below the target if it fits above the home indicator, else just above it. Never over what it rings */
+  if(!ring.hidden&&r.bottom>top-pad&&r.top<top+bh+pad){ const below=Math.round(r.bottom+pad+16), above=Math.round(r.top-pad-16-bh);
+    box.style.top=(below+bh<=innerHeight-s.bottom-8?below:Math.max(s.top+8,above))+'px'; }
   Object.assign(ring.style,{ left:(r.left-pad)+'px', top:(r.top-pad)+'px', width:(r.width+pad*2)+'px', height:(r.height+pad*2)+'px' });
   const tag=ring.querySelector('.ttag'); tag.textContent=o.tag||''; tag.hidden=!o.tag;
   // 62.11: an arrow just under and right of BACK, pointing up at it
@@ -227,6 +232,14 @@ on('run:abort',()=>{ firstRun=false; });
 on('run:finish',({run:r,two,fresh})=>{ if(!firstRun||two||r.demo||r.practice||r.chal||r.gaunt) return; firstRun=false;
   prefs.tut=1; prefs.tutRun=Object.assign({},r,{ got:(fresh||[]).map(u=>u.key).filter(Boolean) }); save(); overAt=0; overList=null; run(); });
 on('store:reset',()=>{ firstAt=0; if(prefs.tut===2) bankRails(false); });
+/* build 65 (64.7): THE MENU'S OWN UNLOCKS ARM THEIR TUTORIALS. Progress and Scores open with a run (run/run.js, progress/menu.js) and come down on
+   its result's list with the rest of what it opened; About opens when the Welcome clip finishes — ended or closed, the same moment — and the
+   player is taken straight to the main menu, where its tutorial waits (64.8). Put off with Later, About still opens, because the clip is waiting
+   there, and its tutorial shows the next time the player is on the menu (Cowork's call: a Welcome put off must not lock About for good). */
+on('run:finish',({fresh,two})=>{ if(two) return; for(const u of fresh||[]) if(u.menu) arm(u.menu); });
+function openAbout(go){ if(!bankMenu('about')) return; toast(T(TOAST.unlock,{name:MENU_UNLOCK.about.name}),'','ok'); arm('about'); if(go) show('s-menu'); }
+on('video:closed',({id})=>{ if(id===MENU_UNLOCK.about.video) openAbout(true); });
+on('welcome:later',()=>openAbout(false));
 // an app reopened between the first result and its last box: that run's result, as it was, and the boxes from the first
 function resumeOver(){ const r=prefs.tutRun; if(!results()||!r||!GAMES[r.g]) return;
   sel.game=r.g; sel.diff=r.d; sel.secs=r.s; sel.vs=0; sel.practice=0; overAt=0; overList=null;

@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { sleep, ok, bad, read, at, sawStory, page, click, stepQuickTap } from '../lib/gate.mjs';
+import { sleep, ok, bad, read, at, sawStory, page, click, stepQuickTap, driveToResult, SEEN_INTRO } from '../lib/gate.mjs';
 
 export const SECTION = ["locked decisions (fresh profile)"];
 
@@ -156,7 +156,8 @@ export async function run() {
     const still = await state();
     const rings = await page.evaluate(() => ({ again: document.getElementById('again').getBoundingClientRect().width, back: document.getElementById('over-back').getBoundingClientRect() }));
     (over.every((b, i) => b && b.text === OW[i]) && over[1].drawn && Math.abs(over[1].ring[0] - rings.again - 12) <= 2 && !over[2].drawn && over[3].drawn && Math.abs(over[3].ring[0] - dashW - 12) <= 2 && over[4].arrow && !over[4].drawn && !over[0].drawn && still.screen === 's-over' && !still.game
-      && over.every(b => Math.abs(b.centre[1]) <= 2 && !b.covers) && !/\{/.test(OW.join('')))
+      // AMENDED at build 65 (64.4): the result no longer scrolls, so a box whose ring sits at the centre (TRY AGAIN) moves clear of it instead
+      && over.every(b => (Math.abs(b.centre[1]) <= 2 || b.drawn) && !b.covers) && !/\{/.test(OW.join('')))
       ? ok(`62.11 / 64.2 the first result's boxes in order, centred: TRY AGAIN ringed, "${OW[2]}", then "${OW[3]}" with Dash ringed, an arrow at BACK — and tapping either does nothing until the last box`)
       : bad('62.11 the result boxes', JSON.stringify({ want: OW, over: over.map(b => b && { t: b.text, drawn: b.drawn, ring: b.ring, arrow: b.arrow, c: b.centre, covers: b.covers }), still, rings }));
     // 62.14: "Good luck!" is answered — Off the Rails banked, the walkthrough gone, the result screen live again (and the second run can be quit)
@@ -171,9 +172,11 @@ export async function run() {
     const row = await page.evaluate(async () => { const a = (await import('./config/achievements.js')).ACH.find(x => x.id === 'rails'), b = document.getElementById('ach-rails');
       return { name: a && a.name, gives: a && a.gives, key: !!(a && (a.kt || a.combo)), text: b ? b.textContent : '', gold: b && b.querySelector('.aname') ? getComputedStyle(b.querySelector('.aname')).color : '', done: b && b.classList.contains('done') }; });
     const gold = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--gold').trim());
-    (done.tut === 2 && !done.tutRun && done.rails && done.hidden && second.game && second.exit !== 'none' && second.restart !== 'none' && !menu['s-board'] && !menu['s-prog'] && !menu['s-about']
-      && row.done && row.text.includes(row.name) && row.text.includes('Unlocks ' + row.gives) && !row.key && row.gold)
-      ? ok(`62.14 "Good luck!" banks ${row.name} (gold, "Unlocks ${row.gives}", no key) and the walkthrough ends; Scores, Progress and About open on the menu; the second run has Exit and Restart back`)
+    /* AMENDED at build 65 (64.7, replacing 62.14's "the last box opens Scores, Progress and About"): Off the Rails is still banked, gold, feeding no
+       key — and now opens nothing, so the three stay crossed out until their own moments (checked below) */
+    (done.tut === 2 && !done.tutRun && done.rails && done.hidden && second.game && second.exit !== 'none' && second.restart !== 'none' && menu['s-board'] && menu['s-prog'] && menu['s-about']
+      && row.done && row.text.includes(row.name) && !row.gives && !/Unlocks/.test(row.text) && !row.key && row.gold)
+      ? ok(`62.14 / 64.7 "Good luck!" banks ${row.name} (gold, no key, unlocks nothing) and the walkthrough ends; Scores, Progress and About stay crossed out; the second run has Exit and Restart back`)
       : bad('62.14 the end of the walkthrough', JSON.stringify({ done, second, menu, row, gold }));
     /* 64.3: THE WALKTHROUGH FINISHES ONCE AND NEVER COMES BACK — on the map (where v0.64 restarted it behind a pick sheet with no box), on the
        result, or after a reload */
@@ -194,9 +197,9 @@ export async function run() {
        played and never met the walkthrough keeps them open */
     const menuOf = async prefs => { await page.evaluate(p => { localStorage.setItem('ne', JSON.stringify({ v: 7, prefs: Object.assign({ story: 1, gridSeen: 1, menuSeen: 1, snd: 'off' }, p), runs: [], ach: {}, unlock: {}, intro: {}, seen: {}, bars: {} })); }, prefs);
       await page.reload({ waitUntil: 'networkidle0' }); await sleep(300); return page.evaluate(() => ['s-board', 's-prog', 's-about'].map(g => document.querySelector(`#s-menu .item[data-go="${g}"]`).classList.contains('dim'))); };
-    const fresh = await menuOf({}), legacy = await menuOf({ played: 1 });
-    (fresh.every(Boolean) && legacy.every(x => !x))
-      ? ok('62.14 before the walkthrough is finished Scores, Progress and About are crossed out; a profile that played before build 64 keeps them open')
+    const fresh = await menuOf({}), legacy = await menuOf({ played: 1 }), legacy64 = await menuOf({ tut: 2, played: 1 }), since = await menuOf({ tut: 2, played: 1, menuUnl: {} });
+    (fresh.every(Boolean) && legacy.every(x => !x) && legacy64.every(x => !x) && since.every(Boolean))
+      ? ok('62.14 / 64.7 a new profile has Scores, Progress and About crossed out; one saved before build 65 with its walkthrough behind it (or from before the walkthrough) keeps all three; one saved since keeps only what it opened')
       : bad('62.14 what locks the three items', JSON.stringify({ fresh, legacy }));
     // build 64 (62.5): Replay lives in the Testing menu and nowhere in Customise; it lands on the games menu at box one
     const where = await page.evaluate(() => ({ testing: !!document.querySelector('#s-testing #tut-replay'), custom: !!document.querySelector('#s-custom [data-act="tut-replay"]') }));
@@ -224,6 +227,26 @@ export async function run() {
       (m[2] && m[2].text === fillO(C.over.miss) && m[2].drawn && Math.abs(m[2].ring[0] - againW - 12) <= 2 && !/\{/.test(m[2].text))
         ? ok(`64.2 a first run that did not open Dash: the third box is "${m[2].text}", TRY AGAIN ringed`)
         : bad('64.2 the no-Dash branch', JSON.stringify(m.map(b => b && { t: b.text, drawn: b.drawn, ring: b.ring })));
+    }
+    /* build 65 (64.7): EACH OPENS AT ITS OWN MOMENT — Progress with the first Estimate run, Scores with the first Reaction run, About when the Welcome
+       clip finishes (and the player lands on the main menu). Each toasts like any unlock; nothing opens a second one */
+    {
+      const unl = { 'dots:blind': 1, 'hold:grow': 1, 'reaction:flash': 1 };
+      await page.evaluate((u, si) => { localStorage.setItem('ne', JSON.stringify({ v: 7, prefs: { story: 1, gridSeen: 1, menuSeen: 1, snd: 'off', played: 1, tut: 2, menuUnl: {}, welcomeSeen: 1 }, runs: [], ach: {}, unlock: u, intro: si, seen: {}, bars: {} })); }, unl, SEEN_INTRO);
+      await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+      const dims = () => page.evaluate(() => Object.fromEntries(['s-board', 's-prog', 's-about'].map(g => [g, document.querySelector(`#s-menu .item[data-go="${g}"]`).classList.contains('dim')])));
+      const toasts = () => page.evaluate(() => { const t = document.getElementById('toast'); window.__t64 = window.__t64 || []; if (!window.__t64o) { window.__t64o = 1; new MutationObserver(() => { if (t.classList.contains('on')) window.__t64.push(t.textContent); }).observe(t, { attributes: true, attributeFilter: ['class'] }); } return window.__t64; });
+      const before = await dims(); await toasts();
+      const runOf = async g => { await page.evaluate(async g => (await import('./run/run.js')).goWhere({ g }), g); await driveToResult(g, '64.7 a first ' + g + ' run'); await sleep(9000);
+        await page.evaluate(async () => (await import('./ui/router.js')).show('s-menu')); await sleep(400); return dims(); };
+      const afterEst = await runOf('hold'), afterRx = await runOf('reaction');
+      await page.evaluate(async () => { const V = await import('./ui/video.js'), M = (await import('./config/messages.js')).MESSAGES; (await import('./ui/router.js')).show('s-over'); V.playVideo(M[0]); await new Promise(r => setTimeout(r, 600)); V.closeVideo(); });
+      await sleep(2500); for (let i = 0; i < 150 && await page.evaluate(async () => (await import('./ui/toast.js')).toastBusy()); i++) await sleep(100);
+      const afterVid = await dims(), on = await page.evaluate(() => document.querySelector('.screen.on')?.id), said = await toasts();
+      const C7 = await page.evaluate(async () => { const U = (await import('./config/unlocks.js')).MENU_UNLOCK, T = (await import('./config/copy.js')).TOAST; return ['prog', 'board', 'about'].map(k => T.unlock.replace('{name}', U[k].name)); });
+      (Object.values(before).every(Boolean) && !afterEst['s-prog'] && afterEst['s-board'] && afterEst['s-about'] && !afterRx['s-board'] && afterRx['s-about'] && !afterVid['s-about'] && on === 's-menu' && C7.every(x => said.includes(x)))
+        ? ok(`64.7 Progress opens with the first Estimate run, Scores with the first Reaction run, About when the Welcome clip finishes (landing on the main menu) — each on its own, each toasting ("${C7.join('", "')}")`)
+        : bad('64.7 the menu unlock order', JSON.stringify({ before, afterEst, afterRx, afterVid, on, said, C7 }));
     }
     await page.evaluate(async () => { const S = await import('./core/store.js'); S.prefs.tut = 2; S.save(); });
   }
