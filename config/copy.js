@@ -54,7 +54,7 @@ export const TOAST = {
 // what an achievement opens, as a line under it
 export const UNLOCK_WORD = { wheel:'unlocks the colour wheel', bg:'unlocks {bg} background', snd:'unlocks {v} sounds', item:'unlocks {word}' };
 export const ITEM_WORD = { sq:'target colour', lead:'lead colour', cut:'cut piece colour', bg:'background', snd:'sound pack', scale:'scale', wheel:'colour wheel' };
-export const BG_NAME = { stars:'stars', grid:'grid', rain:'rain', orbs:'orbs', lantern:'lantern', circuit:'circuit', thorn:'thorn' };
+export const BG_NAME = { stars:'stars', grid:'grid', rain:'rain', orbs:'orbs', snow:'snow', lantern:'lantern', circuit:'circuit', thorn:'thorn' };
 // v13: Stretch is Pro (11.1); the Unlocks line says what the tier is for (11.2); Author (11.3) is Aiden's own records, placeholders until the final build
 /* v17 (B.11): the first tier was called UNLOCKS and its line promised "every one opens something new". Six of its
    seventeen rows opened nothing at all — Clean · Sprint · Two, Pinpoint · Blind, Dead on, Under 200, Eight, Spotter — and
@@ -223,7 +223,8 @@ export const GRID = { chest:{ games:'Games chest', key:'Skill chest', pro:'Pro c
    is open again. Every chest ALSO gives the About video it opens — that word is not listed here: ui/chest.js reads its title off config/messages.js, so
    renaming a slot renames it in the pop-out, on the map and on the card at once. */
 export const CHEST_WORDS = {
-  games:[{ w:'CUSTOMISE', sym:'palette', to:'s-custom' }, { w:'SKILL KEY', sym:'key', to:'key:0' }],
+  // build 65 (64.15): and one background, Snow, so the Games chest tutorial always has something to pick
+  games:[{ w:'CUSTOMISE', sym:'palette', to:'s-custom' }, { w:'SKILL KEY', sym:'key', to:'key:0' }, { w:'SNOW SKY', sym:'bg-snow', to:'s-custom' }],
   key:[{ gaunt:'g1', sym:'gauntlet', to:'tile:g1' }, { w:'PRO KEY', sym:'keypro', to:'key:1' }, { w:'LANTERN SKY', sym:'bg-lantern', to:'s-custom' }],
   pro:[{ w:'AUTHOR KEY', sym:'keyauthor', to:'key:2' }, { gaunt:'g2', sym:'gauntlet2', to:'tile:g2' }, { w:'COSMETIC SET', sym:'cosmetic', tba:1, to:'soon' }, { w:'CIRCUIT SKY', sym:'bg-circuit', to:'s-custom' }],
   thorns:[{ w:'THORN SKY', sym:'bg-thorn', to:'s-custom' }] };

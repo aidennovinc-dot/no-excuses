@@ -1624,3 +1624,9 @@ AVERAGE over the combinations played at least once (Cowork's call); the overall 
 edge; the web grows in and breathes. Past a ring the overall figure takes that key's style and word (`RADAR_TXT.words`, placeholders: Lit / Wired /
 Thorned). The chart reads `config/key-bars.js` each time it is drawn, so Aiden's Pro and Author numbers re-scale it. `radarRungs()` still
 answers which tiers are open (the chest checks use it). The gate's B.24 checks were replaced; "B.25 the order in run.js" (source text) was deleted.
+
+**64.15 — the Games chest gives one background (Cowork's call).** Every existing background was already an achievement's or a key's, so it is a new
+one: SNOW (`DRAW.snow` in `ui/atmosphere.js`, soft flakes falling and swaying; `DESIGNS.snow`; `ITEMS.bg` `{v:'snow', chest:'games'}`), on the Games
+chest's "You found" list as SNOW SKY (`CHEST_WORDS.games`, symbol `bg-snow`). Customise only opens with that chest, so it is never seen locked.
+It is what the Games chest tutorial's "Why don't you try now" picks (64.14). Aiden can swap it on the board. The gate's 57.11 count of
+backgrounds now reads the designs off config.

@@ -29,6 +29,9 @@ function size(){ dpr=Math.min(2,devicePixelRatio||1);
   pts=Array.from({length:70},()=>({x:Math.random()*W,y:Math.random()*H,r:(Math.random()*1.4+.4)*dpr,s:(Math.random()*.15+.05)*dpr,a:Math.random()*.5+.15,ph:Math.random()*6.28,l:(30+Math.random()*60)*dpr,v:(.6+Math.random()*1.2)*dpr,R:(120+Math.random()*160)*dpr})); }
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const DRAW={
+  /* build 65 (64.15): SNOW, the Games chest's background — soft flakes falling slowly, each swaying on its own phase; quiet like the other four */
+  snow(t){ cx.fillStyle='#EEF3FF'; for(const p of pts.slice(0,56)){ if(!reduce){ p.y+=p.s*1.6; if(p.y>H+6) p.y=-6; } const x=p.x+(reduce?0:Math.sin(t/2600+p.ph)*9*dpr);
+    cx.globalAlpha=p.a*.8; cx.beginPath(); cx.arc(x,p.y,p.r*1.25,0,6.28); cx.fill(); } },
   stars(t){ for(const p of pts){ if(!reduce){ p.y-=p.s; if(p.y<-4) p.y=H+4; } cx.globalAlpha=p.a*(.6+.4*Math.sin(t/1400+p.ph)); cx.fillStyle='#E8E6E1'; cx.beginPath(); cx.arc(p.x,p.y,p.r,0,6.28); cx.fill(); } },
   /* grid (v8): the spacing breathes — lines drift apart and back together around the centre, and being evenly spaced they can never cross.
      v29 Section A (57.11c, build 57): IN BLUE. It was the app's off-white at 7%, on a blue-black ground, which read as grey on grey; the ground is a

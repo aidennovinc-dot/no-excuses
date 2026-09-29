@@ -22,7 +22,7 @@ export const KEYFILL = { name:'lilac', v:'#F3D9FF' };
    overlay of this strength, so targets, dots and numbers stay the brightest thing on screen. `clear` — how much of the art is taken out from
    behind every piece of text and every control on a screen (1 = all of it), and `pad`, how far round each one, in CSS px. */
 export const BG_LAYER = { dim: .5, clear: .94, pad: 6 };
-export const DESIGNS = { stars:{tint:'#050506'}, grid:{tint:'#0A1430'}, rain:{tint:'#0B1008'}, orbs:{tint:'#0E0608'}, lantern:{tint:'#1A1024'}, circuit:{tint:'#05080E'}, thorn:{tint:'#020202'} };
+export const DESIGNS = { stars:{tint:'#050506'}, grid:{tint:'#0A1430'}, rain:{tint:'#0B1008'}, orbs:{tint:'#0E0608'}, snow:{tint:'#070A10'}, lantern:{tint:'#1A1024'}, circuit:{tint:'#05080E'}, thorn:{tint:'#020202'} };
 // Customise: every item, and the achievement id that earns it (`by`). No `by` = open from the start
 // v24 (C.6, build 43): `key` is the other kind of lock — the key tier that has to be FINISHED (every bar on it cleared) before the item opens
 export const ITEMS = {
@@ -33,7 +33,10 @@ export const ITEMS = {
      line: the picked colour WAS `--ground`, which every panel, border and target colour is mixed from, and choosing a pattern cleared it. So the
      wheel comes off this row and gets one of its own: `bg` is the pattern, `bgcol` is the colour, the colour is painted on the BACKGROUND LAYER
      beneath the UI (ui/atmosphere.js), it survives a change of pattern, and `none` is the way back to the design's own ground. */
-  bg:  [{v:'stars'},{v:'grid',by:'named'},{v:'rain',by:'qt_clean15'},{v:'orbs',by:'dt_land'},{v:'lantern',key:'clear'},{v:'circuit',key:'pro'},{v:'thorn',key:'author'}],
+  /* build 65 (64.15, Cowork's call): SNOW comes out of the Games chest — the background the Games chest tutorial's "Why don't you try now" picks. Every
+     existing background was already some achievement's or key's, so it is a new one (ui/atmosphere.js DRAW.snow); `chest` says what gives it, and
+     Customise itself only opens with that chest, so it is never locked where it can be seen. Aiden can swap it on the board. */
+  bg:  [{v:'stars'},{v:'grid',by:'named'},{v:'rain',by:'qt_clean15'},{v:'orbs',by:'dt_land'},{v:'snow',chest:'games'},{v:'lantern',key:'clear'},{v:'circuit',key:'pro'},{v:'thorn',key:'author'}],
   bgcol: [{v:'none'},{v:'wheel',by:'fullset'}],
   /* v26 (§B1, build 49): SIGH IS HELD. It was made to sound like a person sighing, and Aiden wants it as a fun unlockable for one particular achievement,
      which is still to be decided — so it is off the sound pack row (`held`: Customise does not show it, the store will not keep it chosen) and no longer

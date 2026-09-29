@@ -1823,6 +1823,13 @@ scene('64.13', async (page, browser) => {
   await frame(page, browser, '64.13-web-thorned', 'Scores: three games on or past their Author bars — the web out past the Thorns ring, the overall figure in the Thorns style');
 });
 
+scene('64.15', async (page, browser) => {
+  await load(page, { ...PLAIN, welcomeSeen: 1, chests: { games: 1 } }); await show(page, 's-custom'); await sleep(700);
+  await page.evaluate(() => document.querySelector('#c-bg button[data-v="snow"]').click()); await sleep(1500);
+  say('snow', await page.evaluate(async () => ({ words: (await import('./config/copy.js')).CHEST_WORDS.games.map(w => w.w), bg: JSON.parse(localStorage.getItem('ne')).prefs.bg, locked: document.querySelector('#c-bg button[data-v="snow"]').classList.contains('locked') })));
+  await frame(page, browser, '64.15-snow-picked', 'Customise with only the Games chest open: SNOW (the chest’s background) open and picked, the snowfall behind the screen');
+});
+
 scene('64.6', async (page, browser) => {
   await load(page, { ...OPEN, welcomeSeen: 1 }); await runOf(page, 'quick-tap'); await sleep(1200);
   say('hud', await page.evaluate(() => { const q = id => { const r = document.getElementById(id).getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)]; };

@@ -933,6 +933,7 @@
   /* 57.11c: the swatch matches the layer — a visible blue on navy, not off-white on blue-black */
   .sw button.bg-grid,.rwsw.bg-grid{background-image:repeating-linear-gradient(0deg,rgba(91,140,255,.55) 0 1px,transparent 1px 9px),repeating-linear-gradient(90deg,rgba(91,140,255,.55) 0 1px,transparent 1px 9px)}
   .sw button.bg-rain,.rwsw.bg-rain{background-image:repeating-linear-gradient(90deg,transparent 0 6px,rgba(255,255,255,.22) 6px 7px,transparent 7px 13px)}
+  .sw button.bg-snow,.rwsw.bg-snow{background-image:radial-gradient(circle at 25% 25%,#EEF3FF 1.4px,transparent 2px),radial-gradient(circle at 65% 50%,#EEF3FF 1.6px,transparent 2.2px),radial-gradient(circle at 40% 78%,#EEF3FF 1.2px,transparent 1.8px)}
   .sw button.bg-orbs,.rwsw.bg-orbs{background-image:radial-gradient(circle at 30% 35%,rgba(255,255,255,.25),transparent 55%),radial-gradient(circle at 75% 70%,rgba(255,255,255,.18),transparent 50%)}
   /* v24 (C.6, build 43): the three key backgrounds' swatches — a warm glow, a trace with a corner, white spikes on black */
   /* 57.11d: REDRAWN with the layer — a dusk from indigo to amber with three small lanterns at different depths in it, which is what the
