@@ -108,7 +108,9 @@ export const strip = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`]
    the ladder's up6). PLAIN is build 46's profile — title, map, menu and key screen already seen, sound off, nothing spilled or ready */
 /* build 57 (v29 Section A, 57.6): and every key's CREATION INTRO already seen. It is a once-per-profile moment that covers the key screen, so a
    fixture that has not seen it would have one play over whatever that section is driving; the section that tests it clears the field itself. */
-export const PLAIN = { tut: 2, story: 1, gridSeen: 1, played: 1, menuSeen: 1, keySeen: 1, keysSeen: 1, snd: 'off', musicG: {}, spill: {}, readySeen: {}, keyIntro: { clear: 1, pro: 1, author: 1 } };
+/* build 65 (A1): a played-in profile is past every first-time tutorial too (`tuts`), not only the walkthrough — each tutorial is walked in its own
+   check (locked decisions), and one armed by a chest a section opens would otherwise hold that section's next taps */
+export const PLAIN = { tut: 2, tuts: { about: 'done', prog: 'done', board: 'done', games: 'done' }, story: 1, gridSeen: 1, played: 1, menuSeen: 1, keySeen: 1, keysSeen: 1, snd: 'off', musicG: {}, spill: {}, readySeen: {}, keyIntro: { clear: 1, pro: 1, author: 1 } };
 export const boot = async (prefs, extra = {}, { v = 7, plain = PLAIN } = {}) => { await setStorage({ ne: Object.assign({ v, prefs: { ...plain, ...prefs }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} }, extra) }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(450); };
 export const NOW = Date.now();   // the fixtures' clock; storage fixtures, build 32 and build 38 stamp with it
 /* v29 Section A (58.2, build 58): A FINISHED GAUNTLET, as the store holds one. The Pro chest needs Gauntlet Mini and the Author chest
