@@ -96,7 +96,7 @@ function pbShow(){ const g=GAMES[sel.game], pb=Scores.best(sel.game,sel.diff,sel
   else { gh.textContent=T(HUD.best,{score:scoreTxt(sel.game,pb,sel.diff,sel.secs)}); gh.classList.add('on'); } }
 function makeCtx(){ const id=R.id; const timers=makeTimers(()=>R.on&&R.id===id);
   // v15 (4.5): `opens` joins practice and scale as a Sequence-only extra on the contract's set — how many notes a versus starts on
-  return { root:$('#game'), game:sel.game, cfg:GC(sel.game,sel.diff,sel.secs), mode:sel.diff, len:sel.secs, players:sel.vs, practice:sel.practice||0, opens:sel.opens||3, scale:sel.scale, rateMode:look('rate'), gaunt:pendingGaunt, timers, audio:Snd,   // build 55 (in passing): `rand` was dead - every engine and the dealer call Math.random directly, and there is no seeded path
+  return { root:$('#game'), game:sel.game, cfg:GC(sel.game,sel.diff,sel.secs), mode:sel.diff, len:sel.secs, players:sel.vs, practice:sel.practice||0, opens:sel.opens||3, scale:sel.scale, rateMode:'live', gaunt:pendingGaunt, timers, audio:Snd,   // build 55 (in passing): `rand` was dead - every engine and the dealer call Math.random directly, and there is no seeded path
    
     /* v16 (1.5): a round-based engine says how far into its finish it is — the final round of a Set, a Streak budget past
        80% — and the music reads it. A timed run needs nothing here: the clock already tells audio.js. MUSIC ONLY (A.1). */

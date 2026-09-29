@@ -1650,3 +1650,7 @@ notes). A static check walks every string every `config/` module exports, and th
 **64.18 — one progress number on the Keys screen: bars.** The 33% maths is right: the Skill band carries the unlocked modes with its bars, (modes
 + bars) ÷ (modes + 30), so 12 modes and 2 bars is 14 ÷ 42. Next to "2 of 30" that read as a mismatch, so a key card now counts its bars
 (`KEY.cardBars`, "2/30"); the percentage stays on the home menu (Cowork's call).
+
+**64.19 — Customise loses its taps-per-second row.** The in-game meter stays and is always on, and always the LIVE reading: the run hands every engine
+`rateMode: 'live'` whatever a profile stored, so one that had picked whole-run is not stranded on it. The gate's D.3a (whole-run holds until
+2.0s) is turned over to assert the live reading even on such a profile.

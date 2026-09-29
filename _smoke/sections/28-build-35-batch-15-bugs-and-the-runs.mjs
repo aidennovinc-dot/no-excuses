@@ -188,9 +188,11 @@ export async function run() {
       await sleep(90); }
     await click('#quit'); await sleep(400);
     const early = samples.filter(x => x.el > .3 && x.el < 1.8 && x.hits > 0), late = samples.filter(x => x.el > 2.3 && x.hits > 0);
-    (early.length && early.every(x => x.txt === '0.0/s') && late.length && late.some(x => x.txt !== '0.0/s'))
-      ? ok(`D.3a whole-run mode: ${early.length} readings before 2.0s all hold at 0.0/s with taps on the board; after it the average arrives (${late[late.length - 1].txt} at ${late[late.length - 1].el.toFixed(1)}s)`)
-      : bad('D.3a the whole-run reading waits for the floor', JSON.stringify({ early: early.slice(0, 4), late: late.slice(-2) }));
+    /* TURNED OVER at build 65 (64.19): Customise's taps-per-second choice is gone and the meter always reads LIVE — so a profile that had stored the
+       whole-run reading now reads live too: before 2.0s, with taps on the board, it is already moving */
+    (early.length && early.some(x => x.txt !== '0.0/s') && late.length && late.some(x => x.txt !== '0.0/s'))
+      ? ok(`64.19 the meter is always the live reading, even on a profile that had stored whole-run: moving before 2.0s (${early[early.length - 1].txt} at ${early[early.length - 1].el.toFixed(1)}s)`)
+      : bad('64.19 the live meter', JSON.stringify({ early: early.slice(0, 4), late: late.slice(-2) }));
     samples.some(x => x.big.includes(90)) ? ok('G.7 the solo big count ticks for 90ms on a hit - the .18s pop it restarted is gone') : bad('G.7 the solo big count', JSON.stringify(samples.slice(0, 3)));
     const pk = await page.evaluate(async () => { const T = await import('./games/_shared/timed.js'); return [T.peakRate([]), T.peakRate([0]), T.peakRate([0, 900]), T.peakRate([0, 100, 200, 300]), T.peakRate([0, 1001]), T.peakRate([0, 500, 1000, 1500, 2000])]; });
     (pk.join() === '0,0,1,3,0,2')

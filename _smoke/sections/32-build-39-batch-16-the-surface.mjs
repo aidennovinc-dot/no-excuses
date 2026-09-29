@@ -16,7 +16,7 @@ export async function run() {
   {
     const custom = (html39.match(/<section class="screen top" id="s-custom"[\s\S]*?<\/section>/) || [''])[0];
     const prog = (html39.match(/<section class="screen top" id="s-prog"[\s\S]*?<\/section>/) || [''])[0];
-    const ids = ['pv', 'pvg', 'pv-g', 'c-sq', 'c-lead', 'c-cut', 'c-bg', 'c-snd', 'c-scale', 'c-rate', 'c-track', 'c-menumusic', 'lk-sq', 'lk-lead', 'lk-cut', 'lk-bg', 'lk-snd', 'lk-scale', 'lk-rate', 'g-lead', 'g-cut', 'g-scale', 'g-rate'];
+    const ids = ['pv', 'pvg', 'pv-g', 'c-sq', 'c-lead', 'c-cut', 'c-bg', 'c-snd', 'c-scale', 'c-track', 'c-menumusic', 'lk-sq', 'lk-lead', 'lk-cut', 'lk-bg', 'lk-snd', 'lk-scale', 'g-lead', 'g-cut', 'g-scale'];   // AMENDED at build 65 (64.19): the taps-per-second row is gone
     const missing = ids.filter(id => !custom.includes(`id="${id}"`)), left = ids.filter(id => prog.includes(`id="${id}"`));
     // AMENDED at build 40 (v23 L.11a): the Customise row carries data-act="custom" so a locked tap can be refused
     // AMENDED at build 43 (v24 A.1): the Keys row carries data-act="keys" for the same reason
@@ -33,7 +33,8 @@ export async function run() {
     /* AMENDED at build 42 (v23 L.7c): the Everywhere row was a tenth group. AMENDED AT BUILD 53 (v28 item 2): it is gone again - the Music
        row holds the key tracks now, so there are nine, which is what build 39 shipped. */
     // AMENDED AT BUILD 57 (v29 Section A, 57.11b): a tenth group — Background colour, split off the Background row
-    (live.screen === 's-custom' && live.groups === 10 && live.sw > 1 && live.g && live.scrolls === 'auto')
+    // AMENDED AT BUILD 65 (64.19): nine again — the taps-per-second group is gone
+    (live.screen === 's-custom' && live.groups === 9 && live.sw > 1 && live.g && live.scrolls === 'auto')
       ? ok(`L.4a the menu row opens it: ${live.groups} groups, ${live.sw} target colours, previewing ${live.g}, and the screen scrolls as it did at build 32`)
       : bad('L.4a Customise opens from the menu', JSON.stringify(live));
     await click('#s-custom .back'); await sleep(400);

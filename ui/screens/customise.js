@@ -52,7 +52,7 @@ const pvSeen={};  // the last unlocked item tapped, so what earned it shows on t
    path — nothing about a locked cosmetic is drawn over anything now. The track row is not in this list on purpose: a
    locked track carries a padlock and says nothing about what opens it (A.1). */
 // v28 (item 2, build 53): `track` joins the list — a key track locked until its key is earned says so under its own row, B.30's one line
-const LOCK_SETS=['sq','lead','cut','bg','bgcol','snd','scale','rate','track'];
+const LOCK_SETS=['sq','lead','cut','bg','bgcol','snd','scale','track'];   // build 65 (64.19): 'rate' left with its row
 /* v28 (item 2, build 53): a lock line may now stand for something that is NOT an achievement — a key track, opened by earning its key. It
    carries no `id`, so it is not a way in to Progress and drops the "show me" tail; everything else about the line is unchanged. */
 function lockLine(set,L){ const el=$('#lk-'+set); if(!el) return;
@@ -74,7 +74,7 @@ function renderCustom(){
     const style=set==='bg'?`background-color:${DESIGNS[it.v]?.tint||'transparent'}`
       :set==='bgcol'?(isWheel?'':`background:${DESIGNS[prefs.bg]?.tint||'#000'}`):isWheel?'':`background:${it.v}`;
     return `<button data-act="item" data-v="${it.v}" class="${cls}" data-lock="${L?L.id:''}" style="${style}" aria-label="${it.v}${L?' locked':''}"></button>`; }).join('');
-  for(const set of ['snd','scale','rate']) $('#c-'+set).innerHTML = itemsOf(set).map(it=>{ const L=lockedBy(it); const nw=L?'':newMark('cos:'+set+':'+it.v,fresh); return `<button data-act="item" data-v="${it.v}" class="opt ${String(prefs[set])===String(it.v)?'sel':''} ${L?'locked':''}${nw}" data-lock="${L?L.id:''}">${it.label}</button>`; }).join('');
+  for(const set of ['snd','scale']) $('#c-'+set).innerHTML = itemsOf(set).map(it=>{ const L=lockedBy(it); const nw=L?'':newMark('cos:'+set+':'+it.v,fresh); return `<button data-act="item" data-v="${it.v}" class="opt ${String(prefs[set])===String(it.v)?'sel':''} ${L?'locked':''}${nw}" data-lock="${L?L.id:''}">${it.label}</button>`; }).join('');
   /* v18 (B.28) → v28 (items 2 / 3, build 53): ONE MUSIC ROW, AND IT IS THE WHOLE OF THE MUSIC CHOICE. B.28 made the row the track;
      build 42 put an EVERYWHERE row above it (Per game / Key / Pro / Thorns) for the same decision said a second way, and Aiden's line was
      "I don't know why they're separate". So the two rows are one: this game's three tracks, then one track per KEY. Picking a game track is
@@ -97,7 +97,6 @@ function renderCustom(){
   $('#pv').dataset.g=F.g; $('#g-lead').style.display=shows(F.g,'lead')?'':'none';
   $('#g-cut').style.display=shows(F.g,'cut')?'':'none'; $('#g-scale').style.display=shows(F.g,'scale')?'':'none';
   // v14 (6.7): the taps-per-second reading is a choice, and only the timed games have a rate bar to show it on
-  $('#g-rate').style.display=shows(F.g,'rate')?'':'none';
   if(F.g==='spot'&&!$('#pvsp').children.length){ const sh=['','c','t']; $('#pvsp').innerHTML=Array.from({length:14},(_,i)=>`<i class="${i===9?'c':sh[i%2?0:2]}"></i>`).join(''); }
   const pv=$('#pv').style; pv.setProperty('--sq-live',colOf(F.g).sq); pv.setProperty('--cue',colOf(F.g).lead); pv.setProperty('--cutp',colOf(F.g).cut||colOf(F.g).sq); pv.removeProperty('background');
   // B.30: at most one group says anything, and it says it under its own row
