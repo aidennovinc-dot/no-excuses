@@ -671,6 +671,10 @@
      panel; #key-shell is what keys 2 and 3 show instead, because #372 has not decided what is behind them */
   #key-main{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;min-height:0}
   .keyrow{display:flex;gap:10px;justify-content:center;align-items:flex-end}
+  /* build 65 (64.16): THE THREE KEY CARDS LINE UP — one width, tops level. A locked card's "To unlock: …" wrapped it taller than the Skill Key's, and the
+     row aligned their feet, so the Skill Key sat lower and, narrower, further left than Pro and Author */
+  #key-keys{align-items:stretch}
+  #key-keys .kkey{flex:1 1 0;max-width:118px;justify-content:flex-start}
   .kkey{display:flex;flex-direction:column;align-items:center;gap:5px;padding:9px 14px;border:1px solid var(--line);background:none;min-width:82px}
   .kkey.sel{border-color:var(--ink)}
   .kkey b{font-family:var(--mono);font-weight:700;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--mute)}

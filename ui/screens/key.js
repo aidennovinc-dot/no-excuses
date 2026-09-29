@@ -560,7 +560,14 @@ function introStage(tier) { const I = introOf(tier), el = $('#s-key'), ids = [];
     hold() { if (quick) return null;
       const all = (anims || []).map(a => a.finished.then(() => 1, () => 0));
       return Promise.race([Promise.all(all), new Promise(r => { done = r; setTimeout(r, I.ms * 2 + 1000); })]); },
-    step() { },
+    /* build 65 (64.16): THE KEY SETTLES WHERE IT LIVES. The intro drew the key big in the middle of the stage and then handed over to the key screen,
+       whose own key is the small one in the ring's hub — so the key visibly shrank the moment the intro ended. On `settle` it now travels to the
+       hub's place and size (measured off the screen underneath, which is laid out behind the stage) and ends exactly there, so the hand-over is
+       invisible: it animates in, and settles at its final size. */
+    step(name, s) { if (name !== 'settle' || quick) return; const el = $('#s-key'), stg = el && document.querySelector('#key-cere .kistage'), k = stg && stg.querySelector('.kikeyg'), hub = $('#s-key .kglyph');
+      if (!k || !hub) return; const a = k.getBoundingClientRect(), b = hub.getBoundingClientRect(), sr = stg.getBoundingClientRect(), w = Math.min(sr.width, sr.height) / 300; if (!a.width || !b.width || !w) return;
+      const sc = b.width / a.width, tx = ((b.left + b.width / 2) - (a.left + a.width / 2)) / w / 1.06, ty = ((b.top + b.height / 2) - (a.top + a.height / 2)) / w / 1.06;
+      try { k.animate([{ transform: 'translate(0px,0px) scale(1)' }, { transform: `translate(${tx.toFixed(2)}px,${ty.toFixed(2)}px) scale(${(sc / 1.06).toFixed(4)})` }], { duration: s && s.ms || 500, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' }); } catch (e) { } },
     skip() { return introSkip ? introSkip() : false; },
     // 57.7's rule, applied here too: a moment that ended by itself keeps its music and the tail carries across the cut
     settle() { carry = true; introSkip = null; },

@@ -1636,3 +1636,9 @@ Aiden's words, names standardised to "Skill Key" / "Skill Chest" (Cowork): the f
 words have spilt, or About once its video has played); then to the Skill Key (`show('s-key', {tier:0})` — its own first animation plays before
 the next box), the key ringed, "fill all the bars", Quick Tap's node to tap (Cowork: must tap), the 100% line; then the main menu with Customise
 ringed (must tap), the Customise line, the Games chest's background SNOW to pick (64.15) and the last line.
+
+**64.16 — the key does not shrink after its intro; the three cards line up.** The creation intro drew the key large in the middle of its stage and
+handed over to the key screen, whose key is the small one in the ring's hub. On the intro's `settle` step the key now travels to the hub's place and
+size (`introStage().step` in `ui/screens/key.js`, measured off the screen laid out underneath) and ends there, so it animates in and settles at its
+final size. The key cards are one width with their tops level (`#key-keys` stretch, `flex:1 1 0`): a locked card's "To unlock: …" had made it
+taller, and the row aligned their feet.

@@ -1834,6 +1834,18 @@ scene('64.14', async (page, browser) => {
   await tutFrames(page, browser, '64.14', 9, { 3: '#s-key .knode[data-kg="quick-tap"]', 5: '#s-menu .item[data-go="s-custom"]', 7: '#c-bg button[data-v="snow"]' }, 'Games chest tutorial — ', () => revealThrough(page));
 });
 
+scene('64.16', async (page, browser) => {
+  await load(page, { ...PLAIN, welcomeSeen: 1, chests: { games: 1 }, keyIntro: {} }); await show(page, 's-key', { tier: 0 });
+  for (let i = 0; i < 80 && (await page.evaluate(() => document.getElementById('key-cere').dataset.step)) !== 'settle'; i++) await sleep(50);
+  await sleep(560);
+  say('settle', await page.evaluate(() => { const k = document.querySelector('#key-cere .kikeyg'), h = document.querySelector('#s-key .kglyph'); if (!k || !h) return null; const a = k.getBoundingClientRect(), b = h.getBoundingClientRect();
+    return { intro: [Math.round(a.left), Math.round(a.top), Math.round(a.width)], hub: [Math.round(b.left), Math.round(b.top), Math.round(b.width)] }; }));
+  await frame(page, browser, '64.16-key-settled', 'The Skill Key intro at its last frame: the key has travelled to the hub and is the hub key size — nothing shrinks when the screen takes over');
+  await revealThrough(page); await sleep(600);
+  say('cards', await page.evaluate(() => [...document.querySelectorAll('#key-keys .kkey')].map(b => { const r = b.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)]; })));
+  await frame(page, browser, '64.16-key-cards', 'Key screen after the intro: the Skill Key, Pro and Author cards one width with their tops level');
+});
+
 scene('64.15', async (page, browser) => {
   await load(page, { ...PLAIN, welcomeSeen: 1, chests: { games: 1 } }); await show(page, 's-custom'); await sleep(700);
   await page.evaluate(() => document.querySelector('#c-bg button[data-v="snow"]').click()); await sleep(1500);

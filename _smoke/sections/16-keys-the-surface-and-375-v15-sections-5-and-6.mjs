@@ -757,6 +757,20 @@ export async function run() {
       ? ok(`57.11 all ${bgs.length} backgrounds draw (${drew.map(d => d.bg + ' ' + d.lit + '%').join(', ')}) and only the three KEY layers are layers at all — the starfield is the default background's alone; and the wheel is a second SETTING: the colour is painted on the background layer (rgb ${split57.px.join(',')} on the canvas), \`--ground\` and \`--line\` do not move with it (${split57.on.g}), it survives a change of pattern, and Customise carries ${split57.rows.pat} patterns with no wheel among them plus a colour row of "no colour" and the wheel`)
       : bad('57.11 the backgrounds', JSON.stringify({ drew, starOnly, split57 }));
   }
+  /* build 65 (64.16): THE KEY DOES NOT SHRINK AFTER ITS INTRO, AND THE THREE CARDS LINE UP. The Skill Key's first open: at the end of the intro's
+     settle the key the intro drew is where the hub key is and its size; then the three cards are one width with their tops level */
+  {
+    await boot({ chests: { games: 1 }, keyIntro: {} }); await page.evaluate(async () => (await import('./ui/router.js')).show('s-key', { tier: 0 }));
+    const st = await page.evaluate(async () => { const K = (await import('./config/keys.js')).KEY_INTRO.clear, se = K.steps.find(s => s.name === 'settle'), h = document.getElementById('key-cere');
+      for (let i = 0; i < 200 && h.dataset.step !== 'settle'; i++) await new Promise(r => setTimeout(r, 25));
+      await new Promise(r => setTimeout(r, se.ms + 80)); const k = h.querySelector('.kikeyg'), g = document.querySelector('#s-key .kglyph'); if (!k || !g) return null;
+      const a = k.getBoundingClientRect(), b = g.getBoundingClientRect(); return { dx: Math.round((a.left + a.width / 2) - (b.left + b.width / 2)), dy: Math.round((a.top + a.height / 2) - (b.top + b.height / 2)), w: [Math.round(a.width), Math.round(b.width)] }; });
+    await revealDone(); await sleep(500);
+    const cards = await page.evaluate(() => [...document.querySelectorAll('#key-keys .kkey')].map(b => { const r = b.getBoundingClientRect(); return [Math.round(r.top), Math.round(r.width), Math.round(r.height)]; }));
+    (st && Math.abs(st.dx) <= 3 && Math.abs(st.dy) <= 10 && Math.abs(st.w[0] - st.w[1]) <= 2 && cards.length === 3 && cards.every(c => c[0] === cards[0][0] && c[1] === cards[0][1] && c[2] === cards[0][2]))
+      ? ok(`64.16 the intro's key ends on the hub key, the same size (${st.w.join(' / ')}px, ${st.dx} / ${st.dy}px off) — nothing shrinks at the hand-over; the three key cards are one width, tops level`)
+      : bad('64.16 the key settle and the cards', JSON.stringify({ st, cards }));
+  }
   /* build 65 (64.15): THE GAMES CHEST GIVES ONE BACKGROUND that no achievement and no key already gives — on its "You found" list, and open in
      Customise the moment the chest is (a profile with only the Games chest open) */
   {
