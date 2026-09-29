@@ -1709,8 +1709,9 @@ scene('62.9', async (page, browser) => {
 });
 scene('62.11', async (page, browser) => {
   let prev = null;
-  for (let i = 0; i < 8; i++) {
-    const s = await nextBox(page, prev, 200); prev = s.text;
+  // build 65 (64.2): the result's boxes branch on what the first run opened, so there are eight or nine — framed until the last
+  for (let i = 0; i < 10; i++) {
+    const s = await nextBox(page, prev, 200); if (!s.text || s.text === prev) break; prev = s.text;
     await frame(page, browser, `62.11-box-${i + 1}`, `First result, box ${i + 1}: "${s.text}"`); say('box', s);
     await page.touchscreen.tap(14, 830); await sleep(450);
   }
