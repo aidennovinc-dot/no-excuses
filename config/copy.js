@@ -126,7 +126,8 @@ export const MENU = { next:'<em>Next unlock</em><span>{need} → {name}</span>',
    lives here; Achievements keeps the rest. What sits behind keys 2 and 3 is register #372 and is not decided, so the key
    line below says only what is true today. */
 // v28 (item 4, build 53): `hint` and `lede` retired with the grey helper text — PROGRESS_SCREEN.count is the one line on this tab now
-export const UNLOCKS_SCREEN = { title:'unlocks',
+/* build 65 (64.10): an OPEN row keeps its requirement, ticked and green, and says what the player did and when where the run was recorded */
+export const UNLOCKS_SCREEN = { title:'unlocks', did:'✓ {need}', you:' · you: {score}, {when}',
   games:'Games and modes', lens:'Lengths', keys:'Skill key', done:'open', locked:'locked',
   // v17 (B.9): the number is a placeholder now. The count moved when Sequence lost 5 keys and it will move again the next
   // time a mode is added, and a written-out "thirty-one" is exactly the second copy of a fact L6 forbids everywhere else

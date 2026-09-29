@@ -223,4 +223,22 @@ export async function run() {
       ? ok(`64.11 every length requirement names its mode: "${r.four}", "${r.fourM}"`)
       : bad('64.11 a requirement without its mode', JSON.stringify(r));
   }
+  /* build 65 (64.10): AN OPEN ROW KEEPS ITS REQUIREMENT, ticked and green — with what the player did and when where that run was recorded (Dash here),
+     the requirement and the tick alone where it was not (Four, earned "before this build") */
+  {
+    const t = Date.now() - 3600000, run = { t, g: 'quick-tap', d: 'two', s: 5, hits: 16, misses: 0, v: 4 };
+    await setStorage({ ne: { v: 7, prefs: { tut: 2, story: 1, gridSeen: 1, played: 1, menuSeen: 1, snd: 'off', menuUnl: { prog: 1 }, unlBy: { 'quick-tap:two:15': { g: 'quick-tap', d: 'two', s: 5, h: 16, t } } },
+      runs: [run], ach: {}, unlock: { 'quick-tap:two:15': t, 'quick-tap:four': t }, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+    await page.evaluate(async () => (await import('./ui/router.js')).show('s-prog', { tab: 'c-games' })); await sleep(500);
+    const r = await page.evaluate(async () => { const P = await import('./progress.js'), U = (await import('./config/unlocks.js')).UNLOCKS, C = (await import('./config/copy.js')).UNLOCKS_SCREEN;
+      const rowOf = q => { const b = document.querySelector(q); if (!b) return null; const sm = b.querySelector('small'); return { t: sm.textContent, col: getComputedStyle(sm).color, done: b.classList.contains('done') }; };
+      const ok = (() => { const p = document.createElement('i'); p.style.color = 'var(--ok)'; document.body.appendChild(p); const c = getComputedStyle(p).color; p.remove(); return c; })();
+      return { dash: rowOf('#chest-list .urow[data-g="quick-tap"][data-d="two"][data-s="15"]'), four: rowOf('#chest-list .urow[data-g="quick-tap"][data-d="four"]:not([data-s])'), lock: rowOf('#chest-list .urow.lock'),
+        dashNeed: P.lenNeed('quick-tap', 'two', 15), fourNeed: U.find(u => u.key === 'quick-tap:four').need, when: new Date(Date.now() - 3600000).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }), ok, you: C.you }; });
+    const wantDash = '✓ ' + r.dashNeed + r.you.replace('{score}', '16').replace('{when}', r.when);
+    (r.dash && r.dash.done && r.dash.t === wantDash && r.dash.col === r.ok && r.four && r.four.t === '✓ ' + r.fourNeed && r.four.col === r.ok && r.lock && !/^✓/.test(r.lock.t))
+      ? ok(`64.10 an open row keeps its requirement, ticked and green: "${r.dash.t}"; one earned before this build: "${r.four.t}"; a locked row is unchanged, no tick`)
+      : bad('64.10 open rows keep their requirement', JSON.stringify({ r, wantDash }));
+  }
 }

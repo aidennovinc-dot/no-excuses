@@ -1602,3 +1602,9 @@ changed to the placeholder; Aiden's pick goes there through the data lane.
 `{mode}` of its own and the game has more than one mode, `{game}` carries it — "7 hits in a row, no misses, in a Quick Tap · Four Sprint", "24
 hits in a Quick Tap · Four Dash", "finish a Timing · Hidden Set". `LEN_RULES` (L6's table) is untouched: the thresholds and their words are the
 same, only the game's name gains its mode.
+
+**64.10 — an open Progress row keeps its requirement.** Games chest tab: an open chain or length row shows its requirement, ticked, in green
+(`UNLOCKS_SCREEN.did`), and where the run that earned it was recorded (`prefs.unlBy`, written at the finish for every unlock the run made, mid-run
+ones included — progress, Fresh game clears it) it adds what the player did and when (Cowork's call): "✓ 7 hits in a row, no misses, in a Quick
+Tap · Two Sprint · you: 16, 29 Sept". An unlock earned before build 65 has no run on record and shows the requirement and the tick. A locked row
+is unchanged (its requirement was already green; the tick is the difference).

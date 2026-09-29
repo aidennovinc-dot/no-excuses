@@ -34,11 +34,12 @@ import { CHESTS } from "../../config/chests.js";
 import { KEYS, KEY_ART } from "../../config/keys.js";
 import { MODE_NAME } from "../../config/games.js";
 import { $, $$, T, esc } from "../../core.js";
+import { scoreTxt } from "../format.js";
 import { emit } from "../../core/events.js";
 import { sel } from "../../core/state.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, lenName } from "../../games/registry.js";
-import { Scores, UNLOCKS, achAll, achById, achTab, achWhere, gameOpen, got, isOpen, lenLock, lenOpen, markSeen, modeCount, nameless, newMark, setPendingAim, unlockArt, unlockHear, unlockHtml, unlockName, unlocked } from "../../progress.js";
+import { Scores, UNLOCKS, achAll, achById, achTab, achWhere, gameOpen, got, isOpen, lenLock, lenNeed, lenOpen, markSeen, modeCount, nameless, newMark, setPendingAim, unlockArt, unlockHear, unlockHtml, unlockName, unlocked } from "../../progress.js";
 import { COMBOS, barOf, chestOpen, keyAch, keyState, tierOpen } from "../../progress/key.js";
 import { askPlay } from "../askplay.js";
 import { Snd } from "../../audio.js";
@@ -77,6 +78,13 @@ const tierOfChest = c => c && c.needs !== 'modes' ? c.needs : null;
 
 /* ---------- the Games chest tab (the old Game unlocks tab, build 23 v15 §2.4 — its content unchanged) ---------- */
 const row=(cls,name,need,state,data)=>`<button data-act="unl" class="urow ${cls}"${data}><span>${name}</span><em>${state}</em><small>${need}</small></button>`;
+/* build 65 (64.10): AN OPEN ROW KEEPS ITS REQUIREMENT. Only locked rows used to say how; an open one showed nothing, so a player could not look up how
+   they had got it. The requirement stays, ticked and green, and where the run that earned it was recorded (`prefs.unlBy`, run/run.js) it says what
+   the player did and when — "✓ 7 hits in a row, no misses, in a Quick Tap · Two Sprint · you: 16, 29 Sep" (Cowork's call). An unlock earned before
+   build 65 has no run on record and keeps the requirement and the tick. */
+function didLine(key,need){ if(!need) return ''; const b=(prefs.unlBy||{})[key];
+  const you=b&&GAMES[b.g]?T(UNLOCKS_SCREEN.you,{score:esc(scoreTxt(b.g,b.h,b.d,b.s)),when:new Date(b.t).toLocaleDateString(undefined,{day:'numeric',month:'short'})}):'';
+  return T(UNLOCKS_SCREEN.did,{need})+you; }
 function gamesHtml(gsel){
   const u=unlocked(); const fresh=[];
   // the chain, in the order it is earned. A row is open when its key is in the store or its game is open from the start
@@ -85,13 +93,13 @@ function gamesHtml(gsel){
   const chain=UNLOCKS.map(x=>{ const [g,d]=x.key.split(':'); const isO=x.key==='sequence:practice'?!!u[x.key]:isOpen(g,d);
     const nw=isO?newMark('mode:'+g+':'+d,fresh):''; total++; if(isO) open++;
     if(!mine(g)) return '';
-    return row('u'+(isO?' done':' lock')+nw,unlockName(x.key),isO?'':x.need,isO?UNLOCKS_SCREEN.done:UNLOCKS_SCREEN.locked,` data-g="${g}" data-d="${d}"`); }).join('');
+    return row('u'+(isO?' done':' lock')+nw,unlockName(x.key),isO?didLine(x.key,x.need):x.need,isO?UNLOCKS_SCREEN.done:UNLOCKS_SCREEN.locked,` data-g="${g}" data-d="${d}"`); }).join('');
   // every length of every mode, from lenLock — the same call the pick sheet's crossed-out rows make
   const lens=[];
   for(const g in GAMES){ if(!gameOpen(g)) continue; for(const d of GAMES[g].modes) for(const s of GC(g,d).lens){ const L=lenLock(g,d,s); if(!L&&GC(g,d).lens.indexOf(s)===0) continue;
     const name=`${GAMES[g].name}${MODE_NAME[d]?' · '+MODE_NAME[d]:''} · ${lenName(g,s,d)}`;
     total++; if(!L) open++; if(!mine(g)) continue;
-    lens.push(row('u'+(L?' lock':' done'),name,L?L.need:'',L?UNLOCKS_SCREEN.locked:UNLOCKS_SCREEN.done,` data-g="${g}" data-d="${d}" data-s="${s}"`)); } }
+    lens.push(row('u'+(L?' lock':' done'),name,L?L.need:didLine(g+':'+d+':'+s,lenNeed(g,d,s)),L?UNLOCKS_SCREEN.locked:UNLOCKS_SCREEN.done,` data-g="${g}" data-d="${d}" data-s="${s}"`)); } }
   // v23 (L.10a, build 40): key 1 is quiet until the Games chest — the key row says what opens it, with no count
   const kq=!tierOpen('clear');
   /* build 62 (61.26): THE SKILL KEY IS ITS ART AND ONE LINE. The grey paragraph ("The first key is earned here…", 30/30) is gone: the key's own

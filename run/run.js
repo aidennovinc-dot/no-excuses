@@ -328,6 +328,9 @@ function finish(res){
   const fresh=live.concat(two?[]:checkUnlocks(run)).concat(freshLen.filter(f=>!R.fresh.includes(f.key))), ach=two?[]:checkAch(run).concat(checkKeyAch(run));
   // build 65 (64.7): and the home menu item this run's game opens — Progress with the first Estimate run, Scores with the first Reaction run
   if(!two&&!run.demo&&!run.practice&&!run.chal) fresh.push(...menuEarn(run));
+  /* build 65 (64.10): what this run did, against every unlock it earned (mid-run ones included — the whole run is what the player did), so an open
+     Progress row can say "you: 16, 29 Sep" */
+  if(fresh.length){ const by=Object.assign({},prefs.unlBy); for(const u of fresh) if(!u.menu&&u.key&&!by[u.key]) by[u.key]={ g:run.g, d:run.d, s:run.s, h:run.hits, t:run.t }; prefs.unlBy=by; save(); }
   // the result screen takes it from here: the header, the ad break, the unlock and achievement toasts (ui/screens/result.js)
   emit('run:finish',{run,isBest,two,fresh,ach,adv});
 }

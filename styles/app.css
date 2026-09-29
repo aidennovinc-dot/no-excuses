@@ -578,6 +578,8 @@
   .unl .urow>span:first-child,.unl .urow small,.unl .urow em{min-width:0;overflow-wrap:anywhere}
   .unl .urow small{grid-column:1/-1;color:var(--mute);letter-spacing:.04em;line-height:1.4}
   .unl .urow small:empty{display:none}
+  /* build 65 (64.10): an open row's requirement, ticked, in green */
+  .unl .urow.done small{color:var(--ok)}
   .unl em{font-style:normal;color:var(--mute);font-size:10px;letter-spacing:.12em;text-transform:uppercase;align-self:start}
   /* a locked row is the way in — the requirement reads in the same green everything unlockable wears (v14 3.1) */
   .unl .lock>span:first-child{color:var(--mute)}

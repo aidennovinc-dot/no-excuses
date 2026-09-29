@@ -76,6 +76,11 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
        field, so this reading happens once. */
     menuUnl:isObj(p.menuUnl)?Object.fromEntries(['about','prog','board'].filter(k=>p.menuUnl[k]).map(k=>[k,Number(p.menuUnl[k])||1]))
       :(p.tut===2||(p.tut===1&&!validRun(p.tutRun))||(!p.tut&&p.played))?{about:1,prog:1,board:1}:{},
+    /* build 65 (64.10): `unlBy`, the run that earned each unlock — `{ key: {g, d, s, h, t} }`, the run's game, mode, length, score and when — so an
+       open Progress row can say "you: 16, 29 Sep". PROGRESS: Fresh game clears it. No ladder step: an unlock earned before this build has no run
+       recorded, and its row shows the requirement and the tick only, which is what an absent entry means. */
+    unlBy:isObj(p.unlBy)?Object.fromEntries(Object.entries(p.unlBy).filter(([k,v])=>typeof k==='string'&&k.length<64&&isObj(v)&&has(GAMES,v.g)&&typeof v.h==='number'&&Number.isFinite(v.h)&&typeof v.t==='number'&&Number.isFinite(v.t))
+      .map(([k,v])=>[k,{g:v.g,d:String(v.d||''),s:Number(v.s)||0,h:v.h,t:v.t}])):{},
     tuts:isObj(p.tuts)?Object.fromEntries(Object.entries(p.tuts).filter(([k,v])=>/^[a-z]+$/.test(k)&&(v==='done'||(Number.isInteger(v)&&v>=0&&v<40)))):{},
     // v17 (build 28): `keySeen` was missing from this list since build 26 — reset() cleared a field load() never created,
     // so the keys screen's once-per-profile arrival was shape-checked by nothing. It is a flag like the three beside it
@@ -397,6 +402,6 @@ const musicOn=g=>!opened('games')||prefs.musicG[g]!==false;
    profile showed all 27 of them open. Supporter is a dev switch today (S5 gates it out of a release build entirely) and
    Fresh game is the switch for seeing the app as a new player does, so it belongs in this list. When it becomes a real
    purchase at the native build it will be restored from the store rather than from prefs, and this line stays correct. */
-function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; store.gaunt=[]; store.resume=null;   /* v31 (60.27): a Fresh game has nothing to come back to */ Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,keysSeen:0,chests:cleanChests(null),cusSeen:0,readySeen:cleanChests(null),spill:cleanChests(null),keyWhole:{},revealed:{},msgSeen:{},gauntSeen:{},paid:0,menuOpened:{},menuUnl:{},keyIntro:{},welcomeSeen:0,retro:{},retroCol:{},devKeys:{}}); delete prefs.mig11; delete prefs.mig31; delete prefs.mig32; delete prefs.mig35; delete prefs.meterSeen; delete prefs.devMeter; save(); emit('store:reset'); }
+function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; store.gaunt=[]; store.resume=null;   /* v31 (60.27): a Fresh game has nothing to come back to */ Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,keysSeen:0,chests:cleanChests(null),cusSeen:0,readySeen:cleanChests(null),spill:cleanChests(null),keyWhole:{},revealed:{},msgSeen:{},gauntSeen:{},paid:0,menuOpened:{},menuUnl:{},unlBy:{},keyIntro:{},welcomeSeen:0,retro:{},retroCol:{},devKeys:{}}); delete prefs.mig11; delete prefs.mig31; delete prefs.mig32; delete prefs.mig35; delete prefs.meterSeen; delete prefs.devMeter; save(); emit('store:reset'); }
 
 export { RUNS_CAP, everywhere, look, lookCol, musicOn, opened, prefs, reset, save, setKeyDone, store, trimRuns };

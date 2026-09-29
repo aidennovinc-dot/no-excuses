@@ -1791,6 +1791,14 @@ scene('64.8', async (page, browser) => {
   await tutFrames(page, browser, '64.8', 6, { 0: '#s-menu .item[data-go="s-about"]' }, 'About tutorial, after the Welcome clip — ');
 });
 
+scene('64.10', async (page, browser) => {
+  const t = Date.now() - 3600000, run = { t, g: 'quick-tap', d: 'two', s: 5, hits: 16, misses: 0, v: 4 };
+  await load(page, { ...PLAIN, menuUnl: { prog: 1 }, unlBy: { 'quick-tap:two:15': { g: 'quick-tap', d: 'two', s: 5, h: 16, t } } }, { runs: [run], unlock: { 'quick-tap:two:15': t, 'quick-tap:four': t } });
+  await show(page, 's-prog', { tab: 'c-games' }); await sleep(700);
+  await page.evaluate(() => { const l = document.getElementById('chest-list'), r = l.querySelector('.urow[data-s="15"]'); if (r) l.scrollTop = r.offsetTop - 260; }); await sleep(300);
+  await frame(page, browser, '64.10-open-rows', 'Progress, Games chest tab: Four (earned before this build) and Dash (with "you: 16") keep their requirement, ticked and green; the Four Dash row names its mode (64.11)');
+});
+
 scene('64.6', async (page, browser) => {
   await load(page, { ...OPEN, welcomeSeen: 1 }); await runOf(page, 'quick-tap'); await sleep(1200);
   say('hud', await page.evaluate(() => { const q = id => { const r = document.getElementById(id).getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)]; };
