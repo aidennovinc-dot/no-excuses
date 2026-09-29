@@ -425,10 +425,11 @@ export async function run() {
     for (let i = 0; i < 8 && (await page.evaluate(() => !!document.querySelector('#s-menu.story'))); i++) { await page.evaluate(() => document.body.click()); await sleep(350); }
     await sleep(600); const m6 = await menu48(); const fresh6 = (await getJSON('ne')).prefs.menuOpened;
     (m0['s-pick'] === 'green' && ['s-board', 's-prog', 's-about', 's-key', 's-custom'].every(k => m0[k] === 'shut') && run48 === 's-over'
-      && m1['s-pick'] === 'plain' && ['s-board', 's-prog', 's-about'].every(k => m1[k] === 'green') && m1['s-key'] === 'shut' && m1['s-custom'] === 'shut'
+      // AMENDED at build 65 (64.7): the walkthrough no longer opens Scores, Progress and About, and a Quick Tap run opens none of them — the Games chest does
+      && m1['s-pick'] === 'plain' && ['s-board', 's-prog', 's-about', 's-key', 's-custom'].every(k => m1[k] === 'shut') && ['s-board', 's-prog', 's-about'].every(k => m2[k] === 'green')
       && m2['s-key'] === 'green' && m2['s-custom'] === 'green' && m3['s-key'] === 'plain' && m3['s-custom'] === 'green' && m4['s-key'] === 'plain' && m4['s-custom'] === 'green'
       && m5['s-custom'] === 'plain' && m5['s-board'] === 'green' && m6['s-pick'] === 'green' && JSON.stringify(fresh6) === '{}')
-      ? ok('v26 item 3 every menu item is green from the moment it is available until it is opened once: Play from the first load; Scores, Progress and About once the walkthrough is finished (62.14); Keys and Customise once the Games chest is EARNED BY A RUN and opened on the map - opening each one spends its green, a reload keeps that, and Testing\'s fresh game gives every item its green back')
+      ? ok('v26 item 3 every menu item is green from the moment it is available until it is opened once: Play from the first load; Scores, Progress and About at their own moments or with the Games chest (64.7); Keys and Customise once the Games chest is EARNED BY A RUN and opened on the map - opening each one spends its green, a reload keeps that, and Testing\'s fresh game gives every item its green back')
       : bad('v26 item 3 the green menu items', JSON.stringify({ m0, run48, m1, m2, m3, m4, m5, m6, fresh6 }));
 
     // item 12: the version label is on the home menu and nowhere else
@@ -750,10 +751,23 @@ export async function run() {
       && split57.off.g === split57.on.g && split57.off.l === split57.on.l
       && split57.px.join() === '27,10,46' && split57.kept === '#1b0a2e'
       && split57.rows.wheelInPat === 0 && split57.rows.col === 2 && split57.rows.none === 1
-      && TH57.ITEMS.bg.length === 7 && TH57.ITEMS.bgcol.length === 2;
+      // AMENDED at build 65 (64.15): a background for every design, read off config — eight since Snow came out of the Games chest
+      && TH57.ITEMS.bg.length === bgs.length && TH57.ITEMS.bgcol.length === 2;
     (ok57)
       ? ok(`57.11 all ${bgs.length} backgrounds draw (${drew.map(d => d.bg + ' ' + d.lit + '%').join(', ')}) and only the three KEY layers are layers at all — the starfield is the default background's alone; and the wheel is a second SETTING: the colour is painted on the background layer (rgb ${split57.px.join(',')} on the canvas), \`--ground\` and \`--line\` do not move with it (${split57.on.g}), it survives a change of pattern, and Customise carries ${split57.rows.pat} patterns with no wheel among them plus a colour row of "no colour" and the wheel`)
       : bad('57.11 the backgrounds', JSON.stringify({ drew, starOnly, split57 }));
+  }
+  /* build 65 (64.15): THE GAMES CHEST GIVES ONE BACKGROUND that no achievement and no key already gives — on its "You found" list, and open in
+     Customise the moment the chest is (a profile with only the Games chest open) */
+  {
+    const C15 = await import(pathToFileURL(path.join(root, 'config', 'copy.js')).href), A15 = await import(pathToFileURL(path.join(root, 'config', 'achievements.js')).href), T15 = await import(pathToFileURL(path.join(root, 'config', 'theme.js')).href);
+    const word = (C15.CHEST_WORDS.games || []).find(w => /^bg-/.test(w.sym || '')), v = word && word.sym.slice(3), item = T15.ITEMS.bg.find(i => i.v === v);
+    const grants = A15.ACH.filter(a => a.unlocks && a.unlocks[0] === 'bg' && a.unlocks[1] === v).map(a => a.id);
+    await boot({ chests: { games: 1 } }); await page.evaluate(async () => (await import('./ui/router.js')).show('s-custom')); await sleep(500);
+    const sw = await page.evaluate(v => { const b = document.querySelector(`#c-bg button[data-v="${v}"]`); return b ? { locked: b.classList.contains('locked') } : null; }, v);
+    (word && item && !item.by && !item.key && !grants.length && sw && !sw.locked)
+      ? ok(`64.15 the Games chest gives "${word.w}" (${v}) — a background no achievement or key gives — on its list, and open in Customise with the chest`)
+      : bad('64.15 the Games chest background', JSON.stringify({ word, item, grants, sw }));
   }
   /* build 62 (61.7 / 61.22): THE BACKGROUND LAYER RULE. Every key layer, on the key screen: the art is taken out from behind every piece of text
      and every control (read off the canvas at each one's centre), the canvas never takes a tap, and it covers the whole viewport */
