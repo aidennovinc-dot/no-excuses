@@ -198,7 +198,13 @@ export async function run() {
       (await import('./ui/router.js')).show('s-over'); await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
       const cur = body.querySelector('tr.cur'), wr = w.getBoundingClientRect(), cr = cur.getBoundingClientRect();
       const out = { scroll: s.scrollHeight - s.clientHeight, over: getComputedStyle(s).overflowY, goBottom: Math.round(innerHeight - go.bottom), back: [Math.round(back.left), Math.round(back.top)], rows: Math.floor(wr.height / row), curIn: cr.top >= wr.top - 1 && cr.bottom <= wr.bottom + 1 };
+      /* 64.5: every row starts with its rank, in ink, inside the box — never pushed off its edge, never the table's grey */
+      out.ranks = [...body.rows].map((r, i) => { const c = r.cells[0], b = c.getBoundingClientRect(); return { t: c.textContent, want: String(i + 1), inBox: b.left >= wr.left - 1 && b.right <= wr.right + 1 && b.width > 8, col: getComputedStyle(c).color }; });
+      out.ink = getComputedStyle(document.documentElement).getPropertyValue('--ink').trim(); out.inkRgb = (() => { const p = document.createElement('i'); p.style.color = 'var(--ink)'; document.body.appendChild(p); const c = getComputedStyle(p).color; p.remove(); return c; })();
       body.innerHTML = one; return out; });
+    (fit.ranks.every(r => r.t === r.want && r.inBox && r.col === fit.inkRgb))
+      ? ok('64.5 each of the ten rows starts with its rank (1–10), in ink, inside the box')
+      : bad('64.5 the rank numbers in the top 10', JSON.stringify({ ranks: fit.ranks, ink: fit.inkRgb }));
     (fit.scroll <= 2 && fit.over !== 'auto' && fit.goBottom >= 0 && fit.back[0] < 20 && fit.rows >= 3 && fit.curIn)
       ? ok(`64.4 the result fits one screen at 390 x 844 with a full top 10: no page scroll, Back top left, the box ${fit.rows} rows tall and scrolled to this run, Game select ${fit.goBottom}px clear of the foot`)
       : bad('64.4 the result on one screen', JSON.stringify(fit));

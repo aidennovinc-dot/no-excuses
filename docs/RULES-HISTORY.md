@@ -1575,3 +1575,7 @@ the score, verdict and stats sit straight under it; the mode chips and TRY AGAIN
 (`#over-top` flex 1) in its own box that scrolls inside itself and never shows fewer than three rows; Game select is pinned at the foot. On a short
 phone the big number (`clamp(36px, min(15vw, 11vh - 26px), 96px)`), the gaps, the share line and Game select's padding give way first. Cowork's call:
 the box opens scrolled to this run's row, centred where it can be (`toCur()`, after the screen is shown).
+
+**64.5 — the rank in every top-10 row.** Not reproducible off the phone: the rank was the first cell all along, in the table's grey, far left, with an
+empty name cell a quarter of the width beside it. The result's table is laid out to its box now (`table-layout:fixed`), the empty cell is not drawn, and the
+rank sits in front of the score in ink. The Scores screen's table is untouched.

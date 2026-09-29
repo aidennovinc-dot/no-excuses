@@ -1008,6 +1008,14 @@
   #vsbox em{font-style:normal;font-family:var(--title);font-size:14px;color:var(--mute)}
   #over-top{width:min(92vw,360px);font-size:11px;flex:none}
   #over-top td,#over-top th{padding:5px 6px}
+  /* build 65 (64.5): THE RANK IS BACK IN EVERY ROW. It was the first cell all along, in the table's grey, at the far left of a table as wide as the
+     box, with an empty name column taking a quarter of the width beside it — on the phone, under the walkthrough's dim, it read as missing. The
+     table is laid out to the box now (fixed columns, nothing can push a column off the edge), the empty name column is gone, and the rank sits in
+     front of the score in ink: "1  30  29 Sept 26". */
+  #over-top table{width:100%;table-layout:fixed}
+  #over-top td:nth-child(1){width:2.6em;color:var(--ink);text-align:right;padding-right:14px}
+  #over-top td:nth-child(2){display:none}
+  #over-top td:nth-child(4){text-align:right}
   #over-top .eyebrow{text-align:center;margin-bottom:4px}
   /* v15 (6.4): the panel is a fixed box that scrolls inside itself. It used to grow a row at a time as the top 10
      filled, and every row it gained pushed Game select further down the screen — the one button that has to be in the
