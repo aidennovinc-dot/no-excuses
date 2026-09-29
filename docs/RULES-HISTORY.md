@@ -1597,3 +1597,8 @@ that answers ("You've unlocked About" — Claude's line; a box that asks for a t
 videos (`#msglist`), feedback (`#feedback`) and support (`#support`) ringed. About had no first-visit popup to replace. Its Send feedback line
 already existed (build 33) — a mailto with the build in the subject, to the address in `ABOUT.fbTo` — so none was added and the address was not
 changed to the placeholder; Aiden's pick goes there through the data lane.
+
+**64.11 — a length requirement always names its mode.** `lenNeed()` (`progress.js`), the one place the sentence is built: where the line has no
+`{mode}` of its own and the game has more than one mode, `{game}` carries it — "7 hits in a row, no misses, in a Quick Tap · Four Sprint", "24
+hits in a Quick Tap · Four Dash", "finish a Timing · Hidden Set". `LEN_RULES` (L6's table) is untouched: the thresholds and their words are the
+same, only the game's name gains its mode.

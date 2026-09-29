@@ -74,10 +74,13 @@ function lenLock(g,d,s,noChal){ if(prefs.allOpen) return null; if(!noChal&&chalA
    "no requirement" against Quick Tap's lengths and made it look as though Two had lost its rules. One table, one copy,
    one place that builds the sentence: lenLock calls this rather than formatting its own. `{game}` names the game (v14
    3.2), `{mode}` names the mode (v15 1.0a, now that the rule is per mode) and `{prev}` the length before it. */
+/* build 65 (64.11): AND IT ALWAYS NAMES THE MODE. Quick Tap's rules say `{game} {prev}` with no `{mode}`, so Four's Dash read "7 hits in a row, no
+   misses, in a Quick Tap Sprint" — a Two Sprint would not do, it needs a Four Sprint. Where a sentence has no `{mode}` of its own and the game has
+   more than one mode, `{game}` carries it: "in a Quick Tap · Four Sprint". The default "finish a {game} {prev}" gets the same. */
 function lenNeed(g,d,s){ const c=GC(g,d), lens=c.lens, i=lens.indexOf(s); if(i<=0) return ''; const gname=GAMES[g].name;
-  const bag={game:gname,mode:MODE_NAME[d]||gname,prev:lenName(g,lens[i-1],d)};
-  const rule=(LEN_RULES[g+':'+d]||[])[i];
-  return T(rule||(s===STREAK?PROGRESS.finishOne:PROGRESS.finishA),bag); }
+  const rule=(LEN_RULES[g+':'+d]||[])[i], line=rule||(s===STREAK?PROGRESS.finishOne:PROGRESS.finishA);
+  const named=!/\{mode\}/.test(line)&&GAMES[g].modes.length>1&&MODE_NAME[d]?gname+' · '+MODE_NAME[d]:gname;
+  return T(line,{game:named,mode:MODE_NAME[d]||gname,prev:lenName(g,lens[i-1],d)}); }
 const lenOpen=(g,d,s)=>!lenLock(g,d,s);
 /* ---------- v17 (B.5, L6): a length unlock ANNOUNCES ----------
    It never did. A length is not in UNLOCKS, so liveCheck's table walk could not see one, and the only way a Dash or a

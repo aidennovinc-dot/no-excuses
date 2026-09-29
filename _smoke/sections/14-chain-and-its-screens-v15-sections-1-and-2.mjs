@@ -213,4 +213,14 @@ export async function run() {
       ? ok(`62.13 a banked, never-played Dash is green on the sheet (twice) and on the result screen's chip (${o1.first.col}), still after the chips redraw, and plain once a Dash is on record`)
       : bad('62.13 the never-played length', JSON.stringify({ s1, s2, o1, o2, ok62 }));
   }
+  /* build 65 (64.11): EVERY LENGTH'S REQUIREMENT NAMES ITS MODE — Four's Dash asks for a Four Sprint, not "a Quick Tap Sprint". Every length of every
+     game with more than one mode, read through lenNeed, the one place the sentence is built */
+  {
+    const r = await page.evaluate(async () => { const P = await import('./progress.js'), R = await import('./games/registry.js'), G = await import('./config/games.js'); const miss = [];
+      for (const g in R.GAMES) { if (R.GAMES[g].modes.length < 2) continue; for (const d of R.GAMES[g].modes) R.GC(g, d).lens.forEach((s, i) => { if (!i) return; const n = P.lenNeed(g, d, s); if (!n.includes(G.MODE_NAME[d])) miss.push(g + ':' + d + ':' + s + ' "' + n + '"'); }); }
+      return { miss, four: P.lenNeed('quick-tap', 'four', R.GC('quick-tap', 'four').lens[1]), fourM: P.lenNeed('quick-tap', 'four', R.GC('quick-tap', 'four').lens[2]) }; });
+    (!r.miss.length && /Quick Tap · Four/.test(r.four) && /Quick Tap · Four/.test(r.fourM))
+      ? ok(`64.11 every length requirement names its mode: "${r.four}", "${r.fourM}"`)
+      : bad('64.11 a requirement without its mode', JSON.stringify(r));
+  }
 }
