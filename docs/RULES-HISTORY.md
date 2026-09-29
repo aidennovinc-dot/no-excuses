@@ -1554,3 +1554,11 @@ walkthrough keeps `prefs.tut` / `prefs.tutRun` (62.10's resume rules); every oth
 'done'}` finished — a preference, so Fresh game keeps it; "open everything" arms none. Testing: "replay tutorial" (the walkthrough) and "reset all
 first-time tutorials" (the walkthrough to box one, `prefs.tuts` emptied, every tutorial whose thing is already open re-armed at step one).
 
+**64.3 — the walkthrough completes once, and every unlock toasts on the result.** Reproduced first in the gate's own first run (a Sprint that opens
+Dash and Four): Dash's toast showed only on the game layer, mid-run, and never on the result. Now `run/run.js` puts every unlock the run made
+MID-RUN at the front of the result's list, in the order they landed, and takes any of their toasts still up or queued off the screen at the finish
+(`toastTake()` in `ui/toast.js`), so the result toasts every unlock in sequence and none twice in a row; the mid-run toast still announces the
+moment. The walkthrough's first run is `firstRun` in `ui/tutorial.js`, set as the game layer comes up from the walkthrough's own Go and kept until
+that run finishes or is quit — build 64 asked at the finish, through a flag any screen change wiped and a test the finished run itself made false,
+and a first run that lost it was never marked (the replay behind a pick sheet with no box in Aiden's report). Its result's boxes wait for every
+toast (A1 `busy()`); the last one ends the walkthrough however the run went, and a finished walkthrough never shows again, before or after a reload.

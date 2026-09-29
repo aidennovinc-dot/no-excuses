@@ -32,14 +32,20 @@ const Q=[]; let showing=false;
 function holdOf(t){ return (t.ach||t.go)?TOAST_MS.tap:t.cls==='ok'?TOAST_MS.unlock:TOAST_MS.plain; }
 function nextToast(){ const t=$('#toast');
   if(!Q.length){ showing=false; return; }
-  showing=true; const it=Q.shift();
+  showing=true; const it=cur=Q.shift();
   if(it.html) t.innerHTML=it.msg; else t.textContent=it.msg;
   t.dataset.ach=it.ach||''; t.dataset.goto=it.go||''; t.classList.toggle('tap',!!it.ach||!!it.go); t.classList.toggle('ok',it.cls==='ok'); t.classList.add('on');
   if(!it.quiet) it.cls==='ok'?Snd.unlockFx():Snd.click();
   toastT=setTimeout(()=>{ t.classList.remove('on'); t.dataset.ach=''; t.dataset.goto=''; toastT=setTimeout(nextToast,TOAST_MS.gap); },holdOf(it)); }
-function toast(msg,ach,cls,html,go,quiet){ Q.push({msg,ach,cls,html,go,quiet}); if(!showing) nextToast(); }
+function toast(msg,ach,cls,html,go,quiet,key){ Q.push({msg,ach,cls,html,go,quiet,key}); if(!showing) nextToast(); }
+let cur=null;
 // build 65 (A1 / 64.3): a toast is up or waiting its turn — the first-time tutorials wait for the queue to empty before they speak
 const toastBusy=()=>showing||Q.length>0;
+/* build 65 (64.3): EVERY UNLOCK A RUN MAKES TOASTS ON ITS RESULT, in the order it was earned. One made mid-run still toasts the moment it happens;
+   when the run ends, whichever of those are still up or waiting are taken off here, because the result screen says all of them again and two of
+   the same toast in a row read as a stutter. `key` is the unlock's own key, which is how the run names them. */
+function toastTake(keys){ const k=new Set(keys||[]); for(let i=Q.length-1;i>=0;i--) if(Q[i].key&&k.has(Q[i].key)) Q.splice(i,1);
+  if(showing&&cur&&cur.key&&k.has(cur.key)){ clearTimeout(toastT); const t=$('#toast'); t.classList.remove('on'); t.dataset.ach=''; t.dataset.goto=''; toastT=setTimeout(nextToast,TOAST_MS.gap); } }
 // a tap, or a screen the toast no longer belongs on, empties the queue: nothing that was going to be said is said late
 // build 62 (61.6): a toast that has gone takes its link with it, so nothing can answer a tap on where it was
 function toastClear(){ clearTimeout(toastT); Q.length=0; showing=false; const t=$('#toast'); if(t){ t.classList.remove('on'); t.dataset.ach=''; t.dataset.goto=''; } }
@@ -53,4 +59,4 @@ define({ toast(t){ const id=t.dataset.ach, go=t.dataset.goto;
   Snd.click(); toastClear();
   show(id?'s-prog':'s-pick',id?{ach:id}:unlockWhere(go)); } });
 
-export { toast, toastBusy, toastClear };
+export { toast, toastBusy, toastClear, toastTake };

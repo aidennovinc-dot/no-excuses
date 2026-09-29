@@ -26,7 +26,7 @@ import { checkKey, checkKeyAch, keyGoal } from "../progress/key.js";
 import { scoreTxt } from "../ui/format.js";
 import { game as showGame, show } from "../ui/router.js";
 import { applyPrefs } from "../ui/theme.js";
-import { toast } from "../ui/toast.js";
+import { toast, toastTake } from "../ui/toast.js";
 
 /* ---------- run state. `id` steps on every start and abort, so anything a dead run left behind can tell it is dead ---------- */
 /* v16 (1.4 / 1.5): `fin` is 0..1, how far into the finish the run is, and `vsP` is each player's proximity to winning.
@@ -320,7 +320,11 @@ function finish(res){
      so the clear this run just made has to be in the store before the row that it completes is asked — the order used to
      be achievements then key, which would have made every "clear every bar" row land one run late. */
   const adv=checkKey(run,two);
-  const fresh=(two?[]:checkUnlocks(run)).concat(freshLen), ach=two?[]:checkAch(run).concat(checkKeyAch(run));
+  /* build 65 (64.3): and the unlocks it made MID-RUN go first in that list, in the order they landed — the result screen toasts every unlock the run
+     made, one after another. Aiden's first v0.64 run opened Dash and Four; Dash's toast came and went while he was tapping and only Four's reached
+     the result, so Dash "turned green with no toast". Mid-run toasts still up or queued are taken off, so none is said twice in a row. */
+  const live=two?[]:R.fresh.filter(k=>typeof k==='string').map(key=>({key})); toastTake(R.fresh);
+  const fresh=live.concat(two?[]:checkUnlocks(run)).concat(freshLen.filter(f=>!R.fresh.includes(f.key))), ach=two?[]:checkAch(run).concat(checkKeyAch(run));
   // the result screen takes it from here: the header, the ad break, the unlock and achievement toasts (ui/screens/result.js)
   emit('run:finish',{run,isBest,two,fresh,ach,adv});
 }
@@ -353,7 +357,7 @@ function liveCheck(part){ if(!R.on) return;
   if(run.x===undefined) run.x=999; if(run.y===undefined) run.y=0;
   if(chalRun(run.g,run.d,run.s)) run.chal=1;
   const u=unlocked(); let ch=false;
-  for(const x of UNLOCKS){ if(x.live&&!run.chal&&!run.practice&&!u[x.key]&&x.test(run)){ u[x.key]=Date.now(); ch=true; R.fresh.push(x.key); toast(unlockToast(x.key),'','ok'); } }
+  for(const x of UNLOCKS){ if(x.live&&!run.chal&&!run.practice&&!u[x.key]&&x.test(run)){ u[x.key]=Date.now(); ch=true; R.fresh.push(x.key); toast(unlockToast(x.key),'','ok',false,'',false,x.key); } }
   if(ch) save();
   /* v17 (B.5, L6): a LENGTH unlock announces the moment it is met, in every game, whether or not it is this run's goal
      line — that accident was the only announcement it ever had. There is nothing to bank: length state is derived from run
@@ -361,7 +365,7 @@ function liveCheck(part){ if(!R.on) return;
   /* v18 (B.8): and it is BANKED, not merely announced. It used to be an announcement with nothing behind it — length
      state is derived from run history, and a quit run is never submitted, so a player who was told "Unlock: Streak" and
      then quit found it locked. bankLen writes the three-part key the toast names; lenLock reads it back. */
-  if(R.lenNext&&!R.lenDone&&!run.chal&&!run.practice&&R.lenNext.test(run)){ R.lenDone=true; R.fresh.push(R.lenNext.key); bankLen(R.lenNext.key); toast(unlockToast(R.lenNext.key),'','ok'); }
+  if(R.lenNext&&!R.lenDone&&!run.chal&&!run.practice&&R.lenNext.test(run)){ R.lenDone=true; R.fresh.push(R.lenNext.key); bankLen(R.lenNext.key); toast(unlockToast(R.lenNext.key),'','ok',false,'',false,R.lenNext.key); }
   for(const a of checkAch(run,true)) toast(achToast(a),a.id,'',true);
   /* v17 (B.5): the goal line no longer raises its own toast. It used to be the ONLY place a length unlock announced, and
      it announced two different wrong things: a duplicate whenever the pass above had already said it, and — on a length

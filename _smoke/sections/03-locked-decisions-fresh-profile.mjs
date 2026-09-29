@@ -110,13 +110,27 @@ export async function run() {
     (seen.every(b => b && Math.abs(b.centre[0]) <= 2 && Math.abs(b.centre[1]) <= 2 && b.top === seen[0].top && !b.covers && b.buttons === 0))
       ? ok(`62.7 / 62.8 all twelve boxes sit in the centre of the phone at one spot (top ${seen[0].top}px), none over what it rings, no Skip and no Next on any`)
       : bad('62.7 / 62.8 the centred box', JSON.stringify(seen.map(b => b && { t: b.text.slice(0, 20), c: b.centre, top: b.top, covers: b.covers, buttons: b.buttons })));
+    /* build 65 (64.3): every toast from here on, with the screen it showed on and whether a walkthrough box was up at the same moment — this first
+       run is Aiden's v0.64 case, a Sprint fast enough to open Dash (7 in a row) and Four (15 in a row) at once */
+    await page.evaluate(() => { window.__toasts = []; window.__overlap = 0; const t = document.getElementById('toast'), tut = () => { const b = document.getElementById('tut'); return !!b && !b.hidden; };
+      new MutationObserver(() => { if (t.classList.contains('on')) window.__toasts.push({ t: t.textContent, s: document.querySelector('.screen.on')?.id || 'game' }); }).observe(t, { attributes: true, attributeFilter: ['class'] });
+      setInterval(() => { if (t.classList.contains('on') && tut()) window.__overlap++; }, 40); });
     // box 12 → Sprint: the run starts with no box for Go — and with no Exit and no Restart (62.10)
     await click(`#time-row .tbtn[data-time="${X.lens[0]}"]`);
     for (let i = 0; i < 60 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) await sleep(100);
     const first = await page.evaluate(() => ({ game: document.getElementById('game').classList.contains('on'), exit: getComputedStyle(document.getElementById('quit')).display, restart: getComputedStyle(document.getElementById('restart')).display, tut: JSON.parse(localStorage.getItem('ne')).prefs.tut }));
     for (let i = 0; i < 200 && (await page.evaluate(() => document.getElementById('game').classList.contains('on'))); i++) { await stepQuickTap(); await sleep(60); }
     const rec = await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('ne')).prefs; return { tut: p.tut, run: !!p.tutRun && p.tutRun.g }; });
-    const r1 = await waitText(OV[0], 200);
+    const r1 = await waitText(OV[0], 400);
+    /* 64.3: both unlocks toast on the result, in the order they were earned, and the walkthrough's first box waits until every toast has gone —
+       it never shows while one is up. The run's two unlocks are Dash and Four; a mid-run toast still up when the run ended is said again here */
+    const T3 = await page.evaluate(async () => { const C = (await import('./config/copy.js')).TOAST, R = await import('./games/registry.js'), G = await import('./config/games.js');
+      return { toasts: window.__toasts, overlap: window.__overlap, dash: C.unlock.replace('{name}', R.lenName('quick-tap', R.GC('quick-tap', 'two').lens[1], 'two')), four: C.unlock.replace('{name}', G.MODE_NAME.four),
+        unl: JSON.parse(localStorage.getItem('ne')).unlock }; });
+    const onOver = T3.toasts.filter(x => x.s === 's-over').map(x => x.t), iD = onOver.indexOf(T3.dash), iF = onOver.indexOf(T3.four);
+    (iD >= 0 && iF > iD && T3.overlap === 0 && Object.keys(T3.unl).length >= 2)
+      ? ok(`64.3 a first run that opens two things at once: "${T3.dash}" then "${T3.four}" both toast on the result, in order, and no walkthrough box shows while a toast is up`)
+      : bad('64.3 two unlocks on the first run', JSON.stringify({ onOver, all: T3.toasts, overlap: T3.overlap, unl: T3.unl }));
     // 62.10: the app closed half way through the result — reopened, it lands back on that result, box one
     await anywhere(); await waitText(OV[1]);
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
@@ -152,6 +166,21 @@ export async function run() {
       && row.done && row.text.includes(row.name) && row.text.includes('Unlocks ' + row.gives) && !row.key && row.gold)
       ? ok(`62.14 "Good luck!" banks ${row.name} (gold, "Unlocks ${row.gives}", no key) and the walkthrough ends; Scores, Progress and About open on the menu; the second run has Exit and Restart back`)
       : bad('62.14 the end of the walkthrough', JSON.stringify({ done, second, menu, row, gold }));
+    /* 64.3: THE WALKTHROUGH FINISHES ONCE AND NEVER COMES BACK — on the map (where v0.64 restarted it behind a pick sheet with no box), on the
+       result, or after a reload */
+    {
+      const noBox = async where => { await page.evaluate(async w => (await import('./ui/router.js')).show(w, w === 's-pick' ? { g: 'quick-tap', d: 'two' } : {}), where); await sleep(900);
+        return page.evaluate(() => { const b = document.getElementById('tut'); return { box: !!b && !b.hidden, tut: JSON.parse(localStorage.getItem('ne')).prefs.tut }; }); };
+      const a = await noBox('s-pick'); await page.evaluate(async () => (await import('./ui/router.js')).show('s-pick')); await sleep(600);
+      const b = await page.evaluate(() => { const t = document.getElementById('tut'); return !!t && !t.hidden; });
+      await page.reload({ waitUntil: 'networkidle0' }); await sleep(300); const c = await noBox('s-pick');
+      const tap = await page.evaluate(() => { document.querySelector('.tile[data-game="quick-tap"]').click(); return !!document.querySelector('#sheet.up'); }); await sleep(300);
+      const opened = await page.evaluate(() => !!document.querySelector('#sheet.up'));
+      (!a.box && a.tut === 2 && !b && !c.box && c.tut === 2 && opened)
+        ? ok('64.3 once finished the walkthrough never replays: no box on the map or its sheet, before or after a reload, and the map answers taps')
+        : bad('64.3 the walkthrough replayed', JSON.stringify({ a, b, c, opened }));
+      await page.evaluate(async () => (await import('./ui/router.js')).show('s-menu')); await sleep(200);
+    }
     /* 62.14: what locks them — a profile that has not finished it has Scores, Progress and About crossed out; one from before build 64 that has
        played and never met the walkthrough keeps them open */
     const menuOf = async prefs => { await page.evaluate(p => { localStorage.setItem('ne', JSON.stringify({ v: 7, prefs: Object.assign({ story: 1, gridSeen: 1, menuSeen: 1, snd: 'off' }, p), runs: [], ach: {}, unlock: {}, intro: {}, seen: {}, bars: {} })); }, prefs);
