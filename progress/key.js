@@ -40,7 +40,7 @@ import { CHESTS, GAUNTLETS, METER, METER_BANDS } from "../config/chests.js";
 import { MESSAGES } from "../config/messages.js";
 import { MODE_NAME } from "../config/games.js";
 import { KEY_BARS } from "../config/key-bars.js";
-import { KEYS } from "../config/keys.js";
+import { KEYS, RADAR } from "../config/keys.js";
 import { GAUNTLET, KEY, KEY_ACH } from "../config/copy.js";
 import { T } from "../core.js";
 import { opened, prefs, save, setKeyDone, store } from "../core/store.js";
@@ -425,7 +425,6 @@ function checkKeyAch(run) { if (!run || run.chal || run.practice || run.demo) re
    even steps: rung 1 is key 1's bar, rung 2 the Pro bar, rung 3 the Author time, and a score past the Author
    time pushes on to RADAR_PAST, which is where the flame lives. A shell tier is a rung with no value (A.2): a game cannot
    climb past the last rung that has a number, and the screen draws that rung dashed. `rungs` says which rungs exist. */
-const RADAR_PAST = 1.15;
 /* build 38: one rung per OPEN tier, evenly spaced. BUILD 40: key 1's rung is always there, Games chest or not — the radar is the Scores
    screen's picture of a player's best, not the key, and with no rung it would have nothing to draw (guess) */
 function radarRungs() { const open = TIERS.filter((t, i) => !i || tierOpen(t));
@@ -433,21 +432,29 @@ function radarRungs() { const open = TIERS.filter((t, i) => !i || tierOpen(t));
 // how far a best score sits from `from` to `to` on the combination's own direction, 0..1 (past `to` is > 1)
 function stretch(best, from, to, dir) { if (best === null || from === null || to === null || from === to) return 0;
   return (best - from) / (to - from); }
-function radarOf(g) { const list = BY_GAME[g] || []; const rungs = radarRungs(); let best = 0;
-  for (const c of list) { const b = bestOf(c); if (b === null || !c.bar) continue; const dir = c.bar.dir; let v = 0;
-    const b1 = barOf(c, 'clear'); if (b1 === null || !b1 || !b) continue;
-    const ratio = dir === 'lower' ? b1 / b : b / b1;
-    if (rungs.length === 1) { v = Math.min(1, ratio); best = Math.max(best, v); continue; }
-    const step = 1 / rungs.length;
-    if (ratio < 1) { v = ratio * step; best = Math.max(best, v); continue; }
-    // at or past rung 1: climb rung by rung while the next rung has a number and the score has reached it
-    v = step; let prev = b1;
-    for (let i = 1; i < rungs.length; i++) { const r = rungs[i]; const bar = barOf(c, r.tier); if (bar === null) break;
-      const reached = dir === 'lower' ? b <= bar : b >= bar;
-      if (reached) { v = step * (i + 1); prev = bar; if (i === rungs.length - 1) { const over = dir === 'lower' ? (prev - b) / Math.max(1, prev) : (b - prev) / Math.max(1, prev); v = Math.min(RADAR_PAST, v + Math.max(0, over)); } }
-      else { const part = Math.max(0, Math.min(0.999, stretch(b, prev, bar, dir))); v = step * i + step * part; break; } }
-    best = Math.max(best, v); }
-  return { v: best, rungs, past: best > 1 }; }
+/* build 65 (64.13): THE WEB CHART ON THE KEYS' OWN SCALE, replacing B.24's rungs-per-open-tier. For one combination and a best score: 100 at
+   its Skill bar, 200 at its Pro bar, 300 at its Author bar; piecewise linear between them, 0 → Skill on the score's own ratio to the bar (a
+   lower-is-better score by the bar over it, as the key's credit does), and beyond Author extrapolated on the Pro → Author step, so beating the
+   author by as much again as Author beats Pro reads 400. Every step reads the bar's own direction. A tier with no number stops the climb at
+   its ring. Pro rows Aiden has not set and every Author row are placeholders today (A.2 as amended at #426): the chart reads whatever the
+   file says each time it is drawn, so it re-scales the day his numbers go in. */
+const RADAR_PAST = RADAR.max;
+function keyScale(c, b) { if (b === null || b === undefined || !c || !c.bar) return null;
+  const dir = c.bar.dir, k1 = barOf(c, 'clear'), k2 = barOf(c, 'pro'), k3 = barOf(c, 'author'), [r1, r2, r3] = RADAR.rings;
+  if (k1 === null || !k1) return null;
+  const reached = k => dir === 'lower' ? b <= k : b >= k;
+  if (!reached(k1)) { const ratio = dir === 'lower' ? (b > 0 ? k1 / b : 0) : b / k1; return Math.max(0, Math.min(r1, r1 * ratio)); }
+  if (k2 === null || k2 === k1) return r1;
+  if (!reached(k2)) return r1 + (r2 - r1) * (b - k1) / (k2 - k1);
+  if (k3 === null || k3 === k2) return r2;
+  return Math.max(r2, r2 + (r3 - r2) * (b - k2) / (k3 - k2)); }
+/* a game's spoke is the AVERAGE over the combinations the player has played at least once (Cowork's call) — so opening a new mode or length
+   never drags it down, and a game not yet played is 0. `n` is how many went into it. B.24's rungs (radarRungs) still answer which tiers are open */
+function radarOf(g) { const vals = (BY_GAME[g] || []).map(c => keyScale(c, bestOf(c))).filter(v => v !== null && Number.isFinite(v));
+  const v = vals.length ? vals.reduce((a, x) => a + x, 0) / vals.length : 0;
+  return { v, n: vals.length, rungs: radarRungs(), past: v > RADAR.rings[RADAR.rings.length - 1] }; }
+// the overall figure: the average of the games that have a spoke at all, on the same scale
+function radarAll() { const s = Object.keys(GAMES).map(radarOf).filter(a => a.n); return s.length ? s.reduce((a, x) => a + x.v, 0) / s.length : 0; }
 
 /* ---------- v21 (G.4, build 37): retroactive credit when a chest opens ----------
    A chest reveals tiers whose bars the player may already have beaten. Every newly revealed, non-shell bar is judged
@@ -587,4 +594,4 @@ function devMeterTo(n, modes) { const want = Math.max(0, Math.min(meterMax(), Ma
     if (chestState(c.id) !== 'ready' || !devOpen(c.id)) break; }
   seenDown(); save(); return meter(); }
 
-export { COMBOS, RADAR_PAST, TIERS, tierEarned, chestNeeds, crackCount, gauntBest, gauntDone, msgDot, msgOpen, msgShown, msgTitle, bandPct, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, checkKeyAch, chestAt, chestOpen, chestState, cleared, combos, credit, devBack, devChestReset, devClearTo, devMeterTo, devOpen, devReach, fillBars, gameKey, isCleared, isPlaceholder, isShell, keyAch, keyChest, keyFinished, keyGaunt, keyGoal, keyOf, keyPct, keyState, keyTier, keyTiers, meter, meterBand, meterMax, meterPct, modesOpen, openChest, placeholderCount, radarOf, radarRungs, readyChest, retroArrived, retroBank, retroTier, skey, tierFull, tierOpen };
+export { COMBOS, RADAR_PAST, TIERS, keyScale, radarAll, tierEarned, chestNeeds, crackCount, gauntBest, gauntDone, msgDot, msgOpen, msgShown, msgTitle, bandPct, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, checkKeyAch, chestAt, chestOpen, chestState, cleared, combos, credit, devBack, devChestReset, devClearTo, devMeterTo, devOpen, devReach, fillBars, gameKey, isCleared, isPlaceholder, isShell, keyAch, keyChest, keyFinished, keyGaunt, keyGoal, keyOf, keyPct, keyState, keyTier, keyTiers, meter, meterBand, meterMax, meterPct, modesOpen, openChest, placeholderCount, radarOf, radarRungs, readyChest, retroArrived, retroBank, retroTier, skey, tierFull, tierOpen };

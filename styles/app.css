@@ -539,6 +539,27 @@
   .prof{display:flex;flex-direction:column;align-items:center;gap:6px;flex:none}
   #radar{width:min(58vw,230px);height:min(58vw,230px);overflow:visible}
   #radar polygon.web{fill:none;stroke:var(--line)}
+  /* build 65 (64.13): the three rings in their keys' styles, the web growing in and breathing, the overall figure under the chart */
+  #radar .ring{fill:none;stroke:var(--kt);stroke-width:1.1}
+  #radar .rring.r1 .ring{opacity:.85;filter:drop-shadow(0 0 2.5px var(--kt));animation:rlamp 3.2s ease-in-out infinite alternate}
+  @keyframes rlamp{from{opacity:.55}to{opacity:.95}}
+  #radar .rring.r2 .ring{stroke-dasharray:7 2 1 2;opacity:.8}
+  #radar .rring.r2 .rnode{fill:var(--kt);opacity:.85}
+  #radar .rring.r3 .ring{opacity:.7}
+  #radar .rring.r3 .rspike{fill:var(--kt);opacity:.75}
+  #radar .meg{transform-box:view-box;transform-origin:100px 100px;animation:rgrow .9s cubic-bezier(.2,.9,.3,1) both,rbreathe 5s ease-in-out .9s infinite}
+  @keyframes rgrow{from{transform:scale(.04);opacity:.3}to{transform:scale(1);opacity:1}}
+  @keyframes rbreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}
+  .radar-all{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--mute);margin-top:4px}
+  .radar-all b{font-size:22px;letter-spacing:.04em;color:var(--ink);font-variant-numeric:tabular-nums;vertical-align:-2px;display:inline-block}
+  .radar-all em{font-style:normal;display:inline-block}
+  .radar-all.t1 b,.radar-all.t1 em{color:#FFD08A;animation:tlamp 2.4s ease-in-out infinite alternate}
+  @keyframes tlamp{from{text-shadow:0 0 4px rgba(255,208,138,.35)}to{text-shadow:0 0 14px rgba(255,208,138,.95)}}
+  .radar-all.t2 b,.radar-all.t2 em{color:#BFE6FF;text-shadow:0 0 8px rgba(191,230,255,.6);animation:tflick 3.2s steps(1) infinite}
+  @keyframes tflick{0%,100%{opacity:1}41%{opacity:.35}43%{opacity:1}72%{opacity:.6}73%{opacity:1}}
+  .radar-all.t3 b,.radar-all.t3 em{color:#fff;text-shadow:1px 0 0 #000,-1px 0 0 #000,0 0 10px rgba(255,255,255,.7);animation:tthorn .9s steps(2) infinite}
+  @keyframes tthorn{0%{transform:translate(0,0)}50%{transform:translate(1px,-1px)}}
+  @media (prefers-reduced-motion:reduce){#radar .meg,#radar .rring.r1 .ring,.radar-all b,.radar-all em{animation:none}}
   #radar line{stroke:var(--line)}
   #radar polygon.me{fill:color-mix(in srgb,var(--sq-live) 22%,transparent);stroke:var(--sq-live);stroke-width:2;stroke-linejoin:round}
   #radar text{fill:var(--mute);font-family:var(--mono);font-size:8px;letter-spacing:.12em;text-transform:uppercase}

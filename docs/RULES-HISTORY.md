@@ -1615,3 +1615,12 @@ another), then a game filter the player must pick — All does nothing (a step's
 (Claude's line, as About's), "Welcome to the scores section!", "Let's check your Quick Tap scores" with Quick Tap's chip to tap (Claude's call —
 "let's check" is a tap; the name from config), then the web chart ringed. On a screen that cannot scroll (the menu), a box that would cover its
 target moves just below it (or above).
+
+**64.13 — the web chart on the keys' scale (SUPERSEDING B.24's drawing).** `keyScale(c, best)` in `progress/key.js`: 100 at the combination's
+Skill bar, 200 at Pro, 300 at Author (`RADAR.rings`), piecewise linear between, 0 → Skill on the score's ratio to the bar, past Author extrapolated
+on the Pro → Author step; every step reads the bar's own direction; a tier with no number stops the climb at its ring. A game's spoke is the
+AVERAGE over the combinations played at least once (Cowork's call); the overall figure is the average of the games with a spoke. Rings at 100 /
+200 / 300 in the keys' tints and styles — Lantern's glow, Circuit's traces and square nodes, Thorns' spikes — drawn to `RADAR.max` (400) at the
+edge; the web grows in and breathes. Past a ring the overall figure takes that key's style and word (`RADAR_TXT.words`, placeholders: Lit / Wired /
+Thorned). The chart reads `config/key-bars.js` each time it is drawn, so Aiden's Pro and Author numbers re-scale it. `radarRungs()` still
+answers which tiers are open (the chest checks use it). The gate's B.24 checks were replaced; "B.25 the order in run.js" (source text) was deleted.

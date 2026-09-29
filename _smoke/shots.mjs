@@ -1808,6 +1808,21 @@ scene('64.12', async (page, browser) => {
   await tutFrames(page, browser, '64.12', 4, { 0: '#s-menu .item[data-go="s-board"]', 2: '#bd-g .chip[data-v="quick-tap"]' }, 'Scores tutorial, after the first Reaction run — ');
 });
 
+// 64.13: runs placed exactly on the bars, read from config/key-bars.js, so each spoke's number is known — `at` maps a combination to a tier
+async function barRuns(page, at) { return page.evaluate(async at => { const KB = (await import('./config/key-bars.js')).KEY_BARS, now = Date.now(); let i = 0;
+  return Object.entries(at).map(([k, tier]) => { const [g, d, s] = k.split(':'), r = KB[k], v = tier === 'clear' ? r.bar : r[tier]; return { t: now - (++i) * 60000, g, d, s: +s, hits: v, misses: 0, v: 4 }; }); }, at); }
+scene('64.13', async (page, browser) => {
+  await load(page); const runs = await barRuns(page, { 'quick-tap:two:5': 'pro', 'quick-tap:two:15': 'author', 'dots:blind:5': 'clear' });
+  await load(page, { ...OPEN, welcomeSeen: 1 }, { runs }); await show(page, 's-board'); await sleep(1600);
+  say('chart', await page.evaluate(() => ({ labels: [...document.querySelectorAll('#radar text')].map(t => t.textContent), all: document.getElementById('radar-all').textContent, cls: document.getElementById('radar-all').className })));
+  await frame(page, browser, '64.13-web-lit', 'Scores: Quick Tap (Pro and Author runs) reads 250, Dots (on its Skill bar) 100; the rings at 100 / 200 / 300 in Lantern, Circuit and Thorns styles; overall 175 past the Lantern ring');
+  const runs3 = await barRuns(page, { 'quick-tap:two:5': 'author', 'dots:blind:5': 'author', 'hold:grow:7': 'author' });
+  runs3[0].hits = Math.round(runs3[0].hits * 1.4);
+  await load(page, { ...OPEN, welcomeSeen: 1 }, { runs: runs3 }); await show(page, 's-board'); await sleep(1600);
+  say('chart', await page.evaluate(() => ({ labels: [...document.querySelectorAll('#radar text')].map(t => t.textContent), all: document.getElementById('radar-all').textContent, cls: document.getElementById('radar-all').className })));
+  await frame(page, browser, '64.13-web-thorned', 'Scores: three games on or past their Author bars — the web out past the Thorns ring, the overall figure in the Thorns style');
+});
+
 scene('64.6', async (page, browser) => {
   await load(page, { ...OPEN, welcomeSeen: 1 }); await runOf(page, 'quick-tap'); await sleep(1200);
   say('hud', await page.evaluate(() => { const q = id => { const r = document.getElementById(id).getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)]; };

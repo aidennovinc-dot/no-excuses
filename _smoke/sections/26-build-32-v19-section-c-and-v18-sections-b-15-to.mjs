@@ -284,36 +284,34 @@ export async function run() {
       : bad('B.23 taps inside the ring', JSON.stringify({ ground, ...bar }));
     await page.evaluate(async () => { const B = await import('./ui/router.js'); B.show('s-menu'); }); await sleep(300);
   }
-  /* ---- B.24: the radar's rungs and the flame ---- */
+  /* ---- B.24, SUPERSEDED at build 65 (64.13): the web chart on the keys' own scale ----
+     B.24's drawing (one rung per open tier, the best combination's value, a flame past Author) is replaced. Checked now: per combination, 100 at
+     the Skill bar, 200 at Pro, 300 at Author, piecewise linear between them, and past Author on the Pro → Author step, in either direction; a
+     game's spoke is the AVERAGE of the combinations played; three rings at 100 / 200 / 300 in their keys' styles; the overall figure past a ring
+     wears that key's style; and a bar changed in memory re-scales the chart when it is next drawn. Every number read from config/key-bars.js */
   {
-    // #411: allOpen OFF - same reason as the key-strip check above; the radar takes the same escape now
-    await setStorage({ ne: { v: 3, prefs: { ...OPEN_PREFS, allOpen: false, chest1: 0 }, runs: [{ t: NOW, g: 'quick-tap', d: 'two', s: 5, n: '', v: 4, hits: 6, misses: 0 }], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    const sc = await page.evaluate(async () => { const K = await import('./progress/key.js'), KB = (await import('./config/key-bars.js')).KEY_BARS, RD = (await import('./config/keys.js')).RADAR;
+      const c = k => K.COMBOS.find(x => x.key === k), q = c('quick-tap:two:5'), e = c('hold:grow:7'), Q = KB['quick-tap:two:5'], E = KB['hold:grow:7'];
+      const at = (cc, v) => Math.round(K.keyScale(cc, v) * 10) / 10;
+      return { rings: RD.rings, q: [at(q, Q.bar), at(q, Q.pro), at(q, Q.author), at(q, (Q.bar + Q.pro) / 2), at(q, Q.author + (Q.author - Q.pro)), at(q, Q.bar / 2)],
+        e: [at(e, E.bar), at(e, E.pro), at(e, E.author), at(e, (E.bar + E.pro) / 2), at(e, E.author - (E.pro - E.author))], dirs: [Q.dir, E.dir] }; });
+    ((sc.q.join() === '100,200,300,150,400,50') && (sc.e.join() === '100,200,300,150,400') && sc.dirs.join() === 'higher,lower' && sc.rings.join() === '100,200,300')
+      ? ok(`64.13 on the keys' scale — Quick Tap · Two · Sprint (higher): Skill ${sc.q[0]}, Pro ${sc.q[1]}, Author ${sc.q[2]}, half way ${sc.q[3]}, one step past Author ${sc.q[4]}; Estimate · Grow (lower): ${sc.e.join(' / ')}`)
+      : bad('64.13 the key scale', JSON.stringify(sc));
+    const runsAt = await page.evaluate(async () => { const KB = (await import('./config/key-bars.js')).KEY_BARS; return [['quick-tap:two:5', 'pro'], ['quick-tap:two:15', 'author'], ['dots:blind:5', 'bar']].map(([k, t], i) => { const [g, d, s] = k.split(':'); return { t: Date.now() - (i + 1) * 60000, g, d, s: +s, n: '', v: 4, hits: KB[k][t], misses: 0 }; }); });
+    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS }, runs: runsAt, ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
-    await click('[data-go="s-board"]'); await sleep(500);
-    const r1 = await page.evaluate(() => ({ web: document.querySelectorAll('#radar polygon.web').length, rungs: document.querySelectorAll('#radar polygon.rung').length, flame: document.querySelectorAll('#radar .flame').length, txt: document.getElementById('s-board').innerText.toLowerCase(), qt: (document.querySelector('#radar text') || {}).textContent }));
-    // AMENDED at build 44 (v24 §E): Quick Tap · Two · Sprint's key 1 bar is Aiden's 9, so 6 hits reads 67
-    (r1.web === 4 && r1.rungs === 0 && r1.flame === 0 && !/\bpro\b|author/.test(r1.txt) && /Quick Tap 67/.test(r1.qt || ''))
-      ? ok(`B.24 / A.1 before chest 1 the radar has one rung — key 1 at the ring — and nothing beyond it; 6 hits against a bar of 9 reads "${r1.qt}"`)
-      : bad('B.24 the single-rung radar', JSON.stringify(r1));
-    await setStorage({ ne: { v: 3, prefs: { ...OPEN_PREFS, chest1: 1 }, runs: [{ t: NOW, g: 'quick-tap', d: 'two', s: 5, n: '', v: 4, hits: 60, misses: 0 }], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
-    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
-    await click('[data-go="s-board"]'); await sleep(500);
-    /* AMENDED at build 38 (#426): the columns are full of placeholders, so the solid rungs and the flame are what the FILE draws
-       now, and the dashed shells are the case that has to be made - by emptying both columns in memory */
-    const r2 = await page.evaluate(async () => { const read = () => ({ rungs: [...document.querySelectorAll('#radar polygon.rung')].map(p => p.dataset.rung + (p.classList.contains('shell') ? ':dashed' : '')), flame: document.querySelectorAll('#radar .flame').length, qt: (document.querySelector('#radar text') || {}).textContent });
-      const R = await import('./ui/router.js'); const KB = await import('./config/key-bars.js');
-      const out = { full: read() }, keep = {};
-      for (const k in KB.KEY_BARS) { keep[k] = [KB.KEY_BARS[k].pro, KB.KEY_BARS[k].author]; KB.KEY_BARS[k].pro = null; KB.KEY_BARS[k].author = null; }
-      R.show('s-menu'); await new Promise(r => setTimeout(r, 200)); R.show('s-board'); await new Promise(r => setTimeout(r, 400));
-      out.shell = read(); const d = document.querySelector('#radar polygon.rung.shell'); out.shell.dash = d ? getComputedStyle(d).strokeDasharray : 'none';
-      for (const k in keep) { KB.KEY_BARS[k].pro = keep[k][0]; KB.KEY_BARS[k].author = keep[k][1]; }
-      return out; });
-    (r2.shell.rungs.join(',') === 'clear,pro:dashed,author:dashed' && r2.shell.flame === 0 && /Quick Tap 33/.test(r2.shell.qt || '') && r2.shell.dash !== 'none')
-      ? ok(`B.24 / A.2 after chest 1 three rungs — with both columns emptied, Pro and Author are DASHED at no value; 60 hits against a bar of 12 climbs no further than rung 1 ("${r2.shell.qt}") and no flame`)
-      : bad('B.24 the three rungs with shells', JSON.stringify(r2.shell));
-    (r2.full.rungs.join(',') === 'clear,pro,author' && r2.full.flame === 1 && /Quick Tap 1\d\d/.test(r2.full.qt || ''))
-      ? ok(`B.24 / #426 on the placeholder columns the rungs are solid and a score past the Author bar wears the flame ("${r2.full.qt}")`)
-      : bad('B.24 the flame', JSON.stringify(r2.full));
+    await page.evaluate(async () => (await import('./ui/router.js')).show('s-board')); await sleep(500);
+    const r = await page.evaluate(async () => { const read = () => ({ labels: [...document.querySelectorAll('#radar text')].map(t => t.textContent), rings: [...document.querySelectorAll('#radar .rring')].map(g => g.dataset.rung + '@' + g.dataset.at),
+        nodes: document.querySelectorAll('#radar .rring.r2 .rnode').length, spikes: document.querySelectorAll('#radar .rring.r3 .rspike').length, all: document.getElementById('radar-all').textContent, cls: document.getElementById('radar-all').className,
+        grow: !!document.querySelector('#radar .meg') && getComputedStyle(document.querySelector('#radar .meg')).animationName });
+      const out = { a: read() }, KB = (await import('./config/key-bars.js')).KEY_BARS, R = await import('./ui/router.js'), keep = KB['quick-tap:two:5'].pro;
+      KB['quick-tap:two:5'].pro = keep * 2; R.show('s-menu'); await new Promise(r => setTimeout(r, 150)); R.show('s-board'); await new Promise(r => setTimeout(r, 300));
+      out.b = read(); KB['quick-tap:two:5'].pro = keep; return out; });
+    (r.a.labels[0].endsWith(' 250') && r.a.labels[1].endsWith(' 100') && r.a.rings.join() === 'clear@100,pro@200,author@300' && r.a.nodes === 7 && r.a.spikes === 14 && /175/.test(r.a.all) && r.a.cls === 'radar-all t1' && /rgrow/.test(r.a.grow || '')
+      && r.b.labels[0] !== r.a.labels[0])
+      ? ok(`64.13 the chart: "${r.a.labels[0]}" is the average of a Pro run (200) and an Author run (300), "${r.a.labels[1]}" on its Skill bar; rings at 100 / 200 / 300 (Circuit's nodes, Thorns' spikes); "${r.a.all}" in the Lantern style; a Pro bar changed re-scales it ("${r.b.labels[0]}")`)
+      : bad('64.13 the web chart', JSON.stringify(r));
   }
   /* ---- B.25: the three achievement sets tied to the keys ---- */
   {
@@ -354,7 +352,9 @@ export async function run() {
     (ka.fresh.includes('key_clear_quick-tap') && ka.fresh.length === 7 && ['qt_bclean5', 'qt_clean5', 'key_clear_qt-two-15', 'key_clear_qt-two-30', 'key_clear_qt-four-15', 'key_clear_qt-four-30'].every(id => ka.fresh.includes(id) && ka.stored.includes(id)) && ka.stored.includes('key_clear_quick-tap') && ka.again === 0)
       ? ok('B.25 / D.2 clearing every Quick Tap bar earns its six key 1 roster rows and "Quick Tap · Skill key", banked at once and never twice')
       : bad('B.25 the earn', JSON.stringify({ fresh: ka.fresh, stored: ka.stored, again: ka.again }));
-    (/const adv=checkKey\(run,two\);[\s\S]{0,400}checkAch\(run\)\.concat\(checkKeyAch\(run\)\)/.test(run32)) ? ok('B.25 run/run.js banks the key BEFORE it asks the achievements, and asks the key sets too') : bad('B.25 the order in run.js');
+    /* DELETED at build 65 (site/CLAUDE.md -> The gate): "B.25 the order in run.js", a source-text check that the key is banked within 400
+       characters before the achievements are asked. 64.3's comment between the two lines pushed them apart; the order is unchanged, and the
+       earn check above (the roster rows banked on the run that clears the bars) is the behaviour it stood for */
   }
   /* ---- B.20 / B.26: the whole-key moment, and the Testing buttons ---- */
   {

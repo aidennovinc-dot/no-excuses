@@ -231,3 +231,7 @@ export const KEY_FINISH = {
   pro: { scale: 1.2, pulse: 3000, glow: 13, ringW: 1.6, ringOp: .6 },
   author: { scale: 1.22, pulse: 3000, glow: 16, ringW: 2, ringOp: .7 },
 };
+/* build 65 (64.13): THE WEB CHART'S SCALE. Per game, 100 is that game's Skill key bars, 200 its Pro bars, 300 its Author bars (`rings`, one per
+   key, in KEYS order); past 300 is beating the author, drawn out to `max`, where the chart's edge is. Piecewise linear between the bars
+   (progress/key.js keyScale), Cowork's call. */
+export const RADAR = { rings: [100, 200, 300], max: 400 };

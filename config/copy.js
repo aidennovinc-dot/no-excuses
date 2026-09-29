@@ -127,6 +127,9 @@ export const MENU = { next:'<em>Next unlock</em><span>{need} → {name}</span>',
    line below says only what is true today. */
 // v28 (item 4, build 53): `hint` and `lede` retired with the grey helper text — PROGRESS_SCREEN.count is the one line on this tab now
 /* build 65 (64.10): an OPEN row keeps its requirement, ticked and green, and says what the player did and when where the run was recorded */
+/* build 65 (64.13): the Scores chart's overall figure, and the word it wears past each key's ring — placeholder words (Cowork's call), for Aiden to
+   rename on the board. `words[i]` is past rings[i]: Lantern past 100, Circuit past 200, Thorns past 300 */
+export const RADAR_TXT = { all:'overall', words:['Lit', 'Wired', 'Thorned'] };
 export const UNLOCKS_SCREEN = { title:'unlocks', did:'✓ {need}', you:' · you: {score}, {when}',
   games:'Games and modes', lens:'Lengths', keys:'Skill key', done:'open', locked:'locked',
   // v17 (B.9): the number is a placeholder now. The count moved when Sequence lost 5 keys and it will move again the next
