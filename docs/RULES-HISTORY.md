@@ -1579,3 +1579,7 @@ the box opens scrolled to this run's row, centred where it can be (`toCur()`, af
 **64.5 — the rank in every top-10 row.** Not reproducible off the phone: the rank was the first cell all along, in the table's grey, far left, with an
 empty name cell a quarter of the width beside it. The result's table is laid out to its box now (`table-layout:fixed`), the empty cell is not drawn, and the
 rank sits in front of the score in ink. The Scores screen's table is untouched.
+
+**64.6 — Restart you can see; the clock under the mode label.** The countdown was drawn over RESTART, top right. Restart is now an outlined pill
+(`#restart::after`, a 1.5px line the hold ring draws over) of the ✕'s height and row, still in the corner where no pad tap reaches it; the HUD is a
+column, so the clock sits under "Two · Sprint" on the left, clear of it. The hold behaviour is unchanged.

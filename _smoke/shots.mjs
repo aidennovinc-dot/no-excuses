@@ -1774,6 +1774,13 @@ scene('64.4', async (page, browser) => {
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true }); await sleep(300);
 });
 
+scene('64.6', async (page, browser) => {
+  await load(page, { ...OPEN, welcomeSeen: 1 }); await runOf(page, 'quick-tap'); await sleep(1200);
+  say('hud', await page.evaluate(() => { const q = id => { const r = document.getElementById(id).getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)]; };
+    const a = q('restart'), t = q('hud-time'); return { restart: a, time: t, mode: q('hud-mode'), quit: q('quit'), overlap: !(t[2] <= a[0] || t[0] >= a[2] || t[3] <= a[1] || t[1] >= a[3]) }; }));
+  await frame(page, browser, '64.6-restart-outlined', 'A Quick Tap Sprint, live: Restart an outlined button top right opposite the ✕, the clock under "Two · Sprint" on the left, nothing over Restart');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

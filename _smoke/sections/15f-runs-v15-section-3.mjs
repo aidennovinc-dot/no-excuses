@@ -148,6 +148,14 @@ export async function run() {
     /* build 62 (61.2): HOLD TO RESTART. Released at half the hold: nothing. Held the whole hold: the same run starts again with its
        3-2-1, on the game screen, recording nothing. The page times both holds itself, so the test clock scales them together */
     for (let i = 0; i < 140 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) { await clearReady('quick-tap'); await sleep(100); }
+    /* build 65 (64.6): Restart an outlined button, top right, of the ✕'s size; the clock under the mode label on the left, never over Restart */
+    const hud = await page.evaluate(() => { const q = id => document.getElementById(id).getBoundingClientRect(), a = q('restart'), t = q('hud-time'), m = q('hud-mode'), x = q('quit');
+      const line = getComputedStyle(document.getElementById('restart'), '::after');
+      return { overlap: !(t.right <= a.left || t.left >= a.right || t.bottom <= a.top || t.top >= a.bottom), under: t.top >= m.bottom - 1 && Math.abs(t.left - m.left) < 2, outline: parseFloat(line.borderTopWidth) > 0 && line.borderTopStyle === 'solid',
+        right: Math.round(innerWidth - a.right), sameRow: Math.abs(a.top - x.top) < 2 && Math.abs(a.height - x.height) < 2 }; });
+    (!hud.overlap && hud.under && hud.outline && hud.sameRow && hud.right < 12)
+      ? ok('64.6 Restart is an outlined button in the top-right corner, level with the ✕ and its height; the clock sits under "Two · Sprint" and never over it')
+      : bad('64.6 Restart and the clock', JSON.stringify(hud));
     const rs = await page.evaluate(async () => { const RN = await import('./run/run.js'), G = await import('./config/games.js'), b = document.getElementById('restart');
       const w = ms => new Promise(r => setTimeout(r, ms)), ev = t => b.dispatchEvent(new PointerEvent(t, { bubbles: true }));
       const runs = () => ((JSON.parse(localStorage.getItem('ne')) || {}).runs || []).length, n0 = runs();

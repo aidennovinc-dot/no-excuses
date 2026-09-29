@@ -1248,6 +1248,14 @@
   #restart.hold{color:var(--ink)}
   #restart.hold::before{--rs:100%;transition:--rs var(--hold,500ms) linear}
   #game.gaunt #restart{display:none}
+  /* build 65 (64.6): RESTART IS A BUTTON YOU CAN SEE, and the clock is not under it. It was the word alone, top right, with the countdown ("4.61")
+     drawn over it, so Aiden could hardly find it. Now it is an outlined pill of the same visual weight as the ✕ opposite (a line round it the
+     hold ring draws over), still in the corner where a pad tap cannot reach it; the clock moves under the mode label ("Two · Sprint") on the left.
+     The hold behaviour is untouched. */
+  #restart{color:var(--ink);font-size:11px;padding:0 14px}
+  #restart::after{content:"";position:absolute;inset:6px 2px;border:1.5px solid color-mix(in srgb,var(--ink) 55%,transparent);border-radius:999px;pointer-events:none}
+  .hud{flex-direction:column;align-items:flex-start;gap:3px;padding-right:104px}
+  .hud>#hud-time{text-align:left}
   #quit{position:absolute;left:8px;top:max(8px,env(safe-area-inset-top));width:44px;height:44px;display:grid;place-items:center;font-family:var(--mono);font-size:22px;color:var(--mute);z-index:6}
   #count{position:absolute;inset:0;display:none;place-items:center;font-family:var(--mono);font-weight:700;font-size:clamp(80px,26vw,180px);color:var(--ink);pointer-events:none;z-index:5;font-variant-numeric:tabular-nums}
   #count.on{display:grid}
