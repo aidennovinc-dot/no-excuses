@@ -1538,3 +1538,19 @@ cannot show — is the layer's own colour rather than a band of `--ground`.
 **Smaller.** The map's first open is twice as fast, connectors included (`MAP_INTRO` halved, `lineMs`); its sounds are × `MAP_INTRO_GAIN`
 (2.6, tune by ear), locked tiles still muted by `MAP_LOCKED`. The Games chest tab's line counts the 13 modes the chest opens on, "Streak not
 counted" on a second line (A1).
+
+## Build 65 (FEEDBACK-v34, 2026-09-29): the rules this build added or amended, in full
+
+**A1 — ONE first-time mechanism (Cowork's call).** `ui/tutorial.js` stops being the walkthrough and becomes the engine every first-time tutorial is
+data for. A tutorial is an id and a list of steps; a step says where it lives (`on`), what it is about (`el`, ringed unless `ring:0`, arrowed with
+`arrow`), and whether only that thing responds (`tap`, advancing when the tap lands or when `done()` says so) or a tap anywhere moves it on. Lines
+are `TUTORIAL` in `config/copy.js`, numbers filled from config at the moment they show. Rules for all of them: a tutorial is ARMED at the moment its
+thing opens (`arm(id)`) and its box shows only while the player is where its current step lives — never ahead of time; while its box is up it owns
+every tap, and when no box is up it owns none (the one exception is 62.3's and 62.11's waits before the walkthrough's first boxes) — so the screen is
+never held with no box on it; nothing shows while a toast is up or queued (`toastBusy()` in `ui/toast.js`), while the result screen still has toasts
+or the Welcome moment to come (`#s-over[data-busy]`, set on `run:finish` and cleared once `welcomeCheck` has been asked), or while a ceremony or
+reveal (`.cere`), a key animation (`#s-key.kearning`), the key's question, the Welcome moment, the video player or an ad is up. State: the
+walkthrough keeps `prefs.tut` / `prefs.tutRun` (62.10's resume rules); every other tutorial is `prefs.tuts` — `{id: n}` armed at step n, `{id:
+'done'}` finished — a preference, so Fresh game keeps it; "open everything" arms none. Testing: "replay tutorial" (the walkthrough) and "reset all
+first-time tutorials" (the walkthrough to box one, `prefs.tuts` emptied, every tutorial whose thing is already open re-armed at step one).
+

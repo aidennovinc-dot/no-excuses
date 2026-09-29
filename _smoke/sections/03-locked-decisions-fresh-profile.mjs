@@ -36,6 +36,8 @@ export async function run() {
     await page.evaluate(() => { localStorage.clear(); localStorage.setItem('ne', JSON.stringify({ v: 7, prefs: { story: 1, gridSeen: 1, snd: 'off' }, runs: [], ach: {}, unlock: {}, intro: { 'quick-tap': 1, 'quick-tap:two': 1 }, seen: {}, bars: {} })); });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(300); await click('[data-go="s-pick"]');
     const C = await page.evaluate(async () => (await import('./config/copy.js')).TUTORIAL);
+    // build 65 (A1): the result's boxes are named now so the third can branch (64.2); in order, they are these
+    const OV = [C.over.hi, C.over.again, C.over.longer, C.over.back, ...C.over.end];
     // the lines as the config makes them: the Dots rule (never a typed 35), Quick Tap's lengths and their seconds
     const X = await page.evaluate(async () => { const U = (await import('./config/unlocks.js')).UNLOCKS, R = await import('./games/registry.js'), G = await import('./config/games.js');
       const d = R.GAMES.dots.modes[0], need = U.find(u => u.key === 'dots:' + d).need, m = R.GAMES['quick-tap'].modes[0], lens = R.GC('quick-tap', m).lens, names = lens.map(s => R.lenName('quick-tap', s, m));
@@ -114,23 +116,23 @@ export async function run() {
     const first = await page.evaluate(() => ({ game: document.getElementById('game').classList.contains('on'), exit: getComputedStyle(document.getElementById('quit')).display, restart: getComputedStyle(document.getElementById('restart')).display, tut: JSON.parse(localStorage.getItem('ne')).prefs.tut }));
     for (let i = 0; i < 200 && (await page.evaluate(() => document.getElementById('game').classList.contains('on'))); i++) { await stepQuickTap(); await sleep(60); }
     const rec = await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('ne')).prefs; return { tut: p.tut, run: !!p.tutRun && p.tutRun.g }; });
-    const r1 = await waitText(C.over[0], 200);
+    const r1 = await waitText(OV[0], 200);
     // 62.10: the app closed half way through the result — reopened, it lands back on that result, box one
-    await anywhere(); await waitText(C.over[1]);
+    await anywhere(); await waitText(OV[1]);
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
-    const back = await waitText(C.over[0], 200), backOn = (await state()).screen;
-    (first.game && first.exit === 'none' && first.restart === 'none' && first.tut !== 1 && rec.tut === 1 && rec.run === 'quick-tap' && r1 && back && back.text === C.over[0] && backOn === 's-over')
+    const back = await waitText(OV[0], 200), backOn = (await state()).screen;
+    (first.game && first.exit === 'none' && first.restart === 'none' && first.tut !== 1 && rec.tut === 1 && rec.run === 'quick-tap' && r1 && back && back.text === OV[0] && backOn === 's-over')
       ? ok('62.10 the first run has no Exit and no Restart; once it is on record, an app reopened before "Good luck!" lands on its result and starts the eight boxes again')
       : bad('62.10 the first run and the resume', JSON.stringify({ first, rec, r1: r1 && r1.text, back: back && back.text, backOn }));
     // 62.11: the eight, each moved on by any tap — a tap on TRY AGAIN (ringed) or BACK (arrowed) does neither thing
     const over = [back];
-    await click('#again'); over.push(await waitText(C.over[1]));
-    await click('#again'); over.push(await waitText(C.over[2]));
-    await click('#over-back'); over.push(await waitText(C.over[3]));
-    for (let i = 4; i < 8; i++) { await click('#over-back'); over.push(await waitText(C.over[i])); }
+    await click('#again'); over.push(await waitText(OV[1]));
+    await click('#again'); over.push(await waitText(OV[2]));
+    await click('#over-back'); over.push(await waitText(OV[3]));
+    for (let i = 4; i < 8; i++) { await click('#over-back'); over.push(await waitText(OV[i])); }
     const still = await state();
     const rings = await page.evaluate(() => ({ again: document.getElementById('again').getBoundingClientRect().width, back: document.getElementById('over-back').getBoundingClientRect() }));
-    (over.every((b, i) => b && b.text === C.over[i]) && over[1].drawn && Math.abs(over[1].ring[0] - rings.again - 12) <= 2 && over[2].drawn && over[3].arrow && !over[3].drawn && !over[0].drawn && still.screen === 's-over' && !still.game
+    (over.every((b, i) => b && b.text === OV[i]) && over[1].drawn && Math.abs(over[1].ring[0] - rings.again - 12) <= 2 && over[2].drawn && over[3].arrow && !over[3].drawn && !over[0].drawn && still.screen === 's-over' && !still.game
       && over.every(b => Math.abs(b.centre[1]) <= 2 && !b.covers))
       ? ok('62.11 the eight boxes on the first result in order, centred: TRY AGAIN ringed, the longer length ringed, an arrow at BACK — and tapping either does nothing until the last box')
       : bad('62.11 the result boxes', JSON.stringify({ over: over.map(b => b && { t: b.text, drawn: b.drawn, ring: b.ring, arrow: b.arrow, c: b.centre, covers: b.covers }), still, rings }));
@@ -166,6 +168,14 @@ export async function run() {
     (where.testing && !where.custom && again && again.text === want[0] && on === 's-pick')
       ? ok('62.5 Replay tutorial is in the Testing menu, gone from Customise, and lands on the games menu with the walkthrough at box one whatever has been played')
       : bad('62.5 replay', JSON.stringify({ where, again, on }));
+    /* build 65 (A1): Testing's second switch — every first-time tutorial forgotten, the walkthrough back at box one, and a tutorial whose thing is
+       already open armed again at its first step (Progress, on a profile that has it) */
+    await page.evaluate(async () => { const S = await import('./core/store.js'); S.prefs.tut = 2; S.prefs.played = 1; S.prefs.tuts = { prog: 'done', board: 3 }; S.prefs.menuUnl = { prog: 1 }; S.save(); (await import('./ui/router.js')).show('s-testing'); }); await sleep(200);
+    await click('#tut-reset'); await sleep(300);
+    const reset = await waitText(want[0]), rs = await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('ne')).prefs; return { tut: p.tut, tuts: p.tuts, on: document.querySelector('.screen.on')?.id }; });
+    (reset && reset.text === want[0] && rs.tut === -1 && rs.on === 's-pick' && rs.tuts.board === undefined && (rs.tuts.prog === 0 || rs.tuts.prog === undefined))
+      ? ok('A1 Testing: "reset all first-time tutorials" forgets every one, puts the walkthrough back at box one and re-arms those whose thing is open')
+      : bad('A1 reset all first-time tutorials', JSON.stringify({ reset: reset && reset.text, rs }));
     await page.evaluate(async () => { const S = await import('./core/store.js'); S.prefs.tut = 2; S.save(); });
   }
 }

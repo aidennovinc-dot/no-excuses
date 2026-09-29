@@ -68,6 +68,9 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
     /* build 64 (62.10): `tutRun`, the walkthrough's first run, kept while its result's boxes are still to come (tut 1) so a reopened app lands on
        it. A run record, held to the same test a stored run is; absent otherwise. */
     tutRun:validRun(p.tutRun)?p.tutRun:undefined,
+    /* build 65 (A1): `tuts`, every first-time tutorial but the walkthrough — `{ id: n }` armed and at step n (so a reload resumes it), `{ id: 'done' }`
+       finished. A preference, like `tut`: Fresh game keeps it. No ladder step: absent is "none armed, none done". */
+    tuts:isObj(p.tuts)?Object.fromEntries(Object.entries(p.tuts).filter(([k,v])=>/^[a-z]+$/.test(k)&&(v==='done'||(Number.isInteger(v)&&v>=0&&v<40)))):{},
     // v17 (build 28): `keySeen` was missing from this list since build 26 — reset() cleared a field load() never created,
     // so the keys screen's once-per-profile arrival was shape-checked by nothing. It is a flag like the three beside it
     col:{}, story:p.story?1:0, played:p.played?1:0, gridSeen:p.gridSeen?1:0, menuSeen:p.menuSeen?1:0, keySeen:p.keySeen?1:0,

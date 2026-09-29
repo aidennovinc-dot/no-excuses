@@ -301,9 +301,10 @@ export const TUTORIAL = {
     'Each variant has modes: {names} — {all} seconds', "Only a {first} is unlocked. There's no way you can get {count} in only {secs} seconds!",
     'If you want to play with a friend, that option is always available!', "Oh well, let's try our first run!" ],
   start:'Start here',
-  over:[ 'Congratulations! You finished your first run', 'You can try again', "Or try a longer run (if you've unlocked it)",
-    'Or return to the games menu', "Well, that's all for the tutorial", 'There\'s PLENTY more for you to see and unlock…',
-    "But you're smart, you'll figure it out", 'Good luck!' ] };
+  /* build 65 (A1): the first result's boxes by what each one is, so the third can branch (64.2) — `hi`, `again`, then the branch, `back`, `end` */
+  over:{ hi:'Congratulations! You finished your first run', again:'You can try again', longer:"Or try a longer run (if you've unlocked it)",
+    back:'Or return to the games menu',
+    end:[ "Well, that's all for the tutorial", 'There\'s PLENTY more for you to see and unlock…', "But you're smart, you'll figure it out", 'Good luck!' ] } };
 export const RESULT = { streakUnit:'<span class="unit">{word} reached</span>',
   practice:'practice', fail:'run over', best:'new best', pass:'pass & play', versus:'versus', dash:'—', lowerMark:'<span class="dn">▼</span>',
   rank:'rank <b>{n}</b> of 10 · {name}', outside:'outside the top 10 · {name}', you:'you', practiceNote:'practice · nothing recorded', twoNote:'two players · nothing recorded',

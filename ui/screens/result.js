@@ -82,7 +82,7 @@ on('store:reset',()=>{ lastRun=null; played=null; lastTier=null; });
 /* build 62 (61.1): EXIT MID-RUN LANDS HERE, MARKED ABANDONED, with Retry front and centre. It used to drop the player on the games
    menu. Nothing about the run is recorded: run/run.js never reaches its finish, so there is no record, no best, no bar, no key and
    no unlock from it. An earn that already fired mid-run stays banked (v15 2.5), because that one was announced as it happened. */
-function abandonRun(){ abandoned=true; played={g:sel.game,d:sel.diff,s:sel.secs,vs:sel.vs}; lastTier=null;
+function abandonRun(){ abandoned=true; quiet(true); played={g:sel.game,d:sel.diff,s:sel.secs,vs:sel.vs}; lastTier=null;
   $('#s-over').classList.add('abandoned'); $('#over-eyebrow').textContent=RESULT.abandoned;
   const sc=$('#over-score'); sc.hidden=false; sc.innerHTML=RESULT.dash; sc.style.color=''; sc.classList.remove('sm');
   const vd=$('#verdict'); vd.textContent=RESULT.abandonedLine; vd.className='verdict'; vd.style.color='';
@@ -91,6 +91,9 @@ function abandonRun(){ abandoned=true; played={g:sel.game,d:sel.diff,s:sel.secs,
 on('run:abort',({quiet,gaunt,again}={})=>{ if(!quiet&&!gaunt&&!again) abandonRun(); });
 on('run:finish',({run,isBest,two,fresh,ach,adv})=>{ const g=GC(run.g,run.d,run.s);
   abandoned=false; $('#s-over').classList.remove('abandoned');
+  /* build 65 (A1 / 64.3): THIS SCREEN IS BUSY until the last thing it has to say has been said — its toasts queued and the Welcome moment asked —
+     and `data-busy` says so, so a first-time tutorial never talks over a verdict, a toast or a ceremony (ui/tutorial.js busy()) */
+  quiet(false);
   // the header (v11) carries only a status — the board title under the top 10 names the game, mode and length
   $('#over-eyebrow').textContent=run.practice?RESULT.practice:run.fail?RESULT.fail:isBest?RESULT.best:run.vs2?(sel.vs===1?RESULT.pass:RESULT.versus):VS.on?RESULT.pass:'';
   // practice shows no score at all (v5). Versus shows the pair of counts. Lower-is-better scores wear a ▼ (v11)
@@ -121,7 +124,7 @@ on('run:finish',({run,isBest,two,fresh,ach,adv})=>{ const g=GC(run.g,run.d,run.s
      v14 (9.3 / 9.4 / 9.5): a solo run that beats a clearance bar for the FIRST time clears it for good and takes the player
      to the key to watch its root advance one segment. Re-clearing hands down null and plays nothing, and Back from there
      comes straight back here — the run is not finished with. Two-player and practice never get this far. */
-  setTimeout(()=>Ads.after(()=>{ show('s-over'); if(run.practice||two) return;
+  setTimeout(()=>Ads.after(()=>{ show('s-over'); if(run.practice||two) return quiet(true);
     // v18 (B.12): the fifth field is where an unlock toast LEADS — tap it and the pick sheet opens at that mode or length
     /* v26 (§B1, build 49): a toast that unlocks a whole GAME is followed by that game's own map sound (config/audio.js MAP_FX, MAP_ON_UNLOCK_MS after the
        unlock sound, which is untouched) — the sound its tile lands with on the map, so a new game is introduced by its own voice the moment it opens */
@@ -139,7 +142,7 @@ on('run:finish',({run,isBest,two,fresh,ach,adv})=>{ const g=GC(run.g,run.d,run.s
          queued AND after whatever they cost, so the first thing the game ever gives a player is not competing with a verdict sound
          and a row of green toasts for the same second. ui/welcome.js owns every reason NOT to play it - once per save, never while a
          run is live, never if the clip has already been watched - so this line says only WHEN, never WHETHER. */
-      tT.push(setTimeout(()=>welcomeCheck(R.on),d+msgs.length*3400+900));
+      tT.push(setTimeout(()=>{ welcomeCheck(R.on); quiet(true); },d+msgs.length*3400+900));
       renderOverChips(); };
     if(adv) keyBreak(adv,rest); else rest(); },run),250); });
 /* v15 (5.1, build 26): a key unlock INTERRUPTS this screen. It was a green toast the player tapped, sitting behind
@@ -158,7 +161,8 @@ function keyBreak(adv,then){ pendingRest=then; lock(true); $('#s-over').classLis
    over it. run/run.js aborts a live run on any screen change now, which is the belt; this is the braces, and the right fix: a message
    about the run that just ended has no business arriving during the next one. */
 let tT=[];
-on('screen:change',()=>{ tT.forEach(clearTimeout); tT=[]; });
+const quiet=v=>{ if(v) $('#s-over').removeAttribute('data-busy'); else $('#s-over').setAttribute('data-busy',''); };
+on('screen:change',({id})=>{ tT.forEach(clearTimeout); tT=[]; if(id!=='s-over'&&id!=='s-key') quiet(true); });
 let pendingRest=null;
 on('key:done',()=>{ lock(false); $('#s-over').classList.remove('fadeout'); const f=pendingRest; pendingRest=null; if(f) setTimeout(f,320); });
 define({
