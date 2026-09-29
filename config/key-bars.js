@@ -121,13 +121,14 @@ export const KEY_BARS = {
                   author:{ v:16, conf:'low', by:'desk', basis:'PROPOSED on the Key Unlocks Desk 2026-09-15, extrapolated from the Pro figure. Not Aiden’s number, awaiting his (#371).' } } },
 };
 
-// the line under a game's name on the key screen and in the catalogue's clearance-bars section
+/* the line under a game's name in the review catalogue's clearance-bars section. Build 65 (64.17): no longer on the key screen, and its internal spec
+   references ("(B.4)", "(v19 C.5)") are gone — nothing a player can read carries one */
 export const KEY_NOTE = {
   'quick-tap': 'Timed — score is hits. No Set or Streak; the three lengths are the combinations.',
   'dots': 'Timed — score is hits. No lockout between dots, so the ceiling sits above Quick Tap.',
   'hold': 'Set is an average across its rounds. Streak is endless on a 100% cumulative budget, scored in rounds.',
   'sequence': 'One mode, two key counts. Score is rounds. Speed tightens 15ms a round to a 280ms floor.',
-  'timing': 'Stopwatch scores seconds off, Hidden milliseconds off the marker (B.4). Both Sets are totals (B.2); both have a Streak.',
-  'reaction': 'Flash is a simple reaction; Go / No-go adds the decision — five rounds of three correct taps (B.1b), every tap scored over the 180ms gate (v19 C.5), the Streak in targets on 3000ms (C.6).',
+  'timing': 'Stopwatch scores seconds off, Hidden milliseconds off the marker. Both Sets are totals; both have a Streak.',
+  'reaction': 'Flash is a simple reaction; Go / No-go adds the decision — five rounds of three correct taps, every tap scored over the 180ms gate, the Streak in targets on 3000ms.',
   'spot': 'Count scores total miscount, Find scores total seconds. Both lower is better.',
 };

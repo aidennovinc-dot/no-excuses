@@ -149,4 +149,13 @@ export async function run() {
      its one line — never delete a sentence. The gate's own time budget is the runner's (lib/parallel.mjs), not a check here. */
   { const kb = fs.statSync(path.join(root, 'CLAUDE.md')).size / 1024;
     kb <= 40 ? ok(`A10 CLAUDE.md is ${kb.toFixed(1)}KB, inside its 40KB budget`) : bad('A10 CLAUDE.md is over its 40KB budget', `${kb.toFixed(1)}KB — move rules' full text to docs/RULES-HISTORY.md and keep one line each`); }
+  /* build 65 (64.17): NO PLAYER-FACING STRING CARRIES A SPEC REFERENCE — "(B.1b)", "(v19 C.5)", "(C.6)". Every string every config module exports,
+     and the text of the page as it loads, read with one pattern */
+  {
+    const out = [], seen = new Set(), walk = v => { if (typeof v === 'string') out.push(v); else if (v && typeof v === 'object' && !seen.has(v)) { seen.add(v); for (const k in v) walk(v[k]); } };
+    for (const f of fs.readdirSync(path.join(root, 'config')).filter(f => f.endsWith('.js'))) walk(await import(pathToFileURL(path.join(root, 'config', f)).href));
+    out.push(await page.evaluate(() => document.body.textContent));
+    const RX = /\((?:v\d+\s*)?(?:§\s*)?[A-Z]\.?\d+[a-z]?(?:\.\d+)?\)/, hits = out.filter(s => RX.test(s)).map(s => s.match(RX)[0] + ' in "' + s.slice(0, 60) + '"');
+    (!hits.length) ? ok('64.17 no string a player can read — any config export, the page as it loads — carries a spec reference like "(B.1b)" or "(v19 C.5)"') : bad('64.17 spec references in player-facing copy', hits.join(' | '));
+  }
 }

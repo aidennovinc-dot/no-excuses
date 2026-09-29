@@ -73,7 +73,6 @@ import { Music, Snd } from "../../audio.js";
 import { HIDE_UNRECORDED } from "../../config/build.js";
 import { CHESTS, GAUNTLETS } from "../../config/chests.js";
 import { CARD, GAUNTLET, GRID, KEY, SHEET } from "../../config/copy.js";
-import { KEY_NOTE } from "../../config/key-bars.js";
 import { EARN_SKIP_AT, KEY_ART, KEY_EARN, KEY_FINISH, KEY_INTRO } from "../../config/keys.js";
 import { MESSAGES } from "../../config/messages.js";
 import { MODE_NAME } from "../../config/games.js";
@@ -121,7 +120,10 @@ function keys() {
   const list = shown(), retro = Object.keys(prefs.retro || {});
   $('#key-keys').classList.remove('one');
   $('#key-keys').innerHTML = list.map(k => { const locked = keyLocked(k), fresh = !locked && retro.some(x => retroTier(x) === k.id);
-    const pct = k.whole ? '' : T(KEY.pct, { n: k.shell ? 0 : bandPct(k.id) });
+    /* build 65 (64.18): ONE PROGRESS NUMBER ON THIS SCREEN — BARS. The card said "33%" while the line under the key said "2 of 30", and both were right:
+       the Skill band carries the unlocked modes with its bars, (modes + bars) ÷ (modes + 30), so 12 modes and 2 bars is 14 ÷ 42. Two units side by
+       side read as a mismatch, so the card now counts bars like the line does; the percentage stays on the home menu (Cowork's call) */
+    const st = keyState(k.id), pct = k.whole ? '' : T(KEY.cardBars, { done: k.shell ? 0 : st.done, total: st.total });
     const under = locked ? `<u class="need">${esc(T(SHEET.toUnlock, { need: k.i === 0 ? KEY.gamesChest : KEY.prevChest }))}</u>` : `<u>${k.whole ? KEY.unlocked : pct}</u>`;
     return `<button class="kkey${k.i === openKey ? ' sel' : ''}${k.whole && !locked ? ' whole' : ''}${k.shell ? ' shell' : ''}${locked ? ' locked' : ''}${fresh ? ' newthing' : ''}" data-act="key-tier" data-kt="${k.i}" style="--ktint:${k.tint};--kground:${k.ground}">`
       + glyph(k.id, 't' + (k.i + 1)) + `<b class="${locked ? 'x' : ''}">${esc(k.name)}</b>` + under + `</button>`; }).join('');
@@ -272,7 +274,8 @@ function panel() { const box = $('#key-list');
     // 5.2: the row is a control now, so it carries an act like everything else does
     return `<div class="krow${done ? ' done' : ''}${fresh ? ' newthing' : ''}${barOf(c, tier) === null ? ' nobar' : ''}" data-act="key-row" data-kk="${c.key}" id="krow-${c.key.replace(/[:.]/g, '_')}"><b>${esc(name)}</b><i>${esc(wantTxt(c))}</i><u>${done ? KEY.cleared : KEY.open}</u></div>`; }).join('');
   box.innerHTML = `<div class="keyblk"><h4>${esc(GAMES[openGame].name)} <span>${T(KEY.root, { done: st.done, total: st.total })}</span></h4>`
-    + `<p>${esc(KEY_NOTE[openGame] || '')}</p>${rows}</div>`;
+    // build 65 (64.17): the game's description paragraph is gone — too wordy for the screen, and it read internal section references to players
+    + `${rows}</div>`;
   // …and then the mark is spent, once each (L8)
   if (spent.length) { for (const rk of spent) delete retro[rk]; prefs.retro = retro; save(); } }
 

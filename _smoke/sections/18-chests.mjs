@@ -49,7 +49,7 @@ export async function run() {
         const okNeed = lines.length === 1 && !/^[✓·] /.test(m.need)
           && (m.need === EARN[cid] || /Gauntlet/.test(m.need));
         if (!okNeed) w.push(`map ${i} says "${m.need}"`); } });
-    s.keys.cards.forEach((k, i) => { if (k.theme) w.push(`card ${i} has a theme name`); if (k.locked !== !st.open[i]) w.push(`card ${i} locked ${k.locked}`); if (!k.locked && st.bars[i] < st.total[i] && k.u !== st.pct[i] + '%') w.push(`card ${i} "${k.u}"≠${st.pct[i]}%`); });
+    s.keys.cards.forEach((k, i) => { if (k.theme) w.push(`card ${i} has a theme name`); if (k.locked !== !st.open[i]) w.push(`card ${i} locked ${k.locked}`); if (!k.locked && st.bars[i] < st.total[i] && k.u !== st.bars[i] + '/' + st.total[i]) w.push(`card ${i} "${k.u}"≠${st.bars[i]}/${st.total[i]}`); });   // AMENDED at build 65 (64.18): a card counts its bars; the % is the menu's
     if (/%/.test(s.keys.line)) w.push(`key line "${s.keys.line}"`);
     if (s.keys.row) w.push(`the quiet key screen still draws ${s.keys.row} chest row elements`);
     /* v28 (item 9, build 53) put meterPct() over the top of meter() and clamped it to 100. REVERSED at build 55 (v29 item 1): the figure is the

@@ -83,7 +83,8 @@ export async function run() {
     ring: !document.getElementById('key-main').hidden }));
   (k1.screen === 's-key' && k1.n === 3 && k1.sel === 0 && k1.ring) ? ok(`5.3 three keys, the first one open — ${k1.pct.join(' · ')}`) : bad('5.3 the three keys', JSON.stringify(k1));
   (k1.paths.length === 3 && k1.paths[0] < k1.paths[1] && k1.paths[1] < k1.paths[2]) ? ok(`5.3 each key is more elaborate than the one before it (${k1.paths.join(' → ')} strokes, the Author's most)`) : bad('5.3 the glyphs get more elaborate', JSON.stringify(k1.paths));
-  (/^\d+%$/.test(k1.pct[0])) ? ok(`5.3 a key under 100% wears its % — "${k1.pct[0]}"`) : bad('5.3 the % overlay', JSON.stringify(k1.pct));
+  // AMENDED at build 65 (64.18): a key under whole counts its bars — the Keys screen's one progress number; the % is the home menu's
+  (/^\d+\/\d+$/.test(k1.pct[0])) ? ok(`5.3 a key under whole counts its bars — "${k1.pct[0]}"`) : bad('5.3 the key card figure', JSON.stringify(k1.pct));
   // AMENDED at build 38 (#426): both columns carry generated placeholders, so no key is a shell any more
   (!k1.shell[0] && !k1.shell[1] && !k1.shell[2]) ? ok('5.3 / #426 no key is a shell - Pro and Author carry generated placeholder bars') : bad('5.3 the shell flags', JSON.stringify(k1.shell));
   // tapping key 3 opens the Author key's own ring, and every generated number on it says so (A.2 as amended)
@@ -364,10 +365,13 @@ export async function run() {
     // item 9: a key card is its name and its own percentage - no theme name - and the line under the key is "N of 30"
     await boot({ chests: { games: 1 } }, { unlock: Object.fromEntries((await page.evaluate(async () => (await import('./progress.js')).UNLOCKS.map(u => u.key))).map(k => [k, NOW])), bars: { 'quick-tap:two:5': NOW } });
     const card48 = await page.evaluate(async () => { const R = await import('./ui/router.js'); const K = await import('./progress/key.js'); R.show('s-key', { tier: 0 }); await new Promise(r => setTimeout(r, 600));
-      return { cards: [...document.querySelectorAll('#key-keys .kkey')].map(k => ({ i: k.querySelectorAll('i').length, b: k.querySelector('b').textContent, u: k.querySelector('u').textContent })), count: document.getElementById('key-count').textContent, pct: K.bandPct('clear'), meter: K.meter() }; });
+      const C = (await import('./config/copy.js')).KEY, st = K.keyState('clear');
+      return { cards: [...document.querySelectorAll('#key-keys .kkey')].map(k => ({ i: k.querySelectorAll('i').length, b: k.querySelector('b').textContent, u: k.querySelector('u').textContent })), count: document.getElementById('key-count').textContent, pct: K.bandPct('clear'), meter: K.meter(),
+        bars: C.cardBars.replace('{done}', st.done).replace('{total}', st.total) }; });
     const names48 = KY48.KEYS.map(k => k.name);
-    (card48.cards.every((c, i) => !c.i && c.b === names48[i]) && card48.cards[0].u === card48.pct + '%' && card48.count === '1 of 30' && card48.meter === card48.pct)
-      ? ok(`v26 item 9 the three key cards say ${names48.join(' / ')} and no theme name; key 1's card carries its own ${card48.cards[0].u}; the line under the key is "${card48.count}", no percentage`)
+    // AMENDED at build 65 (64.18): the card counts bars, like the line under the key — one progress number on the screen; the % is the menu's
+    (card48.cards.every((c, i) => !c.i && c.b === names48[i]) && card48.cards[0].u === card48.bars && !/%/.test(card48.cards.map(c => c.u).join('')) && card48.count === '1 of 30' && card48.meter === card48.pct)
+      ? ok(`v26 item 9 / 64.18 the three key cards say ${names48.join(' / ')} and no theme name; key 1's card counts its bars (${card48.cards[0].u}) like the line under the key ("${card48.count}"); no percentage on the screen`)
       : bad('v26 item 9 the key cards and the count line', JSON.stringify({ card48, names48 }));
 
     /* item 11: after the reveal the ONE instruction is the key's. AMENDED for build 49 (Aiden, after build 48): tapping the key ASKS again, and Open opens

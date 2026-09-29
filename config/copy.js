@@ -399,6 +399,8 @@ export const KEY = { title:'the key', hint:'tap a game · solo runs only',
      each with its own symbol, its locked state and a % while it is under 100. Tiers 2 and 3 are a shell — #372 — and
      `soon` is what they say instead of a target nobody has set (A.2 forbids a build deriving one). */
   keys:'keys', pct:'{n}%', locked:'locked', unlocked:'unlocked', pick:'tap a key',
+  // build 65 (64.18): a key card's one figure on the Keys screen is its bars, the unit the line under the key counts in
+  cardBars:'{done}/{total}',
   // v23 (L.7b, build 42): the button at the foot of a key screen whose chest is open, and what it reads once that theme is every run's music
   setMusic:'SET THIS MUSIC', musicOn:'PLAYING EVERYWHERE',
   faked:'Every number on this key is a PLACEHOLDER, derived from key 1 for testing. Not set by hand, never saved, gone on reload.',

@@ -1846,6 +1846,13 @@ scene('64.16', async (page, browser) => {
   await frame(page, browser, '64.16-key-cards', 'Key screen after the intro: the Skill Key, Pro and Author cards one width with their tops level');
 });
 
+scene('64.17', async (page, browser) => {
+  await load(page, { ...PLAIN, welcomeSeen: 1, chests: { games: 1 } }, { bars: { 'quick-tap:two:5': Date.now(), 'dots:blind:5': Date.now() } }); await show(page, 's-key', { tier: 0 }); await sleep(1200);
+  await page.evaluate(() => document.querySelector('#s-key .knode[data-kg="quick-tap"]').dispatchEvent(new MouseEvent('click', { bubbles: true }))); await sleep(700);
+  say('panel', await page.evaluate(() => ({ para: document.querySelectorAll('#s-key .keyblk p').length, cards: [...document.querySelectorAll('#key-keys u')].map(u => u.textContent), count: (document.getElementById('key-count') || {}).textContent })));
+  await frame(page, browser, '64.17-key-panel', 'Skill Key, Quick Tap opened: no description paragraph, the rows straight under the heading; the card counts bars ("2/30") like the line under the key (64.18)');
+});
+
 scene('64.15', async (page, browser) => {
   await load(page, { ...PLAIN, welcomeSeen: 1, chests: { games: 1 } }); await show(page, 's-custom'); await sleep(700);
   await page.evaluate(() => document.querySelector('#c-bg button[data-v="snow"]').click()); await sleep(1500);

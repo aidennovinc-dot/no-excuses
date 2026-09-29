@@ -1642,3 +1642,11 @@ handed over to the key screen, whose key is the small one in the ring's hub. On 
 size (`introStage().step` in `ui/screens/key.js`, measured off the screen laid out underneath) and ends there, so it animates in and settles at its
 final size. The key cards are one width with their tops level (`#key-keys` stretch, `flex:1 1 0`): a locked card's "To unlock: …" had made it
 taller, and the row aligned their feet.
+
+**64.17 — no per-game paragraph on the Keys screen; no spec references a player can read.** The game panel's `KEY_NOTE` paragraph is gone. Its two
+lines with internal references ("(B.4)", "(B.2)", "(B.1b)", "(v19 C.5)", "(C.6)") are cleaned where they stay (the review catalogue still prints the
+notes). A static check walks every string every `config/` module exports, and the page's text as it loads, for that pattern.
+
+**64.18 — one progress number on the Keys screen: bars.** The 33% maths is right: the Skill band carries the unlocked modes with its bars, (modes
++ bars) ÷ (modes + 30), so 12 modes and 2 bars is 14 ÷ 42. Next to "2 of 30" that read as a mismatch, so a key card now counts its bars
+(`KEY.cardBars`, "2/30"); the percentage stays on the home menu (Cowork's call).
