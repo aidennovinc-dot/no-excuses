@@ -48,7 +48,13 @@ function renderOverTop(){ const run=lastRun; const g=GC(sel.game,sel.diff,sel.se
      Aiden: "I didn't want just the results screen at the end to be blue." Only the run just played — every row in the
      colour would be a heat map, and the note is about following one number through the screen it lands on. */
   $('#over-runs').innerHTML=top.length?top.map((r,i)=>{ const cur=run&&r.t===run.t; const tc=cur?tierOf(r):null;
-    return `<tr class="${cur?'cur':''}"><td>${i+1}</td><td></td><td${tc?` style="color:${tc.col}"`:''}>${scoreTxt(sel.game,r.hits,r.d,r.s)}</td><td>${new Date(r.t).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'2-digit'})}</td></tr>`; }).join(''):`<tr><td colspan="4">${RESULT.noRuns}</td></tr>`; }
+    return `<tr class="${cur?'cur':''}"><td>${i+1}</td><td></td><td${tc?` style="color:${tc.col}"`:''}>${scoreTxt(sel.game,r.hits,r.d,r.s)}</td><td>${new Date(r.t).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'2-digit'})}</td></tr>`; }).join(''):`<tr><td colspan="4">${RESULT.noRuns}</td></tr>`;
+  /* build 65 (64.4, Cowork's call): the box opens SCROLLED TO THIS RUN'S ROW, in the middle of the box where it can be; a run outside the top 10
+     leaves it at the top */
+  toCur(); }
+// measured once the screen is laid out: the result renders before it is shown, when the box has no height at all
+function toCur(){ requestAnimationFrame(()=>{ const w=$('#over-top .otwrap'), row=$('#over-runs tr.cur'); if(!w) return;
+  w.scrollTop=row?Math.max(0,row.offsetTop-(w.clientHeight-row.offsetHeight)/2):0; }); }
 function renderOver(run){ const g=GC(run.g,run.d,run.s);
   renderOverChips();
   // vs (v9): both scores side by side, the winner in green. Versus (v10) carries its own pair of counts. v11: Player 1 red, Player 2 blue
@@ -76,7 +82,7 @@ function shareRun(){ const r=lastRun; if(!r) return; const c=GC(r.g,r.d,r.s); co
   const text=T(SHARE.text,{name:prefs.name||SHARE.someone,score,rate,where,url});
   if(navigator.share){ navigator.share({text}).catch(()=>{}); return; } if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(()=>toast(TOAST.copied),()=>toast(text)); } else toast(text); }
 
-register('s-over',{});
+register('s-over',{ onShow(){ toCur(); } });
 on('run:record',({run})=>{ lastRun=run; played={g:run.g,d:run.d,s:run.s,vs:sel.vs}; });
 on('store:reset',()=>{ lastRun=null; played=null; lastTier=null; });
 /* build 62 (61.1): EXIT MID-RUN LANDS HERE, MARKED ABANDONED, with Retry front and centre. It used to drop the player on the games

@@ -57,7 +57,7 @@
      and one line more of empty space (guess: a 16px line), so the last thing in it clears the stamp when scrolled to the
      bottom. A pseudo-element, not padding: bottom padding inside a scrolling flex column is not honoured by every engine,
      and a flex item is. .otwrap (the result's top-10 box) sits mid-screen and is left out. The gate scrolls each one. */
-  #s-pick::after,#s-about::after,#s-over::after,#s-custom::after,#s-testing::after,#s-gauntlet::after,.scroll::after{content:"";display:block;flex:none;height:var(--stampclear)}
+  #s-pick::after,#s-about::after,#s-custom::after,#s-testing::after,#s-gauntlet::after,.scroll::after{content:"";display:block;flex:none;height:var(--stampclear)}
   /* v25 (items 8 / 19, build 45): NOTHING SCROLLS UNDER THE PHONE'S CLOCK. A screen that scrolls as a whole starts below the status bar (its
      padding-top) but its content scrolled up behind the time and battery. Each is clipped at the safe-area line, so scrolled content disappears
      there and the live background still shows through the status bar. Zero on a phone with no inset, and in the gate's headless Chromium. */
@@ -973,7 +973,7 @@
   .change{display:flex;flex-direction:column;gap:8px;align-items:center;margin-top:4px}
   .change .chips+.chips{margin-top:2px}
   /* v9: everything sits lower so an achievement toast has the top of the screen to itself, and each block arrives in turn */
-  #s-over{justify-content:flex-start;overflow-y:auto;padding-top:max(96px,calc(env(safe-area-inset-top) + 84px));gap:10px;padding-bottom:40px}
+  #s-over{justify-content:flex-start;padding-top:max(96px,calc(env(safe-area-inset-top) + 84px));gap:10px;padding-bottom:40px}
   #s-over.on>*{animation:rvin .5s ease-out both}
   #s-over.on>:nth-child(1){animation-delay:0s}
   #s-over.on>:nth-child(2){animation-delay:.1s}
@@ -1041,6 +1041,18 @@
   #over-vs .lbl{padding:0 2px}
   /* 3.4: Back sits at the top left of the result screen, not beside the share button */
   #over-back{position:absolute;left:6px;top:max(10px,env(safe-area-inset-top));margin:0;padding:12px 14px;font-family:var(--mono);font-size:12px;letter-spacing:.18em;color:var(--mute);z-index:5;animation:none!important}
+  /* build 65 (64.4): THE RESULT FITS ONE SCREEN — no page scroll, so it is no longer one of the scrollers above and needs no stamp clearance (the
+     stamp is the home menu's alone since v26 item 12). Back top left as it was; the score, verdict and stats pushed up under it and tightened; the
+     mode chips and TRY AGAIN unchanged; the top 10 takes whatever height is left, in its own box that scrolls inside itself and never shows fewer
+     than three rows; Game select pinned at the foot, above the home indicator. On a small phone the big number and the gaps give way first. */
+  #s-over{overflow:hidden;padding-top:calc(max(10px,env(safe-area-inset-top)) + 40px);padding-bottom:max(10px,calc(env(safe-area-inset-bottom) + 4px));gap:clamp(3px,.9vh,9px)}
+  #s-over>*{flex:none}
+  #over-score{font-size:clamp(36px,min(15vw,11vh - 26px),96px)}
+  #s-over #share{padding-block:clamp(4px,1vh,10px)}
+  #s-over .verdict{line-height:1.5}
+  #over-top{flex:1 1 0;min-height:calc(16px + 3 * 25px);display:flex;flex-direction:column}
+  #over-top .otwrap{flex:1 1 0;min-height:calc(3 * 25px);height:auto}
+  #to-games{margin-top:2px;padding:clamp(9px,1.7vh,14px) 44px}
   /* 3.6: Challenge a friend, with a share icon */
   .shicon{width:15px;height:15px;vertical-align:-3px;margin-right:9px;overflow:visible}
   .shicon *{stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round}

@@ -1569,3 +1569,9 @@ the first run opened Dash (`TUTORIAL.over`): opened → "Great job, you unlocked
 then "Let's see if you can get {count} in a {second} to unlock {dots}. If not, unlock {long} and try there!" with Dash ringed (Cowork: "in a Dash";
 left out when that run opened Dots too); not opened → "Get {row} without missing to unlock {second}" with TRY AGAIN ringed. "Or try a longer run
 (if you've unlocked it)" is gone.
+
+**64.4 — the result fits one screen.** `#s-over` no longer scrolls (so it left the stamp-clearance list, which is for scrollers). Back stays top left;
+the score, verdict and stats sit straight under it; the mode chips and TRY AGAIN are unchanged; the top 10 takes the height that is left
+(`#over-top` flex 1) in its own box that scrolls inside itself and never shows fewer than three rows; Game select is pinned at the foot. On a short
+phone the big number (`clamp(36px, min(15vw, 11vh - 26px), 96px)`), the gaps, the share line and Game select's padding give way first. Cowork's call:
+the box opens scrolled to this run's row, centred where it can be (`toCur()`, after the screen is shown).

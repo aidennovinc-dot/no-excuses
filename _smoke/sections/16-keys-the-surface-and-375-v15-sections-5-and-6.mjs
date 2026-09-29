@@ -190,6 +190,18 @@ export async function run() {
       const top10 = go.getBoundingClientRect().top; body.innerHTML = one;
       return { h: parseFloat(c.height), scroll: c.overflowY, top1: Math.round(top1), top10: Math.round(top10) }; });
     (box.scroll === 'auto' && box.top1 === box.top10) ? ok(`6.4 the scores panel is a fixed ${Math.round(box.h)}px box that scrolls inside itself — Game select does not move when it fills`) : bad('6.4 the scores panel stops pushing Game select down', JSON.stringify(box));
+    /* build 65 (64.4): THE RESULT FITS ONE SCREEN — ten rows in the board, and still no page scroll; Back top left; the box at least three rows
+       tall and opened at this run's row; Game select on screen at the foot */
+    const fit = await page.evaluate(async () => { const body = document.getElementById('over-runs'), one = body.innerHTML, w = document.querySelector('#over-top .otwrap');
+      body.innerHTML = Array.from({ length: 10 }, (_, i) => `<tr class="${i === 8 ? 'cur' : ''}"><td>${i + 1}</td><td></td><td>0</td><td>—</td></tr>`).join('');
+      const s = document.getElementById('s-over'), go = document.getElementById('to-games').getBoundingClientRect(), back = document.getElementById('over-back').getBoundingClientRect(), row = body.rows[0].getBoundingClientRect().height;
+      (await import('./ui/router.js')).show('s-over'); await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const cur = body.querySelector('tr.cur'), wr = w.getBoundingClientRect(), cr = cur.getBoundingClientRect();
+      const out = { scroll: s.scrollHeight - s.clientHeight, over: getComputedStyle(s).overflowY, goBottom: Math.round(innerHeight - go.bottom), back: [Math.round(back.left), Math.round(back.top)], rows: Math.floor(wr.height / row), curIn: cr.top >= wr.top - 1 && cr.bottom <= wr.bottom + 1 };
+      body.innerHTML = one; return out; });
+    (fit.scroll <= 2 && fit.over !== 'auto' && fit.goBottom >= 0 && fit.back[0] < 20 && fit.rows >= 3 && fit.curIn)
+      ? ok(`64.4 the result fits one screen at 390 x 844 with a full top 10: no page scroll, Back top left, the box ${fit.rows} rows tall and scrolled to this run, Game select ${fit.goBottom}px clear of the foot`)
+      : bad('64.4 the result on one screen', JSON.stringify(fit));
     await click('#over-back'); await sleep(400);
     const gos = await page.evaluate(async () => { const out = {};
       const ST = await import('./core/state.js'); const P = await import('./ui/router.js');

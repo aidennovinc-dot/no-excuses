@@ -1747,6 +1747,33 @@ scene('62.15', async (page, browser) => {
   await page.evaluate(() => { document.getElementById('stars').style.height = ''; });
 });
 
+/* =======================================================================================================
+   BUILD 65 — one 390-wide frame per visual item, the same 47 / 34 insets; one frame per tutorial box. Run with --out build-65 before the bump
+   ======================================================================================================= */
+// a result screen with a full top 10 behind it: twelve Quick Tap · Two Sprints on record, the one just played somewhere in the middle
+async function resultOf(page, prefs = OPEN, place = 4) {
+  const now = Date.now(), runs = Array.from({ length: 12 }, (_, i) => ({ t: now - (12 - i) * 60000, g: 'quick-tap', d: 'two', s: 5, hits: 30 - i * 2, misses: 1, v: 4 }));
+  const cur = Object.assign({}, runs[place], { t: now }); runs[place] = cur;
+  await load(page, prefs, { runs });
+  await page.evaluate(async cur => { const ST = await import('./core/state.js'), E = await import('./core/events.js'); ST.sel.game = 'quick-tap'; ST.sel.diff = 'two'; ST.sel.secs = 5; ST.sel.vs = 0;
+    E.emit('run:record', { run: cur }); E.emit('run:finish', { run: cur, isBest: false, two: false, fresh: [], ach: [], adv: null }); }, cur);
+  await sleep(4200); }
+const fits = page => page.evaluate(() => { const s = document.getElementById('s-over'), q = id => document.getElementById(id).getBoundingClientRect(), w = document.querySelector('#over-top .otwrap'), rows = [...document.querySelectorAll('#over-runs tr')];
+  const vis = rows.filter(r => { const a = r.getBoundingClientRect(), b = w.getBoundingClientRect(); return a.top >= b.top - 1 && a.bottom <= b.bottom + 1; });
+  return { scroll: s.scrollHeight - s.clientHeight, back: [Math.round(q('over-back').left), Math.round(q('over-back').top)], toGames: Math.round(innerHeight - q('to-games').bottom), rowsShown: vis.length,
+    cur: document.querySelector('#over-runs tr.cur') ? vis.includes(document.querySelector('#over-runs tr.cur')) : null, ranks: rows.slice(0, 3).map(r => r.cells[0].textContent) }; });
+scene('64.4', async (page, browser) => {
+  await resultOf(page, { ...OPEN, welcomeSeen: 1, bg: ARGV.includes('--lantern') ? 'lantern' : 'stars' }, 8); say('fit', await fits(page));
+  await frame(page, browser, '64.4-result-fits', 'Result screen, 390 x 844 with 47 / 34 insets: no page scroll, Back top left, the top 10 in its own box opened at this run, Game select pinned at the foot');
+  // a small phone (iPhone SE, 375 x 667): the big number and the gaps give way, the box still shows three rows and Game select is on screen
+  const cdp = await page.createCDPSession(); await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 20, bottom: 0, left: 0, right: 0 } }).catch(() => {});
+  await page.setViewport({ width: 375, height: 667, deviceScaleFactor: 2, isMobile: true, hasTouch: true }); await sleep(900);
+  say('fitSE', await fits(page));
+  await frame(page, browser, '64.4-result-fits-se', 'The same result on a 375 x 667 phone (20 / 0 insets, an SE): still one screen, three rows of the top 10 at least, Game select on screen');
+  await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 47, bottom: 34, left: 0, right: 0 } }).catch(() => {});
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true }); await sleep(300);
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }
