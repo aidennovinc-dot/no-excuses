@@ -298,11 +298,16 @@ export const TUTORIAL = {
   steps:[ 'Welcome to No Excuses', "Here you'll be able to play all the games on offer", "But you'll notice most are locked…",
     'Tap a game to see how it can be unlocked', "Wow! {need}, that's a lot", "Let's see if we can!",
     'Each game has variants, you can unlock these later', "Let's start with {game}",
-    'Each variant has modes: {names} — {all} seconds', "Only a {first} is unlocked. There's no way you can get {count} in only {secs} seconds!",
+    'Each variant has modes: {names} — {all} seconds', "So far, only {first} is unlocked. If you want to unlock {second}, get {row} without missing!",
     'If you want to play with a friend, that option is always available!', "Oh well, let's try our first run!" ],
   start:'Start here',
-  /* build 65 (A1): the first result's boxes by what each one is, so the third can branch (64.2) — `hi`, `again`, then the branch, `back`, `end` */
-  over:{ hi:'Congratulations! You finished your first run', again:'You can try again', longer:"Or try a longer run (if you've unlocked it)",
+  /* build 65 (A1 / 64.2): the first result's boxes by what each one is, so the third can branch — `hi`, `again`, then `got` + `next` when the run
+     opened Dash (`next` left out if it opened Dots as well) or `miss` when it did not, then `back`, `end`. {names} is every unlock the run made; {count}
+     ("35 hits") and {dots} are the Dots rule, {row} ("7 hits in a row") Dash's, {second} / {long} Quick Tap's second and third lengths — all from
+     config. 64.1 (step 10) replaced "Only a Sprint is unlocked. There's no way…"; 64.2 replaced "Or try a longer run (if you've unlocked it)". */
+  over:{ hi:'Congratulations! You finished your first run', again:'You can try again',
+    got:'Great job, you unlocked {names}!', next:"Let's see if you can get {count} in a {second} to unlock {dots}. If not, unlock {long} and try there!",
+    miss:'Get {row} without missing to unlock {second}',
     back:'Or return to the games menu',
     end:[ "Well, that's all for the tutorial", 'There\'s PLENTY more for you to see and unlock…', "But you're smart, you'll figure it out", 'Good luck!' ] } };
 export const RESULT = { streakUnit:'<span class="unit">{word} reached</span>',

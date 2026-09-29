@@ -1562,3 +1562,10 @@ moment. The walkthrough's first run is `firstRun` in `ui/tutorial.js`, set as th
 that run finishes or is quit — build 64 asked at the finish, through a flag any screen change wiped and a test the finished run itself made false,
 and a first run that lost it was never marked (the replay behind a pick sheet with no box in Aiden's report). Its result's boxes wait for every
 toast (A1 `busy()`); the last one ends the walkthrough however the run went, and a finished walkthrough never shows again, before or after a reload.
+
+**64.1 / 64.2 — the walkthrough says what the game knows.** Box 10 is now "So far, only {first} is unlocked. If you want to unlock {second}, get {row}
+without missing!" — {row} is Dash's rule read off `LEN_RULES` ("7 hits in a row"), never typed. The first result's third box branches on whether
+the first run opened Dash (`TUTORIAL.over`): opened → "Great job, you unlocked {names}!" naming every unlock the run made the way its toast does,
+then "Let's see if you can get {count} in a {second} to unlock {dots}. If not, unlock {long} and try there!" with Dash ringed (Cowork: "in a Dash";
+left out when that run opened Dots too); not opened → "Get {row} without missing to unlock {second}" with TRY AGAIN ringed. "Or try a longer run
+(if you've unlocked it)" is gone.

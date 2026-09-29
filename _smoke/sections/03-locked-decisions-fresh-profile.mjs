@@ -37,14 +37,17 @@ export async function run() {
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(300); await click('[data-go="s-pick"]');
     const C = await page.evaluate(async () => (await import('./config/copy.js')).TUTORIAL);
     // build 65 (A1): the result's boxes are named now so the third can branch (64.2); in order, they are these
-    const OV = [C.over.hi, C.over.again, C.over.longer, C.over.back, ...C.over.end];
+    const OV = [C.over.hi, C.over.again];
     // the lines as the config makes them: the Dots rule (never a typed 35), Quick Tap's lengths and their seconds
     const X = await page.evaluate(async () => { const U = (await import('./config/unlocks.js')).UNLOCKS, R = await import('./games/registry.js'), G = await import('./config/games.js');
       const d = R.GAMES.dots.modes[0], need = U.find(u => u.key === 'dots:' + d).need, m = R.GAMES['quick-tap'].modes[0], lens = R.GC('quick-tap', m).lens, names = lens.map(s => R.lenName('quick-tap', s, m));
-      return { need, m, lens, names, game: R.GAMES['quick-tap'].name + ' · ' + G.MODE_NAME[m] }; });
+      const row = (await import('./config/unlocks.js')).LEN_RULES['quick-tap:' + m][1].match(/^\d+ hits in a row/)[0];
+      return { need, m, lens, names, row, dots: R.GAMES.dots.name, game: R.GAMES['quick-tap'].name + ' · ' + G.MODE_NAME[m] }; });
     const and = a => a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1], count = X.need.match(/^\d+\s+\S+/)[0];
     const want = C.steps.map(s => s.replace('{need}', X.need.replace(/\bany\b/, 'a')).replace('{count}', count).replace('{secs}', X.lens[0]).replace('{first}', X.names[0])
-      .replace('{names}', and(X.names)).replace('{all}', and(X.lens.map(String))).replace('{game}', X.game));
+      .replace('{names}', and(X.names)).replace('{all}', and(X.lens.map(String))).replace('{game}', X.game).replace('{second}', X.names[1]).replace('{row}', X.row));
+    // build 65 (64.2): the first result's lines as the config makes them
+    const fillO = s => s.replace('{count}', count).replace('{second}', X.names[1]).replace('{long}', X.names[2]).replace('{dots}', X.dots).replace('{row}', X.row);
     const box = () => page.evaluate(() => { const t = document.getElementById('tut'); if (!t || t.hidden) return null; const q = t.querySelector('.tring'), drawn = getComputedStyle(q).display !== 'none', r = q.getBoundingClientRect();
       const b = t.querySelector('.tbox').getBoundingClientRect(), over = drawn && !(r.bottom <= b.top || r.top >= b.bottom), a = t.querySelector('.tarrow');
       return { text: t.querySelector('p').textContent, buttons: t.querySelectorAll('button').length, drawn, ring: [Math.round(r.width), Math.round(r.height)], col: getComputedStyle(q).borderTopColor,
@@ -119,7 +122,8 @@ export async function run() {
     await click(`#time-row .tbtn[data-time="${X.lens[0]}"]`);
     for (let i = 0; i < 60 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) await sleep(100);
     const first = await page.evaluate(() => ({ game: document.getElementById('game').classList.contains('on'), exit: getComputedStyle(document.getElementById('quit')).display, restart: getComputedStyle(document.getElementById('restart')).display, tut: JSON.parse(localStorage.getItem('ne')).prefs.tut }));
-    for (let i = 0; i < 200 && (await page.evaluate(() => document.getElementById('game').classList.contains('on'))); i++) { await stepQuickTap(); await sleep(60); }
+    // build 65 (64.2): twenty hits in a row — Dash (7) and Four (15) open, Dots (35) does not, which is the first result the third box branches on
+    for (let i = 0, n = 0; i < 200 && (await page.evaluate(() => document.getElementById('game').classList.contains('on'))); i++) { if (n < 20 && await page.evaluate(() => { for (let i = 0; i < 4; i++) if (document.getElementById('sq' + i)?.style.getPropertyValue('--v').trim() === '1') { const t = document.querySelector('.pad[data-side="' + i + '"]'), r = t.getBoundingClientRect(); t.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1 })); return true; } return false; })) n++; await sleep(60); }
     const rec = await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('ne')).prefs; return { tut: p.tut, run: !!p.tutRun && p.tutRun.g }; });
     const r1 = await waitText(OV[0], 400);
     /* 64.3: both unlocks toast on the result, in the order they were earned, and the walkthrough's first box waits until every toast has gone —
@@ -138,18 +142,23 @@ export async function run() {
     (first.game && first.exit === 'none' && first.restart === 'none' && first.tut !== 1 && rec.tut === 1 && rec.run === 'quick-tap' && r1 && back && back.text === OV[0] && backOn === 's-over')
       ? ok('62.10 the first run has no Exit and no Restart; once it is on record, an app reopened before "Good luck!" lands on its result and starts the eight boxes again')
       : bad('62.10 the first run and the resume', JSON.stringify({ first, rec, r1: r1 && r1.text, back: back && back.text, backOn }));
-    // 62.11: the eight, each moved on by any tap — a tap on TRY AGAIN (ringed) or BACK (arrowed) does neither thing
+    /* 62.11 / 64.2: the boxes, each moved on by any tap — a tap on TRY AGAIN (ringed) or BACK (arrowed) does neither thing. This run opened Dash and
+       Four, so the third box names both and the fourth rings Dash with the Dots line */
+    const G2 = await page.evaluate(async () => { const R = await import('./games/registry.js'), G = await import('./config/games.js'); return { dash: R.lenName('quick-tap', R.GC('quick-tap', 'two').lens[1], 'two'), four: G.MODE_NAME.four }; });
+    const OW = [C.over.hi, C.over.again, C.over.got.replace('{names}', G2.dash + ' and ' + G2.four), fillO(C.over.next), C.over.back, ...C.over.end];
     const over = [back];
-    await click('#again'); over.push(await waitText(OV[1]));
-    await click('#again'); over.push(await waitText(OV[2]));
-    await click('#over-back'); over.push(await waitText(OV[3]));
-    for (let i = 4; i < 8; i++) { await click('#over-back'); over.push(await waitText(OV[i])); }
+    await click('#again'); over.push(await waitText(OW[1]));
+    await click('#again'); over.push(await waitText(OW[2]));
+    await click('#again'); over.push(await waitText(OW[3]));
+    await click('#over-back'); over.push(await waitText(OW[4]));
+    for (let i = 5; i < OW.length; i++) { await click('#over-back'); over.push(await waitText(OW[i])); }
+    const dashW = await page.evaluate(() => document.querySelector('#over-chips2 .chip:nth-child(2)').getBoundingClientRect().width);
     const still = await state();
     const rings = await page.evaluate(() => ({ again: document.getElementById('again').getBoundingClientRect().width, back: document.getElementById('over-back').getBoundingClientRect() }));
-    (over.every((b, i) => b && b.text === OV[i]) && over[1].drawn && Math.abs(over[1].ring[0] - rings.again - 12) <= 2 && over[2].drawn && over[3].arrow && !over[3].drawn && !over[0].drawn && still.screen === 's-over' && !still.game
-      && over.every(b => Math.abs(b.centre[1]) <= 2 && !b.covers))
-      ? ok('62.11 the eight boxes on the first result in order, centred: TRY AGAIN ringed, the longer length ringed, an arrow at BACK — and tapping either does nothing until the last box')
-      : bad('62.11 the result boxes', JSON.stringify({ over: over.map(b => b && { t: b.text, drawn: b.drawn, ring: b.ring, arrow: b.arrow, c: b.centre, covers: b.covers }), still, rings }));
+    (over.every((b, i) => b && b.text === OW[i]) && over[1].drawn && Math.abs(over[1].ring[0] - rings.again - 12) <= 2 && !over[2].drawn && over[3].drawn && Math.abs(over[3].ring[0] - dashW - 12) <= 2 && over[4].arrow && !over[4].drawn && !over[0].drawn && still.screen === 's-over' && !still.game
+      && over.every(b => Math.abs(b.centre[1]) <= 2 && !b.covers) && !/\{/.test(OW.join('')))
+      ? ok(`62.11 / 64.2 the first result's boxes in order, centred: TRY AGAIN ringed, "${OW[2]}", then "${OW[3]}" with Dash ringed, an arrow at BACK — and tapping either does nothing until the last box`)
+      : bad('62.11 the result boxes', JSON.stringify({ want: OW, over: over.map(b => b && { t: b.text, drawn: b.drawn, ring: b.ring, arrow: b.arrow, c: b.centre, covers: b.covers }), still, rings }));
     // 62.14: "Good luck!" is answered — Off the Rails banked, the walkthrough gone, the result screen live again (and the second run can be quit)
     await anywhere(); await sleep(300);
     const done = await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('ne')); return { tut: s.prefs.tut, tutRun: !!s.prefs.tutRun, rails: !!s.ach.rails, hidden: document.getElementById('tut').hidden }; });
@@ -205,6 +214,17 @@ export async function run() {
     (reset && reset.text === want[0] && rs.tut === -1 && rs.on === 's-pick' && rs.tuts.board === undefined && (rs.tuts.prog === 0 || rs.tuts.prog === undefined))
       ? ok('A1 Testing: "reset all first-time tutorials" forgets every one, puts the walkthrough back at box one and re-arms those whose thing is open')
       : bad('A1 reset all first-time tutorials', JSON.stringify({ reset: reset && reset.text, rs }));
+    /* build 65 (64.2): THE OTHER BRANCH — a first run that did not open Dash. Its third box is Dash's own rule, read from config, with TRY AGAIN ringed */
+    {
+      const t = Date.now(), r = { g: 'quick-tap', d: 'two', s: X.lens[0], t, hits: 4, misses: 3, v: 4 };
+      await page.evaluate(r => { localStorage.setItem('ne', JSON.stringify({ v: 7, prefs: { story: 1, gridSeen: 1, menuSeen: 1, snd: 'off', played: 1, tut: 1, tutRun: r }, runs: [r], ach: {}, unlock: {}, intro: { 'quick-tap': 1, 'quick-tap:two': 1 }, seen: {}, bars: {} })); }, r);
+      await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+      const m = [await waitText(C.over.hi, 300)]; await anywhere(); m.push(await waitText(C.over.again)); await anywhere(); m.push(await waitText(fillO(C.over.miss)));
+      const againW = await page.evaluate(() => document.getElementById('again').getBoundingClientRect().width);
+      (m[2] && m[2].text === fillO(C.over.miss) && m[2].drawn && Math.abs(m[2].ring[0] - againW - 12) <= 2 && !/\{/.test(m[2].text))
+        ? ok(`64.2 a first run that did not open Dash: the third box is "${m[2].text}", TRY AGAIN ringed`)
+        : bad('64.2 the no-Dash branch', JSON.stringify(m.map(b => b && { t: b.text, drawn: b.drawn, ring: b.ring })));
+    }
     await page.evaluate(async () => { const S = await import('./core/store.js'); S.prefs.tut = 2; S.save(); });
   }
 }

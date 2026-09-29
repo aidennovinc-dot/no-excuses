@@ -73,8 +73,9 @@ function nums(){ const need=dotsRule(), m=QM(), lens=GC(QT,m).lens, names=lens.m
     names:list(names), all:list(lens.map(String)), row:(rule.match(/^\d+\s+hits in a row/)||[''])[0], dots:GAMES.dots.name,
     game:GAMES[QT].name+' · '+MODE_NAME[m] }; }
 const say=(line,extra)=>T(line,Object.assign(nums(),extra||{}));
-// what a key is called in a line — a length by its name, a mode by its own (64.2: "you unlocked Dash and Four")
-const nameOf=k=>{ const [g,d,s]=String(k).split(':'); if(!GAMES[g]) return ''; if(s!==undefined) return lenName(g,+s,d); return MODE_NAME[d]||GAMES[g].name; };
+// what a key is called in a line, the way its toast names it — a length by its name, a game's first mode by the game, any other mode by its own (64.2)
+const nameOf=k=>{ const [g,d,s]=String(k).split(':'); if(!GAMES[g]) return ''; if(s!==undefined) return lenName(g,+s,d);
+  const first=g!==QT&&!GAMES[g].modes.some(m=>m!==d&&(store.unlock||{})[g+':'+m]); return first||!MODE_NAME[d]?GAMES[g].name:MODE_NAME[d]; };
 
 /* ---------- THE TUTORIALS, as data ----------
    A step: `on` where it lives; `el` what it is about (a ring round it, unless `ring:0`); `tap` — only that thing responds, and the step moves on
@@ -107,7 +108,10 @@ const O=TUTORIAL.over, oOn=()=>onScreen('s-over');
 const gotKeys=()=>((prefs.tutRun||{}).got||[]).filter(k=>GAMES[String(k).split(':')[0]]);
 const dashOpen=()=>{ const m=QM(), s=GC(QT,m).lens[1]; return s!==undefined&&lenOpen(QT,m,s); };
 function overSteps(){ const dash=()=>$(`#over-chips2 .chip[data-v="${GC(QT,QM()).lens[1]}"]`)||$('#over-chips2 .chip:nth-child(2)');
-  const mid=[ { on:oOn, el:dash, text:O.longer } ];
+  const dots=()=>GAMES.dots.modes.some(m=>(store.unlock||{})['dots:'+m]);
+  const mid=dashOpen()
+    ? [ { on:oOn, text:()=>say(O.got,{names:list(gotKeys().map(nameOf).filter(Boolean))||nums().second}) }, ...(dots()?[]:[{ on:oOn, el:dash, text:()=>say(O.next) }]) ]
+    : [ { on:oOn, el:()=>$('#again'), text:()=>say(O.miss) } ];
   return [ { on:oOn, text:O.hi }, { on:oOn, el:()=>$('#again'), text:O.again }, ...mid, { on:oOn, el:()=>$('#over-back'), arrow:1, text:O.back },
     ...O.end.map(t=>({ on:oOn, text:t })) ]; }
 
@@ -196,6 +200,7 @@ const shown=()=>!!host&&!host.hidden&&!!cur;
 const waiting=()=>!overlay()&&((wanted()&&firstAt===0&&onScreen('s-pick')&&!sheetUp()&&!lockUp())||(results()&&onScreen('s-over')));
 function lets(t){ if(!shown()||!cur.s.tap) return false; const el=cur.s.el(); return !!el&&el.contains(t); }
 document.addEventListener('click',e=>{ if(passing) return;
+  tick();   // what is on the screen NOW decides — a box whose tutorial ended since the last turn of the loop owns nothing
   if(!shown()){ if(waiting()){ e.stopPropagation(); e.preventDefault(); } return; }
   if(lets(e.target)){ const {id,s}=cur; if(!s.done) setTimeout(()=>{ if(active()===id) advance(id); tick(); },0); return; }
   e.stopPropagation(); e.preventDefault();
