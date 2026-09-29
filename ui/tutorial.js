@@ -147,6 +147,25 @@ tutorial('about',[
   { on:ab, el:()=>$('#support'), text:A[4] },
   { on:ab, text:A[5] },
 ],{ opened:()=>menuOpen('s-about') });
+/* 64.9: PROGRESS, after the first Estimate run. Progress ringed on the menu; inside, two lines about the screen, the Games chest's tab ringed (the
+   screen is put on that tab if it opened on another), then a game filter the player must pick — any game but All */
+const P9=TUTORIAL.prog, pr=()=>onScreen('s-prog');
+tutorial('prog',[
+  { on:menuOn, el:item('s-prog'), tap:1, text:P9[0] },
+  { on:pr, text:P9[1] },
+  { on:pr, text:P9[2] },
+  { on:pr, el:()=>$('#prog-tabs [data-tab="c-games"]'), text:P9[3], enter(){ const t=$('#prog-tabs [data-tab="c-games"]'); if(t&&!t.classList.contains('sel')) through(()=>t.click()); } },
+  { on:()=>pr()&&!!$('#prog-tabs [data-tab="c-games"].sel'), el:()=>$('#chest-g'), tap:1, hit:t=>{ const b=t.closest('#chest-g .chip'); return !!b&&b.dataset.v!=='all'; }, text:P9[4] },
+],{ opened:()=>menuOpen('s-prog') });
+/* 64.12: SCORES, after the first Reaction run. Scores ringed on the menu; inside, a welcome, Quick Tap's chip to tap (Claude's call — "let's
+   check" is a tap), then the web chart ringed */
+const B12=TUTORIAL.board, bd=()=>onScreen('s-board');
+tutorial('board',[
+  { on:menuOn, el:item('s-board'), tap:1, text:B12[0] },
+  { on:bd, text:B12[1] },
+  { on:bd, el:()=>$(`#bd-g .chip[data-v="${QT}"]`), tap:1, text:()=>T(B12[2],{game:GAMES[QT].name}) },
+  { on:bd, el:()=>$('#radar'), text:B12[3] },
+],{ opened:()=>menuOpen('s-board') });
 
 /* ---------- the box ---------- */
 let host=null, timer=0, fromTut=false, passing=false, cur=null;
@@ -218,7 +237,7 @@ function bankRails(say){ const g=got(); if(g.rails) return; g.rails=Date.now(); 
    every tap alone, which is what keeps the screen from ever being held with no box on it (64.3). */
 const shown=()=>!!host&&!host.hidden&&!!cur;
 const waiting=()=>!overlay()&&((wanted()&&firstAt===0&&onScreen('s-pick')&&!sheetUp()&&!lockUp())||(results()&&onScreen('s-over')));
-function lets(t){ if(!shown()||!cur.s.tap) return false; const el=cur.s.el(); return !!el&&el.contains(t); }
+function lets(t){ if(!shown()||!cur.s.tap) return false; const el=cur.s.el(); return !!el&&el.contains(t)&&(!cur.s.hit||cur.s.hit(t)); }
 document.addEventListener('click',e=>{ if(passing) return;
   tick();   // what is on the screen NOW decides — a box whose tutorial ended since the last turn of the loop owns nothing
   if(!shown()){ if(waiting()){ e.stopPropagation(); e.preventDefault(); } return; }

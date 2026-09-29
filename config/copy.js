@@ -310,6 +310,12 @@ export const TUTORIAL = {
      Claude's: a box that asks for a tap needs a line, and Aiden gave that step none */
   about:[ "You've unlocked About", 'Welcome to the About section', "Here you'll find all the unlocked videos", 'The option to send me feedback for future versions',
     "And if you're enjoying the game, a chance to show your support", 'Alright, get back to it!' ],
+  // build 65 (64.9): THE PROGRESS TUTORIAL, after the first Estimate run — Aiden's lines
+  prog:[ "Let's see what else you've unlocked", 'Progress shows you all of the unlocks, customisation, and achievements', 'and how to get them',
+    "You're currently trying to open the Games chest", 'Press a game mode to see how to unlock everything!' ],
+  /* build 65 (64.12): THE SCORES TUTORIAL, after the first Reaction run — Aiden's lines; the first (Scores ringed on the menu) is Claude's, as
+     About's is, and {game} is Quick Tap's name from config ("quick tap" in his note) */
+  board:[ "You've unlocked Scores", 'Welcome to the scores section!', "Let's check your {game} scores", 'This thing up here shows your overall performance across all games' ],
   over:{ hi:'Congratulations! You finished your first run', again:'You can try again',
     got:'Great job, you unlocked {names}!', next:"Let's see if you can get {count} in a {second} to unlock {dots}. If not, unlock {long} and try there!",
     miss:'Get {row} without missing to unlock {second}',

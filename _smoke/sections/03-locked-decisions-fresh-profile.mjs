@@ -214,7 +214,7 @@ export async function run() {
     await page.evaluate(async () => { const S = await import('./core/store.js'); S.prefs.tut = 2; S.prefs.played = 1; S.prefs.tuts = { prog: 'done', board: 3 }; S.prefs.menuUnl = { prog: 1 }; S.save(); (await import('./ui/router.js')).show('s-testing'); }); await sleep(200);
     await click('#tut-reset'); await sleep(300);
     const reset = await waitText(want[0]), rs = await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('ne')).prefs; return { tut: p.tut, tuts: p.tuts, on: document.querySelector('.screen.on')?.id }; });
-    (reset && reset.text === want[0] && rs.tut === -1 && rs.on === 's-pick' && rs.tuts.board === undefined && (rs.tuts.prog === 0 || rs.tuts.prog === undefined))
+    (reset && reset.text === want[0] && rs.tut === -1 && rs.on === 's-pick' && rs.tuts.board === undefined && rs.tuts.prog === 0)
       ? ok('A1 Testing: "reset all first-time tutorials" forgets every one, puts the walkthrough back at box one and re-arms those whose thing is open')
       : bad('A1 reset all first-time tutorials', JSON.stringify({ reset: reset && reset.text, rs }));
     /* build 65 (64.2): THE OTHER BRANCH — a first run that did not open Dash. Its third box is Dash's own rule, read from config, with TRY AGAIN ringed */
@@ -264,6 +264,28 @@ export async function run() {
         && a[5].drawn && Math.abs(a[5].ring[0] - rings.sup - 12) <= 2 && !a[1].drawn && resumed && resumed.text === CA[3] && endA.done === 'done' && !endA.box && a.every(b => b && !b.covers))
         ? ok('64.8 after the Welcome clip: About ringed on the main menu and the only thing that answers; inside, the six boxes in order with the videos, feedback and support ringed; a reload resumes at the same box; done once')
         : bad('64.8 the About tutorial', JSON.stringify({ a: a.map(b => b && { t: b.text, drawn: b.drawn, ring: b.ring, covers: b.covers }), held, inAbout, rings, endA }));
+      /* 64.9 / 64.12: the Estimate and Reaction runs above armed PROGRESS and SCORES; each waits its turn on the main menu. Progress: the item ringed,
+         two lines, the Games chest tab ringed, then a game filter must be picked — All does nothing. Scores: the item ringed, a welcome, Quick Tap's
+         chip to tap, the web chart ringed */
+      const CP = await page.evaluate(async () => (await import('./config/copy.js')).TUTORIAL), QTN = await page.evaluate(async () => (await import('./games/registry.js')).GAMES['quick-tap'].name);
+      await page.evaluate(async () => (await import('./ui/router.js')).show('s-menu'));
+      const p = [await waitText(CP.prog[0])]; await click('#s-menu .item[data-go="s-prog"]'); p.push(await waitText(CP.prog[1]));
+      await anywhere(); p.push(await waitText(CP.prog[2])); await anywhere(); p.push(await waitText(CP.prog[3])); await anywhere(); p.push(await waitText(CP.prog[4]));
+      await click('#chest-g .chip[data-v="all"]'); await sleep(300); const allHeld = (await box() || {}).text;
+      await click('#chest-g .chip[data-v="hold"]'); await sleep(500);
+      const pEnd = await page.evaluate(() => ({ done: JSON.parse(localStorage.getItem('ne')).prefs.tuts.prog, box: !document.getElementById('tut').hidden, g: document.querySelector('#chest-g .chip.sel')?.dataset.v, tab: document.querySelector('#prog-tabs .chip.sel')?.dataset.tab }));
+      (p.map(b => b && b.text).join('|') === CP.prog.join('|') && p[0].drawn && p[3].drawn && p[4].drawn && allHeld === CP.prog[4] && pEnd.done === 'done' && !pEnd.box && pEnd.g === 'hold' && pEnd.tab === 'c-games')
+        ? ok('64.9 the Progress tutorial after the first Estimate run: Progress ringed on the menu, its five boxes in order, the Games chest tab ringed, a game filter picked to finish (All does nothing)')
+        : bad('64.9 the Progress tutorial', JSON.stringify({ p: p.map(b => b && { t: b.text, drawn: b.drawn }), allHeld, pEnd }));
+      await page.evaluate(async () => (await import('./ui/router.js')).show('s-menu'));
+      const want12 = [CP.board[0], CP.board[1], CP.board[2].replace('{game}', QTN), CP.board[3]];
+      const q = [await waitText(want12[0])]; await click('#s-menu .item[data-go="s-board"]'); q.push(await waitText(want12[1]));
+      await anywhere(); q.push(await waitText(want12[2])); await click('#bd-g .chip[data-v="quick-tap"]'); q.push(await waitText(want12[3]));
+      const radarW = await page.evaluate(() => document.getElementById('radar').getBoundingClientRect().width); await anywhere(); await sleep(400);
+      const qEnd = await page.evaluate(() => ({ done: JSON.parse(localStorage.getItem('ne')).prefs.tuts.board, box: !document.getElementById('tut').hidden }));
+      (q.map(b => b && b.text).join('|') === want12.join('|') && q[0].drawn && q[2].drawn && q[3].drawn && Math.abs(q[3].ring[0] - radarW - 12) <= 2 && qEnd.done === 'done' && !qEnd.box)
+        ? ok(`64.12 the Scores tutorial after the first Reaction run: Scores ringed on the menu, a welcome, "${want12[2]}" with its chip to tap, the web chart ringed`)
+        : bad('64.12 the Scores tutorial', JSON.stringify({ q: q.map(b => b && { t: b.text, drawn: b.drawn, ring: b.ring }), radarW, qEnd }));
     }
     await page.evaluate(async () => { const S = await import('./core/store.js'); S.prefs.tut = 2; S.save(); });
   }

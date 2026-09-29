@@ -1608,3 +1608,10 @@ same, only the game's name gains its mode.
 ones included — progress, Fresh game clears it) it adds what the player did and when (Cowork's call): "✓ 7 hits in a row, no misses, in a Quick
 Tap · Two Sprint · you: 16, 29 Sept". An unlock earned before build 65 has no run on record and shows the requirement and the tick. A locked row
 is unchanged (its requirement was already green; the tick is the difference).
+
+**64.9 / 64.12 — the Progress and Scores tutorials.** Armed with the item (64.7); each waits on the main menu with its item ringed and the only thing
+that answers. Progress (Aiden's five lines): two lines about the screen, the Games chest tab ringed (the screen is put on that tab if it opened on
+another), then a game filter the player must pick — All does nothing (a step's `hit()` narrows its target). Scores: "You've unlocked Scores"
+(Claude's line, as About's), "Welcome to the scores section!", "Let's check your Quick Tap scores" with Quick Tap's chip to tap (Claude's call —
+"let's check" is a tap; the name from config), then the web chart ringed. On a screen that cannot scroll (the menu), a box that would cover its
+target moves just below it (or above).

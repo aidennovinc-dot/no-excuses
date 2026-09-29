@@ -1799,6 +1799,15 @@ scene('64.10', async (page, browser) => {
   await frame(page, browser, '64.10-open-rows', 'Progress, Games chest tab: Four (earned before this build) and Dash (with "you: 16") keep their requirement, ticked and green; the Four Dash row names its mode (64.11)');
 });
 
+scene('64.9', async (page, browser) => {
+  await load(page, { ...MENU_NEW, menuUnl: { prog: 1 }, tuts: { prog: 0 } }, { unlock: { 'dots:blind': 1, 'hold:grow': 1 } }); await show(page, 's-menu'); await sleep(600);
+  await tutFrames(page, browser, '64.9', 5, { 0: '#s-menu .item[data-go="s-prog"]', 4: '#chest-g .chip[data-v="hold"]' }, 'Progress tutorial, after the first Estimate run — ');
+});
+scene('64.12', async (page, browser) => {
+  await load(page, { ...MENU_NEW, menuUnl: { prog: 1, board: 1 }, tuts: { prog: 'done', board: 0 } }, { unlock: { 'dots:blind': 1, 'reaction:flash': 1 } }); await show(page, 's-menu'); await sleep(600);
+  await tutFrames(page, browser, '64.12', 4, { 0: '#s-menu .item[data-go="s-board"]', 2: '#bd-g .chip[data-v="quick-tap"]' }, 'Scores tutorial, after the first Reaction run — ');
+});
+
 scene('64.6', async (page, browser) => {
   await load(page, { ...OPEN, welcomeSeen: 1 }); await runOf(page, 'quick-tap'); await sleep(1200);
   say('hud', await page.evaluate(() => { const q = id => { const r = document.getElementById(id).getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)]; };
