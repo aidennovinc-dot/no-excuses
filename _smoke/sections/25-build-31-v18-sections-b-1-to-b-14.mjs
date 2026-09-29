@@ -240,10 +240,11 @@ export async function run() {
     const toast31 = read('ui', 'toast.js');
     /* DELETED at build 49 (site/CLAUDE.md -> The gate): the result.js half, which spelled the toast list's tuple `[unlockToast(u.key),'','ok',false,u.key]`
        and failed when §B1 added a sixth field (the game whose map sound follows its unlock toast). The toast.js and run.js halves stand */
-    const midRun = /toast\(unlockToast\(x\.key\),'','ok'\)/.test(run31) && !/toast\(unlockToast\(x\.key\),'','ok',[^)]/.test(run31);
-    (/dataset\.goto/.test(toast31) && /unlockWhere/.test(toast31) && midRun)
-      ? ok('B.12 an unlock toast knows where it leads and opens that pick sheet; mid-run it stays a toast')
-      : bad('B.12 tapping an unlock toast goes there', JSON.stringify({ midRun }));
+    /* DELETED at build 65 (site/CLAUDE.md -> The gate): the run.js half, which spelled the mid-run call `toast(unlockToast(x.key),'','ok')` and
+       failed when 64.3 handed that call the unlock's own key (seventh field) so the finish can take it off the screen. Its `go` is still '' */
+    (/dataset\.goto/.test(toast31) && /unlockWhere/.test(toast31))
+      ? ok('B.12 an unlock toast knows where it leads and opens that pick sheet')
+      : bad('B.12 tapping an unlock toast goes there');
     // and it actually navigates
     const went = await page.evaluate(async () => { const { toast } = await import('./ui/toast.js');
       toast('Unlock: Streak', '', 'ok', false, 'reaction:flash:-1');
