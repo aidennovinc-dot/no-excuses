@@ -14,7 +14,7 @@
    the changes that come from where it lives: pvStep asks whether THIS screen is up, onShow does what setTab('cus', opts)
    did, and a locked line opens Progress at the row that pays for the item (it was a tab change on the same screen). */
 import { Music, Snd } from "../../audio.js";
-import { KEY_THEMES, SCALES, TRACKS, TRACK_OPTS, TRACK_PICK } from "../../config/audio.js";
+import { KEY_THEMES, MUSIC_LIST, MUSIC_PICK, SCALES, TRACKS } from "../../config/audio.js";
 import { KEYS } from "../../config/keys.js";
 import { CUSTOM, GRID, ITEM_WORD } from "../../config/copy.js";
 import { DESIGNS, ITEMS } from "../../config/theme.js";
@@ -85,11 +85,13 @@ function renderCustom(){
      — which it may now do, because v21 G.1 put all three keys on screen from the first visit, so naming one hides nothing (A.1).
      ITEM 3: the KEY is named Skill key / Pro / Author, read off config/keys.js, and the TRACK is titled Lantern / Circuit / Thorns. Before this
      build the Everywhere row printed the track's own name for the key and those names were Key / Pro / Thorns, which is what Aiden saw. */
-  const ev=everywhere(), opts=TRACK_OPTS[F.g]||[], cur=prefs.track[F.g]||TRACK_PICK[F.g];
-  const gameRows=opts.map(o=>({ v:o, name:(TRACKS[F.g+':'+o]||{}).name||o, key:null, sel:ev==='game'&&o===cur }));
-  const keyRows=KEYS.filter(k=>k.music&&KEY_THEMES[k.music]).map(k=>({ v:'key:'+k.music, name:(TRACKS[KEY_THEMES[k.music]]||{}).name||k.theme, key:k, sel:ev===k.music }));
-  // L8's first-seen green is for the KEY tracks: the three game tracks are not new, they have been on this row since build 33
-  $('#c-track').innerHTML = gameRows.concat(keyRows).map(r=>{ const L=r.key&&!keyFinished(r.key.id); const nw=(L||!r.key)?'':newMark('cos:track:'+r.v,fresh);
+  /* build 65 (64.20): THE ROW IS THE GAME'S ONE TRACK, NOT THIS GAME'S. It no longer changes with the game tab above it — MUSIC_LIST in order, the
+     three key themes among them, each still locked until its key; what is picked plays on the menus and in every run. */
+  const ev=everywhere(), cur=MUSIC_LIST.some(m=>m.track===prefs.menuTrack)?prefs.menuTrack:MUSIC_PICK;
+  const rows=MUSIC_LIST.map(m=>{ const k=m.key?KEYS.find(x=>x.music===m.key):null;
+    return k?{ v:m.v, name:(TRACKS[KEY_THEMES[m.key]]||{}).name||k.theme, key:k, sel:ev===m.key }:{ v:m.v, name:m.name||(TRACKS[m.track]||{}).name||m.v, key:null, sel:ev==='game'&&m.track===cur }; });
+  // L8's first-seen green is for the KEY tracks: the game tracks are not new
+  $('#c-track').innerHTML = rows.map(r=>{ const L=r.key&&!keyFinished(r.key.id); const nw=(L||!r.key)?'':newMark('cos:track:'+r.v,fresh);
     return `<button data-act="item" data-v="${r.v}" class="opt ${r.sel?'sel':''} ${L?'locked':''}${nw}" data-keyname="${r.key?esc(r.key.name):''}">${esc(r.name)}</button>`; }).join('');
   // the menu loop is not a game's, so it gets its own switch rather than hiding inside one game's row
   $('#c-menumusic').innerHTML = itemsOf('music').map(it=>`<button data-act="item" data-v="${it.v}" class="opt ${musicOn('menu')===it.v?'sel':''}">${it.label}</button>`).join('');
@@ -200,7 +202,8 @@ define({
        theme, or this game's track as TRACKS spells it — written in the same breath, so the row and the front of the app cannot disagree. */
     else if(k==='track'){ const v=b.dataset.v;
       if(v.startsWith('key:')){ prefs.everywhere=v.slice(4); prefs.menuTrack=KEY_THEMES[v.slice(4)]; save(); applyPrefs(F.g); renderCustom(); Music.preview(F.g,4200,KEY_THEMES[v.slice(4)]); return 'pick'; }
-      prefs.everywhere='game'; prefs.track[F.g]=v; prefs.menuTrack=F.g+':'+v; Music.preview(F.g,4200,v); }
+      // build 65 (64.20): a listed track is the whole game's — the menus and every run
+      const m=MUSIC_LIST.find(x=>x.v===v); if(!m||!m.track) return 'pick'; prefs.everywhere='game'; prefs.menuTrack=m.track; Music.preview(F.g,4200,m.track); }
     // v28 (item 2): still the master switch — on plays whatever the Music row is set to (Music.menuTrack), off stops it
     else if(k==='menumusic'){ prefs.musicG.menu=b.dataset.v==='true'; if(b.dataset.v==='true') Music.menu(Music.menuTrack()); else Music.stop(); }
     // v13 (7.1): the scale left the pick sheet — one choice, applied to every Sequence run

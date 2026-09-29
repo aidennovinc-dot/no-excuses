@@ -33,11 +33,10 @@ export async function run() {
     const G7 = ['quick-tap', 'dots', 'hold', 'sequence', 'timing', 'reaction', 'spot'];
     const ROLES = ['pad', 'stab', 'arp', 'lead', 'bass', 'sub', 'drone'];
     const miss = [], same = [], badv = [];
-    // build 30: TRACK_OPTS is one list per GAME and the ids are names, so the shape of this check moved with the data
-    for (const g of G7) { const os = AU.TRACK_OPTS[g] || [];
-      if (os.length !== 3) miss.push(g + ' has ' + os.length + ' options');
-      for (const o of os) if (!AU.TRACKS[g + ':' + o]) miss.push(g + ':' + o);
-      if (!os.includes(AU.TRACK_PICK[g])) miss.push(g + ' picks ' + AU.TRACK_PICK[g] + ', which is not one of its options'); }
+    /* AMENDED AT BUILD 65 (64.20): ONE GAME-WIDE LIST, not three per game — every entry is a track that exists or a key theme, and the default is on
+       it. The shape rule stands for what is listed: no two of its game tracks are the same music */
+    for (const m of AU.MUSIC_LIST) { if (m.track && !AU.TRACKS[m.track]) miss.push(m.v + ' → ' + m.track); if (m.key && !AU.TRACKS[AU.KEY_THEMES[m.key]]) miss.push(m.v + ' → key ' + m.key); }
+    if (!AU.MUSIC_LIST.some(m => m.track === AU.MUSIC_PICK)) miss.push('MUSIC_PICK ' + AU.MUSIC_PICK + ' is not on the list');
     for (const [k, t] of Object.entries(AU.TRACKS)) {
       if (!t.ch || !t.ch.length || !t.bass || !t.bass.length || !t.voices || !t.voices.length) badv.push(k + ' (empty)');
       for (const v of t.voices || []) {
@@ -46,30 +45,30 @@ export async function run() {
       }
     }
     const sig = t => [[...new Set(t.voices.map(v => v.w))].sort().join('+'), [...new Set(t.voices.map(v => v.pat || 'x'))].sort().join('|') + '@' + (t.beats || 4)];
-    for (const g of G7) { const os = AU.TRACK_OPTS[g] || [];
-      const ss = os.map(o => AU.TRACKS[g + ':' + o]).filter(Boolean).map(sig);
+    // across games the roles count too: a drone of leads and a pad-and-bass loop share waves and patterns and are not the same music
+    { const os = AU.MUSIC_LIST.filter(m => m.track), ss = os.map(m => { const t = AU.TRACKS[m.track], x = sig(t); return [x[0] + '/' + [...new Set(t.voices.map(v => v.v))].sort().join('+'), x[1]]; });
       for (let i = 0; i < ss.length; i++) for (let j = i + 1; j < ss.length; j++)
-        if (ss[i][0] === ss[j][0] && ss[i][1] === ss[j][1]) same.push(g + ' ' + os[i] + '/' + os[j]);
+        if (ss[i][0] === ss[j][0] && ss[i][1] === ss[j][1]) same.push(os[i].v + '/' + os[j].v);
     }
     // build 30 (B.31): the key loops are the three THEMES now, not key:1..3
     // AMENDED at build 42 (v23 L.7a): the three themes are theme:key / theme:pro / theme:thorns; the build-30 three stay one build, retired, for the A/B
     const extra = ['menu', ...Object.values(AU.KEY_THEMES || {}), 'key:roots', 'key:frost', 'key:thorn'].filter(k => !AU.TRACKS[k]).concat(Object.keys(AU.KEY_THEMES || {}).length === 3 ? [] : ['KEY_THEMES']);
-    if (miss.length || badv.length) bad('§1.1 three playable options per game', [...miss, ...badv].join(', '));
-    else if (same.length) bad('§1.1 the three options are different music', 'same voicing and rhythm: ' + same.join(', '));
+    if (miss.length || badv.length) bad('§1.1 / 64.20 every listed track plays', [...miss, ...badv].join(', '));
+    else if (same.length) bad('§1.1 the listed tracks are different music', 'same voicing and rhythm: ' + same.join(', '));
     else if (extra.length) bad('§1.2 / §1.3 the menu loop and one per key', 'missing: ' + extra.join(', '));
-    else ok(`§1 ${Object.keys(AU.TRACKS).length} tracks — 3 per game with different waves or rhythms, plus the menu and three keys`);
+    else ok(`§1 / 64.20 ${Object.keys(AU.TRACKS).length} tracks — the game-wide list of ${AU.MUSIC_LIST.length} (${AU.MUSIC_LIST.map(m => m.name || (m.track ? AU.TRACKS[m.track].name : AU.TRACKS[AU.KEY_THEMES[m.key]].name)).join(', ')}), all different music, plus the menu loop`);
     // Quick Tap · a is the build-26 loop note for note. It is the quality bar Aiden named, so it must be IN the set, not replaced
     const qa = AU.TRACKS['quick-tap:held'], want = JSON.stringify({ root: 110, bpm: 126, ch: [[0, 7, 12, 16], [5, 12, 17, 21], [3, 10, 15, 19], [7, 14, 19, 22]], bass: [0, 5, 3, 7] });
     const got = JSON.stringify({ root: qa.root, bpm: qa.bpm, ch: qa.ch, bass: qa.bass });
     const shape = qa.voices.length === 2 && qa.voices[0].v === 'pad' && qa.voices[0].w === 'triangle' && qa.voices[1].v === 'bass' && qa.voices[1].w === 'sine' && (qa.beats || 4) === 4;
-    (got === want && shape) ? ok('§1.1 Quick Tap · Held is the build-26 loop unchanged — the quality bar is one of its three')
+    (got === want && shape) ? ok('§1.1 Held is the build-26 loop unchanged — the quality bar is on the game-wide list')
       : bad('§1.1 Quick Tap keeps its current loop as an option', got);
     // build 30 (B.30): the track a game is set to must exist, and so must the flow layer B.27 rides over it
-    { const missPick = G7.filter(g => !AU.TRACKS[g + ':' + AU.TRACK_PICK[g]]);
+    { const missPick = AU.TRACKS[AU.MUSIC_PICK] ? [] : [AU.MUSIC_PICK];
       const setsBad = Object.keys(AU.SET_SECS || {}).filter(k => !(AU.SET_SECS[k] > 0));
       const flowOk = AU.FLOW_STEM && AU.FLOW_STEM.vol > 0 && (AU.FLOW_STEM.voices || []).length;
       (!missPick.length && !setsBad.length && flowOk)
-        ? ok(`B.30 every game's picked track exists (${G7.map(g => AU.TRACK_PICK[g]).join(', ')}), ${Object.keys(AU.SET_SECS).length} Set lengths, and the flow layer is at vol ${AU.FLOW_STEM.vol}`)
+        ? ok(`B.30 / 64.20 the default track exists (${AU.TRACKS[AU.MUSIC_PICK].name}), ${Object.keys(AU.SET_SECS).length} Set lengths, and the flow layer is at vol ${AU.FLOW_STEM.vol}`)
         : bad('B.30 the picked tracks, the Set lengths and the flow layer', JSON.stringify({ missPick, setsBad, flowOk }));
     }
     // no percussion: the one rule the old module had that was right, and the reason the roles list has no noise in it

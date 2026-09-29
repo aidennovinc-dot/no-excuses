@@ -28,7 +28,9 @@ export async function run() {
     const trackAt = async (chests, tier, bars) => { await boot({ chests }, { unlock: ALL43, bars: bars || {} }, { plain: PLAIN43 }); await show43('s-menu'); await sleep(120); await show43('s-key', { tier }); await sleep(1300);
       return page.evaluate(async () => (await import('./audio.js')).Music.probe().track); };
     const t = { quiet: await trackAt({}, 0), key1: await trackAt({ games: 1 }, 0), pro: await trackAt({ games: 1, key: 1 }, 1, bars43('clear')), author: await trackAt({ games: 1, key: 1, pro: 1 }, 2, bars43('clear', 'pro')) };
-    (stat && t.quiet === 'menu' && t.key1 === 'theme:key' && t.pro === 'theme:pro' && t.author === 'theme:thorns')
+    // AMENDED at build 65 (64.20): the quiet screen's "menu" is the game-wide track now — MUSIC_PICK on a profile that has picked none
+    const pick43 = (await import(pathToFileURL(path.join(root, 'config', 'audio.js')).href)).MUSIC_PICK;
+    (stat && t.quiet === pick43 && t.key1 === 'theme:key' && t.pro === 'theme:pro' && t.author === 'theme:thorns')
       ? ok(`C.2 / C.3 the Pro and Author keys have their music back: a key's theme plays on its screen once its TIER is open - key 1 ${t.key1}, Pro ${t.pro} with the Pro chest still shut, Author ${t.author} with the Author chest still shut - and only the quiet screen before the Games chest plays the menu loop. One regression, and not the rewritten themes: build 42 waited for the chest each key OPENS`)
       : bad('C.2 / C.3 the key themes on their screens', JSON.stringify({ stat, t }));
   }

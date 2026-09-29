@@ -7,13 +7,13 @@
    finish ramp that lands the last downbeat on the clock (B.28), an end cadence in the track's own key (B.30), a flow-state
    layer over the two tap games (B.27) and a duck for Sequence (B.30). Still no percussion. */
 
-import { CHEER_FX, CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, COVER_AT, COVER_FX, DUCK, DUCK_TAIL, FLOW_STEM, GIFT_FX, HUSH, KEY_EARN_CIRCUIT, KEY_EARN_FX, KEY_INTRO_FX, KEY_STEP_FX, KEY_THEMES, MAP_FX, MAP_INTRO_GAIN, MAP_LOCKED, POP_FX, ROUND_FX, ROUND_VERDICT, SCALES, SET_SECS, STEMS, STING_RING, TITLE_FX, TRACKS, TRACK_PICK, VERDICT_FX, VIDEO_FX, WELCOME_FX, WHOOSH_VARIANTS } from "./config/audio.js";
+import { CHEER_FX, CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, COVER_AT, COVER_FX, DUCK, DUCK_TAIL, FLOW_STEM, GIFT_FX, HUSH, KEY_EARN_CIRCUIT, KEY_EARN_FX, KEY_INTRO_FX, KEY_STEP_FX, KEY_THEMES, MAP_FX, MAP_INTRO_GAIN, MAP_LOCKED, POP_FX, ROUND_FX, ROUND_VERDICT, SCALES, SET_SECS, STEMS, STING_RING, TITLE_FX, TRACKS, MUSIC_LIST, MUSIC_PICK, VERDICT_FX, VIDEO_FX, WELCOME_FX, WHOOSH_VARIANTS } from "./config/audio.js";
 import { KEY_EARN } from "./config/keys.js";
 import { STREAK } from "./config/games.js";
 import { RESTART_FX, RUN_MUSIC } from "./config/audio.js";
 import { emit, on } from "./core/events.js";
 import { sel } from "./core/state.js";
-import { everywhere, look, musicOn, prefs } from "./core/store.js";
+import { everywhere, look, musicOn, opened, prefs } from "./core/store.js";
 /* ---------- sound: synthesised, tiny, quiet. The pack colours hit / miss / click; tick, go and end are the same everywhere ---------- */
 // v10: iOS marks the context "interrupted" (not "suspended") when the app goes to the background, and only a resume inside a touch brings it back — so every touch checks, and so does coming back to the foreground
 /* v21 (F.2, build 35) — WHAT THAT PATH DID, READ BEFORE ANY OF THIS WAS WRITTEN: three bare `resume()` calls — here, on
@@ -419,16 +419,19 @@ function stingOf(s,tr){ const barSec=barSecOf(tr), cut=s.cut||0, end=cut+STING_R
 
 const Music=(()=>{
   const TR=TRACKS;
-  // v23 (L.11a, build 40): a chosen track is a Customise choice — until the Games chest opens, look('track') is empty and the default plays
-  const opt=g=>(look('track')&&look('track')[g])||TRACK_PICK[g]||'a';
-  // '<game>' -> the option this profile plays; 'menu' / 'key:roots' / an explicit '<game>:tide' are taken as given
-  const pick=id=>TR[id]||TR[id+':'+opt(id)]||TR['quick-tap:held'];
+  /* build 65 (64.20): ONE TRACK FOR THE WHOLE GAME — the menus and every run. A key theme set to play everywhere (everywhere(), which honours its
+     key) wins; otherwise the track picked from MUSIC_LIST (`prefs.menuTrack`, a TRACKS id); a profile that picked nothing, or a track that has
+     since been cut, plays MUSIC_PICK. Until the Games chest opens Customise is shut, so nothing has been picked and the default plays. */
+  const listed=id=>MUSIC_LIST.some(m=>m.track===id);
+  const song=()=>{ const ev=everywhere(); if(ev!=='game'&&KEY_THEMES[ev]) return KEY_THEMES[ev]; const m=opened('games')?prefs.menuTrack:''; return (m&&TR[m]&&listed(m))?m:MUSIC_PICK; };
+  // an explicit TRACKS id is taken as given ('menu', a key theme, a listed track); anything else is the game's one track
+  const pick=id=>TR[id]||TR[song()]||TR[MUSIC_PICK];
   /* v23 (L.7d, build 42): WHAT A RUN PLAYS. A key theme set to play everywhere (core/store.js everywhere() — 'game' while its chest is shut)
      is every game's run track; otherwise the game's own. It is resolved HERE, once, before shapeFor — so a theme gets every run-music rule
      a game's track gets and not one of those rules had to learn what a theme is: the arc sized to a Set or a clock (B.29), the last five
      seconds landing on the finish (B.28), the versus stems (1.4), the flow hum on solo Quick Tap and Dots (B.27), Sequence's duck (B.30)
      and the end cadence in its key. The menu loop does not read it (guess, L.7d). */
-  const pickRun=g=>{ const th=KEY_THEMES[everywhere()]; return (th&&TR[th])||pick(g); };
+  const pickRun=()=>TR[song()]||TR[MUSIC_PICK];
   /* v28 (item 2, build 53) → v29 (item 4, build 54): AND WHAT THE MENU PLAYS — ONE RULE FOR BOTH KINDS OF TRACK. Build 42's guess was that
      the menu loop ignores the setting; build 53 gave it a key theme but kept the menu's own loop for a game track, on the reasoning that a
      game's track belongs to that game. Aiden's item 4 overrules that reasoning: the track picked in Customise OR by a key screen's SET THIS
@@ -437,8 +440,8 @@ const Music=(()=>{
      TWO FIELDS, ONE WRITER EACH TIME. `everywhere` is still what every RUN plays and still gates a key theme on its chest; `prefs.menuTrack`
      (core/store.js) is the resolved id of whatever was last picked, written in the same breath by the same two controls. A key theme is read
      through everywhere() so a locked key can never play here either; a game track is taken as given once TRACKS still has it. */
-  const menuTrack=()=>{ const ev=everywhere(); if(ev!=='game') return KEY_THEMES[ev];
-    const m=prefs.menuTrack; return (m&&TR[m]&&!Object.values(KEY_THEMES).includes(m))?m:'menu'; };
+  // build 65 (64.20): and the menu plays the same one — the menu's own loop is no longer the default
+  const menuTrack=song;
   let tr=null, timer=0, next=0, bar=0, hits=[], sHits=[[],[]], fHits=[], mode='', mg=null, sg=[null,null], fg=null;
   let st=null, secs=0, stems=false, flow=false, shape=null, fin=null, duckT=0, hushed=false;
   /* v21 (F.2 c): A REBUILT CONTEXT STRANDS EVERYTHING BUILT ON THE OLD ONE. The bed, the two stems and the flow layer are
@@ -572,7 +575,7 @@ const Music=(()=>{
     // preview one track on its own — Customise (12.1 / B.32), and the option a game is set to play
     // a preview ends by handing the menu loop back — walking away from Customise into silence would be worse than not previewing
     // build 55 (in passing): the timer is kept, so a second preview does not get cut short by the first one's clock
-    preview(g,ms,o){ st=null; stems=false; flow=false; clearTimeout(pvT); const t=o?(TR[g+':'+o]||TR[o]||pick(g)):pick(g); run(t,'preview',{p:phaseOf(t)}); pvT=setTimeout(()=>{ if(mode==='preview'){ this.stop(); this.menu('menu'); } },ms||4200); },
+    preview(g,ms,o){ st=null; stems=false; flow=false; clearTimeout(pvT); const t=o?(TR[o]||pick(o)):pick(g); run(t,'preview',{p:phaseOf(t)}); pvT=setTimeout(()=>{ if(mode==='preview'){ this.stop(); this.menu('menu'); } },ms||4200); },
     /* B.30 — Sequence ducks while a key rings. The bed drops to DUCK and comes back over the note plus DUCK_TAIL; the
        hook is only armed while a Sequence track is playing, so nothing else in the app pays for it. */
     duck(sec,at){ const a=ac; if(!a||!mg||mode!=='sequence') return; const t0=Math.max(a.currentTime,at||a.currentTime), back=t0+sec+DUCK_TAIL;
@@ -589,7 +592,7 @@ const Music=(()=>{
        there is no second copy of the arrangement engine to drift. `o` picks which version (B.29 / B.27):
        {} the written form · {run:<seconds>} the arc a run of that length gets · {long:1} the open-ended form · {flow:1}
        the flow layer over that track. */
-    plan(id,o){ o=o||{}; let t=TR[id]||TR[id+':'+opt(id)]; if(!t) return null;
+    plan(id,o){ o=o||{}; let t=pick(id); if(!t) return null;
       if(o.flow) t=Object.assign({},t,FLOW_STEM);
       const form=formOf(t), barSec=barSecOf(t), h=[], out=[]; let n=form, sh=b=>({fb:b,lb:b}), env=()=>1;
       if(o.run){ n=Math.max(1,Math.round(o.run/barSec)); sh=b=>({ fb:b, lb:Math.floor(Math.min(.9999,b/n)*form), u:b/n }); env=b=>.55+.45*Math.min(1,(b/n)/.6); }

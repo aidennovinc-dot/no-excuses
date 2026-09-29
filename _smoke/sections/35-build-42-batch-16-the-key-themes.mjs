@@ -101,16 +101,18 @@ export async function run() {
     const names = cu.before.map(x => x.txt.toUpperCase());
     const keyRows = cu.before.filter(x => x.v.startsWith('key:'));
     const themes = KY42.KEYS.map(k => k.theme.toUpperCase());
-    (cu.gone && cu.label === 'Music' && cu.before.length === 6 && keyRows.length === 3
+    // AMENDED at build 65 (64.20): the row is the game-wide list (MUSIC_LIST) and a pick is the whole game's track — no per-game `track` any more
+    const ML42 = (await import(pathToFileURL(path.join(root, 'config', 'audio.js')).href)).MUSIC_LIST, want42 = (ML42.find(m => m.v === cu.back.v) || {}).track;
+    (cu.gone && cu.label === 'Music' && cu.before.length === ML42.length && keyRows.length === 3
       && themes.every(t => names.includes(t)) && !names.some(t => KY42.KEYS.some(k => k.name.toUpperCase() === t))
       && keyRows.filter(x => x.locked).length === 2 && cu.line0 === ''
       && cu.shutTap.stored === 'game' && KY42.KEYS.some(k => cu.shutTap.line.includes(k.name))
       && cu.on.stored === 'key' && cu.on.sel === 'key:key'
-      && cu.back.stored === 'game' && cu.back.track === cu.back.v.replace('key:', '') && cu.back.sel === cu.back.v
+      && cu.back.stored === 'game' && cu.back.sel === cu.back.v
       /* v29 (item 4, build 54): ONE RULE FOR BOTH \u2014 whatever is picked plays on the MENU, key theme or game track alike, where build 53 sent
          the menu back to its own loop for a game's track. `prefs.menuTrack` is the resolved id and menuTrack() in audio.js is what plays. */
       && cu.on.menu === 'theme:key' && cu.on.plays === 'theme:key'
-      && cu.back.menu === cu.g + ':' + cu.back.v && cu.back.plays === cu.g + ':' + cu.back.v)
+      && want42 && cu.back.menu === want42 && cu.back.plays === want42)
       ? ok(`v28 items 2 / 3 / v29 item 4 Customise has ONE Music row and no Everywhere row: ${cu.before.length} options - this game's three tracks and one per key (${keyRows.map(x => x.txt).join(' \u00b7 ')}) - each key track locked until its own KEY is earned and saying so under the row ("${cu.shutTap.line}"), never over it; a locked one chooses nothing; the Skill key's track is chosen and stored in the same field the key screen writes; a tap on one of this game's tracks goes back to Per game with that track chosen; and EITHER KIND becomes the menu's music - the key theme plays "${cu.on.plays}" on the front of the app and the game track "${cu.back.plays}", one rule for both`)
       : bad('v28 items 2 / 3 the one Music row', JSON.stringify(cu));
   }

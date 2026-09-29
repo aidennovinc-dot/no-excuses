@@ -22,7 +22,8 @@ export async function run() {
       const G = await import('./config/games.js'); const REG = await import('./games/registry.js');
       const out = { long: [], arcs: [], badArc: [] };
       for (const g of Object.keys(REG.GAMES)) {
-        const id = g + ':' + A.TRACK_PICK[g], q = M.Music.plan(id, { long: 1 });
+        // AMENDED at build 65 (64.20): one track for the whole game — every game's run plays the default, MUSIC_PICK, until another is picked
+        const id = A.MUSIC_PICK, q = M.Music.plan(id, { long: 1 });
         out.long.push({ g, id, name: q.name, longSec: q.longSec, streak: !REG.GAMES[g].timed });
         const runs = REG.GAMES[g].timed ? REG.GC(g, REG.GAMES[g].modes[0]).lens : Object.keys(A.SET_SECS).filter(k => k.startsWith(g + ':')).map(k => A.SET_SECS[k]);
         for (const r of runs) { const p = M.Music.plan(id, { run: r });
@@ -249,8 +250,10 @@ export async function run() {
        this game's three tracks, always — and what is gated is the three KEY TRACKS, each until its own key is EARNED. A.1's "nothing about a
        later tier" no longer applies to them, because v21 G.1 put all three keys on screen from the first visit, so naming one hides nothing;
        a locked key track says what opens it under the row (B.30) rather than carrying a silent padlock. */
-    (locked.n === 6 && !locked.lock && locked.label === 'Music' && locked.menu === 2 && locked.gameOpen === 3 && locked.keyLocked === 3)
-      ? ok(`B.28 / v28 item 2 the music row is ONE row and the whole choice: this game's three tracks open from the first visit ("${locked.first}" …) and one track per key, all three locked until their own key is earned`)
+    // AMENDED AT BUILD 65 (64.20): the row is the game-wide list, MUSIC_LIST — its six game tracks open, its three key themes locked until their keys
+    const ML30 = AU30.MUSIC_LIST;
+    (locked.n === ML30.length && !locked.lock && locked.label === 'Music' && locked.menu === 2 && locked.gameOpen === ML30.filter(m => m.track).length && locked.keyLocked === ML30.filter(m => m.key).length)
+      ? ok(`B.28 / 64.20 the music row is ONE row, the whole game's: ${locked.gameOpen} tracks open from the first visit ("${locked.first}" …) and one per key, all three locked until their own key is earned`)
       : bad('B.28 the locked music row', JSON.stringify(locked));
     // dev unlock-all opens it, and picking one is stored and played
     await setStorage({ ne: { v: 1, prefs: { ...OPEN_PREFS, menuSeen: 1 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
@@ -258,19 +261,32 @@ export async function run() {
     await click('[data-go="s-custom"]'); await sleep(500);
     await page.evaluate(() => document.querySelectorAll('#c-track button')[1].click()); await sleep(500);
     const open30 = await page.evaluate(() => ({ n: document.querySelectorAll('#c-track button').length,
-      stored: JSON.parse(localStorage.getItem('ne')).prefs.track, sel: document.querySelector('#c-track button.sel')?.textContent }));
-    const g0 = open30.stored && Object.keys(open30.stored)[0];
-    // AMENDED at build 33 (B.28): three options and nothing else on the row
-    // AMENDED AT BUILD 53 (v28 item 2): SIX — this game's three, then one per key. The second is still one of this game's three, so what it
-    // stores is unchanged; unlock-all now opens the three KEY tracks rather than the row itself, which is open to everybody
-    (open30.n === 6 && g0 && AU30.TRACK_OPTS[g0].includes(open30.stored[g0]))
-      ? ok(`B.28 / v28 item 2 the row is this game's three tracks and one per key: "${open30.sel}" is stored as ${g0} → ${open30.stored[g0]}, and unlock-all opens the three key tracks`)
-      : bad('B.28 choosing a track', JSON.stringify(open30));
-    // the choice is a preference, not the default: TRACK_PICK is untouched and Fresh game keeps it
+      stored: JSON.parse(localStorage.getItem('ne')).prefs.menuTrack, sel: document.querySelector('#c-track button.sel')?.textContent }));
+    /* AMENDED AT BUILD 65 (64.20): picking the second of the game-wide list stores ITS track as the one the whole game plays (`menuTrack`) — the
+       per-game `track` is retired — and a run of any game plays it */
+    const ran = await page.evaluate(async () => { const M = (await import('./audio.js')).Music; return M.menuTrack(); });
+    (open30.n === ML30.length && open30.stored === ML30[1].track && ran === ML30[1].track)
+      ? ok(`B.28 / 64.20 the row is the whole game's list: "${open30.sel}" is stored as ${open30.stored}, and it is what the menus and every run play`)
+      : bad('B.28 choosing a track', JSON.stringify({ open30, ran }));
+    /* build 65 (64.20): THE PICK IS THE WHOLE GAME'S — the menu plays it, a Quick Tap run carries it into the run with the flow hum on top and its arc
+       sized to the run (the last five seconds' speed-up rides on that arc), and a Dots run plays the same one */
+    { const w = ML30.find(m => m.track && m.track !== AU30.MUSIC_PICK && m.track !== ML30[1].track);
+      await page.evaluate(async t => { const S = await import('./core/store.js'); S.prefs.menuTrack = t; S.prefs.everywhere = 'game'; S.save(); (await import('./audio.js')).Music.menu('menu'); }, w.track);
+      await page.evaluate(async () => { (await import('./ui/router.js')).show('s-menu'); }); await sleep(500);
+      const menu = await page.evaluate(async () => (await import('./audio.js')).Music.probe().track);
+      const inRun = async g => { await page.evaluate(async g => (await import('./run/run.js')).goWhere({ g }), g);
+        for (let i = 0; i < 80 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) { await page.evaluate(() => { const it = document.getElementById('intro'); if (it && it.classList.contains('ready')) document.getElementById('game').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); }); await sleep(100); }
+        const p = await page.evaluate(async () => (await import('./audio.js')).Music.probe()); await click('#quit'); await sleep(400); return p; };
+      const qt = await inRun('quick-tap'), dt = await inRun('dots');
+      (menu === w.track && qt.track === w.track && qt.inRun && qt.flow && qt.arc && dt.track === w.track)
+        ? ok(`64.20 one track for the whole game: "${w.name || w.v}" plays on the menu and carries into a Quick Tap run (flow hum on, its arc sized to the run) and a Dots run`)
+        : bad('64.20 the game-wide track', JSON.stringify({ want: w.track, menu, qt, dt }));
+      await page.evaluate(async t => { const S = await import('./core/store.js'); S.prefs.menuTrack = t; S.save(); }, ML30[1].track); }
+    // the choice is a preference, not the default: MUSIC_PICK is untouched and Fresh game keeps it
     const kept = await page.evaluate(async () => { const S = await import('./core/store.js'); S.reset();
-      return { track: JSON.parse(localStorage.getItem('ne')).prefs.track, chest2: JSON.parse(localStorage.getItem('ne')).prefs.chests.pro }; });
+      return { track: JSON.parse(localStorage.getItem('ne')).prefs.menuTrack, chest2: JSON.parse(localStorage.getItem('ne')).prefs.chests.pro }; });
     // AMENDED at build 40 (v23 L.10): "chest 2" is the Pro chest by name
-    (kept.track && Object.keys(kept.track).length && kept.chest2 === 0) ? ok('B.32 the chosen track survives Fresh game (a preference) and the Pro chest does not (progress)')
+    (kept.track === ML30[1].track && kept.chest2 === 0) ? ok('B.32 the chosen track survives Fresh game (a preference) and the Pro chest does not (progress)')
       : bad('B.32 what Fresh game clears', JSON.stringify(kept));
   }
   /* ---- B.33: the key-unlock animations at 1.5x, and the interlude waiting for them ---- */

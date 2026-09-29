@@ -1654,3 +1654,8 @@ notes). A static check walks every string every `config/` module exports, and th
 **64.19 — Customise loses its taps-per-second row.** The in-game meter stays and is always on, and always the LIVE reading: the run hands every engine
 `rateMode: 'live'` whatever a profile stored, so one that had picked whole-run is not stranded on it. The gate's D.3a (whole-run holds until
 2.0s) is turned over to assert the live reading even on such a profile.
+
+**64.20 — music is one game-wide choice (SUPERSEDING FEEDBACK-v16's per-game music; not a locked item).** `MUSIC_LIST` / `MUSIC_PICK` in
+`config/audio.js`; fifteen game loops cut; the pick is `prefs.menuTrack` (the per-game `track` retired) and plays on the menus and in every run;
+the speed-up, flow hum, stems and duck ride on it as before. Default Still (Claude's call, for the three-minute rule in Streaks). Full text:
+`docs/MUSIC.md` → Build 65. The review catalogue reads the list.

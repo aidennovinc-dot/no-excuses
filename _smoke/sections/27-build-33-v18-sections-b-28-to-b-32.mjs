@@ -85,9 +85,11 @@ export async function run() {
       return { label: grp.querySelector('.clabel').textContent, n: b.length, named: b.map(x => x.textContent), sel: b.filter(x => x.classList.contains('sel')).length }; });
     /* AMENDED AT BUILD 53 (v28 items 2 / 3): SIX — this game's three tracks, then one track per key, titled by that key's own theme. B.28's
        shape is otherwise untouched: names only, exactly one selected, and no Preview / on / off anywhere on the row. */
-    (row.label === 'Music' && row.n === 6 && row.sel === 1 && row.named.every(x => x && !/preview|^on$|^off$/i.test(x))
+    // AMENDED AT BUILD 65 (64.20): the row is the game-wide list now, MUSIC_LIST, read off config — the three key themes among it
+    const ML33 = (await import(pathToFileURL(path.join(root, 'config', 'audio.js')).href)).MUSIC_LIST;
+    (row.label === 'Music' && row.n === ML33.length && row.sel === 1 && row.named.every(x => x && !/preview|^on$|^off$/i.test(x))
       && KY33.KEYS.every(k => row.named.some(x => x.trim().toUpperCase() === k.theme.toUpperCase())))
-      ? ok(`B.28 / v28 item 2 the Music row is this game's three tracks and one per key, by name (${row.named.join(' · ')}), one of them selected`)
+      ? ok(`B.28 / 64.20 the Music row is the whole game's list, one per key among it, by name (${row.named.join(' · ')}), one of them selected`)
       : bad('B.28 the open music row', JSON.stringify(row));
   }
 

@@ -1853,6 +1853,15 @@ scene('64.17', async (page, browser) => {
   await frame(page, browser, '64.17-key-panel', 'Skill Key, Quick Tap opened: no description paragraph, the rows straight under the heading; the card counts bars ("2/30") like the line under the key (64.18)');
 });
 
+scene('64.20', async (page, browser) => {
+  await load(page, { ...PLAIN, welcomeSeen: 1, chests: { games: 1 } }); await show(page, 's-custom'); await sleep(900);
+  say('music', await page.evaluate(() => ({ row: [...document.querySelectorAll('#c-track button')].map(b => b.textContent + (b.classList.contains('sel') ? '*' : '') + (b.classList.contains('locked') ? ' (locked)' : '')), above: document.getElementById('c-track').getBoundingClientRect().top < document.getElementById('pv-g').getBoundingClientRect().top })));
+  await frame(page, browser, '64.20-music-global', 'Customise: Music and Music on / off at the top, above the game tabs — one list for the whole game, the key themes locked until their keys');
+  await page.evaluate(() => { const s = document.getElementById('s-custom'); s.scrollTop = s.scrollHeight; }); await sleep(600);
+  say('rows', await page.evaluate(() => [...document.querySelectorAll('#s-custom .clabel')].map(l => l.textContent)));
+  await frame(page, browser, '64.19-customise-foot', 'Customise scrolled to the foot: Tap sound is the last row — the Taps per second choice is gone');
+});
+
 scene('64.15', async (page, browser) => {
   await load(page, { ...PLAIN, welcomeSeen: 1, chests: { games: 1 } }); await show(page, 's-custom'); await sleep(700);
   await page.evaluate(() => document.querySelector('#c-bg button[data-v="snow"]').click()); await sleep(1500);

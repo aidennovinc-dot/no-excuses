@@ -207,3 +207,15 @@ VERDICT_FX) is in the `config/` paragraph of `RULES-HISTORY.md` → Structure, a
   on across the cut into the chest. A SKIP still silences it.
 - **RETIRED: `CRACK_FX` and `CRACK_BURST` (57.2)**, with the map's crack arrival they were written for. The seven squares' own ticks in
   `CHEST_FX.games` are the cracking sound now, because 57.2 puts the cracking on that same beat.
+
+## Build 65 (FEEDBACK-v34 64.20, 2026-09-30): one game-wide track
+
+Music is ONE choice for the whole game, not per game — superseding FEEDBACK-v16's three options per game (`TRACK_OPTS` / `TRACK_PICK`, B.30 – B.32,
+never a locked decision). `MUSIC_LIST` in `config/audio.js` is the list, Cowork's: Root, Fifths, Hum, the three key themes (Lantern, Circuit,
+Thorns — each still locked until its key), Held, Waltz and Still (Estimate's Tide under that name). The other fifteen game loops are cut from
+`TRACKS`. What is picked is `prefs.menuTrack` (a TRACKS id; `prefs.everywhere` still holds a key theme) and plays on the menus and in every run;
+`song()` in `audio.js` resolves it, falling back to `MUSIC_PICK`. The run's rules still ride on it — the arc sized to the run and the last five
+seconds landing on the clock, the flow hum on solo Quick Tap and Dots, the versus stems, Sequence's duck. The default is Still, because it plays
+in every game's Streak and must hold three minutes before it repeats (B.29); Held and Waltz, written for timed runs, loop in seconds if a player
+picks them for an open-ended run. The Customise Music row and its on / off moved above the game tabs.
+

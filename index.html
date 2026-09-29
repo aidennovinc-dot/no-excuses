@@ -180,6 +180,11 @@
      chips and the group labels under the preview say both what this is and that it is per game -->
 <section class="screen top" id="s-custom" data-back="s-menu">
   <button data-act="back" class="back">&larr; BACK</button>
+    <!-- build 65 (64.20): the music is the whole game's, not a game tab's — so it sits above the preview and its game chips -->
+    <div class="cgroup"><div class="clabel">Music</div><div class="chips" data-set="track" id="c-track"></div><div class="lockline" data-act="pvlock" id="lk-track"></div></div>
+    <!-- build 62 (61.19): "Menu music" read wrong once music plays in games too. B.28 keeps on / off off the Music row itself, and v28 item 2
+         keeps ONE row called Music, so the switch is "Music on / off" -->
+    <div class="cgroup"><div class="clabel">Music on / off</div><div class="chips" data-set="menumusic" id="c-menumusic"></div></div>
     <div class="pv" id="pv" data-g="quick-tap">
       <div class="pvqt"><div class="pad l"><div class="sq" id="pv0"></div></div><div class="pad r"><div class="sq" id="pv1"></div></div><div class="pad l up"><div class="sq" id="pv2"></div></div><div class="pad r up"><div class="sq" id="pv3"></div></div></div>
       <div class="pvdots"><b class="ld" id="pvlead"></b><b id="pvdot"></b></div>
@@ -207,10 +212,6 @@
     <!-- v28 (items 2 / 3, build 53): ONE MUSIC ROW. The Everywhere row is gone - this row is this game's three tracks AND the three key
          tracks, and a key track chosen is the music every run and the menu play. A key track is locked until its KEY is earned and says so
          under the row, the one lockline B.30 allows -->
-    <div class="cgroup"><div class="clabel">Music</div><div class="chips" data-set="track" id="c-track"></div><div class="lockline" data-act="pvlock" id="lk-track"></div></div>
-    <!-- build 62 (61.19): "Menu music" read wrong once music plays in games too. B.28 keeps on / off off the Music row itself, and v28 item 2
-         keeps ONE row called Music, so the switch is "Music on / off" -->
-    <div class="cgroup"><div class="clabel">Music on / off</div><div class="chips" data-set="menumusic" id="c-menumusic"></div></div>
 </section>
 
 <!-- the key (build 22, v14 9.2-9.7). Option A: the key dead centre, seven games on a ring, a root per game growing

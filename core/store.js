@@ -14,7 +14,7 @@
    that has never met the key. progress/key.js is the only writer.
 
    The storage adapter is the three one-liners read / write / drop. Stage 5's platform.js swaps them for Capacitor Preferences. */
-import { KEY_THEMES, SCALES, TRACK_OPTS } from "../config/audio.js";
+import { KEY_THEMES, SCALES } from "../config/audio.js";
 import { BUILD_FLAGS, RUN_SCHEMA } from "../config/build.js";
 import { CHESTS, GAUNTLETS } from "../config/chests.js";
 import { MESSAGES } from "../config/messages.js";
@@ -172,7 +172,7 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
     rate:RATES.includes(p.rate)?p.rate:'live' };   // v14 (6.7): which taps-per-second reading the rate bar shows
   // 'menu' is a music switch like a game's (B.32 gives the menu loop its own off switch) and is the one non-game key here
   if(isObj(p.musicG)) for(const g of Object.keys(GAMES).concat('menu')) if(typeof p.musicG[g]==='boolean') o.musicG[g]=p.musicG[g];
-  if(isObj(p.track)) for(const g in GAMES) if((TRACK_OPTS[g]||[]).includes(p.track[g])) o.track[g]=p.track[g];
+  // build 65 (64.20): `track`, the per-game choice, is retired — one game-wide track is `menuTrack`. The field stays, empty, for the store's shape
   // colours are per game (v6): { sq, lead, cut }, each #RRGGBB; cut defaults to the square colour (v13 6.5)
   const col=isObj(p.col)?p.col:{};
   for(const g in GAMES){ const c=isObj(col[g])?col[g]:{}; const sq=hex(c.sq,SQ); o.col[g]={ sq, lead:hex(c.lead,LEAD), cut:hex(c.cut,sq) }; }
