@@ -1776,9 +1776,10 @@ scene('64.4', async (page, browser) => {
 
 /* a first-time tutorial, one frame per box: each box waited for by its text changing, framed, then answered — a tap on `taps[i]` where the box asks
    for one, a tap in the bottom-left corner of the phone (on nothing in particular) where it does not */
-async function tutFrames(page, browser, name, n, taps = {}, note = '') {
+async function tutFrames(page, browser, name, n, taps = {}, note = '', between = null) {
   let prev = null;
   for (let i = 0; i < n; i++) {
+    if (between) await between();
     const s = await nextBox(page, prev, 200); prev = s.text;
     await frame(page, browser, `${name}-box-${i + 1}`, `${note}box ${i + 1}: "${s.text}"`); say('box', s);
     if (taps[i]) await tapEl(page, taps[i]); else await page.touchscreen.tap(14, 830);
@@ -1821,6 +1822,16 @@ scene('64.13', async (page, browser) => {
   await load(page, { ...OPEN, welcomeSeen: 1 }, { runs: runs3 }); await show(page, 's-board'); await sleep(1600);
   say('chart', await page.evaluate(() => ({ labels: [...document.querySelectorAll('#radar text')].map(t => t.textContent), all: document.getElementById('radar-all').textContent, cls: document.getElementById('radar-all').className })));
   await frame(page, browser, '64.13-web-thorned', 'Scores: three games on or past their Author bars — the web out past the Thorns ring, the overall figure in the Thorns style');
+});
+
+// a reveal on screen (a chest's ceremony, a key's first animation): tapped through to its card and the card's Continue pressed
+const revealThrough = async page => { for (let i = 0; i < 60; i++) { const st = await page.evaluate(() => { const h = document.getElementById('key-cere'); if (!h || h.hidden) return 'none';
+  const go = h.querySelector('.rgo.on'); if (go) { go.click(); return 'go'; } if (h.classList.contains('tap')) { h.click(); return 'tap'; } return 'wait'; }); if (st === 'none') return; await sleep(250); } };
+scene('64.14', async (page, browser) => {
+  const keys = await page.evaluate(async () => (await import('./config/unlocks.js')).UNLOCKS.map(u => u.key).filter(k => k !== 'sequence:practice'));
+  await load(page, { ...PLAIN, welcomeSeen: 1 }, { unlock: Object.fromEntries(keys.map(k => [k, 1])) }); await show(page, 's-pick'); await sleep(1200);
+  await page.evaluate(() => document.querySelector('#grid .chest[data-chest="games"]').click()); await sleep(800); await revealThrough(page);
+  await tutFrames(page, browser, '64.14', 9, { 3: '#s-key .knode[data-kg="quick-tap"]', 5: '#s-menu .item[data-go="s-custom"]', 7: '#c-bg button[data-v="snow"]' }, 'Games chest tutorial — ', () => revealThrough(page));
 });
 
 scene('64.15', async (page, browser) => {

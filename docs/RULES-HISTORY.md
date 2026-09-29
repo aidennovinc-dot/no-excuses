@@ -1630,3 +1630,9 @@ one: SNOW (`DRAW.snow` in `ui/atmosphere.js`, soft flakes falling and swaying; `
 chest's "You found" list as SNOW SKY (`CHEST_WORDS.games`, symbol `bg-snow`). Customise only opens with that chest, so it is never seen locked.
 It is what the Games chest tutorial's "Why don't you try now" picks (64.14). Aiden can swap it on the board. The gate's 57.11 count of
 backgrounds now reads the designs off config.
+
+**64.14 — the Games chest tutorial.** Armed the moment the chest opens (`chest:opened`, emitted by `openChest()` in `progress/key.js`). Nine boxes in
+Aiden's words, names standardised to "Skill Key" / "Skill Chest" (Cowork): the first where the opening leaves the player (the map once the chest's
+words have spilt, or About once its video has played); then to the Skill Key (`show('s-key', {tier:0})` — its own first animation plays before
+the next box), the key ringed, "fill all the bars", Quick Tap's node to tap (Cowork: must tap), the 100% line; then the main menu with Customise
+ringed (must tap), the Customise line, the Games chest's background SNOW to pick (64.15) and the last line.

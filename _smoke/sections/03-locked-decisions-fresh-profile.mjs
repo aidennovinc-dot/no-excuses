@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { sleep, ok, bad, read, at, sawStory, page, click, stepQuickTap, driveToResult, SEEN_INTRO } from '../lib/gate.mjs';
+import { sleep, ok, bad, read, at, sawStory, page, click, stepQuickTap, driveToResult, SEEN_INTRO, revealDone } from '../lib/gate.mjs';
 
 export const SECTION = ["locked decisions (fresh profile)"];
 
@@ -286,6 +286,30 @@ export async function run() {
       (q.map(b => b && b.text).join('|') === want12.join('|') && q[0].drawn && q[2].drawn && q[3].drawn && Math.abs(q[3].ring[0] - radarW - 12) <= 2 && qEnd.done === 'done' && !qEnd.box)
         ? ok(`64.12 the Scores tutorial after the first Reaction run: Scores ringed on the menu, a welcome, "${want12[2]}" with its chip to tap, the web chart ringed`)
         : bad('64.12 the Scores tutorial', JSON.stringify({ q: q.map(b => b && { t: b.text, drawn: b.drawn, ring: b.ring }), radarW, qEnd }));
+    }
+    /* 64.14: THE GAMES CHEST TUTORIAL — every mode open, the Games chest opened from the map: the first box when its words have spilt, then the Skill
+       Key (after its own first animation), Quick Tap's node to tap, the menu with Customise ringed, and the Games chest's background to pick */
+    {
+      const keys = await page.evaluate(async () => (await import('./config/unlocks.js')).UNLOCKS.map(u => u.key).filter(k => k !== 'sequence:practice'));
+      const unl = Object.fromEntries(keys.map(k => [k, 1]));
+      await page.evaluate((u, si) => { localStorage.setItem('ne', JSON.stringify({ v: 7, prefs: { story: 1, gridSeen: 1, menuSeen: 1, snd: 'off', played: 1, tut: 2, welcomeSeen: 1 }, runs: [], ach: {}, unlock: u, intro: si, seen: {}, bars: {} })); }, unl, SEEN_INTRO);
+      await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+      await page.evaluate(async () => (await import('./ui/router.js')).show('s-pick')); await sleep(900);
+      await page.evaluate(() => document.querySelector('#grid .chest[data-chest="games"]').click()); await sleep(600); await revealDone(); await sleep(400);
+      const CG = await page.evaluate(async () => (await import('./config/copy.js')).TUTORIAL.games), gg = [];
+      const clearIntro = async () => { for (let i = 0; i < 6; i++) { await revealDone(); await sleep(300); } };
+      gg.push(await waitText(CG[0], 150)); await anywhere(); await clearIntro(); gg.push(await waitText(CG[1], 150));
+      await anywhere(); gg.push(await waitText(CG[2])); await anywhere(); gg.push(await waitText(CG[3]));
+      await click('#s-menu .item[data-go="s-about"]'); await sleep(200); const heldK = (await state()).screen;
+      await page.evaluate(() => document.querySelector('#s-key .knode[data-kg="quick-tap"]').dispatchEvent(new MouseEvent('click', { bubbles: true }))); gg.push(await waitText(CG[4]));
+      await anywhere(); gg.push(await waitText(CG[5])); const onMenu = (await state()).screen;
+      await click('#s-menu .item[data-go="s-custom"]'); gg.push(await waitText(CG[6])); await anywhere(); gg.push(await waitText(CG[7]));
+      await click('#c-bg button[data-v="grid"]'); await sleep(200); const heldC = (await box() || {}).text;
+      await click('#c-bg button[data-v="snow"]'); gg.push(await waitText(CG[8])); await anywhere(); await sleep(400);
+      const gEnd = await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('ne')).prefs; return { done: p.tuts.games, bg: p.bg, box: !document.getElementById('tut').hidden }; });
+      (gg.map(b => b && b.text).join('|') === CG.join('|') && heldK === 's-key' && onMenu === 's-menu' && heldC === CG[7] && gg[3].drawn && gg[5].drawn && gg[7].drawn && gEnd.done === 'done' && gEnd.bg === 'snow' && !gEnd.box)
+        ? ok('64.14 the Games chest tutorial: from the map once the chest has opened, to the Skill Key (after its animation), Quick Tap to tap, the menu with Customise, and Snow picked — nine boxes in order, done once')
+        : bad('64.14 the Games chest tutorial', JSON.stringify({ gg: gg.map(b => b && { t: b.text, drawn: b.drawn }), heldK, onMenu, heldC, gEnd }));
     }
     await page.evaluate(async () => { const S = await import('./core/store.js'); S.prefs.tut = 2; S.save(); });
   }

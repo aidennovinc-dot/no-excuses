@@ -24,6 +24,7 @@ import { TOAST, TUTORIAL } from "../config/copy.js";
 import { MODE_NAME } from "../config/games.js";
 import { LEN_RULES, MENU_UNLOCK } from "../config/unlocks.js";
 import { bankMenu, menuOpen } from "../progress/menu.js";
+import { chestOpen } from "../progress/key.js";
 import { $, T } from "../core.js";
 import { emit, on } from "../core/events.js";
 import { CHAL } from "../core/platform.js";
@@ -155,7 +156,7 @@ tutorial('prog',[
   { on:pr, text:P9[1] },
   { on:pr, text:P9[2] },
   { on:pr, el:()=>$('#prog-tabs [data-tab="c-games"]'), text:P9[3], enter(){ const t=$('#prog-tabs [data-tab="c-games"]'); if(t&&!t.classList.contains('sel')) through(()=>t.click()); } },
-  { on:()=>pr()&&!!$('#prog-tabs [data-tab="c-games"].sel'), el:()=>$('#chest-g'), tap:1, hit:t=>{ const b=t.closest('#chest-g .chip'); return !!b&&b.dataset.v!=='all'; }, text:P9[4] },
+  { on:()=>pr()&&!!$('#prog-tabs [data-tab="c-games"].sel'), el:()=>$('#chest-g'), tap:1, hit:t=>{ const b=t.closest&&t.closest('#chest-g .chip'); return !!b&&b.dataset.v!=='all'; }, text:P9[4] },
 ],{ opened:()=>menuOpen('s-prog') });
 /* 64.12: SCORES, after the first Reaction run. Scores ringed on the menu; inside, a welcome, Quick Tap's chip to tap (Claude's call — "let's
    check" is a tap), then the web chart ringed */
@@ -166,6 +167,24 @@ tutorial('board',[
   { on:bd, el:()=>$(`#bd-g .chip[data-v="${QT}"]`), tap:1, text:()=>T(B12[2],{game:GAMES[QT].name}) },
   { on:bd, el:()=>$('#radar'), text:B12[3] },
 ],{ opened:()=>menuOpen('s-board') });
+
+/* 64.14: THE GAMES CHEST, armed the moment it opens (`chest:opened`, progress/key.js). It starts where the opening leaves the player — the map once
+   the chest's words have spilt, or About once its video has played — then takes them to the Skill Key (whose own first animation plays before the
+   next box), has them tap Quick Tap's node to see what to aim for, takes them to the menu with Customise ringed, and has them pick the Games chest's
+   own background (64.15) before the last line */
+const G14=TUTORIAL.games, ks=()=>onScreen('s-key'), cu=()=>onScreen('s-custom');
+tutorial('games',[
+  { on:()=>(onScreen('s-pick')&&!sheetUp()&&!lockUp()&&mapSettled())||onScreen('s-about'), text:G14[0] },
+  { on:ks, el:()=>$('#s-key .kkey[data-kt="0"]'), text:G14[1], enter(){ show('s-key',{ tier:0 }); } },
+  { on:ks, text:G14[2] },
+  { on:ks, el:()=>$(`#s-key .knode[data-kg="${QT}"]`), tap:1, hit:t=>!!(t.closest&&t.closest(`#s-key [data-kg="${QT}"]`)), text:G14[3] },
+  { on:ks, text:G14[4] },
+  { on:menuOn, el:item('s-custom'), tap:1, text:G14[5], enter(){ show('s-menu'); } },
+  { on:cu, text:G14[6] },
+  { on:cu, el:()=>$('#c-bg button[data-v="snow"]'), tap:1, text:G14[7] },
+  { on:cu, text:G14[8] },
+],{ opened:()=>chestOpen('games') });
+on('chest:opened',({id})=>{ if(id==='games') arm('games'); });
 
 /* ---------- the box ---------- */
 let host=null, timer=0, fromTut=false, passing=false, cur=null;
@@ -237,7 +256,7 @@ function bankRails(say){ const g=got(); if(g.rails) return; g.rails=Date.now(); 
    every tap alone, which is what keeps the screen from ever being held with no box on it (64.3). */
 const shown=()=>!!host&&!host.hidden&&!!cur;
 const waiting=()=>!overlay()&&((wanted()&&firstAt===0&&onScreen('s-pick')&&!sheetUp()&&!lockUp())||(results()&&onScreen('s-over')));
-function lets(t){ if(!shown()||!cur.s.tap) return false; const el=cur.s.el(); return !!el&&el.contains(t)&&(!cur.s.hit||cur.s.hit(t)); }
+function lets(t){ if(!shown()||!cur.s.tap) return false; if(cur.s.hit) return !!cur.s.hit(t); const el=cur.s.el(); return !!el&&el.contains(t); }
 document.addEventListener('click',e=>{ if(passing) return;
   tick();   // what is on the screen NOW decides — a box whose tutorial ended since the last turn of the loop owns nothing
   if(!shown()){ if(waiting()){ e.stopPropagation(); e.preventDefault(); } return; }

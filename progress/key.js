@@ -43,6 +43,7 @@ import { KEY_BARS } from "../config/key-bars.js";
 import { KEYS, RADAR } from "../config/keys.js";
 import { GAUNTLET, KEY, KEY_ACH } from "../config/copy.js";
 import { T } from "../core.js";
+import { emit } from "../core/events.js";
 import { opened, prefs, save, setKeyDone, store } from "../core/store.js";
 import { GAMES, GC } from "../games/registry.js";
 import { Scores, gameUnlocked, gamesDone, modeCount } from "../progress.js";
@@ -312,6 +313,7 @@ const chestAt = id => { const i = chestIx(id); if (i < 0) return null; const n =
 function openChest(id) { if (chestState(id) !== 'ready') return null; const c = chestOf(id), was = meter();
   prefs.chests = Object.assign({}, prefs.chests, { [id]: 1 }); save();
   const fresh = c.opens ? retroBank([c.opens]) : [];
+  emit('chest:opened', { id });   // build 65 (64.14): the Games chest's tutorial is armed by this
   return { id, was, now: meter(), fresh }; }
 /* v23 (§L.12, build 40): WHERE A WHOLE KEY TAPS THROUGH TO. The chest a key opens — the one whose `needs` is this tier — once the key is
    whole and that chest is ready or already open; null for a key still in progress, which does nothing new on tap. The key screen asks
