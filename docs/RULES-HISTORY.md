@@ -1591,3 +1591,9 @@ Each toasts "Unlock: <item>" in the result's queue (About on its own) and arms i
 game; a profile saved before build 65 with its walkthrough behind it (62.14's `tutDone()`) keeps all three; open-everything and the Games chest open
 all three. Cowork's calls: Off the Rails stays, named, gold, feeding no key, and opens nothing; a Welcome put off with Later still opens About
 (the clip waits there), its tutorial showing the next time the player is on the menu.
+
+**64.8 — the About tutorial.** Armed when the Welcome clip finishes (64.7), which lands the player on the main menu: About ringed and the only thing
+that answers ("You've unlocked About" — Claude's line; a box that asks for a tap needs one), then five boxes inside About in Aiden's words: the
+videos (`#msglist`), feedback (`#feedback`) and support (`#support`) ringed. About had no first-visit popup to replace. Its Send feedback line
+already existed (build 33) — a mailto with the build in the subject, to the address in `ABOUT.fbTo` — so none was added and the address was not
+changed to the placeholder; Aiden's pick goes there through the data lane.

@@ -305,6 +305,10 @@ export const TUTORIAL = {
      opened Dash (`next` left out if it opened Dots as well) or `miss` when it did not, then `back`, `end`. {names} is every unlock the run made; {count}
      ("35 hits") and {dots} are the Dots rule, {row} ("7 hits in a row") Dash's, {second} / {long} Quick Tap's second and third lengths — all from
      config. 64.1 (step 10) replaced "Only a Sprint is unlocked. There's no way…"; 64.2 replaced "Or try a longer run (if you've unlocked it)". */
+  /* build 65 (64.8): THE ABOUT TUTORIAL, after the Welcome clip — Aiden's lines, typos fixed only. The first, on the menu with About ringed, is
+     Claude's: a box that asks for a tap needs a line, and Aiden gave that step none */
+  about:[ "You've unlocked About", 'Welcome to the About section', "Here you'll find all the unlocked videos", 'The option to send me feedback for future versions',
+    "And if you're enjoying the game, a chance to show your support", 'Alright, get back to it!' ],
   over:{ hi:'Congratulations! You finished your first run', again:'You can try again',
     got:'Great job, you unlocked {names}!', next:"Let's see if you can get {count} in a {second} to unlock {dots}. If not, unlock {long} and try there!",
     miss:'Get {row} without missing to unlock {second}',

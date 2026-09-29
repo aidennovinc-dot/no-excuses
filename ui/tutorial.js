@@ -23,7 +23,7 @@
 import { TOAST, TUTORIAL } from "../config/copy.js";
 import { MODE_NAME } from "../config/games.js";
 import { LEN_RULES, MENU_UNLOCK } from "../config/unlocks.js";
-import { bankMenu } from "../progress/menu.js";
+import { bankMenu, menuOpen } from "../progress/menu.js";
 import { $, T } from "../core.js";
 import { emit, on } from "../core/events.js";
 import { CHAL } from "../core/platform.js";
@@ -132,6 +132,21 @@ function stored(id){ return { live:()=>armed(id), step:()=>prefs.tuts[id], setSt
 function tutorial(id,steps,o={}){ DEFS[id]=Object.assign(stored(id),{ steps },o); if(!ORDER.includes(id)) ORDER.push(id); }
 // the moment a tutorial's thing opens: armed at step one, unless it has already been done (or is already under way). Open-everything arms none
 function arm(id){ if(!DEFS[id]||prefs.allOpen) return; const v=(prefs.tuts||{})[id]; if(v!==undefined) return; prefs.tuts=Object.assign({},prefs.tuts,{[id]:0}); save(); run(); }
+
+/* ---------- the tutorials the menu's own unlocks arm (64.8 / 64.9 / 64.12) ---------- */
+const menuOn=()=>onScreen('s-menu')&&!$('#s-menu').classList.contains('story');
+const item=go=>()=>$(`#s-menu .item[data-go="${go}"]`);
+/* 64.8: ABOUT, after the Welcome clip. The menu with About ringed and the only thing that answers; then inside it, on rails — the videos, the
+   feedback line, the support button, and away */
+const A=TUTORIAL.about, ab=()=>onScreen('s-about');
+tutorial('about',[
+  { on:menuOn, el:item('s-about'), tap:1, text:A[0] },
+  { on:ab, text:A[1] },
+  { on:ab, el:()=>$('#msglist'), text:A[2] },
+  { on:ab, el:()=>$('#feedback'), text:A[3] },
+  { on:ab, el:()=>$('#support'), text:A[4] },
+  { on:ab, text:A[5] },
+],{ opened:()=>menuOpen('s-about') });
 
 /* ---------- the box ---------- */
 let host=null, timer=0, fromTut=false, passing=false, cur=null;

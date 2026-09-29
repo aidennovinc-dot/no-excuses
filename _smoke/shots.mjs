@@ -1774,6 +1774,23 @@ scene('64.4', async (page, browser) => {
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true }); await sleep(300);
 });
 
+/* a first-time tutorial, one frame per box: each box waited for by its text changing, framed, then answered — a tap on `taps[i]` where the box asks
+   for one, a tap in the bottom-left corner of the phone (on nothing in particular) where it does not */
+async function tutFrames(page, browser, name, n, taps = {}, note = '') {
+  let prev = null;
+  for (let i = 0; i < n; i++) {
+    const s = await nextBox(page, prev, 200); prev = s.text;
+    await frame(page, browser, `${name}-box-${i + 1}`, `${note}box ${i + 1}: "${s.text}"`); say('box', s);
+    if (taps[i]) await tapEl(page, taps[i]); else await page.touchscreen.tap(14, 830);
+    await sleep(600);
+  } }
+const MENU_NEW = { ...PLAIN, menuUnl: {}, welcomeSeen: 1 };
+scene('64.8', async (page, browser) => {
+  await load(page, MENU_NEW, { unlock: { 'dots:blind': 1 } });
+  await page.evaluate(async () => { const V = await import('./ui/video.js'), M = (await import('./config/messages.js')).MESSAGES; V.playVideo(M[0]); await new Promise(r => setTimeout(r, 600)); V.closeVideo(); });
+  await tutFrames(page, browser, '64.8', 6, { 0: '#s-menu .item[data-go="s-about"]' }, 'About tutorial, after the Welcome clip — ');
+});
+
 scene('64.6', async (page, browser) => {
   await load(page, { ...OPEN, welcomeSeen: 1 }); await runOf(page, 'quick-tap'); await sleep(1200);
   say('hud', await page.evaluate(() => { const q = id => { const r = document.getElementById(id).getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)]; };

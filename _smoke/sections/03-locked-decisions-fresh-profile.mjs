@@ -247,6 +247,23 @@ export async function run() {
       (Object.values(before).every(Boolean) && !afterEst['s-prog'] && afterEst['s-board'] && afterEst['s-about'] && !afterRx['s-board'] && afterRx['s-about'] && !afterVid['s-about'] && on === 's-menu' && C7.every(x => said.includes(x)))
         ? ok(`64.7 Progress opens with the first Estimate run, Scores with the first Reaction run, About when the Welcome clip finishes (landing on the main menu) — each on its own, each toasting ("${C7.join('", "')}")`)
         : bad('64.7 the menu unlock order', JSON.stringify({ before, afterEst, afterRx, afterVid, on, said, C7 }));
+      /* 64.8: THE ABOUT TUTORIAL, straight after the clip, on the main menu: About ringed and the only thing that answers — Scores does nothing —
+         then five boxes inside About, the videos, the feedback line and the support button ringed; a reload half way resumes at the same box */
+      const CA = await page.evaluate(async () => (await import('./config/copy.js')).TUTORIAL.about);
+      const a = [await waitText(CA[0], 100)];
+      await click('#s-menu .item[data-go="s-board"]'); await sleep(300); const held = (await state()).screen;
+      await click('#s-menu .item[data-go="s-about"]'); a.push(await waitText(CA[1])); const inAbout = (await state()).screen;
+      await anywhere(); a.push(await waitText(CA[2])); await anywhere(); a.push(await waitText(CA[3]));
+      await page.reload({ waitUntil: 'networkidle0' }); await sleep(300); await page.evaluate(async () => (await import('./ui/router.js')).show('s-about'));
+      const resumed = await waitText(CA[3]); a.push(resumed);
+      await anywhere(); a.push(await waitText(CA[4])); await anywhere(); a.push(await waitText(CA[5])); await anywhere(); await sleep(400);
+      const rings = await page.evaluate(() => ({ list: document.getElementById('msglist').getBoundingClientRect().width, fb: document.getElementById('feedback').getBoundingClientRect().width, sup: document.getElementById('support').getBoundingClientRect().width }));
+      const endA = await page.evaluate(() => ({ done: JSON.parse(localStorage.getItem('ne')).prefs.tuts.about, box: !document.getElementById('tut').hidden }));
+      const txt = [a[0], a[1], a[2], a[3], a[5], a[6]].map(b => b && b.text);
+      (txt.join('|') === CA.join('|') && held === 's-menu' && inAbout === 's-about' && a[0].drawn && a[2].drawn && Math.abs(a[2].ring[0] - rings.list - 12) <= 2 && a[3].drawn && Math.abs(a[3].ring[0] - rings.fb - 12) <= 2
+        && a[5].drawn && Math.abs(a[5].ring[0] - rings.sup - 12) <= 2 && !a[1].drawn && resumed && resumed.text === CA[3] && endA.done === 'done' && !endA.box && a.every(b => b && !b.covers))
+        ? ok('64.8 after the Welcome clip: About ringed on the main menu and the only thing that answers; inside, the six boxes in order with the videos, feedback and support ringed; a reload resumes at the same box; done once')
+        : bad('64.8 the About tutorial', JSON.stringify({ a: a.map(b => b && { t: b.text, drawn: b.drawn, ring: b.ring, covers: b.covers }), held, inAbout, rings, endA }));
     }
     await page.evaluate(async () => { const S = await import('./core/store.js'); S.prefs.tut = 2; S.save(); });
   }
