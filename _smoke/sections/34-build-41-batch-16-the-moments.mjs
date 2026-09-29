@@ -148,12 +148,13 @@ export async function run() {
     (ready.tap && ready.steps.join() === 'uncross,crack,path,burst,lid,chord,settle,tap' && /GAMES CHEST OPENED/i.test(ready.txt) && /TAP TO CONTINUE/i.test(ready.txt) && /--st-uncross-at:\s?0ms/.test(ready.vars) /* AMENDED at build 49: the reveal sets --reveal-at on the host after the stage, and the browser re-serialises the attribute with a space */
       /* AMENDED at build 52 (v27 item 7): read from the slot, not spelled again. AMENDED at build 59 (v30 59.3): and the slot's
          title wears MSG.quote, so it reads as the name of a video rather than as a sentence — still read, never spelled. */
-      && ready.gifts.join() === 'CUSTOMISE,SKILL KEY,' + CP41.MSG.quote[0] + MS41.MESSAGES.find(m => m.by && m.by.chest === "games").title + CP41.MSG.quote[1] && ready.syms.join() === 'palette,key,video')
+      // AMENDED at build 65 (64.15): the Games chest gives a background too, so its words are read off CHEST_WORDS rather than spelled here
+      && ready.gifts.join() === CP41.CHEST_WORDS.games.map(w => w.w).join() + ',' + CP41.MSG.quote[0] + MS41.MESSAGES.find(m => m.by && m.by.chest === "games").title + CP41.MSG.quote[1] && ready.syms.join() === CP41.CHEST_WORDS.games.map(w => w.sym).join() + ',video')
       ? ok(`L.6 its named steps play in order off the config's own times (${ready.steps.join(' → ')}); item 6: ${ready.gifts.length} unlocks rise out of it as symbols with their titles (${ready.gifts.join(' · ')}) and only then does it hold on "tap to continue"`) : bad('L.6 the steps and the reveal', JSON.stringify(ready));
     // AMENDED at build 49 (v26 item 5): the chest's words carry its About video too, which goes to that slot
     // AMENDED at build 52 (v27 item 8): the Games chest's slot id moved with Aiden's new line-up, so the word's target is read from the config
     (done.screen === 's-pick' && done.hidden && !done.hushed && done.chest.join() === 'games' && done.spill && done.spilled === 1
-      && done.words === 'chestword:s-custom,chestword:key:0,chestword:msg:' + MS41.MESSAGES.find(m => m.by && m.by.chest === 'games').id && done.burst === CH41.SPILL.particles)
+      && done.words === CP41.CHEST_WORDS.games.map(w => 'chestword:' + w.to).join() + ',chestword:msg:' + MS41.MESSAGES.find(m => m.by && m.by.chest === 'games').id && done.burst === CH41.SPILL.particles)
       ? ok('L.6 / L.11b "tap to continue" goes to the map and the music comes back, one chest sound played; the words spill out beside the chest with a burst from the lid, once, and each word is a tap target to what it names') : bad('L.6 / L.11b after the tap', JSON.stringify(done));
   }
 

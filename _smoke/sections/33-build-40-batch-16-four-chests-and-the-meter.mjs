@@ -136,7 +136,7 @@ export async function run() {
     /* AMENDED AT BUILD 59 (v30 59.3): and the slot's title wears MSG.quote on the map too, so it reads as the name of a video. The marks
        come off the config here exactly as ui/chest.js puts them on, so this check still spells neither the name nor the punctuation. */
     const vidWord41 = CP40.MSG.quote[0] + MS40.MESSAGES.find(m => m.by && m.by.chest === 'games').title + CP40.MSG.quote[1];
-    (/open/.test(after.cls) && after.need === 'opened' && after.words && after.words.join() === 'CUSTOMISE,SKILL KEY,' + vidWord41 && after.syms === after.words.length && after.wr === after.cr && after.wc !== after.cc && after.keyWords && after.key === 'Earn the Skill key' /* AMENDED at build 48 (v26 item 12); for build 49, the Skill key */)
+    (/open/.test(after.cls) && after.need === 'opened' && after.words && after.words.join() === CP40.CHEST_WORDS.games.map(w => w.w).join() + ',' + vidWord41 /* AMENDED at build 65 (64.15): read off config, Snow joined */ && after.syms === after.words.length && after.wr === after.cr && after.wc !== after.cc && after.keyWords && after.key === 'Earn the Skill key' /* AMENDED at build 48 (v26 item 12); for build 49, the Skill key */)
       ? ok(`L.11c back on the map the Games chest is open with its words beside it (${after.words.join(' · ')}, row ${after.wr}, col ${after.wc} against the chest's ${after.cc}), each with its own symbol (item 7), and the Skill chest says "${after.key}" (v26 item 12)`) : bad('L.11c the opened chest and its words', JSON.stringify(after));
   }
 
