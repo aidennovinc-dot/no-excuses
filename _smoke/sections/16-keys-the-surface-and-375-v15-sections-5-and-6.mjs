@@ -742,7 +742,10 @@ export async function run() {
       S.prefs.bg = 'grid'; S.prefs.tint = ''; S.save(); T.applyPrefs(); R.show('s-menu'); await wait(450);
       const off = read();
       S.prefs.tint = '#1b0a2e'; S.save(); T.applyPrefs(); await wait(650);
-      const on = read(), cx = document.getElementById('stars').getContext('2d'), px = cx.getImageData(3, 3, 1, 1).data;
+      /* build 66 (CLOCK FLAKE fixed): the colour under the grid's lines, not one pixel a breathing grid line can cross — the darkest of the corner's
+         12×12 (a line only adds to the tint) */
+      const on = read(), cx = document.getElementById('stars').getContext('2d'), blk = cx.getImageData(0, 0, 12, 12).data;
+      let px = [blk[0], blk[1], blk[2]]; for (let i = 0; i < blk.length; i += 4) if (blk[i] + blk[i + 1] + blk[i + 2] < px[0] + px[1] + px[2]) px = [blk[i], blk[i + 1], blk[i + 2]];
       S.prefs.bg = 'rain'; S.save(); T.applyPrefs(); await wait(400);
       const kept = S.prefs.tint;
       R.show('s-custom'); await wait(550);
@@ -799,8 +802,10 @@ export async function run() {
         const cr = cv.getBoundingClientRect(), k = cv.width / cr.width, els = [...document.querySelectorAll('#s-key button, #s-key .krow, #s-key p, #s-key .eyebrow')].filter(e => e.getBoundingClientRect().height > 0);
         // cleared: see-through, or — on a layer that paints its own opaque sky (Lantern) — that plain sky and nothing drawn on it
         const sky = (KY.KEY_LAYER[style].sky || '').split(',').map(Number);
+        // AMENDED at build 66 (65.10): or the flat floor the bottom strip is painted in, which is the page's own colour — no art on it either
+        const pg = getComputedStyle(document.documentElement).backgroundColor.match(/\d+/g).map(Number), floor = d => pg.every((v, i) => Math.abs(d[i] - v) <= 8);
         const lit = els.filter(e => { const r = e.getBoundingClientRect(); const d = cx.getImageData(Math.round((r.x + r.width / 2 - cr.left) * k), Math.round((r.y + r.height / 2 - cr.top) * k), 1, 1).data;
-          return d[3] > 255 * (1 - TH.BG_LAYER.clear) + 8 && !(sky.length === 3 && sky.every((v, i) => Math.abs(d[i] - v) <= 8)); });
+          return d[3] > 255 * (1 - TH.BG_LAYER.clear) + 8 && !(sky.length === 3 && sky.every((v, i) => Math.abs(d[i] - v) <= 8)) && !floor(d); });
         out[style] = { n: els.length, lit: lit.map(e => e.id || e.className).slice(0, 4) }; }
       AT.setKeyLayer(null); const cr = cv.getBoundingClientRect();
       return { out, pe: getComputedStyle(cv).pointerEvents, covers: cr.top <= 0 && cr.bottom >= innerHeight && cr.width >= innerWidth - 1 }; });
@@ -851,6 +856,41 @@ export async function run() {
       ? ok(`62.15 under Lantern the page itself wears the layer's bottom colour (${ul.lantern.html} against the canvas's ${ul.lantern.px}), so a strip the layer misses is no flat --ground band; under the starfield it stays --ground (${ul.stars.ground})`)
       : bad('62.15 the page under the layer', JSON.stringify(ul));
   }
+  /* build 66 (65.10): THE BOTTOM 40PX OF EVERY SCREEN ARE THE SCREEN'S OWN BACKGROUND — the page's colour (html, what the phone shows wherever the
+     canvas stops short) and the canvas agree there, on every screen, under the starfield and under Lantern, at 390×844 with a phone's insets and on an
+     SE. Sampled where nothing of ours is drawn (the screen itself is the top element), the canvas composited over the page; and an opaque ceremony
+     gives the page its own --ground */
+  {
+    const cdp = await page.createCDPSession(), res = [];
+    for (const [w, h, top, bottom] of [[390, 844, 47, 34], [375, 667, 20, 0]]) {
+      await page.setViewport({ width: w, height: h, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+      try { await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top, bottom, left: 0, right: 0 } }); } catch (e) {}
+      for (const bg of ['stars', 'lantern']) {
+        await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS, keySeen: 1, bg, tint: '', chests: { games: 1, key: 1, pro: 1, thorns: 1 } }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+        await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+        for (const [id, o] of [['s-menu', {}], ['s-pick', {}], ['s-board', {}], ['s-prog', { tab: 'c-games' }], ['s-custom', {}], ['s-key', { tier: 0 }], ['s-key', { tier: 1 }], ['s-key', { tier: 2 }], ['s-about', {}], ['s-testing', {}]]) {
+          const r = await page.evaluate(async (id, o) => { (await import('./ui/router.js')).show(id, o); await new Promise(r => setTimeout(r, 900));
+            const cv = document.getElementById('stars'), cx = cv.getContext('2d', { willReadFrequently: true }), cr = cv.getBoundingClientRect(), k = cv.width / cr.width;
+            const pg = getComputedStyle(document.documentElement).backgroundColor.match(/\d+/g).map(Number), scr = document.querySelector('.screen.on');
+            let n = 0, worst = 0, at = null;
+            for (let y = innerHeight - 40; y < innerHeight; y += 6) for (const f of [.04, .2, .35, .5, .65, .8, .96]) { const x = innerWidth * f, t = document.elementFromPoint(x, y);
+              const ours = t && t !== scr && t !== document.body && t !== document.documentElement && !t.closest('#build') && (t.closest('button,[data-act],svg,img,input,.chip,.tile') || [...t.childNodes].some(c => c.nodeType === 3 && c.nodeValue.trim()) || getComputedStyle(t).backgroundColor !== 'rgba(0, 0, 0, 0)'); if (ours) continue;
+              const d = cx.getImageData(Math.round((x - cr.left) * k), Math.round((y - cr.top) * k), 1, 1).data, a = d[3] / 255;
+              const off = Math.max(...[0, 1, 2].map(i => Math.abs(Math.round(d[i] * a + pg[i] * (1 - a)) - pg[i]))); n++; if (off > worst) { worst = off; at = [Math.round(x), y]; } }
+            return { id: id + (o.tier !== undefined ? ':' + o.tier : ''), n, worst, at, page: pg.join(',') }; }, id, o);
+          res.push({ vp: w + 'x' + h, bg, ...r }); } }
+      // an opaque ceremony up: the page under it is the ceremony's own --ground
+      res.push(await page.evaluate(async () => { (await import('./ui/router.js')).show('s-key', { tier: 0 }); await new Promise(r => setTimeout(r, 500)); const c = document.getElementById('key-cere'); c.hidden = false; await new Promise(r => setTimeout(r, 300));
+        const p = document.createElement('i'); p.style.background = 'var(--ground)'; document.body.appendChild(p); const g = getComputedStyle(p).backgroundColor; p.remove(); const h = getComputedStyle(document.documentElement).backgroundColor; c.hidden = true;
+        return { vp: innerWidth + 'x' + innerHeight, bg: 'lantern', id: 'ceremony', n: 1, worst: g === h ? 0 : 99, page: h, ground: g }; }));
+    }
+    try { await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0, bottom: 0, left: 0, right: 0 } }); } catch (e) {}
+    await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    const off = res.filter(x => x.worst > 6 || !x.n);
+    (!off.length)
+      ? ok(`65.10 the bottom 40px of every screen (${res.length} screen × background × phone) are the screen's own background: canvas and page agree within 6 at every sampled point, under the starfield and Lantern, at 390×844 with insets and on an SE; a ceremony gives the page --ground`)
+      : bad('65.10 the bottom strip', JSON.stringify(off));
+  }
   /* build 62 (61.22): EVERY BACKGROUND FILLS THE WHOLE PAGE AND SITS BEHIND EVERYTHING, on the long screens, scrolled to the bottom, with a top
      and a bottom safe-area inset: the canvas runs from above the top inset to below the bottom one, and no art is left behind any text or
      control. Lantern, Circuit and Thorn, on Customise ("Settings"), the Skill key screen and the Games chest tab */
@@ -868,9 +908,14 @@ export async function run() {
           // the key screen draws its OWN key's layer over the chosen one (the Skill key's is Lantern), so that is the sky it clears to there
           const drawn = id === 's-key' ? KY.KEYS[0].style : bg;
           const cr = cv.getBoundingClientRect(), k = cv.width / cr.width, sky = ((KY.KEY_LAYER[drawn] || {}).sky || '').split(',').map(Number);
+          // AMENDED at build 66 (65.10): the flat floor of the bottom strip is the page's own colour, with no art on it — clear too
+          const pg = getComputedStyle(document.documentElement).backgroundColor.match(/\d+/g).map(Number), floor = d => pg.every((v, i) => Math.abs(d[i] - v) <= 8);
           const els = [...document.querySelectorAll('.screen.on button, .screen.on .clabel, .screen.on h4, .screen.on .eyebrow')].filter(e => { const r = e.getBoundingClientRect(); return r.height > 0 && r.bottom > 0 && r.top < innerHeight; });
-          const lit = els.filter(e => { const r = e.getBoundingClientRect(); const d = cx.getImageData(Math.round((r.x + r.width / 2 - cr.left) * k), Math.round((r.y + r.height / 2 - cr.top) * k), 1, 1).data;
-            return d[3] > 255 * (1 - TH.BG_LAYER.clear) + 8 && !(sky.length === 3 && sky.every((v, i) => Math.abs(d[i] - v) <= 8)); }).map(e => e.textContent.trim().slice(0, 14));
+          /* build 66 (CLOCK FLAKE fixed): the art is taken out on the draw loop's own re-measure after the scroll, so this polls for it rather than
+             reading once after a fixed wait */
+          const litNow = () => els.filter(e => { const r = e.getBoundingClientRect(); const d = cx.getImageData(Math.round((r.x + r.width / 2 - cr.left) * k), Math.round((r.y + r.height / 2 - cr.top) * k), 1, 1).data;
+            return d[3] > 255 * (1 - TH.BG_LAYER.clear) + 8 && !(sky.length === 3 && sky.every((v, i) => Math.abs(d[i] - v) <= 8)) && !floor(d); }).map(e => e.textContent.trim().slice(0, 14));
+          let lit = litNow(); for (let i = 0; i < 12 && lit.length; i++) { await w(150); lit = litNow(); }
           out.push({ bg, id, n: els.length, lit, covers: cr.top <= -top + 1 && cr.bottom >= innerHeight + bottom - 1 && cr.width >= innerWidth - 1 }); } }
       S.prefs.bg = 'stars'; R.show('s-menu'); return { top, bottom, out }; });
     try { await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0, bottom: 0, left: 0, right: 0 } }); } catch (e) {}

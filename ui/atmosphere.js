@@ -205,7 +205,7 @@ function draw(t){ if(paused){ running=false; return; }
   if(!ly) (DRAW[bg]||DRAW.stars)(t);
   if(ly){ if(!geo) geo=build(); LAYER[ly](t); }
   cx.globalAlpha=1;
-  if(inRun){ cx.fillStyle=`rgba(0,0,0,${BG_LAYER.dim})`; cx.fillRect(0,0,W,H); } else punch(ly);
+  if(inRun){ cx.fillStyle=`rgba(0,0,0,${BG_LAYER.dim})`; cx.fillRect(0,0,W,H); } else { punch(ly); floorStrip(ly); }
   underlay(ly);
   requestAnimationFrame(draw); }
 /* build 64 (62.15): THE PAGE UNDER THE LAYER WEARS THE LAYER'S OWN BOTTOM COLOUR. On an installed iPhone app a flat band of --ground (Lantern's
@@ -221,7 +221,23 @@ function floorOf(ly){ if(ly!=='lantern') return null; const P=KEY_LAYER.lantern,
   // the sky, the warm wash at its full strength along the bottom, and the horizon glow a quarter of the way in (see LAYER.lantern)
   const R=.75*Math.max(W,H), a=P.hz*Math.max(0,1-Math.hypot(W/4,H*.02)/R), k=inRun?1-BG_LAYER.dim:1;
   return s.map((v,i)=>Math.round(((v*(1-P.warm)+g[i]*P.warm)*(1-a)+g[i]*a)*k)); }
-function underlay(ly){ const f=floorOf(ly), c=f?`rgb(${f.join(',')})`:(look('tint')||'');
+/* build 66 (65.10): THE BOTTOM STRIP IS ONE FLAT COLOUR, AND IT IS THE PAGE'S. Aiden's v0.65 still showed a lighter brown band along the bottom of the
+   Key screen. Why build 64's fix (above) missed it: the page wore Lantern's colour at the CANVAS's bottom edge, which on a phone sits a whole inset
+   below the screen (the canvas runs past both safe areas), and Lantern brightens towards that edge — so wherever the phone shows the page instead of
+   the canvas along the home-indicator strip, the page is a lighter brown than the art just above it. The chest screens' ceremony (`.cere`) is opaque
+   --ground, laid on that same brown page. So the bottom of the screen — the inset and 40px more — is painted FLAT in exactly the colour the page
+   wears, the art fading into it: the layer's floor for an opaque layer, cleared to the page for the rest. And an opaque ceremony gives the page its
+   own --ground. Whatever the phone shows down there, canvas or page, it is one colour */
+let botIn=null;
+function insetBottom(){ if(!botIn){ botIn=document.createElement('div'); botIn.style.cssText='position:fixed;bottom:0;left:0;width:0;height:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none'; document.body.appendChild(botIn); }
+  return botIn.getBoundingClientRect().height; }
+const FLOOR_PX=40, FLOOR_FADE=24;
+function floorStrip(ly){ const y=(innerHeight-Math.max(FLOOR_PX,insetBottom())-cvTop)*dpr, fade=FLOOR_FADE*dpr; if(y>=H) return;
+  const f=floorOf(ly), c=f?`rgba(${f.join(',')},`:'rgba(0,0,0,', g=cx.createLinearGradient(0,y-fade,0,y);
+  cx.save(); cx.globalAlpha=1; if(!f) cx.globalCompositeOperation='destination-out';
+  g.addColorStop(0,c+'0)'); g.addColorStop(1,c+'1)'); cx.fillStyle=g; cx.fillRect(0,y-fade,W,fade); cx.fillStyle=c+'1)'; cx.fillRect(0,y,W,H-y); cx.restore(); }
+const cereUp=()=>[...document.querySelectorAll('.cere')].some(e=>!e.hidden);
+function underlay(ly){ const f=cereUp()?null:floorOf(ly), c=f?`rgb(${f.join(',')})`:cereUp()?'':(look('tint')||'');
   if(c===ulWas) return; ulWas=c; const s=document.documentElement.style; if(c) s.setProperty('--underlay',c); else s.removeProperty('--underlay'); }
 function resume(){ if(running) return; running=true; requestAnimationFrame(draw); }
 // build 62 (61.22): the canvas is sized from its own box, so a change to that box (an inset arriving) re-sizes it as a resize would
