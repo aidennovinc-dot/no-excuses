@@ -393,7 +393,9 @@ export const ABOUT = { tier:['No ads, ever.','Every colour, background and sound
      what was missing was the way back. It is a mailto and nothing more — no form, no endpoint, no third party — with
      the build, the device and the last run filled in, because those are the three things a bug report is useless
      without and the three a tester will not think to include. The body is pre-filled; what they write is their own. */
-  fb:'Send feedback', fbTo:'info@somethingstrange.com.au', fbSubject:'No Excuses {build} — feedback',
+  /* build 66 (carried from FEEDBACK-v34, #489): NOT the Something Strange address. Feedback goes to a Tally form, the build and the device as hidden
+     fields (`fbUrl` + `fbQuery`); until the form's link exists `fbUrl` is empty, the button says so (`fbSoon`) and opens nothing */
+  fb:'Send feedback', fbUrl:'', fbQuery:'?version={build}&device={device}', fbSoon:'form coming soon', fbSubject:'No Excuses {build} — feedback',
   fbBody:'What happened:\n\n\nWhat you expected:\n\n\n---\nBuild {build} · {when}\n{device}\nLast run: {run}',
   fbNoRun:'none yet' };
 // v14 (8.9): the `customise · {game} · colours are per game` line at the top is gone — the game chips and the group labels

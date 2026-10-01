@@ -33,9 +33,10 @@ const lastRun=()=>{ const rs=Scores.runs(); if(!rs||!rs.length) return ABOUT.fbN
 const device=()=>`${navigator.userAgent} · ${innerWidth}x${innerHeight} @${devicePixelRatio||1}x`;
 function renderFeedback(){ const a=$('#feedback'); if(!a) return; const build='v0.'+BUILD;
   const q=s=>encodeURIComponent(s);
-  a.textContent=ABOUT.fb;
-  a.href=`mailto:${ABOUT.fbTo}?subject=${q(T(ABOUT.fbSubject,{build}))}`
-    +`&body=${q(T(ABOUT.fbBody,{build,when:new Date().toISOString().slice(0,16).replace('T',' '),device:device(),run:lastRun()}))}`; }
+  /* build 66 (#489): the Tally form, with the build and the device filled in as hidden fields — or, until its link exists, a placeholder that says
+     the form is coming and opens nothing (no mailto to the Something Strange address any more) */
+  if(ABOUT.fbUrl){ a.textContent=ABOUT.fb; a.href=ABOUT.fbUrl+T(ABOUT.fbQuery,{build:q(build),device:q(device())}); a.target='_blank'; a.rel='noopener'; a.classList.remove('soon'); return; }
+  a.innerHTML=`${esc(ABOUT.fb)}<small class="cusneed fbsoon">${esc(ABOUT.fbSoon)}</small>`; a.removeAttribute('href'); a.classList.add('soon'); }
 
 
 /* ---------- v25 (item 23, build 46): THE MESSAGES ----------

@@ -51,7 +51,8 @@ export const MUSIC_LIST = [
   { v:'key:key', key:'key' }, { v:'key:pro', key:'pro' }, { v:'key:thorns', key:'thorns' },
   { v:'held', track:'quick-tap:held' }, { v:'waltz', track:'dots:waltz' }, { v:'still', track:'hold:tide', name:'Still' },
 ];
-export const MUSIC_PICK = 'hold:tide';
+// build 66 (carried from FEEDBACK-v34, #491): Aiden overruled build 65's call — the default is HELD, not Still
+export const MUSIC_PICK = 'quick-tap:held';
 
 /* B.29 — HOW LONG A RUN IS EXPECTED TO TAKE, so a known-length run can be given one arc instead of a loop. A timed
    game answers this itself (the length in seconds IS the run), so only the round-based Sets are here, keyed the same

@@ -2580,3 +2580,5 @@
     #tapon.on{animation:none}
     #hicon line,#hicon circle.fg{animation:none}
   }
+  /* build 66 (#489): the feedback button before its form exists says so, dim */
+  #feedback.soon .fbsoon{color:var(--mute)}

@@ -32,9 +32,12 @@ export async function run() {
           if (Math.abs(p.loopSec - r) > p.loopSec / p.bars + .01 || last > p.loopSec + .01) out.badArc.push(g + ' ' + r + 's -> ' + p.loopSec + 's, last at ' + last);
           out.arcs.push({ g, run: r, sec: p.loopSec, bars: p.bars }); }
       }
+      /* AMENDED at build 66 (#491): the default is HELD again (Aiden overruled build 65), and Held is the build-26 loop kept unchanged by rule, which repeats
+         every 7.6s — he chose it knowing that. So the long form is asked of every other track that HAS a form (the open-ended arrangement B.29 is about; Waltz, like Held, is a loop) */
+      out.list = A.MUSIC_LIST.filter(m => m.track !== 'quick-tap:held' && A.TRACKS[m.track] && A.TRACKS[m.track].form).map(m => ({ id: m.track, longSec: M.Music.plan(m.track, { long: 1 }).longSec }));
       return out; });
-    const short = L.long.filter(x => x.streak && x.longSec < 180);
-    (!short.length) ? ok('B.29 every open-ended run gets a long form - ' + L.long.filter(x => x.streak).map(x => `${x.g} ${Math.round(x.longSec / 60)}min`).join(' · ') + ' before anything repeats')
+    const short = L.list.filter(x => x.longSec < 180);
+    (!short.length && L.list.length >= 4) ? ok('B.29 every track with an open-ended form gets a long form (Held, the build-26 loop Aiden chose as the default, and Waltz are loops) in an open-ended run - ' + L.list.map(x => `${x.id} ${Math.round(x.longSec / 60)}min`).join(' · ') + ' before anything repeats')
       : bad('B.29 a Streak runs 3 minutes before it repeats', JSON.stringify(short));
     (!L.badArc.length) ? ok(`B.29 every known length plays one arc that ends with the run (${L.arcs.length} of them: ${L.arcs.slice(0, 4).map(a => a.g + ' ' + a.run + 's→' + a.bars + ' bars').join(', ')}…)`)
       : bad('B.29 the arc is sized to the run', L.badArc.join(' | '));
