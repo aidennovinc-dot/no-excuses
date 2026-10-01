@@ -139,6 +139,9 @@ having written nothing. Gate checks read bars and names from `config/`, never a 
 - **No two tracks ever overlap** (`cut()` in `audio.js`, B.29). **Music is arranged to the length of the run**; an open-ended form holds 180s before an exact repeat; the finish ramp is music only (`R.fin`).
 - **Flow state is one number with two consumers** — `tps()` → `R.flow` / `--flow` → the hum; a switch at `FLOW_AT` 2.7 taps/s (B.9); solo Quick Tap and Dots only. **Versus stems are presentation** (`STEMS`, L10).
 - **An unlock has its own sound (`Snd.unlockFx()`); the achievement sound (`Snd.click()`) is not to be changed**; a chest is `Snd.chest()`, a key `Snd.keyEarn()`.
+- **Excuses** (67.38): rows in `config/excuses.js`, tests in `EXCUSE_TEST` on the engines' raw `ctx.xs` facts; never in the walkthrough or the first ten minutes; quiet beside an unlock; no effect on % or keys. **Tiny Aiden**'s sheet `assets/tiny-aiden.png` is a drop-in.
+- **A chest's Continue goes straight into its video** (67.28 / #496): full screen and must-watch the first time, then the map; About replays inset.
+- **A new screen's first tutorial box waits one tick and never glides from another screen** (67.41); **the Welcome waits for the walkthrough to end**.
 - **Sigh is HELD** (`held` on its `ITEMS.snd` row, §B1). **The fonts are ours** — three woff2 in `fonts/`, nothing from a font host (B.32).
 - **An AudioContext that will not resume is rebuilt, never retried; `running` is never trusted** (F.2 / J.1): every resume goes through `revive()`; `currentTime` must move over `LIVE_MS` (150ms); the tap never waits; holders register in `rebinds`.
 
@@ -217,6 +220,7 @@ list, with its check, in the build that implements it (67.37b, build 68).**
 - **A check reads a tuning value from `config/`, never a hand-typed copy of it** — 13 of build 60's gate failures were old checks with Aiden's old numbers typed in.
 - **No new check tests the source text** (`/…/.test(read(…))`) — drive the page or import the config; A2–A4's import boundaries are the one exception. When an old source-text check fails on a refactor, delete it and name it in the outcome.
 - **`_smoke/GATE.md` gets one index line per new section**; `docs/GATE-HISTORY.md` is frozen.
+- **The new-player journey** (`41-new-player-journey.mjs`, 67.41) plays a wiped profile through every first-time moment it can earn; its frames are the board's Tutorials.
 - **`npm run review`** drives `../_review/scripts/` (capture → `build-catalogue.mjs`); Cowork publishes the page. Its Every sound and Round formats sections come from `_review/scripts/catalogue.ref.mjs`, which the gate runs too.
 
 No bundler, no build step — GitHub Pages serves the modules directly, so every import path stays

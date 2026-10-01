@@ -1777,3 +1777,35 @@ anything Aiden settles goes on the list in the build that implements it.
   (rounds completed), no longer the spend (B.3d's source-text check deleted). "Round", never "attempt", in every HUD line; a Set counts
   "Round 2 of 5". Reaction: a Flash Set's top reads "AVG 413 ms" ("AVG — ms" before the first tap), the verdict sits under each tap's number,
   and the "AVERAGE 413 MS" line under every tap is gone.
+
+- **The videos (67.7, 67.6, 67.6b, 67.8, 67.14, 67.27, 67.28, #496).** The Welcome has no Later (L20); its card and the player's title are two lines,
+  the eyebrow then the title in quotes. Every frame is 16:9 (a clip of another shape letterboxes inside it, contain) — the per-message `ratio` is gone.
+  Every video has a thumbnail: a dimmed still (`thumb` on its row) or a placeholder card with its name. A video switches off with a burst of
+  static (`PLAYER.off` opens on `static`), the music hushed while it plays. Each chest's video wears its chest's colour (`MSG_LOOK`) on the frame,
+  the thumbnail and About's list (an unwatched clip keeps its green GLOW; the edge is the chest's). A chest's Continue goes straight into its video —
+  full screen the first time, a must-watch, replays from About inset — and the map comes only when it has ended (`playVideo(m, { full, after })`).
+- **The chests (67.12, 67.32, 67.26, 67.24, 67.30).** Reward kinds are blank except (music). Opening a chest switches its key's track on everywhere
+  and names it among what you found. The key's whole moment ends in the chest card's confetti. A locked key card names the chest that opens it and
+  shakes on a tap, no popup. No black box is cut out of the background behind text; every line, buttons included (`:where(.screen button)`), wears
+  its own soft shadow.
+- **Scores (67.18, 67.19, 67.21).** The web is the screen's full width, labels 10.5px, no caption line; a tap on a game's point or name opens its
+  detail (score, bars per key, best per mode, the next bar) and never falls through to Back.
+- **Excuses (67.38) and Tiny Aiden (67.39).** Ten deliberate failures (`config/excuses.js`, Cowork's names — Aiden renames them on the board), each
+  tested by `EXCUSE_TEST` in `progress/rules.js` on the raw facts the engines write into the run's `ctx.xs` (the record keeps its shape). Never in
+  the walkthrough or a profile's first ten minutes (`EXCUSE_GRACE`, from its first run on record); a quiet tick when an unlock or a menu item in the
+  same run has the toast; no effect on %, keys or unlocks. A made excuse is a toast "Excuse #n: name", the shrug in a corner and `Snd.bwomp`; #10 is
+  the map pulled past its top (a tiny exit for 3.5s). Progress gains an Excuses tab. At ten (repeats count) Tiny Aiden dances in three places; then
+  Customise's switch (on by default) lets him turn up on the main menu or the map now and then. His sheet is `assets/tiny-aiden.png` (10 frames,
+  64×96) — a placeholder stick figure the real cut-out replaces with no code change. Fresh game clears both.
+- **Customise (67.33, 67.34, 67.35; L22).** Top, the whole game's: Music (Off its last choice — the Music on / off row is gone; Off silences the menus
+  and every run), Background (the picked tile carries a small wheel that opens its colour; "No colour" in the wheel; the Background colour row is
+  gone), Tap sound (it was always one setting, `prefs.snd`, so nothing migrated). Then the preview at two-thirds height, then the game tabs and that
+  game's rows; at 390×844 everything to the tabs is on screen. A choice a key opened wears its key's colour (`ORIGIN_LOOK`: Lantern gold, Circuit
+  light blue, Thorns black-and-white thorns), every other choice plain white; selected is a brighter border and a glow in that colour.
+- **Bars and the wipe (67.11, 67.36).** The Grow Set's Pro and Author are Cowork's guesses, 13% and 6% off, marked `by:'cowork'` / `conf:'guess'`
+  (kept by the generator like a desk proposal). Fresh game also forgets the walkthrough, every tour, the rooms, the key intros, the Welcome, the
+  next-unlock card's green and the Excuses; Replay tutorial stays the walkthrough's alone.
+- **What the new-player journey found (67.41).** (1) A first run good enough to open Dots put the Welcome card up in the middle of the walkthrough's
+  result boxes; the Welcome now waits for the walkthrough to end (`tut:done`) and plays on the same result at once. (2) A tour entering a new screen
+  placed its box against the last screen's spot and glided across Customise's rows; a new screen's first box now waits one tick, and a box never
+  glides from one screen to another.

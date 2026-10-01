@@ -3,7 +3,9 @@
  * writes a copy of the web tree for the native shell (Capacitor, stage 5) with config/build.js TARGET = 'native' — which zeroes
  * BUILD_FLAGS.dev, so the store refuses every dev flag (S5) — and with every [data-dev] element cut out of its index.html, so the
  * unlock-all switches are not in the bundle at all rather than merely hidden. Fails loudly if the flag line is not there exactly once, if
- * no dev element is found, or if one survives. Default output: site/dist/native (git-ignored). The web tree is never touched. */
+ * no dev element is found, or if one survives. Default output: site/dist/native (git-ignored). The web tree is never touched.
+ * THE NAMES (build 68, FEEDBACK-v36 J): the home-screen name stays "No Excuses" (Capacitor appName, as manifest.webmanifest has it); the App Store
+ * Connect listing name is "No Excuses: Skill Games". Nothing in the game changes. */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14,7 +16,8 @@ const out = path.resolve(process.argv[2] || path.join(root, 'dist', 'native'));
 // v29 (item 10, build 55): `video` was missing, while all eight config/messages.js rows point at video/test-card.mp4 + .vtt — so every
 // message in the native build was a 404, which until this build showed as a silent black rectangle and nothing else.
 const TREE = ['index.html', 'boot.js', 'core.js', 'audio.js', 'progress.js', 'manifest.webmanifest', 'robots.txt', 'version.json', 'LICENSE',
-  'icon-180.png', 'icon-192.png', 'icon-512.png', 'config', 'core', 'fonts', 'games', 'progress', 'run', 'styles', 'ui', 'video'];
+  'icon-180.png', 'icon-192.png', 'icon-512.png', 'config', 'core', 'fonts', 'games', 'progress', 'run', 'styles', 'ui', 'video', 'assets'];
+// build 68 (67.39): `assets` — Tiny Aiden's sprite sheet lives there, and a native tree without it would draw nothing where he dances
 /* v29 (item 10, build 55): AND IT IS ALL OR NOTHING. Every check used to run against the output directory AFTER the old one had been
    deleted and the new one half written, so a missing file or a failed strip left dist/native as a broken tree that looks like a build.
    Everything is written and verified in a sibling temp directory; only a tree that passed every check is moved into place. */

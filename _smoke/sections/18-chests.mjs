@@ -776,8 +776,10 @@ export async function run() {
         nameWeight: h.querySelector('.wcard .wname') ? getComputedStyle(h.querySelector('.wcard .wname')).fontWeight : '', dash: /[-–—]/.test((h.querySelector('.wcard .wline') || {}).textContent || ''),
         buttons: [...h.querySelectorAll('.wrow .item')].map(b => b.dataset.act + ':' + b.textContent.trim()),
         steps: M.PLAYER.on.steps.map(x => x.name + '=' + h.style.getPropertyValue('--w-' + x.name + '-at').trim()) };
-      out.over = W.welcomeCheck(false);                                                // build 68: never over itself
-      W.closeWelcome(); out.again = W.welcomeCheck(false);                             // AMENDED at build 68 (67.22): cut off, it is due again — the net
+      // build 68: never over itself
+      out.over = W.welcomeCheck(false);
+      // AMENDED at build 68 (67.22): cut off, it is due again — the net
+      W.closeWelcome(); out.again = W.welcomeCheck(false);
       W.closeWelcome();
       // AMENDED at build 68 (67.7, L20): there is no LATER — the card's one button is Play
       out.afterLater = { closed: true, seen: false, dot: true };

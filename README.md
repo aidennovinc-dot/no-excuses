@@ -7,7 +7,7 @@ Small games of pure skill for the phone. This is the HTML prototype served from 
 - The tree: `core.js` (the shared leaf), `audio.js`, `progress.js`, `config/` (data only), `core/`, `progress/`, `run/`, `ui/` + `ui/screens/`, `games/` (one folder per game plus `_shared/` and `registry.js`), `styles/`, `fonts/`, `video/`, `_smoke/` (the gate), `scripts/`, `docs/`. No bundler; Pages serves the modules directly. The full map with what each file is for: `ARCHITECTURE.md`.
 - The build number lives in ONE place — `config/build.js`. `npm run bump -- N` writes it into the two places in `index.html` a person reads and into `version.json`; never hand-edit any of them. See `CLAUDE.md`.
 - `version.json` — `core/platform.js` polls this on `https:` outside the native shell and offers a reload when a newer build is up.
-- `manifest.webmanifest` + icons — installs to the iOS home screen (Share → Add to Home Screen).
+- `manifest.webmanifest` + icons — installs to the iOS home screen (Share → Add to Home Screen). Home-screen name "No Excuses"; the App Store listing will be "No Excuses: Skill Games" (build 68).
 
 Commands: `npm test` (the gate, ~40 minutes, run once before every push), `npm run bump -- N`, `npm run native` (the Capacitor tree), `npm run placeholders` (the key-bar generator), `npm run review` (the catalogue; needs `../_review/`).
 
