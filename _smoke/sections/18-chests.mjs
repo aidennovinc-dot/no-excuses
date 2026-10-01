@@ -764,7 +764,9 @@ export async function run() {
       await wait(Math.max(900, M.PLAYER.on.ms + 400));
       const h = host();
       out.up = { shown: !!h && !h.hidden, stage: !!h.querySelector('.wframe'),
-        label: (h.querySelector('.wcard .wline') || {}).textContent, title: (h.querySelector('.wcard .wline .mk-green') || {}).textContent,
+        // AMENDED at build 68 (67.6): two lines — the eyebrow, then the name in quotes, normal weight, no dash
+        label: (h.querySelector('.wcard .weye') || {}).textContent, title: (h.querySelector('.wcard .wname') || {}).textContent,
+        nameWeight: h.querySelector('.wcard .wname') ? getComputedStyle(h.querySelector('.wcard .wname')).fontWeight : '', dash: /[-–—]/.test((h.querySelector('.wcard .wline') || {}).textContent || ''),
         buttons: [...h.querySelectorAll('.wrow .item')].map(b => b.dataset.act + ':' + b.textContent.trim()),
         steps: M.PLAYER.on.steps.map(x => x.name + '=' + h.style.getPropertyValue('--w-' + x.name + '-at').trim()) };
       out.over = W.welcomeCheck(false);                                                // build 68: never over itself
@@ -788,7 +790,7 @@ export async function run() {
       return out; });
     (!wc60.beforeFirstRun.open && wc60.beforeFirstRun.played === false && !wc60.beforeFirstRun.seen && wc60.sprintOnly === false && wc60.open
       && wc60.duringRun.played === false && !wc60.duringRun.seen && wc60.played === true && wc60.over === false && wc60.again === true
-      && wc60.up.shown && wc60.up.stage && /message from/i.test(wc60.up.label || '') && wc60.up.title
+      && wc60.up.shown && wc60.up.stage && /message from/i.test(wc60.up.label || '') && /^“.+”$/.test(wc60.up.title || '') && +wc60.up.nameWeight < 600 && !wc60.up.dash
       && wc60.up.buttons.length === 1 && wc60.up.buttons.some(b => /^wplay:/.test(b))
       && wc60.up.steps.length >= 3 && wc60.up.steps.every(x => /=\d+ms$/.test(x))
       && wc60.afterLater.closed && !wc60.afterLater.seen && wc60.afterLater.dot

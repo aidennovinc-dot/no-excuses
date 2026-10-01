@@ -24,10 +24,10 @@
      The soft thunk is `Snd.videoFx('on' | 'off')` (config/audio.js VIDEO_FX), fired on the beat the picture opens and the beat it goes to a dot.
 
    Presentation only (L10): watching a clip marks it watched and nothing else. */
-import { MSG } from "../config/copy.js";
+import { MSG, WELCOME } from "../config/copy.js";
 import { MESSAGES, PLAYER } from "../config/messages.js";
 import { Snd } from "../audio.js";
-import { $, esc } from "../core.js";
+import { $, T, esc } from "../core.js";
 import { emit } from "../core/events.js";
 import { prefs, save } from "../core/store.js";
 import { define } from "./actions.js";
@@ -88,7 +88,8 @@ function playVideo(m) { if (!m || !m.file) return false;
   must = videoDue() === m.id; if (must) dueClear();
   host.hidden = false; host.classList.remove('voff', 'vlit'); host.classList.toggle('vmust', must); host.dataset.msg = m.id;
   host.style.setProperty('--vg', msgCol(m) || '#FFFFFF');
-  host.querySelector('.vtitle').textContent = msgTitle(m);
+  // build 68 (67.6): the player's title is the same two lines as the Welcome's card — the eyebrow, then the name in quotes
+  host.querySelector('.vtitle').innerHTML = `<small class="weye">${esc(WELCOME.from)}</small><b class="wname">${esc(T(WELCOME.name, { title: msgTitle(m) }))}</b>`;
   host.querySelector('.vcc').textContent = '';
   const pic = host.querySelector('.vpic');
   pic.innerHTML = `<video playsinline preload="metadata"${m.cc ? ' crossorigin="anonymous"' : ''}><source src="${esc(m.file)}" type="video/mp4">`

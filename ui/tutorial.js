@@ -545,7 +545,7 @@ function tutMap(){ const out=[], text=t=>{ try{ return typeof t==='function'?t()
       boxes:boxes.map((b,i)=>Object.assign({ key:id+'-'+String(i+1).padStart(2,'0') },b)) });
     if(id==='over') out.push({ id:'welcome', name:'Welcome moment', trigger:'Dots unlocks — on that result as soon as it opens, ahead of its toasts (the main menu only after a reload or crash mid-way)',
       start:'Result screen', why:'The first thing the game gives you: Aiden\'s welcome clip, and watching it opens About', steps:1, at:1,
-      boxes:[{ key:'welcome-01', screen:'Over the result or the main menu', ring:'', tap:1, text:T(WELCOME.line,{ title:WELCOME.fallback }) }] }); }
+      boxes:[{ key:'welcome-01', screen:'The result that opens Dots', ring:'', tap:1, text:WELCOME.from+' · '+T(WELCOME.name,{ title:WELCOME.fallback }) }] }); }
   return out; }
 
 /* build 66 (65.11): WHERE A REAL TAP ON A MUST-TAP BOX'S RING LANDS AND IS ANSWERED — a point on the screen, inside the ring, whose top element the box

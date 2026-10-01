@@ -8,7 +8,8 @@ export const PLAYER = { who:'Player {n}' };
    msgTitle() gives; `fallback` is only ever used if a slot has no title at all. */
 // build 66 (section C, welcome-01): the card's line, as Aiden marked it on the Tutorial Map — {title} is the clip's own title
 // build 68 (67.7): `later` is gone — the Welcome is mandatory (L20)
-export const WELCOME = { from:'A message from Aiden', fallback:'Welcome', play:'Play', line:'A message from Aiden -[green] “{title}”[/green]' };
+// build 68 (67.6): `line` ("A message from Aiden - “Welcome”") is two lines now — `from` as an eyebrow, `name` under it
+export const WELCOME = { from:'A message from Aiden', fallback:'Welcome', play:'Play', name:'“{title}”', };
 /* v31 (60.25, build 60): HOW LONG A TOAST HOLDS, and the gap between one and the next. Aiden asked for longer and for a QUEUE —
    until build 59 a new toast called clearTimeout and simply replaced whatever was up, so a run that unlocked two things showed
    the first for however long it took the second to arrive. 5,000 / 4,500 / 3,000ms are his numbers: a TAPPABLE toast (an

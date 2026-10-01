@@ -62,7 +62,8 @@ function playWelcome() {
   host.innerHTML = `<div class="wstage" data-act="wplay"><i class="wframe wprev">${msgPreview(m, { title: false })}</i></div>`
     + `<div class="wcard" data-act="wplay">`
     // build 66 (section C, welcome-01): one line, Aiden's, with the title in green
-    + `<b class="wline">${marks(T(WELCOME.line, { title: msgTitle(m) || WELCOME.fallback }))}</b>`
+    // build 68 (67.6): TWO LINES, NOT ONE HEAVY ONE — "A message from Aiden" small in the eyebrow face, then the clip's name in quotes, normal weight, no dash
+    + `<span class="wline"><small class="weye">${esc(WELCOME.from)}</small><b class="wname">${esc(T(WELCOME.name, { title: msgTitle(m) || WELCOME.fallback }))}</b></span>`
     // build 68 (67.7, L20): THE WELCOME IS MANDATORY — Play and nothing else; the other seven messages keep their own way out
     + `<div class="wrow"><button class="item wplay" data-act="wplay">${esc(WELCOME.play)}</button></div></div>`;
   host.hidden = false; host.classList.remove('wgo'); void host.offsetWidth; host.classList.add('won');
