@@ -431,7 +431,7 @@ export const KEY = { title:'the key', hint:'tap a game · solo runs only',
   // 0–300, the three keys, and this is the one place the total is printed
   /* build 66 (65.14): once the Skill chest is open the figure is 100 and stays there; the Pro and Author keys' bars go BESIDE it, so 100% keeps
      meaning finished — `tail` is that, " · Pro 2/30" */
-  menu:'{pct}% complete{tail}', menuReady:'{pct}% · the {chest} is ready', tail:' · {name} {done}/{total}',
+  menu:'{pct}% complete', menuReady:'{pct}% · the {chest} is ready',
   cleared:'cleared', open:'not yet', floor:'{bar} or more', ceil:'{bar} or less',
   advance:'{game} · {name} cleared', toast:'Key · {game} · {name} cleared',
   none:'no bar set', mismatch:'{n} combination(s) have no clearance bar: {keys}',

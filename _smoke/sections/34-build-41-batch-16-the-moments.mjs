@@ -213,10 +213,9 @@ export async function run() {
       const mk = document.getElementById('menu-key'); const pulse = { up: mk.classList.contains('up'), mcol: mk.style.getPropertyValue('--mcol'), anim: getComputedStyle(mk).animationName };
       return { out, pulse }; });
     const at = v => mb.out.find(x => x.v === v);
-    /* AMENDED at build 66 (65.14): the BAND still reads the raw meter; the TEXT is completion — 100 once the Skill chest is open — with the furthest
-       key's bars beside it, so a meter of 250 prints "100% complete · Author 15/30" (read off config, not typed) */
-    const wantTxt250 = await page.evaluate(async () => { const C = (await import('./config/copy.js')).KEY, K = (await import('./config/keys.js')).KEYS, KS = await import('./progress/key.js');
-      return C.menu.replace('{pct}', 100).replace('{tail}', C.tail.replace('{name}', K.find(k => k.id === 'author').name).replace('{done}', 15).replace('{total}', KS.keyState('author').total)); });
+    /* AMENDED at build 66 (65.14), and at build 68 (67.37, L11): the BAND reads the raw meter and so does the TEXT once the Skill chest is open —
+       a meter of 250 prints "250% complete" (read off config, not typed) */
+    const wantTxt250 = await page.evaluate(async () => (await import('./config/copy.js')).KEY.menu.replace('{pct}', 250));
     const bandsOk = mb.out.every(x => x.cls === 'meterv mb' + x.i && x.col !== 'rgb(61, 214, 140)') && [0, 50, 96].every(v => at(v).i === 0) && at(100).i === 1 && at(196).i === 1 && at(200).i === 2 && at(296).i === 2 && at(300).i === 3
       && at(0).col === 'rgb(110, 108, 104)' && at(150).col === 'rgb(232, 230, 225)' && at(250).col === 'rgb(232, 184, 74)' && at(300).col === 'rgb(255, 255, 255)' && at(300).bg === 'rgb(0, 0, 0)'
       && at(0).ts === 'none' && at(150).ts === 'none' && at(250).ts !== 'none' && parseFloat(at(296).glow) > parseFloat(at(200).glow)

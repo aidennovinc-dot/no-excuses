@@ -58,8 +58,8 @@ export async function run() {
        disagreement: Aiden asked for the clamp after reading 300% on the front of the app, and it was Testing's Author switch that produced it. */
     if (s.menu !== null && !s.menu.startsWith(st.shown + '%')) w.push(`menu "${s.menu}"≠${st.shown}%`);
     if (st.shown > st.max || st.shown < 0) w.push(`the shown figure is ${st.shown}% of a ${st.max} meter`);
-    // AMENDED at build 66 (65.14): what is printed is completion — the Skill band scaled to METER.before until the Skill chest opens, then 100
-    if (st.shown !== (st.chests[1] === 'open' ? 100 : Math.min(st.before, Math.round(Math.max(0, Math.min(100, st.meter)) * st.before / 100)))) w.push(`shown ${st.shown}≠completion of meter ${st.meter}`);
+    // AMENDED at build 66 (65.14) and at build 68 (67.37, L11): the Skill band scaled to METER.before until the Skill chest opens, then the meter, 100 at the least
+    if (st.shown !== (st.chests[1] === 'open' ? Math.max(100, st.meter) : Math.min(st.before, Math.round(Math.max(0, Math.min(100, st.meter)) * st.before / 100)))) w.push(`shown ${st.shown}≠L11 figure of meter ${st.meter}`);
     // reachable by play
     st.chests.forEach((c, i) => { if (i && c === 'open' && st.chests[i - 1] !== 'open') w.push(`chest ${i} open behind a shut one`); });
     st.bars.forEach((n, i) => { if (n && !st.open[i]) w.push(`${n} bars on shut key ${i}`); });
@@ -810,10 +810,27 @@ export async function run() {
     const post = await page.evaluate(async () => { const K = await import('./progress/key.js'); (await import('./ui/router.js')).show('s-menu'); await new Promise(r => setTimeout(r, 1200));
       return { open: K.chestOpen('key'), shown: K.meterPct(), raw: K.meter(), menu: document.getElementById('menu-key').textContent.trim() }; });
     const proName = await page.evaluate(async () => (await import('./config/keys.js')).KEYS.find(k => k.id === 'pro').name);
-    (pre.state === 'ready' && pre.shown === pre.before && fig && fig.t === '100%' && /232, 184, 74/.test(fig.gold) && post.open && post.shown === 100 && post.raw > 100
-      && post.menu.startsWith('100% complete') && post.menu.includes(proName + ' 6/'))
-      ? ok(`65.14 the Skill chest READY reads ${pre.shown}%; opened from the map its figure counts up and lands on "${fig.t}" in gold; afterwards the app reads exactly 100 (the meter still ${post.raw}, which printed as ${post.raw}% before) and the menu says "${post.menu}"`)
+    // AMENDED at build 68 (67.37, L11): the ceremony still lands on exactly 100; afterwards the menu prints the meter, the six Pro bars counted on past 100, nothing beside it
+    (pre.state === 'ready' && pre.shown === pre.before && fig && fig.t === '100%' && /232, 184, 74/.test(fig.gold) && post.open && post.shown === post.raw && post.raw > 100
+      && post.menu === `${post.raw}% complete` && !post.menu.includes(proName))
+      ? ok(`L11 / 65.14 the Skill chest READY reads ${pre.shown}%; opened from the map its figure counts up and lands on "${fig.t}" in gold; afterwards the menu reads the meter on past 100 — "${post.menu}" — with no Pro count beside it`)
       : bad('65.14 the Skill chest is 100%', JSON.stringify({ pre, fig, seen, post }));
+  }
+  /* build 68 (67.37, L11): THE MENU READS 100 / 200 / 300 AFTER THE SKILL / PRO / AUTHOR KEY. Aiden's v0.67 menu read "100% · the Pro chest is ready".
+     Each key is reached through Testing's switches, which land where play does; the Skill key reads 95 while its chest is ready and 100 once it is open */
+  {
+    await boot({ chests: {}, spill: {}, readySeen: {}, revealed: {} });
+    const l11 = await page.evaluate(async () => { const K = await import('./progress/key.js'), P = await import('./progress.js'), S = await import('./core/store.js'), R = await import('./ui/router.js'), C = await import('./config/copy.js');
+      S.prefs.allOpen = false; S.prefs.supporter = false; S.store.bars = {}; S.save();
+      const menu = async () => { R.show('s-pick'); await new Promise(r => setTimeout(r, 80)); R.show('s-menu'); await new Promise(r => setTimeout(r, 1500)); return document.getElementById('menu-key').textContent.trim(); };
+      K.devReach('key', P.devModesAll); const skillReady = await menu();
+      K.devOpen('key'); const skill = await menu();
+      K.devReach('pro', P.devModesAll); const pro = await menu();
+      K.devReach('thorns', P.devModesAll); const author = await menu();
+      return { skillReady, skill, pro, author, ch: C.GRID.chest, before: (await import('./config/chests.js')).METER.before }; });
+    (l11.skillReady === `${l11.before}% · the ${l11.ch.key} is ready` && l11.skill === '100% complete' && l11.pro === `200% · the ${l11.ch.pro} is ready` && l11.author === `300% · the ${l11.ch.thorns} is ready`)
+      ? ok(`L11 the menu reads the one 0-300 meter: "${l11.skillReady}" → "${l11.skill}" → "${l11.pro}" → "${l11.author}"`)
+      : bad('L11 the menu reads 100 / 200 / 300 after the Skill / Pro / Author key', JSON.stringify(l11));
   }
   /* build 66 (65.15): EVERY REWARD SAYS WHAT KIND OF THING IT IS — under its name in brackets on the chest's screen (the reveal's gifts) and beside the
      chest on the map, for every reward every chest can hold, the kind read off config (REWARD_KIND by symbol), never typed per reward */

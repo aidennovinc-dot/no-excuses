@@ -262,11 +262,15 @@ const meterMax = () => METER.band * (TIERS.length + (METER.modes ? 1 : 0));
    to METER.before (95); with the Skill chest open it is 100, whatever the Pro and Author keys do — their bars go beside it (meterTail). `open`
    says whether to read it as before or after the Skill chest (the ceremony asks for both); left out, it is the chest's own state. meter() is
    untouched: every chest, band and Testing switch still reasons on 0-300. */
+/* ---------- build 68 (67.37, L11): AND THE FIGURE IS THE ONE 0-300 METER AGAIN, PAST 100 AS WELL ----------
+   Aiden's menu read "100% · the Pro chest is ready" with the Pro key whole; it should read 200. 65.14's "Pro / Author progress sits beside
+   100%" was Cowork's call and contradicted the meter settled on 2026-09-14 and confirmed on 2026-09-19 (Skill → 100, Pro → 200, Author →
+   300, never reset); it is withdrawn, and meterTail() with it. What 65.14 got right stays: before the Skill chest the figure is the Skill band
+   × METER.before (95), and once the Skill chest is open it is the meter itself — 100 at the least, counting on past it as the Pro and Author
+   bars clear. The Skill chest's ceremony lands on exactly 100 (ui/ceremony.js asks for that landing by name). Now L11. */
 const meterPct = (v, open) => { const raw = typeof v === 'number' ? v : meter(), o = open === undefined ? chestOpen('key') : !!open;
-  if (o) return METER.band; return Math.min(METER.before, Math.round(Math.max(0, Math.min(METER.band, raw)) * METER.before / METER.band)); };
-// build 66 (65.14): what goes beside 100% — the furthest open key past the Skill key, by its bars ("Pro 2/30")
-const meterTail = () => { if (!chestOpen('key')) return ''; const t = [...TIERS].reverse().find(x => x !== TIERS[0] && tierOpen(x) && !isShell(x)); if (!t) return '';
-  const st = keyState(t), k = KEYS.find(x => x.id === t) || {}; return T(KEY.tail, { name: k.name || t, done: st.done, total: st.total }); };
+  if (o) return Math.max(METER.band, Math.min(meterMax(), Math.round(raw)));
+  return Math.min(METER.before, Math.round(Math.max(0, Math.min(METER.band, raw)) * METER.before / METER.band)); };
 /* v23 (§L.8d / §L.8e, build 41): WHICH BAND a meter figure is in, and how far through it — presentation only (L10). A band starts at its
    lower figure (100% is band 1, guess) and the top of the meter is the top of the last band, so 400% is band 3 at full strength. ui/chest.js
    turns this into the look; nothing here knows a colour. */
@@ -607,5 +611,4 @@ function devMeterTo(n, modes) { const want = Math.max(0, Math.min(meterMax(), Ma
     if (chestState(c.id) !== 'ready' || !devOpen(c.id)) break; }
   seenDown(); save(); return meter(); }
 
-export { meterTail };
 export { COMBOS, RADAR_PAST, TIERS, keyScale, radarAll, tierEarned, chestNeeds, crackCount, gauntBest, gauntDone, msgDot, msgOpen, msgShown, msgTitle, bandPct, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, checkKeyAch, chestAt, chestOpen, chestState, cleared, combos, credit, devBack, devChestReset, devClearTo, devMeterTo, devOpen, devReach, fillBars, gameKey, isCleared, isPlaceholder, isShell, keyAch, keyChest, keyFinished, keyGaunt, keyGoal, keyOf, keyPct, keyState, keyTier, keyTiers, meter, meterBand, meterMax, meterPct, modesOpen, openChest, placeholderCount, radarOf, radarRungs, readyChest, retroArrived, retroBank, retroTier, skey, tierFull, tierOpen };

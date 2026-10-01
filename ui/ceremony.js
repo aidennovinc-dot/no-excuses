@@ -122,8 +122,9 @@ const nameOf = id => T(KEY.opened, { chest: GRID.chest[id] });
 const setMeter = (m, v) => { if (!m) return; m.textContent = T(KEY.pct, { n: meterPct(v) }); meterLook(m, v); };
 /* build 66 (65.14): THE SKILL CHEST IS THE MOMENT THE GAME IS FINISHED. Its figure is read before the chest (95 at most) and after (exactly 100),
    and it counts between the two slowly (CEREMONY_FX.wholeMs); on 100 it lands with a beat — a flash, the top verdict's sting, the number in gold
-   (`.whole`). The Pro and Author chests open past 100 and read 100: nothing to count */
-const shownOf = (id, v, after) => meterPct(v, id === 'key' ? after : undefined);
+   (`.whole`). Build 68 (67.37, L11): the Skill chest still LANDS on exactly 100 — the Pro bars its opening credits count on the menu after it —
+   and the Pro and Author chests read the meter itself (200-odd, 300) as they did before 65.14 */
+const shownOf = (id, v, after) => id === 'key' && after ? METER_FULL : meterPct(v, id === 'key' ? after : undefined);
 const setShown = (m, n, raw) => { if (!m) return; m.textContent = T(KEY.pct, { n: Math.round(n) }); meterLook(m, raw); };
 
 /* ---------- v25 (items 6 / 22, build 46): A CHEST OPENING IS NOW A STAGE INSIDE THE ONE SHARED REVEAL ----------

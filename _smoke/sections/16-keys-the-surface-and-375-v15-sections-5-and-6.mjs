@@ -625,9 +625,9 @@ export async function run() {
       for (const c of K.COMBOS) { S.store.bars[K.skey(c.key, 'clear')] = 1; S.store.bars[K.skey(c.key, 'pro')] = 1; }
       const out = { meter: K.meter(), pct: K.meterPct(), max: K.meterMax(), key1: K.bandPct('clear'), pro: K.bandPct('pro'), author: K.bandPct('author') };
       S.prefs.chests = was.ch; S.store.bars = was.bars; S.store.unlock = was.unlock; S.save(); return out; });
-    // AMENDED at build 66 (65.14): the METER is still one continuous 0-300; what a surface PRINTS is completion, 100 once the Skill chest is open
-    (m55.pct === 100 && m55.meter === 200 && m55.max === 300 && m55.key1 === 100 && m55.pro === 100 && m55.author === 0)
-      ? ok('item 1 / v30 59.11 / 65.14 the meter is one continuous 0-300 — every mode open and every key-1 and Pro bar cleared is 200 on the meter — and what a surface PRINTS (meterPct) is completion: 100')
+    // AMENDED at build 66 (65.14) and back at build 68 (67.37, L11): with the Skill chest open what a surface PRINTS is the meter itself — 200 here
+    (m55.pct === 200 && m55.meter === 200 && m55.max === 300 && m55.key1 === 100 && m55.pro === 100 && m55.author === 0)
+      ? ok('L11 / item 1 / v30 59.11 the meter is one continuous 0-300 — every mode open and every key-1 and Pro bar cleared is 200 on the meter, and what a surface PRINTS (meterPct) is 200')
       : bad('item 1 the meter at key 1 + Pro', JSON.stringify(m55));
 
     /* v30 (59.11, build 59): AND 100 STILL MEANS KEY 1 WHOLE. The first hundred is now shared between the modes and the key-1 bars,
