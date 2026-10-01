@@ -722,9 +722,9 @@
      the large one left the bottom third of the screen empty anyway — and the target list scrolls underneath it (`.scroll`, and
      Quick Tap and Dots have six rows). `.kpanel` is retired with the step-down: nothing on this screen resizes on a tap now. */
   #key-ring{width:min(86vw,340px);max-height:30vh;overflow:visible;margin-top:2px}
-  /* build 62 (61.25): with a game's requirements open, the LIST gets the room — about a row and a half showed, SET THIS MUSIC right under it.
-     The ring gives up a third of its height while the list is up, and the music button sits lower, near the bottom above the safe area */
-  #key-main:has(#key-list:not([hidden])) #key-ring{max-height:21vh}
+  /* build 62 (61.25): with a game's requirements open, the LIST gets the room, SET THIS MUSIC lower, near the bottom above the safe area.
+     Build 68 (67.23, L12): the ring NO LONGER gives up a third of its height while the list is up — that was the key shrinking on the first tap
+     ("big on first open, smaller after the first tap"), 57.5's one size undone. Measured at 390×844: four full rows still show under it */
   /* v23 (L.7b, build 42): SET THIS MUSIC at the foot of the key screen, above the build stamp's clearance (L.5); green once it is every run's music */
   #key-music{margin-top:auto;margin-bottom:max(0px,calc(var(--stampclear) - 40px));flex:none;font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;padding:10px 16px;border:1px solid var(--line);color:var(--ink)}
   #key-music.on{color:var(--ok);border-color:var(--ok)}

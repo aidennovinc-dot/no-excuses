@@ -31,10 +31,17 @@ export async function run() {
     await setStorage({ ne: { v: 7, prefs: { tut: 2, story: 1, gridSeen: 1, played: 1, menuSeen: 1, keySeen: 1, keysSeen: 1, snd: 'off', musicG: {}, chests: { games: 1, key: 1, pro: 1, thorns: 1 }, revealed: { 'key:clear': 1 }, keyIntro: { clear: 1, pro: 1, author: 1 } }, runs: [], ach: {}, unlock: {}, intro: {}, seen: {}, bars: Object.fromEntries(Object.keys(KB.KEY_BARS).map(k => [k, now])) } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
     const k25 = await page.evaluate(async () => { const R = await import('./ui/router.js'), w = ms => new Promise(r => setTimeout(r, ms)); R.show('s-key', { tier: 0 }); await w(700);
+      // build 68 (67.23, L12): the key's size before the first tap, read again after it
+      const size = () => { const r = document.getElementById('key-ring').getBoundingClientRect(), g = document.querySelector('#key-ring .kglyph'), k = g ? g.getBoundingClientRect() : r; return [Math.round(r.width), Math.round(r.height), Math.round(k.width), Math.round(k.height)]; };
+      const sz0 = size();
       document.querySelector('.knode[data-kg="quick-tap"]').dispatchEvent(new MouseEvent('click', { bubbles: true })); await w(500);
+      const sz1 = size();
       const l = document.getElementById('key-list'), m = document.getElementById('key-music'), lr = l.getBoundingClientRect(), mr = m.getBoundingClientRect();
       const full = [...l.querySelectorAll('.krow')].filter(r => { const b = r.getBoundingClientRect(); return b.top >= lr.top - 1 && b.bottom <= lr.bottom + 1; }).length;
-      return { full, shown: !m.hidden && mr.height > 0, under: mr.top >= lr.bottom - 1, fromBottom: Math.round(innerHeight - mr.bottom) }; });
+      return { full, shown: !m.hidden && mr.height > 0, under: mr.top >= lr.bottom - 1, fromBottom: Math.round(innerHeight - mr.bottom), sz0, sz1 }; });
+    (k25.sz0.join() === k25.sz1.join() && k25.sz0[1] > 0)
+      ? ok(`L12 / 67.23 the key keeps its size after the first tap — ring and key ${k25.sz0.join(' / ')}px before a game is tapped and the same after, its list open under it`)
+      : bad('L12 / 67.23 the key shrank on the first tap', JSON.stringify({ before: k25.sz0, after: k25.sz1 }));
     (k25.full >= 3 && k25.shown && k25.under && k25.fromBottom <= 80)
       ? ok(`61.25 a key's requirement list shows ${k25.full} full rows before scrolling at 390, with SET THIS MUSIC under it ${k25.fromBottom}px off the bottom`)
       : bad('61.25 the key screen list', JSON.stringify(k25));
