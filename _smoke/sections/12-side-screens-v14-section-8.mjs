@@ -248,6 +248,15 @@ export async function run() {
     const h19 = await page.evaluate(async () => { (await import('./ui/router.js')).show('s-board'); await new Promise(r => setTimeout(r, 400)); return { hint: !!document.getElementById('radar-hint'), text: document.getElementById('s-board').textContent.includes('a ring for each key') }; });
     (!h19.hint && !h19.text) ? ok('67.19 the line under the web is gone') : bad('67.19 the web\'s caption line', JSON.stringify(h19));
   }
+  /* build 68 (67.18): THE WEB IS BIGGER — at least the screen's width less its margins, its labels larger than build 67's 8px */
+  {
+    const w18 = await page.evaluate(async () => { (await import('./ui/router.js')).show('s-board'); await new Promise(r => setTimeout(r, 400));
+      const r = document.getElementById('radar').getBoundingClientRect(), t = document.querySelector('#radar text'), tr = t ? t.getBoundingClientRect() : null;
+      return { w: Math.round(r.width), iw: innerWidth, label: tr ? Math.round(tr.height) : 0, inside: r.left >= -1 && r.right <= innerWidth + 1 }; });
+    (w18.w >= w18.iw - 64 && w18.label >= 10 && w18.inside)
+      ? ok(`67.18 the web is ${w18.w}px wide on a ${w18.iw}px phone (it was 230 at most), its labels ${w18.label}px tall`)
+      : bad('67.18 the bigger web', JSON.stringify(w18));
+  }
   /* build 68 (67.30, Cowork): NO BLACK BACKING BOX BEHIND TEXT OR AN ICON, ANYWHERE — the menu, the map with a chest's "You found" words, Customise, on the
      brightest backgrounds: nothing is cut out of the background behind them (so nothing can show before the text it backs), and every line wears its
      own soft dark shadow instead */
