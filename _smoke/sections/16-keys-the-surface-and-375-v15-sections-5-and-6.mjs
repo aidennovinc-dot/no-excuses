@@ -754,15 +754,16 @@ export async function run() {
       S.prefs.bg = 'rain'; S.save(); T.applyPrefs(); await wait(400);
       const kept = S.prefs.tint;
       R.show('s-custom'); await wait(550);
-      const row = document.getElementById('c-bgcol'), pat = document.getElementById('c-bg');
-      const rows = { pat: pat ? pat.querySelectorAll('button').length : -1, wheelInPat: pat ? pat.querySelectorAll('.wheel').length : -1,
-        col: row ? row.querySelectorAll('button').length : -1, none: row ? row.querySelectorAll('.bgnone').length : -1 };
+      // AMENDED at build 68 (67.35): no Background colour row — the picked pattern's tile carries the small wheel, and the wheel holds "No colour"
+      const pat = document.getElementById('c-bg');
+      const rows = { pat: pat ? pat.querySelectorAll('button').length : -1, wheelInPat: pat ? pat.querySelectorAll('button.wheel').length : -1,
+        col: pat ? pat.querySelectorAll('.sel .bgwheel').length : -1, none: document.getElementById('wheel-none') ? 1 : 0, row: !!document.getElementById('c-bgcol') };
       S.prefs.tint = ''; S.prefs.bg = 'stars'; S.save(); T.applyPrefs();
       return { off, on, px: [px[0], px[1], px[2]], kept, rows }; });
     const ok57 = drew.every(d => d.lit > 0) && starOnly.join() === 'lantern,circuit,thorn'
       && split57.off.g === split57.on.g && split57.off.l === split57.on.l
       && split57.px.join() === '27,10,46' && split57.kept === '#1b0a2e'
-      && split57.rows.wheelInPat === 0 && split57.rows.col === 2 && split57.rows.none === 1
+      && split57.rows.wheelInPat === 0 && split57.rows.col === 1 && split57.rows.none === 1 && !split57.rows.row
       // AMENDED at build 65 (64.15): a background for every design, read off config — eight since Snow came out of the Games chest
       && TH57.ITEMS.bg.length === bgs.length && TH57.ITEMS.bgcol.length === 2;
     (ok57)

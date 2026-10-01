@@ -34,7 +34,8 @@ export async function run() {
        row holds the key tracks now, so there are nine, which is what build 39 shipped. */
     // AMENDED AT BUILD 57 (v29 Section A, 57.11b): a tenth group — Background colour, split off the Background row
     // AMENDED AT BUILD 65 (64.19): nine again — the taps-per-second group is gone
-    (live.screen === 's-custom' && live.groups === 9 && live.sw > 1 && live.g && live.scrolls === 'auto')
+    // AMENDED AT BUILD 68: 67.34 took the Music on / off group, 67.39 added Tiny Aiden's (hidden until earned), 67.35 took Background colour — eight
+    (live.screen === 's-custom' && live.groups === 8 && live.sw > 1 && live.g && live.scrolls === 'auto')
       ? ok(`L.4a the menu row opens it: ${live.groups} groups, ${live.sw} target colours, previewing ${live.g}, and the screen scrolls as it did at build 32`)
       : bad('L.4a Customise opens from the menu', JSON.stringify(live));
     await click('#s-custom .back'); await sleep(400);

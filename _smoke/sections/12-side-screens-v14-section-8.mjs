@@ -386,6 +386,40 @@ export async function run() {
       ? ok('67.33 Music and Background choices wear where they came from — Lantern gold, Circuit light blue, Thorns thorns, the starting ones white — and the selected one a bright border and a glow in its own colour')
       : bad('67.33 the origin colours', JSON.stringify(o33));
   }
+  /* build 68 (67.35): CUSTOMISE FITS WITHOUT SCROLLING DOWN TO THE GAME TABS — on the real 390×844 with a 47px top and 34px bottom inset, and on the
+     SE (375×667, 20px top). From the top: Music, Background, Tap sound (one row each, the whole game's), the preview, the game tabs — every one of them
+     on screen with the screen at its top. The picked background carries the small wheel that opens its colour, and "No colour" puts the ground back;
+     Tap sound is one setting, the same whichever game tab is up */
+  {
+    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS, bg: 'rain' }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    const vp = page.viewport(), cdp = await page.createCDPSession(), fit = [];
+    for (const [w, h, top, bot] of [[390, 844, 47, 34], [375, 667, 20, 0]]) {
+      await page.setViewport({ ...vp, width: w, height: h });
+      await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top, bottom: bot, left: 0, right: 0 } }).catch(() => {});
+      await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+      fit.push(await page.evaluate(async (w) => { (await import('./ui/router.js')).show('s-custom'); await new Promise(r => setTimeout(r, 600));
+        const ins = side => { const p = document.createElement('div'); p.style.cssText = 'position:fixed;top:0;height:env(safe-area-inset-' + side + ')'; document.body.appendChild(p); const v = p.getBoundingClientRect().height; p.remove(); return Math.round(v); };
+        const sat = ins('top'), sab = ins('bottom'), s = document.getElementById('s-custom');
+        const r = ['c-track', 'c-bg', 'c-snd', 'pv', 'pv-g'].map(id => { const b = document.getElementById(id).getBoundingClientRect(); return { id, t: Math.round(b.top), b: Math.round(b.bottom), ar: Math.round(b.height / b.width * 100) / 100 }; });
+        return { w, h: innerHeight, sat, sab, top: s.scrollTop, r, order: r.every((x, i) => !i || x.t >= r[i - 1].b - 1), inView: r.every(x => x.t >= sat - 1 && x.b <= innerHeight - sab + 1) }; }, w));
+    }
+    await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0, bottom: 0, left: 0, right: 0 } }).catch(() => {});
+    await page.setViewport(vp); await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+    const b35 = await page.evaluate(async () => { const R = await import('./ui/router.js'), S = await import('./core/store.js'), w = ms => new Promise(r => setTimeout(r, ms)); R.show('s-custom'); await w(500);
+      const o = { bgcolRow: !!document.getElementById('c-bgcol'), badges: document.querySelectorAll('#c-bg .bgwheel').length, on: document.querySelector('#c-bg .bgwheel')?.closest('button')?.dataset.v };
+      document.querySelector('#c-bg .bgwheel').click(); await w(400);
+      o.wheel = document.getElementById('wheelwrap').classList.contains('on'); o.noneShown = !document.getElementById('wheel-none').hidden;
+      S.prefs.tint = '#1b0a2e'; S.save(); document.getElementById('wheel-none').click(); await w(400);
+      o.closed = !document.getElementById('wheelwrap').classList.contains('on'); o.tint = JSON.parse(localStorage.getItem('ne')).prefs.tint;
+      document.querySelector('#c-snd [data-v="wood"]').click(); await w(300);
+      const sel = () => document.querySelector('#c-snd .sel')?.dataset.v; o.snd = [sel()];
+      for (const g of ['dots', 'sequence']) { document.querySelector(`#pv-g [data-v="${g}"]`).click(); await w(300); o.snd.push(sel()); }
+      o.stored = JSON.parse(localStorage.getItem('ne')).prefs.snd; return o; });
+    (fit.every(x => x.top === 0 && x.order && x.inView) && fit[0].sat === 47 && fit[0].sab === 34 && fit.every(x => x.r[3].ar <= .45)
+      && !b35.bgcolRow && b35.badges === 1 && b35.on === 'rain' && b35.wheel && b35.noneShown && b35.closed && b35.tint === '' && b35.snd.join() === 'wood,wood,wood' && b35.stored === 'wood')
+      ? ok(`67.35 Customise fits: Music, Background and Tap sound (one row each), the preview and the game tabs are all on screen with no scroll — the tabs end at ${fit.map(x => x.r[4].b + ' of ' + x.h + ' (' + x.w + ' wide, insets ' + x.sat + '/' + x.sab + ')').join(' and ')}; the picked background's small wheel opens its colour and "No colour" puts the ground back; Tap sound is one setting across the game tabs`)
+      : bad('67.35 the Customise layout', JSON.stringify({ fit, b35 }));
+  }
   /* build 68 (67.30, Cowork): NO BLACK BACKING BOX BEHIND TEXT OR AN ICON, ANYWHERE — the menu, the map with a chest's "You found" words, Customise, on the
      brightest backgrounds: nothing is cut out of the background behind them (so nothing can show before the text it backs), and every line wears its
      own soft dark shadow instead */

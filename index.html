@@ -187,9 +187,15 @@
      chips and the group labels under the preview say both what this is and that it is per game -->
 <section class="screen top" id="s-custom" data-back="s-menu">
   <button data-act="back" class="back">&larr; BACK</button>
-    <!-- build 65 (64.20): the music is the whole game's, not a game tab's — so it sits above the preview and its game chips -->
-    <div class="cgroup"><div class="clabel">Music</div><div class="chips" data-set="track" id="c-track"></div><div class="lockline" data-act="pvlock" id="lk-track"></div></div>
-    <!-- build 68 (67.34): the Music on / off row is gone — Off is the Music row's last choice -->
+    <!-- build 68 (67.35): CUSTOMISE FITS WITHOUT SCROLLING DOWN TO THE GAME TABS. Top, the whole game's: Music, Background, Tap sound, one compact
+         row each. Middle: the preview, two-thirds its old height. Bottom, per game: the game tabs, then that game's own rows.
+         67.34: the Music on / off row is gone — Off is the Music row's last choice. 67.35: the Background colour row is gone — the picked
+         background's tile carries a small wheel that opens its colour. Tap sound was always ONE setting (prefs.snd); its row moved up to say so -->
+    <div class="cgroup cwide"><div class="clabel">Music</div><div class="chips crow" data-set="track" id="c-track"></div><div class="lockline" data-act="pvlock" id="lk-track"></div></div>
+    <div class="cgroup cwide"><div class="clabel">Background</div><div class="sw crow" data-set="bg" id="c-bg"></div><div class="lockline" data-act="pvlock" id="lk-bg"></div></div>
+    <div class="cgroup cwide"><div class="clabel">Tap sound</div><div class="chips crow" data-set="snd" id="c-snd"></div><div class="lockline" data-act="pvlock" id="lk-snd"></div></div>
+    <!-- build 68 (67.39): Tiny Aiden on the menus, shown once he has danced (ten excuses, ui/excuse.js) -->
+    <div class="cgroup cwide" id="g-tiny" hidden><div class="clabel" id="tiny-lab"></div><div class="chips crow" data-set="tiny" id="c-tiny"></div></div>
     <div class="pv" id="pv" data-g="quick-tap">
       <div class="pvqt"><div class="pad l"><div class="sq" id="pv0"></div></div><div class="pad r"><div class="sq" id="pv1"></div></div><div class="pad l up"><div class="sq" id="pv2"></div></div><div class="pad r up"><div class="sq" id="pv3"></div></div></div>
       <div class="pvdots"><b class="ld" id="pvlead"></b><b id="pvdot"></b></div>
@@ -207,11 +213,6 @@
     <div class="cgroup"><div class="clabel">Target colour</div><div class="sw" data-set="sq" id="c-sq"></div><div class="lockline" data-act="pvlock" id="lk-sq"></div></div>
     <div class="cgroup" id="g-lead"><div class="clabel">Lead colour</div><div class="sw" data-set="lead" id="c-lead"></div><div class="lockline" data-act="pvlock" id="lk-lead"></div></div>
     <div class="cgroup" id="g-cut"><div class="clabel">Cut pieces</div><div class="sw" data-set="cut" id="c-cut"></div><div class="lockline" data-act="pvlock" id="lk-cut"></div></div>
-    <div class="cgroup"><div class="clabel">Background</div><div class="sw" data-set="bg" id="c-bg"></div><div class="lockline" data-act="pvlock" id="lk-bg"></div></div>
-    <div class="cgroup"><div class="clabel">Background colour</div><div class="sw" data-set="bgcol" id="c-bgcol"></div><div class="lockline" data-act="pvlock" id="lk-bgcol"></div></div>
-    <div class="cgroup"><div class="clabel">Tap sound</div><div class="chips" data-set="snd" id="c-snd"></div><div class="lockline" data-act="pvlock" id="lk-snd"></div></div>
-    <!-- build 68 (67.39): Tiny Aiden on the menus, shown once he has danced (ten excuses, ui/excuse.js) -->
-    <div class="cgroup" id="g-tiny" hidden><div class="clabel" id="tiny-lab"></div><div class="chips" data-set="tiny" id="c-tiny"></div></div>
     <div class="cgroup" id="g-scale"><div class="clabel">Scale</div><div class="chips" data-set="scale" id="c-scale"></div><div class="lockline" data-act="pvlock" id="lk-scale"></div></div>
     <!-- build 65 (64.19): the taps-per-second row is gone; the in-game meter is always on, and always the live reading -->
     <!-- v18 (B.28): ONE music row, and it is the track this game plays. Not on / off, not a Preview button, not a
@@ -386,7 +387,7 @@
   <div id="bar"></div>
 </div>
 <div id="toast" data-act="toast"></div>
-<div id="wheelwrap"><div id="wheelbox"><div class="eyebrow" id="wheel-title">pick a colour</div><div id="wheelpad"><canvas id="wheel" width="480" height="480"></canvas><i id="wheelmark"></i></div><div id="wheelout"></div><button data-act="wheel-done" class="item sub" id="wheel-done">Done</button></div></div>
+<div id="wheelwrap"><div id="wheelbox"><div class="eyebrow" id="wheel-title">pick a colour</div><div id="wheelpad"><canvas id="wheel" width="480" height="480"></canvas><i id="wheelmark"></i></div><div id="wheelout"></div><button data-act="wheel-none" class="item sub" id="wheel-none" hidden></button><button data-act="wheel-done" class="item sub" id="wheel-done">Done</button></div></div>
 
 <script type="module" src="./boot.js"></script>
 

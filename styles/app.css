@@ -976,6 +976,21 @@
   #c-track .opt.sel,#c-bg button.sel{border-color:var(--oc,#FFFFFF);color:var(--oc,#FFFFFF);outline:none;box-shadow:0 0 12px 1px color-mix(in srgb,var(--oc,#FFFFFF) 55%,transparent)}
   #c-track .opt.othorn,#c-bg button.othorn{border:1px solid transparent;border-image:repeating-linear-gradient(45deg,#FFFFFF 0 3px,#000000 3px 6px) 1}
   #c-track .opt.othorn.sel,#c-bg button.othorn.sel{border-width:2px;border-image-slice:2}
+  /* build 68 (67.35): the game-wide rows are one compact row each — a row longer than the screen scrolls sideways, centred when it fits; the preview
+     is two-thirds its old height */
+  #s-custom .cwide{width:100%;gap:6px}
+  #s-custom .crow{flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;overflow-y:hidden;width:fit-content;max-width:100%;margin:0 auto;padding:4px 6px 6px;box-sizing:border-box;scrollbar-width:none}
+  #s-custom .crow::-webkit-scrollbar{display:none}
+  #s-custom .crow .opt{flex:none;padding:7px 10px;font-size:11px;letter-spacing:.14em}
+  #s-custom .sw.crow{gap:7px;padding:8px 10px 10px}
+  #s-custom .sw.crow button{flex:none;width:36px;height:36px}
+  #s-custom .clabel{font-size:12px}
+  #s-custom .pv{aspect-ratio:24/10}
+  /* 67.35: the small wheel on the picked background — the colour it holds in its middle; its touch area is bigger than it looks */
+  .bgwheel{position:absolute;right:-7px;bottom:-7px;width:17px;height:17px;border-radius:50%;background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);border:2px solid var(--ground);z-index:2;box-sizing:border-box}
+  .bgwheel::before{content:"";position:absolute;inset:-9px;border-radius:50%}
+  .bgwheel.tinted{box-shadow:inset 0 0 0 3px var(--bgt)}
+  .bgwheel.locked{filter:grayscale(1);opacity:.45}
   .opt.locked{opacity:.35;text-decoration:line-through}
   /* v17 (B.32): a locked TRACK row is not a struck-out option — it is the track this game plays, readable, with a
      padlock drawn beside it and no text about what opens it (A.1). The padlock is two boxes, so nothing is asked of a

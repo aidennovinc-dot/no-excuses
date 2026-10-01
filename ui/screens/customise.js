@@ -64,12 +64,14 @@ function lockLine(set,L){ const el=$('#lk-'+set); if(!el) return;
 const shows=(g,set)=>set==='lead'?!!GAMES[g].lead:set==='cut'?g==='hold':set==='scale'?g==='sequence':set==='rate'?!!GAMES[g].timed:true;
 // build 68 (67.33): the colour of where a choice came from — a key's, or plain white
 const originOf=k=>ORIGIN_LOOK[k]||ORIGIN_LOOK.plain;
+// 67.35: the small wheel on the picked background's tile, showing the colour it holds; dim while the wheel itself is still locked
+const badgeHtml=()=>{ const w=ITEMS.bgcol.find(i=>i.v==='wheel'), L=w&&lockedBy(w); return `<i class="bgwheel${L?' locked':''}${prefs.tint?' tinted':''}" data-act="bgwheel" style="${prefs.tint?'--bgt:'+prefs.tint:''}" aria-label="${esc(CUSTOM.bgColour)}"></i>`; };
 function renderCustom(){
   const fresh=[];
   /* v29 Section A (57.11b, build 57): `bg` is the PATTERN and `bgcol` is the COLOUR — two rows, two settings. A pattern swatch is selected on
      `prefs.bg` alone (it no longer has to have no colour set), and the colour row's two swatches are "no colour" (`prefs.tint` empty — back to the
      design's own ground) and the wheel (any colour, which is what `prefs.tint` holds). */
-  for(const set of ['sq','lead','cut','bg','bgcol']) $('#c-'+set).innerHTML = ITEMS[set].map(it=>{ const L=lockedBy(it); const isWheel=it.v==='wheel';
+  for(const set of ['sq','lead','cut','bg']) $('#c-'+set).innerHTML = ITEMS[set].map(it=>{ const L=lockedBy(it); const isWheel=it.v==='wheel';
     const curC=colOf(F.g)[set];
     const selNow = set==='bgcol' ? (isWheel?!!prefs.tint:!prefs.tint)
       : isWheel ? !ITEMS[set].some(o=>o.v===curC) : (set==='bg'?prefs.bg===it.v:curC===it.v);
@@ -79,7 +81,7 @@ function renderCustom(){
       :set==='bgcol'?(isWheel?'':`background:${DESIGNS[prefs.bg]?.tint||'#000'}`):isWheel?'':`background:${it.v}`;
     // build 68 (67.33): a background wears where it came from
     const o=set==='bg'?originOf(it.key):null;
-    return `<button data-act="item" data-v="${it.v}" class="${cls}${o&&o.thorns?' othorn':''}" data-lock="${L?L.id:''}" style="${style}${o?';--oc:'+o.col:''}" aria-label="${it.v}${L?' locked':''}"></button>`; }).join('');
+    return `<button data-act="item" data-v="${it.v}" class="${cls}${o&&o.thorns?' othorn':''}" data-lock="${L?L.id:''}" style="${style}${o?';--oc:'+o.col:''}" aria-label="${it.v}${L?' locked':''}">${set==='bg'&&selNow?badgeHtml():''}</button>`; }).join('');
   for(const set of ['snd','scale']) $('#c-'+set).innerHTML = itemsOf(set).map(it=>{ const L=lockedBy(it); const nw=L?'':newMark('cos:'+set+':'+it.v,fresh); return `<button data-act="item" data-v="${it.v}" class="opt ${String(prefs[set])===String(it.v)?'sel':''} ${L?'locked':''}${nw}" data-lock="${L?L.id:''}">${it.label}</button>`; }).join('');
   /* v18 (B.28) → v28 (items 2 / 3, build 53): ONE MUSIC ROW, AND IT IS THE WHOLE OF THE MUSIC CHOICE. B.28 made the row the track;
      build 42 put an EVERYWHERE row above it (Per game / Key / Pro / Thorns) for the same decision said a second way, and Aiden's line was
@@ -106,6 +108,8 @@ function renderCustom(){
   // build 68 (67.39): Tiny Aiden's switch shows once he has danced — on unless switched off
   const tiny=excuseCount()>=TINY_AIDEN.at; $('#g-tiny').hidden=!tiny;
   if(tiny){ $('#tiny-lab').textContent=CUSTOM.tiny; $('#c-tiny').innerHTML=[['1',CUSTOM.tinyOn],['0',CUSTOM.tinyOff]].map(([v,l])=>`<button data-act="item" data-v="${v}" class="opt ${String(prefs.tinyAiden===0?0:1)===v?'sel':''}">${esc(l)}</button>`).join(''); }
+  // 67.35: a row that runs past the screen's edge scrolls sideways, and the picked choice is brought into view
+  for(const r of $$('#s-custom .crow')){ const s=r.querySelector('.sel'); if(s&&r.scrollWidth>r.clientWidth) r.scrollLeft=Math.max(0,s.offsetLeft-r.clientWidth/2+s.offsetWidth/2); }
   $('#pv-g').innerHTML=Object.entries(GAMES).map(([id,x])=>`<button class="chip" data-act="chip-pv" data-chip="pv-g" data-v="${id}">${x.name}</button>`).join(''); chips('pv','g',F.g);
   $('#pv').dataset.g=F.g; $('#g-lead').style.display=shows(F.g,'lead')?'':'none';
   $('#g-cut').style.display=shows(F.g,'cut')?'':'none'; $('#g-scale').style.display=shows(F.g,'scale')?'':'none';
@@ -168,7 +172,7 @@ const Wheel=(()=>{ const cv=$('#wheel'), cx=cv.getContext('2d'); let set='sq', d
     // 57.11b: the background's colour comes off the `bgcol` row now. It is still a DARK colour (lightness .08) — it is a background, not a wash
   function pick(e){ const b=cv.getBoundingClientRect(); const x=(e.clientX-b.left)/b.width*480, y=(e.clientY-b.top)/b.height*480; const dx=x-240, dy=y-240, r=Math.min(240,Math.hypot(dx,dy)); const h=(Math.atan2(dy,dx)*180/Math.PI+360)%360; const bgSet=set==='bgcol'; const [rr,gg,bb]=hsl(h,r/240,bgSet?.08:.6); col='#'+[rr,gg,bb].map(v=>v.toString(16).padStart(2,'0')).join(''); $('#wheelout').style.background=col; mark(h,r/240); if(bgSet) prefs.tint=col; else prefs.col[F.g][set]=col; applyPrefs(F.g); if(!bgSet) $('#pv').style.setProperty(set==='sq'?'--sq-live':set==='cut'?'--cutp':'--cue',col); }
   cv.addEventListener('pointerdown',e=>{ e.preventDefault(); pick(e); cv.setPointerCapture(e.pointerId); }); cv.addEventListener('pointermove',e=>{ if(e.buttons) pick(e); });
-  return { open(s){ set=s; draw(); $('#wheel-title').textContent=T(CUSTOM.wheel,{word:ITEM_WORD[s]||s,game:GAMES[F.g].name});
+  return { open(s){ set=s; draw(); const nb=$('#wheel-none'); if(nb){ nb.hidden=s!=='bgcol'; nb.textContent=CUSTOM.noColour; } $('#wheel-title').textContent=T(CUSTOM.wheel,{word:ITEM_WORD[s]||s,game:GAMES[F.g].name});
       const cur=s==='bgcol'?(prefs.tint||DESIGNS[prefs.bg].tint):colOf(F.g)[s]; $('#wheelout').style.background=cur;
       const hs=hueSat(cur); mark(hs?hs.h:null,hs?hs.s:0); $('#wheelwrap').classList.add('on'); },
     close(){ $('#wheelwrap').classList.remove('on'); renderCustom(); } }; })();
@@ -193,6 +197,11 @@ define({
   // B.30: the locked line is the control now — a tap on it goes to the achievement that opens the item, on Progress (build 39)
   pvlock(b){ if(b.dataset.ach) show('s-prog',{ach:b.dataset.ach}); return 'click'; },
   'wheel-done'(){ Wheel.close(); return 'click'; },
+  /* build 68 (67.35): the picked background's small wheel opens its colour — or, while the wheel is locked, says what opens it under the
+     Background row; the wheel's own "No colour" puts the background's own ground back */
+  bgwheel(){ const w=ITEMS.bgcol.find(i=>i.v==='wheel'), L=w&&lockedBy(w);
+    if(L){ Object.assign(pvTry,{set:'bg',v:prefs.bg,by:L.id}); renderCustom(); lockLine('bg',L); return 'pick'; } Wheel.open('bgcol'); return 'pick'; },
+  'wheel-none'(){ prefs.tint=''; save(); applyPrefs(F.g); Wheel.close(); return 'click'; },
   // a Customise item: colour, background, sound pack, scale, the track, the menu loop — the group is the closest [data-set]
   item(b){ const set=b.closest('[data-set]'); if(!set) return 'pick'; const k=set.dataset.set;
     /* B.30: a locked item previews itself and says what opens it UNDER ITS OWN ROW. The toast that used to carry this is
