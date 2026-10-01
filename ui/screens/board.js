@@ -9,7 +9,7 @@ import { on } from "../../core/events.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, lenName } from "../../games/registry.js";
 import { ACH, Scores, achToast, got, lensOf, tierOf, unlockHtml } from "../../progress.js";
-import { radarAll, radarOf } from "../../progress/key.js";
+import { COMBOS, TIERS, barOf, gameKey, isCleared, isShell, radarAll, radarOf, tierOpen, wantOf } from "../../progress/key.js";
 import { define } from "../actions.js";
 import { chips } from "../chips.js";
 import { colsOf, fmtScore } from "../format.js";
@@ -50,7 +50,7 @@ function renderRadar(){ const ids=Object.keys(GAMES), n=ids.length, C=100, R=88,
   const past=v=>RADAR.rings.filter(r=>v>r).length;
   $('#radar').innerHTML=rings+ids.map((_,i)=>{ const [x,y]=pt(i,1); return `<line x1="${C}" y1="${C}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`; }).join('')
     +`<g class="meg"><polygon class="me" points="${ids.map((_,i)=>pt(i,Math.max(.02,f(vals[i]))).map(v=>v.toFixed(1)).join(',')).join(' ')}"/>`
-    +ids.map((_,i)=>{ const [x,y]=pt(i,Math.max(.02,f(vals[i]))); return `<circle class="${past(vals[i])?'past':''}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.5"/>`; }).join('')+'</g>'
+    +ids.map((g,i)=>{ const [x,y]=pt(i,Math.max(.02,f(vals[i]))); return `<circle class="${past(vals[i])?'past':''}" data-g="${g}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.5"/>`; }).join('')+'</g>'
     +ids.map((g,i)=>{ const [x,y]=pt(i,1.19); return `<text class="${past(vals[i])?'past':''}" data-g="${g}" x="${x.toFixed(1)}" y="${(y+3).toFixed(1)}" text-anchor="middle">${GAMES[g].name} ${Math.round(vals[i])}</text>`; }).join('');
   $('#radar').classList.add('tiers');
   const all=radarAll(), tier=past(all), el=$('#radar-all');
@@ -63,7 +63,30 @@ function renderBoard(){ $('#pstar').textContent=prefs.supporter?'★':''; const 
   const cfg=GC(g,F.d,F.s), c=colsOf(g,F.d,F.s); $('#runs-h').innerHTML=`<tr><th>${BOARD.rank}</th><th></th><th>${cfg.scoreWord||BOARD.score}${cfg.lower?BOARD.lowerMark:''}</th><th>${c[0][0]}</th><th>${c[1][0]}</th><th>${BOARD.date}</th></tr>`;
   $('#runs').innerHTML=rows(g,F.d,F.s,Scores.of(g,F.d,F.s).slice(0,10)); }
 
-register('s-board',{ onShow(){ renderBoard(); renderRadar(); } });
+/* build 68 (67.21): A TAP ON THE WEB OPENS A GAME'S DETAIL — it used to fall through to the bare ground and go Back to the menu. A tap on a game's point
+   or name (or nearest to one) opens a panel: its score, which Skill / Pro / Author bars are cleared, its best run per mode, and the next bar to chase
+   (the nearest to clearing, on the lowest open key). A tap anywhere else — the panel, the web's middle, the screen around — closes it */
+let detailG=null;
+function nearG(e){ if(!e||typeof e.clientX!=='number') return null; let best=null, bd=1e9;
+  for(const t of document.querySelectorAll('#radar text[data-g], #radar circle[data-g]')){ const r=t.getBoundingClientRect(), d=Math.hypot(r.left+r.width/2-e.clientX,r.top+r.height/2-e.clientY); if(d<bd){ bd=d; best=t.dataset.g; } }
+  return bd<=40?best:null; }
+function detailHtml(g){ const v=Math.round(radarOf(g).v), tiers=TIERS.filter(t=>tierOpen(t)&&!isShell(t));
+  const bars=tiers.map(t=>{ const k=gameKey(g,t), K=KEYS.find(x=>x.id===t)||{}; return `<li class="${k.total&&k.done===k.total?'done':''}">${esc(T(RADAR_TXT.bars,{key:K.name||t,done:k.done,total:k.total}))}</li>`; }).join('');
+  const best=GAMES[g].modes.map(d=>{ const ls=GC(g,d).lens.map(s=>{ const b=Scores.best(g,d,s); return `${lenName(g,s,d)} ${b===null?RADAR_TXT.none:fmtScore(g,b,d,s)}`; }).join(' · ');
+    return `<li><i>${esc(MODE_NAME[d]||GAMES[g].name)}</i> ${esc(ls)}</li>`; }).join('');
+  let next=null; for(const t of tiers){ let top=null; for(const c of COMBOS){ if(c.g!==g) continue; const bar=barOf(c,t); if(bar===null||isCleared(c.key,t)) continue;
+      const b=Scores.best(c.g,c.d,c.s), f=b===null?0:c.bar.dir==='lower'?Math.min(1,bar/Math.max(b,1e-9)):Math.min(1,b/bar); if(!top||f>top.f) top={c,t,f}; }
+    if(top){ next=top; break; } }
+  const nx=next?T(RADAR_TXT.next,{name:[MODE_NAME[next.c.d],lenName(g,next.c.s,next.c.d)].filter(Boolean).join(' · '),need:wantOf(next.c,next.t)}):RADAR_TXT.cleared;
+  return `<b>${esc(GAMES[g].name)} <u>${v}</u></b><ul class="rbars">${bars}</ul><small class="rbest">${esc(RADAR_TXT.best)}</small><ul class="rmodes">${best}</ul><p class="rnext">${esc(nx)}</p><small class="rclose">${esc(RADAR_TXT.close)}</small>`; }
+function openDetail(g){ const el=$('#radar-detail'); if(!el||!GAMES[g]) return; detailG=g; el.innerHTML=detailHtml(g); el.hidden=false;
+  for(const t of document.querySelectorAll('#radar [data-g]')) t.classList.toggle('rsel',t.dataset.g===g); }
+function closeDetail(){ const el=$('#radar-detail'); if(!el||el.hidden) return false; el.hidden=true; detailG=null; for(const t of document.querySelectorAll('#radar .rsel')) t.classList.remove('rsel'); return true; }
+register('s-board',{ onShow(){ closeDetail(); renderBoard(); renderRadar(); },
+  // a tap on the screen around the web closes an open panel rather than going Back (67.21)
+  onBack(){ return closeDetail(); } });
+define({ radar(el,e){ const t=e&&e.target, hit=t&&t.closest?t.closest('[data-g]'):null, g=hit?hit.dataset.g:nearG(e); if(g&&g!==detailG) openDetail(g); else closeDetail(); return 'pick'; },
+  'radar-close'(){ closeDetail(); return 'pick'; } });
 define({ 'chip-bd'(b){ const key=b.dataset.chip.split('-')[1]; const v=isNaN(b.dataset.v)?b.dataset.v:+b.dataset.v; F[key]=v;
   if(key==='g'){ F.d=GAMES[v].modes[0]; F.s=GC(v,F.d).lens[0]; } if(key==='d'){ F.s=GC(F.g,v).lens[0]; } renderBoard(); return 'pick'; } });
 on('run:record',({run})=>{ curT=run.t; });

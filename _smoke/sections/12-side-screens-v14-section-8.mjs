@@ -257,6 +257,23 @@ export async function run() {
       ? ok(`67.18 the web is ${w18.w}px wide on a ${w18.iw}px phone (it was 230 at most), its labels ${w18.label}px tall`)
       : bad('67.18 the bigger web', JSON.stringify(w18));
   }
+  /* build 68 (67.21): A TAP ON THE WEB NEVER GOES BACK TO THE MENU. A real tap on a game's name opens its panel — score, bars per key, best per mode, the next
+     bar — and the screen stays Scores; a tap on the panel closes it; a tap in the web's middle stays on Scores too */
+  {
+    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS }, runs: [{ g: 'quick-tap', d: 'two', s: 5, t: Date.now() - 6e4, hits: 20, misses: 0, row: 20, v: 4 }], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+    await page.evaluate(async () => (await import('./ui/router.js')).show('s-board')); await sleep(500);
+    const lab = await page.evaluate(() => { const t = document.querySelector('#radar text[data-g="quick-tap"]'), r = t.getBoundingClientRect(), c = document.getElementById('radar').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, cx: c.left + c.width / 2, cy: c.top + c.height / 2 }; });
+    await page.mouse.click(lab.x, lab.y); await sleep(400);
+    const d21 = await page.evaluate(() => { const d = document.getElementById('radar-detail'); return { open: !d.hidden, txt: d.textContent, li: d.querySelectorAll('li').length, scr: document.querySelector('.screen.on')?.id }; });
+    await page.evaluate(() => document.getElementById('radar-detail').click()); await sleep(300);
+    const closed = await page.evaluate(() => ({ hidden: document.getElementById('radar-detail').hidden, scr: document.querySelector('.screen.on')?.id }));
+    await page.mouse.click(lab.cx, lab.cy); await sleep(400);
+    const mid = await page.evaluate(() => document.querySelector('.screen.on')?.id);
+    (d21.open && /Quick Tap/.test(d21.txt) && /bars/.test(d21.txt) && /next|every bar/.test(d21.txt) && d21.li >= 3 && d21.scr === 's-board' && closed.hidden && closed.scr === 's-board' && mid === 's-board')
+      ? ok(`67.21 a tap on the web opens the game's detail ("${d21.txt.slice(0, 60)}…", ${d21.li} lines) and never goes back to the menu; a tap on the panel closes it`)
+      : bad('67.21 the web\'s detail', JSON.stringify({ d21, closed, mid }));
+  }
   /* build 68 (67.30, Cowork): NO BLACK BACKING BOX BEHIND TEXT OR AN ICON, ANYWHERE — the menu, the map with a chest's "You found" words, Customise, on the
      brightest backgrounds: nothing is cut out of the background behind them (so nothing can show before the text it backs), and every line wears its
      own soft dark shadow instead */
