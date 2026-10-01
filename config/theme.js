@@ -22,7 +22,9 @@ export const KEYFILL = { name:'lilac', v:'#F3D9FF' };
    overlay of this strength, so targets, dots and numbers stay the brightest thing on screen. `clear` — how much of the art is taken out from
    behind every piece of text and every control on a screen (1 = all of it), and `pad`, how far round each one, in CSS px. */
 export const BG_LAYER = { dim: .5, clear: .94, pad: 6 };
-export const DESIGNS = { stars:{tint:'#050506'}, grid:{tint:'#0A1430'}, rain:{tint:'#0B1008'}, orbs:{tint:'#0E0608'}, snow:{tint:'#070A10'}, lantern:{tint:'#1A1024'}, circuit:{tint:'#05080E'}, thorn:{tint:'#020202'} };
+/* build 66 (65.12): SNOW HAS A NIGHT OF ITS OWN. Its ground was #070A10 under white dots — the starfield's near-black under the starfield's dots — so
+   its swatch and the default's were "exactly the same" (Aiden). It is a cold blue night now, the way Grid is navy */
+export const DESIGNS = { stars:{tint:'#050506'}, grid:{tint:'#0A1430'}, rain:{tint:'#0B1008'}, orbs:{tint:'#0E0608'}, snow:{tint:'#101C33'}, lantern:{tint:'#1A1024'}, circuit:{tint:'#05080E'}, thorn:{tint:'#020202'} };
 // Customise: every item, and the achievement id that earns it (`by`). No `by` = open from the start
 // v24 (C.6, build 43): `key` is the other kind of lock — the key tier that has to be FINISHED (every bar on it cleared) before the item opens
 export const ITEMS = {

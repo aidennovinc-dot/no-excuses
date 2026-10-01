@@ -734,7 +734,8 @@ export async function run() {
       S.prefs.bg = bg; S.prefs.tint = ''; S.save(); T.applyPrefs(); R.show('s-menu'); await wait(650);
       const cv = document.getElementById('stars'), cx = cv.getContext('2d');
       const d = cx.getImageData(0, 0, cv.width, cv.height).data;
-      let lit = 0, n = 0; for (let i = 0; i < d.length; i += 4 * 97) { n++; if (d[i + 3] > 6) lit++; }
+      // build 66 (CLOCK FLAKE fixed): every 13th pixel, not every 97th, so the starfield's pin-points are never all stepped over
+      let lit = 0, n = 0; for (let i = 0; i < d.length; i += 4 * 13) { n++; if (d[i + 3] > 6) lit++; }
       return { bg, lit: +(lit / n * 100).toFixed(1), ground: getComputedStyle(document.documentElement).getPropertyValue('--ground').trim() }; }, bg));
     // the starfield: `stars` draws it and nothing else may — read off the module rather than the pixels, which is what the draw loop decides on
     const starOnly = await page.evaluate(async bgs => { const A = await import('./ui/atmosphere.js'); return bgs.filter(b => !!A.LAYER[b]); }, bgs);
@@ -857,6 +858,22 @@ export async function run() {
     (ul.lantern.off <= 4 && ul.lantern.body === ul.lantern.html && ul.lantern.html !== ul.stars.ground && ul.stars.html === ul.stars.ground)
       ? ok(`62.15 under Lantern the page itself wears the layer's bottom colour (${ul.lantern.html} against the canvas's ${ul.lantern.px}), so a strip the layer misses is no flat --ground band; under the starfield it stays --ground (${ul.stars.ground})`)
       : bad('62.15 the page under the layer', JSON.stringify(ul));
+  }
+  /* build 66 (65.12): EVERY BACKGROUND IS VISIBLY ITS OWN. Aiden: Customise's first background (the starfield) and Snow were "exactly the same". On
+     Customise every swatch differs from every other (colour and pattern), Snow's ground is a different colour from the starfield's by a clear margin,
+     and on screen Snow draws far more of the canvas than the starfield's pin-points (its flakes have halos) */
+  {
+    await boot({ chests: { games: 1, key: 1, pro: 1, thorns: 1 }, allOpen: true });
+    const s12 = await page.evaluate(async () => { const S = await import('./core/store.js'), T = await import('./ui/theme.js'), R = await import('./ui/router.js'), wait = ms => new Promise(r => setTimeout(r, ms));
+      R.show('s-custom'); await wait(500);
+      const sw = [...document.querySelectorAll('#c-bg button')].map(b => { const c = getComputedStyle(b); return { v: b.dataset.v, look: c.backgroundColor + '|' + c.backgroundImage, col: c.backgroundColor.match(/\d+/g).slice(0, 3).map(Number) }; });
+      const lit = {}; for (const bg of ['stars', 'snow']) { S.prefs.bg = bg; S.prefs.tint = ''; S.save(); T.applyPrefs(); R.show('s-menu'); await wait(900);
+        const cv = document.getElementById('stars'), d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let n = 0, on = 0; for (let i = 0; i < d.length; i += 4 * 53) { n++; if (d[i + 3] > 6) on++; } lit[bg] = +(on / n * 100).toFixed(2); }
+      S.prefs.bg = 'stars'; S.save(); T.applyPrefs(); return { sw, lit }; });
+    const TH12 = await import(pathToFileURL(path.join(root, 'config', 'theme.js')).href), hx = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)), a12 = hx(TH12.DESIGNS.stars.tint), b12 = hx(TH12.DESIGNS.snow.tint), gap = Math.max(...a12.map((v, i) => Math.abs(v - b12[i])));
+    (new Set(s12.sw.map(x => x.look)).size === s12.sw.length && gap >= 20 && s12.lit.snow > s12.lit.stars * 3)
+      ? ok(`65.12 every background swatch is its own (${s12.sw.length} distinct); Snow's ground differs from the starfield's by ${gap} and it draws ${s12.lit.snow}% of the canvas to the starfield's ${s12.lit.stars}%`)
+      : bad('65.12 two backgrounds look alike', JSON.stringify({ gap, lit: s12.lit, sw: s12.sw.map(x => x.v + ' ' + x.look.slice(0, 60)) }));
   }
   /* build 66 (65.10): THE BOTTOM 40PX OF EVERY SCREEN ARE THE SCREEN'S OWN BACKGROUND — the page's colour (html, what the phone shows wherever the
      canvas stops short) and the canvas agree there, on every screen, under the starfield and under Lantern, at 390×844 with a phone's insets and on an
