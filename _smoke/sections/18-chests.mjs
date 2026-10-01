@@ -862,6 +862,20 @@ export async function run() {
       ? ok(`67.12 / 65.15 every reward says its kind under its name (${[...new Set(all.map(g => g.kind).filter(Boolean))].join(' ')}) except Customise and the keys, which say none — on the chest's screen and beside the chest on the map; "${lantern.w}" reads ${lantern.kind}`)
       : bad('65.15 the reward kinds', JSON.stringify(K15));
   }
+  /* build 68 (67.26): CONFETTI OVER THE SKILL CHEST'S OPENING, on the beat its count reaches 100% — gold, the congratulations confetti's own fall — and none on
+     the way there; the Pro chest's opening is untouched (L17 pins it) */
+  {
+    await boot({});
+    const c26 = await page.evaluate(async () => { const K = await import('./progress/key.js'), P = await import('./progress.js'), R = await import('./ui/router.js'), S = await import('./core/store.js'), CH = await import('./config/chests.js'), w = ms => new Promise(r => setTimeout(r, ms));
+      S.prefs.allOpen = false; S.prefs.chests = {}; S.store.bars = {}; S.prefs.revealed = { 'key:clear': 1 }; S.prefs.keyWhole = { clear: 1 }; S.save();
+      K.devReach('key', P.devModesAll); S.prefs.revealed = Object.assign({}, S.prefs.revealed, { 'key:clear': 1 }); S.prefs.keyWhole = { clear: 1 }; S.save(); R.show('s-key', { open: 'key' });
+      let before = 0, at = null; for (let i = 0; i < 300; i++) { await w(40); const h = document.querySelector('#key-cere'), m = h && h.querySelector('.meterv.whole'), c = h && h.querySelector('.rconf.cwhole');
+        if (!m && c) before++; if (m) { at = { conf: !!c, n: c ? c.children.length : 0, col: m ? getComputedStyle(m).color : '' }; break; } }
+      return { before, at, n: CH.CONFETTI.key.n }; });
+    (c26.at && c26.at.conf && c26.at.n === c26.n && !c26.before)
+      ? ok(`67.26 the Skill chest's opening throws ${c26.at.n} pieces of gold confetti on the beat its count reaches 100%, and none before it`)
+      : bad('67.26 the Skill chest confetti', JSON.stringify(c26));
+  }
   /* build 68 (67.32): OPENING A KEY'S CHEST SETS THE GAME'S MUSIC TO THAT KEY'S THEME, and says so in its "You found" list — Skill → Lantern, Pro → Circuit,
      Author → Thorns; the Games chest leaves the music alone; the background never switches */
   {

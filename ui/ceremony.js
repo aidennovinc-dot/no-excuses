@@ -21,6 +21,7 @@ import { countUp } from "../core/count.js";
 import { COMBOS } from "../progress/key.js";
 import { chestCol, chestSvg, meterLook } from "./chest.js";
 import { meterPct } from "../progress/key.js";
+import { confettiHtml } from "./reveal.js";
 const METER_FULL = 100;
 
 const f1 = v => (+v).toFixed(1);
@@ -164,7 +165,10 @@ function chestStage(id, o = {}) { const cfg = CEREMONY[id]; if (!cfg) return nul
       if (!o.silent) Snd.chest(id);
       // D.4 / L.8e: the credit lands as the count-up in the last beat. Under Reduce Motion it lands at once, with the rest of it
       clearTimeout(upT);
-      const whole = () => { if (!live || !m || id !== 'key' || sNow !== METER_FULL) return; m.classList.add('whole'); if (!o.silent) Snd.verdict('ace'); };
+      /* build 68 (67.26): AND THE CONFETTI FALLS on the beat the Skill chest's count reaches 100% — the congratulations confetti, with its 2026-09-20 "more
+         random, more human" fall, in the chest's gold, over the opening itself. The Skill chest only; the Pro chest's opening is locked (L17) */
+      const whole = () => { if (!live || !m || id !== 'key' || sNow !== METER_FULL) return; m.classList.add('whole'); if (!o.silent) Snd.verdict('ace');
+        if (host && !host.querySelector('.rconf.cwhole')) host.insertAdjacentHTML('beforeend', confettiHtml('key').replace('class="rconf"', 'class="rconf cwhole"')); };
       const run = () => { if (!live || !m) return; if (sNow > sWas) { m.classList.add('up');
           countUp({ audio: o.silent ? null : Snd, from: sWas, to: sNow, ms: upMs, fmt: v => Math.round(v), set: v => setShown(m, v, now), alive: () => live });
           upT = setTimeout(whole, upMs); }

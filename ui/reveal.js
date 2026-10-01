@@ -273,4 +273,5 @@ const on = () => !!cur;
 // which message the card is offering, if any — ui/screens/key.js hands it to the About screen
 const msgOf = () => (cur && cur.card && cur.card.msg) || '';
 
+export { confettiHtml };
 export { msgOf, on as revealOn, play as playReveal, go as revealGo, stop as stopReveal, tap as revealTap };
