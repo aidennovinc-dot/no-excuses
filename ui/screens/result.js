@@ -5,6 +5,7 @@
 import { RESULT, SHARE, SHEET, TOAST, VERDICT } from "../../config/copy.js";
 import { playersHtml } from "../players.js";
 import { welcomeCheck } from "../welcome.js";
+import { excuseFx, excuseLine } from "../excuse.js";
 import { tutTells } from "../tutorial.js";
 import { MAP_ON_UNLOCK_MS } from "../../config/audio.js";
 import { PUB_URL } from "../../config/build.js";
@@ -97,7 +98,7 @@ function abandonRun(){ abandoned=true; quiet(true); played={g:sel.game,d:sel.dif
   $('#vsbox').classList.remove('on'); $('#over-stats').innerHTML=''; $('#over-rank').innerHTML=''; $('#share').hidden=true;
   renderOverChips(); renderOverTop(); show('s-over'); }
 on('run:abort',({quiet,gaunt,again}={})=>{ if(!quiet&&!gaunt&&!again) abandonRun(); });
-on('run:finish',({run,isBest,two,fresh,ach,adv})=>{ const g=GC(run.g,run.d,run.s);
+on('run:finish',({run,isBest,two,fresh,ach,adv,excuse})=>{ const g=GC(run.g,run.d,run.s);
   abandoned=false; $('#s-over').classList.remove('abandoned');
   /* build 65 (A1 / 64.3): THIS SCREEN IS BUSY until the last thing it has to say has been said — its toasts queued and the Welcome moment asked —
      and `data-busy` says so, so a first-time tutorial never talks over a verdict, a toast or a ceremony (ui/tutorial.js busy()) */
@@ -141,7 +142,8 @@ on('run:finish',({run,isBest,two,fresh,ach,adv})=>{ const g=GC(run.g,run.d,run.s
     // build 68 (67.3): a toast whose news a first-time box on this screen already gives is dropped — a menu item's, the first run's unlocks
     const told=tutTells(run);
     const msgs=(fresh||[]).filter(u=>!told.has(u.key)).map(u=>u.menu?[T(TOAST.unlock,{name:u.name}),'','ok',false,'','']:[unlockToast(u.key),'','ok',false,u.key,gameOf(u.key)])
-      .concat((ach||[]).map(a=>[achToast(a),a.id,'']));
+      .concat((ach||[]).map(a=>[achToast(a),a.id,'']))
+      .concat(excuse&&!excuse.quiet?[[excuseLine(excuse),'','',false,'','',excuse]]:[]);
     /* the tier's sound plays HERE, not at the finish: Snd.end() already owns the moment the run stops, and the ad break
        can stand between the two. A run that earned something pushes its toasts back by the length of the sound, so the
        verdict and an unlock never land on top of each other — the unlock is the bigger sound and it gets clear air. */
@@ -152,7 +154,7 @@ on('run:finish',({run,isBest,two,fresh,ach,adv})=>{ const g=GC(run.g,run.d,run.s
        tapped on never reached. ui/welcome.js owns every reason NOT to play it; this line says only WHEN */
     const rest=()=>{ const gap=lastTier?Snd.endLeft():0, d=(lastTier?600:0)+gap; if(lastTier){ const t=lastTier; if(gap) setTimeout(()=>Snd.verdict(t),gap); else Snd.verdict(t); }
       tT.push(setTimeout(()=>welcomeCheck(R.on),d));
-      msgs.forEach(([m,id,cls,html,go,g],i)=>tT.push(setTimeout(()=>{ toast(m,id,cls,!!id,go); if(g) tT.push(setTimeout(()=>Snd.mapFx(g),MAP_ON_UNLOCK_MS)); },d+60+i*((id||go)?3400:2600))));
+      msgs.forEach(([m,id,cls,html,go,g,x],i)=>tT.push(setTimeout(()=>{ toast(m,id,cls,!!id,go); if(x) excuseFx(x); if(g) tT.push(setTimeout(()=>Snd.mapFx(g),MAP_ON_UNLOCK_MS)); },d+60+i*((id||go)?3400:2600))));
       tT.push(setTimeout(()=>quiet(true),d+msgs.length*3400+900));
       renderOverChips(); };
     if(adv) keyBreak(adv,rest); else rest(); },run),250); });

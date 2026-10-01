@@ -181,5 +181,19 @@ const QUALITY = {
 const quality=(g,d,s,r)=>GV(QUALITY,g,d,s,()=>0)(r);
 
 const ACH_PROGRESS = Object.fromEntries(Object.entries(ACH_PROGRESS_RAW).map(([k, f]) => [k, clamp1(f)]));
-export { LEN_BEST, UNLOCK_BEST };
+/* build 68 (67.38): THE EXCUSES' TESTS, one per config/excuses.js row, by its id. `r` is the finished run, `xs` the raw facts its engine wrote
+   (run/run.js makeCtx), `E` the row with its numbers. #10 is the map's hidden exit, not a run (ui/excuse.js). Every trigger differs from the five
+   deliberate-failure unlocks (L6), and progress/excuses.js keeps one quiet when a run does both */
+const EXCUSE_TEST = {
+  1: (r, xs, E) => r.g === 'quick-tap' && !r.hits && r.misses >= E.misses,
+  2: (r, xs, E) => r.g === 'dots' && !r.hits && r.misses >= E.misses,
+  3: (r, xs, E) => r.g === 'hold' && r.d === 'grow' && Number.isFinite(xs.pmin) && (xs.pmin < E.under || xs.pmax > E.over),
+  4: (r, xs, E) => r.g === 'hold' && r.d === 'cut' && Number.isFinite(xs.smin) && xs.smin < E.share,
+  5: (r, xs, E) => r.g === 'reaction' && r.d === 'flash' && (xs.erow || 0) >= E.row,
+  6: (r, xs, E) => r.g === 'reaction' && r.d === 'nogo' && (xs.dseen || 0) >= E.minNo && (xs.dhit || 0) >= xs.dseen,
+  7: (r, xs, E) => r.g === 'timing' && r.d === 'stopwatch' && Number.isFinite(r.y) && r.y >= E.off,
+  8: (r, xs, E) => r.g === 'sequence' && (xs.oneKey || 0) >= E.notes,
+  9: (r, xs, E) => r.g === 'spot' && r.d === 'count' && (xs.z0 || 0) >= E.circles,
+};
+export { EXCUSE_TEST, LEN_BEST, UNLOCK_BEST };
 export { ACH_LEFT, ACH_PROGRESS, ACH_TEST, LEN_TEST, QUALITY, UNLOCK_TEST, bestRate, bestRound, fullsetProg, lowProg, lowTotal, quality, rate, tourProg };

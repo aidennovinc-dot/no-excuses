@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { own, BASE, sleep, names, section, check, ok, bad, finished, root, read, at, page, until, click, setStorage, OPEN_PREFS, SEEN_INTRO, down } from '../lib/gate.mjs';
+import { own, BASE, sleep, names, section, check, ok, bad, finished, root, read, at, page, until, click, setStorage, OPEN_PREFS, SEEN_INTRO, down, openSheet, driveToResult } from '../lib/gate.mjs';
 
 export const SECTION = ["side screens (v14 section 8)"];
 
@@ -273,6 +273,68 @@ export async function run() {
     (d21.open && /Quick Tap/.test(d21.txt) && /bars/.test(d21.txt) && /next|every bar/.test(d21.txt) && d21.li >= 3 && d21.scr === 's-board' && closed.hidden && closed.scr === 's-board' && mid === 's-board')
       ? ok(`67.21 a tap on the web opens the game's detail ("${d21.txt.slice(0, 60)}…", ${d21.li} lines) and never goes back to the menu; a tap on the panel closes it`)
       : bad('67.21 the web\'s detail', JSON.stringify({ d21, closed, mid }));
+  }
+  /* build 68 (67.38): EXCUSES. Each of the nine run excuses fires on its own trigger and not on the near miss beside it; none fires in the walkthrough,
+     a profile's first ten minutes or a demo; one that comes with an unlock is a quiet tick. Then for real: a Quick Tap run of nothing but misses ends
+     on "Excuse #1: The phone was upside down" with the shrug and the bwomp; the Excuses tab lists all ten with the total; and the map pulled down past
+     its top shows the tiny exit, whose tap is Excuse #10 */
+  {
+    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS }, runs: [{ g: 'quick-tap', d: 'two', s: 5, t: Date.now() - 3600e3, hits: 20, misses: 0, row: 20, v: 4 }, { g: 'quick-tap', d: 'two', s: 15, t: Date.now() - 3500e3, hits: 40, misses: 1, row: 30, v: 4 }], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+    const ex = await page.evaluate(async () => {
+      const { checkExcuse, excuseCount } = await import('./progress/excuses.js'); const { prefs, store } = await import('./core/store.js');
+      const R = (g, d, o) => Object.assign({ g, d, s: 5, t: Date.now(), hits: 0, misses: 0 }, o || {});
+      const cases = [[1, R('quick-tap', 'two', { misses: 10 })], [0, R('quick-tap', 'two', { misses: 9 })], [0, R('quick-tap', 'two', { hits: 1, misses: 12 })],
+        [2, R('dots', 'blind', { misses: 15 })], [0, R('dots', 'blind', { misses: 14 })],
+        [3, R('hold', 'grow'), { pmin: 4.2, pmax: 90 }], [3, R('hold', 'grow'), { pmin: 80, pmax: 310 }], [0, R('hold', 'grow'), { pmin: 6, pmax: 290 }],
+        [4, R('hold', 'cut'), { smin: .8 }], [0, R('hold', 'cut'), { smin: 1.2 }],
+        [5, R('reaction', 'flash'), { erow: 3 }], [0, R('reaction', 'flash'), { erow: 2 }],
+        [6, R('reaction', 'nogo'), { dseen: 6, dhit: 6 }], [0, R('reaction', 'nogo'), { dseen: 6, dhit: 5 }], [0, R('reaction', 'nogo'), { dseen: 4, dhit: 4 }],
+        [7, R('timing', 'stopwatch', { y: 3.2 })], [0, R('timing', 'stopwatch', { y: 2.9 })], [0, R('timing', 'hidden', { y: 3500 })],
+        [8, R('sequence', 'solo'), { oneKey: 2 }], [0, R('sequence', 'solo'), { oneKey: 1 }],
+        [9, R('spot', 'count'), { z0: 10 }], [0, R('spot', 'count'), { z0: 9 }]];
+      const wrong = cases.map(([want, r, xs]) => { const x = checkExcuse(r, xs || {}, false); return [want, x ? x.id : 0, r.g + ':' + r.d]; }).filter(([w, g]) => w !== g);
+      const q = checkExcuse(R('timing', 'stopwatch', { y: 4 }), {}, true), n = excuseCount();
+      prefs.tut = 1; prefs.tutRun = { g: 'quick-tap' }; const inTut = checkExcuse(R('timing', 'stopwatch', { y: 4 }), {}, false); prefs.tut = 2; delete prefs.tutRun;
+      const keep = store.runs; store.runs = [{ g: 'quick-tap', d: 'two', s: 5, t: Date.now() - 60e3, hits: 3, misses: 0 }];
+      const young = checkExcuse(R('timing', 'stopwatch', { y: 4 }), {}, false); store.runs = keep;
+      const demo = checkExcuse(R('timing', 'stopwatch', { y: 4, demo: 1 }), {}, false);
+      return { wrong, n, want: cases.filter(c => c[0]).length + 1, quiet: !!(q && q.quiet), inTut, young, demo };
+    });
+    await page.evaluate(async () => { const { Snd } = await import('./audio.js'); const o = Snd.bwomp.bind(Snd); window.__bw = 0; Snd.bwomp = () => { window.__bw++; o(); }; });
+    // the sheet is opened by hand: openSheet() resets the profile, and a profile with no run before this one is inside its first ten minutes
+    await page.evaluate(async () => (await import('./ui/router.js')).show('s-pick')); await sleep(400);
+    await page.evaluate(() => document.querySelector('.tile[data-game="quick-tap"]').click()); await sleep(300);
+    await page.evaluate(() => { const c = document.querySelectorAll('#diff-row .choice'); c[0] && c[0].click(); }); await sleep(300);
+    await page.evaluate(() => { const t = [...document.querySelectorAll('#time-row .tbtn')]; (t[1] || t[0]).click(); }); await sleep(300);
+    await click('#go-btn');
+    /* every press lands on a pad that is NOT the target — read off the engine, not the pad's light: when a miss's lockout runs out the pad is
+       live again a frame before it is lit, so a press chosen by the light can land on the target */
+    await page.evaluate(async () => { const QT = (await import('./games/quick-tap/index.js')).QT; window.__mx = setInterval(() => { const gm = document.getElementById('game'); if (!gm || !gm.classList.contains('on')) return;
+      for (let i = 0; i < 4; i++) { const t = document.querySelector('.pad[data-side="' + i + '"]'); if (!t || i === QT.target) continue;
+        const r = t.getBoundingClientRect(); if (!r.width) continue; t.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1 })); break; } }, 60); });
+    await driveToResult('quick-tap', 'excuse #1 run', 40000, true);
+    await page.evaluate(() => clearInterval(window.__mx));
+    let said = ''; for (let i = 0; i < 48 && !said; i++) { await sleep(250); said = await page.evaluate(() => { const t = document.getElementById('toast'); return t && t.classList.contains('on') && /Excuse #/.test(t.textContent) ? t.textContent : ''; }); }
+    const fx = await page.evaluate(() => { const r = (JSON.parse(localStorage.getItem('ne')).runs || []).reduce((a, b) => (b.t > (a.t || 0) ? b : a), {}); return { shrug: !!document.getElementById('shrug'), bw: window.__bw, made: (JSON.parse(localStorage.getItem('ne')).prefs.excuses || {})[1] || 0, hits: r.hits, misses: r.misses }; });
+    await page.evaluate(async () => (await import('./ui/router.js')).show('s-prog', { tab: 'exc' })); await sleep(400);
+    const tab = await page.evaluate(() => ({ chip: !!document.querySelector('#prog-tabs [data-tab="exc"]'), up: !document.getElementById('p-exc').hidden, rows: document.querySelectorAll('#exc-list .exrow').length,
+      made: document.querySelectorAll('#exc-list .exrow.made').length, hint: document.getElementById('exc-hint').textContent, one: (document.getElementById('exc-1') || {}).textContent || '' }));
+    await page.evaluate(async () => (await import('./ui/router.js')).show('s-pick')); await sleep(500);
+    await page.evaluate(() => { document.getElementById('s-pick').scrollTop = 0; });
+    const before10 = await page.evaluate(() => document.getElementById('exit10').hidden);
+    // a wheel tick lands as half its delta at this device scale, so six of them make the 70px pull
+    await page.mouse.move(195, 320); for (let i = 0; i < 6; i++) { await page.mouse.wheel({ deltaY: -40 }); await sleep(80); }
+    const shown10 = await page.evaluate(() => !document.getElementById('exit10').hidden);
+    if (shown10) await click('#exit10');
+    let said10 = ''; for (let i = 0; i < 24 && !said10; i++) { await sleep(250); said10 = await page.evaluate(() => { const t = document.getElementById('toast'); return t && /Excuse #10/.test(t.textContent) ? t.textContent : ''; }); }
+    const made10 = await page.evaluate(() => (JSON.parse(localStorage.getItem('ne')).prefs.excuses || {})[10] || 0);
+    (!ex.wrong.length && ex.n === ex.want && ex.quiet && !ex.inTut && !ex.young && !ex.demo
+      && /Excuse #1: The phone was upside down/.test(said) && fx.shrug && fx.bw >= 1 && fx.made === 2 && !fx.hits && fx.misses >= 10
+      && tab.chip && tab.up && tab.rows === 10 && tab.made === 9 && /\d+ made/.test(tab.hint) && /The phone was upside down/.test(tab.one) && /Tap everything except the thing/.test(tab.one)
+      && before10 && shown10 && /Excuse #10: Looking for the exit/.test(said10) && made10 === 1)
+      ? ok(`67.38 Excuses: the nine run triggers fire on their own and not on the near miss beside each (${ex.n} made, none in the walkthrough, the first ten minutes or a demo; with an unlock it is a quiet tick); a real Quick Tap run of ${fx.misses} misses and no hits ends on "${said.trim()}" with the shrug and the bwomp; the Excuses tab lists all ten ("${tab.hint}"); the map pulled past its top shows the tiny exit and its tap is "${said10.trim()}"`)
+      : bad('67.38 Excuses', JSON.stringify({ ex, said, fx, tab, before10, shown10, said10, made10 }));
   }
   /* build 68 (67.30, Cowork): NO BLACK BACKING BOX BEHIND TEXT OR AN ICON, ANYWHERE — the menu, the map with a chest's "You found" words, Customise, on the
      brightest backgrounds: nothing is cut out of the background behind them (so nothing can show before the text it backs), and every line wears its

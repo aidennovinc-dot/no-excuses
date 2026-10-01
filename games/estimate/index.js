@@ -156,6 +156,8 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
     // the hold ran to its ceiling — what Greedy actually asks for, and true at every target size
     if(size>=cap-.5) this.maxed=true;
     this.set('hm',this.mine,size); const mine=Shapes.area(this.mine.loops)*size*size, tgt=this.shape.coef*this.target*this.target; const pct=mine/tgt*100, err=Math.abs(pct-100);
+    // build 68 (67.38): the lowest and highest Grow % of the run, for the Excuses (progress/rules.js EXCUSE_TEST)
+    { const xs=this.ctx.xs; if(xs&&!this.two.on){ xs.pmin=Math.min(xs.pmin??Infinity,pct); xs.pmax=Math.max(xs.pmax??0,pct); } }
     /* v30 (59.4, build 59): NO DIRECTION WORD AFTER A ROUND, in this game as in every other. Aiden: "we don't need late or early after a
        user finishes a round ... it doesn't need to be told whether it's early or late. This should apply to all games." Estimate's siblings
        of early / late are "too much" and "too little", and they go the same way: the reveal already draws your shape against the dashed
@@ -259,6 +261,8 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
     const A=Shapes.clip(loops,this.p0,d,1), B=Shapes.clip(loops,this.p0,d,-1); const aA=Shapes.area(A), aB=Shapes.area(B);
     if(Math.min(aA,aB)/total<.005){ this.st='wait'; $('#hline').style.opacity=0; $('#hlbl').innerHTML=T(CP.missed,{share:this.share}); this.bg(CP.drag); this.ctx.audio.miss(); return; }
     this.st='reveal'; const small=aA<=aB?A:B, big=aA<=aB?B:A, aS=Math.min(aA,aB), aL=Math.max(aA,aB); const share=aS/total*100, err=Math.abs(share-this.share);
+    // build 68 (67.38): the thinnest Cut of the run, for the Excuses
+    if(this.ctx.xs&&!this.two.on) this.ctx.xs.smin=Math.min(this.ctx.xs.smin??100,share);
     // the line runs on across the whole field, and the two pieces take two tones
     const ext=Math.max(f.width,f.height)*2, ux=d[0]/len, uy=d[1]/len, l=$('#hline'); l.setAttribute('x1',this.p0[0]-ux*ext); l.setAttribute('y1',this.p0[1]-uy*ext); l.setAttribute('x2',this.p0[0]+ux*ext); l.setAttribute('y2',this.p0[1]+uy*ext);
     const P=Ls=>Ls.map(L=>'M'+L.map(([x,y])=>`${x.toFixed(2)},${y.toFixed(2)}`).join('L')+'z').join(''); $('#hcut path.a').setAttribute('d',P(small)); $('#hcut path.b').setAttribute('d',P(big)); $('#hlbl').innerHTML='';

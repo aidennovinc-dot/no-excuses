@@ -61,13 +61,14 @@ const SQ={ id:'sequence', ctx:null, st:'idle', keys:0, seq:[], seqs:null, idx:0,
     this.seq.forEach((k,i)=>this.later(()=>this.light(k,step*1.6,step*.7),700+i*step));
     this.later(()=>this.yourTurn(two?this.p:undefined),700+this.seq.length*step+120); },
   yourTurn(p){ this.st='input'; this.idx=0; hud.timeHtml(p===undefined?CP.yourTurn:T(CP.whoTurn,{who:pWho(p)})); hud.you(true); $('#seq').classList.remove('watch'); $('#seq').classList.add('input'); this.cue(p===undefined?CP.yourTurn:`${pWho(p)}<br><small style="font-size:.6em;letter-spacing:.2em">${CP.yourTurn}</small>`,false,p); this.ctx.audio.turn(); },
-  press(k){ if(this.st!=='input') return; const first=this.ans===0; this.ans++;
+  // build 68 (67.38): `one` is the key every press of this round has been, or -1 once two differ — for the Excuses
+  press(k){ if(this.st!=='input') return; const first=this.ans===0; this.ans++; this.one=first||this.one===k?k:-1;
     if(k===this.seq[this.idx]){ this.light(k,700,180); this.idx++; if(this.idx===this.seq.length){ this.st='wait'; $('#seq').classList.remove('input'); hud.you(false); this.ctx.audio.hit();
         if(this.mode()==='vs') return this.vsTurn(true);
         this.round++; this.seq.push(Math.random()*this.keys|0);
         if(this.mode()==='pass'){ this.rounds[this.p]++; this.p=1-this.p; this.later(()=>this.play(),900); return; }
         if(!this.ctx.practice) this.ctx.emit('live',{hits:this.round-1}); this.later(()=>this.play(),650); } }
-    else { this.st='over';
+    else { this.st='over'; if(this.ctx.xs&&this.one>=0&&this.ans>=2) this.ctx.xs.oneKey=Math.max(this.ctx.xs.oneKey||0,this.ans);
       /* v16 (2): the first note of the run, answered wrong — banked the INSTANT it happens, not at the finish. It is the
          Timing unlock and a run that ends here is one a player is very likely to quit out of. */
       if(first){ this.badFirst=1; if(this.mode()==='solo'&&!this.ctx.practice) this.ctx.emit('live',{hits:0,firstWrong:1}); }

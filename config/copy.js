@@ -159,7 +159,7 @@ export const UNLOCKS_SCREEN = { title:'unlocks', did:'✓ {need}', you:' · you:
    tab and nowhere else. `culGroup` heads its groups, one per Customise row a payout lands in (guess on the words). */
 // build 62 (61.11): the box a requirement row opens before it leaves the list
 export const ASK_PLAY = { title:'Play {name}?', target:'Target {n}', best:'Best {n}', none:'—', play:'Play' };
-export const PROGRESS_SCREEN = { title:'progress', unl:'Game unlocks', cul:'Customise unlocks', ach:'Achievements', howOpen:'How to open this chest →',
+export const PROGRESS_SCREEN = { title:'progress', unl:'Game unlocks', cul:'Customise unlocks', ach:'Achievements', exc:'Excuses', howOpen:'How to open this chest →',
   skillShut:'Unlock all games to open the Skill key', skillOpen:'Skill key unlocked',
   /* v28 (item 4, build 53): `unlHint`, `culHint`, `achHint` and `culLocked` are RETIRED — four lines of grey helper text saying what tapping a
      row does, on a screen made of rows. One line replaces all of them, per tab: how much of that tab is unlocked. On Achievements the total
@@ -585,6 +585,8 @@ export const SPOT = { count:['count','the'], find:['find','the'], howMany:'how m
    one per chest, here, so Aiden can rewrite each on the board — and ONE line of what's next, phrased as a challenge. No "what you got" (the rewards
    have just flown out of the chest), no "what's next" heading, no percentage. `{total}` is the number of game modes. Then item 5's video button and
    Continue. The chest names stay Games, Key, Pro and Thorns (GRID.chest). */
+/* build 68 (67.38 / 67.39): the Excuses. The ten names and hints are config/excuses.js — Aiden renames them on the review board */
+export const EXCUSE_TXT = { toast:'Excuse #{n}: {name}', total:'{n} made · repeats count', exit:'exit', tiny:'Tiny Aiden' };
 export const CARD = {
   title:'Congratulations',
   you:{ games:'You unlocked all {total} game modes!', key:'You cleared every bar on the Skill key!', pro:'You cleared every bar on the Pro key!', thorns:'You cleared every bar on the Author key!' },

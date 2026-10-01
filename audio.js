@@ -205,6 +205,8 @@ const Snd = (()=>{
        sting in one pass on the audio clock; `chestReady()` is the map's quiet two-note rise. None of them is unlockFx or click, and the gate
        holds all of them apart. The effects follow the tap-sound pack like every effect; the sting is MUSIC, so it follows the menu music
        switch and nothing else. `chestPlan(id)` is the same events flat — the review catalogue plays exactly what the app plays. */
+    // build 68 (67.38): the Excuses' one signature sound — a kazoo deflating, three steps down. The same whatever the tap sound is
+    bwomp(){ this.fx([[0,330,300,170,'sawtooth',.045,8,1600],[.19,300,250,170,'sawtooth',.045,8,1400],[.38,250,92,640,'sawtooth',.05,8,1100]]); },
     fx(ev,t0){ const a=AC(); if(!a||!ev) return; const t=t0||a.currentTime; for(const [at,f0,f1,ms,w,g,am,lp] of ev) tone(f0,f1,ms,w,g,t+at,am,false,undefined,lp?{lp}:undefined); },
     noise(at,ms,gain,hp){ const a=AC(); if(!a) return; if(rec){ rec.push([recAt(a,at),0,0,ms,'noise',gain,0,hp||800]); return; } if(look('snd')==='off') return; const t=at||a.currentTime, dur=Math.max(.02,ms/1000), n=Math.max(1,Math.ceil(a.sampleRate*dur));
       const buf=a.createBuffer(1,n,a.sampleRate), d=buf.getChannelData(0); for(let i=0;i<n;i++) d[i]=Math.random()*2-1;

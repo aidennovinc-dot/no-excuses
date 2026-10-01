@@ -13,6 +13,7 @@ import { bindInput } from "./run/input.js";
 import { onClick } from "./ui/actions.js";
 import { startAtmosphere } from "./ui/atmosphere.js";
 import "./ui/tutorial.js";
+import "./ui/excuse.js";
 import { show } from "./ui/router.js";
 import { enterMenu } from "./ui/screens/index.js";
 import { toast } from "./ui/toast.js";

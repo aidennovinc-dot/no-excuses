@@ -29,8 +29,10 @@
    Next card do. A tap on a locked row opens the same lock box the pick sheet opens.
 
    The screen remembers which tab was last open in `prefs.progTab`; only the tab that is up renders. */
-import { ACH_SCREEN, GRID, ITEM_WORD, PROGRESS_SCREEN, TIERS, UNLOCKS_SCREEN } from "../../config/copy.js";
+import { ACH_SCREEN, EXCUSE_TXT, GRID, ITEM_WORD, PROGRESS_SCREEN, TIERS, UNLOCKS_SCREEN } from "../../config/copy.js";
 import { CHESTS } from "../../config/chests.js";
+import { EXCUSES } from "../../config/excuses.js";
+import { excuseCount } from "../../progress/excuses.js";
 import { KEYS, KEY_ART } from "../../config/keys.js";
 import { MODE_NAME } from "../../config/games.js";
 import { $, $$, T, esc } from "../../core.js";
@@ -63,7 +65,7 @@ import { register, show } from "../router.js";
    add a fifth tab with no code change. A profile that last had `unl` open lands on the Games chest, which is what that tab
    became; `cus` from builds 33–38 still lands on Customise (core/store.js). */
 const CHEST_TABS = CHESTS.map(c => 'c-' + c.id);
-const TABS = CHEST_TABS.concat(['cul', 'ach']);
+const TABS = CHEST_TABS.concat(['cul', 'ach', 'exc']);
 const OLD_TAB = { unl: 'c-games' };
 const tabOf = t => { const want = OLD_TAB[t] || t; if (TABS.includes(want)) return want;
   const held = OLD_TAB[prefs.progTab] || prefs.progTab; return TABS.includes(held) ? held : TABS[0]; };
@@ -277,10 +279,15 @@ const tabCount=(tab,done,total)=>{ const el=$('#'+tab+'-hint'); if(el) el.textCo
 function renderTabs(tab){
   $('#prog-tabs').innerHTML=TABS.map(t=>`<button data-act="ptab" class="chip${t===tab?' sel':''}" data-tab="${t}">${tabLabel(t)}</button>`).join('');
 }
+/* build 68 (67.38): THE EXCUSES TAB — the total, then each excuse with its hint and how many times it has been made. Nothing is secret: every
+   name shows from the start, and the hint alludes */
+function renderExc(){ const c=prefs.excuses||{};
+  $('#exc-hint').textContent=T(EXCUSE_TXT.total,{n:excuseCount()});
+  $('#exc-list').innerHTML=EXCUSES.map(e=>{ const k=c[e.id]||0; return `<div class="exrow${k?' made':''}" id="exc-${e.id}"><b>#${e.id}</b><span>${esc(e.name)}</span><em>×${k}</em><small>${esc(e.hint)}</small></div>`; }).join(''); }
 function setTab(t,opts){ const tab=tabOf(t); prefs.progTab=tab; save(); opts=opts||{};
   renderTabs(tab);
-  $('#p-chest').hidden=!chestOfTab(tab); $('#p-cul').hidden=tab!=='cul'; $('#p-ach').hidden=tab!=='ach';
-  if(chestOfTab(tab)) renderChest(tab); else if(tab==='cul') renderCul(); else renderAch();
+  $('#p-chest').hidden=!chestOfTab(tab); $('#p-cul').hidden=tab!=='cul'; $('#p-ach').hidden=tab!=='ach'; $('#p-exc').hidden=tab!=='exc';
+  if(chestOfTab(tab)) renderChest(tab); else if(tab==='cul') renderCul(); else if(tab==='exc') renderExc(); else renderAch();
   if(opts.ach){ const r=$(`#${tab}-${opts.ach}`); if(r){ r.scrollIntoView({block:'center'}); r.classList.add('flash'); } } }
 
 register('s-prog',{ onShow(o){ const a=o.ach?findAch(o.ach):null; const t=a?tabFor(a):o.tab;

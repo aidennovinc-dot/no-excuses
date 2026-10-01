@@ -25,6 +25,7 @@ import { Scores, UNLOCKS, achToast, bankLen, chalRun, checkAch, checkUnlocks, go
 import { checkKey, checkKeyAch, keyGoal } from "../progress/key.js";
 import { pickGoal } from "../progress/next.js";
 import { LEN_BEST, UNLOCK_BEST } from "../progress/rules.js";
+import { checkExcuse } from "../progress/excuses.js";
 import { scoreTxt } from "../ui/format.js";
 import { game as showGame, show } from "../ui/router.js";
 import { applyPrefs } from "../ui/theme.js";
@@ -105,9 +106,10 @@ const Intro=(()=>{
 function pbShow(){ const g=GAMES[sel.game], pb=Scores.best(sel.game,sel.diff,sel.secs); const mk=$('#pbmark'), gh=$('#pbghost'); mk.classList.remove('on'); gh.classList.remove('on'); if(pb===null||VS.on||sel.vs) return;
   if(g.timed){ const k=Math.min(1,(pb/sel.secs)/(RATE_MAX[sel.game]||6)); mk.style.bottom=Math.round(k*100)+'%'; mk.classList.add('on'); }
   else { gh.textContent=T(HUD.best,{score:scoreTxt(sel.game,pb,sel.diff,sel.secs)}); gh.classList.add('on'); } }
+// build 68 (67.38): `xs` is where an engine writes the raw facts the Excuses test (progress/excuses.js) — a fresh one every run
 function makeCtx(){ const id=R.id; const timers=makeTimers(()=>R.on&&R.id===id);
   // v15 (4.5): `opens` joins practice and scale as a Sequence-only extra on the contract's set — how many notes a versus starts on
-  return { root:$('#game'), game:sel.game, cfg:GC(sel.game,sel.diff,sel.secs), mode:sel.diff, len:sel.secs, players:sel.vs, practice:sel.practice||0, opens:sel.opens||3, scale:sel.scale, rateMode:'live', gaunt:pendingGaunt, timers, audio:Snd,   // build 55 (in passing): `rand` was dead - every engine and the dealer call Math.random directly, and there is no seeded path
+  return { root:$('#game'), game:sel.game, cfg:GC(sel.game,sel.diff,sel.secs), mode:sel.diff, len:sel.secs, players:sel.vs, practice:sel.practice||0, opens:sel.opens||3, scale:sel.scale, rateMode:'live', gaunt:pendingGaunt, xs:{}, timers, audio:Snd,   // build 55 (in passing): `rand` was dead - every engine and the dealer call Math.random directly, and there is no seeded path
    
     /* v16 (1.5): a round-based engine says how far into its finish it is — the final round of a Set, a Streak budget past
        80% — and the music reads it. A timed run needs nothing here: the clock already tells audio.js. MUSIC ONLY (A.1). */
@@ -343,7 +345,9 @@ function finish(res){
      Progress row can say "you: 16, 29 Sep" */
   if(fresh.length){ const by=Object.assign({},prefs.unlBy); for(const u of fresh) if(!u.menu&&u.key&&!by[u.key]) by[u.key]={ g:run.g, d:run.d, s:run.s, h:run.hits, t:run.t }; prefs.unlBy=by; save(); }
   // the result screen takes it from here: the header, the ad break, the unlock and achievement toasts (ui/screens/result.js)
-  emit('run:finish',{run,isBest,two,fresh,ach,adv});
+  // build 68 (67.38): the excuse this run made, if any — a quiet tick when an unlock or a menu item in the same run already has the toast
+  const excuse=two?null:checkExcuse(run,ctx&&ctx.xs,fresh.length>0);
+  emit('run:finish',{run,isBest,two,fresh,ach,adv,excuse});
 }
 /* mid-run (v10): engines emit 'live' with the run so far. Any live unlock that now passes lands at once, with a green toast; the goal line ticks.
    v15 (2.5): ACHIEVEMENTS ride the same path now. Every row flagged live:1 in config/achievements.js is one whose test can

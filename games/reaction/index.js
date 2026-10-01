@@ -142,7 +142,9 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
        measured only the attempts you were quick on, which is the opposite of what a reaction Set is for. The Streak still
        waits 1500ms for the 600ms no-tap (v13 9.1): there the cost is the budget and there was never a retake to remove. */
     if(!this.versus()) this.later(()=>{ if(this.st==='go'){ if(this.streak()||this.two.on) return this.noTap(); this.noTap(this.FLASH_MAX); } },this.streak()||this.two.on?1500:this.FLASH_MAX); },
-  noTap(cap){ const ms=cap||600; this.st='show'; this.times.push(ms); this.noTaps=(this.noTaps||0)+1; const add=Math.max(0,ms-this.FLASH_FREE);
+  /* build 68 (67.38): false starts IN A ROW, for the Excuses — an early tap adds one, any other answer (a tap, or none) ends the row */
+  erun(early){ const xs=this.ctx.xs; if(!xs) return; xs.erun=early?(xs.erun||0)+1:0; xs.erow=Math.max(xs.erow||0,xs.erun); },
+  noTap(cap){ this.erun(0); const ms=cap||600; this.st='show'; this.times.push(ms); this.noTaps=(this.noTaps||0)+1; const add=Math.max(0,ms-this.FLASH_FREE);
     if(!this.two.on) hud.score(String(this.times.length));
     this.rxCard(CP.noTap,ms,add,false); this.ctx.audio.miss(); haptic(30); this.hud();
     if(this.two.on) return this.twoAdd(ms);
@@ -152,7 +154,7 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
   // v15 (3.5): an early tap. It used to be a fault — the attempt was thrown away and retaken, which made jumping the gun
   // free. Now it costs FLASH_EARLY and the attempt is spent: a Streak loses 400 of its budget, a Set carries 400ms into
   // its average. Either way `round` moves on, so this is next(), never again()
-  early(){ this.clearT(); this.faults++; const ms=this.FLASH_EARLY; this.st='show'; this.times.push(ms);
+  early(){ this.clearT(); this.faults++; this.erun(1); const ms=this.FLASH_EARLY; this.st='show'; this.times.push(ms);
     this.rxCard(CP.earlyTap,ms,ms,true,CP.earlyCost);
     this.ctx.audio.miss(); haptic(40);
     if(this.two.on){ this.hud(); return this.twoAdd(ms); }
@@ -189,7 +191,7 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
   onDown(ev){ if(this.versus()) return this.vsTap(ev); if(this.nogo()) return this.nogoTap(ev);
     if(this.st==='wait') return this.early();
     if(this.st!=='go'||!this.armed) return;
-    const ms=Math.max(1,Math.round(ev.t-this.t0)); this.st='show'; this.times.push(ms); const add=Math.max(0,ms-this.FLASH_FREE);
+    this.erun(0); const ms=Math.max(1,Math.round(ev.t-this.t0)); this.st='show'; this.times.push(ms); const add=Math.max(0,ms-this.FLASH_FREE);
     this.rxCard(ms<200?CP.quick:ms<300?CP.good:CP.slowWord,ms,add,false,'',true); this.ctx.audio.hit(); this.hud();
     if(this.two.on) return this.twoAdd(ms);
     if(this.streak()){ hud.score(String(this.times.length)); return this.flashAdd(add); }
@@ -354,7 +356,7 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
   beat(){ if(this.streak()&&this.over>=this.NOGO_BUD) return this.nogoEnd();
     this.skipTarget();
     if(!this.block||this.bi>=this.block.length) return this.two.on?this.twoBlockEnd():this.nextRule();
-    const pane=$('#rxpane'); if(!pane) return; this.shown=this.block[this.bi++]; this.seen++; if(this.shown===this.rule) this.goDealt++; this.hudNogo();
+    const pane=$('#rxpane'); if(!pane) return; this.shown=this.block[this.bi++]; this.seen++; if(this.shown===this.rule) this.goDealt++; else if(this.ctx.xs) this.ctx.xs.dseen=(this.ctx.xs.dseen||0)+1; this.hudNogo();
     // v19 (C.3): the two new shapes turn like the two that already did — a diamond is a square on its point and stays one
     const v=vmin(), J=this.NOGO_JITTER, turns=this.NOGO_TURNS[this.shown]||[0], dx=(Math.random()-.5)*J.x*v, dy=(Math.random()-.5)*J.y*v, sc=J.scale[0]+Math.random()*(J.scale[1]-J.scale[0]),
       rot=turns[rnd(turns.length)];
@@ -377,6 +379,8 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
        Set and in a pass & play turn alike. What replaces it is the cost being visible: the card says what it took, the
        score jumps by it, and the screen shakes. Aiden's note was "wrong taps do nothing I can feel", and the ender was
        the reason the cost had never needed to be felt. */
+    // build 68 (67.38): a tap on a no-go shape while it is up, for the Excuses ("tapping every no-go shape")
+    if(this.st==='nogo'&&this.ctx.xs) this.ctx.xs.dhit=(this.ctx.xs.dhit||0)+1;
     this.wrong++; if(this.streak()) this.over+=this.NOGO_WRONG_STREAK;
     const cost=this.streak()?this.NOGO_WRONG_STREAK:this.NOGO_WRONG_SET;
     this.st='wrongshow'; pane.classList.add('bad'); hud.shake();

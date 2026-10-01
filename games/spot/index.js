@@ -323,7 +323,7 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
   onDown(ev){
     if(this.st==='ask'){ if(this.two) return this.twoPick(ev); const b=ev.el.closest('[data-num]'); if(!b) return; const k=+b.dataset.num, ok=k===this.answer;
       // v13 (10.2): the score is total miscount — 2 for 4 costs 2, 6 for 4 costs 2. Lower is better
-      const off=Math.abs(k-this.answer); this.st='show'; this.off+=off; this.worstOff=Math.max(this.worstOff||0,off); if(ok) this.right++; else this.wrong++;
+      const off=Math.abs(k-this.answer); if(k===0&&this.ctx.xs) this.ctx.xs.z0=Math.max(this.ctx.xs.z0||0,this.answer); this.st='show'; this.off+=off; this.worstOff=Math.max(this.worstOff||0,off); if(ok) this.right++; else this.wrong++;
       if(ok) this.bestFlash=this.bestFlash?Math.min(this.bestFlash,this.flash):this.flash;
       // v24 (F.5, build 44): a Set's number stays on the OLD total until the walk below carries the miscount into it
       hud.score(this.streak()?String(Math.max(0,this.round-1)):String(this.off-off));

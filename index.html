@@ -69,6 +69,8 @@
 
 <section class="screen" id="s-pick" data-back="s-menu">
   <button data-act="back" class="back">&larr; BACK</button>
+  <!-- build 68 (67.38, Excuse #10): shows only when the map is pulled down past its top (ui/excuse.js) -->
+  <button data-act="excuse-exit" class="exit10" id="exit10" hidden></button>
   <div class="grid" id="grid">
     <button data-act="game" class="tile" data-game="quick-tap"><span class="name glow">Quick Tap</span><span class="pic"><span class="mini"><i class="w"></i><i></i></span></span></button>
     <button data-act="game" class="tile" data-game="dots"><span class="name glow">Dots</span><span class="pic"><span class="mini dots"><i></i><i class="w"></i></span></span></button>
@@ -172,6 +174,11 @@
     <div class="eyebrow" id="ach-hint"></div>
     <div class="chips" id="ach-g"></div>
     <div class="ach scroll" id="achlist"></div>
+  </div>
+  <!-- build 68 (67.38): the Excuses — the total, then each one with its hint and its count (ui/screens/progress.js renderExc) -->
+  <div class="ptab" id="p-exc" hidden>
+    <div class="eyebrow" id="exc-hint"></div>
+    <div class="ach scroll" id="exc-list"></div>
   </div>
 </section>
 
