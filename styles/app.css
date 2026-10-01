@@ -1491,6 +1491,14 @@
   .hrow b{color:var(--ink);text-align:right;font-variant-numeric:tabular-nums;letter-spacing:0;font-size:13px}
   #hres{text-align:center;opacity:0;transition:opacity .25s;line-height:1.9}
   #hres.on{opacity:1}
+  /* build 66 (65.7): the running total, on its own labelled line under the round's figure */
+  /* the panel holds one more line now, so it packs tighter: smaller gaps, and the round's figure and its word on less leading */
+  #hcalc:has(#htot){gap:7px;padding-block:12px}
+  #hcalc:has(#htot) #hres{line-height:1.3}
+  #hcalc:has(#htot) #hres b{font-size:28px}
+  #htot{display:flex;justify-content:space-between;align-items:baseline;gap:12px;border-top:1px solid var(--line);padding-top:10px;opacity:0;transition:opacity .25s}
+  #htot.on{opacity:1}
+  #htot b{font-size:15px;color:var(--ink);letter-spacing:.04em;text-transform:none}
   #hres b{display:block;font-size:30px;color:var(--ink);letter-spacing:0}
   #hres b.g{color:var(--ok)}
   #hres b.r{color:var(--miss)}

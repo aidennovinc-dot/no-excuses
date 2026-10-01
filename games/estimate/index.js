@@ -182,7 +182,8 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
   // you cut walking to the share you were asked for on Cut. It moves while the running figure gains the same overspend,
   // so the player watches the difference leave the round and arrive in the total. Lower is better at both ends
   calc(rowsIn,max,diffHtml,resultHtml,err,walk){ const rows=rowsIn.map((r,i)=>`<div class="hrow ${r[2]}"><span>${r[0]}</span><span class="bar"><i id="hb${i}"></i>${r[3]?`<u style="left:${r[3]}%"></u>`:''}</span><b id="hn${i}">0</b></div>`).join('');
-    $('#hcalc').innerHTML=rows+`<div id="hdiff" style="text-align:center;opacity:0;transition:opacity .25s"></div><div id="hres"></div>`; $('#hcalc').classList.add('on');
+    // build 66 (65.7): the running total has its own labelled line, under this round's figure
+    $('#hcalc').innerHTML=rows+`<div id="hdiff" style="text-align:center;opacity:0;transition:opacity .25s"></div><div id="hres"></div><div id="htot"><span>${CP.total}</span><b id="htotv"></b></div>`; $('#hcalc').classList.add('on');
     const pause=ms=>new Promise(r=>this.later(r,ms));
     // v13 (6.6): a rising whoosh runs for the length of every count, low to high, so the pitch follows the fill
     const fill=(i,val,unit,hook)=>new Promise(res=>{ const t0=performance.now(), bar=$('#hb'+i), n=$('#hn'+i); this.ctx.audio.whoosh(900,110,700); const anim=now=>{ if(this.st!=='reveal') return res(); const k=Math.min(1,(now-t0)/900); if(bar) bar.style.width=(val/max*100*k)+'%'; if(n) n.textContent=unit?(val*k).toFixed(1)+unit:Math.round(val*k).toLocaleString(); if(hook) hook(k); if(k<1) requestAnimationFrame(anim); else res(); }; requestAnimationFrame(anim); });
@@ -201,13 +202,20 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
         const was=this.errs.length?mean(this.errs):0; this.errs.push(err);
         const w=walk?{el:$('#hpct'),from:walk.from,to:walk.to,fmt:v=>f2(v)+'%'}:null;
         if(this.two.on) return this.twoAdd(err,w);
+        /* build 66 (65.7): SOLO, THE ROUND'S FIGURE HOLDS. Aiden's v0.65: the big % under this round's bars read 111.82% "Meh." when the round
+           itself was 12,575 ÷ 10,501 = 119.7% — it had walked part of the way to 100% while the running figure counted, so it read as this round's
+           score and the maths looked broken. Now it stays this round's own %, its verdict word with it, and the running figure counts on the
+           "Total" line under it (and in the header). v15 3.7's walk is kept for a shared run, which has no total line */
+        const tl=$('#htot'), tv=$('#htotv'); if(tl) tl.classList.add('on');
+        const totSet=v=>{ if(tv) tv.textContent=T(CP.totalSet,{v}); };
+        if(!this.streak()) totSet(f2(was)+'%');
         /* v31 (60.4, build 60, L5): a GROW Streak spends max(0, err − GROW_FREE) of the 100% budget; Cut spends its error whole.
            The tier above and the figure walking to 100% both read the raw error — only the cost is reduced — and the allowance
            block (60.18's shared layout) is what says so on the screen. */
-        if(this.streak()){ hud.score(String(this.errs.length)); hud.scorePop(); return this.addUp(this.spendOf(err),w,err); }
+        if(this.streak()){ hud.score(String(this.errs.length)); hud.scorePop(); return this.addUp(this.spendOf(err),null,err); }
         // v14 (6.1 / 6.16): the Set figure is the running average % difference — the line the sheet promises — and it WALKS to its
         // new value instead of jumping, the same as a Streak's total. Then the reveal waits for a tap (6.3)
-        hud.countUp({ audio:this.ctx.audio, from:was, to:mean(this.errs), ms:700, fmt:v=>f2(v)+'%', set:t=>hud.score(t), alive:()=>this.st==='reveal', walk:w,
+        hud.countUp({ audio:this.ctx.audio, from:was, to:mean(this.errs), ms:700, fmt:v=>f2(v)+'%', set:t=>{ hud.score(t); totSet(t); }, alive:()=>this.st==='reveal',
           done:()=>{ hud.scorePop(); this.total+=err; this.hud(); this.ctx.emit('live',this.result()); this.wait(()=>this.next()); } }); }); },
   // v15 (4.1 / 4.2): the round belongs to whoever is holding the phone, so THEIR average walks — there is no shared total
   // in a pass & play run, and nothing about it is recorded (L10 / A.3)
@@ -223,7 +231,8 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
   addUp(err,walk,raw){ const free=raw!==undefined&&!this.cut(), bud=EST.STREAK_BUD, spent=this.total;
     if(free){ const c=$('#hcalc'); if(c) c.insertAdjacentHTML('beforeend',hud.allowHtml({ id:'hallow', add:f2(err), unit:'%', spent, budget:bud, free:EST.GROW_FREE, freeText:ALLOWANCE.freeEach })); }
     hud.addUp({ audio:this.ctx.audio, from:this.total, err, ms:900, el:free?$('#hallow-add'):null, walk, fmt:v=>'+'+f2(v)+'%', alive:()=>this.st==='reveal',
-      onFrame:tot=>{ this.total=tot; if(free) hud.allowBar('hallow',spent,tot-spent,bud); hud.time(T(CP.hudStreak,{n:this.round,tot:f2(this.total)})); },
+      onFrame:tot=>{ this.total=tot; if(free) hud.allowBar('hallow',spent,tot-spent,bud); hud.time(T(CP.hudStreak,{n:this.round,tot:f2(this.total)}));
+        const tv=$('#htotv'); if(tv) tv.textContent=T(CP.totalStreak,{v:f2(tot)+'%',bud}); },
       done:tot=>{ this.total=tot; this.hud(); this.ctx.emit('live',this.result()); this.wait(()=>this.next()); } }); },
   /* Cut (v11) — REDEALT at v26 §B2 (build 50). The shape comes from the dealer (config/shapes.js DEALS 'hold:cut'): each two-round band deals
      its mix of easy, medium and hard shapes, and the SHARE is the setting it pairs with — about a half easy, a third to a quarter medium, a

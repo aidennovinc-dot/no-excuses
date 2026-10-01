@@ -503,7 +503,10 @@ export const SEQ = { copy:'copy the notes', yourTurn:'your turn', whoTurn:'{who}
 export const ESTIMATE = { hold:'tap and hold',
   money:'on the money', close:'close', closeCut:'close!', much:'too much', little:'too little', target:'target', yours:'yours', piece:'piece', px:'px²', targetPx:'target {n} px²', targetShare:'target {n}%', off:' off',
   missed:'the line missed the shape · <b>{share}%</b> again', drag:'tap and drag a line to cut the shape', draw:'tap and draw a line', shareTarget:'<small>target</small>',
-  hudStreak:'Round {n} · {tot}% of 100%', hudSet:'Round {n} of {s}', diff:' · different shape', same:' · same shape' };
+  hudStreak:'Round {n} · {tot}% of 100%', hudSet:'Round {n} of {s}', diff:' · different shape', same:' · same shape',
+  /* build 66 (65.7): the running figure on its OWN labelled line under the round's — "Total" — so the big % beside the bars is always this round's.
+     A Set's total is the average % off so far; a Streak's is the budget spent */
+  total:'Total', totalSet:'{v} average off', totalStreak:'{v} of {bud}%' };
 /* v31 (60.4 / 60.12 / 60.18, build 60): the allowance-Streak round screen's own words, spelled ONCE for the three games that
    have one — Estimate · Grow, Timing · Hidden and Reaction · Flash. games/_shared/hud.js draws the block; this is what it says. */
 export const ALLOWANCE = { freeEach:'{n}{u} free each round' };

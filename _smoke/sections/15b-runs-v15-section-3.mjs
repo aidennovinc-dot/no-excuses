@@ -300,7 +300,11 @@ export async function run() {
           .map(p => p.getBoundingClientRect()).filter(r => r.width > 1);
         const hit = (a, b) => a.x < b.right && b.x < a.right && a.y < b.bottom && b.y < a.bottom;
         const rows = [...document.querySelectorAll('#hcalc b, #hcalc .hrow, #hcalc span')].map(e => e.getBoundingClientRect()).filter(r => r.width > 1);
-        out.rounds.push({ shapes: boxes.length, held: [Math.round(held.width), Math.round(held.height)], drawn: [Math.round(now.width), Math.round(now.height)], under,
+        // build 66 (65.7): the round's own figure beside its bars, the running figure on the Total line
+        for (let i = 0; i < 400 && !document.querySelector('#htot.on'); i++) await wait(25);
+        const num = id => parseFloat((document.getElementById(id) || {}).textContent?.replace(/[^\d.]/g, '') || 'NaN');
+        const r7 = { pct: num('hpct'), tgt: num('hn0'), mine: num('hn1'), totLabel: (document.querySelector('#htot span') || {}).textContent, tot: (document.getElementById('htotv') || {}).textContent || '', totOn: !!document.querySelector('#htot.on') };
+        out.rounds.push({ r7, shapes: boxes.length, held: [Math.round(held.width), Math.round(held.height)], drawn: [Math.round(now.width), Math.round(now.height)], under,
           gap: boxes.length ? Math.round(c.top - Math.max(...boxes.map(b => b.bottom))) : null,
           panelHits: boxes.filter(b => hit(b, c)).length,
           textHits: rows.filter(r => boxes.some(b => hit(b, r))).length,
@@ -312,7 +316,12 @@ export async function run() {
     const bad60 = gr60.rounds.filter(r => !r.shapes || [0, 1].some(i => r.drawn[i] < r.held[i] - 1 || r.drawn[i] > r.held[i] * 1.06) || r.under === false);
     (gr60.rounds.length >= 4 && bad60.length === 0)
       ? ok(`65.6 the Grow result draws your shape at its true scale — ${gr60.rounds.length} rounds each held 60% over, drawn ${gr60.rounds.map(r => r.drawn[0] + 'px').join(', ')} wide, the size each was at release; where one runs under the panel (${gr60.rounds.filter(r => r.under).length} of them) the panel is on top`)
-      : bad('65.6 the Grow result shrinks or hides the shape', JSON.stringify({ rounds: gr60.rounds.length, bad60 })); }
+      : bad('65.6 the Grow result shrinks or hides the shape', JSON.stringify({ rounds: gr60.rounds.length, bad60 }));
+    const T7 = await page.evaluate(async () => (await import('./config/copy.js')).ESTIMATE.total);
+    const bad7 = gr60.rounds.filter(r => !(Math.abs(r.r7.pct - r.r7.mine / r.r7.tgt * 100) < .1 && r.r7.totLabel === T7 && r.r7.totOn && /%/.test(r.r7.tot)));
+    (gr60.rounds.length >= 4 && !bad7.length)
+      ? ok(`65.7 every Grow round's big % is that round's own (yours ÷ target: ${gr60.rounds.map(r => r.r7.pct + '%').join(', ')}) and the running figure sits on its own "${T7}" line (${gr60.rounds[gr60.rounds.length - 1].r7.tot})`)
+      : bad('65.7 the round figure and the total', JSON.stringify(bad7.map(r => r.r7))); }
 
   /* ---- v31 (60.20, build 60): A GOAL BADGE THAT DOES NOT FIT SCANS, AND FREEZES WHILE A ROUND IS LIVE ----
      Three facts, and the third is the one that matters: movement in peripheral vision provokes false starts in Flash, Dots and
