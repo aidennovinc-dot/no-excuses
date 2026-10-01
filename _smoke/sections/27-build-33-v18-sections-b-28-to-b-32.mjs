@@ -173,10 +173,12 @@ export async function run() {
     const fb = await page.evaluate(() => { const a = document.getElementById('feedback'); if (!a) return null;
       return { tag: a.tagName, text: a.textContent, href: a.getAttribute('href'), act: a.dataset.act,
         blue: getComputedStyle(a).textDecorationLine }; });
-    const body = fb && decodeURIComponent((/&body=([^&]*)/.exec(fb.href) || [, ''])[1]);
-    (fb && fb.tag === 'A' && /^mailto:info@somethingstrange\.com\.au\?/.test(fb.href) && fb.act === 'none'
-      && new RegExp(`v0\\.${B33.BUILD}`).test(fb.href) && /Mozilla|Chrome|AppleWebKit/.test(body) && /Last run:/.test(body) && fb.blue === 'none')
-      ? ok(`beta 1 — Send feedback is a mailto to the Something Strange mailbox carrying v0.${B33.BUILD}, the device and the last run`)
+    /* AMENDED at build 66 (#489): NOT the Something Strange mailbox. Feedback is a Tally form with the build and the device as hidden fields; until
+       its link exists (`ABOUT.fbUrl` empty) the button says the form is coming and opens nothing. Both states are read off config */
+    const CP33 = await import(pathToFileURL(path.join(root, 'config', 'copy.js')).href);
+    (fb && fb.tag === 'A' && fb.act === 'none' && !/mailto:|somethingstrange/i.test(fb.href || '') && fb.blue === 'none'
+      && (CP33.ABOUT.fbUrl ? fb.href.startsWith(CP33.ABOUT.fbUrl) && fb.href.includes(`v0.${B33.BUILD}`) : !fb.href && fb.text.includes(CP33.ABOUT.fbSoon)))
+      ? ok(`beta 1 / #489 — Send feedback no longer mails the Something Strange address: ${CP33.ABOUT.fbUrl ? 'it opens the Tally form carrying v0.' + B33.BUILD + ' and the device' : 'until the Tally link exists it says "' + CP33.ABOUT.fbSoon + '" and opens nothing'}`)
       : bad('beta 1 the feedback link', JSON.stringify({ ...fb, href: (fb && fb.href || '').slice(0, 90) }));
     /* beta 2 — the tester's name on a run. REPORT WHAT YOU FOUND EVEN IF NOTHING IS WRONG: it was already built.
        `run/run.js` stamps `n: prefs.name` on every record, the result screen's rank line names the player and the

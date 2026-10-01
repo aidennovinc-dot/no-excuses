@@ -258,7 +258,8 @@ export async function run() {
       ? ok('G.8 extended: resetting the Skill chest backs out key 1, the chest and its achievements; resetting the Games chest locks every mode again and shuts it') : bad('G.8 the per-chest resets', JSON.stringify({ keyReset: t8.keyReset, gamesReset: t8.gamesReset }));
     /* Build 53 (v28 item 9) made Testing's line say both figures because the shown one was clamped — "250 of 300 raw · 83% shown".
        Build 55 (v29 item 1) puts the shown figure back on the meter's own scale, so the two now agree and the line reads 250 twice. */
-    (t8.set.meter === 250 && /\b250\b/.test(t8.set.line) && /250% shown/.test(t8.set.line) && t8.set.stored === undefined && t8.set.chests === 'open,open,open,locked' && t8.set.bars === '30,30,15' && !t8.off.button)
+    // AMENDED at build 66 (65.14): the shown figure is completion again — 100 once the Skill chest is open — so the raw 250 and "100% shown" differ
+    (t8.set.meter === 250 && /\b250\b/.test(t8.set.line) && /100% shown/.test(t8.set.line) && t8.set.stored === undefined && t8.set.chests === 'open,open,open,locked' && t8.set.bars === '30,30,15' && !t8.off.button)
       ? ok(`L.8f AMENDED at build 48 (v26 items 7 / 12): "set meter to N%" REACHES 250 - the Key and Pro chests opened, key 1 and Pro whole, 15 Author bars - and stores no override ("${t8.set.line}"); "meter · as earned" is gone with it`) : bad('L.8f set meter to N%', JSON.stringify({ set: t8.set, off: t8.off }));
   }
 
