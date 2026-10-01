@@ -104,11 +104,9 @@ function playVideo(m) { if (!m || !m.file) return false;
      because its width cap binds first. Recomputed on metadata and on resize, because the room changes with the phone. */
   /* the row's own `ratio` first, so the frame is already the right shape before a byte of the clip has loaded — and so a 16:9
      clip opened after a portrait one does not wear the portrait one's shape for the moment before its metadata arrives. */
-  { const r = Array.isArray(m.ratio) && m.ratio.length === 2 ? m.ratio : [16, 9];
-    host.style.setProperty('--v-arw', String(r[0])); host.style.setProperty('--v-arh', String(r[1])); }
+  // build 68 (67.6b): THE FRAME IS 16:9 WHATEVER THE CLIP — landscape, the phone upright; a clip of another shape is letterboxed inside it (contain)
+  host.style.setProperty('--v-arw', '16'); host.style.setProperty('--v-arh', '9');
   const shape = () => { if (!host || !vid) return;
-    const w = vid.videoWidth || 0, h = vid.videoHeight || 0;
-    if (w > 0 && h > 0) { host.style.setProperty('--v-arw', String(w)); host.style.setProperty('--v-arh', String(h)); }
     const wrap = host.querySelector('.vwrap'), title = host.querySelector('.vtitle'),
       cc = host.querySelector('.vcc'), foot = host.querySelector('.vfoot');
     const cs = getComputedStyle(host), gap = parseFloat(getComputedStyle(wrap).rowGap) || 0;

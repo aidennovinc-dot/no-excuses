@@ -100,4 +100,16 @@ export async function run() {
       ? ok(`items 20 / 22 every sound this build adds is in the catalogue's Every sound list with events off audio.js itself (${rows.length} rows now)`)
       : bad('items 20 / 22 the new sounds', JSON.stringify({ missed, silent }));
   }
+  /* build 68 (67.6b, Cowork): THE PLAYER'S FRAME IS LANDSCAPE — 16:9 for every clip, the phone upright; the portrait test clip is letterboxed inside it
+     (contain, never crop), and no message row carries a shape of its own any more */
+  {
+    await boot({});
+    const f68 = await page.evaluate(async () => { const V = await import('./ui/video.js'), M = (await import('./config/messages.js')).MESSAGES, w = ms => new Promise(r => setTimeout(r, ms));
+      V.playVideo(M.find(m => m.id === 'skill')); await w(900);
+      const fr = document.querySelector('#vplay .vframe').getBoundingClientRect(), v = document.querySelector('#vplay video');
+      const o = { ar: +(fr.width / fr.height).toFixed(3), fit: v ? getComputedStyle(v).objectFit : '', shaped: M.filter(m => m.ratio).map(m => m.id) }; V.closeVideo(); await w(800); return o; });
+    (Math.abs(f68.ar - 16 / 9) < .03 && f68.fit === 'contain' && !f68.shaped.length)
+      ? ok(`67.6b the player's frame is landscape, ${f68.ar} wide to 1 high, for the portrait test clip too — letterboxed inside it (object-fit ${f68.fit}); no row carries a shape of its own`)
+      : bad('67.6b the landscape frame', JSON.stringify(f68));
+  }
 }

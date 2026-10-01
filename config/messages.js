@@ -51,13 +51,16 @@ export const MESSAGES = [
      draws a powered-OFF frame with no video element in it, so there is nothing there to measure. A row without `ratio` is 16:9,
      which is what the test card is; a new clip that is not 16:9 sets this. (The build session's call, per 59.10.) */
   // build 64 (62.12): Welcome waits for DOTS to unlock now, not the first Quick Tap · Sprint — the walkthrough owns that first run and its result
-  { id: 'intro', title: 'Welcome', by: { game: 'dots' }, file: 'video/welcome-test.mp4', ratio: [9, 16] },
+  /* build 68 (67.6b, Cowork): THE FRAME IS LANDSCAPE. Aiden set on 2026-09-18 that the videos are horizontal, watched without turning the phone, and
+     59.10's per-clip `ratio` had left every frame in the shape of the portrait test clip. The rows carry no ratio now: every frame is 16:9 and a
+     clip of any other shape is letterboxed inside it (contain, never crop) */
+  { id: 'intro', title: 'Welcome', by: { game: 'dots' }, file: 'video/welcome-test.mp4' },
   /* build 66 (65.18): EVERY CHEST'S VIDEO IS THE WELCOME CLIP FOR NOW — Aiden: "Just put the same video that we have for the first one in all of these
      for now, and then I can add them later." Each chest still names its own file here, so his clips go in one row at a time */
-  { id: 'games', title: "You've seen them all!", by: { chest: 'games' }, file: 'video/welcome-test.mp4', ratio: [9, 16] },
-  { id: 'skill', title: 'The skill chest is open', by: { chest: 'key' }, file: 'video/welcome-test.mp4', ratio: [9, 16] },
-  { id: 'pro', title: 'Have you gone pro?', by: { chest: 'pro' }, file: 'video/welcome-test.mp4', ratio: [9, 16] },
-  { id: 'author', title: 'Much better than me', by: { chest: 'thorns' }, file: 'video/welcome-test.mp4', ratio: [9, 16] },
+  { id: 'games', title: "You've seen them all!", by: { chest: 'games' }, file: 'video/welcome-test.mp4' },
+  { id: 'skill', title: 'The skill chest is open', by: { chest: 'key' }, file: 'video/welcome-test.mp4' },
+  { id: 'pro', title: 'Have you gone pro?', by: { chest: 'pro' }, file: 'video/welcome-test.mp4' },
+  { id: 'author', title: 'Much better than me', by: { chest: 'thorns' }, file: 'video/welcome-test.mp4' },
   { id: 'g1', gaunt: 'g1', by: { gauntlet: 'g1' }, file: 'video/test-card.mp4', cc: 'video/test-card.vtt' },
   { id: 'g2', gaunt: 'g2', by: { gauntlet: 'g2' }, file: 'video/test-card.mp4', cc: 'video/test-card.vtt' },
   { id: 'thanks', title: 'Massive thank you', by: { support: 1 }, file: 'video/test-card.mp4', cc: 'video/test-card.vtt' },

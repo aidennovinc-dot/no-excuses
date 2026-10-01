@@ -107,8 +107,8 @@ function burstHtml(id) { const n = SPILL.particles;
    file itself. A row with no `ratio` is 16:9, which is what the test card is, so nothing that has not been re-shot moves. */
 function msgPreview(m, o = {}) { if (!m) return '';
   const col = msgCol(m) || '', has = !!m.file && !o.soon;
-  const r = Array.isArray(m.ratio) && m.ratio.length === 2 ? m.ratio : null;
-  return `<span class="mprev${o.big ? ' big' : ''}${has ? ' has' : ''}" style="${col ? `--vg:${col};` : ''}${r ? `--mp-arw:${r[0]};--mp-arh:${r[1]}` : ''}">`
+  // build 68 (67.6b): every frame is 16:9 — the row's own shape is no longer read
+  return `<span class="mprev${o.big ? ' big' : ''}${has ? ' has' : ''}" style="${col ? `--vg:${col};` : ''}">`
     + `<span class="mpframe"><span class="mppic">${has ? '<i class="mpplay"></i>' : `<i class="mpsoon">${esc(o.soon || MSG.soon)}</i>`}</span></span>`
     + (o.title === false ? '' : `<b class="mptitle">${esc(quoted(msgTitle(m)))}</b>`) + '</span>'; }
 
