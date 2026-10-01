@@ -1265,6 +1265,10 @@
   /* build 64 (62.9 step 5): the Dots lock box, opened by the walkthrough, sits in the top half so its rule shows above the centred box; its two
      buttons are hidden, since nothing but the walkthrough takes a tap while it is up */
   /* build 68 (67.1): #lockwrap.tut is gone — the lock popup never moves for a tutorial box. (67.29) a Gauntlet's Enter waits out its tour, then arrives */
+  /* build 68 (67.24): a tap on a locked key shakes its card and lights the line that says what opens it */
+  .kkey.kshake{animation:kshake .42s cubic-bezier(.36,.07,.19,.97) both}
+  .kkey.kshake u.need{color:var(--tut);text-shadow:0 0 10px color-mix(in srgb,var(--tut) 60%,transparent);transition:color .15s}
+  @keyframes kshake{10%,90%{translate:-1px 0}20%,80%{translate:2px 0}30%,50%,70%{translate:-4px 0}40%,60%{translate:4px 0}}
   #s-gauntlet.tuthold .gtgo{visibility:hidden}
   #s-gauntlet.tutin .gtgo{animation:gtin .55s cubic-bezier(.2,.8,.2,1) both,gflick var(--gflick) steps(1,end) .55s infinite}
   @keyframes gtin{from{opacity:0;transform:translateY(14px) scale(.94)}}

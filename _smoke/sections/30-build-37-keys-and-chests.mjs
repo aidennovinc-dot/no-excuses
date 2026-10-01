@@ -174,7 +174,7 @@ export async function run() {
     (g12.after1.slice(1).map(x => x.need).join('|') === 'Earn the Skill key|Earn the Pro key|Earn the Author key' /* AMENDED for build 49 (Aiden, after build 48): the Skill key */)
       ? ok(`G.1 once the Games chest is open the Skill chest says "${g12.after1[1].need}" and the chests after it name their keys - no percentage (v26 item 12)`) : bad('G.1 after the Games chest', JSON.stringify(g12.after1));
     const u = g12.keys.under;
-    (g12.keys.n === 3 && g12.keys.locked.join() === 'true,true,true' && g12.keys.x.join() === 'true,true,true' && u[0] === 'To unlock: open the Games chest' && u[1] === 'To unlock: open the previous chest' && u[2] === u[1] && !g12.keys.whole && !g12.keys.one)
+    (g12.keys.n === 3 && g12.keys.locked.join() === 'true,true,true' && g12.keys.x.join() === 'true,true,true' && u[0] === 'To unlock: open the Games chest' && u[1] === 'To unlock: open the Skill chest' && u[2] === 'To unlock: open the Pro chest' /* AMENDED at build 68 (67.24): each key names the chest that really opens it */ && !g12.keys.whole && !g12.keys.one)
       ? ok(`G.2 / D.7 AMENDED at build 40 (L.10a): all three keys on the strip and all three crossed out before the Games chest - "${u[0]}", then "${u[1]}" - with no percentage`) : bad('G.2 / D.7 the key strip', JSON.stringify(g12.keys));
     (/^Open the previous chest first/.test(g12.keyTap.toast) && g12.keyTap.title === 'skill key' /* AMENDED for build 49 (Aiden, after build 48): the Skill key */ && g12.keyTap.sel === 0)
       ? ok('G.2 / A.1 a locked key says what opens it and does not open - no ring, no numbers') : bad('G.2 the locked key tap', JSON.stringify(g12.keyTap));
@@ -284,5 +284,21 @@ export async function run() {
       ? ok(`D.4 / L.8e back at the menu with the meter up from 10 to 20 since it was last shown, the figure pulses and counts up with the count-up's own whoosh (${d4.showFrom}% → ${d4.showTo}% on screen, v28 item 9), and the raw 20 is written when it is painted`) : bad('D.4 the count-up', JSON.stringify(d4));
     (!d4.again.up && d4.again.txt === d4.showTo + '% complete' && !d4.down.up && d4.down.txt === d4.showTo + '% complete' && d4.down.seen === d4.pct)
       ? ok('D.4 painting the same figure again plays nothing, and a figure LOWER than the one last seen never counts down') : bad('D.4 once, and never down', JSON.stringify({ again: d4.again, down: d4.down }));
+  }
+  /* build 68 (67.24): A LOCKED KEY NAMES THE REAL CHEST — "open the Skill chest" under Pro, "open the Pro chest" under Author — and a tap on it shakes the card
+     and lights that line; the "Open the previous chest first" popup is gone */
+  {
+    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS, allOpen: false, chests: { games: 1 }, keySeen: 1, keysSeen: 1 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+    const k24 = await page.evaluate(async () => { const R = await import('./ui/router.js'), C = await import('./config/copy.js'), w = ms => new Promise(r => setTimeout(r, ms));
+      R.show('s-key', { tier: 0 }); await w(600);
+      const need = i => (document.querySelector(`#key-keys .kkey[data-kt="${i}"] u.need`) || {}).textContent || '';
+      const pro = document.querySelector('#key-keys .kkey[data-kt="1"]'); pro.click(); await w(120);
+      const out = { pro: need(1), author: need(2), shake: pro.classList.contains('kshake'), lit: getComputedStyle(pro.querySelector('u.need')).color, toast: document.getElementById('toast').classList.contains('on'),
+        want: [C.KEY.openChest.replace('{chest}', C.GRID.chest.key), C.KEY.openChest.replace('{chest}', C.GRID.chest.pro)], tut: getComputedStyle(document.documentElement).getPropertyValue('--tut').trim() };
+      R.show('s-menu'); return out; });
+    (k24.pro.endsWith(k24.want[0]) && k24.author.endsWith(k24.want[1]) && !/previous/i.test(k24.pro + k24.author) && k24.shake && !k24.toast)
+      ? ok(`67.24 a locked key names its real chest — "${k24.pro}", "${k24.author}" — and a tap shakes the card and lights that line, no popup`)
+      : bad('67.24 the locked key cards', JSON.stringify(k24));
   }
 }

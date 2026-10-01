@@ -504,7 +504,8 @@ export const KEY = { title:'the key', hint:'tap a game · solo runs only',
   gamesChest:'open the Games chest', gamesToast:'Open the Games chest first — every game mode unlocked opens it',
   // v21 (G.2 / v20 D.7, build 37): all three keys are on the strip from the start. A locked one is crossed out with what opens
   // it underneath — the locked-mode pattern, SHEET.toUnlock around this — and nothing about its numbers (v17 A.1, narrowed)
-  prevChest:'open the previous chest', lockedToast:'Open the previous chest first — this key’s numbers stay hidden until then' };
+  // build 68 (67.24): a locked key names the real chest; the popup is gone (a tap shakes the card and lights this line instead)
+  openChest:'open the {chest}' };
 
 // the engines' own words
 export const SEQ = { copy:'copy the notes', yourTurn:'your turn', whoTurn:'{who} · your turn', watch:'round {n} · watch', round:'round {n}',

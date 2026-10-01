@@ -125,7 +125,9 @@ function keys() {
        the Skill band carries the unlocked modes with its bars, (modes + bars) ÷ (modes + 30), so 12 modes and 2 bars is 14 ÷ 42. Two units side by
        side read as a mismatch, so the card now counts bars like the line does; the percentage stays on the home menu (Cowork's call) */
     const st = keyState(k.id), pct = k.whole ? '' : T(KEY.cardBars, { done: k.shell ? 0 : st.done, total: st.total });
-    const under = locked ? `<u class="need">${esc(T(SHEET.toUnlock, { need: k.i === 0 ? KEY.gamesChest : KEY.prevChest }))}</u>` : `<u>${k.whole ? KEY.unlocked : pct}</u>`;
+    // build 68 (67.24): a locked key names the REAL chest that reveals it — "open the Skill chest" (Pro), "open the Pro chest" (Author) — not "the previous chest"
+    const by = CHESTS.find(c => c.opens === k.id), need = k.i === 0 || !by ? KEY.gamesChest : T(KEY.openChest, { chest: GRID.chest[by.id] });
+    const under = locked ? `<u class="need">${esc(T(SHEET.toUnlock, { need }))}</u>` : `<u>${k.whole ? KEY.unlocked : pct}</u>`;
     return `<button class="kkey${k.i === openKey ? ' sel' : ''}${k.whole && !locked ? ' whole' : ''}${k.shell ? ' shell' : ''}${locked ? ' locked' : ''}${fresh ? ' newthing' : ''}" data-act="key-tier" data-kt="${k.i}" style="--ktint:${k.tint};--kground:${k.ground}">`
       + glyph(k.id, 't' + (k.i + 1)) + `<b class="${locked ? 'x' : ''}">${esc(k.name)}</b>` + under + `</button>`; }).join('');
 }
@@ -796,7 +798,9 @@ const keyTierIx = id => Math.max(0, keyTiers().findIndex(k => k.id === id));
 define({
   // v21 (G.2): a locked key says what opens it and stays where it is — its ring and its numbers are what A.1 still hides
   // v23 (L.10a): key 1 included, until the Games chest
-  'key-tier'(el) { const i = +el.dataset.kt; if (!tierOpen(keyTiers()[i].id)) { toast(i === 0 ? KEY.gamesToast : KEY.lockedToast); return 'pick'; }
+  /* build 68 (67.24, Cowork): a tap on a locked key SHAKES ITS CARD AND LIGHTS ITS REQUIREMENT LINE — the card already says what opens it, so the popup
+     ("Open the previous chest first — this key's numbers stay hidden until then") is gone */
+  'key-tier'(el) { const i = +el.dataset.kt; if (!tierOpen(keyTiers()[i].id)) { el.classList.remove('kshake'); void el.offsetWidth; el.classList.add('kshake'); setTimeout(() => el.classList.remove('kshake'), 900); return 'pick'; }
     openKey = i; openGame = null; render(); Music.menu(themeOf(keyTiers()[openKey]));
     // build 68 (67.22): a key first seen from its tab gets its intro then, not on some later visit
     { const t = keyTiers()[i]; if (t && !t.shell && !(prefs.keyIntro || {})[t.id] && !auto) { clearTimeout(introT); $('#s-key').classList.add('kintro');
