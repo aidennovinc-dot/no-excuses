@@ -1269,6 +1269,12 @@
   .kkey.kshake{animation:kshake .42s cubic-bezier(.36,.07,.19,.97) both}
   .kkey.kshake u.need{color:var(--tut);text-shadow:0 0 10px color-mix(in srgb,var(--tut) 60%,transparent);transition:color .15s}
   @keyframes kshake{10%,90%{translate:-1px 0}20%,80%{translate:2px 0}30%,50%,70%{translate:-4px 0}40%,60%{translate:4px 0}}
+  /* build 68 (67.30): a soft dark shadow is PART OF the text — it keeps every line legible over a bright background (Lantern, Snow) without a dark box
+     behind it, and it cannot arrive before the text does. The art is no longer cut out behind text (ui/atmosphere.js) */
+  .screen{text-shadow:0 1px 2px rgba(0,0,0,.85),0 0 9px rgba(0,0,0,.55)}
+  /* a button does not inherit it on its own (the browser's own sheet sets none); :where keeps this at no weight, so a glow's own shadow still wins */
+  :where(.screen button){text-shadow:inherit}
+  .screen .sym{filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.8))}
   #s-gauntlet.tuthold .gtgo{visibility:hidden}
   #s-gauntlet.tutin .gtgo{animation:gtin .55s cubic-bezier(.2,.8,.2,1) both,gflick var(--gflick) steps(1,end) .55s infinite}
   @keyframes gtin{from{opacity:0;transform:translateY(14px) scale(.94)}}

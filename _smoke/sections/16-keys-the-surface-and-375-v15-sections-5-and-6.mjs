@@ -387,7 +387,10 @@ export async function run() {
     let open48 = null; for (let i = 0; i < 90; i++) { await sleep(200); open48 = await page.evaluate(() => ({ ask: !document.getElementById('key-ask').hidden, playing: !document.getElementById('key-cere').hidden, kind: document.getElementById('key-cere').dataset.kind, chest: document.getElementById('key-cere').dataset.rev, prompt: document.getElementById('key-hint').classList.contains('kprompt') })); if (open48.kind === 'chest') break; }
     const after48 = { hint: '', vis: 'visible', tapLine: 0 }, ask48 = { ask: true, playing: false, txt: '' };
     await revealDone(); await sleep(400);
-    const landed48 = await onScreen();
+    // AMENDED at build 68 (67.28): the chest's video comes straight after its card (a first viewing must be watched), and the map after the video
+    const vid48 = await page.evaluate(() => { const v = document.getElementById('vplay'); return !!v && !v.hidden; });
+    if (vid48) { await page.evaluate(() => { const v = document.querySelector('#vplay video'); if (v) v.dispatchEvent(new Event('ended')); }); await sleep(1600); }
+    const landed48 = vid48 ? await onScreen() : 'no video';
     const askWant48 = KC48.KEY.ask.replace('{chest}', KC48.GRID.chest.key).toLowerCase();
     (due48 === 'hidden' && !open48.prompt && !open48.ask && open48.playing && open48.kind === 'chest' && open48.chest === 'key' && landed48 === 's-pick')
       ? ok(`L13 / v26 item 11 once key 1's reveal has played, the Skill chest's ceremony takes the screen by itself — no prompt, no ask (AMENDED at build 68, 67.31) — and tapped through it lands on the map; the Skill chest, ending on the map`)
@@ -559,7 +562,7 @@ export async function run() {
     // item 10's cap, off the data: the power-on is 750ms at most and its steps are the named ones, in order
     const onSpan = Math.max(...P52.on.steps.map(x => x.at + x.ms)), offSpan = Math.max(...P52.off.steps.map(x => x.at + x.ms));
     const timing = P52.on.ms <= 750 && onSpan <= P52.on.ms && offSpan <= P52.off.ms
-      && P52.on.steps.map(x => x.name).join() === 'outline,line,open' && P52.off.steps.map(x => x.name).join() === 'close,dot,fade'
+      && P52.on.steps.map(x => x.name).join() === 'outline,line,open' && P52.off.steps.map(x => x.name).join() === 'static,close,dot,fade' /* AMENDED at build 68 (67.14): the switch-off opens on a burst of static */
       && P52.inset > 0 && P52.inset < 25;
     /* the test card is really there and it is NOT build 46's planted video/test.mp4 (item 11 says so in as many words).
        AMENDED AT BUILD 59 (v30 59.10): the Welcome slot points at Aiden's own clip now, so "every slot is the test card" is no longer
@@ -599,7 +602,8 @@ export async function run() {
       out.voff = h.classList.contains('voff'); out.offAnims = [anim(fr), anim(h.querySelector('.vpic')), anim(h.querySelector('.vline'))].join('/');
       await wait(P.off.ms + 250); out.gone = h.hidden && !h.querySelector('video');
       return out; }, P52);
-    const shown = play.built && !play.hidden && play.von && play.title === play.wantTitle && /tap outside to close/i.test(play.foot)
+    // AMENDED at build 68 (67.6): the title is two lines now — the eyebrow, then the clip's name in quotes — so the name is read inside it
+    const shown = play.built && !play.hidden && play.von && play.title.includes(play.wantTitle) && /tap outside to close/i.test(play.foot)
       && play.inline && !play.ctrl && !play.auto && play.src === 'video/test-card.mp4' && play.cc && play.trackMode === 'hidden' && play.ccBelow && play.over;
     const framed = play.box.l >= 12 && Math.abs(play.box.l - play.box.rr) <= 2 && play.box.t > 0 && play.box.b > 0 && Math.abs(play.box.ratio - 16 / 9) < .05
       && Math.abs(play.box.w - (390 - 390 * P52.inset / 100 * 2)) <= 4;
@@ -808,10 +812,13 @@ export async function run() {
         const lit = els.filter(e => { const r = e.getBoundingClientRect(); const d = cx.getImageData(Math.round((r.x + r.width / 2 - cr.left) * k), Math.round((r.y + r.height / 2 - cr.top) * k), 1, 1).data;
           return d[3] > 255 * (1 - TH.BG_LAYER.clear) + 8 && !(sky.length === 3 && sky.every((v, i) => Math.abs(d[i] - v) <= 8)) && !floor(d); });
         out[style] = { n: els.length, lit: lit.map(e => e.id || e.className).slice(0, 4) }; }
+      const shadow = [...document.querySelectorAll('#s-key button, #s-key p, #s-key .eyebrow')].filter(e => e.textContent.trim() && e.getBoundingClientRect().height > 0).every(e => getComputedStyle(e).textShadow !== 'none');
       AT.setKeyLayer(null); const cr = cv.getBoundingClientRect();
-      return { out, pe: getComputedStyle(cv).pointerEvents, covers: cr.top <= 0 && cr.bottom >= innerHeight && cr.width >= innerWidth - 1 }; });
-    (Object.values(lay.out).every(o => o.n > 3 && !o.lit.length) && lay.pe === 'none' && lay.covers)
-      ? ok(`61.7 / 61.22 on the key screen no key layer draws behind text or a control (${Object.entries(lay.out).map(([s, o]) => s + ' ' + o.n + ' clear').join(', ')}); the canvas takes no tap and covers the phone`)
+      return { out, holes: AT.holesNow(), shadow, pe: getComputedStyle(cv).pointerEvents, covers: cr.top <= 0 && cr.bottom >= innerHeight && cr.width >= innerWidth - 1 }; });
+    /* AMENDED at build 68 (67.30, Cowork): the art is NO LONGER cut out behind text — those cut-outs were the dark boxes that showed before their text arrived.
+       Every line keeps its own soft dark shadow instead; what stays is the canvas taking no tap and covering the phone */
+    (Object.values(lay.out).every(o => o.n > 3) && lay.holes === 0 && lay.shadow && lay.pe === 'none' && lay.covers)
+      ? ok(`67.30 / 61.22 on the key screen every key layer runs behind the text with no box cut out of it (${Object.entries(lay.out).map(([s, o]) => s + ' ' + o.n).join(', ')} pieces of text, each with its own dark shadow); the canvas takes no tap and covers the phone`)
       : bad('61.7 / 61.22 the background layer rule', JSON.stringify(lay));
   }
   /* build 64 (A2): THE STATUS-BAR STRIP IS CLEAR. With a phone's top inset on (47px), no key layer draws anything between the top of the canvas
@@ -936,7 +943,8 @@ export async function run() {
           out.push({ bg, id, n: els.length, lit, covers: cr.top <= -top + 1 && cr.bottom >= innerHeight + bottom - 1 && cr.width >= innerWidth - 1 }); } }
       S.prefs.bg = 'stars'; R.show('s-menu'); return { top, bottom, out }; });
     try { await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0, bottom: 0, left: 0, right: 0 } }); } catch (e) {}
-    const off = res.out.filter(x => !x.covers || x.lit.length || !x.n);
+    // AMENDED at build 68 (67.30): art behind text is allowed now (it carries a shadow, not a box); what is held is that the layer covers the page
+    const off = res.out.filter(x => !x.covers || !x.n);
     (insets && res.top === 47 && res.bottom === 34 && !off.length)
       ? ok(`61.22 with a 47px top and 34px bottom inset, Lantern, Circuit and Thorn fill Customise, the Skill key screen and the Games chest tab from above the top inset to below the bottom one, scrolled to the end, with no art behind any of ${res.out.reduce((n, x) => n + x.n, 0)} controls and labels`)
       : bad('61.22 the background covers the page and sits behind everything', JSON.stringify({ insets, top: res.top, bottom: res.bottom, off }));

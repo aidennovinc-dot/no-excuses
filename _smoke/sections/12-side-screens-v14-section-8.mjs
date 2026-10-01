@@ -241,4 +241,20 @@ export async function run() {
       ? ok(`61.26 the Games chest tab ends on the Skill key's art and one line: "${shut26.txt}" dim before, "${open26.txt}" lit after`)
       : bad('61.26 the Skill key block', JSON.stringify({ open26, shut26 }));
   }
+  /* build 68 (67.30, Cowork): NO BLACK BACKING BOX BEHIND TEXT OR AN ICON, ANYWHERE — the menu, the map with a chest's "You found" words, Customise, on the
+     brightest backgrounds: nothing is cut out of the background behind them (so nothing can show before the text it backs), and every line wears its
+     own soft dark shadow instead */
+  {
+    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS, chests: { games: 1 }, spill: { games: 1 } }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+    const b30 = await page.evaluate(async () => { const AT = await import('./ui/atmosphere.js'), R = await import('./ui/router.js'), S = await import('./core/store.js'), TH = await import('./config/theme.js'), w = ms => new Promise(r => setTimeout(r, ms)), out = [];
+      for (const bg of Object.keys(TH.DESIGNS).slice(0, 4)) { S.prefs.bg = bg; S.save();
+        for (const id of ['s-menu', 's-pick', 's-custom']) { R.show(id); await w(700);
+          const txt = [...document.querySelectorAll('.screen.on .item, .screen.on .cw, .screen.on .chip, .screen.on h4')].filter(e => e.textContent.trim() && e.getBoundingClientRect().height > 0);
+          out.push({ bg, id, n: txt.length, holes: AT.holesNow(), bare: txt.filter(e => getComputedStyle(e).textShadow === 'none').length }); } }
+      R.show('s-menu'); return out; });
+    (b30.every(x => x.holes === 0 && !x.bare) && b30.some(x => x.id === 's-pick' && x.n))
+      ? ok(`67.30 no box is cut out of the background behind any text or icon — menu, map ("You found") and Customise on ${[...new Set(b30.map(x => x.bg))].join(', ')} — and every line carries its own soft dark shadow instead`)
+      : bad('67.30 the backing boxes', JSON.stringify(b30));
+  }
 }

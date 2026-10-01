@@ -184,14 +184,13 @@ function measure(){ holes=[]; strip=0; holesT=performance.now(); if(inRun) retur
      draws there — the same rule that clears the art from behind text, on every screen and every background, not a thorn-only exception. The
      strip is cleared outright (a hole behind text keeps BG_LAYER.clear's trace of the art; the clock is not text of ours). */
   { const ti=insetTop(); if(ti>0) strip=(ti-cvTop)*dpr; }
-  const s=document.querySelector('.screen.on'); if(!s) return;
-  const vw=innerWidth, vh=innerHeight, big=vw*vh*.45, p=BG_LAYER.pad;
-  for(const el of s.querySelectorAll('*')){ if(el instanceof SVGElement) continue;
-    const ctl=el.matches('button,input,.chip,.mch,.kkey,.krow,.lockline,[data-act]');
-    if(!ctl&&![...el.childNodes].some(n=>n.nodeType===3&&TEXTY.test(n.nodeValue))) continue;
-    const r=el.getBoundingClientRect(); if(!r.width||!r.height||r.bottom<0||r.top>vh||r.width*r.height>big) continue;
-    if(getComputedStyle(el).visibility==='hidden') continue;
-    holes.push([(r.left-p-cvLeft)*dpr,(r.top-p-cvTop)*dpr,(r.width+p*2)*dpr,(r.height+p*2)*dpr]); } }
+  /* build 68 (67.30, Cowork — Aiden left it to Claude): NO MORE HOLES BEHIND TEXT. The art was cut out behind every line of text and every control (61.7),
+     and on a dark page each cut-out was a dark box — measured off the layout, so it was on the screen BEFORE the text that animates onto it, showing
+     where it would land, and it made the stepped, uneven panels in the map's "You found" lists, behind the menu items and behind Customise's chips.
+     The art now runs behind everything; text keeps its own legibility with a soft dark shadow (styles/app.css), which is part of the text and cannot
+     arrive early. The status-bar strip above stays clear (A2) */ }
+// the gate's read: how many holes are being cut (none, since 67.30)
+const holesNow=()=>holes.length;
 // a layer that lays down its own opaque sky (Lantern) has its holes filled with that sky — clearing them would show --ground through as cards
 function punch(ly){ if(!holes.length&&!strip) return; const sky=ly&&KEY_LAYER[ly]&&KEY_LAYER[ly].sky; cx.save();
   cx.globalCompositeOperation=sky?'source-over':'destination-out'; cx.fillStyle=sky?`rgb(${sky})`:'#000';
@@ -252,4 +251,4 @@ function setKeyLayer(style){ over=LAYER[style]?style:null; }
 on('screen:change',({id})=>{ inRun=id==='game'; holes=[]; holesT=0; resume(); });
 addEventListener('scroll',()=>{ holesT=0; },true);
 
-export { DRAW, LAYER, setKeyLayer, startAtmosphere };
+export { DRAW, LAYER, holesNow, setKeyLayer, startAtmosphere };
