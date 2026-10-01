@@ -11,7 +11,7 @@ import { MODE_NAME } from "../../config/games.js";
 import { GAMES } from "../../games/registry.js";
 import { sel } from "../../core/state.js";
 import { $, $$, T, esc } from "../../core.js";
-import { chestOpen, meter, meterPct, msgDot, msgTitle, readyChest } from "../../progress/key.js";
+import { chestOpen, meter, meterPct, meterTail, msgDot, msgTitle, readyChest } from "../../progress/key.js";
 import { MENU_UNLOCK } from "../../config/unlocks.js";
 import { MESSAGES } from "../../config/messages.js";
 import { meterLook } from "../chest.js";
@@ -132,7 +132,7 @@ const PCT_UP_MS=900;   // (guess)
    The count-up still walks the raw meter, because that is what `prefs.meterSeen` holds and what the bands are measured in; only the text it
    draws is converted, so a rise of one bar still counts up and still wears its band. */
 function paintPct(mk,pct){ const rc=readyChest();
-  const line=v=>Math.round(v)===pct&&rc?T(KEY.menuReady,{pct:meterPct(v),chest:GRID.chest[rc]}):T(KEY.menu,{pct:meterPct(v)});
+  const line=v=>Math.round(v)===pct&&rc?T(KEY.menuReady,{pct:meterPct(v),chest:GRID.chest[rc]}):T(KEY.menu,{pct:meterPct(v),tail:meterTail()});
   const draw=v=>{ const n=Math.round(v); mk.innerHTML=esc(line(n)).replace(/(\d+%)/,'<b class="meterv">$1</b>'); meterLook(mk.querySelector('.meterv'),n); meterLook(mk,n,true); };
   const seen=prefs.meterSeen; prefs.meterSeen=pct; save();
   const id=mk._up=(mk._up||0)+1; mk.classList.remove('up');

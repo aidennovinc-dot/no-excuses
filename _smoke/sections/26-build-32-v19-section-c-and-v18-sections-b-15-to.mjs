@@ -188,8 +188,9 @@ export async function run() {
        is the meter itself, so one key of the three reads 100 again and the difference between 100, 200 and 300 is back on the front
        of the app. FEEDBACK-v29 §1 carries the disagreement — it is the one thing in that build Aiden has asked for both ways.
        The figure is derived here rather than written out, so it cannot drift from the config. */
-    const want53 = await page.evaluate(async () => { const K = await import('./progress/key.js'); return K.meterPct() + '% complete'; });
-    (line === want53 && line === '100% complete') ? ok(`L.8a (retiring B.17) the front of the app reads the meter, never re-bases, and prints it as a share of the whole - every mode, key 1 whole and the Skill chest open reads "${line}" (100 of the raw 0–300 meter)`) : bad('L.8a the front number', JSON.stringify({ line, want53 }));
+    // AMENDED at build 66 (65.14): with the Skill chest open the figure is 100 and the next key's bars go beside it
+    const want53 = await page.evaluate(async () => { const K = await import('./progress/key.js'); return K.meterPct() + '% complete' + K.meterTail(); });
+    (line === want53 && line.startsWith('100% complete')) ? ok(`L.8a (retiring B.17) the front of the app reads the meter, never re-bases, and prints it as a share of the whole - every mode, key 1 whole and the Skill chest open reads "${line}" (100 of the raw 0–300 meter)`) : bad('L.8a the front number', JSON.stringify({ line, want53 }));
     // B.19: the column — AMENDED at build 40 (L.10c): four chests, one column, Games at the top of it
     await click('[data-go="s-pick"]'); await sleep(600);
     const col = await page.evaluate(() => { const ids = ['games', 'key', 'pro', 'thorns']; const c = n => document.querySelector(`.chest[data-chest="${n}"]`); const cell = n => ({ r: +c(n).style.gridRow, col: +c(n).style.gridColumn, need: c(n).querySelector('.pic').dataset.need, cls: c(n).className, name: c(n).querySelector('.name').textContent.trim() });

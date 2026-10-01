@@ -21,6 +21,7 @@ import { countUp } from "../core/count.js";
 import { COMBOS } from "../progress/key.js";
 import { chestCol, chestSvg, meterLook } from "./chest.js";
 import { meterPct } from "../progress/key.js";
+const METER_FULL = 100;
 
 const f1 = v => (+v).toFixed(1);
 // which named step lifts each chest's lid: its own `lid` step, or the moment the Pro chest bursts and the Thorns reveal widens
@@ -115,10 +116,15 @@ function stageHtml(id, name, was, tapLine) {
   // item 13: the Games chest arrives at its ceremony with all seven cracks in the markup — the stylesheet draws the seventh in on `crack`
   const chest = chestSvg(id, 'cbig', { cracks: 7 }).replace('<svg ', '<svg x="90" y="250" width="120" height="98" ');
   return `<svg class="cstage" viewBox="0 0 300 520" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${behind(id)}<g class="cchestg">${chest}</g>${inFront(id)}</svg>`
-    + `<div class="ctxt"><b>${esc(name)}</b>${metered(id) ? `<u class="meterv">${esc(T(KEY.pct, { n: meterPct(was) }))}</u>` : ''}${tapLine ? `<i class="ctap">${esc(KEY.tapOn)}</i>` : ''}</div>`; }
+    + `<div class="ctxt"><b>${esc(name)}</b>${metered(id) ? `<u class="meterv">${esc(T(KEY.pct, { n: shownOf(id, was, false) }))}</u>` : ''}${tapLine ? `<i class="ctap">${esc(KEY.tapOn)}</i>` : ''}</div>`; }
 const nameOf = id => T(KEY.opened, { chest: GRID.chest[id] });
 // v28 (item 9, build 53): the count-up walks the raw meter and PRINTS meterPct() — one scale on every surface, and it cannot pass 100
 const setMeter = (m, v) => { if (!m) return; m.textContent = T(KEY.pct, { n: meterPct(v) }); meterLook(m, v); };
+/* build 66 (65.14): THE SKILL CHEST IS THE MOMENT THE GAME IS FINISHED. Its figure is read before the chest (95 at most) and after (exactly 100),
+   and it counts between the two slowly (CEREMONY_FX.wholeMs); on 100 it lands with a beat — a flash, the top verdict's sting, the number in gold
+   (`.whole`). The Pro and Author chests open past 100 and read 100: nothing to count */
+const shownOf = (id, v, after) => meterPct(v, id === 'key' ? after : undefined);
+const setShown = (m, n, raw) => { if (!m) return; m.textContent = T(KEY.pct, { n: Math.round(n) }); meterLook(m, raw); };
 
 /* ---------- v25 (items 6 / 22, build 46): A CHEST OPENING IS NOW A STAGE INSIDE THE ONE SHARED REVEAL ----------
    Build 41's playCeremony() owned its own clock, its own "tap to continue" and its own hand-over. Items 6, 11 and 22 put chests and keys
@@ -141,7 +147,8 @@ let upT = 0;
 function chestStage(id, o = {}) { const cfg = CEREMONY[id]; if (!cfg) return null;
   const was = typeof o.was === 'number' ? o.was : 0, now = typeof o.now === 'number' ? o.now : was;
   let host = null, live = false;
-  return { ms: cfg.ms, steps: cfg.steps.map(s => ({ name: s.name, at: s.at, ms: s.ms })), textMs: metered(id) ? CEREMONY_FX.meterMs + 150 : 0,
+  const sWas = shownOf(id, was, false), sNow = shownOf(id, now, true), upMs = id === 'key' ? CEREMONY_FX.wholeMs : CEREMONY_FX.meterMs;
+  return { ms: cfg.ms, steps: cfg.steps.map(s => ({ name: s.name, at: s.at, ms: s.ms })), textMs: metered(id) ? upMs + 150 : 0,
     anchor() { const svg = host && host.querySelector('.rstage .cstage'); if (!svg) return null; const r = svg.getBoundingClientRect(), h = host.getBoundingClientRect(); if (!r.width || !r.height) return null;
       const k = Math.min(r.width / 300, r.height / 520), ox = r.left - h.left + (r.width - 300 * k) / 2, oy = r.top - h.top + (r.height - 520 * k) / 2;
       return { cx: ox + CHEST_BOX.x * k, lid: oy + CHEST_BOX.lid * k, top: oy + CHEST_BOX.top * k, bottom: oy + CHEST_BOX.foot * k,
@@ -156,10 +163,12 @@ function chestStage(id, o = {}) { const cfg = CEREMONY[id]; if (!cfg) return nul
       if (!o.silent) Snd.chest(id);
       // D.4 / L.8e: the credit lands as the count-up in the last beat. Under Reduce Motion it lands at once, with the rest of it
       clearTimeout(upT);
-      const run = () => { if (!live || !m) return; if (now > was) { m.classList.add('up');
-          countUp({ audio: o.silent ? null : Snd, from: was, to: now, ms: CEREMONY_FX.meterMs, fmt: v => Math.round(v), set: v => setMeter(m, v), alive: () => live }); }
-        else setMeter(m, now); };
-      if (k.quick) run(); else upT = setTimeout(run, Math.max(0, typeof k.textAt === 'number' ? k.textAt : cfg.ms - CEREMONY_FX.meterMs)); },
+      const whole = () => { if (!live || !m || id !== 'key' || sNow !== METER_FULL) return; m.classList.add('whole'); if (!o.silent) Snd.verdict('ace'); };
+      const run = () => { if (!live || !m) return; if (sNow > sWas) { m.classList.add('up');
+          countUp({ audio: o.silent ? null : Snd, from: sWas, to: sNow, ms: upMs, fmt: v => Math.round(v), set: v => setShown(m, v, now), alive: () => live });
+          upT = setTimeout(whole, upMs); }
+        else { setShown(m, sNow, now); whole(); } };
+      if (k.quick) run(); else upT = setTimeout(run, Math.max(0, typeof k.textAt === 'number' ? k.textAt : cfg.ms - upMs)); },
     step() { },
     settle() { },
     clear() { live = false; clearTimeout(upT); if (host) { delete host.dataset.chest; delete host.dataset.gaunt; } host = null; } }; }
@@ -170,8 +179,8 @@ function frame(host, id, frac, o = {}) { const cfg = CEREMONY[id]; if (!host || 
   host.dataset.chest = id; host.setAttribute('style', stageVars(id)); host.innerHTML = stageHtml(id, o.name || nameOf(id), was, true);
   { const c = CHESTS.find(x => x.id === id); if (c && c.gaunt) host.dataset.gaunt = c.gaunt; else delete host.dataset.gaunt; }
   host.classList.add('cere', 'play'); host.classList.toggle('tap', f >= 1); host.hidden = false;
-  const up = cfg.ms - CEREMONY_FX.meterMs, k = Math.max(0, Math.min(1, (t - up) / CEREMONY_FX.meterMs));
-  setMeter(host.querySelector('.meterv'), Math.round(was + (now - was) * k));
+  const upMs = id === 'key' ? CEREMONY_FX.wholeMs : CEREMONY_FX.meterMs, up = cfg.ms - upMs, k = Math.max(0, Math.min(1, (t - up) / upMs)), sWas = shownOf(id, was, false), sNow = shownOf(id, now, true);
+  setShown(host.querySelector('.meterv'), sWas + (sNow - sWas) * k, now);
   const last = cfg.steps.filter(s => s.at <= t).pop(); host.dataset.step = f >= 1 ? 'tap' : last ? last.name : '';
   for (const a of host.getAnimations({ subtree: true })) { a.pause(); a.currentTime = t; } }
 

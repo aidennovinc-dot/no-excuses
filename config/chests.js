@@ -37,7 +37,10 @@ export const CHESTS = [
    the map said "203% · opens at 300%" on a Pro chest that was one key short, which read as a threshold off by a tier. Key 1 is 0–100 (the Key
    chest opens at 100), Pro 100–200 (the Pro chest at 200), Author 200–300 (the Author chest at 300). The Games chest is not on the meter at
    all — it opens on every game mode, which is a count of modes, not a percentage — so its screen shows no percentage (item 7). */
-export const METER = { band: 100, modes: false, partial: false, freeStart: true };
+/* build 66 (65.14): WHAT THE FIGURE PRINTS IS COMPLETION, AND OPENING THE SKILL CHEST IS ITS LAST STEP. `before` is the most it reads before the
+   Skill chest opens (the Skill band, modes and bars, scaled to it); opening the Skill chest is the other 5% and lands on exactly 100. The meter
+   itself is untouched — three bands of 100 drive every chest, band and Testing switch — only the PRINTED figure changed */
+export const METER = { band: 100, modes: false, partial: false, freeStart: true, before: 95 };
 
 /* ---------- v23 (§L.8d / §L.8e, build 41): THE METER'S FOUR BANDS — presentation only (L10) ----------
    One row per band, in meter order: 0–100 the quiet band, 100–200 ink, 200–300 gold, 300–400 Thorns. Since build 48 the meter stops at 300
@@ -171,7 +174,8 @@ export const CEREMONY = {
     { name: 'hold', at: 6300, ms: 700 }, { name: 'enter', at: 6900, ms: 650 }, { name: 'grip', at: 7500, ms: 400 }, { name: 'drive', at: 7900, ms: 600 },
     { name: 'turn', at: 8500, ms: 700 }, { name: 'lid', at: 9200, ms: 600 }, { name: 'spill', at: 9600, ms: 1300 }] },
 };
-export const CEREMONY_FX = { meterMs: 900 };
+// build 66 (65.14): `wholeMs` — the Skill chest's count up to 100%, slower than a key chest's, so the last few percent read as the moment
+export const CEREMONY_FX = { meterMs: 900, wholeMs: 2400 };
 /* 57.8: how many of a cover's own shapes are drawn — the Skill chest's lanterns and the Pro chest's traces, each with a node at its end. The
    Author chest's six spikes a side are build 52's own count and stay in ui/ceremony.js with the paths they belong to. All (guess). */
 export const COVER_LOOK = { key: { lanterns: 7 }, pro: { traces: 8 } };

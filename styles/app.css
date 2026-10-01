@@ -1914,6 +1914,10 @@
      band, 300–400 white on black with a spiked edge, a cold glow and a continuous shake. The shake steps between whole pixels, so the
      number never blurs. Green is never used (B.22). Presentation only (L10). */
   .meterv{font-weight:inherit;color:var(--mcol,var(--ink));display:inline-block;position:relative}
+  /* build 66 (65.14): the Skill chest's 100% — a flash and a swell, then it stays gold: the moment the game is finished */
+  .meterv.whole{color:#E8B84A;text-shadow:0 0 14px rgba(232,184,74,.75),0 0 30px rgba(232,184,74,.4);animation:mwhole .9s cubic-bezier(.2,1.4,.4,1) both}
+  @keyframes mwhole{0%{transform:scale(1);filter:brightness(3)}35%{transform:scale(1.45);filter:brightness(2)}100%{transform:scale(1.15);filter:none}}
+  @media (prefers-reduced-motion:reduce){.meterv.whole{animation:none}}
   .meterv.mb2{text-shadow:0 0 var(--mglow) var(--mcol),0 0 calc(var(--mglow) * 2) color-mix(in srgb,var(--mcol) 40%,transparent)}
   .meterv.mb3{background:var(--mground);padding:0 6px;margin-block:var(--mspk);box-shadow:0 0 var(--mglow) var(--mcold);animation:mshake .36s steps(1,end) infinite}
   .meterv.mb3::before,.meterv.mb3::after{content:"";position:absolute;left:0;right:0;height:var(--mspk);background:conic-gradient(from 135deg at 50% 0,var(--mground) 90deg,transparent 0) 0 0/calc(var(--mspk) * 2) 100% repeat-x}

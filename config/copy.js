@@ -420,7 +420,9 @@ export const KEY = { title:'the key', hint:'tap a game · solo runs only',
   // stays on the keys screen. (B.17's re-base at Pro is retired at build 40 — the number is the meter, progress/key.js meter())
   // v23 (L.8a, build 40): the percentage is the METER — "142% complete" — and a chest waiting to be opened says so. v26 (item 9, build 48):
   // 0–300, the three keys, and this is the one place the total is printed
-  menu:'{pct}% complete', menuReady:'{pct}% · the {chest} is ready',
+  /* build 66 (65.14): once the Skill chest is open the figure is 100 and stays there; the Pro and Author keys' bars go BESIDE it, so 100% keeps
+     meaning finished — `tail` is that, " · Pro 2/30" */
+  menu:'{pct}% complete{tail}', menuReady:'{pct}% · the {chest} is ready', tail:' · {name} {done}/{total}',
   cleared:'cleared', open:'not yet', floor:'{bar} or more', ceil:'{bar} or less',
   advance:'{game} · {name} cleared', toast:'Key · {game} · {name} cleared',
   none:'no bar set', mismatch:'{n} combination(s) have no clearance bar: {keys}',

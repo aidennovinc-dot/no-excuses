@@ -23,7 +23,7 @@ export async function run() {
     // v30 (59.11): the modes are part of the first band now, so the derived figure this section checks against needs their count too
     const P59 = await import('./progress.js'), C59 = await import('./config/chests.js');
     const mc = P59.modeCount(), freeN = C59.METER.freeStart ? mc.free : 0;
-    const out = { store: { meter: K.meter(), shown: K.meterPct(), max: K.meterMax(), chests: ids.map(K.chestState), bars: K.TIERS.map(t => K.keyState(t).done), total: K.TIERS.map(t => K.keyState(t).total), pct: K.TIERS.map(t => K.bandPct(t)), open: K.TIERS.map(t => K.tierOpen(t)),
+    const out = { store: { meter: K.meter(), shown: K.meterPct(), max: K.meterMax(), before: (await import('./config/chests.js')).METER.before, chests: ids.map(K.chestState), bars: K.TIERS.map(t => K.keyState(t).done), total: K.TIERS.map(t => K.keyState(t).total), pct: K.TIERS.map(t => K.bandPct(t)), open: K.TIERS.map(t => K.tierOpen(t)),
       modes: { num: Math.max(0, mc.open - freeN), den: Math.max(0, mc.total - freeN) } } };
     R.show('s-pick'); await wait(450);
     out.map = ids.map(id => { const c = document.querySelector(`#grid .chest[data-chest="${id}"]`); return { st: c.classList.contains('open') ? 'open' : c.classList.contains('ready') ? 'ready' : 'locked', need: c.querySelector('.pic').dataset.need }; });
@@ -58,7 +58,8 @@ export async function run() {
        disagreement: Aiden asked for the clamp after reading 300% on the front of the app, and it was Testing's Author switch that produced it. */
     if (s.menu !== null && !s.menu.startsWith(st.shown + '%')) w.push(`menu "${s.menu}"≠${st.shown}%`);
     if (st.shown > st.max || st.shown < 0) w.push(`the shown figure is ${st.shown}% of a ${st.max} meter`);
-    if (st.shown !== Math.max(0, Math.min(st.max, Math.round(st.meter)))) w.push(`shown ${st.shown}≠meter ${st.meter} of ${st.max}`);
+    // AMENDED at build 66 (65.14): what is printed is completion — the Skill band scaled to METER.before until the Skill chest opens, then 100
+    if (st.shown !== (st.chests[1] === 'open' ? 100 : Math.min(st.before, Math.round(Math.max(0, Math.min(100, st.meter)) * st.before / 100)))) w.push(`shown ${st.shown}≠completion of meter ${st.meter}`);
     // reachable by play
     st.chests.forEach((c, i) => { if (i && c === 'open' && st.chests[i - 1] !== 'open') w.push(`chest ${i} open behind a shut one`); });
     st.bars.forEach((n, i) => { if (n && !st.open[i]) w.push(`${n} bars on shut key ${i}`); });
@@ -790,6 +791,30 @@ export async function run() {
       && !wc60.fx.empty && !wc60.fx.clash && wc60.fx.notes >= 3)
       ? ok(`60.33 the Welcome message gets a moment of its own - nothing at all before the first Quick Tap run opens the slot, then a full-screen ceremony carrying the player's own television intro (${wc60.up.steps.join(', ')}) and a card ("${wc60.up.label}" - "${wc60.up.title}", ${wc60.up.buttons.join(', ')}); PLAY hands the clip to the shared player, LATER closes it and leaves the Messages row green because the clip is still unwatched, it refuses while a run is live and spends nothing doing so, it fires exactly ONCE per save, and its ${wc60.fx.notes}-note sound is neither the unlock's, the achievement click nor a chest's`)
       : bad('60.33 the Welcome ceremony', JSON.stringify(wc60)); }
+  /* build 66 (65.14): OPENING THE SKILL CHEST IS EXACTLY 100%, AND IT IS THE MOMENT. Aiden's 106% reproduced: every Skill bar cleared and six Pro bars
+     already beaten — opening the Skill chest reveals the Pro tier and credits those six, so the 0-300 meter reads 120 and the old figure printed it.
+     Now: the Skill chest READY reads 95 (METER.before), it opens for real from the map, its figure counts up to 100 and lands gold (`.whole`), the app
+     reads exactly 100 afterwards while the meter still reasons on 120, and the menu puts the Pro bars beside it */
+  {
+    await boot({ chests: {}, spill: {}, readySeen: {}, revealed: {} });
+    const pre = await page.evaluate(async () => { const K = await import('./progress/key.js'), P = await import('./progress.js'), S = await import('./core/store.js'), C = await import('./config/chests.js');
+      S.prefs.allOpen = false; S.prefs.supporter = false; S.store.bars = {}; S.save(); K.devReach('key', P.devModesAll);
+      for (const cb of K.COMBOS.slice(0, 6)) S.store.bars[K.skey(cb.key, 'pro')] = Date.now();
+      S.prefs.meterSeen = K.meter(); S.save(); return { state: K.chestState('key'), shown: K.meterPct(), raw: K.meter(), before: C.METER.before }; });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await page.evaluate(async () => (await import('./ui/router.js')).show('s-pick')); await sleep(900);
+    await page.evaluate(() => document.querySelector('#grid .chest[data-chest="key"]').click());
+    let fig = null; for (let i = 0; i < 300 && !(fig = await page.evaluate(() => { const m = document.querySelector('.cere .meterv.whole'); return m ? { t: m.textContent, gold: getComputedStyle(m).color } : null; })); i++) await sleep(100);
+    const seen = await page.evaluate(() => [...document.querySelectorAll('.cere .meterv')].map(m => m.textContent));
+    await revealDone(); await sleep(400);
+    const post = await page.evaluate(async () => { const K = await import('./progress/key.js'); (await import('./ui/router.js')).show('s-menu'); await new Promise(r => setTimeout(r, 1200));
+      return { open: K.chestOpen('key'), shown: K.meterPct(), raw: K.meter(), menu: document.getElementById('menu-key').textContent.trim() }; });
+    const proName = await page.evaluate(async () => (await import('./config/keys.js')).KEYS.find(k => k.id === 'pro').name);
+    (pre.state === 'ready' && pre.shown === pre.before && fig && fig.t === '100%' && /232, 184, 74/.test(fig.gold) && post.open && post.shown === 100 && post.raw > 100
+      && post.menu.startsWith('100% complete') && post.menu.includes(proName + ' 6/'))
+      ? ok(`65.14 the Skill chest READY reads ${pre.shown}%; opened from the map its figure counts up and lands on "${fig.t}" in gold; afterwards the app reads exactly 100 (the meter still ${post.raw}, which printed as ${post.raw}% before) and the menu says "${post.menu}"`)
+      : bad('65.14 the Skill chest is 100%', JSON.stringify({ pre, fig, seen, post }));
+  }
   /* build 66 (65.2): A MISSED WELCOME NEVER LOCKS ABOUT FOR GOOD. Aiden's v0.65: Dots open, a Dots run done, About still struck through — the Welcome
      had never played. A real Quick Tap Marathon opens Dots, and its result screen is left the moment it shows (Back). The ceremony did not play on
      the way out; it plays at the next calm moment — the main menu — and the clip it plays opens About */

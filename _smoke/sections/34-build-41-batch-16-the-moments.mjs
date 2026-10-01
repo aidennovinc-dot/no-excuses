@@ -213,10 +213,14 @@ export async function run() {
       const mk = document.getElementById('menu-key'); const pulse = { up: mk.classList.contains('up'), mcol: mk.style.getPropertyValue('--mcol'), anim: getComputedStyle(mk).animationName };
       return { out, pulse }; });
     const at = v => mb.out.find(x => x.v === v);
+    /* AMENDED at build 66 (65.14): the BAND still reads the raw meter; the TEXT is completion — 100 once the Skill chest is open — with the furthest
+       key's bars beside it, so a meter of 250 prints "100% complete · Author 15/30" (read off config, not typed) */
+    const wantTxt250 = await page.evaluate(async () => { const C = (await import('./config/copy.js')).KEY, K = (await import('./config/keys.js')).KEYS, KS = await import('./progress/key.js');
+      return C.menu.replace('{pct}', 100).replace('{tail}', C.tail.replace('{name}', K.find(k => k.id === 'author').name).replace('{done}', 15).replace('{total}', KS.keyState('author').total)); });
     const bandsOk = mb.out.every(x => x.cls === 'meterv mb' + x.i && x.col !== 'rgb(61, 214, 140)') && [0, 50, 96].every(v => at(v).i === 0) && at(100).i === 1 && at(196).i === 1 && at(200).i === 2 && at(296).i === 2 && at(300).i === 3
       && at(0).col === 'rgb(110, 108, 104)' && at(150).col === 'rgb(232, 230, 225)' && at(250).col === 'rgb(232, 184, 74)' && at(300).col === 'rgb(255, 255, 255)' && at(300).bg === 'rgb(0, 0, 0)'
       && at(0).ts === 'none' && at(150).ts === 'none' && at(250).ts !== 'none' && parseFloat(at(296).glow) > parseFloat(at(200).glow)
-      && at(0).anim === 'none' && at(150).anim === 'none' && at(300).anim === 'mshake' && /^steps\(1(, end)?\)$/.test(at(300).timing) /* Chromium serialises steps(1, end) as steps(1) */ && at(300).shp === '1' && at(250).txt === '250% complete';   // v29 (item 1, build 55): the printed figure is the meter, not a share of it. Was '83% complete' at build 53 (v28 item 9): the BAND still reads the raw meter; the TEXT is meterPct()
+      && at(0).anim === 'none' && at(150).anim === 'none' && at(300).anim === 'mshake' && /^steps\(1(, end)?\)$/.test(at(300).timing) /* Chromium serialises steps(1, end) as steps(1) */ && at(300).shp === '1' && at(250).txt === wantTxt250;   // v29 (item 1, build 55): the printed figure is the meter, not a share of it. Was '83% complete' at build 53 (v28 item 9): the BAND still reads the raw meter; the TEXT is meterPct()
     (cfgOk && pctOk && bandsOk && mb.pulse.up && mb.pulse.mcol === '#E8B84A' && mb.pulse.anim === 'pctup')
       ? ok('L.8d / L.8e the meter\'s bands at figures REACHED by Testing\'s "set meter to N%" (AMENDED at build 48, v26 items 7 / 12 - 0–300, no override): 0-99 --mute with no effects, 100-199 --ink, 200-299 gold with a glow that grows across the band, 300 - the full meter - white on black with a spiked edge, a cold glow and a stepped whole-pixel shake; a rise pulses in the band\'s colour; green is in no band and not in the pulse (B.22)')
       : bad('L.8d / L.8e the meter bands', JSON.stringify({ cfgOk, pctOk, bandsOk, out: mb.out.filter(x => [0, 100, 200, 250, 300].includes(x.v)), pulse: mb.pulse }));
