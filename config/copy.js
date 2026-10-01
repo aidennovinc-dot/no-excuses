@@ -328,7 +328,10 @@ export const TUTORIAL = {
      config. 64.1 (step 10) replaced "Only a Sprint is unlocked. There's no way…"; 64.2 replaced "Or try a longer run (if you've unlocked it)". */
   /* build 65 (64.8): THE ABOUT TUTORIAL, after the Welcome clip — Aiden's lines, typos fixed only. The first, on the menu with About ringed, is
      Claude's: a box that asks for a tap needs a line, and Aiden gave that step none */
-  about:[ "You've [green]unlocked[/green] [yellow]About[/yellow]", 'Welcome to the [yellow]About[/yellow] section', "Here you'll find all the [green]unlocked[/green] [green]videos[/green]",
+  /* build 68 (67.15): every menu item's tour starts on the screen that opens it with Aiden's "Congratulations, you unlocked Scores!" (`got`), then the
+     item ringed on the menu (`look`, Claude's, worded as Progress's own). "You've unlocked About" / "You've unlocked Scores" (Claude's) are gone */
+  got:'[green]Congratulations[/green], you unlocked [yellow]{name}[/yellow]!', look:'Tap [yellow]{name}[/yellow] to take a look',
+  about:[ 'Welcome to the [yellow]About[/yellow] section', "Here you'll find all the [green]unlocked[/green] [green]videos[/green]",
     'The option to [red]send me feedback[/red] for future versions', "And if you're enjoying the game, a chance to [green]show your support[/green]", 'Alright, get back to it!' ],
   /* build 65 (64.9): THE PROGRESS TUTORIAL, after the first Estimate run — Aiden's lines. Build 66 (section C): the first is said on that run's
      RESULT ({game} is Estimate's name), so a player who plays on still sees it; the second, Progress ringed on the menu, is Claude's (a box that asks
@@ -339,7 +342,7 @@ export const TUTORIAL = {
     '[yellow]Press[/yellow] a[yellow] game mode[/yellow] to see how to unlock everything!' ],
   /* build 65 (64.12): THE SCORES TUTORIAL, after the first Reaction run — Aiden's lines; the first (Scores ringed on the menu) is Claude's, as
      About's is, and {game} is Quick Tap's name from config ("quick tap" in his note) */
-  board:[ "You've unlocked [yellow]Scores[/yellow]", '[green]Welcome[/green] to the scores section!', "Let's check your [yellow]{game}[/yellow] scores", 'This [red]thing[/red] up here shows your overall performance across all games' ],
+  board:[ '[green]Welcome[/green] to the scores section!', "Let's check your [yellow]{game}[/yellow] scores", 'This [red]thing[/red] up here shows your overall performance across all games' ],
   /* build 65 (64.14): THE GAMES CHEST TUTORIAL, after the chest opens (and its video, if the player plays it) — Aiden's lines, the names standardised
      to "Skill Key" / "Skill Chest" (Cowork: he dictated "Skill's" / "Skills") */
   /* build 66 (65.9): the second line is Aiden's — the must-tap box on the map that rings the SKILL KEY word, so he gets to the key himself */

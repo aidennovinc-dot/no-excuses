@@ -27,6 +27,7 @@ import { $, T, esc, marks } from "../core.js";
 import { emit, on } from "../core/events.js";
 import { prefs, save } from "../core/store.js";
 import { msgOpen, msgTitle } from "../progress/key.js";
+import { menuOpen } from "../progress/menu.js";
 import { define } from "./actions.js";
 import { playVideo } from "./video.js";
 import { msgPreview } from "./chest.js";
@@ -77,23 +78,24 @@ function closeWelcome() { if (!host || host.hidden) return false;
 
 /* the one caller: the result screen, once it has finished counting. Everything that says "not now" is here rather than at the
    call site, so there is one place to read and one place to change. */
+/* build 68 (67.13 / 67.22): DUE until it has done its job, which is opening About. It used to be spent the moment it started (`welcomeSeen`), so a
+   reload mid-ceremony or mid-clip left About shut for good; now a Welcome cut off that way is due again — the one net. Never over itself or the player */
+const due = () => { const m = slotOf(); return !!m && !prefs.welcomeSeen && msgOpen(m) && !menuOpen('s-about'); };
 function welcomeCheck(live) {
-  if (live || prefs.welcomeSeen) return false;
-  const m = slotOf(); if (!m || !msgOpen(m)) return false;
-  // already watched it (a restored profile, or Testing) — there is nothing to announce
-  if (prefs.msgSeen && prefs.msgSeen[m.id]) { prefs.welcomeSeen = 1; save(); return false; }
-  prefs.welcomeSeen = 1; save();
+  if (live || !due()) return false;
+  const vp = $('#vplay'); if ((host && !host.hidden) || (vp && !vp.hidden)) return false;
   return playWelcome();
 }
+// `welcomeSeen` is written when the clip has played to its close — the moment About opens — not when the ceremony starts (build 68, 67.22)
+on('video:closed', ({ id }) => { const m = slotOf(); if (m && id === m.id && !prefs.welcomeSeen) { prefs.welcomeSeen = 1; save(); } });
 
-/* build 66 (65.2): A WELCOME THAT DID NOT PLAY PLAYS AT THE NEXT CALM MOMENT. The result screen asks for it on a timer once its toasts are done, and that
-   timer dies with the screen (ui/screens/result.js clears its timers on any screen change) — so a player who left the result at once never got it, and
-   About, which the clip opens, stayed shut for good (Aiden's v0.65; reproduced in the gate). The next result asks again the same way; and now the main
-   menu asks too, once nothing else is on it — no toast, no tutorial box, not the title */
+/* build 66 (65.2): A WELCOME THAT DID NOT PLAY PLAYS AT THE NEXT CALM MOMENT ON THE MAIN MENU.
+   Build 68 (67.13 / 67.22): ONLY AS THE NET. The Welcome plays on the result that opens Dots, as that screen opens; this catches the one that was cut
+   off — a reload or a crash mid-ceremony or mid-clip, or a result left inside its first second — and nothing else, since it asks `due()` */
 let calm = 0;
 const stopCalm = () => { clearInterval(calm); calm = 0; };
-on('screen:change', ({ id }) => { stopCalm(); if (id !== 's-menu' || prefs.welcomeSeen) return;
-  calm = setInterval(() => { const m = $('#s-menu'); if (!m.classList.contains('on') || prefs.welcomeSeen) return stopCalm();
+on('screen:change', ({ id }) => { stopCalm(); if (id !== 's-menu' || !due()) return;
+  calm = setInterval(() => { const m = $('#s-menu'); if (!m.classList.contains('on') || !due()) return stopCalm();
     if (m.classList.contains('story') || toastBusy() || (tutNow() || {}).shown) return;
     stopCalm(); welcomeCheck(false); }, 700); });
 

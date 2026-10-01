@@ -5,6 +5,7 @@
 import { RESULT, SHARE, SHEET, TOAST, VERDICT } from "../../config/copy.js";
 import { playersHtml } from "../players.js";
 import { welcomeCheck } from "../welcome.js";
+import { tutTells } from "../tutorial.js";
 import { MAP_ON_UNLOCK_MS } from "../../config/audio.js";
 import { PUB_URL } from "../../config/build.js";
 import { MODE_NAME, PASS_LEN } from "../../config/games.js";
@@ -136,20 +137,22 @@ on('run:finish',({run,isBest,two,fresh,ach,adv})=>{ const g=GC(run.g,run.d,run.s
        unlock sound, which is untouched) — the sound its tile lands with on the map, so a new game is introduced by its own voice the moment it opens */
     const gameOf=k=>{ const g=String(k).split(':')[0]; return GAMES[g]&&unlockToast(k)===T(TOAST.unlockGame,{name:GAMES[g].name})?g:''; };
     // build 65 (64.7): a home menu item (`menu`) toasts by its own name and leads nowhere — the menu is where it is
-    const msgs=(fresh||[]).map(u=>u.menu?[T(TOAST.unlock,{name:u.name}),'','ok',false,'','']:[unlockToast(u.key),'','ok',false,u.key,gameOf(u.key)])
+    // build 68 (67.3): a toast whose news a first-time box on this screen already gives is dropped — a menu item's, the first run's unlocks
+    const told=tutTells(run);
+    const msgs=(fresh||[]).filter(u=>!told.has(u.key)).map(u=>u.menu?[T(TOAST.unlock,{name:u.name}),'','ok',false,'','']:[unlockToast(u.key),'','ok',false,u.key,gameOf(u.key)])
       .concat((ach||[]).map(a=>[achToast(a),a.id,'']));
     /* the tier's sound plays HERE, not at the finish: Snd.end() already owns the moment the run stops, and the ad break
        can stand between the two. A run that earned something pushes its toasts back by the length of the sound, so the
        verdict and an unlock never land on top of each other — the unlock is the bigger sound and it gets clear air. */
     /* v26 (§B1, build 49): AND NOT ON TOP OF "END OF RUN" EITHER. Aiden asked whether the two overlap, and they did — this screen comes up 250ms after the
        finish and the tier played at once, over the last three notes of Snd.end(). The tier now waits until End of run has landed (Snd.endLeft()) */
+    /* build 68 (67.13, L14 / L20): THE WELCOME FIRST. It plays as soon as the screen opens — once the tier's sound has landed — and every toast
+       waits behind it and behind whatever box comes after (ui/toast.js). It was asked for after the last toast (v31 60.33), which a player who
+       tapped on never reached. ui/welcome.js owns every reason NOT to play it; this line says only WHEN */
     const rest=()=>{ const gap=lastTier?Snd.endLeft():0, d=(lastTier?600:0)+gap; if(lastTier){ const t=lastTier; if(gap) setTimeout(()=>Snd.verdict(t),gap); else Snd.verdict(t); }
-      msgs.forEach(([m,id,cls,html,go,g],i)=>tT.push(setTimeout(()=>{ toast(m,id,cls,!!id,go); if(g) tT.push(setTimeout(()=>Snd.mapFx(g),MAP_ON_UNLOCK_MS)); },d+i*((id||go)?3400:2600))));
-      /* v31 (60.33, build 60): AND THE WELCOME CEREMONY, once this screen has finished counting. It is asked after the toasts are
-         queued AND after whatever they cost, so the first thing the game ever gives a player is not competing with a verdict sound
-         and a row of green toasts for the same second. ui/welcome.js owns every reason NOT to play it - once per save, never while a
-         run is live, never if the clip has already been watched - so this line says only WHEN, never WHETHER. */
-      tT.push(setTimeout(()=>{ welcomeCheck(R.on); quiet(true); },d+msgs.length*3400+900));
+      tT.push(setTimeout(()=>welcomeCheck(R.on),d));
+      msgs.forEach(([m,id,cls,html,go,g],i)=>tT.push(setTimeout(()=>{ toast(m,id,cls,!!id,go); if(g) tT.push(setTimeout(()=>Snd.mapFx(g),MAP_ON_UNLOCK_MS)); },d+60+i*((id||go)?3400:2600))));
+      tT.push(setTimeout(()=>quiet(true),d+msgs.length*3400+900));
       renderOverChips(); };
     if(adv) keyBreak(adv,rest); else rest(); },run),250); });
 /* v15 (5.1, build 26): a key unlock INTERRUPTS this screen. It was a green toast the player tapped, sitting behind

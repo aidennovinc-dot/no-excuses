@@ -1702,3 +1702,27 @@ anything Aiden settles goes on the list in the build that implements it.
 - **L18 — no secret achievements**: every achievement shows its name and requirement (2026-09-28, 61.14).
 - **L19 — Streak modes sit outside the Games chest count** (2026-09-29, 64 A1).
 - **L20 — the Welcome is mandatory** (67.7): no Later. The other seven messages keep Later.
+
+- **First-time moments: the one shared cause (67.22 / 67.3 / 67.15 / 67.13, L14).** Five of Aiden's v0.67 moments ran late or never (About,
+  Progress and Scores tours, the Skill Key intro, the Customise tour). The cause they shared: every first-time moment was built to STEP ASIDE —
+  behind toasts and a result still counting (`busy()` waited for both: 64.3, FEEDBACK-v34 A1), behind another moment (the key's creation intro
+  "stands aside … and plays on the next plain visit", 57.6), or behind its own doorway (a tour's step pointer sat on the menu box that rings the
+  item, so a player who walked in another way met nothing inside) — and nothing marked the first visit as spent, so each waited for a later visit
+  and played there. The fix:
+  - **Rooms.** A tour's steps carry `room` (the screen it lives in) or `door` (a box leading there). Entering a room by any route passes its doors
+    and starts its boxes at once; leaving spends it (`prefs.rooms`, a preference like `prefs.tuts`) and drops what was left. A reload spends
+    nothing, so the next visit resumes — the one net. The key screen as a chest opens on it (`kpass`) or as the run's interlude passes through
+    (`auto`) is not a visit. `active()` picks the first live tutorial whose step lives HERE (it was the first live one anywhere). The Games chest's
+    tour is three (`games` on the map, `gkey` on the Skill Key, `gcust` on Customise), armed together only for a player new to it.
+  - **Toasts wait for boxes** (`setToastGate` in `ui/toast.js`, `holds()` in `ui/tutorial.js`): a box up or due here, the first result before its
+    first box, the Welcome, the player, an ad. `busy()` no longer waits for toasts or `#s-over[data-busy]`. A toast whose news a box gives is
+    dropped on the result (`tutTells`): a menu item's unlock, and every unlock of the first run when the walkthrough names them.
+  - **Menu items (67.15).** Each tour starts on the screen that opens it with Aiden's "Congratulations, you unlocked Scores!" (`TUTORIAL.got`),
+    then the item ringed on the menu ("Tap Scores to take a look", `TUTORIAL.look` — Claude's, as Progress's own; "You've unlocked About / Scores"
+    are gone), then the tour inside. About opens when the Welcome clip closes, with no toast and no jump to the menu (65.9) — 64.8's "then the main
+    menu" is withdrawn.
+  - **The Welcome (67.13).** Asked for as the result opens (after the tier's sound), not after its last toast; every toast waits behind it. Due
+    until its clip has closed and About opened — `welcomeSeen` is written then, not when the ceremony starts, so a Welcome cut off by a reload is
+    played again; the main menu's calm-moment replay (65.2) asks the same `due()` and is only that net.
+  - **The key intro (57.6 amended).** On the first visit the arrival plays and the intro straight after it (`kintro` holds tutorial boxes until it
+    starts); a first visit that is a chest opening or the key's earn spends it; a tier first seen from its tab gets it then.

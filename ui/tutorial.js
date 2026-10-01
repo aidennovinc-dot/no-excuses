@@ -22,7 +22,7 @@
    preference: Fresh game keeps it, so a player gets the walkthrough once.
    EVERY OTHER TUTORIAL is in `prefs.tuts`: `{ id: n }` armed and at step n, `{ id: 'done' }` finished. Also a preference. Testing's "reset
    all first-time tutorials" empties it, puts the walkthrough back to its start, and re-arms every tutorial whose thing is already open. */
-import { GAUNTLET, GRID, TOAST, TUTORIAL, WELCOME } from "../config/copy.js";
+import { GAUNTLET, GRID, TUTORIAL, WELCOME } from "../config/copy.js";
 import { ESTIMATE, MODE_NAME, SET_COPY, STREAK } from "../config/games.js";
 import { LEN_RULES, MENU_UNLOCK } from "../config/unlocks.js";
 import { bankMenu, menuOpen } from "../progress/menu.js";
@@ -42,7 +42,7 @@ import { UNLOCKS } from "../config/unlocks.js";
 import { Snd } from "../audio.js";
 import { define } from "./actions.js";
 import { show } from "./router.js";
-import { toast, toastBusy } from "./toast.js";
+import { setToastGate, toast } from "./toast.js";
 import { videoDue } from "./video.js";
 
 /* ---------- where things are ---------- */
@@ -58,8 +58,13 @@ const overlay=()=>vis($('#welcome'))||vis($('#vplay'))||!!$('#adbreak.on');
    while a toast is up or queued, while the result screen still has toasts it has not sent (`#s-over[data-busy]`, ui/screens/result.js), or while
    a chest ceremony, a reveal, a key animation or the key's own question is on the screen */
 // build 66 (65.18): and while a chest's video is owed, so the next tap is the video's
-const busy=()=>overlay()||!!videoDue()||toastBusy()||$('#s-over').hasAttribute('data-busy')||[...document.querySelectorAll('.cere')].some(vis)
-  ||$('#s-key').classList.contains('kearning')||vis($('#key-ask'));
+/* build 68 (67.3, L14, reversing FEEDBACK-v34 A1 and 64.3): NOT FOR TOASTS ANY MORE, and not for a result screen still counting. Waiting for them is
+   what left Aiden "stuck there with no reason as to why" on his first result. A box shows as soon as its screen opens; toasts wait for it
+   (`holds()` below, through ui/toast.js). What is left here is a moment that owns the whole screen: a ceremony, a reveal, a key animation, the
+   Welcome, the player, an ad */
+// …and a key's creation intro still to play on this visit (`kintro`, ui/screens/key.js): it is the first thing on that screen (67.22)
+const busy=()=>overlay()||!!videoDue()||[...document.querySelectorAll('.cere')].some(vis)
+  ||$('#s-key').classList.contains('kearning')||$('#s-key').classList.contains('kintro')||vis($('#key-ask'));
 // the map's first open is drawn out; the walkthrough waits for it. A chest that breathes forever is not "the intro"
 const mapSettled=()=>!$('#grid').getAnimations({subtree:true}).some(a=>{ try{ return a.playState==='running'&&a.effect.getComputedTiming().iterations!==Infinity; }catch(e){ return false; } });
 
@@ -137,6 +142,7 @@ function overSteps(){ const dash=()=>$(`#over-chips2 .chip[data-v="${GC(QT,QM())
    halves keep build 64's fields (above); the rest share `prefs.tuts`. Order is priority: when two are armed, the first one listed goes first. */
 let firstAt=0, overAt=0, overList=null;
 const armed=id=>{ const v=(prefs.tuts||{})[id]; return Number.isInteger(v)&&v>=0; };
+const live=id=>!!DEFS[id]&&DEFS[id].live();
 const DEFS={
   first:{ live:wanted, steps:FIRST, step:()=>firstAt, setStep:n=>{ firstAt=n; }, finish(){},
     meta:{ name:'First-run walkthrough', trigger:'A profile that has never played reaches the games menu (or Testing → Replay tutorial)', start:'Games menu, once the map has drawn in',
@@ -156,22 +162,52 @@ function tutorial(id,steps,o={}){ DEFS[id]=Object.assign(stored(id),{ steps },o)
 // the moment a tutorial's thing opens: armed at step one, unless it has already been done (or is already under way). Open-everything arms none
 function arm(id){ if(!DEFS[id]||prefs.allOpen) return; const v=(prefs.tuts||{})[id]; if(v!==undefined) return; prefs.tuts=Object.assign({},prefs.tuts,{[id]:0}); save(); run(); }
 
+/* ---------- build 68 (67.22 / 67.3, L14): A FIRST-TIME MOMENT RUNS ON THE FIRST VISIT, OR NEVER ----------
+   THE SHARED CAUSE of Aiden's five late or missing moments (the About, Progress and Scores tours, the Skill Key intro, the Customise tour): every
+   first-time moment was built to STEP ASIDE — behind toasts and a result still counting (`busy()` waited for both, 64.3 / FEEDBACK-v34 A1), behind
+   another moment (the key's creation intro "stands aside … and plays on the next plain visit", 57.6), or behind its own doorway (a tour's step
+   pointer sat on the menu box that rings the item, so a player who walked in by any other route, or before that box could show, met nothing inside)
+   — and nothing marked the first visit as spent, so each one waited for a later visit and played there.
+   Now: a ROOM is a screen a tour lives in (`room` on its steps; `door` on the boxes that lead there). Entering one starts its tour at once, whatever
+   route the player took — the doorway boxes are passed. LEAVING one spends it (`prefs.rooms`), and whatever of a tour was still to come there is
+   dropped for good: "We don't want to have random tutorials play after they've already seen it." A reload mid-tour spends nothing, so the next visit
+   resumes it — the one safety net. A key screen the run's interlude passes through is not a visit (the player did not go there). */
+const ROOMS=['s-about','s-prog','s-board','s-key','s-custom','s-gauntlet'];
+// the key screen as a chest opens on it (`kpass`) or as the run's interlude passes through (`auto`) is not a visit
+function roomNow(){ const s=$('.screen.on'); if(!s||!ROOMS.includes(s.id)) return ''; if(s.id==='s-key'&&(s.classList.contains('auto')||s.classList.contains('kpass'))) return '';
+  return s.id==='s-gauntlet'?(s.dataset.g?'s-gauntlet:'+s.dataset.g:''):s.id; }
+const spent=r=>!!(prefs.rooms||{})[r];
+// a step in a spent room, or a doorway into the room the player is in (or has spent), is passed
+const gone=s=>!!s&&((!!s.room&&spent(s.room))||(!!s.door&&(spent(s.door)||roomNow()===s.door)));
+// a stored step past the end (a profile saved before a tutorial was split) finishes it
+function drop(id){ const d=DEFS[id]; for(let n=0;n<60&&d&&d.live();n++){ const s=stepsOf(d)[d.step()]; if(!s&&d!==DEFS.first&&d!==DEFS.over){ d.finish(); return; } if(!gone(s)) return; advance(id); } }
+let inRoom='';
+on('screen:change',()=>{ const was=inRoom; inRoom='';
+  if(was&&!spent(was)){ prefs.rooms=Object.assign({},prefs.rooms,{[was]:1}); save(); }
+  for(const id of ORDER) drop(id); setTimeout(tick,0); });
+
 /* ---------- the tutorials the menu's own unlocks arm (64.8 / 64.9 / 64.12) ---------- */
 const menuOn=()=>onScreen('s-menu')&&!$('#s-menu').classList.contains('story');
 const item=go=>()=>$(`#s-menu .item[data-go="${go}"]`);
+/* build 68 (67.15): EACH OF THE THREE STARTS ON THE SCREEN THAT OPENS IT — "Congratulations, you unlocked Scores!" (Aiden's words) on that result, ahead
+   of its toasts (or on the menu, for one opened there); then the item ringed on the menu, must-tap; then the tour inside. Been in already, by any
+   route? The tour is dropped (67.22). The menu box's line, "Tap … to take a look", is Claude's, worded as Progress's own; it replaces "You've unlocked …" */
+const res=()=>oOn()||menuOn(), MU=k=>(MENU_UNLOCK[k]||{}).name||'';
+const got1=k=>()=>T(TUTORIAL.got,{name:MU(k)}), look=k=>()=>T(TUTORIAL.look,{name:MU(k)});
 /* 64.8: ABOUT, after the Welcome clip. The menu with About ringed and the only thing that answers; then inside it, on rails — the videos, the
    feedback line, the support button, and away */
 const A=TUTORIAL.about, ab=()=>onScreen('s-about');
 tutorial('about',[
-  { on:menuOn, el:item('s-about'), tap:1, text:A[0] },
-  { on:ab, text:A[1] },
-  { on:ab, el:()=>$('#msglist'), text:A[2] },
-  { on:ab, el:()=>$('#feedback'), text:A[3] },
-  { on:ab, el:()=>$('#support'), text:A[4] },
-  { on:ab, text:A[5] },
+  { on:res, door:'s-about', text:got1('about') },
+  { on:menuOn, el:item('s-about'), tap:1, door:'s-about', text:look('about') },
+  { on:ab, room:'s-about', text:A[0] },
+  { on:ab, room:'s-about', el:()=>$('#msglist'), text:A[1] },
+  { on:ab, room:'s-about', el:()=>$('#feedback'), text:A[2] },
+  { on:ab, room:'s-about', el:()=>$('#support'), text:A[3] },
+  { on:ab, room:'s-about', text:A[4] },
 ],{ opened:()=>menuOpen('s-about'),
-  meta:{ name:'About', trigger:'The Welcome clip finishes (or is put off with Later)', start:'Main menu', why:'Shows where the videos, the feedback form and the support button live',
-    at:[['Main menu','About'],['About',''],['About','the videos'],['About','Send feedback'],['About','Support'],['About','']] } });
+  meta:{ name:'About', trigger:'The Welcome clip finishes', start:'The result screen the Welcome played on (or the main menu)', why:'Shows where the videos, the feedback form and the support button live',
+    at:[['Result, or the main menu',''],['Main menu','About'],['About',''],['About','the videos'],['About','Send feedback'],['About','Support'],['About','']] } });
 /* 64.9: PROGRESS, after the first Estimate run. Build 66 (section C, prog-01): its first line is said on that run's RESULT, once the result's toasts
    are done ("otherwise the user might continue playing and not see this tutorial") — or on the menu, for a player who left the result first. Then
    Progress ringed on the menu; inside, two lines about the screen, the Games chest's tab ringed (the screen is put on that tab if it opened on another)
@@ -179,27 +215,29 @@ tutorial('about',[
    the player goes on by themselves (65.9: nothing takes them) */
 const P9=TUTORIAL.prog, pr=()=>onScreen('s-prog'), gtab=()=>$('#prog-tabs [data-tab="c-games"]');
 tutorial('prog',[
-  { on:()=>oOn()||menuOn(), text:()=>T(P9[0],{ game:(GAMES[MENU_UNLOCK.prog.game]||{}).name||'' }) },
-  { on:menuOn, el:item('s-prog'), tap:1, text:P9[1] },
-  { on:pr, text:P9[2] },
-  { on:pr, text:P9[3] },
-  { on:pr, el:gtab, text:P9[4], enter(){ const t=gtab(); if(t&&!t.classList.contains('sel')) through(()=>t.click()); } },
-  { on:pr, el:gtab, text:P9[5] },
-  { on:()=>pr()&&!!$('#prog-tabs [data-tab="c-games"].sel'), el:()=>$('#chest-g'), tap:1, hit:t=>{ const b=t.closest&&t.closest('#chest-g .chip'); return !!b&&b.dataset.v!=='all'; }, text:P9[6] },
+  { on:res, door:'s-prog', text:got1('prog') },
+  { on:res, door:'s-prog', text:()=>T(P9[0],{ game:(GAMES[MENU_UNLOCK.prog.game]||{}).name||'' }) },
+  { on:menuOn, el:item('s-prog'), tap:1, door:'s-prog', text:P9[1] },
+  { on:pr, room:'s-prog', text:P9[2] },
+  { on:pr, room:'s-prog', text:P9[3] },
+  { on:pr, room:'s-prog', el:gtab, text:P9[4], enter(){ const t=gtab(); if(t&&!t.classList.contains('sel')) through(()=>t.click()); } },
+  { on:pr, room:'s-prog', el:gtab, text:P9[5] },
+  { on:()=>pr()&&!!$('#prog-tabs [data-tab="c-games"].sel'), room:'s-prog', el:()=>$('#chest-g'), tap:1, hit:t=>{ const b=t.closest&&t.closest('#chest-g .chip'); return !!b&&b.dataset.v!=='all'; }, text:P9[6] },
 ],{ opened:()=>menuOpen('s-prog'),
-  meta:{ name:'Progress', trigger:'The first Estimate run', start:'That run\'s result (or the main menu, for a player who left it first)', why:'Progress is where every unlock lives, and how to earn it',
-    at:[['Result, or the main menu',''],['Main menu','Progress'],['Progress',''],['Progress',''],['Progress','Games chest tab'],['Progress','Games chest tab'],['Progress · Games chest','a game filter (not All)']] } });
+  meta:{ name:'Progress', trigger:'The first Estimate run', start:'That run\'s result, ahead of its toasts (or the main menu, for a player who left it first)', why:'Progress is where every unlock lives, and how to earn it',
+    at:[['Result, or the main menu',''],['Result, or the main menu',''],['Main menu','Progress'],['Progress',''],['Progress',''],['Progress','Games chest tab'],['Progress','Games chest tab'],['Progress · Games chest','a game filter (not All)']] } });
 /* 64.12: SCORES, after the first Reaction run. Scores ringed on the menu; inside, a welcome, Quick Tap's chip to tap (Claude's call — "let's
    check" is a tap), then the web chart ringed */
 const B12=TUTORIAL.board, bd=()=>onScreen('s-board');
 tutorial('board',[
-  { on:menuOn, el:item('s-board'), tap:1, text:B12[0] },
-  { on:bd, text:B12[1] },
-  { on:bd, el:()=>$(`#bd-g .chip[data-v="${QT}"]`), tap:1, text:()=>T(B12[2],{game:GAMES[QT].name}) },
-  { on:bd, el:()=>$('#radar'), text:B12[3] },
+  { on:res, door:'s-board', text:got1('board') },
+  { on:menuOn, el:item('s-board'), tap:1, door:'s-board', text:look('board') },
+  { on:bd, room:'s-board', text:B12[0] },
+  { on:bd, room:'s-board', el:()=>$(`#bd-g .chip[data-v="${QT}"]`), tap:1, text:()=>T(B12[1],{game:GAMES[QT].name}) },
+  { on:bd, room:'s-board', el:()=>$('#radar'), text:B12[2] },
 ],{ opened:()=>menuOpen('s-board'),
-  meta:{ name:'Scores', trigger:'The first Reaction run', start:'Main menu', why:'Shows each game\'s top ten and the web chart of every game together',
-    at:[['Main menu','Scores'],['Scores',''],['Scores','Quick Tap chip'],['Scores','the web chart']] } });
+  meta:{ name:'Scores', trigger:'The first Reaction run', start:'That run\'s result, ahead of its toasts', why:'Shows each game\'s top ten and the web chart of every game together',
+    at:[['Result, or the main menu',''],['Main menu','Scores'],['Scores',''],['Scores','Quick Tap chip'],['Scores','the web chart']] } });
 
 /* 64.14: THE GAMES CHEST, armed the moment it opens (`chest:opened`, progress/key.js). It starts on the map once the chest's words have spilt.
    Build 66 (65.9): the player gets everywhere by their own tap — the SKILL KEY word beside the chest is ringed and must be tapped ("Tap the Skill Key
@@ -208,23 +246,33 @@ tutorial('board',[
    65 started it on About too, once the chest's video had played, and then took the player to the key itself — it waits for the map now */
 const G14=TUTORIAL.games, ks=()=>onScreen('s-key'), cu=()=>onScreen('s-custom');
 const word=to=>()=>$(`#grid .chestwords .cw[data-for="games"][data-to="${to}"]`);
+/* build 68 (67.22): THREE TOURS, ONE PER PLACE — the map's two boxes, the Skill Key's four, Customise's four — so each runs on its own room's first
+   visit, in whichever order the player gets there. Aiden's order is kept where the player follows it: Customise is ringed on the menu only once the
+   map's and the key's boxes are behind them */
 tutorial('games',[
-  { on:()=>map()&&mapSettled(), text:G14[0] },
-  { on:()=>map()&&mapSettled(), el:word('key:0'), tap:1, text:G14[1] },
-  { on:ks, el:()=>$('#s-key .kkey[data-kt="0"]'), text:G14[2] },
-  { on:ks, el:()=>[...document.querySelectorAll('#key-ring .kr')], glow:1, keep:()=>$('#key-count'), text:G14[3] },
-  { on:ks, el:()=>$(`#s-key .knode[data-kg="${QT}"]`), tap:1, hit:t=>!!(t.closest&&t.closest(`#s-key [data-kg="${QT}"]`)), text:G14[4] },
-  { on:ks, el:()=>$('#s-key > .back'), tap:1, text:G14[5] },
-  { on:menuOn, el:item('s-custom'), tap:1, text:G14[6] },
-  { on:cu, text:G14[7] },
-  { on:cu, el:()=>$('#c-bg button[data-v="snow"]'), tap:1, text:G14[8] },
-  { on:cu, text:G14[9] },
+  { on:()=>map()&&mapSettled(), door:'s-key', text:G14[0] },
+  { on:()=>map()&&mapSettled(), el:word('key:0'), tap:1, door:'s-key', text:G14[1] },
 ],{ opened:()=>chestOpen('games'),
   meta:{ name:'Games chest', trigger:'The Games chest opens (every game mode unlocked)', start:'Games menu, once the chest\'s words have spilt (and its video has played)',
-    why:'Introduces the Skill Key and its bars, the last step to 100%, and Customise',
-    at:[['Games menu',''],['Games menu','SKILL KEY, beside the chest'],['Skill Key','the Skill Key card'],['Skill Key','every spoke (lit)'],['Skill Key','Quick Tap\'s node'],['Skill Key','Back'],
-      ['Main menu','Customise'],['Customise',''],['Customise','Snow background'],['Customise','']] } });
-on('chest:opened',({id})=>{ if(id==='games') arm('games'); });
+    why:'Introduces the Skill Key and its bars, the last step to 100%, and Customise', at:[['Games menu',''],['Games menu','SKILL KEY, beside the chest']] } });
+tutorial('gkey',[
+  { on:ks, room:'s-key', el:()=>$('#s-key .kkey[data-kt="0"]'), text:G14[2] },
+  { on:ks, room:'s-key', el:()=>[...document.querySelectorAll('#key-ring .kr')], glow:1, keep:()=>$('#key-count'), text:G14[3] },
+  { on:ks, room:'s-key', el:()=>$(`#s-key .knode[data-kg="${QT}"]`), tap:1, hit:t=>!!(t.closest&&t.closest(`#s-key [data-kg="${QT}"]`)), text:G14[4] },
+  { on:ks, room:'s-key', el:()=>$('#s-key > .back'), tap:1, text:G14[5] },
+],{ opened:()=>chestOpen('games'),
+  meta:{ name:'Skill Key', trigger:'The Games chest opens; the first visit to the Skill Key, after its intro', start:'Skill Key',
+    why:'The Skill Key and its bars, and the last step to 100%', at:[['Skill Key','the Skill Key card'],['Skill Key','every spoke (lit)'],['Skill Key','Quick Tap\'s node'],['Skill Key','Back']] } });
+tutorial('gcust',[
+  { on:()=>menuOn()&&!live('games')&&!live('gkey'), el:item('s-custom'), tap:1, door:'s-custom', text:G14[6] },
+  { on:cu, room:'s-custom', text:G14[7] },
+  { on:cu, room:'s-custom', el:()=>$('#c-bg button[data-v="snow"]'), tap:1, text:G14[8] },
+  { on:cu, room:'s-custom', text:G14[9] },
+],{ opened:()=>chestOpen('games'),
+  meta:{ name:'Customise', trigger:'The Games chest opens; the first visit to Customise', start:'Main menu, once the Skill Key\'s boxes are behind the player',
+    why:'Customise, and the Games chest\'s background to pick', at:[['Main menu','Customise'],['Customise',''],['Customise','Snow background'],['Customise','']] } });
+// the three are one tour: armed together, and only for a player who has not already had the Games chest's
+on('chest:opened',({id})=>{ if(id==='games'&&(prefs.tuts||{}).games===undefined){ arm('games'); arm('gkey'); arm('gcust'); } });
 
 /* build 66 (65.8): ESTIMATE'S SET AND STREAK, the first time its pick sheet shows the Mode row — armed right there, for a player with no Estimate run on
    record (a player who has played it has met both already; Testing's reset all shows it again). The row about the two, each one ringed, then the
@@ -254,10 +302,10 @@ const gauntFacts=g=>{ const c=CHESTS.find(x=>x.gaunt===g)||{}, k=KEYS.find(x=>x.
     key:cap(/key/i.test(k.name||'')?k.name:(k.name||'')+' key'), chest:cap(GRID.chest[c.id]||c.id||'') }; };
 for(const [id,g,from] of [['mini','g1','key'],['mega','g2','pro']]){ const gOn=()=>onScreen('s-gauntlet')&&$('#s-gauntlet').dataset.g===g, say=i=>()=>T(G16[i],gauntFacts(g));
   tutorial(id,[
-    { on:()=>map()&&mapSettled(), el:()=>$(`#grid .tile[data-gauntlet="${g}"]`), tap:1, text:say(0) },
-    { on:gOn, text:say(1) },
-    { on:gOn, text:say(2) },
-    { on:gOn, text:say(3) },
+    { on:()=>map()&&mapSettled(), el:()=>$(`#grid .tile[data-gauntlet="${g}"]`), tap:1, door:'s-gauntlet:'+g, text:say(0) },
+    { on:gOn, room:'s-gauntlet:'+g, text:say(1) },
+    { on:gOn, room:'s-gauntlet:'+g, text:say(2) },
+    { on:gOn, room:'s-gauntlet:'+g, text:say(3) },
   ],{ opened:()=>chestOpen(from),
     meta:{ name:GAUNTLET.name[g]||g, trigger:'The '+(GRID.chest[from]||from)+' opens (its reveal ends)', start:'Games menu, where the reveal hands back',
       why:'What '+(GAUNTLET.name[g]||g)+' is, and that finishing it once opens the next chest',
@@ -327,10 +375,13 @@ function place(el,text,o={}){ const h=build(), pad=6, ring=h.querySelector('.tri
 function through(fn){ passing=true; try{ fn(); } finally{ passing=false; } }
 
 /* ---------- the loop ---------- */
-// the tutorial that has the floor: the first live one in ORDER. Its box shows only where its step lives, and only when nothing is busy
-function active(){ for(const id of ORDER){ const d=DEFS[id]; if(d&&d.live()) return id; } return null; }
+/* the tutorial that has the floor: the first live one in ORDER whose step lives where the player is (build 68, 67.22 — it was the first live one
+   anywhere, so a tour waiting on the menu kept another off the screen it was made for); with none here, the first live one */
+function active(){ let first=null; for(const id of ORDER){ const d=DEFS[id]; if(!d||!d.live()) continue; if(!first) first=id; const s=stepsOf(d)[d.step()]; if(s&&s.on()) return id; } return first; }
 function tick(){
   if(estFirst()) arm('est');
+  { const r=roomNow(); if(r) inRoom=r; }
+  for(const k of ORDER) drop(k);
   const id=active(); if(!id) return hide();
   const d=DEFS[id], steps=stepsOf(d), i=d.step(), s=steps[i];
   if(!s) return hide();
@@ -359,11 +410,23 @@ function bankRails(say){ const g=got(); if(g.rails) return; g.rails=Date.now(); 
    every tap alone, which is what keeps the screen from ever being held with no box on it (64.3). */
 const shown=()=>!!host&&!host.hidden&&!!cur;
 const waiting=()=>!overlay()&&((wanted()&&firstAt===0&&onScreen('s-pick')&&!sheetUp()&&!lockUp())||(results()&&onScreen('s-over')));
+/* build 68 (67.3, L14): WHAT A TOAST WAITS FOR — a box up, a box due on this screen (its thing laid out), the first result before its first box, or a
+   moment that owns the screen. ui/toast.js asks this before it shows one, so "you unlocked …" can never land ahead of the box that says it */
+function holds(){ if(overlay()||shown()||waiting()) return true; const id=active(); if(!id) return false;
+  const d=DEFS[id], s=stepsOf(d)[d.step()]; if(!s||!s.on()) return false; const el=s.el?s.el():null, f=Array.isArray(el)?el[0]:el; return !s.el||(!!f&&vis(f)); }
+setToastGate(holds);
+/* build 68 (67.3): THE TOASTS A FIRST-TIME BOX ALREADY SAYS, so the result screen drops them: a menu item's "you unlocked …" (its tour's first box
+   says it, 67.15), and every unlock of the first run when the walkthrough's result names them ("Great job, you unlocked Dash and Four!") */
+function tutTells(run){ const out=new Set();
+  for(const k of Object.keys(MENU_UNLOCK)) if((prefs.tuts||{})[k]===0) out.add('menu:'+k);
+  if(results()&&run&&prefs.tutRun.t===run.t&&dashOpen()) for(const k of gotKeys()) out.add(k);
+  return out; }
 function lets(t){ if(!shown()||!cur.s.tap) return false; if(cur.s.hit) return !!cur.s.hit(t); return [].concat(cur.s.el()||[]).some(el=>el.contains(t)); }
 document.addEventListener('click',e=>{ if(passing) return;
   tick();   // what is on the screen NOW decides — a box whose tutorial ended since the last turn of the loop owns nothing
   if(!shown()){ if(waiting()){ e.stopPropagation(); e.preventDefault(); } return; }
-  if(lets(e.target)){ const {id,s}=cur; if(!s.done) setTimeout(()=>{ if(active()===id) advance(id); tick(); },0); return; }
+  // build 68: only if the step is still the one tapped — a tap that changes screen has already passed its doorway step on the way (67.22)
+  if(lets(e.target)){ const {id,i,s}=cur; if(!s.done) setTimeout(()=>{ if(active()===id&&DEFS[id].step()===i) advance(id); tick(); },0); return; }
   e.stopPropagation(); e.preventDefault();
   if(!cur.s.tap){ Snd.click(); advance(cur.id); tick(); } },true);
 /* step 12: Sprint picked, the run starts — there is no box for Go. The tap selected the length (pick.js's own handler, bubbling after this
@@ -393,9 +456,10 @@ on('store:reset',()=>{ firstAt=0; if(prefs.tut===2) bankRails(false); });
    player is taken straight to the main menu, where its tutorial waits (64.8). Put off with Later, About still opens, because the clip is waiting
    there, and its tutorial shows the next time the player is on the menu (Cowork's call: a Welcome put off must not lock About for good). */
 on('run:finish',({fresh,two})=>{ if(two) return; for(const u of fresh||[]) if(u.menu) arm(u.menu); });
-function openAbout(go){ if(!bankMenu('about')) return; toast(T(TOAST.unlock,{name:MENU_UNLOCK.about.name}),'','ok'); arm('about'); if(go) show('s-menu'); }
-on('video:closed',({id})=>{ if(id===MENU_UNLOCK.about.video) openAbout(true); });
-on('welcome:later',()=>openAbout(false));
+/* build 68 (67.15): no toast — About's first box says it — and the player is not taken anywhere (65.9): the box is on the screen the Welcome played over */
+function openAbout(){ if(!bankMenu('about')) return; arm('about'); }
+on('video:closed',({id})=>{ if(id===MENU_UNLOCK.about.video) openAbout(); });
+on('welcome:later',()=>openAbout());
 // an app reopened between the first result and its last box: that run's result, as it was, and the boxes from the first
 function resumeOver(){ const r=prefs.tutRun; if(!results()||!r||!GAMES[r.g]) return;
   sel.game=r.g; sel.diff=r.d; sel.secs=r.s; sel.vs=0; sel.practice=0; overAt=0; overList=null;
@@ -405,7 +469,7 @@ function resumeOver(){ const r=prefs.tutRun; if(!results()||!r||!GAMES[r.g]) ret
    the profile has played. A1: RESET ALL FIRST-TIME TUTORIALS — the same, and every other tutorial forgotten; one whose thing is already open is
    armed again at its first step, so it shows the next time the player is where it lives. */
 function replay(){ prefs.tut=-1; delete prefs.tutRun; save(); firstAt=0; overAt=0; overList=null; run(); }
-function resetAll(){ prefs.tuts={}; replay(); for(const id of ORDER){ const d=DEFS[id]; if(d.opened&&d.opened()) prefs.tuts[id]=0; } save(); }
+function resetAll(){ prefs.tuts={}; prefs.rooms={}; replay(); for(const id of ORDER){ const d=DEFS[id]; if(d.opened&&d.opened()) prefs.tuts[id]=0; } save(); }
 
 define({
   'tut-replay'(){ replay(); show('s-pick'); return 'click'; },
@@ -433,8 +497,8 @@ function tutMap(){ const out=[], text=t=>{ try{ return typeof t==='function'?t()
     else boxes=stepsOf(d).map((s,i)=>({ screen:(m.at[i]||[])[0]||'', ring:(m.at[i]||[])[1]||'', tap:s.tap?1:0, text:text(s.text) }));
     out.push({ id, name:m.name, trigger:m.trigger, start:m.start, why:m.why, steps:stepsOf(d).length, at:id==='over'?boxes.length:m.at.length,
       boxes:boxes.map((b,i)=>Object.assign({ key:id+'-'+String(i+1).padStart(2,'0') },b)) });
-    if(id==='over') out.push({ id:'welcome', name:'Welcome moment', trigger:'Dots unlocks — once that result\'s toasts are done, or at the next calm moment on the main menu (65.2)',
-      start:'Result screen, or the main menu', why:'The first thing the game gives you: Aiden\'s welcome clip, and watching it (or putting it off) opens About', steps:1, at:1,
+    if(id==='over') out.push({ id:'welcome', name:'Welcome moment', trigger:'Dots unlocks — on that result as soon as it opens, ahead of its toasts (the main menu only after a reload or crash mid-way)',
+      start:'Result screen', why:'The first thing the game gives you: Aiden\'s welcome clip, and watching it opens About', steps:1, at:1,
       boxes:[{ key:'welcome-01', screen:'Over the result or the main menu', ring:'', tap:1, text:T(WELCOME.line,{ title:WELCOME.fallback }) }] }); }
   return out; }
 
@@ -444,4 +508,4 @@ function tutAim(){ if(!shown()||!cur.s.tap) return null; const r=union([].concat
   for(const fy of [.5,.3,.7,.15,.85]) for(const fx of [.5,.3,.7,.15,.85]){ const x=r.left+r.width*fx, y=r.top+r.height*fy; if(x<0||y<0||x>=innerWidth||y>=innerHeight) continue;
     const t=document.elementFromPoint(x,y); if(t&&lets(t)) return [Math.round(x),Math.round(y)]; } return null; }
 
-export { arm, busy as tutBusy, tutAim, tutDone, tutMap, tutNow, tutorial };
+export { arm, busy as tutBusy, tutAim, tutDone, tutMap, tutNow, tutTells, tutorial };

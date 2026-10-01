@@ -748,6 +748,8 @@ export async function run() {
       const slot = M.MESSAGES[0], host = () => document.getElementById('welcome');
       const out = { slot: slot.id };
       S.prefs.allOpen = 0; S.prefs.supporter = 0; S.prefs.msgSeen = {}; delete S.prefs.welcomeSeen;
+      // AMENDED at build 68 (67.13): the Welcome is due only while About is shut, so nothing on this profile may have opened it
+      S.prefs.menuUnl = {}; S.prefs.chests = Object.assign({}, S.prefs.chests, { games: 0, key: 0, pro: 0, thorns: 0 });
       // a save that has not played its first game: the slot is shut, so there is nothing to announce
       S.store.runs = []; S.store.unlock = {}; S.save();
       out.beforeFirstRun = { open: K.msgOpen(slot), played: W.welcomeCheck(false), seen: !!S.prefs.welcomeSeen };
@@ -763,13 +765,16 @@ export async function run() {
         label: (h.querySelector('.wcard .wline') || {}).textContent, title: (h.querySelector('.wcard .wline .mk-green') || {}).textContent,
         buttons: [...h.querySelectorAll('.wrow .item')].map(b => b.dataset.act + ':' + b.textContent.trim()),
         steps: M.PLAYER.on.steps.map(x => x.name + '=' + h.style.getPropertyValue('--w-' + x.name + '-at').trim()) };
-      W.closeWelcome(); out.again = W.welcomeCheck(false);                             // ONCE PER SAVE
+      out.over = W.welcomeCheck(false);                                                // build 68: never over itself
+      W.closeWelcome(); out.again = W.welcomeCheck(false);                             // AMENDED at build 68 (67.22): cut off, it is due again — the net
+      W.closeWelcome();
       // LATER leaves the Messages row green, because it does not mark the clip watched
       delete S.prefs.welcomeSeen; S.save(); W.welcomeCheck(false); await wait(300);
       document.querySelector('[data-act="wlater"]').click(); await wait(200);
       out.afterLater = { closed: host().hidden, seen: !!(S.prefs.msgSeen || {})[slot.id], dot: K.msgDot() };
       // PLAY hands it to the shared player, so the clip behaves as every other message does
-      delete S.prefs.welcomeSeen; S.save(); W.welcomeCheck(false); await wait(300);
+      // AMENDED at build 68 (67.13): Later opened About, which is the Welcome's whole job — so it is shut again here, or the Welcome is not due
+      delete S.prefs.welcomeSeen; S.prefs.menuUnl = {}; S.prefs.tuts = {}; S.save(); W.welcomeCheck(false); await wait(300);
       document.querySelector('[data-act="wplay"]').click(); await wait(500);
       const vp = document.getElementById('vplay');
       out.afterPlay = { closed: host().hidden, player: !!vp && !vp.hidden && vp.dataset.msg === slot.id };
@@ -779,10 +784,10 @@ export async function run() {
       const mine = sig(A.Snd.plan(() => A.Snd.welcome()));
       const others = [sig(A.Snd.plan(() => A.Snd.unlockFx())), sig(A.Snd.plan(() => A.Snd.click())), sig(A.Snd.chestPlan('games').map(e => e.slice(0, 8)))];
       out.fx = { notes: A.Snd.plan(() => A.Snd.welcome()).length, clash: others.includes(mine), empty: !mine };
-      S.store.runs = []; S.store.unlock = {}; S.prefs.msgSeen = {}; delete S.prefs.welcomeSeen; S.save();
+      S.store.runs = []; S.store.unlock = {}; S.prefs.msgSeen = {}; delete S.prefs.welcomeSeen; S.prefs.menuUnl = {}; S.prefs.tuts = {}; S.save();
       return out; });
     (!wc60.beforeFirstRun.open && wc60.beforeFirstRun.played === false && !wc60.beforeFirstRun.seen && wc60.sprintOnly === false && wc60.open
-      && wc60.duringRun.played === false && !wc60.duringRun.seen && wc60.played === true && wc60.again === false
+      && wc60.duringRun.played === false && !wc60.duringRun.seen && wc60.played === true && wc60.over === false && wc60.again === true
       && wc60.up.shown && wc60.up.stage && /message from/i.test(wc60.up.label || '') && wc60.up.title
       && wc60.up.buttons.length === 2 && wc60.up.buttons.some(b => /^wplay:/.test(b)) && wc60.up.buttons.some(b => /^wlater:/.test(b))
       && wc60.up.steps.length >= 3 && wc60.up.steps.every(x => /=\d+ms$/.test(x))
@@ -870,6 +875,28 @@ export async function run() {
       ? ok('65.2 a Welcome missed by leaving the result at once (the screen change cleared its timer) plays on the next arrival at the main menu, and its clip opens About')
       : bad('65.2 the missed Welcome', JSON.stringify({ left, away, w65, after }));
   }
+  /* build 68 (67.13, L14): THE WELCOME PLAYS ON THE RESULT THAT OPENS DOTS, AS SOON AS IT OPENS, AHEAD OF EVERY TOAST THERE. A real Quick Tap Marathon
+     opens Dots; nothing toasts on its result before the Welcome is up; Play, the clip to its end, and About's first box comes up on that same result —
+     "Congratulations, you unlocked About!" — before the result's own toasts, which follow */
+  {
+    await boot({ menuUnl: {}, tuts: {}, welcomeSeen: 0 }, { unlock: { 'quick-tap:two:15': 1, 'quick-tap:two:30': 1 } });
+    await page.evaluate(() => { window.__t13 = []; const t = document.getElementById('toast'); new MutationObserver(() => { if (t.classList.contains('on')) { const w = document.getElementById('welcome'), v = document.getElementById('vplay'), b = document.getElementById('tut');
+      window.__t13.push({ t: t.textContent, s: document.querySelector('.screen.on')?.id || 'game', w: !!w && !w.hidden, v: !!v && !v.hidden, box: !!b && !b.hidden }); } }).observe(t, { attributes: true, attributeFilter: ['class'] }); });
+    await page.evaluate(async () => (await import('./run/run.js')).goWhere({ g: 'quick-tap', d: 'two', s: 30 }));
+    await driveToResult('quick-tap', '67.13 a Quick Tap Marathon that opens Dots');
+    let up = false; for (let i = 0; i < 100 && !(up = await page.evaluate(() => { const w = document.getElementById('welcome'); return !!w && !w.hidden; })); i++) await sleep(50);
+    const pre = await page.evaluate(() => window.__t13.filter(x => x.s === 's-over').length);
+    await sleep(300); await page.evaluate(() => document.querySelector('#welcome [data-act="wplay"]')?.click()); await sleep(600);
+    await page.evaluate(async () => (await import('./ui/video.js')).closeVideo()); await sleep(900);
+    const gotA = await page.evaluate(async () => { const C = (await import('./config/copy.js')).TUTORIAL, U = (await import('./config/unlocks.js')).MENU_UNLOCK; return C.got.replace('{name}', U.about.name).replace(/\[\/?(green|yellow|red)\]/g, ''); });
+    let bx = null; for (let i = 0; i < 60 && !(bx = await page.evaluate(() => { const b = document.getElementById('tut'); return b && !b.hidden ? { t: b.querySelector('p').textContent, on: document.querySelector('.screen.on')?.id } : null; })); i++) await sleep(100);
+    const mid = await page.evaluate(() => window.__t13.filter(x => x.s === 's-over').length);
+    await page.mouse.click(12, 400); await sleep(5000);
+    const t13 = await page.evaluate(() => window.__t13.filter(x => x.s === 's-over'));
+    (up && pre === 0 && bx && bx.t === gotA && bx.on === 's-over' && mid === 0 && t13.length > 0 && t13.every(x => !x.w && !x.v && !x.box))
+      ? ok(`L14 / L20 / 67.13 the Welcome comes up on the result of the run that opens Dots before any toast there; its clip played, "${bx.t}" follows on that same result, and only then the result's ${t13.length} toast(s) — none while the Welcome, the player or a box is up`)
+      : bad('L14 / 67.13 the Welcome on the Dots result, ahead of toasts', JSON.stringify({ up, pre, bx, mid, t13 }));
+  }
   /* build 62 (61.23): EVERY CONGRATULATIONS BOX FITS WITHOUT SCROLLING, AND A TAP OUTSIDE IT CLOSES IT. The Pro chest's card was 3px taller than
      the phone at 390, so it scrolled; now the picture gives more before the box ever would. Driven for all three key chests: opened from
      Testing, tapped through to the card, measured, then closed by a REAL tap on the dim ground above it */
@@ -893,7 +920,8 @@ export async function run() {
   /* build 62 (61.21): THE WHOLE WELCOME CARD PLAYS IT, and its picture is a chest card's powered-off player. A REAL tap (by coordinates) on
      the centre of the card starts the clip; a tap on the ground round it does nothing; LATER still closes it */
   { const w61 = async () => page.evaluate(async () => { const W = await import('./ui/welcome.js'), S = await import('./core/store.js'), M = await import('./config/messages.js');
-      const slot = M.MESSAGES[0]; S.prefs.msgSeen = {}; delete S.prefs.welcomeSeen; S.store.unlock['dots:blind'] = Date.now(); S.save();
+      // AMENDED at build 68 (67.13): the Welcome is due only while About is shut — so nothing on this profile may have opened it
+      const slot = M.MESSAGES[0]; S.prefs.msgSeen = {}; delete S.prefs.welcomeSeen; S.prefs.allOpen = false; S.prefs.supporter = false; S.prefs.menuUnl = {}; S.prefs.chests = Object.assign({}, S.prefs.chests, { games: 0, key: 0, pro: 0, thorns: 0 }); S.store.unlock['dots:blind'] = Date.now(); S.save();
       W.welcomeCheck(false); await new Promise(r => setTimeout(r, M.PLAYER.on.ms + 700)); const h = document.getElementById('welcome'), c = h.querySelector('.wcard').getBoundingClientRect();
       return { look: !!h.querySelector('.wstage .mprev .mpframe .mpplay'), card: [c.x + c.width / 2, c.y + c.height * .3] }; });
     const a = await w61(); await page.mouse.click(8, 8); await sleep(250);

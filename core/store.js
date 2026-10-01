@@ -82,6 +82,8 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
     unlBy:isObj(p.unlBy)?Object.fromEntries(Object.entries(p.unlBy).filter(([k,v])=>typeof k==='string'&&k.length<64&&isObj(v)&&has(GAMES,v.g)&&typeof v.h==='number'&&Number.isFinite(v.h)&&typeof v.t==='number'&&Number.isFinite(v.t))
       .map(([k,v])=>[k,{g:v.g,d:String(v.d||''),s:Number(v.s)||0,h:v.h,t:v.t}])):{},
     tuts:isObj(p.tuts)?Object.fromEntries(Object.entries(p.tuts).filter(([k,v])=>/^[a-z]+$/.test(k)&&(v==='done'||(Number.isInteger(v)&&v>=0&&v<40)))):{},
+    // build 68 (67.22): the rooms whose first visit is spent — a tour still to come there is dropped (ui/tutorial.js). A preference, like `tuts`
+    rooms:isObj(p.rooms)?Object.fromEntries(Object.keys(p.rooms).filter(k=>/^s-[a-z]+(:g[12])?$/.test(k)&&p.rooms[k]).map(k=>[k,1])):{},
     // v17 (build 28): `keySeen` was missing from this list since build 26 — reset() cleared a field load() never created,
     // so the keys screen's once-per-profile arrival was shape-checked by nothing. It is a flag like the three beside it
     col:{}, story:p.story?1:0, played:p.played?1:0, gridSeen:p.gridSeen?1:0, menuSeen:p.menuSeen?1:0, keySeen:p.keySeen?1:0,

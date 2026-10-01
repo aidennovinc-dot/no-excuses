@@ -30,8 +30,13 @@ let toastT=0;
    going and a toast about something else arriving on the screen they asked for is noise. */
 const Q=[]; let showing=false;
 function holdOf(t){ return (t.ach||t.go)?TOAST_MS.tap:t.cls==='ok'?TOAST_MS.unlock:TOAST_MS.plain; }
-function nextToast(){ const t=$('#toast');
+/* build 68 (67.3, L14): A TOAST WAITS FOR A FIRST-TIME MOMENT — a tutorial box up or due on this screen, the Welcome, the player — and shows once it
+   is over, in its turn. Reverses FEEDBACK-v34 A1, where the tutorials waited for the toasts. ui/tutorial.js hands the test in (A4: a setter) */
+let gate=()=>false, gateT=0;
+const setToastGate=f=>{ gate=f; };
+function nextToast(){ const t=$('#toast'); clearTimeout(gateT);
   if(!Q.length){ showing=false; return; }
+  if(gate()){ showing=false; gateT=setTimeout(nextToast,200); return; }
   showing=true; const it=cur=Q.shift();
   if(it.html) t.innerHTML=it.msg; else t.textContent=it.msg;
   t.dataset.ach=it.ach||''; t.dataset.goto=it.go||''; t.classList.toggle('tap',!!it.ach||!!it.go); t.classList.toggle('ok',it.cls==='ok'); t.classList.add('on');
@@ -48,7 +53,7 @@ function toastTake(keys){ const k=new Set(keys||[]); for(let i=Q.length-1;i>=0;i
   if(showing&&cur&&cur.key&&k.has(cur.key)){ clearTimeout(toastT); const t=$('#toast'); t.classList.remove('on'); t.dataset.ach=''; t.dataset.goto=''; toastT=setTimeout(nextToast,TOAST_MS.gap); } }
 // a tap, or a screen the toast no longer belongs on, empties the queue: nothing that was going to be said is said late
 // build 62 (61.6): a toast that has gone takes its link with it, so nothing can answer a tap on where it was
-function toastClear(){ clearTimeout(toastT); Q.length=0; showing=false; const t=$('#toast'); if(t){ t.classList.remove('on'); t.dataset.ach=''; t.dataset.goto=''; } }
+function toastClear(){ clearTimeout(toastT); clearTimeout(gateT); Q.length=0; showing=false; const t=$('#toast'); if(t){ t.classList.remove('on'); t.dataset.ach=''; t.dataset.goto=''; } }
 /* where an unlock key points. 'sequence:practice' is the one key that is not a mode — Practice from is a row on
    Sequence's own sheet — so it opens Sequence at the mode it belongs to rather than at a mode called "practice". */
 function unlockWhere(key){ const [g,d,s]=String(key).split(':');
@@ -59,4 +64,4 @@ define({ toast(t){ const id=t.dataset.ach, go=t.dataset.goto;
   Snd.click(); toastClear();
   show(id?'s-prog':'s-pick',id?{ach:id}:unlockWhere(go)); } });
 
-export { toast, toastBusy, toastClear, toastTake };
+export { setToastGate, toast, toastBusy, toastClear, toastTake };

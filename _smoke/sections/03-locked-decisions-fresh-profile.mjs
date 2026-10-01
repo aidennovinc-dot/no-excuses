@@ -140,10 +140,12 @@ export async function run() {
     const T3 = await page.evaluate(async () => { const C = (await import('./config/copy.js')).TOAST, R = await import('./games/registry.js'), G = await import('./config/games.js');
       return { toasts: window.__toasts, overlap: window.__overlap, dash: C.unlock.replace('{name}', R.lenName('quick-tap', R.GC('quick-tap', 'two').lens[1], 'two')), four: C.unlock.replace('{name}', G.MODE_NAME.four),
         unl: JSON.parse(localStorage.getItem('ne')).unlock }; });
+    /* AMENDED at build 68 (67.3, L14, reversing 64.3's order): the box comes first and the toasts wait for it — and the run's two unlocks are not toasted
+       on the result at all, because its third box names them both ("Great job, you unlocked Dash and Four!") */
     const onOver = T3.toasts.filter(x => x.s === 's-over').map(x => x.t), iD = onOver.indexOf(T3.dash), iF = onOver.indexOf(T3.four);
-    (iD >= 0 && iF > iD && T3.overlap === 0 && Object.keys(T3.unl).length >= 2)
-      ? ok(`64.3 a first run that opens two things at once: "${T3.dash}" then "${T3.four}" both toast on the result, in order, and no walkthrough box shows while a toast is up`)
-      : bad('64.3 two unlocks on the first run', JSON.stringify({ onOver, all: T3.toasts, overlap: T3.overlap, unl: T3.unl }));
+    (r1 && r1.text === OV[0] && iD < 0 && iF < 0 && T3.overlap === 0 && Object.keys(T3.unl).length >= 2)
+      ? ok(`L14 / 67.3 a first run that opens two things at once: its result's first box comes up first; "${T3.dash}" and "${T3.four}" are not toasted there (the box names them), and no toast shows while a box is up`)
+      : bad('L14 / 67.3 the first result: box first, its news not toasted', JSON.stringify({ r1: r1 && r1.text, onOver, all: T3.toasts, overlap: T3.overlap, unl: T3.unl }));
     // 62.10: the app closed half way through the result — reopened, it lands back on that result, box one
     await anywhere(); await waitText(OV[1]);
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
@@ -239,9 +241,11 @@ export async function run() {
         : bad('64.2 the no-Dash branch', JSON.stringify(m.map(b => b && { t: b.text, drawn: b.drawn, ring: b.ring })));
     }
     /* build 65 (64.7): EACH OPENS AT ITS OWN MOMENT — Progress with the first Estimate run, Scores with the first Reaction run, About when the Welcome
-       clip finishes (and the player lands on the main menu). Each toasts like any unlock; nothing opens a second one */
+       clip finishes. AMENDED at build 68 (67.15 / 67.3, L14): none of the three toasts — its tour's first box, "Congratulations, you unlocked …", says it
+       on the screen that opened it, ahead of every toast there — and the Welcome's clip leaves the player where it played (no jump to the menu, 65.9).
+       Dots is no longer open on this profile: the Welcome would be due, and it is driven by hand below */
     {
-      const unl = { 'dots:blind': 1, 'hold:grow': 1, 'reaction:flash': 1 };
+      const unl = { 'hold:grow': 1, 'reaction:flash': 1 };
       await page.evaluate((u, si) => { localStorage.setItem('ne', JSON.stringify({ v: 7, prefs: { story: 1, gridSeen: 1, menuSeen: 1, snd: 'off', played: 1, tut: 2, menuUnl: {}, welcomeSeen: 1 }, runs: [], ach: {}, unlock: u, intro: si, seen: {}, bars: {} })); }, unl, SEEN_INTRO);
       await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
       const dims = () => page.evaluate(() => Object.fromEntries(['s-board', 's-prog', 's-about'].map(g => [g, document.querySelector(`#s-menu .item[data-go="${g}"]`).classList.contains('dim')])));
@@ -258,36 +262,43 @@ export async function run() {
           ? ok(`65.3 crossed-out Scores, Progress and About each say what opens them in green: ${L3.map(x => '"' + x.t + '"').join(', ')} (from MENU_UNLOCK)`)
           : bad('65.3 the locked menu lines', JSON.stringify(L3));
       }
-      /* build 66 (section C, prog-01): the first Estimate run's RESULT says the Progress tutorial's first line once its toasts are done — it is read there
-         and moved on with a tap, as a player would */
+      /* build 66 (section C, prog-01) AMENDED at build 68 (67.15): the first Estimate run's RESULT opens with "Congratulations, you unlocked Progress!",
+         then Aiden's line; the first Reaction run's with "Congratulations, you unlocked Scores!" — each before any toast on that screen, each moved on with
+         a tap, as a player would */
       const P0 = await page.evaluate(async () => { const C = (await import('./config/copy.js')).TUTORIAL.prog[0], R = await import('./games/registry.js'); return C.replace('{game}', R.GAMES.hold.name); }), est = {};
-      const runOf = async g => { await page.evaluate(async g => (await import('./run/run.js')).goWhere({ g }), g); await driveToResult(g, '64.7 a first ' + g + ' run');
-        if (g === 'hold') { const b = await waitText(um(P0), 200); est.text = b && b.text; est.on = (await state()).screen; await anywhere(); await sleep(300); } else await sleep(9000);
-        await page.evaluate(async () => (await import('./ui/router.js')).show('s-menu')); await sleep(400); return dims(); };
-      const afterEst = await runOf('hold'), afterRx = await runOf('reaction');
+      const W7 = um(await page.evaluate(async () => { const C = (await import('./config/copy.js')).TUTORIAL, U = (await import('./config/unlocks.js')).MENU_UNLOCK;
+        return { got: Object.fromEntries(['about', 'prog', 'board'].map(k => [k, C.got.replace('{name}', U[k].name)])), look: Object.fromEntries(['about', 'board'].map(k => [k, C.look.replace('{name}', U[k].name)])) }; }));
+      const runOf = async (g, k) => { await page.evaluate(async g => (await import('./run/run.js')).goWhere({ g }), g); await driveToResult(g, '64.7 a first ' + g + ' run'); const n0 = (await toasts()).length;
+        const b = await waitText(W7.got[k], 200); est[k] = { got: b && b.text, on: (await state()).screen, first: (await toasts()).slice(n0) };
+        await anywhere(); if (k === 'prog') { const b2 = await waitText(um(P0), 60); est[k].p0 = b2 && b2.text; await anywhere(); }
+        await sleep(9000); await page.evaluate(async () => (await import('./ui/router.js')).show('s-menu')); await sleep(400); return dims(); };
+      const afterEst = await runOf('hold', 'prog'), afterRx = await runOf('reaction', 'board');
       await page.evaluate(async () => { const V = await import('./ui/video.js'), M = (await import('./config/messages.js')).MESSAGES; (await import('./ui/router.js')).show('s-over'); V.playVideo(M[0]); await new Promise(r => setTimeout(r, 600)); V.closeVideo(); });
-      await sleep(2500); for (let i = 0; i < 150 && await page.evaluate(async () => (await import('./ui/toast.js')).toastBusy()); i++) await sleep(100);
-      const afterVid = await dims(), on = await page.evaluate(() => document.querySelector('.screen.on')?.id), said = await toasts();
+      const aGot = await waitText(W7.got.about, 150), on = await page.evaluate(() => document.querySelector('.screen.on')?.id);
+      await anywhere(); await sleep(300); await page.evaluate(async () => (await import('./ui/router.js')).show('s-menu')); await sleep(400);
+      const afterVid = await dims(), said = await toasts();
       const C7 = await page.evaluate(async () => { const U = (await import('./config/unlocks.js')).MENU_UNLOCK, T = (await import('./config/copy.js')).TOAST; return ['prog', 'board', 'about'].map(k => T.unlock.replace('{name}', U[k].name)); });
-      (Object.values(before).every(Boolean) && !afterEst['s-prog'] && afterEst['s-board'] && afterEst['s-about'] && !afterRx['s-board'] && afterRx['s-about'] && !afterVid['s-about'] && on === 's-menu' && C7.every(x => said.includes(x)))
-        ? ok(`64.7 Progress opens with the first Estimate run, Scores with the first Reaction run, About when the Welcome clip finishes (landing on the main menu) — each on its own, each toasting ("${C7.join('", "')}")`)
-        : bad('64.7 the menu unlock order', JSON.stringify({ before, afterEst, afterRx, afterVid, on, said, C7 }));
-      /* 64.8: THE ABOUT TUTORIAL, straight after the clip, on the main menu: About ringed and the only thing that answers — Scores does nothing —
-         then five boxes inside About, the videos, the feedback line and the support button ringed; a reload half way resumes at the same box */
-      const CA = um(await page.evaluate(async () => (await import('./config/copy.js')).TUTORIAL.about));
-      const a = [await waitText(CA[0], 100)];
+      (Object.values(before).every(Boolean) && !afterEst['s-prog'] && afterEst['s-board'] && afterEst['s-about'] && !afterRx['s-board'] && afterRx['s-about'] && !afterVid['s-about'] && on === 's-over' && aGot && aGot.text === W7.got.about
+        && !C7.some(x => said.includes(x)) && ['prog', 'board'].every(k => est[k].got === W7.got[k] && est[k].on === 's-over' && !est[k].first.length) && est.prog.p0 === um(P0))
+        ? ok(`L14 / 67.15 / 64.7 Progress opens with the first Estimate run, Scores with the first Reaction run, About when the Welcome clip finishes — each announced by its tour's first box on the screen that opened it ("${W7.got.prog}", "${W7.got.board}", "${W7.got.about}"), before any toast there, and never toasted; the clip leaves the player where it played`)
+        : bad('L14 / 67.15 / 64.7 the menu unlocks and their first boxes', JSON.stringify({ before, afterEst, afterRx, afterVid, on, aGot: aGot && aGot.text, est, said, C7 }));
+      /* 64.8 AMENDED at build 68 (67.15): THE ABOUT TUTORIAL, its first box read on the result above; then on the main menu About ringed ("Tap About to take
+         a look") and the only thing that answers — Scores does nothing — then five boxes inside About, the videos, the feedback line and the support button
+         ringed; a reload half way resumes at the same box */
+      const CA = um(await page.evaluate(async () => (await import('./config/copy.js')).TUTORIAL.about)), WA = [W7.look.about, ...CA];
+      const a = [await waitText(WA[0], 100)];
       await click('#s-menu .item[data-go="s-board"]'); await sleep(300); const held = (await state()).screen;
-      await click('#s-menu .item[data-go="s-about"]'); a.push(await waitText(CA[1])); const inAbout = (await state()).screen;
-      await anywhere(); a.push(await waitText(CA[2])); await anywhere(); a.push(await waitText(CA[3]));
+      await click('#s-menu .item[data-go="s-about"]'); a.push(await waitText(WA[1])); const inAbout = (await state()).screen;
+      await anywhere(); a.push(await waitText(WA[2])); await anywhere(); a.push(await waitText(WA[3]));
       await page.reload({ waitUntil: 'networkidle0' }); await sleep(300); await page.evaluate(async () => (await import('./ui/router.js')).show('s-about'));
-      const resumed = await waitText(CA[3]); a.push(resumed);
-      await anywhere(); a.push(await waitText(CA[4])); await anywhere(); a.push(await waitText(CA[5])); await anywhere(); await sleep(400);
+      const resumed = await waitText(WA[3]); a.push(resumed);
+      await anywhere(); a.push(await waitText(WA[4])); await anywhere(); a.push(await waitText(WA[5])); await anywhere(); await sleep(400);
       const rings = await page.evaluate(() => ({ list: document.getElementById('msglist').getBoundingClientRect().width, fb: document.getElementById('feedback').getBoundingClientRect().width, sup: document.getElementById('support').getBoundingClientRect().width }));
       const endA = await page.evaluate(() => ({ done: JSON.parse(localStorage.getItem('ne')).prefs.tuts.about, box: !document.getElementById('tut').hidden }));
       const txt = [a[0], a[1], a[2], a[3], a[5], a[6]].map(b => b && b.text);
-      (txt.join('|') === CA.join('|') && held === 's-menu' && inAbout === 's-about' && a[0].drawn && a[2].drawn && Math.abs(a[2].ring[0] - rings.list - 12) <= 2 && a[3].drawn && Math.abs(a[3].ring[0] - rings.fb - 12) <= 2
-        && a[5].drawn && Math.abs(a[5].ring[0] - rings.sup - 12) <= 2 && !a[1].drawn && resumed && resumed.text === CA[3] && endA.done === 'done' && !endA.box && a.every(b => b && !b.covers))
-        ? ok('64.8 after the Welcome clip: About ringed on the main menu and the only thing that answers; inside, the six boxes in order with the videos, feedback and support ringed; a reload resumes at the same box; done once')
+      (txt.join('|') === WA.join('|') && held === 's-menu' && inAbout === 's-about' && a[0].drawn && a[2].drawn && Math.abs(a[2].ring[0] - rings.list - 12) <= 2 && a[3].drawn && Math.abs(a[3].ring[0] - rings.fb - 12) <= 2
+        && a[5].drawn && Math.abs(a[5].ring[0] - rings.sup - 12) <= 2 && !a[1].drawn && resumed && resumed.text === WA[3] && endA.done === 'done' && !endA.box && a.every(b => b && !b.covers))
+        ? ok('64.8 after the Welcome clip: About ringed on the main menu and the only thing that answers; inside, the boxes in order with the videos, feedback and support ringed; a reload resumes at the same box; done once')
         : bad('64.8 the About tutorial', JSON.stringify({ a: a.map(b => b && { t: b.text, drawn: b.drawn, ring: b.ring, covers: b.covers }), held, inAbout, rings, endA }));
       /* 64.9 / 64.12: the Estimate and Reaction runs above armed PROGRESS and SCORES; each waits its turn on the main menu. Progress: the item ringed,
          two lines, the Games chest tab ringed, then a game filter must be picked — All does nothing. Scores: the item ringed, a welcome, Quick Tap's
@@ -299,11 +310,12 @@ export async function run() {
       await click('#chest-g .chip[data-v="all"]'); await sleep(300); const allHeld = (await box() || {}).text;
       await click('#chest-g .chip[data-v="hold"]'); await sleep(500);
       const pEnd = await page.evaluate(() => ({ done: JSON.parse(localStorage.getItem('ne')).prefs.tuts.prog, box: !document.getElementById('tut').hidden, g: document.querySelector('#chest-g .chip.sel')?.dataset.v, tab: document.querySelector('#prog-tabs .chip.sel')?.dataset.tab }));
-      (est.text === um(P0) && est.on === 's-over' && p.map(b => b && b.text).join('|') === CP.prog.slice(1).join('|') && p[0].drawn && p[3].drawn && p[4].drawn && p[5].drawn && allHeld === CP.prog[6] && pEnd.done === 'done' && !pEnd.box && pEnd.g === 'hold' && pEnd.tab === 'c-games')
+      (est.prog.p0 === um(P0) && est.prog.on === 's-over' && p.map(b => b && b.text).join('|') === CP.prog.slice(1).join('|') && p[0].drawn && p[3].drawn && p[4].drawn && p[5].drawn && allHeld === CP.prog[6] && pEnd.done === 'done' && !pEnd.box && pEnd.g === 'hold' && pEnd.tab === 'c-games')
         ? ok(`64.9 / section C the Progress tutorial: "${um(P0)}" on the first Estimate run's result, then Progress ringed on the menu, its boxes in order (the Games chest line split in two), the tab ringed, a game filter picked to finish (All does nothing)`)
         : bad('64.9 the Progress tutorial', JSON.stringify({ est, P0, p: p.map(b => b && { t: b.text, drawn: b.drawn }), allHeld, pEnd }));
       await page.evaluate(async () => (await import('./ui/router.js')).show('s-menu'));
-      const want12 = [CP.board[0], CP.board[1], CP.board[2].replace('{game}', QTN), CP.board[3]];
+      // AMENDED at build 68 (67.15): the menu box is "Tap Scores to take a look"; "You've unlocked Scores" is gone (its result box says it)
+      const want12 = [W7.look.board, CP.board[0], CP.board[1].replace('{game}', QTN), CP.board[2]];
       const q = [await waitText(want12[0])]; await click('#s-menu .item[data-go="s-board"]'); q.push(await waitText(want12[1]));
       await anywhere(); q.push(await waitText(want12[2])); await click('#bd-g .chip[data-v="quick-tap"]'); q.push(await waitText(want12[3]));
       const radarW = await page.evaluate(() => document.getElementById('radar').getBoundingClientRect().width); await anywhere(); await sleep(400);
@@ -311,6 +323,21 @@ export async function run() {
       (q.map(b => b && b.text).join('|') === want12.join('|') && q[0].drawn && q[2].drawn && q[3].drawn && Math.abs(q[3].ring[0] - radarW - 12) <= 2 && qEnd.done === 'done' && !qEnd.box)
         ? ok(`64.12 the Scores tutorial after the first Reaction run: Scores ringed on the menu, a welcome, "${want12[2]}" with its chip to tap, the web chart ringed`)
         : bad('64.12 the Scores tutorial', JSON.stringify({ q: q.map(b => b && { t: b.text, drawn: b.drawn, ring: b.ring }), radarW, qEnd }));
+      /* build 68 (67.22, L14): ANY ROUTE IN STARTS A TOUR AT ONCE, AND A VISIT SPENDS IT. Scores armed again, its result box never read: the screen
+         opened straight from Testing shows the tour's first box inside at once (its doorway boxes passed); leaving before the end drops the rest for
+         good, and the next visit shows nothing */
+      {
+        await page.evaluate(async () => { (await import('./ui/router.js')).show('s-testing'); const S = await import('./core/store.js'); S.prefs.tuts = Object.assign({}, S.prefs.tuts, { board: 0 }); S.prefs.rooms = {}; S.save(); });
+        await sleep(300); await page.evaluate(async () => (await import('./ui/router.js')).show('s-board'));
+        const in1 = await waitText(want12[1], 40);
+        await page.evaluate(async () => (await import('./ui/router.js')).show('s-menu')); await sleep(500);
+        const st1 = await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('ne')).prefs; return { done: p.tuts.board, room: !!(p.rooms || {})['s-board'] }; });
+        await page.evaluate(async () => (await import('./ui/router.js')).show('s-board')); await sleep(900);
+        const again = await box();
+        (in1 && in1.text === want12[1] && st1.done === 'done' && st1.room && !again)
+          ? ok(`L14 / 67.22 a tour starts on its room's first visit by any route — "${in1.text}" the moment Scores opened from Testing, its doorway boxes passed; leaving spends the room and drops the rest for good, and the next visit shows nothing`)
+          : bad('L14 / 67.22 first visit or never', JSON.stringify({ in1: in1 && in1.text, st1, again: again && again.text }));
+      }
     }
     /* 64.14, REWRITTEN at build 66 (65.9): THE GAMES CHEST TUTORIAL — every mode open, the Games chest opened from the map: the first box when its
        words have spilt, then the SKILL KEY word ringed to tap (the tutorial takes the player nowhere itself), the key (after its own first animation)
@@ -356,7 +383,8 @@ export async function run() {
       await click('#s-menu .item[data-go="s-custom"]'); gg.push(await waitText(UG[7])); await anywhere(); gg.push(await waitText(UG[8]));
       await click('#c-bg button[data-v="grid"]'); await sleep(200); const heldC = (await box() || {}).text;
       await click('#c-bg button[data-v="snow"]'); gg.push(await waitText(UG[9])); await anywhere(); await sleep(400);
-      const gEnd = await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('ne')).prefs; return { done: p.tuts.games, bg: p.bg, box: !document.getElementById('tut').hidden, nav: window.__nav }; });
+      // AMENDED at build 68 (67.22): three tours now — the map's, the Skill Key's and Customise's — each done
+      const gEnd = await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('ne')).prefs; return { done: [p.tuts.games, p.tuts.gkey, p.tuts.gcust].every(v => v === 'done') ? 'done' : JSON.stringify(p.tuts), bg: p.bg, box: !document.getElementById('tut').hidden, nav: window.__nav }; });
       const navBad = gEnd.nav.filter(n => !n.ring || n.dt === null || n.dt > 1000);
       (gg.map(b => b && b.text).join('|') === UG.join('|') && onMap === 's-pick' && heldW.s === 's-pick' && heldW.t === UG[1] && heldK === 's-key' && stillK === 's-key' && onMenu === 's-menu' && heldC === UG[8]
         && gg[1].drawn && gg[1].tail && gg[3].glow === Object.keys(await page.evaluate(async () => (await import("./games/registry.js")).GAMES)).length && !gg[3].covers && gg[4].drawn && gg[5].drawn && gg[6].drawn && gg[8].drawn && gg.every(b => b.inside && !b.covers) && gEnd.done === 'done' && gEnd.bg === 'snow' && !gEnd.box)
@@ -423,6 +451,9 @@ export async function run() {
         { id: 'prog', prefs: { ...PL, tuts: { prog: 0 } }, store: { unlock: { 'hold:grow': 1 } }, go: 's-menu' },
         { id: 'board', prefs: { ...PL, tuts: { board: 0 } }, store: { runs: [QR] }, go: 's-menu' },
         { id: 'games', prefs: { ...PL, tuts: { games: 0 }, chests: { games: 1 }, spill: { games: 1 } }, store: { unlock: Object.fromEntries((await page.evaluate(async () => (await import('./config/unlocks.js')).UNLOCKS.map(u => u.key))).map(k => [k, 1])) }, go: 's-pick' },
+        // build 68 (67.22): the Games chest's tour is three — the key's and Customise's walked on their own
+        { id: 'gkey', prefs: { ...PL, tuts: { gkey: 0 }, chests: { games: 1 }, spill: { games: 1 } }, go: 's-key' },
+        { id: 'gcust', prefs: { ...PL, tuts: { gcust: 0 }, chests: { games: 1 }, spill: { games: 1 } }, go: 's-menu' },
         { id: 'est', prefs: { ...PL, tuts: {} }, store: { unlock: { 'hold:grow': 1 } }, go: 's-pick', open: 'hold' },
         { id: 'mini', prefs: { ...PL, tuts: { mini: 0 }, chests: { games: 1, key: 1 }, spill: { games: 1, key: 1 } }, go: 's-pick' },
         { id: 'mega', prefs: { ...PL, tuts: { mega: 0 }, chests: { games: 1, key: 1, pro: 1 }, spill: { games: 1, key: 1, pro: 1 } }, go: 's-pick' },
@@ -478,6 +509,8 @@ export async function run() {
       let wl = false; for (let i = 0; i < 80 && !(wl = await page.evaluate(() => { const w = document.getElementById('welcome'); return !!w && !w.hidden; })); i++) await sleep(100);
       await sleep(400); await page.evaluate(() => document.querySelector('#welcome [data-act="wlater"]').click());
       let st = null; for (let i = 0; i < 150 && !((st = await page.evaluate(async () => (await import('./ui/tutorial.js')).tutNow())) || {}).shown; i++) await sleep(100);
+      // AMENDED at build 68 (67.15): the tour's first box is "Congratulations, you unlocked About!", a line; the ring is the box after it
+      if (st && st.shown && !st.tap) { await page.mouse.click(12, 400); for (let i = 0; i < 60 && !((st = await page.evaluate(async () => (await import('./ui/tutorial.js')).tutNow())) || {}).tap; i++) await sleep(100); }
       const aim = await page.evaluate(async () => (await import('./ui/tutorial.js')).tutAim()), dim = await page.evaluate(() => document.querySelector('#s-menu .item[data-go="s-about"]').classList.contains('dim'));
       if (aim) await page.mouse.click(aim[0], aim[1]); await sleep(600);
       const on661 = (await state()).screen;
