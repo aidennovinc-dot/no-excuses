@@ -391,6 +391,66 @@ export async function run() {
         ? ok(`65.16 ${F.name}'s tutorial: its tile ringed on the map and tapped, then "${txt[1]}", "${txt[2]}", "${txt[3]}" — done once`)
         : bad(`65.16 the ${F.name} tutorial`, JSON.stringify({ txt, onG, ring: G16[0] && G16[0].ring, tw, gEnd }));
     }
+    /* build 66 (65.11 / 65.1 / 65.5 / 65.9): EVERY TUTORIAL, WALKED WITH REAL TAPS, at 390×844 with a phone's insets and on an SE. Each box is measured
+       — on the phone between its safe areas, never over its ring, no "[" left in it — and moved on the way a player would: a text box by a real tap on it,
+       a MUST-TAP box by a real tap on the point of its ring that answers (ui/tutorial.js tutAim(): the top element there must be the thing the box lets
+       through). A must-tap box with no such point, or a real tap on it that does not move the tutorial on, is a SOFT LOCK and FAILS the gate (65.11:
+       Snow on Customise). And no screen changes after a tap on a text box (65.9) */
+    {
+      const PL = { story: 1, gridSeen: 1, menuSeen: 1, snd: 'off', played: 1, tut: 2, welcomeSeen: 1, keySeen: 1, keysSeen: 1, readySeen: {}, keyIntro: { clear: 1, pro: 1, author: 1 }, menuUnl: { about: 1, prog: 1, board: 1 } };
+      const QR = { g: 'quick-tap', d: 'two', s: 5, t: Date.now() - 6e4, hits: 20, misses: 0, row: 20, v: 4 };
+      const TW = [
+        { id: 'first', prefs: { story: 1, gridSeen: 1, snd: 'off' }, store: { intro: { 'quick-tap': 1, 'quick-tap:two': 1 } }, go: 's-pick', endOnGame: 1 },
+        { id: 'over', prefs: { ...PL, tut: 1, played: 1, tutRun: { ...QR, got: ['quick-tap:two:15', 'quick-tap:four'] } }, store: { runs: [QR], unlock: { 'quick-tap:two:15': 1, 'quick-tap:four': 1 } } },
+        { id: 'about', prefs: { ...PL, tuts: { about: 0 } }, go: 's-menu' },
+        { id: 'prog', prefs: { ...PL, tuts: { prog: 0 } }, store: { unlock: { 'hold:grow': 1 } }, go: 's-menu' },
+        { id: 'board', prefs: { ...PL, tuts: { board: 0 } }, store: { runs: [QR] }, go: 's-menu' },
+        { id: 'games', prefs: { ...PL, tuts: { games: 0 }, chests: { games: 1 }, spill: { games: 1 } }, store: { unlock: Object.fromEntries((await page.evaluate(async () => (await import('./config/unlocks.js')).UNLOCKS.map(u => u.key))).map(k => [k, 1])) }, go: 's-pick' },
+        { id: 'est', prefs: { ...PL, tuts: {} }, store: { unlock: { 'hold:grow': 1 } }, go: 's-pick', open: 'hold' },
+        { id: 'mini', prefs: { ...PL, tuts: { mini: 0 }, chests: { games: 1, key: 1 }, spill: { games: 1, key: 1 } }, go: 's-pick' },
+        { id: 'mega', prefs: { ...PL, tuts: { mega: 0 }, chests: { games: 1, key: 1, pro: 1 }, spill: { games: 1, key: 1, pro: 1 } }, go: 's-pick' },
+      ];
+      const cdp = await page.createCDPSession(), out = [];
+      for (const [w, h, top, bottom] of [[390, 844, 47, 34], [375, 667, 20, 0]]) {
+        await page.setViewport({ width: w, height: h, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+        try { await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top, bottom, left: 0, right: 0 } }); } catch (e) {}
+        for (const T of TW) {
+          await page.evaluate((T, si) => { localStorage.clear(); localStorage.setItem('ne', JSON.stringify(Object.assign({ v: 7, prefs: T.prefs, runs: [], ach: {}, unlock: {}, intro: si, seen: {}, bars: {} }, T.store || {}))); }, T, SEEN_INTRO);
+          await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+          if (T.go) await page.evaluate(async g => (await import('./ui/router.js')).show(g), T.go);
+          if (T.open) { await sleep(900); await click(`.tile[data-game="${T.open}"]`); await sleep(400); if (!(await page.evaluate(() => document.getElementById('sheet').classList.contains('len')))) { await click('#diff-row .choice'); await sleep(400); } }
+          const boxes = []; let idle = 0, why = '';
+          for (let n = 0; n < 200 && boxes.length < 16; n++) {
+            const st = await page.evaluate(async () => (await import('./ui/tutorial.js')).tutNow());
+            if (!st || st.id !== T.id) break;
+            if (!st.shown) { if (++idle > 60) { why = 'no box came at step ' + st.i; break; } await sleep(120); continue; }
+            idle = 0; const b = await box(); if (!b) continue;
+            const m = await page.evaluate(() => { const p = document.createElement('div'); p.style.cssText = 'position:fixed;top:env(safe-area-inset-top);bottom:env(safe-area-inset-bottom);width:1px'; document.body.appendChild(p); const r = p.getBoundingClientRect(); p.remove();
+              const bx = document.querySelector('#tut .tbox').getBoundingClientRect(); return { safe: bx.top >= r.top - .5 && bx.bottom <= r.bottom + .5 && bx.left >= 0 && bx.right <= innerWidth, scr: document.querySelector('.screen.on')?.id }; });
+            const rec = { i: st.i, tap: st.tap, t: b.text.slice(0, 28), covers: b.covers, safe: m.safe, marks: /\[|\]/.test(b.text) };
+            let pt = null;
+            if (st.tap) { pt = await page.evaluate(async () => (await import('./ui/tutorial.js')).tutAim()); if (!pt) { rec.lock = 'no point on the ring answers a tap'; boxes.push(rec); why = 'soft lock'; break; } }
+            else pt = await page.evaluate(() => { const r = document.querySelector('#tut .tbox').getBoundingClientRect(); return [Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2)]; });
+            await page.mouse.click(pt[0], pt[1]);
+            let moved = false, after = null;
+            for (let k = 0; k < 40 && !moved; k++) { await sleep(100); after = await page.evaluate(async () => ({ s: (await import('./ui/tutorial.js')).tutNow(), scr: document.querySelector('.screen.on')?.id, game: document.getElementById('game').classList.contains('on') }));
+              moved = !after.s || after.s.id !== st.id || after.s.i !== st.i || (T.endOnGame && after.game); }
+            rec.moved = moved; if (!st.tap && after && after.scr !== m.scr && !(T.endOnGame && after.game)) rec.nav = after.scr;
+            boxes.push(rec); if (!moved) { why = st.tap ? 'soft lock: a real tap on the ring did not move it on' : 'a tap on a text box did not move it on'; break; }
+            if (T.endOnGame && after.game) { await page.evaluate(async () => (await import('./run/run.js')).abort(true)); break; }
+          }
+          const done = await page.evaluate(id => { const v = (JSON.parse(localStorage.getItem('ne')).prefs.tuts || {})[id]; return v; }, T.id);
+          out.push({ at: w + 'x' + h, id: T.id, n: boxes.length, why, done: T.id === 'first' || T.id === 'over' ? 'n/a' : done, bad: boxes.filter(b => b.covers || !b.safe || b.marks || b.lock || !b.moved || b.nav) });
+        }
+      }
+      try { await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0, bottom: 0, left: 0, right: 0 } }); } catch (e) {}
+      await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+      const fails = out.filter(o => o.bad.length || o.why || !o.n || (o.done !== 'n/a' && o.done !== 'done'));
+      const taps = out.reduce((n, o) => n + o.n, 0);
+      (!fails.length)
+        ? ok(`65.11 / 65.1 / 65.5 / 65.9 every tutorial walked with real taps at 390×844 (47/34 insets) and on an SE: ${taps} boxes (${out.filter(o => o.at === '390x844').map(o => o.id + ' ' + o.n).join(', ')}) — every must-tap ring answers a real tap, no box over its ring or outside the safe areas, no "[" left, no screen change after a text box`)
+        : bad('65.11 a tutorial soft-locks or misplaces a box', JSON.stringify(fails));
+    }
     /* build 66 (65.19): COLOUR MARKS. Every line of tutorial copy (section C writes them with [green] / [yellow] / [red]) renders with no "[" left in
        it, and each mark is drawn in the game's own colour — green --ok, yellow --tut, red the game's red */
     {

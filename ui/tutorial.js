@@ -241,7 +241,7 @@ for(const [id,g,from] of [['mini','g1','key'],['mega','g2','pro']]){ const gOn=(
   on('chest:opened',({id:c})=>{ if(c===from) arm(id); }); }
 
 /* ---------- the box ---------- */
-let host=null, timer=0, fromTut=false, passing=false, cur=null, last=null, lit=[];
+let host=null, timer=0, fromTut=false, passing=false, cur=null, last=null, lit=[], brought='';
 const REDUCE=matchMedia('(prefers-reduced-motion: reduce)').matches;
 function build(){ if(host) return host;
   // build 64 (62.8): the box is its line and nothing else — no Skip, no Next; a tap anywhere moves a text box on (the capture below)
@@ -249,7 +249,7 @@ function build(){ if(host) return host;
   host.innerHTML='<div class="tring"><span class="ttag"></span></div><div class="tarrow"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M40 40L10 10M10 10h14M10 10v14"></path></svg></div><div class="tbox"><p></p></div><i class="ttail"></i>';
   document.body.appendChild(host); return host; }
 function glow(els){ for(const e of lit) if(!els.includes(e)) e.classList.remove('tglow'); for(const e of els) e.classList.add('tglow'); lit=els; }
-function hide(){ if(host){ host.hidden=true; host.classList.remove('glide'); } glow([]); cur=null; }
+function hide(){ if(host){ host.hidden=true; host.classList.remove('glide'); } glow([]); cur=null; brought=''; }
 // the insets come off a probe, as the stylesheet sees them
 let inset=null;
 function insets(){ if(!inset){ inset=document.createElement('div'); inset.style.cssText='position:fixed;left:0;width:0;top:env(safe-area-inset-top);bottom:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none'; document.body.appendChild(inset); }
@@ -263,8 +263,10 @@ function scroller(el){ for(let p=el.parentElement;p&&p!==document.body;p=p.paren
   const d=document.scrollingElement; return d&&d.scrollHeight>d.clientHeight+1?d:null; }
 /* build 66 (65.5 / 65.11): A RINGED THING THE BOX CANNOT SIT BESIDE IS SCROLLED TO FIRST — off the screen (Snow, below Customise's fold, which Aiden
    had to find himself), or too near an edge for the box to fit on either side of it. The thing and the box are centred between the safe areas as a
-   pair; a thing too tall for that goes to the top */
-function into(els,bh,lo,hi,gap){ const r=union(els); if(!r) return; if(r.top>=lo&&r.bottom<=hi&&(r.bottom+gap+bh<=hi||r.top-gap-bh>=lo)) return;
+   pair; a thing too tall for that goes to the top. ONCE PER BOX: after that the screen is the player's and the box follows the ring. Build 65 did
+   the opposite — it scrolled the SCREEN every 200ms whenever the ringed thing came under its centred box, so a player who scrolled Snow up to the
+   middle had the screen jump away under their finger, and a moving screen takes a tap as a scroll */
+function into(els,bh,lo,hi,gap,key){ const r=union(els); if(!r||brought===key) return; brought=key; if(r.top>=lo&&r.bottom<=hi&&(r.bottom+gap+bh<=hi||r.top-gap-bh>=lo)) return;
   const sc=scroller(els[0]); if(!sc) return; const pair=r.height+gap+bh, want=pair<=hi-lo?lo+(hi-lo-pair)/2:lo;
   sc.scrollTo({ top:sc.scrollTop+r.top-want, behavior:'instant' }); }
 /* build 66 (65.5, superseding build 64's 62.7 — one centred spot for every box): THE BOX SITS BESIDE WHAT IT IS ABOUT. Below it if there is room
@@ -279,7 +281,7 @@ function place(el,text,o={}){ const h=build(), pad=6, ring=h.querySelector('.tri
   ring.hidden=!ringed; arrow.hidden=!(o.arrow&&els.length); glow(o.glow?els:[]);
   const s=insets(), lo=s.top+8, hi=innerHeight-s.bottom-8, bw=Math.min(320,innerWidth-32), left=Math.round((innerWidth-bw)/2);
   box.style.width=bw+'px'; const bh=box.offsetHeight||92, gap=pad+(o.arrow?48:16);
-  if(aimed) into(els,bh,lo,hi,gap);
+  if(aimed) into(els,bh,lo,hi,gap,o.id+':'+o.i);
   const U=union(els.concat(keep)); let top=null, side=0;
   // a thing the box is about but does not ring (a row, the lock box) is kept clear too, unless it is most of the screen (the whole map)
   if(U&&(aimed||U.height<(hi-lo)*.55)){
@@ -312,7 +314,7 @@ function tick(){
   if(busy()||!s.on()) return hide();
   const el=s.el?s.el():null, first=Array.isArray(el)?el[0]:el; if(s.el&&!(first&&vis(first))) return hide();
   cur={ id, i, s };
-  place(el,typeof s.text==='function'?s.text():s.text,{ id, tap:s.tap, noRing:s.ring===0||!!s.arrow, arrow:s.arrow, tag:s.tag, glow:s.glow, keep:s.keep }); }
+  place(el,typeof s.text==='function'?s.text():s.text,{ id, i, tap:s.tap, noRing:s.ring===0||!!s.arrow, arrow:s.arrow, tag:s.tag, glow:s.glow, keep:s.keep }); }
 function run(){ if(!timer) timer=setInterval(tick,200); }
 // the next step, or the end: the last tap on a tutorial is what finishes it
 function advance(id){ const d=DEFS[id], steps=stepsOf(d), n=d.step()+1;
@@ -389,5 +391,10 @@ setTimeout(resumeOver,0);
 /* build 66: where the tutorials are, for Testing and the gate — the one that has the floor, its step, how many it has, and whether its box is up
    and waiting for a tap on its ring */
 function tutNow(){ const id=active(); if(!id) return null; const d=DEFS[id]; return { id, i:d.step(), n:stepsOf(d).length, shown:shown()&&cur.id===id, tap:shown()&&!!cur.s.tap }; }
+/* build 66 (65.11): WHERE A REAL TAP ON A MUST-TAP BOX'S RING LANDS AND IS ANSWERED — a point on the screen, inside the ring, whose top element the box
+   lets through; null when there is none (the ring is round something covered, off the screen or not the thing that answers), which is a soft lock */
+function tutAim(){ if(!shown()||!cur.s.tap) return null; const r=union([].concat(cur.s.el()||[]).filter(vis)); if(!r) return null;
+  for(const fy of [.5,.3,.7,.15,.85]) for(const fx of [.5,.3,.7,.15,.85]){ const x=r.left+r.width*fx, y=r.top+r.height*fy; if(x<0||y<0||x>=innerWidth||y>=innerHeight) continue;
+    const t=document.elementFromPoint(x,y); if(t&&lets(t)) return [Math.round(x),Math.round(y)]; } return null; }
 
-export { arm, busy as tutBusy, tutDone, tutNow, tutorial };
+export { arm, busy as tutBusy, tutAim, tutDone, tutNow, tutorial };
