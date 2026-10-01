@@ -5,7 +5,7 @@
 // the Streak length (v11): endless until the budget runs out; score = rounds
 /* build 62 (61.2): Restart, the top corner opposite Exit. Held for `holdMs` a line draws round the word; when it closes the run starts
    again with its normal 3-2-1. Let go early and nothing happens. */
-export const RESTART = { holdMs: 500 };
+
 export const STREAK = -1;
 // the feel. Nothing here is user-facing
 // v17 (B.12): `swOver` is how far past the target a Stopwatch attempt is allowed to run before it stops itself — 10

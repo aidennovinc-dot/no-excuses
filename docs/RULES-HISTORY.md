@@ -1765,3 +1765,7 @@ anything Aiden settles goes on the list in the build that implements it.
   tap is "try to unlock". Go / No-go and Spot · Count show as ONE card (`NEXT_CARD_ORDER.pair`), the v15 1.4d rule unchanged.
   **L6 quoted, wording only:** "no misses" is dropped wherever "in a row" already says it — Four's row and the four "N hits in a row" length rungs.
   L6 reads: "'N hits, no misses' is N in a row"; the predicates (`inRow`) are untouched.
+
+- **No Restart in a run (67.5, L21; retiring build 62 61.2 and build 65 64.6).** ✕ → the Abandoned screen → Retry does the job in every game, Pass & play
+  and Versus included (driven by the gate); an abandoned run's button always reads Retry (Pass & play's fixed length used to turn it into Go).
+  `RESTART` and the hold binding are gone; `Snd.rise` and `RESTART_FX` stay in audio, unused, for the catalogue's sound list.

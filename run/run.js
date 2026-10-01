@@ -204,10 +204,7 @@ function abort(quiet,again){ if(!R.on) return; const gaunt=!!R.gaunt;
   R.on=false; R.id++; VS.reset(); Intro.clear(); cancelAnimationFrame(R.raf); ctx.timers.clearT(); clearInterval(countT); Music.endRun(); eng.stop(ctx); $('#count').classList.remove('on'); $('#vwin').classList.remove('on'); $('#game').classList.remove('shake','live','flowon'); $('#seqdone')?.classList.remove('on'); $('#rxbar').innerHTML='';
   // build 62 (61.1): the player's own Exit lands on the result screen marked abandoned; a quiet end and a Gauntlet keep their routes
   emit('run:abort',{quiet:!!quiet,gaunt,again:!!again}); }
-/* build 62 (61.2): RESTART. The run in hand is dropped the way Exit drops it (the quit pass keeps only what already landed), then the
-   same selection starts again with its normal 3-2-1. `again` tells the screens this abort is not theirs to route. A Gauntlet is one
-   way through and has no Restart. */
-function restart(){ if(!R.on||R.gaunt) return false; abort(false,true); start(); return true; }
+
 /* ---------- v31 (60.27, build 60): LEAVING THE APP PAUSES THE RUN, AND IT RESUMES WHEN YOU COME BACK ----------
    This REVERSES v29 item 4 (build 55), which ended the run. Aiden's call of 2026-09-23: "a 20-round Streak lost to a phone
    call." Item 4's reasoning was right about the FAULT and wrong about the remedy — everything a run measures did keep running
@@ -400,4 +397,4 @@ function goWhere(w){ if(!w) return; sel.game=w.g; prefs.lastGame=w.g; save();
 
 const introActive=()=>Intro.active();
 const introTap=()=>Intro.tap();
-export { R, abort, restart, active, goWhere, input, introActive, introTap, liveCheck, setGauntStep, start, whereOf };
+export { R, abort, active, goWhere, input, introActive, introTap, liveCheck, setGauntStep, start, whereOf };

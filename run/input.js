@@ -4,30 +4,20 @@
 import { $, $$ } from "../core.js";
 import { sel } from "../core/state.js";
 import { define } from "../ui/actions.js";
-import { abort, active, input, introActive, introTap, restart } from "./run.js";
-import { RESTART } from "../config/games.js";
+import { abort, active, input, introActive, introTap } from "./run.js";
 import { Snd } from "../audio.js";
 
 // build 62 (61.2): Restart answers a HOLD, not a tap, so its data-act is silent and does nothing; bindRestart() below is the control
-define({ quit(){ abort(); return 'click'; }, restart(){}, seqdone(){ input({type:'act',target:'seqdone'}); return 'click'; } });
-
-/* build 62 (61.2): HOLD TO RESTART. Press: the line starts drawing round the word and the rise plays. Held for RESTART.holdMs: the run
-   restarts. Released, cancelled or slid off first: the line snaps back, the tone is cut, nothing else happens. */
-function bindRestart(){ const b=$('#restart'); if(!b) return; let t=0, tone=null;
-  b.style.setProperty('--hold',RESTART.holdMs+'ms');
-  const drop=()=>{ clearTimeout(t); t=0; b.classList.remove('hold'); if(tone){ tone.stop(); tone=null; } };
-  b.addEventListener('pointerdown',e=>{ e.preventDefault(); e.stopPropagation(); if(!active()||t) return;
-    b.classList.add('hold'); tone=Snd.rise(RESTART.holdMs);
-    t=setTimeout(()=>{ t=0; tone=null; b.classList.remove('hold'); restart(); },RESTART.holdMs); });
-  ['pointerup','pointercancel','pointerleave'].forEach(ev=>b.addEventListener(ev,drop)); }
+/* build 68 (67.5): THE IN-GAME RESTART IS GONE (build 62's 61.2 hold-to-restart, 64.6's pill). ✕ → the Abandoned screen → Retry does the same job,
+   in every game, Pass & play and Versus included, so one control fewer sits at the top of a run */
+define({ quit(){ abort(); return 'click'; }, seqdone(){ input({type:'act',target:'seqdone'}); return 'click'; } });
 
 const ptr=(e,type,more)=>Object.assign({ type, x:e.clientX, y:e.clientY, el:e.target, raw:e },more);
 function bindInput(){
   // a tap during the intro does nothing at all (v8) — it used to skip, and a stray touch left people confused
   // v16 (A.3): a tap during the intro still does nothing — EXCEPT the one that answers "Ready?" on a player's first run
   // of a game. introTap() returns false unless the intro is actually waiting, so every other stray touch is still eaten
-  bindRestart();
-  document.addEventListener('pointerdown',e=>{ if(introActive()&&e.target.closest('#game')&&!e.target.closest('#quit')&&!e.target.closest('#restart')){ e.stopPropagation(); e.preventDefault(); introTap(); } },true);
+  document.addEventListener('pointerdown',e=>{ if(introActive()&&e.target.closest('#game')&&!e.target.closest('#quit')){ e.stopPropagation(); e.preventDefault(); introTap(); } },true);
   $$('[data-vs-side]').forEach(p=>p.addEventListener('pointerdown',e=>{ e.preventDefault(); const [pl,i]=p.dataset.vsSide.split(':').map(Number); input(ptr(e,'down',{player:pl,target:i})); }));
   $('#vfield').addEventListener('pointerdown',e=>{ e.preventDefault(); input(ptr(e,'down')); });
   $$('.pad[data-side]').forEach(p=>p.addEventListener('pointerdown',e=>{ e.preventDefault(); input(ptr(e,'down',{target:+p.dataset.side})); }));

@@ -39,7 +39,8 @@ function renderOverChips(){ const g=GAMES[sel.game]; const vsOk=versusOf(sel.gam
   $('#over-chips2').innerHTML=lens.length>1&&!fixed&&(!versus||c.vsLens)?lens.map(s=>{ const L=versus?null:lenLock(sel.game,sel.diff,s); const nw=L?'':newMark('len:'+sel.game+':'+sel.diff+':'+s,fresh), np=!L&&!versus&&newPlay(sel.game,sel.diff,s)?' newplay':''; return `<button class="chip ${s===sel.secs?'sel':''} ${L?'locked x':''}${nw}${np}" data-act="chip-over" data-chip="over-s" data-v="${s}">${lenName(sel.game,s,sel.diff,versus)}</button>`; }).join(''):'';
   $('#over-chips3').innerHTML='';
   markSeen(fresh);
-  $('#again').textContent=sameAsPlayed()?(abandoned?RESULT.retry:SHEET.tryAgain):goLabel(sel.game,sel.diff,versus); }
+  // build 68 (67.5): an abandoned run's button is Retry in every mode — Pass & play's fixed length used to re-pick the length and turn it into Go
+  $('#again').textContent=abandoned?RESULT.retry:sameAsPlayed()?SHEET.tryAgain:goLabel(sel.game,sel.diff,versus); }
 // the top 10 under the result (v11) follows the mode and length picked in the chips, not only the run just played
 // v13 (3.5): a two-player run is never on a board (L10), so the whole top-10 block goes — the side-by-side pair and the chips stay
 function renderOverTop(){ const run=lastRun; const g=GC(sel.game,sel.diff,sel.secs); const two=sel.vs>0; $('#over-top').hidden=two||abandoned||!!(run&&run.practice); $('#over-top').style.display=two||abandoned||(run&&run.practice)?'none':''; if(two||abandoned) return;

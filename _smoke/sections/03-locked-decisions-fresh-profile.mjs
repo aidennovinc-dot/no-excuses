@@ -130,7 +130,7 @@ export async function run() {
     // box 12 → Sprint: the run starts with no box for Go — and with no Exit and no Restart (62.10)
     await click(`#time-row .tbtn[data-time="${X.lens[0]}"]`);
     for (let i = 0; i < 60 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) await sleep(100);
-    const first = await page.evaluate(() => ({ game: document.getElementById('game').classList.contains('on'), exit: getComputedStyle(document.getElementById('quit')).display, restart: getComputedStyle(document.getElementById('restart')).display, tut: JSON.parse(localStorage.getItem('ne')).prefs.tut }));
+    const first = await page.evaluate(() => ({ game: document.getElementById('game').classList.contains('on'), exit: getComputedStyle(document.getElementById('quit')).display, restart: document.getElementById('restart') ? 'there' : 'none', tut: JSON.parse(localStorage.getItem('ne')).prefs.tut }));
     // build 65 (64.2): twenty hits in a row — Dash (7) and Four (15) open, Dots (35) does not, which is the first result the third box branches on
     for (let i = 0, n = 0; i < 200 && (await page.evaluate(() => document.getElementById('game').classList.contains('on'))); i++) { if (n < 20 && await page.evaluate(() => { for (let i = 0; i < 4; i++) if (document.getElementById('sq' + i)?.style.getPropertyValue('--v').trim() === '1') { const t = document.querySelector('.pad[data-side="' + i + '"]'), r = t.getBoundingClientRect(); t.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1 })); return true; } return false; })) n++; await sleep(60); }
     const rec = await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('ne')).prefs; return { tut: p.tut, run: !!p.tutRun && p.tutRun.g }; });
@@ -150,7 +150,7 @@ export async function run() {
     await anywhere(); await waitText(OV[1]);
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
     const back = await waitText(OV[0], 200), backOn = (await state()).screen;
-    (first.game && first.exit === 'none' && first.restart === 'none' && first.tut !== 1 && rec.tut === 1 && rec.run === 'quick-tap' && r1 && back && back.text === OV[0] && backOn === 's-over')
+    (first.game && first.exit === 'none' && first.tut !== 1 && rec.tut === 1 && rec.run === 'quick-tap' && r1 && back && back.text === OV[0] && backOn === 's-over')
       ? ok('62.10 the first run has no Exit and no Restart; once it is on record, an app reopened before "Good luck!" lands on its result and starts the eight boxes again')
       : bad('62.10 the first run and the resume', JSON.stringify({ first, rec, r1: r1 && r1.text, back: back && back.text, backOn }));
     /* 62.11 / 64.2: the boxes, each moved on by any tap — a tap on TRY AGAIN (ringed) or BACK (arrowed) does neither thing. This run opened Dash and
@@ -176,7 +176,7 @@ export async function run() {
     await anywhere(); await sleep(300);
     const done = await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('ne')); return { tut: s.prefs.tut, tutRun: !!s.prefs.tutRun, rails: !!s.ach.rails, hidden: document.getElementById('tut').hidden }; });
     await click('#again'); for (let i = 0; i < 60 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) await sleep(100);
-    const second = await page.evaluate(() => ({ game: document.getElementById('game').classList.contains('on'), exit: getComputedStyle(document.getElementById('quit')).display, restart: getComputedStyle(document.getElementById('restart')).display }));
+    const second = await page.evaluate(() => ({ game: document.getElementById('game').classList.contains('on'), exit: getComputedStyle(document.getElementById('quit')).display, restart: document.getElementById('restart') ? 'there' : 'none' }));
     await click('#quit'); await sleep(400);
     await page.evaluate(async () => (await import('./ui/router.js')).show('s-menu')); await sleep(300);
     const menu = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('#s-menu .item[data-go]')].map(b => [b.dataset.go, b.classList.contains('dim')])));
@@ -186,7 +186,7 @@ export async function run() {
     const gold = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--gold').trim());
     /* AMENDED at build 65 (64.7, replacing 62.14's "the last box opens Scores, Progress and About"): Off the Rails is still banked, gold, feeding no
        key — and now opens nothing, so the three stay crossed out until their own moments (checked below) */
-    (done.tut === 2 && !done.tutRun && done.rails && done.hidden && second.game && second.exit !== 'none' && second.restart !== 'none' && menu['s-board'] && menu['s-prog'] && menu['s-about']
+    (done.tut === 2 && !done.tutRun && done.rails && done.hidden && second.game && second.exit !== 'none' && menu['s-board'] && menu['s-prog'] && menu['s-about']
       && row.done && row.text.includes(row.name) && !row.gives && !/Unlocks/.test(row.text) && !row.key && row.gold)
       ? ok(`62.14 / 64.7 "Good luck!" banks ${row.name} (gold, no key, unlocks nothing) and the walkthrough ends; Scores, Progress and About stay crossed out; the second run has Exit and Restart back`)
       : bad('62.14 the end of the walkthrough', JSON.stringify({ done, second, menu, row, gold }));

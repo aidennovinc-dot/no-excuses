@@ -145,29 +145,23 @@ export async function run() {
       : bad('61.1 Exit mid-run', JSON.stringify({ ...ab, before, after }));
     await click('#again'); await sleep(400);
     (await page.evaluate(() => document.getElementById('game').classList.contains('on'))) ? ok('61.1 Retry on an abandoned run starts the same run again') : bad('61.1 Retry starts a run');
-    /* build 62 (61.2): HOLD TO RESTART. Released at half the hold: nothing. Held the whole hold: the same run starts again with its
-       3-2-1, on the game screen, recording nothing. The page times both holds itself, so the test clock scales them together */
+    /* build 68 (67.5): NO RESTART (61.2's hold and 64.6's pill retired). ✕ → the Abandoned screen → Retry does the job: every game's first mode solo,
+       and Quick Tap's Pass & play and Versus, each quit mid-run, land on the Abandoned screen with Retry front and centre */
     for (let i = 0; i < 140 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) { await clearReady('quick-tap'); await sleep(100); }
-    /* build 65 (64.6): Restart an outlined button, top right, of the ✕'s size; the clock under the mode label on the left, never over Restart */
-    const hud = await page.evaluate(() => { const q = id => document.getElementById(id).getBoundingClientRect(), a = q('restart'), t = q('hud-time'), m = q('hud-mode'), x = q('quit');
-      const line = getComputedStyle(document.getElementById('restart'), '::after');
-      return { overlap: !(t.right <= a.left || t.left >= a.right || t.bottom <= a.top || t.top >= a.bottom), under: t.top >= m.bottom - 1 && Math.abs(t.left - m.left) < 2, outline: parseFloat(line.borderTopWidth) > 0 && line.borderTopStyle === 'solid',
-        right: Math.round(innerWidth - a.right), sameRow: Math.abs(a.top - x.top) < 2 && Math.abs(a.height - x.height) < 2 }; });
-    (!hud.overlap && hud.under && hud.outline && hud.sameRow && hud.right < 12)
-      ? ok('64.6 Restart is an outlined button in the top-right corner, level with the ✕ and its height; the clock sits under "Two · Sprint" and never over it')
-      : bad('64.6 Restart and the clock', JSON.stringify(hud));
-    const rs = await page.evaluate(async () => { const RN = await import('./run/run.js'), G = await import('./config/games.js'), b = document.getElementById('restart');
-      const w = ms => new Promise(r => setTimeout(r, ms)), ev = t => b.dispatchEvent(new PointerEvent(t, { bubbles: true }));
-      const runs = () => ((JSON.parse(localStorage.getItem('ne')) || {}).runs || []).length, n0 = runs();
-      const id0 = RN.R.id; ev('pointerdown'); await w(G.RESTART.holdMs / 2); const mid = b.classList.contains('hold'); ev('pointerup'); await w(G.RESTART.holdMs);
-      const early = { id: RN.R.id === id0, on: RN.R.on, hold: b.classList.contains('hold') };
-      ev('pointerdown'); await w(G.RESTART.holdMs + 120);
-      return { mid, early, again: RN.R.id !== id0 && RN.R.on, count: document.getElementById('count').classList.contains('on'), live: document.getElementById('game').classList.contains('live'),
-        screen: document.querySelector('.screen.on')?.id || 'game', runs: runs() - n0, label: b.textContent.trim(), right: Math.round(innerWidth - b.getBoundingClientRect().right) }; });
-    (rs.mid && rs.early.id && rs.early.on && !rs.early.hold && rs.again && rs.count && !rs.live && rs.screen === 'game' && rs.runs === 0 && rs.label === 'Restart')
-      ? ok(`61.2 "${rs.label}" top right (${rs.right}px in): let go at half the hold and the run carries on; hold it all and the run starts again on its 3-2-1, nothing recorded`)
-      : bad('61.2 hold to restart', JSON.stringify(rs));
+    const noRs = await page.evaluate(() => ({ restart: !!document.getElementById('restart'), act: !!document.querySelector('[data-act="restart"]') }));
     await click('#quit'); await sleep(300);
+    const games5 = await page.evaluate(async () => Object.keys((await import('./games/registry.js')).GAMES)), ab5 = [];
+    for (const [g, vs] of [...games5.map(g => [g, 0]), ['quick-tap', 1], ['quick-tap', 2]]) {
+      await page.evaluate(async ([g, vs]) => { const S = await import('./core/state.js'), R = await import('./games/registry.js'), RN = await import('./run/run.js');
+        S.sel.game = g; S.sel.diff = R.GAMES[g].modes[0]; S.sel.secs = R.GC(g, S.sel.diff).lens[0]; S.sel.vs = vs; S.sel.practice = 0; RN.start(); }, [g, vs]);
+      for (let i = 0; i < 100 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) { await clearReady(g); await sleep(100); }
+      await page.evaluate(() => document.getElementById('quit').click()); await sleep(500);
+      ab5.push(await page.evaluate(([g, vs]) => { const s = document.getElementById('s-over'); return { g, vs, on: s.classList.contains('on'), ab: s.classList.contains('abandoned'), again: document.getElementById('again').textContent }; }, [g, vs])); }
+    await page.evaluate(async () => { (await import('./core/state.js')).sel.vs = 0; });
+    const RETRY = await page.evaluate(async () => (await import('./config/copy.js')).RESULT.retry);
+    (!noRs.restart && !noRs.act && ab5.every(x => x.on && x.ab && x.again === RETRY))
+      ? ok(`L21 / 67.5 no Restart in a run any more — ✕ → Abandoned → Retry does the job: every game (${ab5.filter(x => !x.vs).map(x => x.g).join(', ')}), Pass & play and Versus all land there with "${RETRY}"`)
+      : bad('67.5 the Restart button and the Abandoned screen', JSON.stringify({ noRs, ab5 }));
   }
   /* build 62 (61.20): THE CHOSEN BACKGROUND SHOWS DURING A GAME, UNDER A DARK OVERLAY. All seven, one after another, during one live run: the
      canvas is up and drawing, takes no tap, and is darker than the same background on the menu — by the overlay, not by editing the art */
