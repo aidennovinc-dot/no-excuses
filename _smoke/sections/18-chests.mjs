@@ -815,6 +815,18 @@ export async function run() {
       ? ok(`65.14 the Skill chest READY reads ${pre.shown}%; opened from the map its figure counts up and lands on "${fig.t}" in gold; afterwards the app reads exactly 100 (the meter still ${post.raw}, which printed as ${post.raw}% before) and the menu says "${post.menu}"`)
       : bad('65.14 the Skill chest is 100%', JSON.stringify({ pre, fig, seen, post }));
   }
+  /* build 66 (65.15): EVERY REWARD SAYS WHAT KIND OF THING IT IS — under its name in brackets on the chest's screen (the reveal's gifts) and beside the
+     chest on the map, for every reward every chest can hold, the kind read off config (REWARD_KIND by symbol), never typed per reward */
+  {
+    const K15 = await page.evaluate(async () => { const C = await import('./ui/chest.js'), CP = (await import('./config/copy.js')), ids = ['games', 'key', 'pro', 'thorns'], d = document.createElement('div'); document.body.appendChild(d);
+      const out = ids.map(id => { d.innerHTML = C.wordsHtml(id); const words = [...d.querySelectorAll('.cw')].map(w => ({ w: w.dataset.w, k: (w.querySelector('.cwk') || {}).textContent || '' }));
+        return { id, gifts: C.giftsOf(id).map(g => ({ w: g.w, kind: g.kind })), words }; }); d.remove();
+      return { out, bg: CP.REWARD_KIND.line.replace('{kind}', CP.REWARD_KIND.bg) }; });
+    const all = K15.out.flatMap(o => o.gifts), words = K15.out.flatMap(o => o.words), lantern = all.find(g => /LANTERN/.test(g.w));
+    (all.length >= 8 && all.every(g => /^\(.+\)$/.test(g.kind)) && words.every(w => /^\(.+\)$/.test(w.k)) && lantern && lantern.kind === K15.bg)
+      ? ok(`65.15 every reward any chest holds says its kind under its name (${[...new Set(all.map(g => g.kind))].join(' ')}) on the chest's screen and beside the chest on the map — "${lantern.w}" reads ${lantern.kind}`)
+      : bad('65.15 the reward kinds', JSON.stringify(K15));
+  }
   /* build 66 (65.2): A MISSED WELCOME NEVER LOCKS ABOUT FOR GOOD. Aiden's v0.65: Dots open, a Dots run done, About still struck through — the Welcome
      had never played. A real Quick Tap Marathon opens Dots, and its result screen is left the moment it shows (Back). The ceremony did not play on
      the way out; it plays at the next calm moment — the main menu — and the clip it plays opens About */

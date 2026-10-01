@@ -8,7 +8,7 @@
    screen, so the key screen and the map may both import it (A4). Presentation only (L10). */
 import { HIDE_UNRECORDED } from "../config/build.js";
 import { CHEST_LOOK, GAUNTLETS, METER_BANDS, SPILL, SYMBOLS } from "../config/chests.js";
-import { CHEST_WORDS, GAUNTLET, GRID, MSG } from "../config/copy.js";
+import { CHEST_WORDS, GAUNTLET, GRID, MSG, REWARD_KIND } from "../config/copy.js";
 import { KEYS, KEY_ART } from "../config/keys.js";
 import { MESSAGES } from "../config/messages.js";
 import { T, esc } from "../core.js";
@@ -58,7 +58,9 @@ const videoWord = id => { const m = msgOfChest(id); return !m || (HIDE_UNRECORDE
    capitals like every other chest word, so Gauntlet Mini and Gauntlet Mega are spelled in exactly one place. */
 const wordsOf = id => (CHEST_WORDS[id] || []).map(x => x.gaunt ? Object.assign({}, x, { w: (GAUNTLET.name[x.gaunt] || x.gaunt).toUpperCase() }) : x).concat(videoWord(id));
 // what one chest gives, as the reveal and the map want it: the word, its symbol, where it goes and whether it is a placeholder reward
-const giftsOf = id => wordsOf(id).map(x => ({ w: x.w, sym: x.sym || '', tba: !!x.tba, to: x.to || 'soon', msg: x.msg || '', msgObj: x.msgObj || null }));
+const giftsOf = id => wordsOf(id).map(x => ({ w: x.w, sym: x.sym || '', kind: kindOf(x.sym), tba: !!x.tba, to: x.to || 'soon', msg: x.msg || '', msgObj: x.msgObj || null }));
+// build 66 (65.15): "(background)", "(key)", "(video)" — the kind of a reward, by its symbol
+const kindOf = sym => { const s = String(sym || ''), k = REWARD_KIND[s] || (s.startsWith('bg-') ? REWARD_KIND.bg : ''); return k ? T(REWARD_KIND.line, { kind: k }) : ''; };
 
 /* v30 (59.1, build 59): `attr` is how a path carries an SVG attribute the class alone cannot — today only `pathLength="1"` on the
    cracks. The stylesheet hides a drawn-on path with `stroke-dasharray:1;stroke-dashoffset:1`, which measures the path in ITS OWN
@@ -88,7 +90,7 @@ const spillVars = () => `--sd:${SPILL.delay}ms;--sms:${SPILL.ms}ms;--sst:${SPILL
 // v26 (item 12, build 49): the symbols take colour — a key's own, or the chest's — and the video (item 5) stands in the list with the rest
 function wordsHtml(id) { return wordsOf(id).map((x, i) =>
   `<button class="cw${x.tba ? ' tba' : ''}${x.msg ? ' msg' : ''}" data-act="chestword" data-for="${id}" data-to="${esc(x.to || 'soon')}" data-w="${esc(x.w)}" style="--i:${i}">`
-  + symSvg(x.sym, 'cwsym', id) + `<span class="cwt">${esc(x.w)}${x.tba ? `<small>${esc(GRID.tba)}</small>` : ''}</span></button>`).join(''); }
+  + symSvg(x.sym, 'cwsym', id) + `<span class="cwt">${esc(x.w)}${x.tba ? `<small>${esc(GRID.tba)}</small>` : ''}${kindOf(x.sym) ? `<small class="cwk">${esc(kindOf(x.sym))}</small>` : ''}</span></button>`).join(''); }
 // the particles that burst from the lid, in the chest's band colour, fanned up and to the right of the lid
 function burstHtml(id) { const n = SPILL.particles;
   return `<span class="pburst" aria-hidden="true" style="--pc:${chestCol(id)};${spillVars()}">` + Array.from({ length: n }, (_, i) =>
@@ -122,4 +124,5 @@ function meterLook(el, v, vars) { if (!el) return; const { i, k } = meterBand(v)
   el.style.setProperty('--mground', B.ground || 'transparent'); el.style.setProperty('--mcold', B.cold || 'transparent');
   el.style.setProperty('--shp', String(B.shake && B.shake[1] ? (k < .5 ? B.shake[0] : B.shake[1]) : 0)); }
 
+export { kindOf };
 export { burstHtml, chestSvg, giftsOf, meterLook, msgCol, msgOfChest, msgPreview, spillVars, symSvg, wordsHtml };

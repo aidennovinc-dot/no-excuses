@@ -48,7 +48,7 @@ const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const giftHtml = (gifts, chest) => { const L = GIFT_LOOK[chest] || GIFT_LOOK.games;
   const extras = '<i class="rring"></i>'.repeat(L.ring) + Array.from({ length: L.sparks }, (_, k) => `<i class="rspark" style="--a:${Math.round(k * 360 / Math.max(1, L.sparks))}deg"></i>`).join('');
   return `<div class="rgifts">${(gifts || []).map((g, i) =>
-    `<span class="rgift${g.tba ? ' tba' : ''}" style="--i:${i}"><span class="rfly">${symSvg(g.sym, 'rsym', chest)}${extras}</span><b>${esc(g.w)}</b></span>`).join('')}</div>`; };
+    `<span class="rgift${g.tba ? ' tba' : ''}" style="--i:${i}"><span class="rfly">${symSvg(g.sym, 'rsym', chest)}${extras}</span><b>${esc(g.w)}</b>${g.kind ? `<small class="rkind">${esc(g.kind)}</small>` : ''}</span>`).join('')}</div>`; };
 /* v26 (item 8, build 49): the card. A big "Congratulations" in the chest's own colour, one "You …" line, one "Next: can you …?" line, the video this
    chest opened as "A message from Aiden" (item 5), and Continue. No "what you got", no headings, no percentage.
    v28 (items 12 / 17, build 53): STAGED, AND CELEBRATED. Every block carries its own index (`--ci`) and the stylesheet lands it REVEAL.cardStep after

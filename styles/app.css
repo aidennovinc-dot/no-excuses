@@ -2105,6 +2105,9 @@
   .cere .rgifts:empty{display:none}
   .cere .rgift{display:flex;flex-direction:column;align-items:center;gap:6px;width:86px;opacity:0}
   .cere .rgift b{font-family:var(--mono);font-weight:400;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);text-align:center;line-height:1.35}
+  /* build 66 (65.15): the kind of thing a reward is, smaller and dim under its name — on the chest's screen and beside the chest on the map */
+  .cere .rgift .rkind{margin-top:-4px;font-family:var(--mono);font-size:8px;letter-spacing:.08em;color:var(--mute);text-align:center;line-height:1.2}
+  .chestwords .cw small.cwk{color:var(--mute);text-transform:none;letter-spacing:.08em}
   .cere .rgift.tba b{color:var(--mute)}
   .cere .rsym{width:34px;height:34px;color:var(--rc,var(--ink))}
   .cere.play .rgift{animation:rgiftin var(--gift-ms) cubic-bezier(.2,1.25,.35,1) calc(var(--gift-at) + var(--i) * var(--gift-gap)) both}
