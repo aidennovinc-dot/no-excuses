@@ -18,6 +18,8 @@ import { KEY_THEMES, MUSIC_LIST, MUSIC_PICK, SCALES, TRACKS } from "../../config
 import { KEYS } from "../../config/keys.js";
 import { CUSTOM, GRID, ITEM_WORD } from "../../config/copy.js";
 import { DESIGNS, ITEMS } from "../../config/theme.js";
+import { TINY_AIDEN } from "../../config/excuses.js";
+import { excuseCount } from "../../progress/excuses.js";
 import { $, $$, T, esc } from "../../core.js";
 import { on } from "../../core/events.js";
 import { sel } from "../../core/state.js";
@@ -94,6 +96,9 @@ function renderCustom(){
   $('#c-track').innerHTML = rows.map(r=>{ const L=r.key&&!keyFinished(r.key.id); const nw=(L||!r.key)?'':newMark('cos:track:'+r.v,fresh);
     return `<button data-act="item" data-v="${r.v}" class="opt ${r.sel?'sel':''} ${L?'locked':''}${nw}" data-keyname="${r.key?esc(r.key.name):''}">${esc(r.name)}</button>`; }).join('');
   // the menu loop is not a game's, so it gets its own switch rather than hiding inside one game's row
+  // build 68 (67.39): Tiny Aiden's switch shows once he has danced — on unless switched off
+  const tiny=excuseCount()>=TINY_AIDEN.at; $('#g-tiny').hidden=!tiny;
+  if(tiny){ $('#tiny-lab').textContent=CUSTOM.tiny; $('#c-tiny').innerHTML=[['1',CUSTOM.tinyOn],['0',CUSTOM.tinyOff]].map(([v,l])=>`<button data-act="item" data-v="${v}" class="opt ${String(prefs.tinyAiden===0?0:1)===v?'sel':''}">${esc(l)}</button>`).join(''); }
   $('#c-menumusic').innerHTML = itemsOf('music').map(it=>`<button data-act="item" data-v="${it.v}" class="opt ${musicOn('menu')===it.v?'sel':''}">${it.label}</button>`).join('');
   $('#pv-g').innerHTML=Object.entries(GAMES).map(([id,x])=>`<button class="chip" data-act="chip-pv" data-chip="pv-g" data-v="${id}">${x.name}</button>`).join(''); chips('pv','g',F.g);
   $('#pv').dataset.g=F.g; $('#g-lead').style.display=shows(F.g,'lead')?'':'none';
@@ -208,6 +213,7 @@ define({
     else if(k==='menumusic'){ prefs.musicG.menu=b.dataset.v==='true'; if(b.dataset.v==='true') Music.menu(Music.menuTrack()); else Music.stop(); }
     // v13 (7.1): the scale left the pick sheet — one choice, applied to every Sequence run
     else if(k==='scale'){ prefs.scale=b.dataset.v; sel.scale=b.dataset.v; }
+    else if(k==='tiny'){ prefs.tinyAiden=b.dataset.v==='1'?1:0; }
     else prefs[k]=b.dataset.v;
     /* v29 (build 55): the SAVE is here now. Every branch above writes to `prefs` and none of them saved — the whole row relied on
        ui/theme.js applyPrefs() ending in save(), which it did on every screen change as well, writing the whole record to

@@ -2663,3 +2663,7 @@
   @keyframes shrugpop{0%{opacity:0;transform:translateY(30px) scale(.6)}12%{opacity:1;transform:translateY(0) scale(1.06)}20%{transform:scale(1)}38%{transform:translateY(-4px)}52%{transform:translateY(0)}85%{opacity:1}100%{opacity:0;transform:translateY(20px) scale(.8)}}
   .exit10{position:absolute;top:max(8px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;padding:3px 9px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--mute);z-index:5}
   .exit10[hidden]{display:none}
+  /* build 68 (67.39): TINY AIDEN — a sprite sheet stepped one frame at a time; the frame count, size and speed are config/excuses.js TINY_AIDEN */
+  .tiny{position:fixed;z-index:95;pointer-events:none;background-repeat:no-repeat;animation:tinyrun var(--tms) steps(var(--tf)) infinite,tinypop .3s ease both}
+  @keyframes tinyrun{to{background-position:calc(-1 * var(--tw)) 0}}
+  @keyframes tinypop{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}

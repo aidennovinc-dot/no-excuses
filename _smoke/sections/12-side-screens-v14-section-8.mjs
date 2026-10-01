@@ -336,6 +336,24 @@ export async function run() {
       ? ok(`67.38 Excuses: the nine run triggers fire on their own and not on the near miss beside each (${ex.n} made, none in the walkthrough, the first ten minutes or a demo; with an unlock it is a quiet tick); a real Quick Tap run of ${fx.misses} misses and no hits ends on "${said.trim()}" with the shrug and the bwomp; the Excuses tab lists all ten ("${tab.hint}"); the map pulled past its top shows the tiny exit and its tap is "${said10.trim()}"`)
       : bad('67.38 Excuses', JSON.stringify({ ex, said, fx, tab, before10, shown10, said10, made10 }));
   }
+  /* build 68 (67.39): TINY AIDEN. The tenth excuse (repeats count) sets him dancing in TINY_AIDEN.spots places, drawn off the sprite sheet, which
+     is a real 10-frame PNG; before ten, Customise shows no switch; from ten it does, and On means he turns up on the menu now and then, Off never */
+  {
+    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS, excuses: { 7: 9 } }, runs: [{ g: 'quick-tap', d: 'two', s: 5, t: Date.now() - 3600e3, hits: 20, misses: 0, row: 20, v: 4 }], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+    const t39 = await page.evaluate(async () => { const R = await import('./ui/router.js'), X = await import('./progress/excuses.js'), UI = await import('./ui/excuse.js'), C = await import('./config/excuses.js'), w = ms => new Promise(r => setTimeout(r, ms));
+      R.show('s-custom'); await w(400); const before = !document.getElementById('g-tiny').hidden;
+      const img = await new Promise(r => { const i = new Image(); i.onload = () => r([i.naturalWidth, i.naturalHeight]); i.onerror = () => r(null); i.src = C.TINY_AIDEN.sheet; });
+      const x = X.makeExcuse(7); UI.excuseFx(x); let most = 0; for (let k = 0; k < 40; k++) { await w(100); most = Math.max(most, document.querySelectorAll('.tiny').length); if (most && !document.querySelector('.tiny')) break; }
+      const seen = document.querySelectorAll('.tiny').length || most; await w(C.TINY_AIDEN.ms + 400); const gone = !document.querySelector('.tiny');
+      R.show('s-custom'); await w(400); const after = !document.getElementById('g-tiny').hidden, btns = [...document.querySelectorAll('#c-tiny button')].map(b => b.textContent + (b.classList.contains('sel') ? '*' : ''));
+      const rnd = Math.random; Math.random = () => 0; R.show('s-menu'); let menu = 0; for (let k = 0; k < 30 && !menu; k++) { await w(200); menu = document.querySelectorAll('.tiny').length; }
+      await w(C.TINY_AIDEN.ms + 200); R.show('s-custom'); await w(400); document.querySelector('#c-tiny [data-v="0"]').click(); await w(300); R.show('s-menu'); let off = 0; for (let k = 0; k < 20; k++) { await w(200); off = Math.max(off, document.querySelectorAll('.tiny').length); }
+      Math.random = rnd; return { before, img, dance: x && x.dance, most, gone, after, btns, menu, off, pref: JSON.parse(localStorage.getItem('ne')).prefs.tinyAiden }; });
+    (!t39.before && t39.img && t39.img[0] === 640 && t39.img[1] === 96 && t39.dance && t39.most >= 1 && t39.gone && t39.after && t39.btns.join() === 'On*,Off' && t39.menu >= 1 && t39.off === 0 && t39.pref === 0)
+      ? ok(`67.39 Tiny Aiden: the tenth excuse sets him dancing off a real ${t39.img.join('×')} sheet and he is gone after it; Customise's switch shows only from ten (${t39.btns.join(' / ')}); On, he turns up on the menu; Off, never`)
+      : bad('67.39 Tiny Aiden', JSON.stringify(t39));
+  }
   /* build 68 (67.30, Cowork): NO BLACK BACKING BOX BEHIND TEXT OR AN ICON, ANYWHERE — the menu, the map with a chest's "You found" words, Customise, on the
      brightest backgrounds: nothing is cut out of the background behind them (so nothing can show before the text it backs), and every line wears its
      own soft dark shadow instead */
