@@ -759,7 +759,7 @@ export async function run() {
       await wait(Math.max(900, M.PLAYER.on.ms + 400));
       const h = host();
       out.up = { shown: !!h && !h.hidden, stage: !!h.querySelector('.wframe'),
-        label: (h.querySelector('.wcard em') || {}).textContent, title: (h.querySelector('.wcard b') || {}).textContent,
+        label: (h.querySelector('.wcard .wline') || {}).textContent, title: (h.querySelector('.wcard .wline .mk-green') || {}).textContent,
         buttons: [...h.querySelectorAll('.wrow .item')].map(b => b.dataset.act + ':' + b.textContent.trim()),
         steps: M.PLAYER.on.steps.map(x => x.name + '=' + h.style.getPropertyValue('--w-' + x.name + '-at').trim()) };
       W.closeWelcome(); out.again = W.welcomeCheck(false);                             // ONCE PER SAVE

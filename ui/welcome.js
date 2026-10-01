@@ -23,7 +23,7 @@
 import { Snd } from "../audio.js";
 import { MESSAGES, PLAYER } from "../config/messages.js";
 import { WELCOME } from "../config/copy.js";
-import { $, esc } from "../core.js";
+import { $, T, esc, marks } from "../core.js";
 import { emit } from "../core/events.js";
 import { prefs, save } from "../core/store.js";
 import { msgOpen, msgTitle } from "../progress/key.js";
@@ -58,7 +58,8 @@ function playWelcome() {
      play, and LATER is the only way to skip — a tap on the ground round them does nothing. */
   host.innerHTML = `<div class="wstage" data-act="wplay"><i class="wframe wprev">${msgPreview(m, { title: false })}</i></div>`
     + `<div class="wcard" data-act="wplay">`
-    + `<em>${esc(WELCOME.from)}</em><b>${esc(msgTitle(m) || WELCOME.fallback)}</b>`
+    // build 66 (section C, welcome-01): one line, Aiden's, with the title in green
+    + `<b class="wline">${marks(T(WELCOME.line, { title: msgTitle(m) || WELCOME.fallback }))}</b>`
     + `<div class="wrow"><button class="item wplay" data-act="wplay">${esc(WELCOME.play)}</button>`
     + `<button class="item sub wlater" data-act="wlater">${esc(WELCOME.later)}</button></div></div>`;
   host.hidden = false; host.classList.remove('wgo'); void host.offsetWidth; host.classList.add('won');

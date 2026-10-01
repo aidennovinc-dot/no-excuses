@@ -5,6 +5,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { sleep, ok, bad, read, at, sawStory, page, click, stepQuickTap, driveToResult, SEEN_INTRO, revealDone } from '../lib/gate.mjs';
 
 export const SECTION = ["locked decisions (fresh profile)"];
+// build 66 (65.19): a box shows its line without the colour marks, so the copy is compared the same way
+const um = v => typeof v === 'string' ? v.replace(/\[\/?(green|yellow|red)\]/g, '') : Array.isArray(v) ? v.map(um) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, um(x)])) : v;
 
 export async function run() {
   sawStory ? ok('L1 title sequence plays before the menu') : bad('L1 title sequence plays before the menu');
@@ -35,17 +37,19 @@ export async function run() {
   {
     await page.evaluate(() => { localStorage.clear(); localStorage.setItem('ne', JSON.stringify({ v: 7, prefs: { story: 1, gridSeen: 1, snd: 'off' }, runs: [], ach: {}, unlock: {}, intro: { 'quick-tap': 1, 'quick-tap:two': 1 }, seen: {}, bars: {} })); });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(300); await click('[data-go="s-pick"]');
-    const C = await page.evaluate(async () => (await import('./config/copy.js')).TUTORIAL);
+    const C = um(await page.evaluate(async () => (await import('./config/copy.js')).TUTORIAL));
     // build 65 (A1): the result's boxes are named now so the third can branch (64.2); in order, they are these
     const OV = [C.over.hi, C.over.again];
     // the lines as the config makes them: the Dots rule (never a typed 35), Quick Tap's lengths and their seconds
     const X = await page.evaluate(async () => { const U = (await import('./config/unlocks.js')).UNLOCKS, R = await import('./games/registry.js'), G = await import('./config/games.js');
       const d = R.GAMES.dots.modes[0], need = U.find(u => u.key === 'dots:' + d).need, m = R.GAMES['quick-tap'].modes[0], lens = R.GC('quick-tap', m).lens, names = lens.map(s => R.lenName('quick-tap', s, m));
       const row = (await import('./config/unlocks.js')).LEN_RULES['quick-tap:' + m][1].match(/^\d+ hits in a row/)[0];
-      return { need, m, lens, names, row, dots: R.GAMES.dots.name, game: R.GAMES['quick-tap'].name + ' · ' + G.MODE_NAME[m] }; });
+      return { need, m, lens, names, row, dots: R.GAMES.dots.name, game: R.GAMES['quick-tap'].name + ' · ' + G.MODE_NAME[m], v: R.GAMES['quick-tap'].modes.map(x => G.MODE_NAME[x]), qt: R.GAMES['quick-tap'].name }; });
     const and = a => a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1], count = X.need.match(/^\d+\s+\S+/)[0];
-    const want = C.steps.map(s => s.replace('{need}', X.need.replace(/\bany\b/, 'a')).replace('{count}', count).replace('{secs}', X.lens[0]).replace('{first}', X.names[0])
-      .replace('{names}', and(X.names)).replace('{all}', and(X.lens.map(String))).replace('{game}', X.game).replace('{second}', X.names[1]).replace('{row}', X.row));
+    // build 66 (section C): every placeholder Aiden's marked lines use, from the config
+    const V = { need: X.need.replace(/\bany\b/, 'a'), count, qt: X.qt, secs: X.lens[0], s1: X.lens[0], s2: X.lens[1], s3: X.lens[2], first: X.names[0], second: X.names[1], long: X.names[2],
+      names: and(X.names), all: and(X.lens.map(String)), game: X.game, row: X.row, rowN: X.row.match(/^\d+/)[0], v1: X.v[0], v2: X.v[1], dots: X.dots };
+    const want = C.steps.map(s => s.replace(/\{(\w+)\}/g, (_, k) => V[k] ?? '{' + k + '}'));
     // build 65 (64.2): the first result's lines as the config makes them
     const fillO = s => s.replace('{count}', count).replace('{second}', X.names[1]).replace('{long}', X.names[2]).replace('{dots}', X.dots).replace('{row}', X.row);
     // build 66 (65.5): a box glides between spots, so it is read once it has come to rest
@@ -150,7 +154,8 @@ export async function run() {
     /* 62.11 / 64.2: the boxes, each moved on by any tap — a tap on TRY AGAIN (ringed) or BACK (arrowed) does neither thing. This run opened Dash and
        Four, so the third box names both and the fourth rings Dash with the Dots line */
     const G2 = await page.evaluate(async () => { const R = await import('./games/registry.js'), G = await import('./config/games.js'); return { dash: R.lenName('quick-tap', R.GC('quick-tap', 'two').lens[1], 'two'), four: G.MODE_NAME.four }; });
-    const OW = [C.over.hi, C.over.again, C.over.got.replace('{names}', G2.dash + ' and ' + G2.four), fillO(C.over.next), C.over.back, ...C.over.end];
+    // AMENDED at build 66 (section C, over-03): the unlock line comes straight after the first box, ahead of Try Again
+    const OW = [C.over.hi, C.over.got.replace('{names}', G2.dash + ' and ' + G2.four), C.over.again, fillO(C.over.next), C.over.back, ...C.over.end];
     const over = [back];
     await click('#again'); over.push(await waitText(OW[1]));
     await click('#again'); over.push(await waitText(OW[2]));
@@ -160,10 +165,10 @@ export async function run() {
     const dashW = await page.evaluate(() => document.querySelector('#over-chips2 .chip:nth-child(2)').getBoundingClientRect().width);
     const still = await state();
     const rings = await page.evaluate(() => ({ again: document.getElementById('again').getBoundingClientRect().width, back: document.getElementById('over-back').getBoundingClientRect() }));
-    (over.every((b, i) => b && b.text === OW[i]) && over[1].drawn && Math.abs(over[1].ring[0] - rings.again - 12) <= 2 && over[2].drawn && Math.abs(over[2].ring[0] - dashW - 12) <= 2 && over[3].drawn && Math.abs(over[3].ring[0] - dashW - 12) <= 2 && over[4].arrow && !over[4].drawn && !over[0].drawn && still.screen === 's-over' && !still.game
+    (over.every((b, i) => b && b.text === OW[i]) && over[1].drawn && Math.abs(over[1].ring[0] - dashW - 12) <= 2 && over[2].drawn && Math.abs(over[2].ring[0] - rings.again - 12) <= 2 && over[3].drawn && Math.abs(over[3].ring[0] - dashW - 12) <= 2 && over[4].arrow && !over[4].drawn && !over[0].drawn && still.screen === 's-over' && !still.game
       // AMENDED at build 66 (65.5): no box is parked in the centre — each sits beside what it rings, never over it
       && over.every(b => b.inside && !b.covers) && !/\{/.test(OW.join('')))
-      ? ok(`62.11 / 64.2 the first result's boxes in order, centred: TRY AGAIN ringed, "${OW[2]}", then "${OW[3]}" with Dash ringed, an arrow at BACK — and tapping either does nothing until the last box`)
+      ? ok(`62.11 / 64.2 / section C the first result's boxes in order: "${OW[1]}" with Dash ringed, TRY AGAIN ringed, then "${OW[3]}" with Dash ringed, an arrow at BACK — and tapping either does nothing until the last box`)
       : bad('62.11 the result boxes', JSON.stringify({ want: OW, over: over.map(b => b && { t: b.text, drawn: b.drawn, ring: b.ring, arrow: b.arrow, c: b.centre, covers: b.covers }), still, rings }));
     // 62.14: "Good luck!" is answered — Off the Rails banked, the walkthrough gone, the result screen live again (and the second run can be quit)
     await anywhere(); await sleep(300);
@@ -242,7 +247,11 @@ export async function run() {
       const dims = () => page.evaluate(() => Object.fromEntries(['s-board', 's-prog', 's-about'].map(g => [g, document.querySelector(`#s-menu .item[data-go="${g}"]`).classList.contains('dim')])));
       const toasts = () => page.evaluate(() => { const t = document.getElementById('toast'); window.__t64 = window.__t64 || []; if (!window.__t64o) { window.__t64o = 1; new MutationObserver(() => { if (t.classList.contains('on')) window.__t64.push(t.textContent); }).observe(t, { attributes: true, attributeFilter: ['class'] }); } return window.__t64; });
       const before = await dims(); await toasts();
-      const runOf = async g => { await page.evaluate(async g => (await import('./run/run.js')).goWhere({ g }), g); await driveToResult(g, '64.7 a first ' + g + ' run'); await sleep(9000);
+      /* build 66 (section C, prog-01): the first Estimate run's RESULT says the Progress tutorial's first line once its toasts are done — it is read there
+         and moved on with a tap, as a player would */
+      const P0 = await page.evaluate(async () => { const C = (await import('./config/copy.js')).TUTORIAL.prog[0], R = await import('./games/registry.js'); return C.replace('{game}', R.GAMES.hold.name); }), est = {};
+      const runOf = async g => { await page.evaluate(async g => (await import('./run/run.js')).goWhere({ g }), g); await driveToResult(g, '64.7 a first ' + g + ' run');
+        if (g === 'hold') { const b = await waitText(um(P0), 200); est.text = b && b.text; est.on = (await state()).screen; await anywhere(); await sleep(300); } else await sleep(9000);
         await page.evaluate(async () => (await import('./ui/router.js')).show('s-menu')); await sleep(400); return dims(); };
       const afterEst = await runOf('hold'), afterRx = await runOf('reaction');
       await page.evaluate(async () => { const V = await import('./ui/video.js'), M = (await import('./config/messages.js')).MESSAGES; (await import('./ui/router.js')).show('s-over'); V.playVideo(M[0]); await new Promise(r => setTimeout(r, 600)); V.closeVideo(); });
@@ -254,7 +263,7 @@ export async function run() {
         : bad('64.7 the menu unlock order', JSON.stringify({ before, afterEst, afterRx, afterVid, on, said, C7 }));
       /* 64.8: THE ABOUT TUTORIAL, straight after the clip, on the main menu: About ringed and the only thing that answers — Scores does nothing —
          then five boxes inside About, the videos, the feedback line and the support button ringed; a reload half way resumes at the same box */
-      const CA = await page.evaluate(async () => (await import('./config/copy.js')).TUTORIAL.about);
+      const CA = um(await page.evaluate(async () => (await import('./config/copy.js')).TUTORIAL.about));
       const a = [await waitText(CA[0], 100)];
       await click('#s-menu .item[data-go="s-board"]'); await sleep(300); const held = (await state()).screen;
       await click('#s-menu .item[data-go="s-about"]'); a.push(await waitText(CA[1])); const inAbout = (await state()).screen;
@@ -272,16 +281,16 @@ export async function run() {
       /* 64.9 / 64.12: the Estimate and Reaction runs above armed PROGRESS and SCORES; each waits its turn on the main menu. Progress: the item ringed,
          two lines, the Games chest tab ringed, then a game filter must be picked — All does nothing. Scores: the item ringed, a welcome, Quick Tap's
          chip to tap, the web chart ringed */
-      const CP = await page.evaluate(async () => (await import('./config/copy.js')).TUTORIAL), QTN = await page.evaluate(async () => (await import('./games/registry.js')).GAMES['quick-tap'].name);
+      const CP = um(await page.evaluate(async () => (await import('./config/copy.js')).TUTORIAL)), QTN = await page.evaluate(async () => (await import('./games/registry.js')).GAMES['quick-tap'].name);
       await page.evaluate(async () => (await import('./ui/router.js')).show('s-menu'));
-      const p = [await waitText(CP.prog[0])]; await click('#s-menu .item[data-go="s-prog"]'); p.push(await waitText(CP.prog[1]));
-      await anywhere(); p.push(await waitText(CP.prog[2])); await anywhere(); p.push(await waitText(CP.prog[3])); await anywhere(); p.push(await waitText(CP.prog[4]));
+      const p = [await waitText(CP.prog[1])]; await click('#s-menu .item[data-go="s-prog"]'); p.push(await waitText(CP.prog[2]));
+      for (let i = 3; i <= 6; i++) { await anywhere(); p.push(await waitText(CP.prog[i])); }
       await click('#chest-g .chip[data-v="all"]'); await sleep(300); const allHeld = (await box() || {}).text;
       await click('#chest-g .chip[data-v="hold"]'); await sleep(500);
       const pEnd = await page.evaluate(() => ({ done: JSON.parse(localStorage.getItem('ne')).prefs.tuts.prog, box: !document.getElementById('tut').hidden, g: document.querySelector('#chest-g .chip.sel')?.dataset.v, tab: document.querySelector('#prog-tabs .chip.sel')?.dataset.tab }));
-      (p.map(b => b && b.text).join('|') === CP.prog.join('|') && p[0].drawn && p[3].drawn && p[4].drawn && allHeld === CP.prog[4] && pEnd.done === 'done' && !pEnd.box && pEnd.g === 'hold' && pEnd.tab === 'c-games')
-        ? ok('64.9 the Progress tutorial after the first Estimate run: Progress ringed on the menu, its five boxes in order, the Games chest tab ringed, a game filter picked to finish (All does nothing)')
-        : bad('64.9 the Progress tutorial', JSON.stringify({ p: p.map(b => b && { t: b.text, drawn: b.drawn }), allHeld, pEnd }));
+      (est.text === um(P0) && est.on === 's-over' && p.map(b => b && b.text).join('|') === CP.prog.slice(1).join('|') && p[0].drawn && p[3].drawn && p[4].drawn && p[5].drawn && allHeld === CP.prog[6] && pEnd.done === 'done' && !pEnd.box && pEnd.g === 'hold' && pEnd.tab === 'c-games')
+        ? ok(`64.9 / section C the Progress tutorial: "${um(P0)}" on the first Estimate run's result, then Progress ringed on the menu, its boxes in order (the Games chest line split in two), the tab ringed, a game filter picked to finish (All does nothing)`)
+        : bad('64.9 the Progress tutorial', JSON.stringify({ est, P0, p: p.map(b => b && { t: b.text, drawn: b.drawn }), allHeld, pEnd }));
       await page.evaluate(async () => (await import('./ui/router.js')).show('s-menu'));
       const want12 = [CP.board[0], CP.board[1], CP.board[2].replace('{game}', QTN), CP.board[3]];
       const q = [await waitText(want12[0])]; await click('#s-menu .item[data-go="s-board"]'); q.push(await waitText(want12[1]));

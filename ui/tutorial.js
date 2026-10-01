@@ -72,10 +72,13 @@ const tutDone=()=>prefs.tut===2||(prefs.tut===1&&!prefs.tutRun)||(!prefs.tut&&(!
    Quick Tap run" is the lock box's own line; the box says it of A run. `row` is Dash's rule ("7 hits in a row"), read off LEN_RULES */
 const QT='quick-tap', QM=()=>GAMES[QT].modes[0], dotsRule=()=>{ const u=UNLOCKS.find(u=>u.key===`dots:${GAMES.dots.modes[0]}`); return u?u.need:''; };
 const list=a=>a.length>1?a.slice(0,-1).join(', ')+' and '+a[a.length-1]:a.join('');
+// build 66 (section C): Aiden's marked lines quote the Dots rule's game, Quick Tap's two variants and each length's seconds on its own
 function nums(){ const need=dotsRule(), m=QM(), lens=GC(QT,m).lens, names=lens.map(s=>lenName(QT,s,m)), rule=(LEN_RULES[QT+':'+m]||[])[1]||'';
-  return { need:need.replace(/\bany\b/,'a'), count:(need.match(/^\d+\s+\S+/)||[need])[0], secs:lens[0], first:names[0], second:names[1]||'', long:names[2]||'',
-    names:list(names), all:list(lens.map(String)), row:(rule.match(/^\d+\s+hits in a row/)||[''])[0], dots:GAMES.dots.name,
-    game:GAMES[QT].name+' · '+MODE_NAME[m] }; }
+  const row=(rule.match(/^\d+\s+hits in a row/)||[''])[0];
+  return { need:need.replace(/\bany\b/,'a'), count:(need.match(/^\d+\s+\S+/)||[need])[0], qt:(need.match(/\bin (?:any|a) (.+?) run\b/)||[0,GAMES[QT].name])[1],
+    secs:lens[0], s1:lens[0], s2:lens[1], s3:lens[2], first:names[0], second:names[1]||'', long:names[2]||'',
+    names:list(names), all:list(lens.map(String)), row, rowN:(row.match(/^\d+/)||[''])[0], dots:GAMES.dots.name,
+    v1:MODE_NAME[GAMES[QT].modes[0]], v2:MODE_NAME[GAMES[QT].modes[1]]||'', game:GAMES[QT].name+' · '+MODE_NAME[m] }; }
 const say=(line,extra)=>T(line,Object.assign(nums(),extra||{}));
 // what a key is called in a line, the way its toast names it — a length by its name, a game's first mode by the game, any other mode by its own (64.2)
 const nameOf=k=>{ const [g,d,s]=String(k).split(':'); if(!GAMES[g]) return ''; if(s!==undefined) return lenName(g,+s,d);
@@ -93,11 +96,11 @@ const FIRST=[
   { on:()=>map()&&mapSettled(), el:()=>$('#grid'), ring:0, text:L[0] },
   { on:map, el:()=>$('#grid'), ring:0, text:L[1] },
   { on:map, el:()=>$('#grid'), ring:0, text:L[2] },
-  { on:map, el:()=>$('#grid .tile[data-game="dots"]'), tap:1, done:lockUp, text:L[3] },
+  { on:map, el:()=>$('#grid .tile[data-game="dots"]'), tap:1, done:lockUp, text:()=>say(L[3]) },
   { on:()=>onScreen('s-pick')&&lockUp(), el:()=>$('#lockbox'), ring:0, text:()=>say(L[4]), enter(){ $('#lockwrap').classList.add('tut'); } },
   { on:map, el:()=>$(`#grid .tile[data-game="${QT}"]`), tap:1, done:()=>sheetUp()&&!lenStage(), tag:TUTORIAL.start, text:L[5],
     enter(){ if(lockUp()) through(()=>$('#lock-no').click()); $('#lockwrap').classList.remove('tut'); } },
-  { on:()=>sheetUp()&&!lenStage(), el:()=>$('#diff-row'), ring:0, text:L[6] },
+  { on:()=>sheetUp()&&!lenStage(), el:()=>$('#diff-row'), ring:0, text:()=>say(L[6]) },
   { on:()=>sheetUp()&&!lenStage(), el:()=>$(`#diff-row .choice[data-diff="${QM()}"]`), tap:1, done:lenStage, text:()=>say(L[7]) },
   { on:lenStage, el:()=>$('#time-row'), ring:0, text:()=>say(L[8]) },
   { on:lenStage, el:()=>$('#time-row'), ring:0, text:()=>say(L[9]) },
@@ -118,7 +121,11 @@ function overSteps(){ const dash=()=>$(`#over-chips2 .chip[data-v="${GC(QT,QM())
   const mid=dashOpen()
     ? [ { on:oOn, el:dash, text:()=>say(O.got,{names:list(gotKeys().map(nameOf).filter(Boolean))||nums().second}) }, ...(dots()?[]:[{ on:oOn, el:dash, text:()=>say(O.next) }]) ]
     : [ { on:oOn, el:()=>$('#again'), text:()=>say(O.miss) } ];
-  return [ { on:oOn, text:O.hi }, { on:oOn, el:()=>$('#again'), text:O.again }, ...mid, { on:oOn, el:()=>$('#over-back'), arrow:1, text:O.back },
+  /* build 66 (section C, over-03): when the run opened something, "Great job, you unlocked …" comes straight after the first box, ahead of Try Again
+     — the unlock is the reward for the run, so it comes first */
+  const again={ on:oOn, el:()=>$('#again'), text:O.again };
+  const body=dashOpen()?[mid[0],again,...mid.slice(1)]:[again,...mid];
+  return [ { on:oOn, text:O.hi }, ...body, { on:oOn, el:()=>$('#over-back'), arrow:1, text:O.back },
     ...O.end.map(t=>({ on:oOn, text:t })) ]; }
 
 /* every tutorial. `steps` is a list or a function that builds one; `step` / `setStep` / `finish` are where its state lives. The walkthrough's two
@@ -152,15 +159,20 @@ tutorial('about',[
   { on:ab, el:()=>$('#support'), text:A[4] },
   { on:ab, text:A[5] },
 ],{ opened:()=>menuOpen('s-about') });
-/* 64.9: PROGRESS, after the first Estimate run. Progress ringed on the menu; inside, two lines about the screen, the Games chest's tab ringed (the
-   screen is put on that tab if it opened on another), then a game filter the player must pick — any game but All */
-const P9=TUTORIAL.prog, pr=()=>onScreen('s-prog');
+/* 64.9: PROGRESS, after the first Estimate run. Build 66 (section C, prog-01): its first line is said on that run's RESULT, once the result's toasts
+   are done ("otherwise the user might continue playing and not see this tutorial") — or on the menu, for a player who left the result first. Then
+   Progress ringed on the menu; inside, two lines about the screen, the Games chest's tab ringed (the screen is put on that tab if it opened on another)
+   for two lines, then a game filter the player must pick — any game but All. The result has no way straight to the menu, so its box is a line and
+   the player goes on by themselves (65.9: nothing takes them) */
+const P9=TUTORIAL.prog, pr=()=>onScreen('s-prog'), gtab=()=>$('#prog-tabs [data-tab="c-games"]');
 tutorial('prog',[
-  { on:menuOn, el:item('s-prog'), tap:1, text:P9[0] },
-  { on:pr, text:P9[1] },
+  { on:()=>oOn()||menuOn(), text:()=>T(P9[0],{ game:(GAMES[MENU_UNLOCK.prog.game]||{}).name||'' }) },
+  { on:menuOn, el:item('s-prog'), tap:1, text:P9[1] },
   { on:pr, text:P9[2] },
-  { on:pr, el:()=>$('#prog-tabs [data-tab="c-games"]'), text:P9[3], enter(){ const t=$('#prog-tabs [data-tab="c-games"]'); if(t&&!t.classList.contains('sel')) through(()=>t.click()); } },
-  { on:()=>pr()&&!!$('#prog-tabs [data-tab="c-games"].sel'), el:()=>$('#chest-g'), tap:1, hit:t=>{ const b=t.closest&&t.closest('#chest-g .chip'); return !!b&&b.dataset.v!=='all'; }, text:P9[4] },
+  { on:pr, text:P9[3] },
+  { on:pr, el:gtab, text:P9[4], enter(){ const t=gtab(); if(t&&!t.classList.contains('sel')) through(()=>t.click()); } },
+  { on:pr, el:gtab, text:P9[5] },
+  { on:()=>pr()&&!!$('#prog-tabs [data-tab="c-games"].sel'), el:()=>$('#chest-g'), tap:1, hit:t=>{ const b=t.closest&&t.closest('#chest-g .chip'); return !!b&&b.dataset.v!=='all'; }, text:P9[6] },
 ],{ opened:()=>menuOpen('s-prog') });
 /* 64.12: SCORES, after the first Reaction run. Scores ringed on the menu; inside, a welcome, Quick Tap's chip to tap (Claude's call — "let's
    check" is a tap), then the web chart ringed */

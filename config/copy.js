@@ -6,7 +6,8 @@
 export const PLAYER = { who:'Player {n}' };
 /* v31 (60.33, build 60): the Welcome ceremony's words. `from` is the small label over the clip's own title, which is what
    msgTitle() gives; `fallback` is only ever used if a slot has no title at all. */
-export const WELCOME = { from:'A message from Aiden', fallback:'Welcome', play:'Play', later:'Later' };
+// build 66 (section C, welcome-01): the card's line, as Aiden marked it on the Tutorial Map — {title} is the clip's own title
+export const WELCOME = { from:'A message from Aiden', fallback:'Welcome', play:'Play', later:'Later', line:'A message from Aiden -[green] “{title}”[/green]' };
 /* v31 (60.25, build 60): HOW LONG A TOAST HOLDS, and the gap between one and the next. Aiden asked for longer and for a QUEUE —
    until build 59 a new toast called clearTimeout and simply replaced whatever was up, so a run that unlocked two things showed
    the first for however long it took the second to arrive. 5,000 / 4,500 / 3,000ms are his numbers: a TAPPABLE toast (an
@@ -299,12 +300,17 @@ export const TWO = { ready:'hand the phone over<br>tap when ready', hud:'{who} �
    config by ui/tutorial.js and never typed here: {need} and {count} are the Dots unlock rule (config/unlocks.js — "35 hits…" today),
    {secs} / {first} / {names} / {all} are Quick Tap's lengths and their seconds, {game} is "Quick Tap · Two". `start` labels the ring on
    Quick Tap in step 6. Step 9 names the three lengths as well as their seconds (Cowork: the buttons show names). */
+/* build 66 (section C): AIDEN'S TUTORIAL MAP EDITS, exactly as he marked them — [green] the goal, [yellow] the thing named, [red] how you fail (core.js
+   marks(), 65.19). Every number and name in them is still a placeholder filled from config: {count} "35 hits" and {qt} "Quick Tap" are the Dots rule,
+   {v1} / {v2} Quick Tap's variants, {first} / {second} / {long} and {s1} / {s2} / {s3} its lengths and their seconds, {rowN} the "7" of Dash's rule */
 export const TUTORIAL = {
-  steps:[ 'Welcome to No Excuses', "Here you'll be able to play all the games on offer", "But you'll notice most are locked…",
-    'Tap a game to see how it can be unlocked', "Wow! {need}, that's a lot", "Let's see if we can!",
-    'Each game has variants, you can unlock these later', "Let's start with {game}",
-    'Each variant has modes: {names} — {all} seconds', "So far, only {first} is unlocked. If you want to unlock {second}, get {row} without missing!",
-    'If you want to play with a friend, that option is always available!', "Oh well, let's try our first run!" ],
+  steps:[ 'Welcome to [green]No Excuses[/green]', "Here you'll be able to play all the games on offer", "But you'll notice most are [red]locked…[/red]",
+    '[yellow]Tap a game[/yellow] to see how it can be [green]unlocked[/green]', "[green]Wow![/green] [yellow]{count}[/yellow] in a [yellow]{qt}[/yellow] run, that's a lot", "Let's see if we can!",
+    'Each game has [yellow]variants.[/yellow][green] [/green]This one has[green] [/green][yellow]‘{v1}’[/yellow][green] [/green]and[green] [/green][yellow]‘{v2}’.[/yellow][green] [/green]You can [green]unlock these later. [/green][yellow] [/yellow]',
+    "Let's start with [green]{game}[/green]",
+    'Each [yellow]variant[/yellow] has [yellow]modes[/yellow]: [green]{first}[/green], [yellow]{second}[/yellow] and [red]{long}[/red] ([green]{s1}[/green], [yellow]{s2}[/yellow], [red]{s3}[/red] seconds)',
+    'So far, only [yellow]{first}[/yellow] is unlocked. If you want to [green]unlock {second}[/green], get[green] {rowN} hits[/green] [green]in a row[/green] without missing!',
+    'If you want to [green]play with a friend[/green], that option is always available!', "Oh well, let's try our [red]first run![/red]" ],
   start:'Start here',
   /* build 65 (A1 / 64.2): the first result's boxes by what each one is, so the third can branch — `hi`, `again`, then `got` + `next` when the run
      opened Dash (`next` left out if it opened Dots as well) or `miss` when it did not, then `back`, `end`. {names} is every unlock the run made; {count}
@@ -312,25 +318,32 @@ export const TUTORIAL = {
      config. 64.1 (step 10) replaced "Only a Sprint is unlocked. There's no way…"; 64.2 replaced "Or try a longer run (if you've unlocked it)". */
   /* build 65 (64.8): THE ABOUT TUTORIAL, after the Welcome clip — Aiden's lines, typos fixed only. The first, on the menu with About ringed, is
      Claude's: a box that asks for a tap needs a line, and Aiden gave that step none */
-  about:[ "You've unlocked About", 'Welcome to the About section', "Here you'll find all the unlocked videos", 'The option to send me feedback for future versions',
-    "And if you're enjoying the game, a chance to show your support", 'Alright, get back to it!' ],
-  // build 65 (64.9): THE PROGRESS TUTORIAL, after the first Estimate run — Aiden's lines
-  prog:[ "Let's see what else you've unlocked", 'Progress shows you all of the unlocks, customisation, and achievements', 'and how to get them',
-    "You're currently trying to open the Games chest", 'Press a game mode to see how to unlock everything!' ],
+  about:[ "You've [green]unlocked[/green] [yellow]About[/yellow]", 'Welcome to the [yellow]About[/yellow] section', "Here you'll find all the [green]unlocked[/green] [green]videos[/green]",
+    'The option to [red]send me feedback[/red] for future versions', "And if you're enjoying the game, a chance to [green]show your support[/green]", 'Alright, get back to it!' ],
+  /* build 65 (64.9): THE PROGRESS TUTORIAL, after the first Estimate run — Aiden's lines. Build 66 (section C): the first is said on that run's
+     RESULT ({game} is Estimate's name), so a player who plays on still sees it; the second, Progress ringed on the menu, is Claude's (a box that asks
+     for a tap needs a line, worded like Aiden's "Tap the Skill Key to take a look"); his fourth is split at its full stop */
+  prog:[ "You completed your first [yellow]{game}[/yellow] run. Let's see what else you've [green]unlocked…[/green]", 'Tap [yellow]Progress[/yellow] to take a look',
+    'Progress shows you all of the [yellow]unlocks[/yellow], [yellow]customisation[/yellow], and [yellow]achievements[/yellow]', 'and [yellow]how to get them[/yellow]',
+    "You're currently trying to open the [yellow]Games Chest.[/yellow]", 'You can do this by [green]unlocking each[/green] [green]game[/green].',
+    '[yellow]Press[/yellow] a[yellow] game mode[/yellow] to see how to unlock everything!' ],
   /* build 65 (64.12): THE SCORES TUTORIAL, after the first Reaction run — Aiden's lines; the first (Scores ringed on the menu) is Claude's, as
      About's is, and {game} is Quick Tap's name from config ("quick tap" in his note) */
-  board:[ "You've unlocked Scores", 'Welcome to the scores section!', "Let's check your {game} scores", 'This thing up here shows your overall performance across all games' ],
+  board:[ "You've unlocked [yellow]Scores[/yellow]", '[green]Welcome[/green] to the scores section!', "Let's check your [yellow]{game}[/yellow] scores", 'This [red]thing[/red] up here shows your overall performance across all games' ],
   /* build 65 (64.14): THE GAMES CHEST TUTORIAL, after the chest opens (and its video, if the player plays it) — Aiden's lines, the names standardised
      to "Skill Key" / "Skill Chest" (Cowork: he dictated "Skill's" / "Skills") */
   /* build 66 (65.9): the second line is Aiden's — the must-tap box on the map that rings the SKILL KEY word, so he gets to the key himself */
-  games:[ 'Wow, you unlocked the Games Chest. Well done!', 'Tap the [yellow]Skill Key[/yellow] to take a look', "You've unlocked the Skill Key, which opens the Skill Chest", "To be able to use this key, you'll have to fill all the bars",
-    'Click one to see what to aim for!', "Open the Skill Chest and you'll have 100%'d the game!", "You've also unlocked something fun, let's see!",
-    'This is where you can customise your game! See if you can unlock them all.', "Why don't you try now", 'Remember, you can always check the progress screen to see how to unlock everything!' ],
-  over:{ hi:'Congratulations! You finished your first run', again:'You can try again',
-    got:'Great job, you unlocked {names}!', next:"Let's see if you can get {count} in a {second} to unlock {dots}. If not, unlock {long} and try there!",
-    miss:'Get {row} without missing to unlock {second}',
-    back:'Or return to the games menu',
-    end:[ "Well, that's all for the tutorial", 'There\'s PLENTY more for you to see and unlock…', "But you're smart, you'll figure it out", 'Good luck!' ] } };
+  games:[ 'Wow, you unlocked the [yellow]Games Chest. [/yellow][green]Well done![/green]', 'Tap the [yellow]Skill Key[/yellow] to take a look',
+    "You've unlocked access to the [yellow]Skill Key[/yellow], which opens the [red]Skill Chest[/red]", "To be able to use this key, you'll have to [yellow]fill all the bars[/yellow]",
+    'Let’s [yellow]click one[/yellow] to see what to aim for!', "Open the [yellow]Skill Chest[/yellow] and you'll have [green]100%'d [/green]the game!", "You've also unlocked [yellow]something fun[/yellow], let's see!",
+    'This is where you can [yellow]customise[/yellow] your game! See if you can [green]unlock them all.[/green]', "Why don't you try now",
+    'Remember, you can always check the [yellow]Progress screen [/yellow]to see how to unlock everything!' ],
+  // build 66 (section C): `got` comes straight after `hi` now — "the unlock is the reward for the run, so it comes first" (Aiden, over-03)
+  over:{ hi:'[green]Congratulations![/green] You finished your first run', again:'You can [yellow]Try Again[/yellow]',
+    got:'Great job, you [green]unlocked[/green] [yellow]{names}[/yellow]!', next:"Let's see if you can get [yellow]{count}[/yellow] in a [yellow]{second}[/yellow] to [green]unlock {dots}[/green]. If not, [red]unlock {long}[/red] and try there!",
+    miss:'Get [yellow]{row}[/yellow] without missing to [green]unlock {second}[/green]',
+    back:'Or return to the [yellow]games menu[/yellow]',
+    end:[ "Well, that's all for the tutorial", 'There\'s [red]PLENTY[/red] more for you to see and [green]unlock[/green]…', "But [green]you're smart[/green], you'll figure it out", '[green]Good luck![/green]' ] } };
 export const RESULT = { streakUnit:'<span class="unit">{word} reached</span>',
   practice:'practice', fail:'run over', best:'new best', pass:'pass & play', versus:'versus', dash:'—', lowerMark:'<span class="dn">▼</span>',
   rank:'rank <b>{n}</b> of 10 · {name}', outside:'outside the top 10 · {name}', you:'you', practiceNote:'practice · nothing recorded', twoNote:'two players · nothing recorded',
