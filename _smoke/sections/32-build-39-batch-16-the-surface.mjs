@@ -16,7 +16,7 @@ export async function run() {
   {
     const custom = (html39.match(/<section class="screen top" id="s-custom"[\s\S]*?<\/section>/) || [''])[0];
     const prog = (html39.match(/<section class="screen top" id="s-prog"[\s\S]*?<\/section>/) || [''])[0];
-    const ids = ['pv', 'pvg', 'pv-g', 'c-sq', 'c-lead', 'c-cut', 'c-bg', 'c-snd', 'c-scale', 'c-track', 'c-menumusic', 'lk-sq', 'lk-lead', 'lk-cut', 'lk-bg', 'lk-snd', 'lk-scale', 'g-lead', 'g-cut', 'g-scale'];   // AMENDED at build 65 (64.19): the taps-per-second row is gone
+    const ids = ['pv', 'pvg', 'pv-g', 'c-sq', 'c-lead', 'c-cut', 'c-bg', 'c-snd', 'c-scale', 'c-track', 'lk-sq', 'lk-lead', 'lk-cut', 'lk-bg', 'lk-snd', 'lk-scale', 'g-lead', 'g-cut', 'g-scale'];   // AMENDED at build 65 (64.19): the taps-per-second row is gone
     const missing = ids.filter(id => !custom.includes(`id="${id}"`)), left = ids.filter(id => prog.includes(`id="${id}"`));
     // AMENDED at build 40 (v23 L.11a): the Customise row carries data-act="custom" so a locked tap can be refused
     // AMENDED at build 43 (v24 A.1): the Keys row carries data-act="keys" for the same reason
@@ -53,7 +53,8 @@ export async function run() {
        full rather than inventing a second, shorter spelling of it, and it is named in the outcome for Aiden to overrule. */
     const CH39b = await import(pathToFileURL(path.join(root, 'config', 'chests.js')).href);
     const CP39b = await import(pathToFileURL(path.join(root, 'config', 'copy.js')).href);
-    const wantTb = CH39b.CHESTS.map(c => 'c-' + c.id + ':' + CP39b.GRID.chest[c.id]).concat(['cul:' + CP39b.PROGRESS_SCREEN.cul, 'ach:' + CP39b.PROGRESS_SCREEN.ach]).join('|');
+    // AMENDED at build 68 (67.38): a seventh tab, Excuses — four rows at 390px now, by the same rule
+    const wantTb = CH39b.CHESTS.map(c => 'c-' + c.id + ':' + CP39b.GRID.chest[c.id]).concat(['cul:' + CP39b.PROGRESS_SCREEN.cul, 'ach:' + CP39b.PROGRESS_SCREEN.ach, 'exc:' + CP39b.PROGRESS_SCREEN.exc]).join('|');
     (tb.tabs.join('|') === wantTb && tb.upper && tb.sizes.length === 1 && tb.sizes[0] === tb.base && tb.inside)
       ? ok(`L.4b the tabs read ${tb.tabs.map(x => x.split(':')[1]).join(' · ')} in the chip's own ${tb.base} on ${tb.rows} row(s) at ${tb.w}px - the row wraps, the type does not shrink, nothing past the edge`)
       : bad('L.4b the tab bar', JSON.stringify({ tb, wantTb }));

@@ -32,7 +32,8 @@ export async function run() {
   await tap('#c-scale button:nth-child(2)', 'customise · scale');
   // build 33 (B.28): ONE music row and it is the track — no on / off, no Preview button. A tap on a track plays it
   await tap('#c-track button:nth-child(2)', 'customise · track'); await tap('#c-track button:nth-child(1)', 'customise · track back');
-  await tap('#c-menumusic button:nth-child(2)', 'customise · menu music off'); await tap('#c-menumusic button:nth-child(1)', 'customise · menu music on');
+  // AMENDED at build 68 (67.34): no Music on / off row — Off is the Music row's last choice, and a track turns it back on
+  await tap('#c-track [data-v="off"]', 'customise · music off'); await tap('#c-track button:nth-child(1)', 'customise · music on');
   // build 33 (B.30): the locked line is under its own group now, not one line under the preview
   await tap('#lk-sq', 'customise · lock line');
   await sleep(400); await tap('#s-custom .back', 'customise · back');

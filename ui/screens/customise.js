@@ -89,17 +89,18 @@ function renderCustom(){
      build the Everywhere row printed the track's own name for the key and those names were Key / Pro / Thorns, which is what Aiden saw. */
   /* build 65 (64.20): THE ROW IS THE GAME'S ONE TRACK, NOT THIS GAME'S. It no longer changes with the game tab above it — MUSIC_LIST in order, the
      three key themes among them, each still locked until its key; what is picked plays on the menus and in every run. */
-  const ev=everywhere(), cur=MUSIC_LIST.some(m=>m.track===prefs.menuTrack)?prefs.menuTrack:MUSIC_PICK;
+  const ev=everywhere(), cur=MUSIC_LIST.some(m=>m.track===prefs.menuTrack)?prefs.menuTrack:MUSIC_PICK, mOn=musicOn('menu');
   const rows=MUSIC_LIST.map(m=>{ const k=m.key?KEYS.find(x=>x.music===m.key):null;
     return k?{ v:m.v, name:(TRACKS[KEY_THEMES[m.key]]||{}).name||k.theme, key:k, sel:ev===m.key }:{ v:m.v, name:m.name||(TRACKS[m.track]||{}).name||m.v, key:null, sel:ev==='game'&&m.track===cur }; });
   // L8's first-seen green is for the KEY tracks: the game tracks are not new
   $('#c-track').innerHTML = rows.map(r=>{ const L=r.key&&!keyFinished(r.key.id); const nw=(L||!r.key)?'':newMark('cos:track:'+r.v,fresh);
-    return `<button data-act="item" data-v="${r.v}" class="opt ${r.sel?'sel':''} ${L?'locked':''}${nw}" data-keyname="${r.key?esc(r.key.name):''}">${esc(r.name)}</button>`; }).join('');
+    return `<button data-act="item" data-v="${r.v}" class="opt ${r.sel&&mOn?'sel':''} ${L?'locked':''}${nw}" data-keyname="${r.key?esc(r.key.name):''}">${esc(r.name)}</button>`; }).join('')
+    // build 68 (67.34): Off is the row's last choice — the Music on / off row it replaces is gone
+    + `<button data-act="item" data-v="off" class="opt ${mOn?'':'sel'}">${esc(CUSTOM.off)}</button>`;
   // the menu loop is not a game's, so it gets its own switch rather than hiding inside one game's row
   // build 68 (67.39): Tiny Aiden's switch shows once he has danced — on unless switched off
   const tiny=excuseCount()>=TINY_AIDEN.at; $('#g-tiny').hidden=!tiny;
   if(tiny){ $('#tiny-lab').textContent=CUSTOM.tiny; $('#c-tiny').innerHTML=[['1',CUSTOM.tinyOn],['0',CUSTOM.tinyOff]].map(([v,l])=>`<button data-act="item" data-v="${v}" class="opt ${String(prefs.tinyAiden===0?0:1)===v?'sel':''}">${esc(l)}</button>`).join(''); }
-  $('#c-menumusic').innerHTML = itemsOf('music').map(it=>`<button data-act="item" data-v="${it.v}" class="opt ${musicOn('menu')===it.v?'sel':''}">${it.label}</button>`).join('');
   $('#pv-g').innerHTML=Object.entries(GAMES).map(([id,x])=>`<button class="chip" data-act="chip-pv" data-chip="pv-g" data-v="${id}">${x.name}</button>`).join(''); chips('pv','g',F.g);
   $('#pv').dataset.g=F.g; $('#g-lead').style.display=shows(F.g,'lead')?'':'none';
   $('#g-cut').style.display=shows(F.g,'cut')?'':'none'; $('#g-scale').style.display=shows(F.g,'scale')?'':'none';
@@ -205,12 +206,12 @@ define({
        prefs.everywhere, this theme for every run and for the menu; one of this game's three puts it back to Per game and stores the track.
        v29 (item 4, build 54): EITHER KIND ALSO BECOMES THE MENU'S. `prefs.menuTrack` is the resolved id of whatever was just picked — the key
        theme, or this game's track as TRACKS spells it — written in the same breath, so the row and the front of the app cannot disagree. */
-    else if(k==='track'){ const v=b.dataset.v;
+    /* build 68 (67.34): OFF IS THE MUSIC ROW'S LAST CHOICE — silence on the menus and in every run; any track picked turns it all back on */
+    else if(k==='track'&&b.dataset.v==='off'){ prefs.musicG={ menu:false }; for(const g in GAMES) prefs.musicG[g]=false; Music.stop(); }
+    else if(k==='track'){ const v=b.dataset.v; prefs.musicG={ menu:true }; for(const g in GAMES) prefs.musicG[g]=true;
       if(v.startsWith('key:')){ prefs.everywhere=v.slice(4); prefs.menuTrack=KEY_THEMES[v.slice(4)]; save(); applyPrefs(F.g); renderCustom(); Music.preview(F.g,4200,KEY_THEMES[v.slice(4)]); return 'pick'; }
       // build 65 (64.20): a listed track is the whole game's — the menus and every run
       const m=MUSIC_LIST.find(x=>x.v===v); if(!m||!m.track) return 'pick'; prefs.everywhere='game'; prefs.menuTrack=m.track; Music.preview(F.g,4200,m.track); }
-    // v28 (item 2): still the master switch — on plays whatever the Music row is set to (Music.menuTrack), off stops it
-    else if(k==='menumusic'){ prefs.musicG.menu=b.dataset.v==='true'; if(b.dataset.v==='true') Music.menu(Music.menuTrack()); else Music.stop(); }
     // v13 (7.1): the scale left the pick sheet — one choice, applied to every Sequence run
     else if(k==='scale'){ prefs.scale=b.dataset.v; sel.scale=b.dataset.v; }
     else if(k==='tiny'){ prefs.tinyAiden=b.dataset.v==='1'?1:0; }

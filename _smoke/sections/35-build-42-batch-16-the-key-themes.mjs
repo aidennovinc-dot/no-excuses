@@ -84,7 +84,8 @@ export async function run() {
     await boot({ chests: { games: 1, key: 1 } }, { bars: tier42b('clear') }, { plain: PLAIN42 });
     await click('[data-go="s-custom"]'); await sleep(500);
     const cu = await page.evaluate(async () => { const wait = ms => new Promise(r => setTimeout(r, ms)); const S = await import('./core/store.js'); const M = await import('./audio.js');
-      const row = () => [...document.querySelectorAll('#c-track button')].map(b => ({ v: b.dataset.v, txt: b.textContent.trim(), sel: b.classList.contains('sel'), locked: b.classList.contains('locked') }));
+      // AMENDED at build 68 (67.34): the row ends on Off, which is not a track
+      const row = () => [...document.querySelectorAll('#c-track button:not([data-v="off"])')].map(b => ({ v: b.dataset.v, txt: b.textContent.trim(), sel: b.classList.contains('sel'), locked: b.classList.contains('locked') }));
       const out = { gone: !document.getElementById('c-everywhere') && !document.getElementById('g-everywhere'),
         label: document.getElementById('c-track').closest('.cgroup').querySelector('.clabel').textContent, before: row(), line0: document.getElementById('lk-track').textContent };
       const shut = row().filter(b => b.locked)[0];

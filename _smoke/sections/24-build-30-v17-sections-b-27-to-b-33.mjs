@@ -132,8 +132,9 @@ export async function run() {
     const before = await page.evaluate(() => ({ n: document.querySelectorAll('#key-keys .kkey').length,
       txt: document.getElementById('s-key').textContent.toLowerCase(), theme: document.querySelector('#key-keys .kkey i')?.textContent,
       locked: document.querySelectorAll('#key-keys .kkey.locked').length, lockedTxt: [...document.querySelectorAll('#key-keys .kkey.locked')].map(x => x.textContent).join(' | ') }));
-    (before.n === 3 && !before.theme /* AMENDED at build 48 (v26 item 9): no theme name on a key card */ && before.locked === 3 && /open the Games chest/i.test(before.lockedTxt) && /open the previous chest/i.test(before.lockedTxt) && !/\d|%/.test(before.lockedTxt))
-      ? ok('B.31 / A.1 AMENDED at build 40 (v23 L.10a): before the Games chest all three keys are on the strip and all three are crossed out - key 1 with "open the Games chest", the other two with "open the previous chest" - and no number')
+    (before.n === 3 && !before.theme /* AMENDED at build 48 (v26 item 9): no theme name on a key card */ && before.locked === 3 && /open the Games chest/i.test(before.lockedTxt) && /open the Skill chest/i.test(before.lockedTxt) && /open the Pro chest/i.test(before.lockedTxt) && !/\d|%/.test(before.lockedTxt))
+      // AMENDED at build 68 (67.24): each key names the chest that really opens it — "open the Skill chest", "open the Pro chest" — not "the previous chest"
+      ? ok('B.31 / A.1 AMENDED at build 40 (v23 L.10a) and build 68 (67.24): before the Games chest all three keys are on the strip and all three are crossed out - "open the Games chest", "open the Skill chest", "open the Pro chest" - and no number')
       : bad('B.31 Frost and Thorn are hidden until chest 1', JSON.stringify(before).slice(0, 200));
     await setStorage({ ne: { v: 1, prefs: { ...OPEN_PREFS, chest1: 1 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
@@ -243,19 +244,20 @@ export async function run() {
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
     await click('[data-go="s-custom"]'); await sleep(500);
     // AMENDED at build 33 (v18 B.28): the row is ONE button now — the track — because the Preview button beside it went
-    const locked = await page.evaluate(() => { const b = [...document.querySelectorAll('#c-track button')];
+    // AMENDED at build 68 (67.34): the row ends on Off, which is not a track — and Off is where the old on / off row went
+    const locked = await page.evaluate(() => { const b = [...document.querySelectorAll('#c-track button')].filter(x => x.dataset.v !== 'off');
       return { n: b.length, first: b[0]?.textContent, lock: b[0]?.classList.contains('locked'), plain: b[0]?.classList.contains('plain'),
         gameOpen: b.filter(x => !x.dataset.v.startsWith('key:') && !x.classList.contains('locked')).length,
         keyLocked: b.filter(x => x.dataset.v.startsWith('key:') && x.classList.contains('locked')).length,
         label: document.getElementById('c-track').parentElement.querySelector('.clabel')?.textContent,
-        txt: document.getElementById('c-track').parentElement.textContent.toLowerCase(), menu: document.querySelectorAll('#c-menumusic button').length }; });
+        txt: document.getElementById('c-track').parentElement.textContent.toLowerCase(), menu: document.querySelectorAll('#c-track [data-v="off"]').length + document.querySelectorAll('#c-menumusic').length }; });
     /* AMENDED AT BUILD 53 (v28 items 2 / 3): THE ROW IS NOT LOCKED BEHIND THE PRO CHEST ANY MORE. Music choice is open from the first visit —
        this game's three tracks, always — and what is gated is the three KEY TRACKS, each until its own key is EARNED. A.1's "nothing about a
        later tier" no longer applies to them, because v21 G.1 put all three keys on screen from the first visit, so naming one hides nothing;
        a locked key track says what opens it under the row (B.30) rather than carrying a silent padlock. */
     // AMENDED AT BUILD 65 (64.20): the row is the game-wide list, MUSIC_LIST — its six game tracks open, its three key themes locked until their keys
     const ML30 = AU30.MUSIC_LIST;
-    (locked.n === ML30.length && !locked.lock && locked.label === 'Music' && locked.menu === 2 && locked.gameOpen === ML30.filter(m => m.track).length && locked.keyLocked === ML30.filter(m => m.key).length)
+    (locked.n === ML30.length && !locked.lock && locked.label === 'Music' && locked.menu === 1 && locked.gameOpen === ML30.filter(m => m.track).length && locked.keyLocked === ML30.filter(m => m.key).length)
       ? ok(`B.28 / 64.20 the music row is ONE row, the whole game's: ${locked.gameOpen} tracks open from the first visit ("${locked.first}" …) and one per key, all three locked until their own key is earned`)
       : bad('B.28 the locked music row', JSON.stringify(locked));
     // dev unlock-all opens it, and picking one is stored and played
@@ -263,7 +265,8 @@ export async function run() {
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
     await click('[data-go="s-custom"]'); await sleep(500);
     await page.evaluate(() => document.querySelectorAll('#c-track button')[1].click()); await sleep(500);
-    const open30 = await page.evaluate(() => ({ n: document.querySelectorAll('#c-track button').length,
+    // AMENDED at build 68 (67.34): the row ends on Off, which is not a track
+    const open30 = await page.evaluate(() => ({ n: document.querySelectorAll('#c-track button:not([data-v="off"])').length,
       stored: JSON.parse(localStorage.getItem('ne')).prefs.menuTrack, sel: document.querySelector('#c-track button.sel')?.textContent }));
     /* AMENDED AT BUILD 65 (64.20): picking the second of the game-wide list stores ITS track as the one the whole game plays (`menuTrack`) — the
        per-game `track` is retired — and a run of any game plays it */

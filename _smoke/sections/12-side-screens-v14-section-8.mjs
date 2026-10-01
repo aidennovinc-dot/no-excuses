@@ -354,6 +354,20 @@ export async function run() {
       ? ok(`67.39 Tiny Aiden: the tenth excuse sets him dancing off a real ${t39.img.join('×')} sheet and he is gone after it; Customise's switch shows only from ten (${t39.btns.join(' / ')}); On, he turns up on the menu; Off, never`)
       : bad('67.39 Tiny Aiden', JSON.stringify(t39));
   }
+  /* build 68 (67.34): NO MUSIC ON / OFF ROW — OFF IS THE MUSIC ROW'S LAST CHOICE. Off silences the menus and every run and is the one choice lit; a
+     track picked after it lights that track and turns the music back on everywhere */
+  {
+    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+    const m34 = await page.evaluate(async () => { (await import('./ui/router.js')).show('s-custom'); const w = ms => new Promise(r => setTimeout(r, ms)); await w(500);
+      const row = () => [...document.querySelectorAll('#c-track button')], st = () => JSON.parse(localStorage.getItem('ne')).prefs.musicG || {};
+      const o = { last: row().slice(-1)[0]?.dataset.v, lastTxt: row().slice(-1)[0]?.textContent, oldRow: !!document.getElementById('c-menumusic'), words: document.getElementById('s-custom').textContent.includes('Music on / off') };
+      row().slice(-1)[0].click(); await w(300); o.off = { lit: row().filter(b => b.classList.contains('sel')).map(b => b.dataset.v), menu: st().menu, qt: st()['quick-tap'] };
+      row()[0].click(); await w(300); o.on = { lit: row().filter(b => b.classList.contains('sel')).map(b => b.dataset.v), menu: st().menu, qt: st()['quick-tap'] }; return o; });
+    (m34.last === 'off' && m34.lastTxt === 'Off' && !m34.oldRow && !m34.words && m34.off.lit.join() === 'off' && m34.off.menu === false && m34.off.qt === false && m34.on.lit.length === 1 && m34.on.lit[0] !== 'off' && m34.on.menu === true && m34.on.qt === true)
+      ? ok(`67.34 the Music on / off row is gone and Off is the Music row's last choice: Off lights alone and silences the menus and every run; "${m34.on.lit[0]}" after it turns the music back on`)
+      : bad('67.34 Off on the Music row', JSON.stringify(m34));
+  }
   /* build 68 (67.30, Cowork): NO BLACK BACKING BOX BEHIND TEXT OR AN ICON, ANYWHERE — the menu, the map with a chest's "You found" words, Customise, on the
      brightest backgrounds: nothing is cut out of the background behind them (so nothing can show before the text it backs), and every line wears its
      own soft dark shadow instead */

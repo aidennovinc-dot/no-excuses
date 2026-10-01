@@ -80,14 +80,16 @@ export async function run() {
     await setStorage({ ne: { v: 1, prefs: { ...OPEN_PREFS, menuSeen: 1 }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
     await click('[data-go="s-custom"]'); await sleep(500);
-    const row = await page.evaluate(() => { const grp = document.getElementById('c-track').parentElement;
-      const b = [...grp.querySelectorAll('button')];
-      return { label: grp.querySelector('.clabel').textContent, n: b.length, named: b.map(x => x.textContent), sel: b.filter(x => x.classList.contains('sel')).length }; });
+    /* AMENDED at build 68 (67.34): Aiden's call reverses one half of B.28 — the row now ENDS ON OFF, its last choice, and the Music on / off row is
+       gone. The tracks are still names only, one selected, and no Preview; Off is asserted as the last button on its own */
+    const row = await page.evaluate(() => { const grp = document.getElementById('c-track').parentElement, all = [...grp.querySelectorAll('button')];
+      const b = all.filter(x => x.dataset.v !== 'off');
+      return { label: grp.querySelector('.clabel').textContent, n: b.length, named: b.map(x => x.textContent), sel: all.filter(x => x.classList.contains('sel')).length, last: all[all.length - 1]?.dataset.v }; });
     /* AMENDED AT BUILD 53 (v28 items 2 / 3): SIX — this game's three tracks, then one track per key, titled by that key's own theme. B.28's
        shape is otherwise untouched: names only, exactly one selected, and no Preview / on / off anywhere on the row. */
     // AMENDED AT BUILD 65 (64.20): the row is the game-wide list now, MUSIC_LIST, read off config — the three key themes among it
     const ML33 = (await import(pathToFileURL(path.join(root, 'config', 'audio.js')).href)).MUSIC_LIST;
-    (row.label === 'Music' && row.n === ML33.length && row.sel === 1 && row.named.every(x => x && !/preview|^on$|^off$/i.test(x))
+    (row.label === 'Music' && row.n === ML33.length && row.sel === 1 && row.last === 'off' && row.named.every(x => x && !/preview|^on$|^off$/i.test(x))
       && KY33.KEYS.every(k => row.named.some(x => x.trim().toUpperCase() === k.theme.toUpperCase())))
       ? ok(`B.28 / 64.20 the Music row is the whole game's list, one per key among it, by name (${row.named.join(' · ')}), one of them selected`)
       : bad('B.28 the open music row', JSON.stringify(row));
