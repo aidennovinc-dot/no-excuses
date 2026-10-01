@@ -22,7 +22,7 @@
    preference: Fresh game keeps it, so a player gets the walkthrough once.
    EVERY OTHER TUTORIAL is in `prefs.tuts`: `{ id: n }` armed and at step n, `{ id: 'done' }` finished. Also a preference. Testing's "reset
    all first-time tutorials" empties it, puts the walkthrough back to its start, and re-arms every tutorial whose thing is already open. */
-import { GAUNTLET, GRID, TOAST, TUTORIAL } from "../config/copy.js";
+import { GAUNTLET, GRID, TOAST, TUTORIAL, WELCOME } from "../config/copy.js";
 import { ESTIMATE, MODE_NAME, SET_COPY, STREAK } from "../config/games.js";
 import { LEN_RULES, MENU_UNLOCK } from "../config/unlocks.js";
 import { bankMenu, menuOpen } from "../progress/menu.js";
@@ -138,8 +138,14 @@ function overSteps(){ const dash=()=>$(`#over-chips2 .chip[data-v="${GC(QT,QM())
 let firstAt=0, overAt=0, overList=null;
 const armed=id=>{ const v=(prefs.tuts||{})[id]; return Number.isInteger(v)&&v>=0; };
 const DEFS={
-  first:{ live:wanted, steps:FIRST, step:()=>firstAt, setStep:n=>{ firstAt=n; }, finish(){} },
-  over:{ live:results, steps:()=>overList||(overList=overSteps()), step:()=>overAt, setStep:n=>{ overAt=n; }, finish:tutEnd },
+  first:{ live:wanted, steps:FIRST, step:()=>firstAt, setStep:n=>{ firstAt=n; }, finish(){},
+    meta:{ name:'First-run walkthrough', trigger:'A profile that has never played reaches the games menu (or Testing → Replay tutorial)', start:'Games menu, once the map has drawn in',
+      why:'A new player learns what is locked, how a game unlocks, variants and modes, then plays the first run, which cannot be quit',
+      at:[['Games menu',''],['Games menu',''],['Games menu',''],['Games menu','Dots tile'],['Games menu · Dots lock box',''],['Games menu','Quick Tap tile, labelled "Start here"'],
+        ['Pick sheet · variants',''],['Pick sheet · variants','Two'],['Pick sheet · Mode row',''],['Pick sheet · Mode row',''],['Pick sheet · Mode row','With a friend'],['Pick sheet · Mode row','Sprint (starts the first run)']] } },
+  over:{ live:results, steps:()=>overList||(overList=overSteps()), step:()=>overAt, setStep:n=>{ overAt=n; }, finish:tutEnd,
+    meta:{ name:'First result', trigger:'The first run finishes', start:'That run\'s result screen, once its unlock toasts have played',
+      why:'The reward for the first run, what to try next, and the way back — then the walkthrough ends and Off the Rails is banked' } },
 };
 const ORDER=['first','over'];
 function stepsOf(d){ return typeof d.steps==='function'?d.steps():d.steps; }
@@ -163,7 +169,9 @@ tutorial('about',[
   { on:ab, el:()=>$('#feedback'), text:A[3] },
   { on:ab, el:()=>$('#support'), text:A[4] },
   { on:ab, text:A[5] },
-],{ opened:()=>menuOpen('s-about') });
+],{ opened:()=>menuOpen('s-about'),
+  meta:{ name:'About', trigger:'The Welcome clip finishes (or is put off with Later)', start:'Main menu', why:'Shows where the videos, the feedback form and the support button live',
+    at:[['Main menu','About'],['About',''],['About','the videos'],['About','Send feedback'],['About','Support'],['About','']] } });
 /* 64.9: PROGRESS, after the first Estimate run. Build 66 (section C, prog-01): its first line is said on that run's RESULT, once the result's toasts
    are done ("otherwise the user might continue playing and not see this tutorial") — or on the menu, for a player who left the result first. Then
    Progress ringed on the menu; inside, two lines about the screen, the Games chest's tab ringed (the screen is put on that tab if it opened on another)
@@ -178,7 +186,9 @@ tutorial('prog',[
   { on:pr, el:gtab, text:P9[4], enter(){ const t=gtab(); if(t&&!t.classList.contains('sel')) through(()=>t.click()); } },
   { on:pr, el:gtab, text:P9[5] },
   { on:()=>pr()&&!!$('#prog-tabs [data-tab="c-games"].sel'), el:()=>$('#chest-g'), tap:1, hit:t=>{ const b=t.closest&&t.closest('#chest-g .chip'); return !!b&&b.dataset.v!=='all'; }, text:P9[6] },
-],{ opened:()=>menuOpen('s-prog') });
+],{ opened:()=>menuOpen('s-prog'),
+  meta:{ name:'Progress', trigger:'The first Estimate run', start:'That run\'s result (or the main menu, for a player who left it first)', why:'Progress is where every unlock lives, and how to earn it',
+    at:[['Result, or the main menu',''],['Main menu','Progress'],['Progress',''],['Progress',''],['Progress','Games chest tab'],['Progress','Games chest tab'],['Progress · Games chest','a game filter (not All)']] } });
 /* 64.12: SCORES, after the first Reaction run. Scores ringed on the menu; inside, a welcome, Quick Tap's chip to tap (Claude's call — "let's
    check" is a tap), then the web chart ringed */
 const B12=TUTORIAL.board, bd=()=>onScreen('s-board');
@@ -187,7 +197,9 @@ tutorial('board',[
   { on:bd, text:B12[1] },
   { on:bd, el:()=>$(`#bd-g .chip[data-v="${QT}"]`), tap:1, text:()=>T(B12[2],{game:GAMES[QT].name}) },
   { on:bd, el:()=>$('#radar'), text:B12[3] },
-],{ opened:()=>menuOpen('s-board') });
+],{ opened:()=>menuOpen('s-board'),
+  meta:{ name:'Scores', trigger:'The first Reaction run', start:'Main menu', why:'Shows each game\'s top ten and the web chart of every game together',
+    at:[['Main menu','Scores'],['Scores',''],['Scores','Quick Tap chip'],['Scores','the web chart']] } });
 
 /* 64.14: THE GAMES CHEST, armed the moment it opens (`chest:opened`, progress/key.js). It starts on the map once the chest's words have spilt.
    Build 66 (65.9): the player gets everywhere by their own tap — the SKILL KEY word beside the chest is ringed and must be tapped ("Tap the Skill Key
@@ -207,7 +219,11 @@ tutorial('games',[
   { on:cu, text:G14[7] },
   { on:cu, el:()=>$('#c-bg button[data-v="snow"]'), tap:1, text:G14[8] },
   { on:cu, text:G14[9] },
-],{ opened:()=>chestOpen('games') });
+],{ opened:()=>chestOpen('games'),
+  meta:{ name:'Games chest', trigger:'The Games chest opens (every game mode unlocked)', start:'Games menu, once the chest\'s words have spilt (and its video has played)',
+    why:'Introduces the Skill Key and its bars, the last step to 100%, and Customise',
+    at:[['Games menu',''],['Games menu','SKILL KEY, beside the chest'],['Skill Key','the Skill Key card'],['Skill Key','every spoke (lit)'],['Skill Key','Quick Tap\'s node'],['Skill Key','Back'],
+      ['Main menu','Customise'],['Customise',''],['Customise','Snow background'],['Customise','']] } });
 on('chest:opened',({id})=>{ if(id==='games') arm('games'); });
 
 /* build 66 (65.8): ESTIMATE'S SET AND STREAK, the first time its pick sheet shows the Mode row — armed right there, for a player with no Estimate run on
@@ -215,7 +231,7 @@ on('chest:opened',({id})=>{ if(id==='games') arm('games'); });
    player picks. The numbers are the variant on the sheet's: its Set's rounds (SET_COPY), the Streak's budget and Grow's free share (ESTIMATE) */
 const E8=TUTORIAL.est, EG='hold', eOn=()=>lenStage()&&sel.game===EG;
 const eLen=st=>()=>{ const l=GC(EG,sel.diff).lens, s=st?STREAK:l.find(x=>x!==STREAK); return $(`#time-row .tbtn[data-time="${s}"]`); };
-const eSay=line=>()=>{ const d=sel.diff, l=GC(EG,d).lens, set=l.find(x=>x!==STREAK);
+const eSay=line=>()=>{ const d=sel.game===EG&&GAMES[EG].modes.includes(sel.diff)?sel.diff:GAMES[EG].modes[0], l=GC(EG,d).lens, set=l.find(x=>x!==STREAK);
   return T(line,{ set:lenName(EG,set,d), streak:lenName(EG,STREAK,d), n:(SET_COPY[EG+':'+d]||{}).rounds||set, bud:ESTIMATE.STREAK_BUD,
     free:d==='grow'?T(TUTORIAL.estFree,{free:ESTIMATE.GROW_FREE}):'' }); };
 tutorial('est',[
@@ -223,7 +239,10 @@ tutorial('est',[
   { on:eOn, el:eLen(0), text:eSay(E8[1]) },
   { on:eOn, el:eLen(1), text:eSay(E8[2]) },
   { on:eOn, text:E8[3] },
-],{ opened:()=>GAMES[EG].modes.some(d=>(store.unlock||{})[EG+':'+d]) });
+],{ opened:()=>GAMES[EG].modes.some(d=>(store.unlock||{})[EG+':'+d]),
+  meta:{ name:'Estimate · Set and Streak', trigger:'Estimate\'s pick sheet shows its Mode row for the first time, with no Estimate run on record', start:'Estimate\'s pick sheet, Mode row',
+    why:'The two modes score in opposite ways, and the cards alone don\'t say how a Streak ends',
+    at:[['Estimate pick sheet','(the Mode row, not ringed)'],['Estimate pick sheet','Set'],['Estimate pick sheet','Streak'],['Estimate pick sheet','']] } });
 const estFirst=()=>eOn()&&(prefs.tuts||{}).est===undefined&&!(store.runs||[]).some(r=>r.g===EG);
 
 /* build 66 (65.16): A GAUNTLET, when the chest whose spill brings it in opens — Mini with the Skill chest, Mega with the Pro chest. It starts on the map
@@ -239,7 +258,10 @@ for(const [id,g,from] of [['mini','g1','key'],['mega','g2','pro']]){ const gOn=(
     { on:gOn, text:say(1) },
     { on:gOn, text:say(2) },
     { on:gOn, text:say(3) },
-  ],{ opened:()=>chestOpen(from) });
+  ],{ opened:()=>chestOpen(from),
+    meta:{ name:GAUNTLET.name[g]||g, trigger:'The '+(GRID.chest[from]||from)+' opens (its reveal ends)', start:'Games menu, where the reveal hands back',
+      why:'What '+(GAUNTLET.name[g]||g)+' is, and that finishing it once opens the next chest',
+      at:[['Games menu',(GAUNTLET.name[g]||g)+' tile'],[(GAUNTLET.name[g]||g)+' screen',''],[(GAUNTLET.name[g]||g)+' screen',''],[(GAUNTLET.name[g]||g)+' screen','']] } });
   on('chest:opened',({id:c})=>{ if(c===from) arm(id); }); }
 
 /* ---------- the box ---------- */
@@ -393,10 +415,31 @@ setTimeout(resumeOver,0);
 /* build 66: where the tutorials are, for Testing and the gate — the one that has the floor, its step, how many it has, and whether its box is up
    and waiting for a tap on its ring */
 function tutNow(){ const id=active(); if(!id) return null; const d=DEFS[id]; return { id, i:d.step(), n:stepsOf(d).length, shown:shown()&&cur.id===id, tap:shown()&&!!cur.s.tap }; }
+/* build 66 (65.4): EVERY TUTORIAL AS THE REVIEW CATALOGUE PRINTS IT — the Tutorials section (_review/scripts/catalogue.ref.mjs tutorialsRef) is built
+   from this, so it cannot drift from the game: each tutorial's trigger, starting screen and purpose (`meta`, beside its definition), then each box —
+   its screen, what it rings, whether it waits for a tap on that, and its line exactly as the copy has it, colour marks and all, with every number
+   filled from config. Ids are the Tutorial Map's (`first-03`, `over-all`), so notes made against one read against the other. The first result's
+   boxes are listed with BOTH branches (a first run that opened Dash, and one that did not); the Welcome moment is in, since About waits for it */
+function tutMap(){ const out=[], text=t=>{ try{ return typeof t==='function'?t():t; }catch(e){ return ''; } };
+  for(const id of ORDER){ const d=DEFS[id], m=d&&d.meta; if(!m) continue;
+    let boxes;
+    if(id==='over'){ const R='Result', n=nums();
+      boxes=[ { screen:R, ring:'', tap:0, text:O.hi }, { screen:R+' · if the run opened '+n.second, ring:n.second+' chip', tap:0, text:T(O.got,Object.assign({},n,{ names:n.second })) },
+        { screen:R+' · if the run opened '+n.second+', not '+n.dots, ring:n.second+' chip', tap:0, text:say(O.next) }, { screen:R, ring:'Try again', tap:0, text:O.again },
+        { screen:R+' · if '+n.second+' is still shut', ring:'Try again', tap:0, text:say(O.miss) }, { screen:R, ring:'Back (an arrow at it)', tap:0, text:O.back },
+        ...O.end.map(t=>({ screen:R, ring:'', tap:0, text:t })) ]; }
+    else boxes=stepsOf(d).map((s,i)=>({ screen:(m.at[i]||[])[0]||'', ring:(m.at[i]||[])[1]||'', tap:s.tap?1:0, text:text(s.text) }));
+    out.push({ id, name:m.name, trigger:m.trigger, start:m.start, why:m.why, steps:stepsOf(d).length, at:id==='over'?boxes.length:m.at.length,
+      boxes:boxes.map((b,i)=>Object.assign({ key:id+'-'+String(i+1).padStart(2,'0') },b)) });
+    if(id==='over') out.push({ id:'welcome', name:'Welcome moment', trigger:'Dots unlocks — once that result\'s toasts are done, or at the next calm moment on the main menu (65.2)',
+      start:'Result screen, or the main menu', why:'The first thing the game gives you: Aiden\'s welcome clip, and watching it (or putting it off) opens About', steps:1, at:1,
+      boxes:[{ key:'welcome-01', screen:'Over the result or the main menu', ring:'', tap:1, text:T(WELCOME.line,{ title:WELCOME.fallback }) }] }); }
+  return out; }
+
 /* build 66 (65.11): WHERE A REAL TAP ON A MUST-TAP BOX'S RING LANDS AND IS ANSWERED — a point on the screen, inside the ring, whose top element the box
    lets through; null when there is none (the ring is round something covered, off the screen or not the thing that answers), which is a soft lock */
 function tutAim(){ if(!shown()||!cur.s.tap) return null; const r=union([].concat(cur.s.el()||[]).filter(vis)); if(!r) return null;
   for(const fy of [.5,.3,.7,.15,.85]) for(const fx of [.5,.3,.7,.15,.85]){ const x=r.left+r.width*fx, y=r.top+r.height*fy; if(x<0||y<0||x>=innerWidth||y>=innerHeight) continue;
     const t=document.elementFromPoint(x,y); if(t&&lets(t)) return [Math.round(x),Math.round(y)]; } return null; }
 
-export { arm, busy as tutBusy, tutAim, tutDone, tutNow, tutorial };
+export { arm, busy as tutBusy, tutAim, tutDone, tutMap, tutNow, tutorial };

@@ -327,4 +327,18 @@ export async function run() {
       ? ok('items 20 / 21 both sections are in catalogue.template.html with their note boxes, and catalogue.mjs fills them from catalogue.ref.mjs - so every future npm run review carries them (#441)')
       : bad('items 20 / 21 the template and the generator', JSON.stringify({ tpl: /id="sounds"/.test(tpl45) && /id="rounds"/.test(tpl45), gen: /soundsRef/.test(gen45) }));
   }
+  /* build 66 (65.4): THE TUTORIALS SECTION, built by the same function npm run review uses (catalogue.ref.mjs tutorialsRef, off ui/tutorial.js tutMap):
+     every tutorial the game defines is there with its trigger, start and purpose, its per-box screens line up with its steps, every box has a screen
+     and a line, no line has a "{" left (every number filled from config), and the box ids are unique — the Tutorial Map's own ids */
+  rv66: {
+    if (!REVIEW) { noReview('65.4 the catalogue Tutorials section'); break rv66; }
+    const { tutorialsRef } = await import(pathToFileURL(path.join(REVIEW_DIR, 'scripts', 'catalogue.ref.mjs')).href);
+    await boot({});
+    const TU = await page.evaluate(tutorialsRef);
+    const ids = TU.map(t => t.id), keys = TU.flatMap(t => t.boxes.map(b => b.key)), want = ['first', 'over', 'welcome', 'about', 'prog', 'board', 'games', 'est', 'mini', 'mega'];
+    const off = TU.filter(t => !t.name || !t.trigger || !t.start || !t.why || t.at !== t.boxes.length || (t.id !== 'over' && t.steps !== t.boxes.length) || t.boxes.some(b => !b.screen || !b.text || /\{/.test(b.text)));
+    (want.every(i => ids.includes(i)) && !off.length && new Set(keys).size === keys.length && keys.includes('first-03') && TU.every(t => t.boxes.length))
+      ? ok(`65.4 the catalogue's Tutorials section is generated from ui/tutorial.js: ${TU.length} tutorials, ${keys.length} boxes (${TU.map(t => t.id + ' ' + t.boxes.length).join(', ')}), each with its trigger, start, purpose, screen, ring, tap and line, numbers filled from config`)
+      : bad('65.4 the Tutorials section', JSON.stringify({ ids, off: off.map(t => ({ id: t.id, at: t.at, steps: t.steps, n: t.boxes.length })) }));
+  }
 }
