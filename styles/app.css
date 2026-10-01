@@ -2323,6 +2323,10 @@
   #vplay.vlit .vframe{box-shadow:0 0 22px -2px color-mix(in srgb,var(--vg,#FFFFFF) 70%,transparent),0 0 60px -14px color-mix(in srgb,var(--vg,#FFFFFF) 55%,transparent)}
   /* build 68 (#496): A CHEST VIDEO'S FIRST VIEWING IS FULL SCREEN — the picture the phone's whole width, letterboxed top and bottom on black (contain,
      never crop), its chest's colour as the edge (67.27); the title and the foot line give the picture the room. A replay from About keeps the inset player */
+  /* build 68 (67.27): the frame IS the chest's colour now, not only its glow — the player, the thumbnail and the About row alike; the Author chest's
+     edge is black-and-white teeth */
+  .vframe,.mpframe,.msgframe{border-color:var(--vg,#FFFFFF)}
+  #vplay.vthorn .vframe,.vthorn .mpframe,.msgframe.vthorn{border:2px solid transparent;border-image:repeating-linear-gradient(45deg,#FFFFFF 0 3px,#000000 3px 6px) 2}
   #vplay.vfull{padding:0}
   #vplay.vfull .vback{background:#000}
   #vplay.vfull .vframe{width:100vw;border-radius:0;border-left:0;border-right:0;border-width:2px 0}
@@ -2585,7 +2589,8 @@
   @media (prefers-reduced-motion:reduce){.rcard>*,.rcard>*:not(.rtitle){animation:cfade var(--card-ms,240ms) ease-out both}
     .rcard .rtitle{animation:none;opacity:1}.rcard .rtitle .cl{animation:none;opacity:1}.rcard .rtitle .cshine{animation:none;display:none}.rconf{display:none}}
   /* item 4: AN UNWATCHED CLIP PULSES AND GLOWS, in the green every other "not seen yet" wears, until it is played. Placeholders and locked slots never do */
-  .msgrow.unwatched .msgframe{border-color:var(--ok);animation:msgpulse 1.8s ease-in-out infinite}
+  /* build 68 (67.27): the frame's own edge is its chest's colour now, watched or not; "not seen yet" is the green GLOW, which stays */
+  .msgrow.unwatched .msgframe{animation:msgpulse 1.8s ease-in-out infinite}
   .msgrow.unwatched .msgtxt small{color:var(--ok)}
   @keyframes msgpulse{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 14px 2px color-mix(in srgb,var(--ok) 55%,transparent)}}
   .msgrow.flash .msgframe{outline:2px solid var(--ink);outline-offset:2px}

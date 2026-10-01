@@ -40,6 +40,10 @@ export const CHESTS = [
 /* build 66 (65.14): WHAT THE FIGURE PRINTS IS COMPLETION, AND OPENING THE SKILL CHEST IS ITS LAST STEP. `before` is the most it reads before the
    Skill chest opens (the Skill band, modes and bars, scaled to it); opening the Skill chest is the other 5% and lands on exactly 100. The meter
    itself is untouched — three bands of 100 drive every chest, band and Testing switch — only the PRINTED figure changed */
+/* build 68 (67.27): EACH CHEST'S VIDEO WEARS THAT CHEST'S COLOUR on its frame — the player, its thumbnail, its row on About: Games white, Skill gold,
+   Pro the Pro key's light blue, Author the Author key's black-and-white thorns. `col` null takes the chest's own (ui/chest.js chestCol); `thorns`
+   draws the edge in black and white teeth */
+export const MSG_LOOK = { games: { col: '#FFFFFF' }, key: { col: null }, pro: { col: null }, thorns: { col: '#FFFFFF', thorns: 1 } };
 export const METER = { band: 100, modes: false, partial: false, freeStart: true, before: 95 };
 
 /* ---------- v23 (§L.8d / §L.8e, build 41): THE METER'S FOUR BANDS — presentation only (L10) ----------

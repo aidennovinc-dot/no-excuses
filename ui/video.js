@@ -31,7 +31,7 @@ import { $, T, esc } from "../core.js";
 import { emit } from "../core/events.js";
 import { prefs, save } from "../core/store.js";
 import { define } from "./actions.js";
-import { msgCol } from "./chest.js";
+import { msgCol, msgThorn } from "./chest.js";
 import { msgTitle } from "../progress/key.js";
 
 let host = null, vid = null, closing = 0, ids = [], onSeen = null;
@@ -90,7 +90,7 @@ function playVideo(m, o = {}) { if (!m || !m.file) return false;
   host._after = typeof o.after === 'function' ? o.after : null; host.classList.toggle('vfull', !!o.full);
   must = videoDue() === m.id; if (must) dueClear();
   host.hidden = false; host.classList.remove('voff', 'vlit'); host.classList.toggle('vmust', must); host.dataset.msg = m.id;
-  host.style.setProperty('--vg', msgCol(m) || '#FFFFFF');
+  host.style.setProperty('--vg', msgCol(m) || '#FFFFFF'); host.classList.toggle('vthorn', msgThorn(m));
   // build 68 (67.6): the player's title is the same two lines as the Welcome's card — the eyebrow, then the name in quotes
   host.querySelector('.vtitle').innerHTML = `<small class="weye">${esc(WELCOME.from)}</small><b class="wname">${esc(T(WELCOME.name, { title: msgTitle(m) }))}</b>`;
   host.querySelector('.vcc').textContent = '';

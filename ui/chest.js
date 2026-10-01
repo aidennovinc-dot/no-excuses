@@ -7,7 +7,7 @@
    band look (L.8d / L.8e) — the class and custom properties a figure wears for the band it is in. This is a module under ui/, not a
    screen, so the key screen and the map may both import it (A4). Presentation only (L10). */
 import { HIDE_UNRECORDED } from "../config/build.js";
-import { CHEST_LOOK, GAUNTLETS, METER_BANDS, SPILL, SYMBOLS } from "../config/chests.js";
+import { CHEST_LOOK, GAUNTLETS, METER_BANDS, MSG_LOOK, SPILL, SYMBOLS } from "../config/chests.js";
 import { CHEST_WORDS, GAUNTLET, GRID, MSG, REWARD_KIND } from "../config/copy.js";
 import { KEYS, KEY_ART } from "../config/keys.js";
 import { MESSAGES } from "../config/messages.js";
@@ -44,7 +44,9 @@ const msgOfChest = id => MESSAGES.find(m => m.by && m.by.chest === id) || null;
    so nothing is written twice: a chest slot takes that chest's colour, a GAUNTLET slot takes the colour of the chest the Gauntlet came out of (the
    chest is what put it on the map), and a slot with no chest behind it at all — Welcome, and the support thank-you — glows white, the frame's own
    colour, because there is no chest to borrow from. It lives here because chestCol() does, and ui/video.js is a module under ui/ like this one. */
-const msgCol = m => { const b = (m && m.by) || {}; if (b.chest) return chestCol(b.chest);
+// build 68 (67.27): a chest's video takes MSG_LOOK's colour first — the Games chest's is white, not its grey; `msgThorn` is the Author chest's teeth
+const msgThorn = m => !!(m && m.by && m.by.chest && (MSG_LOOK[m.by.chest] || {}).thorns);
+const msgCol = m => { const b = (m && m.by) || {}; if (b.chest) return (MSG_LOOK[b.chest] || {}).col || chestCol(b.chest);
   if (b.gauntlet) { const g = GAUNTLETS.find(x => x.id === b.gauntlet); return g ? chestCol(g.chest) : ''; }
   return ''; };
 /* v30 (59.3, build 59): A VIDEO'S NAME WEARS QUOTATION MARKS WHEREVER IT LABELS SOMETHING. On the Games chest's opened screen the third
@@ -108,7 +110,7 @@ function burstHtml(id) { const n = SPILL.particles;
 function msgPreview(m, o = {}) { if (!m) return '';
   const col = msgCol(m) || '', has = !!m.file && !o.soon;
   // build 68 (67.6b): every frame is 16:9 — the row's own shape is no longer read
-  return `<span class="mprev${o.big ? ' big' : ''}${has ? ' has' : ''}" style="${col ? `--vg:${col};` : ''}">`
+  return `<span class="mprev${o.big ? ' big' : ''}${has ? ' has' : ''}${msgThorn(m) ? ' vthorn' : ''}" style="${col ? `--vg:${col};` : ''}">`
     + `<span class="mpframe"><span class="mppic">${has ? '<i class="mpplay"></i>' : `<i class="mpsoon">${esc(o.soon || MSG.soon)}</i>`}</span></span>`
     + (o.title === false ? '' : `<b class="mptitle">${esc(quoted(msgTitle(m)))}</b>`) + '</span>'; }
 
@@ -125,4 +127,4 @@ function meterLook(el, v, vars) { if (!el) return; const { i, k } = meterBand(v)
   el.style.setProperty('--shp', String(B.shake && B.shake[1] ? (k < .5 ? B.shake[0] : B.shake[1]) : 0)); }
 
 export { kindOf };
-export { burstHtml, chestSvg, giftsOf, meterLook, msgCol, msgOfChest, msgPreview, spillVars, symSvg, wordsHtml };
+export { burstHtml, chestSvg, giftsOf, meterLook, msgCol, msgOfChest, msgPreview, msgThorn, spillVars, symSvg, wordsHtml };

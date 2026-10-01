@@ -141,4 +141,18 @@ export async function run() {
       : bad('#496 / 67.28 the chest videos', JSON.stringify({ v28, kind: [kind.gauntlet, kind.gauntlet2] }));
     globalThis.__v28 = v28;
   }
+  /* build 68 (67.27): EACH CHEST'S VIDEO WEARS THAT CHEST'S COLOUR — on the player's frame (read off the four first viewings above) and on its row's frame
+     on About: Games white, Skill gold, Pro the Pro key's light blue, Author the Author key's black-and-white teeth */
+  {
+    const want = await page.evaluate(async () => { const C = await import('./ui/chest.js'), p = c => { const e = document.createElement('i'); e.style.color = c; document.body.appendChild(e); const v = getComputedStyle(e).color; e.remove(); return v; };
+      return { games: p('#FFFFFF'), key: p(C.chestCol('key')), pro: p(C.chestCol('pro')) }; });
+    await boot({ allOpen: true });
+    const rows = await page.evaluate(async () => { (await import('./ui/router.js')).show('s-about'); await new Promise(r => setTimeout(r, 500));
+      return Object.fromEntries(['games', 'skill', 'pro', 'author'].map(id => { const f = document.querySelector(`#msglist .msgrow[data-msg="${id}"] .msgframe`); return [id, f ? { col: getComputedStyle(f).borderTopColor, thorn: f.classList.contains('vthorn') } : null]; })); });
+    const v = Object.fromEntries((globalThis.__v28 || []).map(o => [o.chest, o]));
+    (v.games && v.games.edge === want.games && v.key && v.key.edge === want.key && v.pro && v.pro.edge === want.pro && v.thorns && v.thorns.thorn
+      && rows.games && rows.games.col === want.games && rows.skill.col === want.key && rows.pro.col === want.pro && rows.author.thorn)
+      ? ok(`67.27 each chest's video wears its chest's colour, in the player and on its About row: Games ${want.games}, Skill ${want.key}, Pro ${want.pro}, Author black-and-white teeth`)
+      : bad('67.27 the chest video colours', JSON.stringify({ want, v: (globalThis.__v28 || []).map(o => [o.chest, o.edge, o.thorn]), rows }));
+  }
 }
