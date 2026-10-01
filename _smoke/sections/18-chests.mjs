@@ -6,7 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { own, GAMES, fail, sleep, names, close, part, section, check, ok, bad, finished, root, read, PLAIN, boot, NOW, GAUNT_ALL, at, browser, page, until, onScreen, click, down, up, stepQuickTap, revealReady, revealDone, readySeen, finish, FROM, named } from '../lib/gate.mjs';
+import { own, GAMES, fail, sleep, names, close, part, section, check, ok, bad, finished, root, read, PLAIN, boot, NOW, GAUNT_ALL, at, browser, page, until, onScreen, click, down, up, stepQuickTap, revealReady, revealDone, driveToResult, readySeen, finish, FROM, named } from '../lib/gate.mjs';
 
 export const SECTION = ["chests"];
 
@@ -790,6 +790,27 @@ export async function run() {
       && !wc60.fx.empty && !wc60.fx.clash && wc60.fx.notes >= 3)
       ? ok(`60.33 the Welcome message gets a moment of its own - nothing at all before the first Quick Tap run opens the slot, then a full-screen ceremony carrying the player's own television intro (${wc60.up.steps.join(', ')}) and a card ("${wc60.up.label}" - "${wc60.up.title}", ${wc60.up.buttons.join(', ')}); PLAY hands the clip to the shared player, LATER closes it and leaves the Messages row green because the clip is still unwatched, it refuses while a run is live and spends nothing doing so, it fires exactly ONCE per save, and its ${wc60.fx.notes}-note sound is neither the unlock's, the achievement click nor a chest's`)
       : bad('60.33 the Welcome ceremony', JSON.stringify(wc60)); }
+  /* build 66 (65.2): A MISSED WELCOME NEVER LOCKS ABOUT FOR GOOD. Aiden's v0.65: Dots open, a Dots run done, About still struck through — the Welcome
+     had never played. A real Quick Tap Marathon opens Dots, and its result screen is left the moment it shows (Back). The ceremony did not play on
+     the way out; it plays at the next calm moment — the main menu — and the clip it plays opens About */
+  {
+    await boot({ menuUnl: {}, tuts: {}, welcomeSeen: 0 }, { unlock: { 'quick-tap:two:15': 1, 'quick-tap:two:30': 1 } });
+    await page.evaluate(async () => (await import('./run/run.js')).goWhere({ g: 'quick-tap', d: 'two', s: 30 }));
+    await driveToResult('quick-tap', '65.2 a Quick Tap Marathon that opens Dots');
+    const left = await page.evaluate(() => { const on = document.querySelector('.screen.on')?.id; document.getElementById('over-back').click(); return on; });
+    await sleep(7000);
+    const away = await page.evaluate(async () => { const S = await import('./core/store.js'), w = document.getElementById('welcome');
+      return { dots: !!S.store.unlock['dots:blind'], seen: !!S.prefs.welcomeSeen, up: !!w && !w.hidden, on: document.querySelector('.screen.on')?.id }; });
+    await page.evaluate(async () => (await import('./ui/router.js')).show('s-menu'));
+    let w65 = false; for (let i = 0; i < 60 && !(w65 = await page.evaluate(() => { const w = document.getElementById('welcome'); return !!w && !w.hidden; })); i++) await sleep(100);
+    await page.evaluate(() => document.querySelector('#welcome [data-act="wplay"]')?.click()); await sleep(600);
+    await page.evaluate(async () => (await import('./ui/video.js')).closeVideo()); await sleep(1200);
+    const after = await page.evaluate(async () => ({ about: (await import('./progress/menu.js')).menuOpen('s-about'), on: document.querySelector('.screen.on')?.id,
+      dim: document.querySelector('#s-menu .item[data-go="s-about"]').classList.contains('dim') }));
+    (left === 's-over' && away.dots && !away.seen && !away.up && w65 && after.about && !after.dim && after.on === 's-menu')
+      ? ok('65.2 a Welcome missed by leaving the result at once (the screen change cleared its timer) plays on the next arrival at the main menu, and its clip opens About')
+      : bad('65.2 the missed Welcome', JSON.stringify({ left, away, w65, after }));
+  }
   /* build 62 (61.23): EVERY CONGRATULATIONS BOX FITS WITHOUT SCROLLING, AND A TAP OUTSIDE IT CLOSES IT. The Pro chest's card was 3px taller than
      the phone at 390, so it scrolled; now the picture gives more before the box ever would. Driven for all three key chests: opened from
      Testing, tapped through to the card, measured, then closed by a REAL tap on the dim ground above it */

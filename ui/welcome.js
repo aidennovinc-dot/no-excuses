@@ -24,12 +24,14 @@ import { Snd } from "../audio.js";
 import { MESSAGES, PLAYER } from "../config/messages.js";
 import { WELCOME } from "../config/copy.js";
 import { $, T, esc, marks } from "../core.js";
-import { emit } from "../core/events.js";
+import { emit, on } from "../core/events.js";
 import { prefs, save } from "../core/store.js";
 import { msgOpen, msgTitle } from "../progress/key.js";
 import { define } from "./actions.js";
 import { playVideo } from "./video.js";
 import { msgPreview } from "./chest.js";
+import { toastBusy } from "./toast.js";
+import { tutNow } from "./tutorial.js";
 
 let host = null, ts = [];
 const clearT = () => { ts.forEach(clearTimeout); ts = []; };
@@ -83,6 +85,17 @@ function welcomeCheck(live) {
   prefs.welcomeSeen = 1; save();
   return playWelcome();
 }
+
+/* build 66 (65.2): A WELCOME THAT DID NOT PLAY PLAYS AT THE NEXT CALM MOMENT. The result screen asks for it on a timer once its toasts are done, and that
+   timer dies with the screen (ui/screens/result.js clears its timers on any screen change) — so a player who left the result at once never got it, and
+   About, which the clip opens, stayed shut for good (Aiden's v0.65; reproduced in the gate). The next result asks again the same way; and now the main
+   menu asks too, once nothing else is on it — no toast, no tutorial box, not the title */
+let calm = 0;
+const stopCalm = () => { clearInterval(calm); calm = 0; };
+on('screen:change', ({ id }) => { stopCalm(); if (id !== 's-menu' || prefs.welcomeSeen) return;
+  calm = setInterval(() => { const m = $('#s-menu'); if (!m.classList.contains('on') || prefs.welcomeSeen) return stopCalm();
+    if (m.classList.contains('story') || toastBusy() || (tutNow() || {}).shown) return;
+    stopCalm(); welcomeCheck(false); }, 700); });
 
 define({
   // build 62 (61.21): LATER is the only way out — the ground round the card no longer closes it
