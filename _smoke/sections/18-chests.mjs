@@ -827,6 +827,11 @@ export async function run() {
       ? ok(`65.15 every reward any chest holds says its kind under its name (${[...new Set(all.map(g => g.kind))].join(' ')}) on the chest's screen and beside the chest on the map — "${lantern.w}" reads ${lantern.kind}`)
       : bad('65.15 the reward kinds', JSON.stringify(K15));
   }
+  // build 66 (65.17): no chest promises a reward it does not give — not one chest word is a `tba` placeholder (the Pro chest's "COSMETIC SET" is out)
+  {
+    const tba = await page.evaluate(async () => Object.entries((await import('./config/copy.js')).CHEST_WORDS).flatMap(([c, ws]) => ws.filter(w => w.tba).map(w => c + ':' + w.w)));
+    (!tba.length) ? ok('65.17 no chest word is a placeholder: the Pro chest gives its key, Gauntlet Mega, Circuit Sky and its video, and nothing dimmed') : bad('65.17 a chest promises a placeholder', tba.join(', '));
+  }
   /* build 66 (65.2): A MISSED WELCOME NEVER LOCKS ABOUT FOR GOOD. Aiden's v0.65: Dots open, a Dots run done, About still struck through — the Welcome
      had never played. A real Quick Tap Marathon opens Dots, and its result screen is left the moment it shows (Back). The ceremony did not play on
      the way out; it plays at the next calm moment — the main menu — and the clip it plays opens About */

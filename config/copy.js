@@ -234,7 +234,10 @@ export const CHEST_WORDS = {
   // build 65 (64.15): and one background, Snow, so the Games chest tutorial always has something to pick
   games:[{ w:'CUSTOMISE', sym:'palette', to:'s-custom' }, { w:'SKILL KEY', sym:'key', to:'key:0' }, { w:'SNOW SKY', sym:'bg-snow', to:'s-custom' }],
   key:[{ gaunt:'g1', sym:'gauntlet', to:'tile:g1' }, { w:'PRO KEY', sym:'keypro', to:'key:1' }, { w:'LANTERN SKY', sym:'bg-lantern', to:'s-custom' }],
-  pro:[{ w:'AUTHOR KEY', sym:'keyauthor', to:'key:2' }, { gaunt:'g2', sym:'gauntlet2', to:'tile:g2' }, { w:'COSMETIC SET', sym:'cosmetic', tba:1, to:'soon' }, { w:'CIRCUIT SKY', sym:'bg-circuit', to:'s-custom' }],
+  /* build 66 (65.17): the Pro chest's "COSMETIC SET" is out — a `tba` placeholder from 2026-09-10 that drew dimmed and gave nothing ("what does
+     cosmetic set here mean?"). It comes back as "CIRCUIT SET" (the Circuit track, a tap sound and a Circuit-blue colour for every game) once that
+     is built; until then the chest promises nothing it does not give */
+  pro:[{ w:'AUTHOR KEY', sym:'keyauthor', to:'key:2' }, { gaunt:'g2', sym:'gauntlet2', to:'tile:g2' }, { w:'CIRCUIT SKY', sym:'bg-circuit', to:'s-custom' }],
   thorns:[{ w:'THORN SKY', sym:'bg-thorn', to:'s-custom' }] };
 /* v26 (item 13, build 49): the two Gauntlet tiles and their placeholder screen — a title, "Coming soon" and Back, nothing else, because what a Gauntlet
    is gets designed separately. `need` is what a locked tile says, and its tap (guess on the words) */
