@@ -113,10 +113,18 @@ export async function run() {
         if (!good) off.push(`${r.key} ${t}=${v}`); } }
     // and the desk's own cells, in the real file: harder tier over tier, marked by:'desk', conf 'low', saying they are not Aiden's
     const deskOff = []; for (const r of rows38) { const o = r.obj; for (const [t, below] of [['pro', o.bar], ['author', o.pro]]) { const mk = (o.placeholder || {})[t]; if (!mk) continue;
-      if (!(mk.by === 'desk' && mk.conf === 'low' && mk.v === o[t] && /^PROPOSED on the Key Unlocks Desk/.test(mk.basis) && /Not Aiden’s number/.test(mk.basis) && (o.dir === 'lower' ? o[t] < below : o[t] > below))) deskOff.push(`${r.key} ${t}`); } }
+      // AMENDED at build 68 (67.11): a Cowork GUESS is marked by:'cowork' / conf 'guess' and names its evidence — kept by the generator like a desk cell
+      const desk = mk.by === 'desk' && mk.conf === 'low' && /^PROPOSED on the Key Unlocks Desk/.test(mk.basis) && /Not Aiden’s number/.test(mk.basis);
+      const guess = mk.by === 'cowork' && mk.conf === 'guess' && /^Cowork \d{4}-\d\d-\d\d from /.test(mk.basis);
+      if (!((desk || guess) && mk.v === o[t] && (o.dir === 'lower' ? o[t] < below : o[t] > below))) deskOff.push(`${r.key} ${t}`); } }
     (!off.length && !deskOff.length && emptied !== bars38)
       ? ok(`#426 / v24 §E the generator's scheme still holds where it is allowed to write (the desk cells emptied on a copy): × 1.15 / × 1.30 on a floor, × 0.80 / × 0.65 on a ceiling, the row's own precision, each tier strictly harder, none past its floor - and all 48 desk cells in the real file are marked by:'desk', harder than the tier below, saying they are not Aiden's`)
       : bad('#426 the scheme', JSON.stringify({ off, deskOff }));
+    // build 68 (67.11): the Grow Set's Pro and Author are Cowork's guesses from Aiden's first evening — 13% and 6% off, each marked 'guess'; Skill stays his 30
+    { const KB68 = (await import(pathToFileURL(path.join(root, 'config', 'key-bars.js')).href)).KEY_BARS['hold:grow:7'], P68 = KB68.placeholder || {};
+      (KB68.bar === 30 && KB68.pro === 13 && KB68.author === 6 && P68.pro && P68.pro.conf === 'guess' && P68.author && P68.author.conf === 'guess' && /5\.93% run/.test(P68.author.basis) && /end-of-game playthrough/.test(P68.author.basis))
+        ? ok(`67.11 the Grow Set's placeholders are Pro ${KB68.pro} and Author ${KB68.author}% off, both conf 'guess' with Cowork's basis; Skill stays Aiden's ${KB68.bar}`)
+        : bad('67.11 the Grow Set placeholders', JSON.stringify(KB68)); }
     /* NEVER OVERWRITE A NUMBER A PERSON ENTERED. Two cells hand-set to odd values - one through --set, which drops its marker,
        one typed over a placeholder with its now-stale marker left behind - then the generator runs over the table twice */
     let hand = P38.setCell(bars38, 'qt-two-5', 'pro', 13.37);

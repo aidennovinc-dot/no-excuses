@@ -132,7 +132,8 @@ export async function run() {
        es-cut-streak at 25) were a copy of the data, so porting his twelve Author numbers broke them — and a row whose last marker --set drops
        loses `placeholder` altogether. The shape is unchanged: every row has pro and author; a marked cell is a desk proposal whose marker
        still matches its number; an unmarked one is his. */
-    const cell32 = (r, t) => { const m = r.placeholder && r.placeholder[t]; return !m || (m.v === r[t] && m.by === 'desk'); };
+    // AMENDED at build 68 (67.11): a marked cell may also be a Cowork GUESS (by:'cowork', conf 'guess'), still matching its number
+    const cell32 = (r, t) => { const m = r.placeholder && r.placeholder[t]; return !m || (m.v === r[t] && (m.by === 'desk' || (m.by === 'cowork' && m.conf === 'guess'))); };
     const mine32 = t => rows.filter(r => !(r.placeholder && r.placeholder[t])).length;
     (rows.every(r => typeof r.pro === 'number' && typeof r.author === 'number' && r.conf === 'set' && cell32(r, 'pro') && cell32(r, 'author'))
       && KY32.KEYS.every(k => !('shell' in k)))
