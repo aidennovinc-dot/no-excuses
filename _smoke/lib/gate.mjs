@@ -248,10 +248,16 @@ export const revealOne = async () => { const st = await revealReady(); if (st ==
 /* build 66 (65.18): continuing a chest's card leaves its video OWED — the next tap anywhere plays it, to the end. A check that is about something
    else settles it here (unwatched, as the player who has not yet tapped); `{ owed: true }` leaves it owed for the checks that are about it */
 export const settleOwed = () => page.evaluate(async () => { const S = await import('./core/store.js'); if (S.prefs.mustWatch) { S.prefs.mustWatch = ''; S.save(); } });
-export const revealDone = async ({ owed = false } = {}) => { let any = false;
+/* build 68 (67.28): a chest's video comes straight after its card — a first viewing must be watched — and the map only after it. pastVideo() plays a
+   video that is up to its end; revealDone() does it too unless a check asks to see the video itself ({ video: true }, or { owed: true }, which leaves
+   an owed video for the check to drive) */
+export const pastVideo = async () => { const up = await page.evaluate(() => { const v = document.getElementById('vplay'); return !!v && !v.hidden; });
+  if (up) { await page.evaluate(() => { const v = document.querySelector('#vplay video'); if (v) v.dispatchEvent(new Event('ended')); }); await sleep(1600); } return up; };
+export const revealDone = async ({ owed = false, video = false } = {}) => { let any = false;
   for (let i = 0; i < 4; i++) { const on = await page.evaluate(() => !document.getElementById('key-cere').hidden);
     if (!on) break; if (!(await revealOne())) break; any = true; await sleep(450); }
   if (!owed) await settleOwed();
+  if (!video && !owed) await pastVideo();
   return any; };
 export const skipAd = () => page.evaluate(() => { const a = document.getElementById('adbreak'), b = document.getElementById('adskip'); if (a.classList.contains('on') && !b.disabled) { b.click(); return true; } return false; });
 

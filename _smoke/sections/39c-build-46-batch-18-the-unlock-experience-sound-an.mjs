@@ -96,7 +96,9 @@ export async function run() {
     const map = await page.evaluate(() => Object.fromEntries(['games', 'key', 'pro', 'thorns'].map(id => { const w = document.querySelector(`.chestwords[data-for="${id}"]`);
       return [id, [...w.querySelectorAll('.cw')].map(x => ({ w: x.dataset.w, sym: (x.querySelector('.sym') || {}).dataset && x.querySelector('.sym').dataset.sym, fits: (() => { const t = x.querySelector('.cwt'), b = x.getBoundingClientRect(); return t.scrollWidth <= t.clientWidth + 1 && b.right <= innerWidth; })() }))]; })));
     // AMENDED at build 49 (v26 item 5): each chest's list ends on its About video
-    const wantSym = Object.fromEntries(Object.keys(map).map(id => [id, (CP46.CHEST_WORDS[id] || []).map(x => x.sym).concat('video')]));
+    // AMENDED at build 68 (67.32): a chest whose key has a track names it, with the music symbol, before the video
+    const KY68 = await import(pathToFileURL(path.join(root, 'config', 'keys.js')).href), mus68 = id => KY68.KEYS.some(k => k.music === id && k.theme) ? ['music'] : [];
+    const wantSym = Object.fromEntries(Object.keys(map).map(id => [id, (CP46.CHEST_WORDS[id] || []).map(x => x.sym).concat(mus68(id), 'video')]));
     const bad7 = Object.keys(map).filter(id => map[id].map(x => x.sym).join() !== wantSym[id].join() || map[id].some(x => !x.sym || !x.fits) || !map[id].length);
     // and it is the SAME symbol the chest pops out — one drawer, one list, so they cannot drift (ui/chest.js symSvg / giftsOf)
     const one = /function symSvg/.test(strip(read('ui', 'chest.js'))) && !/SYMBOLS\[/.test(strip(read('ui', 'reveal.js')) + strip(read('ui', 'screens', 'pick.js')));

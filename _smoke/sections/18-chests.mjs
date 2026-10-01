@@ -118,7 +118,7 @@ export async function run() {
   const k48 = await page.evaluate(() => Object.assign({}, window.__k48, { prompt: document.getElementById('key-hint').classList.contains('kprompt'), lock: document.getElementById('s-key').classList.contains('auto') }));
   const p3 = await page.evaluate(() => window.__k48.p3 || {});
   const ask2 = await page.evaluate(() => document.getElementById('key-ask').hidden);
-  await revealDone(); await sleep(500);
+  await revealDone({ video: true }); await sleep(500);
   /* build 68 (67.28): the Skill chest's video comes straight after its card, over the Keys screen, and the run's result comes only once it is
      closed — so the video is up here, and closing it is what goes back */
   const vid28 = await page.evaluate(() => { const v = document.getElementById('vplay'); return !!v && !v.hidden; });

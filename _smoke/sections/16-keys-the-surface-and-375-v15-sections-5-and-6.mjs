@@ -386,7 +386,7 @@ export async function run() {
        prompt and no ask; tapped through, it lands on the map */
     let open48 = null; for (let i = 0; i < 90; i++) { await sleep(200); open48 = await page.evaluate(() => ({ ask: !document.getElementById('key-ask').hidden, playing: !document.getElementById('key-cere').hidden, kind: document.getElementById('key-cere').dataset.kind, chest: document.getElementById('key-cere').dataset.rev, prompt: document.getElementById('key-hint').classList.contains('kprompt') })); if (open48.kind === 'chest') break; }
     const after48 = { hint: '', vis: 'visible', tapLine: 0 }, ask48 = { ask: true, playing: false, txt: '' };
-    await revealDone(); await sleep(400);
+    await revealDone({ video: true }); await sleep(400);
     // AMENDED at build 68 (67.28): the chest's video comes straight after its card (a first viewing must be watched), and the map after the video
     const vid48 = await page.evaluate(() => { const v = document.getElementById('vplay'); return !!v && !v.hidden; });
     if (vid48) { await page.evaluate(() => { const v = document.querySelector('#vplay video'); if (v) v.dispatchEvent(new Event('ended')); }); await sleep(1600); }

@@ -39,7 +39,8 @@ export async function run() {
        and B.31 stand for is unchanged — ONE menu item, one screen file, and the chain's tab first (2.2) — and that is what is asserted; the
        list of tab ids is read off config/chests.js so it cannot be a second copy of the chest order. */
     const { CHESTS: CH58 } = await import(pathToFileURL(path.join(root, 'config', 'chests.js')).href);
-    const wantTabs58 = CH58.map(c => 'c-' + c.id).concat(['cul', 'ach']).join();
+    // AMENDED at build 68 (67.38): a seventh tab, Excuses
+    const wantTabs58 = CH58.map(c => 'c-' + c.id).concat(['cul', 'ach', 'exc']).join();
     (m.prog && !m.old && m.custom && m.items.includes('Progress') && !m.items.includes('Unlocks') && !m.items.includes('Achievements') && m.items.includes('Customise') && m.tabs.join() === wantTabs58)
       ? ok(`B.21 / B.31 one menu item - ${m.items.join(' · ')} - with tabs ${m.tabs.join(' / ')}, the Games chest first (2.2)`)
       : bad('B.21 / B.31 Unlocks, Customise and Achievements are one item with one tab per chest', JSON.stringify({ m, wantTabs58 }));

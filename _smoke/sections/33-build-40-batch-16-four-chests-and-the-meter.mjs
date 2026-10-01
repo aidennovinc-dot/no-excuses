@@ -173,11 +173,14 @@ export async function run() {
       ? ok('L.8b REVERSED at build 46 (v25 items 11 / 22), AMENDED at build 48 (v26 items 10 / 11): a live clear that makes key 1 whole interrupts the result and plays key 1\'s FIRST-OPEN REVEAL after the segment, to its end and by itself - no "tap to continue", no card - and the key then says "tap the key to open the Skill chest" instead of handing the result back on a timer. No chest opens by itself; the Skill chest stays READY for its key to be tapped')
       : bad('items 11 / 22 the interlude plays the reveal and holds', JSON.stringify(il));
     // AMENDED at build 48 (v26 item 11): with no card, what hands the result back is the player - Back from the waiting key (or the Skill chest's own card)
-    await sleep(600); await page.evaluate(async () => { const R = await import('./ui/router.js'); R.back(); }); await sleep(900);
+    /* AMENDED at build 68 (67.31, L13): the key no longer waits for a tap — EARN_NEXT.hold after its motion its chest opens by itself (ceremony,
+       card, video) and that card hands the result screen back. So the chest is OPEN here, and what is checked is that the result returns, untapped */
+    await sleep(600); const opened46 = await page.evaluate(() => JSON.parse(localStorage.getItem('ne')).prefs.chests.key);
+    await revealDone(); await sleep(900);
     const back46 = await onScreen();
-    (back46 === 's-over')
-      ? ok('items 11 / 22 and the player hands the result screen back - Back from the key waiting to be tapped (v26 item 11), never a timer (build 41\'s lesson, one moment further on)')
-      : bad('items 11 / 22 the reveal hands the result back', back46);
+    (back46 === 's-over' && opened46 === 1)
+      ? ok('items 11 / 22 / L13 the reveal hands the result back with no tap: the Skill chest opens by itself after the key, its card and video play, and the result screen comes back')
+      : bad('items 11 / 22 the reveal hands the result back', JSON.stringify({ back46, opened46 }));
   }
 
   /* ---- 6. L.11a: Customise locked until the Games chest - crossed out, "open the Games chest", defaults applied, choices kept; green until first opened ---- */
