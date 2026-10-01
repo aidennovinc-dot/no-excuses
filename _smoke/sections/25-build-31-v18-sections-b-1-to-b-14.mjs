@@ -149,11 +149,9 @@ export async function run() {
     (G31.CFG.hold === 800 && held31.length === 2 && held31.every(ms => ms === G31.CFG.hold))
       ? ok(`B.3c / B.7 the round's figure holds ${G31.CFG.hold}ms before it drains — one number, Timing and Reaction on the same beat, each driven through its own add-up (${held31.join('ms, ')}ms)`)
       : bad('B.3c / B.7 the hold before the drain', JSON.stringify({ hold: G31.CFG.hold, held31 }));
-    // B.3d / B.13: every Streak says what it is spending and what the budget is, and the Stopwatch score is the spend
-    (/spentOf:'\{tot\} \/ \{bud\}s'/.test(read('config', 'copy.js'))
-      && /streakScore\(\)\{ return this\.hid\(\)\?String\(this\.errs\.length\):this\.spentLine\(\); \}/.test(tm31))
-      ? ok('B.3d the Stopwatch Streak’s big number is the time spent out of the budget, not the round "attempt N" already names')
-      : bad('B.3d the Streak score is the spend');
+    /* B.3d / B.13 DELETED at build 68 (67.16): a source-text check that the Stopwatch Streak's big number was the spend. 67.16 reverses it — the spend is
+       the labelled allowance bar and the big number is the score — and 15b's 67.16 check drives the header itself (CLAUDE.md: an old source-text check
+       that fails on a refactor is deleted, not re-spelled) */
   }
 
   /* ---- B.4 / B.5: Hidden in milliseconds, and the Streak’s variation ---- */

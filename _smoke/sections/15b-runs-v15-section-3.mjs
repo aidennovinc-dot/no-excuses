@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { own, PICK, sleep, names, close, part, check, ok, bad, finished, read, boot, at, page, until, click, down, up, driveToResult, openSheet } from '../lib/gate.mjs';
+import { own, PICK, sleep, names, close, part, check, ok, bad, finished, read, boot, at, page, until, click, down, up, driveToResult, openSheet, poke } from '../lib/gate.mjs';
 
 export const SECTION = ["the runs (v15 section 3)"];
 
@@ -376,4 +376,39 @@ export async function run() {
      "attempt 1" broken across two, "BEST 831MS" touching the big number. All four are one fault — a badge absolutely positioned
      over a single row of mode | score | count. The header is four rows in flow now. The assertion is geometric and is made at the
      three widths the item names: every row's box against every other, with mode-and-count the one pair allowed to share a line. */
+
+  /* build 68 (67.16 / 67.17): THE TOP OF A RUN, CLEANED. Aiden's Stopwatch Streak and Flash Set screenshots: two goal lines printed over each other into
+     Restart, "attempt 1", the allowance as the biggest unlabelled number, "413" with no unit and "AVERAGE 413 MS" under every tap. Now: ✕ alone on the top
+     row; under it ONE goal line, "Round 1 of 6 → unlocks Reaction · Flash" with a pip per round; the allowance a labelled bar; the big number the score;
+     "Round", never "attempt"; a Flash Set's top "AVG … ms", the verdict under each tap's number and no average line under it */
+  {
+    const U = await page.evaluate(async () => (await import('./config/unlocks.js')).UNLOCKS.map(u => u.key).filter(k => !/^reaction:(flash|nogo)$|^spot:/.test(k)));
+    await boot({ tuts: { next: 'done' } }, { unlock: Object.fromEntries(U.map(k => [k, 1])), intro: { timing: 1, 'timing:stopwatch': 1, reaction: 1, 'reaction:flash': 1 } });
+    const startRun = (g, d, s) => page.evaluate(async ([g, d, s]) => { const S = await import('./core/state.js'), RN = await import('./run/run.js'); S.sel.game = g; S.sel.diff = d; S.sel.secs = s; S.sel.vs = 0; S.sel.practice = 0; RN.start(); }, [g, d, s]);
+    await startRun('timing', 'stopwatch', -1);
+    for (let i = 0; i < 100 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) await sleep(100);
+    const sw = await page.evaluate(async () => { const q = id => document.getElementById(id), r = id => q(id).getBoundingClientRect(), C = (await import('./config/copy.js'));
+      const top = [...document.querySelectorAll('#game button, #game [data-act]')].filter(e => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden' && e.getBoundingClientRect().top < r('quit').bottom && e.id !== 'quit').map(e => e.id || e.className);
+      return { goal: q('goal').textContent.trim(), lines: q('goal').querySelectorAll(':scope > i, :scope > u').length, pips: q('goal').querySelectorAll('.gpips i').length, below: r('goal').top >= r('quit').bottom - 1,
+        allow: q('hallow').hidden ? null : q('hallow').querySelector('span').textContent, score: q('score').textContent.trim(), round: q('hud-time').textContent.trim(), restart: !!q('restart'), top,
+        modeUnder: r('hud-mode').top >= r('hallow').bottom - 1, want: C.HUD.roundOf.replace('{n}', 1).replace('{s}', 6), att: /attempt/i.test(document.getElementById('top').textContent) }; });
+    await page.evaluate(async () => (await import('./run/run.js')).abort(true)); await sleep(300);
+    await startRun('reaction', 'flash', 5);
+    for (let i = 0; i < 100 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) await sleep(100);
+    const rx0 = await page.evaluate(() => ({ score: document.getElementById('score').textContent.trim(), round: document.getElementById('hud-time').textContent.trim() }));
+    // one real tap ON the flash, made in the page the frame it lights — a driver round trip can miss a flash on the test clock
+    await page.evaluate(async () => { const w = ms => new Promise(r => setTimeout(r, ms)); for (let i = 0; i < 800 && !document.querySelector('#rxpane.lit'); i++) await w(10); await w(220);
+      const g = document.getElementById('gen'), r = g.getBoundingClientRect(); g.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1 })); });
+    await sleep(900);
+    const rx1 = await page.evaluate(() => { const m = document.querySelector('#rxpane .rxmsg'), kids = m ? [...m.children].map(c => c.tagName + (c.className ? '.' + c.className : '')) : [];
+      return { kids, tot: !!document.getElementById('rxtot'), score: document.getElementById('score').textContent.trim(), text: m ? m.textContent : '' }; });
+    await page.evaluate(async () => (await import('./run/run.js')).abort(true)); await sleep(300);
+    const C17 = await page.evaluate(async () => (await import('./config/copy.js')).REACTION);
+    const okSw = sw.goal.startsWith(sw.want) && /→ unlocks Reaction · Flash/.test(sw.goal) && sw.lines === 1 && sw.pips === 6 && sw.below && /^allowance \d+\.\d\d \/ 5\.00s$/i.test(sw.allow || '') && /^\d+$/.test(sw.score)
+      && sw.round === 'Round 1' && !sw.restart && !sw.top.length && sw.modeUnder && !sw.att;
+    const okRx = rx0.score === C17.avgTop.replace('{n}', '—') && rx0.round === C17.hudSet.replace('{n}', 1).replace('{s}', 5) && rx1.kids[0] && rx1.kids[0].startsWith('B') && rx1.kids.some(k => /rxword/.test(k)) && !rx1.tot && /^AVG \d+ ms$/.test(rx1.score);
+    (okSw && okRx)
+      ? ok(`67.16 / 67.17 the top of a run: ✕ alone on its row; under it one goal line "${sw.goal}" with ${sw.pips} pips; "${sw.allow}" a labelled bar; the big number the score (${sw.score}); "${sw.round}" — and a Flash Set reads "${rx0.score}" then "${rx1.score}", "${rx0.round}", the verdict under each tap's number, no average line under it`)
+      : bad('67.16 / 67.17 the run header', JSON.stringify({ sw, rx0, rx1 }));
+  }
 }

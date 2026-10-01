@@ -78,15 +78,16 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
        its NAME in place of quick / good / slow, which were their own 200 / 300ms steps (234ms read GOOD in grey beside a green Great! figure).
        "too early" and "no tap" keep their words: they say what happened, and the number still wears the tier */
     const t=roundShow(this.ctx.audio,'reaction:flash',ms,this.tierOn()), col=t?t.col:'';
-    pane.innerHTML=`<div class="rxmsg">${judged&&t?tierWord(t):word}<b${col?` style="color:${col}"`:''}>${ms}<small style="font-size:14px;letter-spacing:.2em">${CP.ms}</small></b>`
+    // build 68 (67.17): the verdict sits UNDER the number, as on Timing and every result screen
+    pane.innerHTML=`<div class="rxmsg"><b${col?` style="color:${col}"`:''}>${ms}<small style="font-size:14px;letter-spacing:.2em">${CP.ms}</small></b><span class="rxword">${judged&&t?tierWord(t):word}</span>`
       /* v31 (60.18, build 60): THE ALLOWANCE LAYOUT. It read verdict, big time, "BASELINE 150 MS", "+0 MS", "TOTAL 398 OF 1000 MS"
          — three lines of small caps saying three things about one budget, the middle one repeating what the third already said.
          Aiden: "it looks messy". The order is the item's now, and it is the SAME BLOCK Grow and Hidden use (games/_shared/hud.js
          allowHtml / allowBar, built at 60.4): the amount over the allowance, a slim budget bar in place of the TOTAL text with
          this round's addition lighting up as it drains in, and the allowance as a dim caption at the bar's end. A SET keeps its
          running average line, which is not an allowance and has no budget to draw. */
-      +(this.streak()?hud.allowHtml({ id:'rxallow', add, unit:CP.ms.trim(), spent:this.over, budget:this.FLASH_BUD, free:this.FLASH_FREE, freeText:ALLOWANCE.freeEach })
-                     :`<span class="sub tot" id="rxtot">${this.totLine(mean(this.times))}</span>`)
+      // build 68 (67.17): a Set's running average is the top of the screen ("AVG 413 ms"); it is no longer said again under every tap
+      +(this.streak()?hud.allowHtml({ id:'rxallow', add, unit:CP.ms.trim(), spent:this.over, budget:this.FLASH_BUD, free:this.FLASH_FREE, freeText:ALLOWANCE.freeEach }):'')
       +(note?`<span class="sub">${note}</span>`:'')+`</div>`; },
   // v18 (B.10): the tier's colour for one round's own figure. Nothing in a two-player run wears it — light blue is P2 (L4)
   tierOn(){ return !this.two.on&&!this.versus(); },
@@ -96,7 +97,8 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
   // v15 (4.4): pass & play is attempt by attempt, both modes. Flash hands the phone over after every flash; Go / No-go
   // arrives on a beat, so its turn is a block of shapes — one rule period — and the block is scored the way its Set is
   begin(){ this.round=0; this.times=[]; this.faults=0; this.noTaps=0; this.over=0; this.out=false; this.wrong=0; this.seen=0; this.got=0; this.goDealt=0; this.bi=0; this.block=null; this.vsN=[0,0]; this.vsDone=false; this.skipped=[]; this.dealer=makeDealer('reaction:nogo'); this.spec=null; this.dwell=0; this.gotAll=0;
-    this.two=makeTwo(this.ctx,{lower:true,fmt:v=>Math.round(v)+CP.ms}); hud.score('0');
+    // build 68 (67.17): a Flash Set's top is its average from the start — "AVG — ms" until the first tap lands
+    this.two=makeTwo(this.ctx,{lower:true,fmt:v=>Math.round(v)+CP.ms}); hud.score(!this.streak()&&!this.nogo()&&!this.two.on&&!this.versus()?T(CP.avgTop,{n:'—'}):'0');
     if(this.versus()) return this.vsRound(); if(this.two.on) return this.next(); if(this.nogo()) return this.nogoBegin(); this.next(); },
   // Flash (v11 / v14 section 5): Set = 5 attempts, average ms. Streak = every ms above 150 (C.1) adds to a total; the run ends at 500, score attempts
   /* v31 (60.7, build 60, L6 quoted — Aiden 2026-09-23): `noTap` is how many rounds of this run TIMED OUT. It is on the record
@@ -158,8 +160,9 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
     this.setAdd(); },
   // v14 (6.1 / 6.3): the Set average walks to its new value, then the attempt stays on screen until it is tapped.
   // v18 (B.6): one place, because a no-tap, an early tap and a real tap all land in the same average now
+  // build 68 (67.17): the Set's top reads "AVG 413 ms", not a bare 413
   setAdd(){ const past=this.times.slice(0,-1), was=past.length?mean(past):0;
-    hud.countUp({ audio:this.ctx.audio, from:was, to:mean(this.times), ms:600, fmt:v=>String(Math.round(v)), set:t=>{ hud.score(t); this.setTot(+t); }, alive:()=>this.st==='show',
+    hud.countUp({ audio:this.ctx.audio, from:was, to:mean(this.times), ms:600, fmt:v=>String(Math.round(v)), set:t=>{ hud.score(T(CP.avgTop,{n:t})); this.setTot(+t); }, alive:()=>this.st==='show',
       done:()=>{ hud.scorePop(); this.ctx.emit('live',this.result()); this.wait(()=>this.next()); } }); },
   // v14 (6.1 / 6.2): a Flash Streak SHOWS its running total, and every attempt visibly walks into it — the ms over the free
   // allowance count down out of the attempt and up into the budget, the same animation Estimate and Timing already use

@@ -228,14 +228,16 @@ export async function run() {
      "0.2 / 5.0s" becomes "0.16 / 5.00s". An attempt is scored to a hundredth (onDown rounds err to 100ths), so a whole round
      could land and a counter printed to a tenth not move — one tenth of a 5s budget is two percent of the run. Driven, not read
      off the string: a real attempt is scored and the number on #score is compared with the engine's own total. */
-  { const dp60 = await page.evaluate(async () => { const TM = (await import('./games/timing/index.js')).default;
-      TM.ctx = { mode: 'stopwatch', len: -1 }; TM.round = 1;
-      const shots = [0, 0.04, 0.16, 1.234, 5].map(v => { TM.tot = v; return { tot: v, line: TM.streakScore() }; });
-      TM.round = 11; TM.tot = 0.16; const past10 = TM.streakScore();
+  /* AMENDED at build 68 (67.16): the counter is the header's labelled allowance bar now — what is LEFT of the budget, still to two decimals — and the big
+     number is the score */
+  { const dp60 = await page.evaluate(async () => { const TM = (await import('./games/timing/index.js')).default, line = () => (document.querySelector('#hallow span') || {}).textContent || '';
+      TM.ctx = { mode: 'stopwatch', len: -1 }; TM.two = { on: false }; TM.round = 1;
+      const shots = [0, 0.04, 0.16, 1.234, 5].map(v => { TM.tot = v; TM.hud(); return { tot: v, line: line() }; });
+      TM.round = 11; TM.tot = 0.16; TM.hud(); const past10 = line();
       return { shots, past10 }; });
-    const two = dp60.shots.every(r => /^[0-9]+\.[0-9]{2} \/ [0-9]+\.[0-9]{2}s$/.test(r.line));
+    const two = dp60.shots.every(r => /^allowance [0-9]+\.[0-9]{2} \/ [0-9]+\.[0-9]{2}s$/i.test(r.line));
     const moves = dp60.shots.find(r => r.tot === 0.04).line !== dp60.shots.find(r => r.tot === 0).line;
-    (two && moves && dp60.shots.find(r => r.tot === 0.16).line === '0.16 / 5.00s' && dp60.past10 === '0.16 / 7.50s')
+    (two && moves && /4\.84 \/ 5\.00s$/.test(dp60.shots.find(r => r.tot === 0.16).line) && /7\.34 \/ 7\.50s$/.test(dp60.past10))
       ? ok(`60.14 the Stopwatch Streak's running counter reads to two decimals — ${dp60.shots.map(r => '"' + r.line + '"').join(', ')}, and "${dp60.past10}" past round 10 — so a 0.04s round moves it where a single decimal did not`)
       : bad('60.14 the Stopwatch Streak counter', JSON.stringify(dp60)); }
 

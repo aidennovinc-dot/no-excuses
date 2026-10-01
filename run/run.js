@@ -24,6 +24,7 @@ import { ENGINES, GAMES, GC, SHARED2, VERSUS, lenName, versusOf } from "../games
 import { Scores, UNLOCKS, achToast, bankLen, chalRun, checkAch, checkUnlocks, goalFor, isOpen, lenNextLive, lenNextOf, lenOpen, lensOf, pendingAim, pendingGoal, setPendingAim, setPendingGoal, unlockHtml, unlockName, unlockToast, unlocked } from "../progress.js";
 import { checkKey, checkKeyAch, keyGoal } from "../progress/key.js";
 import { pickGoal } from "../progress/next.js";
+import { LEN_BEST, UNLOCK_BEST } from "../progress/rules.js";
 import { scoreTxt } from "../ui/format.js";
 import { game as showGame, show } from "../ui/router.js";
 import { applyPrefs } from "../ui/theme.js";
@@ -63,6 +64,15 @@ function goalScan(){ const gl=$('#goal'); if(!gl) return;
       el.style.setProperty('--gscan',(2*(over/GOAL_SCAN.pxPerSec*1000+GOAL_SCAN.hold))+'ms'); }
     else { el.style.removeProperty('--gover'); el.style.removeProperty('--gscan'); } } }
 const here=need=>{ const n=GAMES[sel.game].name; return String(need).split(n+' · ').join('').split(n+' ').join(''); };
+/* build 68 (67.16): THE GOAL LINE, ONE LINE WITH ITS PROGRESS. A round goal reads "Round 5 of 6 → unlocks Reaction · Flash" with a pip for each round, filling
+   as the run goes; any other goal says what it asks and fills a short bar, both read off the same best-run tables the next-unlock card uses
+   (progress/rules.js), so the line and the card cannot measure two different things */
+function goalBest(G){ if(!G) return null; if(G.len){ const L=G.len, i=GC(L.g,L.d).lens.indexOf(L.s); return (LEN_BEST[L.g+':'+L.d]||[])[i]||null; } return UNLOCK_BEST[G.key]||null; }
+function goalHtml(res){ const G=R.goal, B=goalBest(G), v=B&&res?B.v(res):null, n=Number.isFinite(+v)&&v!==null?+v:null;
+  if(B&&B.rounds){ const done=Math.max(0,Math.min(B.at,n||0));
+    return T(HUD.goal,{need:T(HUD.roundOf,{n:Math.min(B.at,done+1),s:B.at}),name:unlockName(G.key)})+`<span class="gpips">${Array.from({length:B.at},(_,i)=>`<i class="${i<done?'on':''}"></i>`).join('')}</span>`; }
+  const f=n===null||!B?0:B.lower?Math.min(1,B.at/Math.max(n,1e-9)):Math.min(1,Math.max(0,n)/B.at);
+  return (G.kt?T(HUD.keyGoal,{need:G.need,name:G.name,key:G.keyName}):T(HUD.goal,{need:here(G.need),name:unlockName(G.key)}))+(B?`<span class="gbar"><u style="width:${Math.round(f*100)}%"></u></span>`:''); }
 
 /* ---------- first play of a mode (v6): a ghost finger plays two or three beats under a one-liner, then the countdown. Tap to skip ---------- */
 /* v16 (§5 / A.3) — REBUILT. It was the line, a dimmer sub-line under it, both revealed a word at a time. Aiden's note
@@ -101,7 +111,9 @@ function makeCtx(){ const id=R.id; const timers=makeTimers(()=>R.on&&R.id===id);
    
     /* v16 (1.5): a round-based engine says how far into its finish it is — the final round of a Set, a Streak budget past
        80% — and the music reads it. A timed run needs nothing here: the clock already tells audio.js. MUSIC ONLY (A.1). */
-    emit(name,data){ if(R.id!==id) return; if(name==='finish') finish(data); else if(name==='live'){ if(eng&&eng.fin) R.fin=Math.max(0,Math.min(1,eng.fin()||0)); liveCheck(data); } } }; }
+    emit(name,data){ if(R.id!==id) return; if(name==='finish') finish(data); else if(name==='live'){ if(eng&&eng.fin) R.fin=Math.max(0,Math.min(1,eng.fin()||0)); liveCheck(data);
+      // build 68 (67.16): the goal line's pips and bar follow the run
+      if(R.goal&&!R.goalHit&&data){ const gl=$('#goal'); gl.innerHTML=goalHtml(data); requestAnimationFrame(()=>goalScan()); } } } }; }
 function start(){
   const g=GAMES[sel.game]; let c=GC(sel.game,sel.diff,sel.secs); $('#game').dataset.g=sel.game; $('#game').dataset.d=sel.diff;
   // two players (v10): pass & play (sel.vs 1) takes turns at a fixed length; versus (sel.vs 2) is one run at both ends. v11: Sequence and Count run both players on one screen inside their own engine; Reaction and Sequence handle versus themselves
@@ -133,7 +145,7 @@ function start(){
   // a Gauntlet step chases nothing: there is no goal line, because nothing it does can be earned (L10)
   // build 68 (67.40): the next-unlock card's own pick first, so the card and the run never disagree
   const auto=(pendingGaunt||pendingAim)?null:(pickGoal(sel.game,sel.diff,sel.secs)||goalFor(sel.game,sel.diff,sel.secs)||keyGoal(sel.game,sel.diff,sel.secs));
-  R.goal=VS.on||sel.vs||pendingGaunt?null:((pendingGoal&&UNLOCKS.find(u=>u.key===pendingGoal))||auto); const gl=$('#goal'); gl.classList.remove('hit'); gl.classList.toggle('roll',!!R.goal); gl.classList.toggle('on',!!R.goal||(!!pendingAim&&!sel.vs)); if(R.goal){ gl.innerHTML=R.goal.kt?T(HUD.keyGoal,{need:R.goal.need,name:R.goal.name,key:R.goal.keyName}):T(HUD.goal,{need:here(R.goal.need),name:unlockName(R.goal.key)}); } else if(pendingAim&&!sel.vs) gl.innerHTML=T(HUD.aim,{aim:here(pendingAim)}); else gl.innerHTML='';
+  R.goal=VS.on||sel.vs||pendingGaunt?null:((pendingGoal&&UNLOCKS.find(u=>u.key===pendingGoal))||auto); const gl=$('#goal'); gl.classList.remove('hit'); gl.classList.remove('roll'); gl.classList.toggle('on',!!R.goal||(!!pendingAim&&!sel.vs)); if(R.goal){ gl.innerHTML=goalHtml(null); } else if(pendingAim&&!sel.vs) gl.innerHTML=T(HUD.aim,{aim:here(pendingAim)}); else gl.innerHTML='';
   // v15 (2.2): the thing being chased sits at the TOP of the screen during a run, so it is visible while playing. The HUD
   // steps down to make room only when there is a goal to show — a run with nothing to chase looks exactly as it did
   /* v31 (60.20, build 60): A BADGE THAT DOES NOT FIT SCANS. Aiden's goal lines are longer than the pill and were simply cut

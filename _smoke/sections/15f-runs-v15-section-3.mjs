@@ -57,7 +57,8 @@ export async function run() {
     const flash55 = await page.evaluate(async () => { const g = document.getElementById('game'), w = ms => new Promise(r => setTimeout(r, ms));
       for (let i = 0; i < 400 && !g.classList.contains('live'); i++) await w(25);
       await w(250); return { hud: (document.getElementById('hud-time') || {}).textContent || '', held: g.classList.contains('tapon') }; });
-    (/^\s*1\s*\//.test(flash55.hud) && !flash55.held)
+    // AMENDED at build 68 (67.16): the count reads "Round 1 of 5" now
+    (/^\s*Round 1 of /.test(flash55.hud) && !flash55.held)
       ? ok(`item 3 a tap during the 3-2-1 after an aborted Flash run is dropped — the new run opens on round 1 (${flash55.hud.trim()}) with no card held over from the dead one`)
       : bad('item 3 the stale round state eats round 1', JSON.stringify(flash55));
 

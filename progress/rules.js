@@ -88,10 +88,10 @@ const UNLOCK_BEST = {
   'sequence:solo':     { of:r=>r.g==='hold'&&r.d==='cut', v:r=>r.x, at:3.5, lower:1, dp:1, unit:'%' },
   'sequence:practice': { of:r=>r.g==='sequence'&&r.s===7, v:r=>r.hits, at:8 },
   'timing:hidden':     { of:r=>r.g==='timing'&&r.d==='stopwatch', v:r=>r.x, at:.3, lower:1, dp:2, unit:'s' },
-  'reaction:flash':    { of:r=>r.g==='timing'&&r.d==='stopwatch'&&r.s===STREAK, v:r=>r.hits, at:6 },
+  'reaction:flash':    { of:r=>r.g==='timing'&&r.d==='stopwatch'&&r.s===STREAK, v:r=>r.hits, at:6, rounds:1 },
   'reaction:nogo':     { of:r=>r.g==='reaction'&&r.d==='flash'&&r.s===5, v:r=>r.hits, at:350, lower:1, unit:'ms' },
   'spot:count':        { of:r=>r.g==='reaction'&&r.s===5, v:r=>r.hits, at:350, lower:1, unit:'ms' },
-  'spot:find':         { of:r=>r.g==='spot'&&r.d==='count'&&r.s===STREAK, v:r=>r.rounds||0, at:6 },
+  'spot:find':         { of:r=>r.g==='spot'&&r.d==='count'&&r.s===STREAK, v:r=>r.rounds||0, at:6, rounds:1 },
 };
 // the same for a length rung, read over the runs of the length before it — LEN_TEST's shape
 const LEN_BEST = {

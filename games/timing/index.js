@@ -1,7 +1,7 @@
 /* No Excuses — Timing — Stopwatch and Hidden
    Split out of index.html at build 12. Build 17 (refactor stage 3): the engine contract, on the round base. Behaviour is identical to build 11. */
 
-import { ALLOWANCE, TIMING as CP } from "../../config/copy.js";
+import { ALLOWANCE, HUD, TIMING as CP } from "../../config/copy.js";
 import { CFG, HIDDEN } from "../../config/games.js";
 import { $, T, f2, minMax, sum } from "../../core.js";
 import { haptic } from "../../core/platform.js";
@@ -85,14 +85,17 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
      Hidden's line keeps the whole sentence - it is the one that states its budget (B.13). */
   hud(){ if(this.two.on) return hud.timeHtml(this.two.hudLine());
     if(!this.streak()) return hud.time(T(CP.hudSet,{n:this.round,s:this.ctx.len}));
-    hud.time(this.hid()?T(CP.hudStreak,{n:this.round,tot:this.totTxt(),bud:this.budTxt()}):T(CP.hudAttempt,{n:this.round})); },
+    hud.time(this.hid()?T(CP.hudStreak,{n:this.round,tot:this.totTxt(),bud:this.budTxt()}):T(CP.hudAttempt,{n:this.round}));
+    // build 68 (67.16): the Stopwatch Streak's allowance is a labelled bar in the header, not the big number
+    if(!this.hid()){ const bud=this.budget(), left=Math.max(0,bud-this.tot); hud.allowance(left,bud,'s',T(HUD.allow,{left:left.toFixed(2),bud:bud.toFixed(2),unit:'s'})); } },
   /* v18 (B.3d): what the big white number reads in a Stopwatch Streak - "2.3 / 5.0s", the time spent out of the budget.
      It was the count of attempts completed, which "attempt N" underneath already said. Hidden keeps the count. */
   // v31 (60.14, build 60): TWO DECIMALS. "0.2 / 5.0s" becomes "0.16 / 5.00s" — a Stopwatch attempt is scored to a hundredth
   // (err is rounded to 100ths in onDown) and the running total was printed to a tenth, so a whole round could land and the
   // counter not move. One tenth of a 5s budget is two percent of the run
   spentLine(){ return T(CP.spentOf,{tot:this.tot.toFixed(2),bud:this.budget().toFixed(2)}); },
-  streakScore(){ return this.hid()?String(this.errs.length):this.spentLine(); },
+  // build 68 (67.16): a Streak's big number is its score — the rounds completed — on Stopwatch too; what is spent is the allowance bar's
+  streakScore(){ return String(this.errs.length); },
   next(){ this.clearT(); this.round++; if(this.round>this.targets.length) this.targets=this.targets.concat(this.deal(20));
     // v15 (4.3): the run is over when both players have taken their attempts, and every hand-over waits for a tap
     if(this.two.on){ if(this.two.over()) return this.ctx.emit('finish',this.two.record()); return this.two.gate(this,()=>{ this.st='arm'; this.hid()?this.hidden():this.watch(); }); }

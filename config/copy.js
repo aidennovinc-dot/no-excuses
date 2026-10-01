@@ -294,7 +294,10 @@ export const VS_LINE = { sequence:'{n} lives each · the pattern grows a note a 
 
 // the run's HUD and the versus / pass & play screens
 // v24 (D.1, build 44): `keyGoal` is the goal line when the chain has nothing for this run — the combination's nearest key requirement
-export const HUD = { goal:'<i>goal · <b>{need}</b></i><u>unlocks {name}</u>', aim:'<i>goal · <b>{aim}</b></i>', keyGoal:'<i>goal · <b>{need}</b></i><u>{name} · {key}</u>', goalHit:'✓ ', best:'best {score}', versus:'versus', pass:'pass & play',
+/* build 68 (67.16): THE GOAL IS ONE LINE — "Round 5 of 6 → unlocks Reaction · Flash" — with its progress beside it (pips for a round goal, a bar for the
+   rest); the two stacked lines that rolled over each other into Restart are gone. `allow` is a Streak's allowance, labelled, in the header */
+export const HUD = { goal:'<i><b>{need}</b> → unlocks {name}</i>', aim:'<i>goal · <b>{aim}</b></i>', keyGoal:'<i><b>{need}</b> → {name} · {key}</i>', roundOf:'Round {n} of {s}',
+  allow:'allowance {left} / {bud}{unit}', goalHit:'✓ ', best:'best {score}', versus:'versus', pass:'pass & play',
   vsLead:'first to {t} · or lead by {n}', vsQt:'tap your white square', vsDots:'squares vs circles · wrong shape gives them the point', level:'level', lead:'{who} +{n}',
   draw:'draw', wins:'Player {n} wins', byLead:'by {n}', onClock:'on the clock', skipIn:'skip in {n}', skip:'skip' };
 // v14 (4.7 / 4.9): the game name sits in its usual place at the top, whose turn it is is the biggest thing on the screen, and
@@ -533,7 +536,8 @@ export const TIMING = { target:'target', stop:'tap to stop the timer', marker:'t
      v18 (B.4): `budPx` is retired — Hidden's budget is milliseconds now and the engine derives the text from the number,
      the same correction v15 3.8 made to the Stopwatch budget. `msU` is the unit, shared with the Hidden score.
      v18 (B.3d / B.2): `asked` is retired with the Streak line it belonged to; `askedSet` is back on the Set. */
-  over:'{bud} reached · run over', hudStreak:'attempt {n} · {tot} spent of {bud}', hudAttempt:'attempt {n}', hudSet:'{n} / {s}',
+  // build 68 (67.16): "Round" everywhere, never "attempt"; a Set's count reads "Round 2 of 5"
+  over:'{bud} reached · run over', hudStreak:'Round {n} · {tot} spent of {bud}', hudAttempt:'Round {n}', hudSet:'Round {n} of {s}',
   spentOf:'{tot} / {bud}s', msU:'ms',
   // v14 (6.18): what the game has asked for so far, against what it will have asked for by the end of the Set
   askedSet:'{tot}s of {all}s asked' };
@@ -549,9 +553,11 @@ export const TIMING = { target:'target', stop:'tap to stop the timer', marker:'t
 export const REACTION = { wait:'wait for it', tap:'TAP', early:'too early', noTap:'no tap', reached:'{bud}ms reached', ms:' ms', quick:'quick', good:'good', slowWord:'slow',
   takes:'Player {n} takes it', tappedEarly:'Player {n} tapped early', draw:'draw', wins:'Player {n} wins',
   ruleTap:['tap','only','the'], ruleNow:['now','only','the'], wrongS:'wrong tap', over:'run over',
-  hudVs:'round {n} · best of {s}', hudNogoStreak:'round {n} · {over} of {bud}ms', hudNogo:'round {n} of {s} · {h} of {p}', hudStreak:'attempt {n} · {over} of {bud}ms', hudSet:'{n} / {s}',
+  // build 68 (67.16 / 67.17): "Round" everywhere; the Set's top reads "AVG 413 ms" (`avgTop`), and no "average" line under each tap any more
+  hudVs:'Round {n} · best of {s}', hudNogoStreak:'Round {n} · {over} of {bud}ms', hudNogo:'Round {n} of {s} · {h} of {p}', hudStreak:'Round {n} · {over} of {bud}ms', hudSet:'Round {n} of {s}',
+  avgTop:'AVG {n} ms',
   // v15 (3.5 / 3.6): the result reads down — what you did, what it is measured against, the difference, then where the run stands
-  baseline:'baseline {n} ms', runTotal:'total {n} of {bud} ms', runAvg:'average {n} ms', earlyTap:'tapped early', earlyCost:'the attempt is spent',
+  baseline:'baseline {n} ms', runTotal:'total {n} of {bud} ms', runAvg:'average {n} ms', earlyTap:'tapped early', earlyCost:'the round is spent',
   // v24 (F.3, build 44): Go / No-go's running counter in a Set — targets answered of the Set's fifteen (NOGO_COUNTER)
   nogoCount:'{h}/{t}' };
 // v24 (F.6, build 44): the Count Streak's budget is COUNT_BUDGET in config/games.js, so the two lines that name it take {bud}

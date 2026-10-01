@@ -109,7 +109,11 @@ function allowBar(id,spent,landed,budget){ const el=$('#'+id+'-new'), s=$('#'+id
   const pc=v=>Math.max(0,Math.min(100,v/budget*100));
   s.style.width=pc(spent)+'%'; el.style.width=pc(landed)+'%'; }
 
-function reset(){ $('#bigcount').textContent='0'; $('#score').style.visibility=''; $('#gen').innerHTML=''; $('#rxbar').innerHTML=''; $('#hud-time').classList.remove('you'); $('#seq').classList.remove('watch','input'); $('#turn').classList.remove('on','stay','p1','p2'); $('#rate i').style.height='0'; $('#rate b').textContent='0.0/s'; $('#edge').style.opacity=0; hold(false); }
+/* build 68 (67.16): A STREAK'S ALLOWANCE, LABELLED, IN THE HEADER — a draining bar under the goal line, "allowance 1.77 / 5.00s". On a Stopwatch Streak
+   it was the biggest number on the screen with no word on it, so it read as the score. `left` null hides it */
+function allowance(left,bud,unit,txt){ const el=$('#hallow'); if(!el) return; if(left===null||left===undefined){ el.hidden=true; return; }
+  el.hidden=false; el.querySelector('span').textContent=txt; el.querySelector('u').style.width=Math.max(0,Math.min(100,left/bud*100))+'%'; }
+function reset(){ allowance(null); $('#bigcount').textContent='0'; $('#score').style.visibility=''; $('#gen').innerHTML=''; $('#rxbar').innerHTML=''; $('#hud-time').classList.remove('you'); $('#seq').classList.remove('watch','input'); $('#turn').classList.remove('on','stay','p1','p2'); $('#rate i').style.height='0'; $('#rate b').textContent='0.0/s'; $('#edge').style.opacity=0; hold(false); }
 // the ghost finger (v6): the first-play demo moves it, taps with it, holds with it. `later` is the demo's own timer set
 function makeGhost(audio,timers){ const ghost=$('#ghost');
   const at=(x,y)=>{ ghost.style.transform=`translate(${x}px,${y}px)`; };
@@ -120,4 +124,5 @@ function makeGhost(audio,timers){ const ghost=$('#ghost');
     tap(){ ghost.classList.remove('tap'); void ghost.offsetWidth; ghost.classList.add('tap'); audio.hit(); },
     hold(on){ ghost.classList.toggle('hold',!!on); } }; }
 
+export { allowance };
 export { addUp, allowBar, allowHtml, bigcount, countUp, countdown, cue, flash, hold, makeGhost, mode, pturn, pulse, rate, reset, scorePop, score, scoreVisible, shake, tick, time, timeHtml, you };

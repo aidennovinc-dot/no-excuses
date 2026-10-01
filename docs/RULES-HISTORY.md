@@ -1769,3 +1769,11 @@ anything Aiden settles goes on the list in the build that implements it.
 - **No Restart in a run (67.5, L21; retiring build 62 61.2 and build 65 64.6).** ✕ → the Abandoned screen → Retry does the job in every game, Pass & play
   and Versus included (driven by the gate); an abandoned run's button always reads Retry (Pass & play's fixed length used to turn it into Go).
   `RESTART` and the hold binding are gone; `Snd.rise` and `RESTART_FX` stay in audio, unused, for the catalogue's sound list.
+
+- **The top of a run, cleaned (67.16 / 67.17).** The top row is ✕ alone (Restart is gone, 67.5); `#top` sits under it. The goal is ONE line,
+  "Round 5 of 6 → unlocks Reaction · Flash", with a pip per round for a round goal and a short bar for the rest — both read off
+  `UNLOCK_BEST` / `LEN_BEST` (`rounds:1` marks a round goal) and refreshed on every `live` emit; the old two-line roll is gone. A Streak's
+  allowance is a labelled draining bar, "allowance 1.77 / 5.00s" (`#hallow`, `hud.allowance`); the Stopwatch Streak's big number is its score
+  (rounds completed), no longer the spend (B.3d's source-text check deleted). "Round", never "attempt", in every HUD line; a Set counts
+  "Round 2 of 5". Reaction: a Flash Set's top reads "AVG 413 ms" ("AVG — ms" before the first tap), the verdict sits under each tap's number,
+  and the "AVERAGE 413 MS" line under every tap is gone.

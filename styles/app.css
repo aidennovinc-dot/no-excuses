@@ -1299,8 +1299,10 @@
      drawn over it, so Aiden could hardly find it. Now it is an outlined pill of the same visual weight as the ✕ opposite (a line round it the
      hold ring draws over), still in the corner where a pad tap cannot reach it; the clock moves under the mode label ("Two · Sprint") on the left.
      The hold behaviour is untouched. */
-  .hud{flex-direction:column;align-items:flex-start;gap:3px;padding-right:104px}
-  .hud>#hud-time{text-align:left}
+  /* build 68 (67.16): the top row is ✕ alone (Restart is gone, 67.5); the goal line, the allowance and the game · mode line sit UNDER it, centred */
+  #top{top:calc(max(8px,env(safe-area-inset-top)) + 48px)}
+  .hud{flex-direction:column;align-items:center;gap:3px;padding:0}
+  .hud>#hud-time{text-align:center}
   #quit{position:absolute;left:8px;top:max(8px,env(safe-area-inset-top));width:44px;height:44px;display:grid;place-items:center;font-family:var(--mono);font-size:22px;color:var(--mute);z-index:6}
   #count{position:absolute;inset:0;display:none;place-items:center;font-family:var(--mono);font-weight:700;font-size:clamp(80px,26vw,180px);color:var(--ink);pointer-events:none;z-index:5;font-variant-numeric:tabular-nums}
   #count.on{display:grid}
@@ -1351,7 +1353,18 @@
   /* v31 (60.19, build 60): IN FLOW, inside #top. It was absolute at the same offset #top now sits at, which is why it and the
      HUD under it could overlap and why `goalon` had to push the HUD down by a hand-written 44px. */
   #goal{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);border:1px solid var(--line);padding:5px 10px;white-space:nowrap;pointer-events:none;display:none;z-index:4;max-width:min(92vw,calc(100vw - 180px));overflow:hidden;text-overflow:ellipsis}
-  #goal.on{display:block}
+  #goal.on{display:flex;align-items:center;justify-content:center;gap:8px}
+  /* build 68 (67.16): one line, its progress beside it — pips for a round goal, a short bar for the rest */
+  #goal>i{flex:0 1 auto;min-width:0;overflow:hidden}
+  #goal .gpips{display:inline-flex;gap:3px;flex:none}
+  #goal .gpips i{width:6px;height:6px;border-radius:50%;border:1px solid var(--mute);box-sizing:border-box}
+  #goal .gpips i.on{background:var(--ink);border-color:var(--ink)}
+  #goal .gbar{flex:none;width:36px;height:3px;background:var(--line);position:relative}
+  #goal .gbar u{position:absolute;left:0;top:0;bottom:0;background:var(--ink)}
+  #hallow{width:min(70vw,260px);display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
+  #hallow[hidden]{display:none}
+  #hallow i{display:block;width:100%;height:4px;background:var(--line);position:relative}
+  #hallow u{position:absolute;left:0;top:0;bottom:0;background:var(--ink);transition:width .25s ease-out}
   #goal b{color:var(--ink);font-weight:500}
   #goal.hit{border-color:var(--ok);color:var(--ok);animation:pop .3s ease-out}
   #goal.hit b{color:var(--ok)}
