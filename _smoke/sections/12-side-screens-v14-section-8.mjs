@@ -241,6 +241,13 @@ export async function run() {
       ? ok(`61.26 the Games chest tab ends on the Skill key's art and one line: "${shut26.txt}" dim before, "${open26.txt}" lit after`)
       : bad('61.26 the Skill key block', JSON.stringify({ open26, shut26 }));
   }
+  /* build 68 (67.19): the line under the web — "each game against its key bars · a ring for each key" — is gone */
+  {
+    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+    const h19 = await page.evaluate(async () => { (await import('./ui/router.js')).show('s-board'); await new Promise(r => setTimeout(r, 400)); return { hint: !!document.getElementById('radar-hint'), text: document.getElementById('s-board').textContent.includes('a ring for each key') }; });
+    (!h19.hint && !h19.text) ? ok('67.19 the line under the web is gone') : bad('67.19 the web\'s caption line', JSON.stringify(h19));
+  }
   /* build 68 (67.30, Cowork): NO BLACK BACKING BOX BEHIND TEXT OR AN ICON, ANYWHERE — the menu, the map with a chest's "You found" words, Customise, on the
      brightest backgrounds: nothing is cut out of the background behind them (so nothing can show before the text it backs), and every line wears its
      own soft dark shadow instead */
