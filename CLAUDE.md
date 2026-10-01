@@ -72,7 +72,8 @@ having written nothing. Gate checks read bars and names from `config/`, never a 
 - **The only ad is the interstitial after a result, and the app never explains its ad policy** (60.28): `ADS` in `config/games.js`, `Ads.show(run)` in `ui/ads.js` — one per `everyN` (5), never after a Streak, never in the first `graceMs`, never for a supporter.
 - **Leaving the app pauses the run and it resumes on return** (60.27): `core/timers.js` keeps what is left, `#game.paused`, a 3-2-1 on its own clock, the attempt in flight replayed fresh (`replay(ctx)`); a Streak's or Gauntlet's progress saved each round in `store.resume`, offered back on the menu (`resumeAt`); pass & play and versus save nothing (L10).
 - **A first-play intro is ONE line** (`INTRO` in `config/copy.js`); a player's first run of each game ends on a "Ready?" tap.
-- **One mechanism pins a goal**: `goWhere` → `pendingAim` → `#goal`; `goalFor` offers the next unlock this run can fairly earn, then `keyGoal` (D.1).
+- **One mechanism pins a goal**: `goWhere` → `pendingAim` → `#goal`; the next-unlock card's own pick first (`pickGoal`, 67.40), then `goalFor`, then `keyGoal` (D.1).
+- **The next-unlock card is ONE pick** (67.40, `progress/next.js` `nextPick()`): the next mode on the chain (Dash first, `NEXT_CARD_ORDER`), "Open the Games chest", the nearest key bar with "x of 30", each chest after it; gone once the Author chest is open; eyebrow / name / requirement / best on a bar (`UNLOCK_BEST` / `LEN_BEST`).
 
 **Unlocks, the key and progression**
 - **TWO progression systems and ONE crossing** (G.3): the unlock chain (`config/unlocks.js`, L6) gates play; the key (`progress/key.js`, `config/key-bars.js`) gates nothing; they touch only at the Games chest (`modesOpen()` beside `tierOpen()`).

@@ -13,7 +13,8 @@ export const UNLOCKS = [
   /* v17 (B.7, L6): `s:15` came off. Fifteen in a row with no misses, in ANY Quick Tap · Two run — a Sprint counts, because
      Four is a harder mode and not a later one. Four can therefore open before Dash does; Aiden accepted that explicitly.
      v17 (B.6): "no misses" means fifteen IN A ROW (progress/rules.js inRow), not a clean whole run */
-  { key:'quick-tap:four',    need:'15 hits in a row, no misses, in any Quick Tap · Two run', where:{g:'quick-tap',d:'two'}, live:1 },
+  // build 68 (67.40, L6 quoted — wording only, the test is unchanged): "no misses" dropped wherever "in a row" already says it
+  { key:'quick-tap:four',    need:'15 hits in a row in any Quick Tap · Two run', where:{g:'quick-tap',d:'two'}, live:1 },
   { key:'dots:blind',        need:'35 hits in any Quick Tap run',                 where:{g:'quick-tap'},                   live:1 },
   // v15 (1.2b): a deliberate-failure unlock. Still live — five misses is knowable the moment the fifth one lands
   { key:'dots:lead',         need:'5 misses in any Dots · Blind run',             where:{g:'dots',d:'blind'},              live:1 },
@@ -48,11 +49,12 @@ export const UNLOCKS = [
    Every other Set/Streak mode keeps the default and is deliberately absent. */
 export const LEN_RULES = {
   // v17 (B.6, L6): "N hits in a row" — a miss resets the count, which is what Aiden meant and what the predicate now does
-  'quick-tap:two':  [null,'7 hits in a row, no misses, in a {game} {prev}','24 hits in a {game} {prev}'],
-  'quick-tap:four': [null,'7 hits in a row, no misses, in a {game} {prev}','24 hits in a {game} {prev}'],
+  // build 68 (67.40, L6 quoted — wording only): "no misses" dropped, "in a row" says it
+  'quick-tap:two':  [null,'7 hits in a row in a {game} {prev}','24 hits in a {game} {prev}'],
+  'quick-tap:four': [null,'7 hits in a row in a {game} {prev}','24 hits in a {game} {prev}'],
   // #415 (L6, build 35): Blind Marathon is 22 hits in a Blind Dash, down from 24. Lead keeps its 28
-  'dots:blind':     [null,'6 hits in a row, no misses, in a {game} · {mode} {prev}','22 hits in a {game} · {mode} {prev}'],
-  'dots:lead':      [null,'9 hits in a row, no misses, in a {game} · {mode} {prev}','28 hits in a {game} · {mode} {prev}'],
+  'dots:blind':     [null,'6 hits in a row in a {game} · {mode} {prev}','22 hits in a {game} · {mode} {prev}'],
+  'dots:lead':      [null,'9 hits in a row in a {game} · {mode} {prev}','28 hits in a {game} · {mode} {prev}'],
   // v17 (B.9, L6): 5 keys is gone, so the ladder is 3 → 7 with nothing between. Seven asks for EIGHT notes in 3 keys,
   // not the old six: skipping a rung has to cost something, and two more notes is the step the missing rung used to be (guess)
   'sequence:solo':  [null,'8 notes in Sequence · 3 keys'],
@@ -91,6 +93,10 @@ export const LEN_LIVE = {
 /* build 65 (64.7): WHEN THE HOME MENU'S SCORES, PROGRESS AND ABOUT OPEN — each at its own moment, replacing build 64's "all three on the
    walkthrough's last box" (62.14). `game` opens it with that game's first real run; `video` with that About message finishing (the Welcome clip,
    `intro` in config/messages.js). `name` is the item as the menu spells it, for its toast. progress/menu.js reads this. */
+/* build 68 (67.40, Cowork's design agreed with Aiden): THE NEXT-UNLOCK CARD'S ORDER. Presentation only — the chain above is untouched (L6).
+   `lead` is Aiden's opening sequence, "Dash → Four → Dots": Dash first while it is shut. `pair` is two unlocks one run opens, shown as ONE card
+   ("→ Go / No-go and Spot Count"; v15 1.4d's rule unchanged — FEEDBACK-v36 Question 1 asks Aiden whether to split it) */
+export const NEXT_CARD_ORDER = { lead:['quick-tap:two:15'], pair:{ 'reaction:nogo':'spot:count' } };
 export const MENU_UNLOCK = {
   about: { go:'s-about', name:'About', video:'intro' },
   prog:  { go:'s-prog',  name:'Progress', game:'hold' },

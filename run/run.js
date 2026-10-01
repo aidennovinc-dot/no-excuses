@@ -23,6 +23,7 @@ import * as hud from "../games/_shared/hud.js";
 import { ENGINES, GAMES, GC, SHARED2, VERSUS, lenName, versusOf } from "../games/registry.js";
 import { Scores, UNLOCKS, achToast, bankLen, chalRun, checkAch, checkUnlocks, goalFor, isOpen, lenNextLive, lenNextOf, lenOpen, lensOf, pendingAim, pendingGoal, setPendingAim, setPendingGoal, unlockHtml, unlockName, unlockToast, unlocked } from "../progress.js";
 import { checkKey, checkKeyAch, keyGoal } from "../progress/key.js";
+import { pickGoal } from "../progress/next.js";
 import { scoreTxt } from "../ui/format.js";
 import { game as showGame, show } from "../ui/router.js";
 import { applyPrefs } from "../ui/theme.js";
@@ -130,7 +131,8 @@ function start(){
      this combination's nearest unearned key requirement (keyGoal). An aim the player arrived with — Try to unlock, an achievement row, a
      clearance bar — still outranks both and is shown as it was: that is Aiden's own earlier rule. */
   // a Gauntlet step chases nothing: there is no goal line, because nothing it does can be earned (L10)
-  const auto=(pendingGaunt||pendingAim)?null:(goalFor(sel.game,sel.diff,sel.secs)||keyGoal(sel.game,sel.diff,sel.secs));
+  // build 68 (67.40): the next-unlock card's own pick first, so the card and the run never disagree
+  const auto=(pendingGaunt||pendingAim)?null:(pickGoal(sel.game,sel.diff,sel.secs)||goalFor(sel.game,sel.diff,sel.secs)||keyGoal(sel.game,sel.diff,sel.secs));
   R.goal=VS.on||sel.vs||pendingGaunt?null:((pendingGoal&&UNLOCKS.find(u=>u.key===pendingGoal))||auto); const gl=$('#goal'); gl.classList.remove('hit'); gl.classList.toggle('roll',!!R.goal); gl.classList.toggle('on',!!R.goal||(!!pendingAim&&!sel.vs)); if(R.goal){ gl.innerHTML=R.goal.kt?T(HUD.keyGoal,{need:R.goal.need,name:R.goal.name,key:R.goal.keyName}):T(HUD.goal,{need:here(R.goal.need),name:unlockName(R.goal.key)}); } else if(pendingAim&&!sel.vs) gl.innerHTML=T(HUD.aim,{aim:here(pendingAim)}); else gl.innerHTML='';
   // v15 (2.2): the thing being chased sits at the TOP of the screen during a run, so it is visible while playing. The HUD
   // steps down to make room only when there is a goal to show — a run with nothing to chase looks exactly as it did

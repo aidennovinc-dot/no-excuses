@@ -123,6 +123,9 @@ export const VERDICT = { fail:'Run over — go again.', nothing:'Nothing landed.
 // v31 (60.27, build 60): `resume` is the offer a killed app comes back to, and `resumeGaunt` the Gauntlet's own wording
 /* build 66 (65.3): what opens a crossed-out Scores, Progress or About, in green under it like Keys and Customise — composed from MENU_UNLOCK
    (config/unlocks.js) by ui/screens/menu.js: a game's first run, or the clip that opens About, by its own title */
+/* build 68 (67.40): THE NEXT-UNLOCK CARD — the eyebrow, the reward in bold, its requirement, the best so far on a bar (progress/next.js picks it) */
+export const NEXT_CARD = { eyebrow:'Next unlock', best:'best {best}', none:'not tried yet', both:'{a} and {b}', count:'{key} · {done} of {total}',
+  chest:'Open the {chest}', allModes:'Every game mode is open', whole:'The key is whole', gaunt:'Finish {name}', gauntNeed:'It opens the {chest}' };
 export const MENU = { playNeed:'play {game}', watchNeed:'watch the {title} clip',
   next:'<em>Next unlock</em><span>{need} → {name}</span>', nextAch:'<em>Next achievement</em><span>{need} → {name}</span>', cusNeed:'open the Games chest', keysNeed:'open the Games chest',
   resume:'<em>Resume your streak</em><span>{game} · round {n}</span>', resumeGaunt:'<em>Resume the Gauntlet</em><span>{game} · step {n}</span>' };
@@ -331,6 +334,8 @@ export const TUTORIAL = {
   /* build 68 (67.15): every menu item's tour starts on the screen that opens it with Aiden's "Congratulations, you unlocked Scores!" (`got`), then the
      item ringed on the menu (`look`, Claude's, worded as Progress's own). "You've unlocked About" / "You've unlocked Scores" (Claude's) are gone */
   got:'[green]Congratulations[/green], you unlocked [yellow]{name}[/yellow]!', look:'Tap [yellow]{name}[/yellow] to take a look',
+  // build 68 (67.40): the next-unlock card's one box, the first time the main menu shows it — the words agreed with Aiden
+  nextBox:'[yellow]Your next goal.[/yellow] Tap it to go straight there.',
   about:[ 'Welcome to the [yellow]About[/yellow] section', "Here you'll find all the [green]unlocked[/green] [green]videos[/green]",
     'The option to [red]send me feedback[/red] for future versions', "And if you're enjoying the game, a chance to [green]show your support[/green]", 'Alright, get back to it!' ],
   /* build 65 (64.9): THE PROGRESS TUTORIAL, after the first Estimate run — Aiden's lines. Build 66 (section C): the first is said on that run's

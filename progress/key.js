@@ -611,4 +611,5 @@ function devMeterTo(n, modes) { const want = Math.max(0, Math.min(meterMax(), Ma
     if (chestState(c.id) !== 'ready' || !devOpen(c.id)) break; }
   seenDown(); save(); return meter(); }
 
+export { wantOf };
 export { COMBOS, RADAR_PAST, TIERS, keyScale, radarAll, tierEarned, chestNeeds, crackCount, gauntBest, gauntDone, msgDot, msgOpen, msgShown, msgTitle, bandPct, barFor, barOf, barsFaked, barsMissing, barsOrphan, checkKey, checkKeyAch, chestAt, chestOpen, chestState, cleared, combos, credit, devBack, devChestReset, devClearTo, devMeterTo, devOpen, devReach, fillBars, gameKey, isCleared, isPlaceholder, isShell, keyAch, keyChest, keyFinished, keyGaunt, keyGoal, keyOf, keyPct, keyState, keyTier, keyTiers, meter, meterBand, meterMax, meterPct, modesOpen, openChest, placeholderCount, radarOf, radarRungs, readyChest, retroArrived, retroBank, retroTier, skey, tierFull, tierOpen };

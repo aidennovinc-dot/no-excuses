@@ -1753,3 +1753,15 @@ anything Aiden settles goes on the list in the build that implements it.
   build 62 (61.25) had already made the ring give up a third of its height (30vh → 21vh) whenever a game's requirement list opened, so the first
   tap on a game shrank the key — 57.5's "one size" undone. The rule is gone; measured at 390×844 the list still shows four full rows under the
   full-size ring (61.25 asks for three).
+
+- **The next-unlock card (67.40; Cowork's design, agreed in the v0.67 session).** `progress/next.js` `nextPick()` is one pick for the menu's card and
+  the run's goal (`pickGoal()`, asked before `goalFor` / `keyGoal`): (1) until all 13 modes are open, Aiden's opening ("Dash → Four → Dots",
+  `NEXT_CARD_ORDER.lead`) and then the next mode in `UNLOCKS` order, a length shown only when the row's own run needs one still shut; (2) "Open the
+  Games chest"; (3) the key being chased — the bar nearest clearing (best ÷ target, open lengths only) with "x of 30", or the length that opens one,
+  or its chest / the Gauntlet that chest still wants; (4) Pro and Author the same. Gone once the Author chest is open; hidden through the
+  walkthrough. Shape: eyebrow, the reward in bold, its requirement, the best so far on a bar — the bar lines are `UNLOCK_BEST` / `LEN_BEST` in
+  `progress/rules.js`, held by the gate to the first number in each row's own sentence. Green until first tapped (`prefs.nextSeen`); its one box,
+  "Your next goal. Tap it to go straight there." (agreed words), on the first menu after the walkthrough (`next` tutorial, armed on `tut:done`). A
+  tap is "try to unlock". Go / No-go and Spot · Count show as ONE card (`NEXT_CARD_ORDER.pair`), the v15 1.4d rule unchanged.
+  **L6 quoted, wording only:** "no misses" is dropped wherever "in a row" already says it — Four's row and the four "N hits in a row" length rungs.
+  L6 reads: "'N hits, no misses' is N in a row"; the predicates (`inRow`) are untouched.

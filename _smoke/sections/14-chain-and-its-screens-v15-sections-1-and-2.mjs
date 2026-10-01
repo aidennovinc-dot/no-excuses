@@ -241,4 +241,70 @@ export async function run() {
       ? ok(`64.10 an open row keeps its requirement, ticked and green: "${r.dash.t}"; one earned before this build: "${r.four.t}"; a locked row is unchanged, no tick`)
       : bad('64.10 open rows keep their requirement', JSON.stringify({ r, wantDash }));
   }
+  /* build 68 (67.40, L6 quoted — wording only): "NO MISSES" IS GONE WHEREVER "IN A ROW" SAYS IT, and the next-unlock card's bar lines are the numbers
+     the sentences say — every UNLOCK_BEST / LEN_BEST line equals the first number in its row's own words, so the bar, the words and the test agree */
+  {
+    // read in the page: progress/rules.js reaches the store, which only a browser can load
+    const RU = await page.evaluate(async () => { const R = await import('./progress/rules.js');
+      return { UNLOCK_BEST: Object.fromEntries(Object.entries(R.UNLOCK_BEST).map(([k, B]) => [k, { at: B.at }])), LEN_BEST: Object.fromEntries(Object.entries(R.LEN_BEST).map(([k, a]) => [k, a.map(B => B ? { at: B.at } : null)])) }; });
+    const texts = U.map(u => u.need).concat(Object.values(LEN_RULES).flat().filter(Boolean));
+    const first = s => +((String(s).match(/\d+(?:\.\d+)?/) || [])[0]);
+    const off = [];
+    for (const [k, B] of Object.entries(RU.UNLOCK_BEST)) { const u = U.find(x => x.key === k); const n = u ? first(u.need) : NaN; if (!(Math.abs(n - B.at) < 1e-9)) off.push(`${k} ${B.at} vs "${u && u.need}"`); }
+    for (const [k, rows] of Object.entries(RU.LEN_BEST)) rows.forEach((B, i) => { if (!B) return; const t = (LEN_RULES[k] || [])[i]; if (first(t) !== B.at) off.push(`${k}[${i}] ${B.at} vs "${t}"`); });
+    (!texts.some(t => /no misses/i.test(t)) && !off.length)
+      ? ok(`L6 / 67.40 "no misses" is gone from every chain and length sentence that already says "in a row" (wording only); the card's ${Object.keys(RU.UNLOCK_BEST).length} unlock and ${Object.values(RU.LEN_BEST).flat().filter(Boolean).length} length bar lines each match their sentence's own number`)
+      : bad('L6 / 67.40 the card lines and the words', JSON.stringify({ misses: texts.filter(t => /no misses/i.test(t)), off }));
+  }
+  /* build 68 (67.40): THE NEXT-UNLOCK CARD walked through the game — after the walkthrough's Sprint, Dash first (Aiden's "Dash → Four → Dots"), then
+     Four, then Dots; Go / No-go and Spot · Count as ONE card; every mode open: "Open the Games chest"; the Skill key: the bar nearest clearing with
+     "x of 30"; gone once the Author chest is open. The card's tap lands on that run, and the run's goal is the card's own pick */
+  {
+    const C = await page.evaluate(async () => { const C = await import('./config/copy.js'), G = await import('./config/games.js'), R = await import('./games/registry.js'), U = await import('./config/unlocks.js');
+      return { NC: C.NEXT_CARD, GRID: C.GRID, dash: R.lenName('quick-tap', 15, 'two'), four: 'Quick Tap · ' + G.MODE_NAME.four, modes: U.UNLOCKS.filter(u => u.key.split(':').length === 2 && u.key !== 'sequence:practice').map(u => u.key) }; });
+    const sprint = { g: 'quick-tap', d: 'two', s: 5, t: Date.now() - 6e4, hits: 9, misses: 2, row: 6, v: 4 };
+    const pickAt = async (prefs, store) => { await setStorage({ ne: Object.assign({ v: 7, prefs: Object.assign({ story: 1, gridSeen: 1, menuSeen: 1, snd: 'off', played: 1, tut: 2, welcomeSeen: 1, menuUnl: { about: 1, prog: 1, board: 1 }, tuts: { next: 'done' } }, prefs), runs: [sprint], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} }, store) });
+      await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+      return page.evaluate(async () => { const N = await import('./progress/next.js'), p = N.nextPick(); (await import('./ui/router.js')).show('s-menu'); await new Promise(r => setTimeout(r, 400));
+        const nx = document.getElementById('nextup'); return { p: p && { kind: p.kind, key: p.key, name: p.name, need: p.need, best: p.best, frac: p.frac, count: p.count || '' }, shown: !nx.hidden, html: nx.innerHTML, b: (nx.querySelector('b') || {}).textContent }; }); };
+    const step = [];
+    const all = keys => Object.fromEntries(keys.map(k => [k, Date.now()]));
+    step.push(await pickAt({}, {}));
+    step.push(await pickAt({}, { unlock: all(['quick-tap:two:15']) }));
+    step.push(await pickAt({}, { unlock: all(['quick-tap:two:15', 'quick-tap:four']) }));
+    const upTo = k => C.modes.slice(0, C.modes.indexOf(k));
+    step.push(await pickAt({}, { unlock: all(['quick-tap:two:15', ...upTo('reaction:nogo')]) }));
+    step.push(await pickAt({}, { unlock: all(['quick-tap:two:15', ...C.modes]) }));
+    step.push(await pickAt({ chests: { games: 1 } }, { unlock: all(['quick-tap:two:15', ...C.modes]) }));
+    step.push(await pickAt({ chests: { games: 1, key: 1, pro: 1, thorns: 1 } }, { unlock: all(['quick-tap:two:15', ...C.modes]) }));
+    const [s0, s1, s2, s3, s4, s5, s6] = step;
+    const okWalk = s0.p && s0.p.kind === 'len' && s0.p.name.endsWith(C.dash) && s0.p.best === '6' && s0.shown && s0.b === s0.p.name
+      && s1.p && s1.p.key === 'quick-tap:four' && s1.p.name === C.four && !/no misses/.test(s1.p.need)
+      && s2.p && s2.p.key === 'dots:blind'
+      && s3.p && s3.p.key === 'reaction:nogo' && / and /.test(s3.p.name)
+      && s4.p && s4.p.kind === 'chest' && s4.p.name === C.NC.chest.replace('{chest}', C.GRID.chest.games)
+      && s5.p && s5.p.kind === 'bar' && / of \d+$/.test(s5.p.count) && typeof s5.p.frac === 'number'
+      && s6.p === null && !s6.shown;
+    okWalk
+      ? ok(`67.40 the next-unlock card walks the game: "${s0.p.name}" (best ${s0.p.best}) → "${s1.p.name}" → "${s2.p.name}" → "${s3.p.name}" as one card → "${s4.p.name}" → a Skill bar, "${s5.p.name}" (${s5.p.count}) → gone once the Author chest is open`)
+      : bad('67.40 the next-unlock card', JSON.stringify(step.map(x => x.p)));
+    // the tap: Four's card lands on Quick Tap · Two at its longest open length, and the run's goal line is Four's own
+    await pickAt({}, { unlock: all(['quick-tap:two:15']) });
+    await page.evaluate(() => document.getElementById('nextup').click()); await sleep(1200);
+    const g40 = await page.evaluate(async () => { const S = await import('./core/state.js'), R = (await import('./run/run.js')).R; return { g: S.sel.game, d: S.sel.diff, s: S.sel.secs, goal: R.goal && R.goal.key, seen: JSON.parse(localStorage.getItem('ne')).prefs.nextSeen }; });
+    await page.evaluate(async () => (await import('./run/run.js')).abort(true)); await sleep(300);
+    (g40.g === 'quick-tap' && g40.d === 'two' && g40.s === 15 && g40.goal === 'quick-tap:four' && g40.seen === 1)
+      ? ok(`67.40 a tap on the card is "try to unlock": Quick Tap · Two on its longest open length (${g40.s}s), and the run's goal is the card's own pick (${g40.goal}); the card stops being green`)
+      : bad('67.40 the card\'s tap and the run\'s goal', JSON.stringify(g40));
+    // first menu after the walkthrough: the card glows green and its one box rings it, in the agreed words; during the walkthrough it is not there
+    const nb = await page.evaluate(async () => (await import('./config/copy.js')).TUTORIAL.nextBox.replace(/\[\/?(green|yellow|red)\]/g, ''));
+    await pickAt({ tuts: { next: 0 } }, {}); await sleep(600);
+    const first40 = await page.evaluate(() => { const t = document.getElementById('tut'), nx = document.getElementById('nextup'); return { box: t && !t.hidden ? t.querySelector('p').textContent : null, green: nx.classList.contains('newthing'), shown: !nx.hidden }; });
+    await setStorage({ ne: { v: 7, prefs: { story: 1, gridSeen: 1, snd: 'off' }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+    const walk40 = await page.evaluate(async () => { (await import('./ui/router.js')).show('s-menu'); await new Promise(r => setTimeout(r, 300)); return !document.getElementById('nextup').hidden; });
+    (first40.box === nb && first40.green && first40.shown && !walk40)
+      ? ok(`67.40 the first main menu after the walkthrough: the card glows green and one box rings it — "${first40.box}"; before the walkthrough is done there is no card`)
+      : bad('67.40 the card\'s first showing', JSON.stringify({ first40, walk40, nb }));
+  }
 }

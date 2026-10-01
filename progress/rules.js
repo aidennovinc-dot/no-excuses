@@ -75,6 +75,34 @@ const LEN_TEST = {
   // and is judged the old way, the same convention B.6 gave `row` — nothing already earned is taken back
   'reaction:flash': [null, r=>r.hits>500&&!r.noTap],
 };
+/* build 68 (67.40): HOW FAR THE BEST RUN IS ALONG EACH REQUIREMENT — the next-unlock card's bar (progress/next.js). `of` picks the runs that count,
+   `v` reads the figure the test above reads, `at` is its line, `lower` a ceiling, `dp` / `unit` how the best is printed. Each line is its row's own
+   number; the gate holds every one to the first number in that row's sentence in config/unlocks.js, so the bar, the words and the test agree. A row
+   that is one act (press nothing, get the first note wrong) has no bar */
+const rowOf=r=>r.row===undefined?(r.misses===0?r.hits:0):r.row;
+const UNLOCK_BEST = {
+  'quick-tap:four':    { of:r=>r.g==='quick-tap'&&r.d==='two', v:rowOf, at:15 },
+  'dots:blind':        { of:r=>r.g==='quick-tap', v:r=>r.hits, at:35 },
+  'dots:lead':         { of:r=>r.g==='dots'&&r.d==='blind', v:r=>r.misses, at:5 },
+  'hold:cut':          { of:r=>r.g==='hold'&&r.d==='grow', v:r=>r.x, at:15, lower:1, dp:1, unit:'%' },
+  'sequence:solo':     { of:r=>r.g==='hold'&&r.d==='cut', v:r=>r.x, at:3.5, lower:1, dp:1, unit:'%' },
+  'sequence:practice': { of:r=>r.g==='sequence'&&r.s===7, v:r=>r.hits, at:8 },
+  'timing:hidden':     { of:r=>r.g==='timing'&&r.d==='stopwatch', v:r=>r.x, at:.3, lower:1, dp:2, unit:'s' },
+  'reaction:flash':    { of:r=>r.g==='timing'&&r.d==='stopwatch'&&r.s===STREAK, v:r=>r.hits, at:6 },
+  'reaction:nogo':     { of:r=>r.g==='reaction'&&r.d==='flash'&&r.s===5, v:r=>r.hits, at:350, lower:1, unit:'ms' },
+  'spot:count':        { of:r=>r.g==='reaction'&&r.s===5, v:r=>r.hits, at:350, lower:1, unit:'ms' },
+  'spot:find':         { of:r=>r.g==='spot'&&r.d==='count'&&r.s===STREAK, v:r=>r.rounds||0, at:6 },
+};
+// the same for a length rung, read over the runs of the length before it — LEN_TEST's shape
+const LEN_BEST = {
+  'quick-tap:two':  [null, { v:rowOf, at:7 }, { v:r=>r.hits, at:24 }],
+  'quick-tap:four': [null, { v:rowOf, at:7 }, { v:r=>r.hits, at:24 }],
+  'dots:blind':     [null, { v:rowOf, at:6 }, { v:r=>r.hits, at:22 }],
+  'dots:lead':      [null, { v:rowOf, at:9 }, { v:r=>r.hits, at:28 }],
+  'sequence:solo':  [null, { v:r=>r.hits, at:8 }],
+  'hold:cut':       [null, { v:r=>r.y, at:15, dp:1, unit:'%' }],
+  'reaction:flash': [null, { v:r=>r.noTap?null:r.hits, at:500, unit:'ms' }],
+};
 
 /* ---------- achievements: test(run, allRuns) per id; progress(allRuns, game) 0..1 for the bar where one exists ----------
    v24 (D.2, build 44): twenty-three predicates LEFT this table — qt_clean5, qt_bclean5, qt_r5, qt_br4, dt_pin, dt_bpin, dt_land,
@@ -153,4 +181,5 @@ const QUALITY = {
 const quality=(g,d,s,r)=>GV(QUALITY,g,d,s,()=>0)(r);
 
 const ACH_PROGRESS = Object.fromEntries(Object.entries(ACH_PROGRESS_RAW).map(([k, f]) => [k, clamp1(f)]));
+export { LEN_BEST, UNLOCK_BEST };
 export { ACH_LEFT, ACH_PROGRESS, ACH_TEST, LEN_TEST, QUALITY, UNLOCK_TEST, bestRate, bestRound, fullsetProg, lowProg, lowTotal, quality, rate, tourProg };

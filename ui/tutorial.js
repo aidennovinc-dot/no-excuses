@@ -295,6 +295,14 @@ tutorial('est',[
     at:[['Estimate pick sheet','(the Mode row, not ringed)'],['Estimate pick sheet','Set'],['Estimate pick sheet','Streak'],['Estimate pick sheet','']] } });
 const estFirst=()=>eOn()&&(prefs.tuts||{}).est===undefined&&!(store.runs||[]).some(r=>r.g===EG);
 
+/* build 68 (67.40): THE NEXT-UNLOCK CARD'S ONE BOX, the first time the main menu shows the card — on the first arrival there after the walkthrough's
+   run. The card is ringed; a tap anywhere moves the box on, and the card is the player's to tap */
+tutorial('next',[
+  { on:()=>menuOn()&&vis($('#nextup')), el:()=>$('#nextup'), text:TUTORIAL.nextBox },
+],{ opened:()=>tutDone(),
+  meta:{ name:'Next unlock', trigger:'The walkthrough ends; the first main menu after it', start:'Main menu', why:'The card that says what to chase next, and that a tap goes straight there', at:[['Main menu','the Next unlock card']] } });
+on('tut:done',()=>arm('next'));
+
 /* build 66 (65.16): A GAUNTLET, when the chest whose spill brings it in opens — Mini with the Skill chest, Mega with the Pro chest. It starts on the map
    the reveal hands back to: the Gauntlet's tile is ringed and must be tapped (65.9 — the player goes in by themselves), then three lines on its own
    screen. Every fact is config's: what it plays (its roster, every game but those it leaves out), and the key and chest a finished run opens */

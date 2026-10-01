@@ -6,7 +6,7 @@
    the `story` class on #s-menu, which hides the menu's own rows without taking their space, and the two lines are absolutely
    positioned above and below the title (1.1 — line one at the top, NO EXCUSES in the middle, line two under it). The menu is
    rendered before the sequence starts, so nothing about the layout can change while it plays. */
-import { GRID, KEY, MENU, TOAST } from "../../config/copy.js";
+import { GRID, KEY, MENU, NEXT_CARD, TOAST } from "../../config/copy.js";
 import { MODE_NAME } from "../../config/games.js";
 import { GAMES } from "../../games/registry.js";
 import { sel } from "../../core/state.js";
@@ -19,7 +19,8 @@ import { countUp } from "../../core/count.js";
 import { emit, on } from "../../core/events.js";
 import { CHAL } from "../../core/platform.js";
 import { prefs, save, store } from "../../core/store.js";
-import { Scores, nextGoal, setPendingAim } from "../../progress.js";
+import { Scores, setPendingAim } from "../../progress.js";
+import { nextPick } from "../../progress/next.js";
 import { goWhere } from "../../run/run.js";
 import { capture, define } from "../actions.js";
 import { register, show } from "../router.js";
@@ -81,9 +82,14 @@ function renderMenu(){ const first=firstRun(); const opening=menuWasFirst&&!firs
      v15 (2.2): it does NOT appear on a fresh profile's first menu open — a player who has not run anything yet is being
      told to play, not handed a target — and it labels itself Next unlock or Next achievement depending on which of the
      two nextGoal() found. Unlocks outrank achievements: the chain is offered until there is none of it left. */
-  const ng=first?null:nextGoal(); const nx=$('#nextup');
-  if(ng){ nx.innerHTML=T(ng.ach?MENU.nextAch:MENU.next,{need:ng.need,name:ng.name}); nx.hidden=false; nextWhere=Object.assign({need:ng.need},ng.where); } else { nx.hidden=true; nextWhere=null; }
+  /* build 68 (67.40): THE NEXT-UNLOCK CARD — progress/next.js picks it (the next mode, the Games chest, the nearest key bar, the chest), shaped like an
+     achievement card: eyebrow, the reward in bold, its requirement, the best so far on a bar. Green until first tapped; gone once the Author chest is open */
+  const np=first?null:nextPick(); const nx=$('#nextup');
+  if(np){ nx.innerHTML=cardHtml(np); nx.hidden=false; nextWhere=np; nx.classList.toggle('newthing',!prefs.nextSeen); } else { nx.hidden=true; nextWhere=null; }
   renderResume(); }
+function cardHtml(p){ const has=typeof p.frac==='number';
+  const prog=has?`<div class="nprog"><small class="nbest">${esc(p.best===null?NEXT_CARD.none:T(NEXT_CARD.best,{best:p.best}))}</small><i class="pbar"><i style="width:${Math.round(p.frac*100)}%"></i></i></div>`:'';
+  return `<em>${esc(NEXT_CARD.eyebrow)}${p.count?' · '+esc(p.count):''}</em><b>${esc(p.name)}</b><span>${esc(p.need)}</span>${prog}`; }
 
 /* v31 (60.27, build 60): THE OFFER A KILLED APP COMES BACK TO. A Streak or a Gauntlet writes where it had got to after every
    round (run/run.js saveResume), and the record is cleared the moment the run finishes or is quit — so a row here means the app
@@ -178,7 +184,10 @@ function enterMenu(){ renderMenu(); menuIn(); if(CHAL) setTimeout(()=>emit('chal
 
 register('s-menu',{ onShow({intro,story}){ setPendingAim(''); storyOn=false; titleStop(); $('#s-menu').classList.remove('story','run','storyend');
   renderMenu(); if(story) storyStart(); else if(intro) menuIn(); } });
-define({ nextup(){ if(nextWhere) goWhere(nextWhere); return 'click'; },
+// build 68 (67.40): a tap is "try to unlock" — the run the card points at, on the longest open length; a chest or a Gauntlet goes to the map
+define({ nextup(){ const p=nextWhere; if(!p) return 'click'; if(!prefs.nextSeen){ prefs.nextSeen=1; save(); }
+    if(p.go==='map'){ show('s-pick'); return 'click'; }
+    goWhere(Object.assign({ aim:p.kind==='unlock'?p.key:null }, p.where)); return 'click'; },
   /* v31 (60.27, build 60): the tap that takes the offer. It sets the combination and the round to come back at, and the pick
      sheet is where it lands — the player presses Go themselves, so the run starts when they are ready to play rather than while
      the menu is still fading. 'resumeAt' is read once by run/run.js and cleared, so this can never fire twice. */

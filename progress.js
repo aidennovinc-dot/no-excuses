@@ -110,10 +110,14 @@ function lenNextLive(g,d,s){ const n=lenNextOf(g,d,s); if(!n) return null;
    Quick Tap length — Sprint included — was handed "35 hits in any run": seven taps a second. Measured headless before the change. The order:
    (1) a chain row that names THIS length; (2) the rung above this length; (3) a chain row that names no length, and only on the longest
    length open in this mode — where Try to unlock already lands one (D.8). Nothing here and run/run.js falls back to the key (keyGoal). */
+// build 68 (67.40): the rung above this length as a run's goal — goalFor's second offer, and the next-unlock card's when it points at a length
+function lenGoal(g,d,s){ if(prefs.allOpen) return null; const lens=GC(g,d).lens, i=lens.indexOf(s); if(i<0||i>=lens.length-1) return null;
+  const nxt=lens[i+1], L=lenLock(g,d,nxt); if(!L) return null; const test=(LEN_TEST[g+':'+d]||[])[i+1];
+  return { key:g+':'+d+':'+nxt, need:L.need, where:{g,d,s}, live:1, len:L, test:r=>r.g===g&&r.d===d&&r.s===s&&(test?test(r):true) }; }
 function goalFor(g,d,s){ if(prefs.allOpen) return null; const u=unlocked(), lens=GC(g,d).lens;
   const fits=x=>!u[x.key]&&x.where.g===g&&(!x.where.d||x.where.d===d);
   const named=UNLOCKS.find(x=>fits(x)&&x.where.s===s); if(named) return named;
-  const i=lens.indexOf(s); if(i>=0&&i<lens.length-1){ const nxt=lens[i+1], L=lenLock(g,d,nxt); if(L){ const test=(LEN_TEST[g+':'+d]||[])[i+1]; return { key:g+':'+d+':'+nxt, need:L.need, where:{g,d,s}, live:1, len:L, test:r=>r.g===g&&r.d===d&&r.s===s&&(test?test(r):true) }; } }
+  { const lg=lenGoal(g,d,s); if(lg) return lg; }
   let top; for(let j=lens.length-1;j>=0;j--) if(lenOpen(g,d,lens[j])){ top=lens[j]; break; }
   if(s===top){ const any=UNLOCKS.find(x=>fits(x)&&(x.where.s===undefined||x.where.s===null)); if(any) return any; }
   return null; }
@@ -297,4 +301,5 @@ function devModesAll(on){ const u=unlocked(), dk=Object.assign({},prefs.devKeys)
   prefs.devKeys=dk; save(); return devModesOn(); }
 function devModesReset(){ const u=unlocked(); for(const k of modeRows()) delete u[k]; if(prefs.devKeys) delete prefs.devKeys.games; save(); }
 
+export { lenGoal };
 export { ACH, Scores, UNLOCKS, achAll, achById, achTab, achToast, achWhere, nameless, bankLen, chalRun, checkAch, checkUnlocks, devModesAll, devModesOn, devModesReset, freeMode, gameDone, gameOpen, gameUnlocked, gamesDone, goalFor, got, isNew, isOpen, lenLock, lenNeed, lenNextLive, lenNextOf, lenOpen, lensOf, markSeen, modeCount, needFor, newMark, newPlay, nextAch, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, tierMin, tierOf, unlockArt, unlockHear, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict, verdictKey };
