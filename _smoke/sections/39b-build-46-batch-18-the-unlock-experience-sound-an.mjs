@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { own, GAMES, CLOCK, sleep, ok, bad, finished, root, read, boot, at, page, click, revealReady, revealDone } from '../lib/gate.mjs';
+import { own, GAMES, CLOCK, sleep, ok, bad, finished, root, read, boot, at, page, click, revealReady, revealDone, GAUNT_ALL } from '../lib/gate.mjs';
 
 export const SECTION = ["build 46 - batch 18, the unlock experience, sound and About"];
 
@@ -68,6 +68,8 @@ export async function run() {
     const early54 = await page.evaluate(() => ({ on: document.getElementById('s-key').classList.contains('kearning'), cere: !document.getElementById('key-cere').hidden }));
     await sleep(Math.max(0, KY46.EARN_SKIP_AT + 250 - (Date.now() - onAt54)));
     await cereTap54();
+    // AMENDED at build 68 (67.31, L13): NO SKIP. The tap after where EARN_SKIP_AT used to let one through does nothing either
+    const late54 = await page.evaluate(() => document.getElementById('s-key').classList.contains('kearning'));
     const skipSt = await revealReady(); const skipTook = Date.now() - onAt54;   // measured from the first frame of the ceremony
     const skipped = await page.evaluate(() => ({ kdone: document.getElementById('s-key').classList.contains('kdone'), on: document.getElementById('s-key').classList.contains('kearning'),
       cere: !document.getElementById('key-cere').hidden, ring: !!document.querySelector('#key-ring .kring') }));
@@ -84,10 +86,32 @@ export async function run() {
     const spokeSounds = seen.every(x => x.heard.map.join() === (walksSpokes(x.tier) ? order : ''));
     const grander = seen[0].cfg.ms <= seen[1].cfg.ms && seen[1].cfg.ms <= seen[2].cfg.ms
       && !seen[0].start.crk && !seen[1].start.crk && seen[2].start.crk > 0 && seen[2].start.thn > 0;
-    const skipOk = skipSt === 'off' && skipTook < KY46.KEY_EARN.author.ms - 200 && skipped.kdone && !skipped.on && !skipped.cere && skipped.ring
-      && early54.on && early54.cere;   // v29 item 3: the tap inside the window left the ceremony running
+    // AMENDED at build 68 (67.31, L13): both taps left it running, and it ran to its own end
+    const skipOk = skipSt === 'off' && skipTook >= KY46.KEY_EARN.author.ms - 400 && skipped.kdone && !skipped.on && skipped.ring
+      && early54.on && early54.cere && late54;
     (!bad11.length && grander && spokeSounds && skipOk)
-      ? ok(`item 11 / v27 item 14 / v29 item 3 all three keys get their own earned animation: the Skill AND Pro keys' seven spokes fire clockwise from Quick Tap at 12 (${order.replace(/,/g, ' → ')}), each with its own game's sound, and the Author key has its own; ${seen.map(s => s.tier + ' ' + s.cfg.ms / 1000 + 's (took ' + s.took + 'ms)').join(' · ')}, each ending by itself in the finished key with no tap and no card — and THE SKIP WAITS ${KY46.EARN_SKIP_AT}ms: a tap ${early54At}ms into the Author key's ${KY46.KEY_EARN.author.ms}ms did nothing and it played on, a tap after the window ended it in ${skipTook}ms, on the finished key with its ring drawn`)
-      : bad('item 11 / v27 item 14 the earned animations', JSON.stringify({ bad11, grander, spokeSounds, skipOk, skipTook, skipped, early54, seen: seen.map(s => ({ t: s.tier, st: s.st, took: s.took, heard: s.heard, after: s.after })) }));
+      ? ok(`L13 / item 11 / v27 item 14 all three keys get their own earned animation, and no tap ends one early: the Skill AND Pro keys' seven spokes fire clockwise from Quick Tap at 12 (${order.replace(/,/g, ' → ')}), each with its own game's sound, and the Author key has its own; ${seen.map(s => s.tier + ' ' + s.cfg.ms / 1000 + 's (took ' + s.took + 'ms)').join(' · ')}, each ending by itself in the finished key with no tap and no card — and THE SKIP WAITS ${KY46.EARN_SKIP_AT}ms: a tap ${early54At}ms into the Author key's ${KY46.KEY_EARN.author.ms}ms did nothing and it played on, a tap after the window ended it in ${skipTook}ms, on the finished key with its ring drawn`)
+      : bad('item 11 / v27 item 14 the earned animations', JSON.stringify({ bad11, grander, spokeSounds, skipOk, skipTook, skipped, early54, late54, seen: seen.map(s => ({ t: s.tier, st: s.st, took: s.took, heard: s.heard, after: s.after })) }));
+  }
+  /* build 68 (67.31, L13): THE KEY'S MOTION ENDS, AND HALF A SECOND LATER AT MOST THE NEXT SCREEN IS UP — BY ITSELF. Aiden, the third time: "It
+     shouldn't be sitting there for more than like half a second before the next screen is opened up … I shouldn't be able to tap at all." All three
+     keys, each earned on its own screen with its chest's Gauntlet behind it, so the next screen is that chest's opening. Measured on the page's clock
+     (this section runs at ×1) from the frame the motion settles (`ksettle`) to the frame the chest's ceremony takes the screen; nothing is tapped, and
+     no "tap to open the chest" prompt ever shows */
+  {
+    const l13 = [];
+    for (const [tier, chest, chests, bars, tab] of [['clear', 'key', { games: 1 }, tier46('clear'), 0], ['pro', 'pro', { games: 1, key: 1 }, tier46('clear', 'pro'), 1], ['author', 'thorns', { games: 1, key: 1, pro: 1 }, tier46('clear', 'pro', 'author'), 2]]) {
+      await boot({ chests }, { unlock: ALL46, bars, gaunt: GAUNT_ALL() });
+      await page.evaluate(c => { const k = document.getElementById('s-key'), h = document.getElementById('key-cere'), hint = document.getElementById('key-hint'); window.__l13 = { prompt: 0 };
+        new MutationObserver(() => { if (k.classList.contains('ksettle') && !window.__l13.settle) window.__l13.settle = performance.now(); if (hint.classList.contains('kprompt')) window.__l13.prompt++; }).observe(k, { attributes: true, subtree: true, attributeFilter: ['class'] });
+        new MutationObserver(() => { if (h.dataset.kind === 'chest' && h.dataset.rev === c && !window.__l13.next) window.__l13.next = performance.now(); }).observe(h, { attributes: true }); }, chest);
+      await show46('s-key', { tier: tab });
+      let st = null; for (let i = 0; i < 120 && !((st = await page.evaluate(() => window.__l13)).next); i++) await sleep(100);
+      l13.push({ tier, gap: st.next && st.settle ? Math.round(st.next - st.settle) : null, prompt: st.prompt });
+      await revealDone(); await sleep(300);
+    }
+    (l13.every(x => x.gap !== null && x.gap >= 0 && x.gap <= 500 && !x.prompt))
+      ? ok(`L13 / 67.31 a key earned: the motion ends and the chest's opening is up by itself ${l13.map(x => x.tier + ' ' + x.gap + 'ms').join(' · ')} later (0.5s at most, EARN_NEXT.hold ${KY46.EARN_NEXT.hold}ms), no tap, no prompt`)
+      : bad('L13 / 67.31 the next screen after a key', JSON.stringify(l13));
   }
 }

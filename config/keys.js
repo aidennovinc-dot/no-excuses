@@ -76,6 +76,11 @@ export const KEYS = [
    state (ui/screens/key.js). The screen still never locks — the wait is on the SKIP, not on the player. */
 // item 3 (build 54): how long a key-earn ceremony ignores a tap before a tap skips it. One number, all three tiers
 export const EARN_SKIP_AT = 1500;
+/* build 68 (67.31, L13): A KEY EARNED — the motion plays, the finished key holds `hold` ms (0.5s at most), then the next screen opens by itself: its
+   chest, if it is ready, else the run's result the interlude came from. No tap at all, no skip, no "tap to open the chest" (supersedes the
+   2026-09-18 tap-to-skip and the 2026-09-20 prompt). The earn music carries on into that screen and fades there over `fade` ms. EARN_SKIP_AT above
+   now governs the creation intro's skip alone */
+export const EARN_NEXT = { hold: 400, fade: 1600 };
 
 /* ---------- v29 Section A (57.6, build 57): THE KEY BEING CREATED — the first time its screen is opened ----------
    Aiden: "the first time a key's screen is opened, play an introduction of that key being created — really cool, with sound effects to match.

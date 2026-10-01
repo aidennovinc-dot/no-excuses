@@ -267,9 +267,12 @@ const Snd = (()=>{
       if(!gn) return null;
       let off=false;
       // gain() and stopped() are the gate's read: it spies on Snd.keyEarn, taps the skip and proves THIS handle went quiet (item 8)
+      // build 68 (67.31): fade(ms) — the earn music carries into the screen after the key and fades out there, rather than being cut
       return { gain(){ try{ return gn.gain.value; }catch(e){ return 0; } }, stopped(){ return off; },
         stop(){ off=true; try{ const n=a.currentTime; gn.gain.cancelScheduledValues(n); gn.gain.setValueAtTime(gn.gain.value,n); gn.gain.setTargetAtTime(0,n,.04);
-        setTimeout(()=>{ try{ gn.gain.value=0; gn.disconnect(); }catch(e){} },600); }catch(e){} } }; },
+        setTimeout(()=>{ try{ gn.gain.value=0; gn.disconnect(); }catch(e){} },600); }catch(e){} },
+        fade(ms){ off=true; try{ const n=a.currentTime; gn.gain.cancelScheduledValues(n); gn.gain.setValueAtTime(gn.gain.value,n); gn.gain.linearRampToValueAtTime(0,n+Math.max(.05,ms/1000));
+        setTimeout(()=>{ try{ gn.gain.value=0; gn.disconnect(); }catch(e){} },ms+300); }catch(e){} } }; },
     /* v29 Section A (57.6, build 57): THE KEY BEING CREATED. `keyIntroPlan(tier)` is KEY_INTRO_FX flat over that key's own theme root, the same
        shape keyEarnPlan answers; `keyIntro(tier)` schedules it through a gain node of its own and hands back the same stop() handle the earn does,
        so a skip can silence it (v29 item 8's lesson, applied when the sound was written rather than a build later). */

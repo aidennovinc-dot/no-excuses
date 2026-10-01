@@ -106,23 +106,25 @@ export async function run() {
   await page.evaluate(async () => { const K = await import('./progress/key.js'); const S = await import('./core/store.js'); for (const c of K.COMBOS) if (c.key !== 'quick-tap:four:5' && !S.store.bars[c.key]) S.store.bars[c.key] = Date.now(); S.save(); });
   await page.reload({ waitUntil: 'networkidle0' }); await sleep(500);
   await page.evaluate(() => { const el = document.getElementById('s-key'); const w = window.__k48 = { n: 0, fin: 0, cut: 0, done: false };
-    new MutationObserver(() => { if (el.classList.contains('kearning') && !w.n) { const as = document.getAnimations().filter(a => a.effect && a.effect.target && el.contains(a.effect.target) && Number.isFinite(a.effect.getComputedTiming().endTime));
+    // AMENDED at build 68 (67.31): the chest now opens itself EARN_NEXT.hold after the earn settles, so the state the Testing path is held to is read at the settle
+    new MutationObserver(() => { if (el.classList.contains('ksettle') && !w.p3) { w.p3 = 1; import('./progress/key.js').then(K => { w.p3 = { meter: K.meter(), chests: ['games', 'key', 'pro', 'thorns'].map(K.chestState), bars: K.TIERS.map(t => K.keyState(t).done) }; }); }
+      if (el.classList.contains('kearning') && !w.n) { const as = document.getAnimations().filter(a => a.effect && a.effect.target && el.contains(a.effect.target) && Number.isFinite(a.effect.getComputedTiming().endTime));
       w.n = as.length; as.forEach(a => a.finished.then(() => w.fin++, () => w.cut++)); } }).observe(el, { attributes: true, attributeFilter: ['class'] }); });
   const run2 = await qt48(1, 'chests: a Quick Tap - Four Sprint, the last key-1 bar');
-  let rev2 = 'none'; for (let i = 0; i < 100; i++) { await sleep(250); const s = await page.evaluate(() => ({ scr: document.querySelector('.screen.on').id, on: !document.getElementById('key-cere').hidden, n: window.__k48.n }));
-    if (s.on) rev2 = 'playing'; if (rev2 === 'playing' && !s.on && s.scr === 's-key') { rev2 = 'ended'; break; } }
-  const k48 = await page.evaluate(() => Object.assign({}, window.__k48, { hint: document.getElementById('key-hint').textContent, lock: document.getElementById('s-key').classList.contains('auto') }));
-  const p3 = await page.evaluate(async () => { const K = await import('./progress/key.js'); return { meter: K.meter(), chests: ['games', 'key', 'pro', 'thorns'].map(K.chestState), bars: K.TIERS.map(t => K.keyState(t).done) }; });
-  // the key asks, Open opens its chest (AMENDED for build 49), and inside the run's interlude the chest's card hands back to that run's result
-  await tap('#key-ring .khubhit'); await sleep(400);
-  const ask2 = await page.evaluate(() => !document.getElementById('key-ask').hidden && document.getElementById('key-cere').hidden);
-  await tap('[data-act="key-ask-yes"]'); await sleep(400); await revealDone(); await sleep(500);
+  /* AMENDED at build 68 (67.31, L13): the earn ends and the Skill chest's ceremony takes the screen BY ITSELF — no "tap to open" prompt, no ask — and
+     inside the run's interlude its card hands back to that run's result */
+  let rev2 = 'none'; for (let i = 0; i < 100; i++) { await sleep(150); const s = await page.evaluate(() => ({ scr: document.querySelector('.screen.on').id, on: !document.getElementById('key-cere').hidden, kind: document.getElementById('key-cere').dataset.kind, n: window.__k48.n }));
+    if (s.on && s.kind === 'key') rev2 = 'playing'; if (rev2 === 'playing' && s.on && s.kind === 'chest') { rev2 = 'ended'; break; } }
+  const k48 = await page.evaluate(() => Object.assign({}, window.__k48, { prompt: document.getElementById('key-hint').classList.contains('kprompt'), lock: document.getElementById('s-key').classList.contains('auto') }));
+  const p3 = await page.evaluate(() => window.__k48.p3 || {});
+  const ask2 = await page.evaluate(() => document.getElementById('key-ask').hidden);
+  await revealDone(); await sleep(500);
   const back2 = await onScreen();
   const p4 = await read48();
   (run1 === 's-over' && !why48(p0).length && p0.store.chests.join() === 'locked,before,before,before' && p1.store.chests[0] === 'ready' && !why48(p1).length
     && stage7.on && !stage7.meter && !/%/.test(stage7.txt) && card7.length && !card7.some(x => /%/.test(x)) && p2.store.chests.join() === 'open,locked,before,before' && !why48(p2).length
-    && (run2 === 's-over' || run2 === 's-key') && rev2 === 'ended' && k48.n && k48.fin === k48.n && !k48.cut && k48.hint === CP48.KEY.completeReady.replace('{chest}', CP48.GRID.chest.key)
-    && p3.chests.join() === 'open,ready,before,before' && p3.meter === 100 && p3.bars[0] === 30 && ask2 && back2 === 's-over' && p4.store.chests.slice(0, 3).join() === 'open,open,locked' && !why48(p4).length)
+    && (run2 === 's-over' || run2 === 's-key') && rev2 === 'ended' && k48.n && k48.fin === k48.n && !k48.cut && !k48.prompt
+    && (p3.chests || []).join() === 'open,ready,before,before' && p3.meter === 100 && p3.bars[0] === 30 && ask2 && back2 === 's-over' && p4.store.chests.slice(0, 3).join() === 'open,open,locked' && !why48(p4).length)
     ? ok(`v26 items 7 / 12 THROUGH PLAY: a run earns the last mode and the Games chest goes ready; opened on the map its screen and card show no percentage ("${card7.join(' · ')}"); a run clears the last key-1 bar, the reveal plays every one of its ${k48.n} animations to the end, the key says "${k48.hint}", the Skill chest is ready at ${p3.meter}%, the tap asks, Open opens it and its card goes back to the run's result - and at every step the store, the map, the Keys screen and the menu agree`)
     : bad('v26 items 7 / 12 the earned path', JSON.stringify({ run1, p0: why48(p0), p1: [p1.store.chests, why48(p1)], stage7, card7, p2: [p2.store.chests, why48(p2)], run2, rev2, k48, p3, ask2, back2, p4: [p4.store, why48(p4)] }));
 
@@ -1110,6 +1112,8 @@ export async function run() {
       const P = await import('./progress.js'); const wait = ms => new Promise(r => setTimeout(r, ms));
       // Testing's own switch: every chest before this one filled and opened the way play does, and this one left READY
       K.devReach(chest, P.devModesAll);
+      // AMENDED at build 68 (67.31): an earn now opens its chest by itself, so the ask is driven on a LATER visit — the key already celebrated, its chest still ready
+      { const S = await import('./core/store.js'), t = ['clear', 'pro', 'author'][ix]; S.prefs.revealed = Object.assign({}, S.prefs.revealed, { ['key:' + t]: 1 }); S.prefs.keyWhole = Object.assign({}, S.prefs.keyWhole, { [t]: 1 }); S.save(); }
       R.show('s-key', { tier: ix, from: 's-testing' }); await wait(1200);
       const out = { state: K.chestState(chest), prompt: document.getElementById('key-hint').classList.contains('kprompt') };
       const fire = sel => { const el = document.querySelector(sel); if (!el) return null;
@@ -1129,7 +1133,8 @@ export async function run() {
       await wait(700); out.after = K.chestState(chest);
       return out; }, chest, ix);
   }
-  const askBad = Object.entries(ask60).filter(([id, r]) => !(r.state === 'ready' && r.prompt
+  // AMENDED at build 68 (67.31, L13): no prompt is up on a later visit — the key's own ask is the way in
+  const askBad = Object.entries(ask60).filter(([id, r]) => !(r.state === 'ready' && !r.prompt
     && r.askUp && r.tapNo && !r.tapNo.swallowed && r.closed && r.afterNo === 'ready'
     && r.tapYes && !r.tapYes.swallowed && r.cere.shown && r.cere.nodes > 0 && r.after === 'open'));
   askBad.length === 0

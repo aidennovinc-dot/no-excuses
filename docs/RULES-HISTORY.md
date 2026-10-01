@@ -1739,3 +1739,17 @@ anything Aiden settles goes on the list in the build that implements it.
   **Why build 66's gate passed while the phone showed overlaps:** its `covers` compared the box with its own ring and nothing else, and only when
   a ring was drawn — a ring-less box, and every chip, tile and button that was not the ring, was never measured. The walk now measures every box
   against every tappable control at 390×844 and on an SE, and counts any scroll made from `ui/tutorial.js`.
+
+- **A key earned, then the next screen by itself (67.31, L13; superseding the 2026-09-18 tap-to-skip, v29 item 3's `EARN_SKIP_AT` window for the
+  earn, and the 2026-09-20 / 59.14 "tap to open the chest" prompt).** Aiden, the third time: "It shouldn't be sitting there for more than like half
+  a second before the next screen is opened up … I shouldn't be able to tap at all, honestly." The cause was the 2026-09-18 rule tying the
+  ceremony to the earn music and then a prompt waiting for a tap. Now the motion sets the length (the reveal settles when its animations end);
+  `earnNext()` waits `EARN_NEXT.hold` (400ms, capped at 500) and opens the key's chest if it is ready (a chest tapped on the map while the earn was
+  unseen first), else hands an interlude back to its result; a chest that still wants its Gauntlet leaves the player on the key, which names it.
+  No skip (`skip()` answers false; the earn capture is gone). The earn music is not cut: its handle's `fade(ms)` ramps it out over `EARN_NEXT.fade`
+  in the screen that follows. Testing's replay opens nothing. `EARN_SKIP_AT` now governs the creation intro's skip alone. The gate times motion
+  end → chest ceremony on all three keys at ×1 (39b), and holds the music carrying and fading (music).
+- **The key keeps its size (67.23, L12) — regressed, not never-built.** Build 65 (64.16) made the intro's key land at the hub key's size; but
+  build 62 (61.25) had already made the ring give up a third of its height (30vh → 21vh) whenever a game's requirement list opened, so the first
+  tap on a game shrank the key — 57.5's "one size" undone. The rule is gone; measured at 390×844 the list still shows four full rows under the
+  full-size ring (61.25 asks for three).

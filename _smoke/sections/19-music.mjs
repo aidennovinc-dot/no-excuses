@@ -253,21 +253,27 @@ export async function run() {
     const skip55 = await page.evaluate(async () => { const A = await import('./audio.js'); const R = await import('./ui/router.js');
       const S = await import('./core/store.js'); const K = await import('./progress/key.js');
       const wait = t => new Promise(r => setTimeout(r, t));
-      S.prefs.allOpen = true; S.prefs.chests = { games: 1, key: 1, pro: 1, thorns: 0 }; S.prefs.revealed = {}; S.prefs.snd = 'space';
+      // AMENDED at build 68 (67.31): open-everything counts every chest open, so the Author chest would never be the next screen — both Gauntlets finished instead
+      S.prefs.allOpen = false; S.store.gaunt = [{ id: 'g1', t: Date.now(), score: 1, tier: 'clear', web: [] }, { id: 'g2', t: Date.now(), score: 1, tier: 'clear', web: [] }];
+      S.prefs.chests = { games: 1, key: 1, pro: 1, thorns: 0 }; S.prefs.revealed = {}; S.prefs.snd = 'space';
       S.store.bars = {}; for (const c of K.COMBOS) for (const t of K.TIERS) S.store.bars[K.skey(c.key, t)] = 1;
       S.save();
       const orig = A.Snd.keyEarn; let h = null;
       A.Snd.keyEarn = function () { h = orig.apply(this, arguments); return h; };
       R.show('s-menu'); await wait(150); R.show('s-key', { tier: 2 }); await wait(1800);
       const before = h ? { ringing: !h.stopped(), g: h.gain() } : null;
+      // AMENDED at build 68 (67.31, L13): a tap is nothing now — the music keeps going; it carries into the chest's opening and FADES there
       const host = document.getElementById('key-cere'); if (host) host.click();
-      await wait(700);
-      const after = h ? { stopped: h.stopped(), g: h.gain() } : null;
+      await wait(300); const tapped = h ? { ringing: !h.stopped() } : null;
+      for (let i = 0; i < 80 && document.getElementById('key-cere').dataset.kind !== 'chest'; i++) await wait(50);
+      await wait(120); const atNext = h ? { stopped: h.stopped(), g: h.gain() } : null;
+      const K2 = await import('./config/keys.js'); await wait(K2.EARN_NEXT.fade + 700);
+      const after = h ? { g: h.gain() } : null;
       A.Snd.keyEarn = orig; R.show('s-menu'); await wait(200);
-      return { had: !!h, before, after }; });
-    (skip55.had && skip55.before.ringing && skip55.after.stopped && skip55.after.g < .05)
-      ? ok('item 8 a tap-to-skip silences the earn music — Snd.keyEarn hands back a handle on its own gain node and the skip cuts it, so nothing from it is still sounding over the chest that follows')
-      : bad('item 8 the earn music outlives the skip', JSON.stringify(skip55));
+      return { had: !!h, before, tapped, atNext, after }; });
+    (skip55.had && skip55.before.ringing && skip55.tapped.ringing && skip55.atNext.stopped && skip55.atNext.g > .02 && skip55.after.g < .02)
+      ? ok(`L13 / item 8 the earn music is not cut by a tap; it carries into the chest's opening (gain ${skip55.atNext.g.toFixed(2)} as it takes the screen) and fades to nothing there — Snd.keyEarn's own handle, fade(EARN_NEXT.fade)`)
+      : bad('L13 / item 8 the earn music into the next screen', JSON.stringify(skip55));
 
     /* item 12: AC() fired a bare unawaited resume() on every call while the context was not running — the music loop calls it
        every 80ms and every tone() calls it, so an iOS interruption meant ~12 rejected promises a second, all of them bypassing

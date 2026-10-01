@@ -73,7 +73,7 @@ import { Music, Snd } from "../../audio.js";
 import { HIDE_UNRECORDED } from "../../config/build.js";
 import { CHESTS, GAUNTLETS } from "../../config/chests.js";
 import { CARD, GAUNTLET, GRID, KEY, SHEET } from "../../config/copy.js";
-import { EARN_SKIP_AT, KEY_ART, KEY_EARN, KEY_FINISH, KEY_INTRO } from "../../config/keys.js";
+import { EARN_NEXT, EARN_SKIP_AT, KEY_ART, KEY_EARN, KEY_FINISH, KEY_INTRO } from "../../config/keys.js";
 import { MESSAGES } from "../../config/messages.js";
 import { MODE_NAME } from "../../config/games.js";
 import { $, T, esc } from "../../core.js";
@@ -331,10 +331,11 @@ function render() { const tiers = keyTiers();
      — very dim grey small caps on near-black"; Cowork could only read it by zooming the recording. The chest prompt is now drawn
      like the chest ceremony's own "tap to continue" — full strength and the same slow breath — with that chest's sprite beside it,
      so the two read as one family, which is what the item asks for. The screen's ordinary hints are untouched. */
-  { const hintEl = $('#key-hint'), isPrompt = !!(st.whole && kc && (kc.state === 'ready' || kc.state === 'gaunt'));
-    hintEl.classList.toggle('kprompt', isPrompt);
-    if (isPrompt) hintEl.innerHTML = chestSvg(kc.id, 'kpchest') + `<span>${esc(kcLine)}</span>`;
-    else hintEl.textContent = st.whole ? kcLine : openGame ? KEY.rowGo : KEY.hint; }
+  /* build 68 (67.31, L13): THE PROMPT IS RETIRED. A key earned opens its chest by itself, so "tap to open the chest" never shows — not as 59.14's
+     breathing prompt, and not as a line while the next screen is on its way (`nextT`). A chest still ready on a later visit is opened by the key's own
+     ask (C.1), and the line under the key says so plainly */
+  { const hintEl = $('#key-hint'); hintEl.classList.remove('kprompt');
+    hintEl.textContent = st.whole && nextT ? '' : st.whole ? kcLine : openGame ? KEY.rowGo : KEY.hint; }
   /* v30 (59.6, build 59): AND THE KEY CARRIES ITS GAUNTLET. 59.6 takes the Gauntlet requirement off the chest's map tile, where
      it did not fit, and gives it to the key as a standing line — "Only Gauntlet Mega can wield it." — shown from the moment the
      tier is open rather than only once the key is whole, because a player holding the key with the Gauntlet unfinished is
@@ -434,8 +435,7 @@ const earnClear = () => { const r = $('#key-ring'); if (r) r.querySelectorAll('.
 /* the stage the one shared reveal (ui/reveal.js) runs: it owns the clock and the taps, this owns the drawing. `hold()` is what keeps the settle
    from landing inside the animation — the finished promise of every animation the start beat put on the screen, read off the document so a
    re-tune in config/keys.js moves it without a second list of times (the build-46 rule). */
-let earnSkip = null;
-// v29 (item 8, build 55): the handle Snd.keyEarn() hands back, so a skip can silence the music it started. Cut in earnSkip and in clear().
+// v29 (item 8, build 55): the handle Snd.keyEarn() hands back. Build 68 (67.31): faded in the screen after the key (earnNext), cut in clear()
 let earnMusic = null;
 function keyStage(tier) { const E = earnOf(tier), el = $('#s-key'), ids = [];
   const at = (t, fn) => { const h = setTimeout(() => { if (revealOn()) fn(); }, Math.max(0, t)); ids.push(h); return h; };
@@ -478,16 +478,8 @@ function keyStage(tier) { const E = earnOf(tier), el = $('#s-key'), ids = [];
       // every animation this beat started, read off the document (which brings styles up to date first) — the animation's own clock
       anims = document.getAnimations().filter(a => { const tg = a.effect && a.effect.target, tm = a.effect && a.effect.getComputedTiming();
         return tg && el.contains(tg) && !tg.closest('#key-cere') && tm && Number.isFinite(tm.endTime) && a.playState !== 'finished'; });
-      /* item 14: A TAP SKIPS IT. Finishing every animation the beat started runs each to its last frame at once — so the key ends UPRIGHT and
-         lit rather than frozen part-way — and resolves hold(), which is what lets the reveal settle immediately.
-         v29 (item 3, build 54): NOT FOR THE FIRST EARN_SKIP_AT MS. Answering false hands the tap back to ui/reveal.js, which swallows it the way
-         it swallows every tap before a stage is done — so an early tap does NOTHING, it is not queued and it does not end the moment. */
-      earnSkip = () => { if (performance.now() - began < EARN_SKIP_AT) return false;
-        earnSkip = null; ids.forEach(clearTimeout); ids.length = 0;
-        // item 8: the step sounds were already cancelled with their timers; the MUSIC was the one thing a skip could not stop
-        try { earnMusic && earnMusic.stop(); } catch (e) { } earnMusic = null;
-        for (const a of (anims || [])) { try { a.finish(); } catch (e) { } }
-        if (done) done(); return true; }; },
+      /* item 14's tap-to-skip and v29 item 3's EARN_SKIP_AT window are RETIRED (build 68, 67.31, L13): Aiden, the third time — "I shouldn't be able
+         to tap at all, honestly". ui/reveal.js swallows every tap before a stage is done, so the motion simply runs to its end */ },
     /* the settle waits for this: the end of every animation the start beat put up. A cancelled one resolves it too (a hold that could never end
        would strand the screen), and so does a ceiling at twice the animation's length, for a phone that stops painting in the background. A tap
        resolves it through `done` — the skip's whole job. */
@@ -495,18 +487,16 @@ function keyStage(tier) { const E = earnOf(tier), el = $('#s-key'), ids = [];
       const all = (anims || []).map(a => a.finished.then(() => 1, () => 0));
       return Promise.race([Promise.all(all), new Promise(r => { done = r; setTimeout(r, E.ms * 2 + 1000); })]); },
     step() { },
-    // item 14: a tap skips to the end. ui/reveal.js asks this before the hold; answering true is what takes the tap
-    skip() { return earnSkip ? earnSkip() : false; },
+    // build 68 (67.31): no skip — answering false is what makes ui/reveal.js swallow the tap
+    skip() { return false; },
     /* SETTLES into the finished state (v25 item 13) — it does not SET `kdone`: ring() already put it on for a key that is whole, and Testing's
        replay on a key that is not whole must not leave the screen claiming it is finished. All settle does is stop holding it back. */
-    settle() { carry = true; earnSkip = null; el.classList.remove('kearning', 'kearnquick'); delete el.dataset.earn; el.classList.add('ksettle');
+    settle() { carry = true; el.classList.remove('kearning', 'kearnquick'); delete el.dataset.earn; el.classList.add('ksettle');
       setTimeout(() => el.classList.remove('ksettle'), 600); },
     // 57.7: a moment that settled keeps its music; one that was cut short loses it. The next earn stops whatever is still ringing before it starts
-    clear() { earnSkip = null; if (!carry) { try { earnMusic && earnMusic.stop(); } catch (e) { } earnMusic = null; }
+    clear() { if (!carry) { try { earnMusic && earnMusic.stop(); } catch (e) { } earnMusic = null; }
       ids.forEach(clearTimeout); el.classList.remove('kearning', 'kearnquick', 'ksettle', 'kdue'); delete el.dataset.earn; earnClear(); } }; }
-/* item 14: the belt. The reveal's own tap (ui/reveal.js, through `skip()` above) is the route that actually fires — its host covers the screen
-   and carries a `data-act`, so ui/actions.js hands the tap to that action and never reaches a capture. This catches a tap that lands outside it. */
-capture(() => { if (!earnSkip || !revealOn()) return false; return earnSkip(); });
+
 
 /* ---------- v29 Section A (57.6, build 57): THE KEY BEING CREATED — the first time its screen is opened ----------
    Aiden: "only completion has an animation today". This is the other end of it — the key being MADE, once per key per profile
@@ -635,10 +625,21 @@ function keyReveal(tier, o = {}) {
      reveal is on (onBack), and a waiting chest opens from `onDone` whether the animation ended by itself or was tapped through. */
   const started = playReveal($('#key-cere'), { kind: 'key', id: tier, col: t.tint, stage: keyStage(tier), auto: true,
     onReady: () => lock(false),
-    onDone: () => { $('#s-key').classList.remove('kdue');
-      if (pendingOpen) { const id = pendingOpen; pendingOpen = null; setTimeout(() => { if ($('#s-key').classList.contains('on')) openNow(id); }, OPEN_GAP); } } });
+    // Testing's replay (`demo`) opens nothing and goes nowhere
+    onDone: () => { $('#s-key').classList.remove('kdue'); if (o.demo) fadeEarn(); else earnNext(tier); } });
   if (started) lock(false);
   return started; }
+/* build 68 (67.31, L13): AND THEN THE NEXT SCREEN, BY ITSELF. The motion has ended (the reveal settled on the finished key); `EARN_NEXT.hold` later —
+   0.5s at most — the chest it opens plays its ceremony if it is ready (a chest tapped on the map while this was unseen first), else the run's result the
+   interlude came from takes the screen back. A chest that still wants its Gauntlet leaves the player on the key, which says so. The earn music is
+   not cut: it carries into whatever comes next and fades there. Until build 68 the screen sat on a "tap the key to open the chest" prompt */
+let nextT = 0;
+const fadeEarn = () => { const m = earnMusic; earnMusic = null; try { if (m && m.fade) m.fade(EARN_NEXT.fade); } catch (e) { } };
+function earnNext(tier) { clearTimeout(nextT);
+  nextT = setTimeout(() => { nextT = 0; if (!$('#s-key').classList.contains('on')) return fadeEarn();
+    const kc = keyChest(tier), id = pendingOpen || (kc && kc.state === 'ready' ? kc.id : null); pendingOpen = null;
+    if (id && chestState(id) === 'ready') { fadeEarn(); openNow(id); return; }
+    fadeEarn(); if (autoBack) handBack(); }, Math.min(500, EARN_NEXT.hold)); }
 
 /* ---------- v24 (C.1 / B.2 / B.3, build 43): OPENING A CHEST ----------
    Nothing on this screen opens a chest by itself any more. A chest opens because the player asked: the map's tap on a READY chest (B.2 — it
@@ -782,7 +783,7 @@ register('s-key', { onShow({ advance: a, from, auto: to, tier, whole, arrive, ce
   // L.6 (build 41): a ceremony is not skippable, so nothing goes Back while one is on. C.1: Back closes the ask first
   onBack() { if (revealOn() || openT) return true; if (askClose()) return true; if (auto) { if (keyWait) handBack(); return true; } if (!cameFrom) return false; const to = cameFrom; cameFrom = null; show(to); return true; } });
 // a ceremony, the ask, a waiting open and this key's background belong to this screen: leaving it any other way ends them and gives the music back
-on('screen:change', ({ id }) => { if (id === 's-key') return; stopReveal(); askClose(); setKeyLayer(null); clearTimeout(introT); $('#s-key').classList.remove('kintro');
+on('screen:change', ({ id }) => { if (id === 's-key') return; stopReveal(); askClose(); setKeyLayer(null); clearTimeout(introT); clearTimeout(nextT); $('#s-key').classList.remove('kintro');
   clearTimeout(earnT); earnPlan = null; keyWait = false; const el = $('#s-key'); el.classList.remove('kearning', 'kearnquick', 'ksettle', 'kdue'); delete el.dataset.earn; delete el.dataset.rev; earnClear();
   if (openT) { clearTimeout(openT); openT = 0; } pendingOpen = null; lock(false); });
 const keyTierIx = id => Math.max(0, keyTiers().findIndex(k => k.id === id));

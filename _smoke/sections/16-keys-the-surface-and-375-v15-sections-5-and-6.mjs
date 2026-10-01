@@ -282,7 +282,7 @@ export async function run() {
         const out = [];
         const POINTS = [['the key', '#key-ring .khubhit'], ['empty space', '#key-main'], ['Back', '#s-key .back'],
           ['a tier tab', '#key-keys .kkey'], ['the bottom edge', '#key-hint']];
-        for (const [name, sel] of POINTS) {
+        for (const [name, sel] of POINTS.slice(0, 1)) {
           S.prefs.revealed = {}; S.prefs.keyWhole = {}; S.save();
           R.show('s-menu'); await wait(120); R.show('s-key', { tier: 0 });
           // let the earn play out and the prompt arrive
@@ -307,13 +307,14 @@ export async function run() {
           if (h && h.classList.contains('kprompt') && getComputedStyle(h).visibility !== 'hidden') break; await wait(80); }
         return { out, music };
       });
+      /* AMENDED at build 68 (67.31, L13): THERE IS NO PROMPT TO TAP ANY MORE. The earn ends and the chest opens by itself (39b times it), so what is
+         held here is that no prompt ever comes up, the chest's ceremony does, and SET THIS MUSIC stays out of the moment */
       const five = taps.out;
-      const allFound = five.every(t => t.found && t.promptWasUp);
-      const allToChest = five.every(t => t.ask && t.screen === 's-key');
-      const noneToMenu = five.every(t => t.screen !== 's-menu');
-      (allFound && allToChest && noneToMenu && taps.music.duringEarn)
-        ? ok(`v30 59.14 while the prompt is up a tap ANYWHERE opens that chest — ${five.map(t => t.name).join(', ')} all reach its ask and none reaches the menu, which is where the mis-tap used to land; SET THIS MUSIC is hidden for the moment rather than made the single exception`)
-        : bad('v30 59.14 a tap beside the key does not open the chest', JSON.stringify(taps));
+      const noPrompt = five.every(t => t.found && !t.promptWasUp);
+      const opened = await page.evaluate(async () => (await import('./progress/key.js')).chestState('key'));
+      (noPrompt && opened === 'open' && taps.music.duringEarn)
+        ? ok(`L13 / 59.14 retired: after the Skill key's earn no "tap to open the chest" prompt comes up — the chest opens by itself (${opened}) — and SET THIS MUSIC is hidden for the moment`)
+        : bad('L13 / 59.14 the key prompt is back, or the chest did not open', JSON.stringify({ taps, opened }));
     }
 
     await boot({ allOpen: true });
@@ -381,18 +382,15 @@ export async function run() {
     await tap48('[data-act="dev-chestall"][data-chest="key"]'); await sleep(300);
     await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-key', { tier: 0 }); }); await sleep(250);
     const due48 = await page.evaluate(() => getComputedStyle(document.getElementById('key-hint')).visibility);
-    for (let i = 0; i < 90; i++) { await sleep(200); const on = await page.evaluate(() => !document.getElementById('key-cere').hidden || document.getElementById('s-key').classList.contains('kdue')); if (!on && i > 3) break; }
-    const after48 = await page.evaluate(() => ({ hint: document.getElementById('key-hint').textContent, vis: getComputedStyle(document.getElementById('key-hint')).visibility, tapLine: document.querySelectorAll('#s-key .ctap:not(:empty)').length && !document.getElementById('key-cere').hidden }));
-    await tap48('#key-ring .khubhit'); await sleep(500);
-    const ask48 = await page.evaluate(() => ({ ask: !document.getElementById('key-ask').hidden, txt: document.getElementById('key-ask').innerText.replace(/\s+/g, ' ').trim(), playing: !document.getElementById('key-cere').hidden }));
-    await tap48('[data-act="key-ask-yes"]'); await sleep(500);
-    const open48 = await page.evaluate(() => ({ ask: !document.getElementById('key-ask').hidden, playing: !document.getElementById('key-cere').hidden, kind: document.getElementById('key-cere').dataset.kind, chest: document.getElementById('key-cere').dataset.rev }));
+    /* AMENDED at build 68 (67.31, L13): after the reveal there is no instruction to follow — the Skill chest's ceremony takes the screen by itself, no
+       prompt and no ask; tapped through, it lands on the map */
+    let open48 = null; for (let i = 0; i < 90; i++) { await sleep(200); open48 = await page.evaluate(() => ({ ask: !document.getElementById('key-ask').hidden, playing: !document.getElementById('key-cere').hidden, kind: document.getElementById('key-cere').dataset.kind, chest: document.getElementById('key-cere').dataset.rev, prompt: document.getElementById('key-hint').classList.contains('kprompt') })); if (open48.kind === 'chest') break; }
+    const after48 = { hint: '', vis: 'visible', tapLine: 0 }, ask48 = { ask: true, playing: false, txt: '' };
     await revealDone(); await sleep(400);
     const landed48 = await onScreen();
     const askWant48 = KC48.KEY.ask.replace('{chest}', KC48.GRID.chest.key).toLowerCase();
-    (due48 === 'hidden' && after48.hint === KC48.KEY.completeReady.replace('{chest}', KC48.GRID.chest.key) && after48.vis === 'visible' && !after48.tapLine
-      && ask48.ask && !ask48.playing && ask48.txt.toLowerCase().includes(askWant48) && !open48.ask && open48.playing && open48.kind === 'chest' && open48.chest === 'key' && landed48 === 's-pick')
-      ? ok(`v26 item 11 once key 1's reveal has played the screen says only "${after48.hint}" (hidden while it plays); tapping the key asks "${ask48.txt}" (AMENDED for build 49) and Open plays the Skill chest, ending on the map`)
+    (due48 === 'hidden' && !open48.prompt && !open48.ask && open48.playing && open48.kind === 'chest' && open48.chest === 'key' && landed48 === 's-pick')
+      ? ok(`L13 / v26 item 11 once key 1's reveal has played, the Skill chest's ceremony takes the screen by itself — no prompt, no ask (AMENDED at build 68, 67.31) — and tapped through it lands on the map; the Skill chest, ending on the map`)
       : bad('v26 item 11 the key to its chest', JSON.stringify({ due48, after48, ask48, open48, landed48 }));
 
     /* item 3: every home menu item is green from the moment it is available until it is opened once - Keys and Customise UNLOCKED THROUGH PLAY, the
