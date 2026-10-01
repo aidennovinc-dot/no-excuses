@@ -1877,6 +1877,82 @@ scene('64.6', async (page, browser) => {
   await frame(page, browser, '64.6-restart-outlined', 'A Quick Tap Sprint, live: Restart an outlined button top right opposite the ✕, the clock under "Two · Sprint" on the left, nothing over Restart');
 });
 
+
+/* =======================================================================================================
+   BUILD 68 (FEEDBACK-v36) — one 390-wide frame per visual item, both safe-area insets. The tutorial boxes are the gate's own
+   new-player journey frames (_review/_shots/journey), so they are not taken again here.
+   ======================================================================================================= */
+const tap68 = (page, sel) => page.evaluate(s => document.querySelector(s)?.click(), sel);
+const ALL68 = { welcomeSeen: 1, chests: { games: 1, key: 1, pro: 1, thorns: 1 }, spill: { games: 1, key: 1, pro: 1, thorns: 1 }, allOpen: 1 };
+scene('67.37', async (page, browser) => {
+  await load(page, { ...PLAIN, welcomeSeen: 1, chests: { games: 1, key: 1 }, spill: { games: 1, key: 1 } }); await show(page, 's-menu'); await sleep(900);
+  say('menu', await page.evaluate(() => [...document.querySelectorAll('#s-menu .item')].map(b => b.textContent.trim()).filter(t => /%/.test(t))));
+  await frame(page, browser, '67.37-meter', 'The main menu with the Skill chest open: the meter reads out of 300, not "100% · Pro 6/30"');
+});
+scene('67.40', async (page, browser) => {
+  await load(page, { ...PLAIN, welcomeSeen: 1 }, { runs: [{ g: 'quick-tap', d: 'two', s: 5, t: Date.now() - 6e4, hits: 9, misses: 0, v: 4 }] }); await show(page, 's-menu'); await sleep(900);
+  await frame(page, browser, '67.40-next-card', 'The next-unlock card on the main menu: the one thing to earn next, with the best on a bar');
+});
+scene('67.16-67.17', async (page, browser) => {
+  await load(page, { ...PLAIN, welcomeSeen: 1 }, { runs: [{ g: 'quick-tap', d: 'two', s: 5, t: Date.now() - 6e4, hits: 9, misses: 0, v: 4 }] }); await runOf(page, 'quick-tap'); await sleep(900);
+  await frame(page, browser, '67.16-run-top', 'A Quick Tap run: the ✕ alone on its row, one goal line with its pips under it, no Restart (67.5)');
+  await load(page, { ...OPEN, welcomeSeen: 1 }); await runOf(page, 'reaction'); await sleep(2600);
+  await frame(page, browser, '67.17-reaction', 'Reaction Flash live: AVG on top, each tap’s verdict under its number, no average line');
+});
+// 67.7 / 67.6: the Welcome card is the new-player journey's own frame (_review/_shots/journey/welcome-01.jpg), on the real result that opens Dots
+scene('67.6b-496', async (page, browser) => {
+  await load(page, { ...PLAIN, ...ALL68, msgSeen: {} });
+  await page.evaluate(async () => { const V = await import('./ui/video.js'), M = await import('./config/messages.js'); V.playVideo(M.MESSAGES.find(m => m.by && m.by.chest === 'key' && m.file), { full: true }); }); await sleep(1500);
+  await frame(page, browser, '496-full-screen', 'A chest video’s first viewing: full screen, 16:9 letterboxed, the Skill chest’s gold as its edge');
+  await page.evaluate(() => { const v = document.querySelector('#vplay video'); if (v) v.dispatchEvent(new Event('ended')); }); await sleep(120);
+  await frame(page, browser, '67.14-static', 'The switch-off: a burst of static over the picture as it goes');
+});
+scene('67.27-67.8', async (page, browser) => {
+  await load(page, { ...PLAIN, ...ALL68, gauntSeen: { g1: 1, g2: 1 }, paid: 1, msgSeen: { games: 1 } }); await show(page, 's-about'); await sleep(900);
+  await frame(page, browser, '67.27-about-frames', 'About’s list: each chest’s clip framed in its chest’s colour (Games white, Skill gold, Pro light blue, Author thorns), a placeholder card where there is no still (67.8)');
+});
+scene('67.12-67.32', async (page, browser) => {
+  await load(page, { ...PLAIN, welcomeSeen: 1, chests: { games: 1, key: 1 }, spill: { games: 1 } }); await show(page, 's-pick', { chest: 'key' }); await sleep(2600);
+  await frame(page, browser, '67.32-you-found', 'The map after the Skill chest: “You found” names the key’s track (LANTERN) before the video; the reward kinds carry no bracket except (music)');
+});
+scene('67.24', async (page, browser) => {
+  await load(page, { ...PLAIN, welcomeSeen: 1, chests: { games: 1 } }); await show(page, 's-key'); await sleep(1200);
+  await tap68(page, '#key-keys .kkey.locked:last-child'); await sleep(300);
+  await frame(page, browser, '67.24-key-card', 'A locked key card names the chest that opens it (“open the Pro chest”); the tap shakes it, no popup');
+});
+scene('67.30', async (page, browser) => {
+  await load(page, { ...PLAIN, ...ALL68, bg: 'lantern' }); await show(page, 's-menu'); await sleep(1500);
+  await frame(page, browser, '67.30-lantern-menu', 'The main menu on Lantern: no black box behind any line, each wearing its own soft shadow');
+});
+scene('67.18-67.21', async (page, browser) => {
+  await load(page, { ...OPEN, welcomeSeen: 1 }, { runs: [{ g: 'quick-tap', d: 'two', s: 5, t: Date.now() - 6e4, hits: 14, misses: 0, row: 14, v: 4 }, { g: 'hold', d: 'grow', s: 7, t: Date.now() - 5e4, hits: 5.93, misses: 0, x: 1, y: 27.82, v: 4 }] });
+  await show(page, 's-board'); await sleep(900);
+  await frame(page, browser, '67.18-web', 'Scores: the web the screen’s full width, its labels larger, no caption line under it (67.19)');
+  await page.evaluate(() => document.querySelector('#radar text[data-g="quick-tap"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))); await sleep(500);
+  await frame(page, browser, '67.21-detail', 'A tap on Quick Tap’s point: its detail — score, bars per key, best per mode, the next bar — and still on Scores');
+});
+scene('67.38', async (page, browser) => {
+  await load(page, { ...OPEN, welcomeSeen: 1, excuses: { 1: 1, 3: 2, 7: 1 } }, { runs: [{ g: 'quick-tap', d: 'two', s: 5, t: Date.now() - 4e6, hits: 9, misses: 0, v: 4 }] });
+  await show(page, 's-prog', { tab: 'exc' }); await sleep(800);
+  await frame(page, browser, '67.38-tab', 'Progress → Excuses: the total, then all ten with their hints and counts');
+  await page.evaluate(async () => { const X = await import('./progress/excuses.js'), U = await import('./ui/excuse.js'), T = await import('./ui/toast.js'); const x = X.makeExcuse(7); T.toast(U.excuseLine(x)); U.excuseFx(x); }); await sleep(700);
+  await frame(page, browser, '67.38-made', 'An excuse made: “Excuse #7: My watch is slow”, the shrug in the corner');
+  await show(page, 's-pick'); await sleep(500); await page.mouse.move(195, 320); for (let i = 0; i < 6; i++) { await page.mouse.wheel({ deltaY: -40 }); await sleep(80); }
+  await frame(page, browser, '67.38-exit', 'Excuse #10: the map pulled past its top shows the tiny exit');
+});
+scene('67.39', async (page, browser) => {
+  await load(page, { ...OPEN, welcomeSeen: 1, excuses: { 7: 9 } }, { runs: [{ g: 'quick-tap', d: 'two', s: 5, t: Date.now() - 4e6, hits: 9, misses: 0, v: 4 }] });
+  await page.evaluate(async () => { const X = await import('./progress/excuses.js'), U = await import('./ui/excuse.js'); U.excuseFx(X.makeExcuse(7)); }); await sleep(1900);
+  await frame(page, browser, '67.39-tiny', 'The tenth excuse: Tiny Aiden (the placeholder stick figure) dancing');
+  await show(page, 's-custom'); await sleep(700);
+  await frame(page, browser, '67.39-switch', 'Customise from ten excuses on: the Tiny Aiden switch');
+});
+scene('67.33-67.35', async (page, browser) => {
+  await load(page, { ...OPEN, welcomeSeen: 1, bg: 'lantern', everywhere: 'key', menuTrack: 'theme:key' }); await show(page, 's-custom'); await sleep(500); await show(page, 's-menu'); await sleep(200); await show(page, 's-custom'); await sleep(900);
+  say('fit', await page.evaluate(() => { const t = document.getElementById('pv-g').getBoundingClientRect(); return { tabsBottom: Math.round(t.bottom), h: innerHeight, scroll: document.getElementById('s-custom').scrollTop }; }));
+  await frame(page, browser, '67.35-customise', 'Customise at 390×844: Music (Off last, 67.34), Background with the small wheel on Lantern, Tap sound, the preview, the game tabs — no scroll; Lantern and its track in gold (67.33)');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }
