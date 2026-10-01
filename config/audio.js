@@ -654,7 +654,9 @@ export const WHOOSH_VARIANTS = [[1, 1], [.97, 1.05], [1.03, .96], [.95, 1.08], [
    the tap-sound switch and neither is the unlock sound, the achievement click, a chest's or a key's earn (gated).
    SOFT is the word in the item, so both sit well under a chest's pop: the thunk is a low body with a short filtered click on top, and the
    power-off is the same body falling instead of rising, a little quieter. All (guess), and heard by nobody (UNVERIFIED.md). */
+/* build 68 (67.14): `static` is the switch-off's "chhh" — noise, events in the same shape with 'noise' as the wave, read by Snd.staticFx */
 export const VIDEO_FX = {
+  static: [[0, 0, 0, 500, 'noise', .05, 0, 1800], [.04, 0, 0, 380, 'noise', .025, 0, 5200]],
   on: [[0, 150, 62, 190, 'sine', .05, 2], [0, 70, 44, 300, 'triangle', .035, 3, 420], [.02, 900, 1600, 60, 'triangle', .012, 1, 3200], [.06, 320, 520, 110, 'sine', .014, 6, 2200]],
   off: [[0, 520, 300, 80, 'triangle', .012, 1, 2400], [.03, 120, 48, 260, 'sine', .04, 2], [.03, 62, 36, 330, 'triangle', .026, 4, 380]],
 };

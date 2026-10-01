@@ -168,4 +168,23 @@ export async function run() {
       ? ok(`67.8 every video has a thumbnail — all ${th.rows.length} rows on About and the player's preview card show the placeholder card with the clip's name ("${th.rows[0].name}"…) under the play arrow; no blank black box`)
       : bad('67.8 the video thumbnails', JSON.stringify(th));
   }
+  /* build 68 (67.14): A VIDEO THAT STOPS SWITCHES OFF LIKE AN OLD TV — about half a second of static ("chhh", Snd.staticFx) while the picture collapses to its
+     line, then the dot; on a natural end and on an early close alike; the music steps back while it plays and comes back after */
+  {
+    await boot({ allOpen: true });
+    const st = await page.evaluate(async () => { const A = await import('./audio.js'), V = await import('./ui/video.js'), M = (await import('./config/messages.js')).MESSAGES, P = (await import('./config/messages.js')).PLAYER, w = ms => new Promise(r => setTimeout(r, ms));
+      const log = []; const sf = A.Snd.staticFx, hu = A.Music.hush; A.Snd.staticFx = function () { log.push('static'); return sf.apply(this, arguments); }; A.Music.hush = function (v) { log.push('hush:' + !!v); return hu.apply(this, arguments); };
+      const out = {};
+      for (const how of ['ended', 'close']) { log.length = 0; V.playVideo(M.find(m => m.id === 'g1') || M[1]); await w(800);
+        const h = document.getElementById('vplay'); if (how === 'ended') h.querySelector('video').dispatchEvent(new Event('ended')); else V.closeVideo();
+        await w(60); const anim = getComputedStyle(h.querySelector('.vpic'), '::after').animationName; await w(P.off.ms + 300);
+        out[how] = { log: log.slice(), anim, closed: h.hidden }; }
+      A.Snd.staticFx = sf; A.Music.hush = hu;
+      const steps = P.off.steps.map(s => s.name), stat = P.off.steps.find(s => s.name === 'static');
+      return { out, steps, statMs: stat ? stat.ms : 0 }; });
+    const good = o => o.closed && o.log.includes('static') && o.log[0] === 'hush:true' && o.log[o.log.length - 1] === 'hush:false' && /vstatic/.test(o.anim);
+    (good(st.out.ended) && good(st.out.close) && st.steps.join() === 'static,close,dot,fade' && st.statMs >= 400 && st.statMs <= 600)
+      ? ok(`67.14 a video switches off like an old TV — ${st.statMs}ms of static while the picture collapses to its line, then the dot (${st.steps.join(' · ')}) — on its natural end and on an early close; the music steps back while it plays and fades in after`)
+      : bad('67.14 the switch-off static', JSON.stringify(st));
+  }
 }

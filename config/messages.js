@@ -90,5 +90,7 @@ export const MESSAGES = [
 export const PLAYER = { footGap: 14,
   inset: 8,
   on: { ms: 600, steps: [{ name: 'outline', at: 0, ms: 220 }, { name: 'line', at: 200, ms: 130 }, { name: 'open', at: 320, ms: 280 }] },
-  off: { ms: 460, steps: [{ name: 'close', at: 0, ms: 200 }, { name: 'dot', at: 180, ms: 140 }, { name: 'fade', at: 300, ms: 160 }] },
+  /* build 68 (67.14): AN OLD TV SWITCHING OFF — about half a second of static ("chhh") while the picture collapses to a line, then a dot. It plays on a
+     clip's natural end and on an early close alike, and the music fades back in after it. Pairs with the power-on (2026-09-18) */
+  off: { ms: 640, steps: [{ name: 'static', at: 0, ms: 500 }, { name: 'close', at: 60, ms: 380 }, { name: 'dot', at: 420, ms: 140 }, { name: 'fade', at: 500, ms: 140 }] },
 };

@@ -26,7 +26,7 @@
    Presentation only (L10): watching a clip marks it watched and nothing else. */
 import { MSG, WELCOME } from "../config/copy.js";
 import { MESSAGES, PLAYER } from "../config/messages.js";
-import { Snd } from "../audio.js";
+import { Music, Snd } from "../audio.js";
 import { $, T, esc } from "../core.js";
 import { emit } from "../core/events.js";
 import { prefs, save } from "../core/store.js";
@@ -88,6 +88,8 @@ document.addEventListener('click', e => { const id = videoDue(); if (!id || vide
 function playVideo(m, o = {}) { if (!m || !m.file) return false;
   build(); clearAt(); closing = 0;
   host._after = typeof o.after === 'function' ? o.after : null; host.classList.toggle('vfull', !!o.full);
+  // build 68 (67.14): the music steps back while a clip plays, and fades in again after its switch-off
+  Music.hush(true);
   must = videoDue() === m.id; if (must) dueClear();
   host.hidden = false; host.classList.remove('voff', 'vlit'); host.classList.toggle('vmust', must); host.dataset.msg = m.id;
   host.style.setProperty('--vg', msgCol(m) || '#FFFFFF'); host.classList.toggle('vthorn', msgThorn(m));
@@ -155,7 +157,7 @@ function closeVideo() { if (!host || host.hidden || closing || must) return fals
   closing = 1; clearAt();
   if (vid) { try { vid.pause(); } catch (e) { } }
   glow(false); host.classList.remove('von'); void host.offsetWidth; host.classList.add('voff');
-  for (const s of PLAYER.off.steps) if (s.name === 'dot') at(s.at, () => Snd.videoFx('off'));
+  for (const s of PLAYER.off.steps) { if (s.name === 'dot') at(s.at, () => Snd.videoFx('off')); if (s.name === 'static') at(s.at, () => Snd.staticFx()); }
   // v29 (item 10, build 55): the source is RELEASED before the frame is emptied. innerHTML='' alone leaves the iOS decoder alive until GC,
   // so eight opens in a row held eight decoders. pause / removeAttribute('src') / load() is the documented way to let one go.
   at(PLAYER.off.ms, () => { host.classList.remove('voff', 'vfail'); host.hidden = true;
@@ -163,6 +165,8 @@ function closeVideo() { if (!host || host.hidden || closing || must) return fals
     const was = host.dataset.msg; delete host.dataset.msg; host.querySelector('.vpic').innerHTML = ''; host.querySelector('.vcc').textContent = ''; vid = null; closing = 0;
     // build 65 (64.7 / 64.14): the clip is over and the player gone — ended or tapped away, the same event. The first-time tutorials start here
     emit('video:closed', { id: was || '' });
+    // build 68 (67.14): the music comes back once the set is off
+    Music.hush(false);
     const after = host._after; host._after = null; host.classList.remove('vfull'); if (after) after(); });
   return true; }
 

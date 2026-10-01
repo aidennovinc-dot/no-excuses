@@ -294,6 +294,8 @@ const Snd = (()=>{
        item 10 builds them into the player rather than the files. `videoPlan(k)` is the same events flat, for the review catalogue's sound list. */
     videoPlan(k){ return (VIDEO_FX[k]||[]).map(e=>e.slice()); },
     videoFx(k){ this.fx(this.videoPlan(k)); },
+    // build 68 (67.14): the switch-off's static — VIDEO_FX.static, played as noise
+    staticFx(){ const a=AC(); if(!a) return; const t=a.currentTime; for(const [at,,,ms,,g,,hp] of this.videoPlan('static')) this.noise(t+at,ms,g,hp); },
     chest(id){ const a=AC(); if(!a) return; const t=a.currentTime+.02, sting=musicOn('menu');
       for(const [at,f0,f1,ms,w,g,am,lp,kind] of this.chestPlan(id)){
         if(w==='noise') this.noise(t+at,ms,g,lp);
