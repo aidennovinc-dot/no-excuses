@@ -46,7 +46,7 @@ export async function run() {
      heading says "what earns them is not written down" and every row underneath then wrote it down. The progress bar is the hint now, and
      the only one; an earned secret is described in full, which is asserted where 58.3 is (the block at the foot of this section). */
   // RESTATED at build 62 (61.14, Aiden: no secret achievements): an unearned secret row says what earns it, like every other row
-  (ach.secret && ach.secret.length > 0) ? ok(`61.14 an unearned "secret" row says what earns it: "${ach.secret}"`) : bad('61.14 an unearned secret says what earns it', JSON.stringify(ach.secret));
+  (ach.secret && ach.secret.length > 0) ? ok(`L18 / 61.14 an unearned "secret" row says what earns it: "${ach.secret}"`) : bad('L18 / 61.14 an unearned secret says what earns it', JSON.stringify(ach.secret));
   (ach.left && /still to play/.test(ach.left)) ? ok('8.1 "Finish a run in every game" names the games left') : bad('8.1 which games are left', ach.left);
   await click('#s-prog .back'); await sleep(400);
   // 8.10: Testing is its own item below About, and About no longer carries it
@@ -133,7 +133,7 @@ export async function run() {
     const told58 = sec58.open.name && !/\?\?\?/.test(sec58.open.name) && sec58.open.line.length > 0;
     const extras58 = sec58.shut.kt === 0 && sec58.shut.n > 0 && sec58.shut.n < 40;
     (hidden58 && told58 && extras58)
-      ? ok(`61.14 a one-time Secret is "${sec58.shut.name}" with its line before it is earned, exactly as after it ("${sec58.open.name}" \u00b7 ${sec58.open.line}); and Achievements holds only the extras that fit nowhere else \u2014 ${sec58.shut.n} rows, not one of them a key row, "${sec58.shut.hint}"`)
+      ? ok(`L18 / 61.14 a one-time Secret is "${sec58.shut.name}" with its line before it is earned, exactly as after it ("${sec58.open.name}" \u00b7 ${sec58.open.line}); and Achievements holds only the extras that fit nowhere else \u2014 ${sec58.shut.n} rows, not one of them a key row, "${sec58.shut.hint}"`)
       : bad('58.3 the Secrets and the Achievements tab', JSON.stringify({ hidden58, told58, extras58, someSecret, sec58 }));
   }
   /* build 62 (61.9 – 61.16): THE PROGRESS ROWS. One profile, every chest tab, Customise unlocks and Achievements read back */
@@ -154,8 +154,8 @@ export async function run() {
     const gm = await tab62('c-games'), want = await page.evaluate(async () => { const P = await import('./progress.js'), C = await import('./config/copy.js'), m = P.modeCount();
       return { line: C.PROGRESS_SCREEN.gamesCount.replace('{open}', m.open).replace('{total}', m.total), total: m.total }; });
     (gm.count === want.line && /streak/i.test(gm.count))
-      ? ok(`A1 the Games chest tab says "${gm.count}" — the ${want.total} modes the chest counts, Streak named as outside it`)
-      : bad('A1 the Games chest count line', JSON.stringify({ got: gm.count, want }));
+      ? ok(`L19 / A1 the Games chest tab says "${gm.count}" — the ${want.total} modes the chest counts, Streak named as outside it`)
+      : bad('L19 / A1 the Games chest count line', JSON.stringify({ got: gm.count, want }));
   }
   /* 61.10: each Quick Tap row on the Pro chest draws ITS best ÷ ITS target — three different bests give three different bars, each the
      ratio, read against Aiden's Pro targets in config (never a copy of them) */

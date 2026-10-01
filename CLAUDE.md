@@ -11,7 +11,7 @@ done / not done / why, bump the build, smoke test, commit `build N — batch NN`
 
 | File | Read it when |
 |---|---|
-| `docs/RULES-HISTORY.md` | A feedback line quotes a lock (L1–L10), or you need a rule's full text: **"Build 61 … before the gate-speed trim" holds every line below in full, as of v0.60**; older sections hold the `prefs` changelog, the engine contract, the `config/` inventory |
+| `docs/RULES-HISTORY.md` | A feedback line quotes a lock (L1–L20), or you need a rule's full text: **"Build 61 … before the gate-speed trim" holds every line below in full, as of v0.60**; older sections hold the `prefs` changelog, the engine contract, the `config/` inventory |
 | `docs/MUSIC.md` | Touching `audio.js`, `config/audio.js`, `_smoke/loudness.mjs` or any `Snd.*` call |
 | `docs/PROGRESSION.md` | Touching `progress.js`, `progress/`, `config/unlocks.js`, `config/key-bars.js`, `config/keys.js`, the key or Progress screens, or `liveCheck` |
 | `_smoke/GATE.md` | Adding a check, or a section fails: one line per section — the feedback lines it stands for and the name `--only` takes |
@@ -171,7 +171,9 @@ formatters in `ui/format.js`, same ids, resolved by `GV()`. **Every control carr
 
 **A change that touches a locked item is built only when the FEEDBACK line quotes its ID (e.g. `L2:`). Otherwise skip it and list
 it under "Skipped — locked" in FEATURES.md. Anything not in the FEEDBACK file that changes a rule, threshold, name, unlock or
-screen layout is not built — list it under "Proposed" in FEATURES.md instead.**
+screen layout is not built — list it under "Proposed" in FEATURES.md instead.** **A regression of a locked item is a gate failure, not a
+judgement call: every L-ID has a gate check labelled with it (static checks fail an ID with none), and anything Aiden settles goes on this
+list, with its check, in the build that implements it (67.37b, build 68).**
 
 | ID | Decision |
 |---|---|
@@ -185,6 +187,16 @@ screen layout is not built — list it under "Proposed" in FEATURES.md instead.*
 | L8 | Anything newly unlocked gets the green first-seen highlight once, then is marked seen. |
 | L9 | The length row is labelled "Mode" in every game. One pick-sheet layout, no per-game special cases. |
 | L10 | No two-player run of any kind, and no demo, ghost or scripted run, goes on a board or advances a key, a clearance bar, an unlock or an achievement — enforced at the finish (`two` in `run/run.js`) and mid-run (`liveCheck` turns away every `sel.vs`; `R.demo`, `run.demo`). Aiden: *"I don't want anyone to have to rely on someone else in order to beat this game."* |
+| L11 | **The key meter is ONE continuous 0–300%, never reset** (2026-09-14, 2026-09-19, 67.37): the Skill key with its chest reads 100, the Pro key 200, the Author key 300; past 100 it keeps counting ("153%"), its colour and effects changing past 100 and 200 (`METER_BANDS`); before the Skill chest it is the Skill band × `METER.before` (95) and the Skill chest lands on exactly 100. No second figure beside it. |
+| L12 | **The key keeps its intro size after the first tap** (2026-09-29, 67.23): one size, before and after. |
+| L13 | **A key's earned animation: the motion plays, holds 0.5s at most, then the next screen opens by itself** (67.31): no tap, no skip, no "tap to open the chest"; the motion sets the length; the earn music carries on into the next screen and fades there. |
+| L14 | **A first-time moment (tour, intro animation, mandatory video, ceremony) runs on the FIRST visit, before anything else on that screen** (67.22 / 67.3): tutorial boxes before toasts, a toast whose news the box gives is dropped; a visit that has passed drops its moment for good — a later replay is only the reload / crash net. |
+| L15 | **A tutorial never covers anything tappable, never scrolls the screen, never navigates** (67.2 / 67.9 / 65.9): no clear space → over a dimmed, untappable area; an off-screen target gets an arrow and the step waits. |
+| L16 | **Music is ONE game-wide choice** (2026-09-29, 64.20): one row in Customise above the game tabs, playing on the menus and through every run. |
+| L17 | **The Pro chest's opening is not to be changed** (2026-09-18): its ceremony, look, cover, gifts, confetti, cheer and sound as approved — pinned by the gate. |
+| L18 | **No secret achievements**: every achievement shows its name and its requirement (2026-09-28, 61.14). |
+| L19 | **Streak modes sit outside the Games chest count** (2026-09-29): the Games chest is its 13 modes, "Streak not counted". |
+| L20 | **The Welcome is mandatory** (67.7): no Later; it plays on the result screen of the run that opens Dots; the other seven messages keep Later. |
 
 **Code decisions A1–A10 in `ARCHITECTURE.md` — same quote-the-ID rule.** A feedback line changes one only when it names the ID.
 

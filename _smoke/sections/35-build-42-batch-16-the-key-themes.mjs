@@ -113,7 +113,7 @@ export async function run() {
          the menu back to its own loop for a game's track. `prefs.menuTrack` is the resolved id and menuTrack() in audio.js is what plays. */
       && cu.on.menu === 'theme:key' && cu.on.plays === 'theme:key'
       && want42 && cu.back.menu === want42 && cu.back.plays === want42)
-      ? ok(`v28 items 2 / 3 / v29 item 4 Customise has ONE Music row and no Everywhere row: ${cu.before.length} options - this game's three tracks and one per key (${keyRows.map(x => x.txt).join(' \u00b7 ')}) - each key track locked until its own KEY is earned and saying so under the row ("${cu.shutTap.line}"), never over it; a locked one chooses nothing; the Skill key's track is chosen and stored in the same field the key screen writes; a tap on one of this game's tracks goes back to Per game with that track chosen; and EITHER KIND becomes the menu's music - the key theme plays "${cu.on.plays}" on the front of the app and the game track "${cu.back.plays}", one rule for both`)
+      ? ok(`L16 / v28 items 2 / 3 / v29 item 4 Customise has ONE Music row and no Everywhere row: ${cu.before.length} options - this game's three tracks and one per key (${keyRows.map(x => x.txt).join(' \u00b7 ')}) - each key track locked until its own KEY is earned and saying so under the row ("${cu.shutTap.line}"), never over it; a locked one chooses nothing; the Skill key's track is chosen and stored in the same field the key screen writes; a tap on one of this game's tracks goes back to Per game with that track chosen; and EITHER KIND becomes the menu's music - the key theme plays "${cu.on.plays}" on the front of the app and the game track "${cu.back.plays}", one rule for both`)
       : bad('v28 items 2 / 3 the one Music row', JSON.stringify(cu));
   }
 

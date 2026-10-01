@@ -1090,4 +1090,14 @@ export async function run() {
   askBad.length === 0
     ? ok(`60.1 the ask ANSWERS on all three key chests — the key's own tap raises "Open the … chest?", Not yet closes it and opens nothing, Open is not swallowed and the CEREMONY PLAYS (${Object.entries(ask60).map(([id, r]) => `${id}: ${r.cere.nodes} nodes drawn, ${r.state} → ${r.after}`).join('; ')})`)
     : bad('60.1 the ask does not answer', JSON.stringify(ask60));
+  /* build 68 (67.37b): L17 — THE PRO CHEST'S OPENING IS NOT TO BE CHANGED (2026-09-18). Every config row that draws or sounds it is pinned by one
+     fingerprint. A build whose FEEDBACK line quotes L17 changes the pin in the same commit; any other change to these rows fails here. */
+  {
+    const crypto = await import('node:crypto');
+    const C = await import(pathToFileURL(path.join(root, 'config', 'chests.js')).href), A = await import(pathToFileURL(path.join(root, 'config', 'audio.js')).href);
+    const s = JSON.stringify({ ceremony: C.CEREMONY.pro, look: C.CHEST_LOOK.pro, cover: C.COVER_LOOK.pro, confetti: C.CONFETTI.pro, cheer: C.CHEER_LOOK.pro, gift: C.GIFT_LOOK.pro, fx: A.CHEST_FX.pro });
+    const pin = crypto.createHash('sha1').update(s).digest('hex').slice(0, 12), PIN17 = '7f559b883a4e';
+    pin === PIN17 ? ok(`L17 the Pro chest's opening is as approved on 2026-09-18 — its ceremony, look, cover, gifts, confetti, cheer and sound rows fingerprint ${pin}`)
+      : bad('L17 the Pro chest opening changed (quote L17 and re-pin, or put it back)', `${pin} ≠ ${PIN17}`);
+  }
 }

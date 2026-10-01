@@ -2,7 +2,7 @@
 
 **Moved out of `CLAUDE.md` 2026-09-12 (batch 14, S.1), text verbatim as of build 30.** `CLAUDE.md` keeps one line per
 rule and the locked-decisions table at its current values; this file keeps the full text of each rule — what it says,
-the build and the FEEDBACK section that set or amended it, and why. **Read it when a feedback line quotes a lock (L1–L10)
+the build and the FEEDBACK section that set or amended it, and why. **Read it when a feedback line quotes a lock (L1–L20)
 or you need the reason behind a standing rule.** Edit in place: a build that amends a rule appends the amendment here
 under the same heading and rewrites the one line in `CLAUDE.md`.
 
@@ -1673,3 +1673,32 @@ the speed-up, flow hum, stems and duck ride on it as before. Default Still (Clau
 - **The bottom strip is one colour (65.10).** `floorStrip()` paints the bottom inset + 40px flat in exactly the page's colour (the layer's floor, or cleared to the page), the art fading into it, so canvas and page agree there whatever the phone shows; an opaque ceremony gives the page --ground. Build 64's underlay matched the canvas's own bottom edge, a whole inset below the screen, where Lantern is brightest.
 - **Estimate's reveal (65.6 / 65.7).** No shrink: both shapes at true scale, the panel over any overflow. Solo, the round's % holds with its verdict word and the running figure counts on a "Total" line; pass & play keeps the walk.
 - **Smaller ones.** Locked Scores / Progress / About are crossed out with a green how-to line from `MENU_UNLOCK` (65.3). Every chest reward says its kind (`REWARD_KIND`, 65.15). No chest word is a `tba` placeholder (65.17). Snow is a blue night with haloed flakes (65.12). Default music Held (#491); feedback is a Tally form placeholder, not the Something Strange mailto (#489). The catalogue has a generated Tutorials section (65.4).
+
+## Build 68 (FEEDBACK-v36, 2026-10-01): the rules this build added or amended, in full
+
+**The locked list grows by ten (67.37b).** Aiden's v0.67 review found the key meter, the key's size and the key animation's timing had each been
+agreed and then lost in a later build. From build 68 every settled decision is on the locked list in `CLAUDE.md` with an L-ID and a gate check
+whose label carries that ID; `static checks` fails an ID with no check. A regression of a locked item is a gate failure, not a judgement call, and
+anything Aiden settles goes on the list in the build that implements it.
+
+- **L11 — the 0–300% meter.** Settled 2026-09-14, confirmed 2026-09-19: Skill key → 100, Pro → 200, Author → 300, never resets. Build 66's 65.14
+  (a Cowork call: "Pro/Author progress sits beside 100%", built as "100% complete · Pro 6/30") contradicted it and is withdrawn in this build
+  (67.37). What 65.14 got right stays: before the Skill chest the printed figure is the Skill band × `METER.before` (95), and the Skill chest
+  lands on exactly 100. Past 100 the number keeps counting, wearing `METER_BANDS` past 100 and 200.
+- **L12 — the key's size.** Big on first open; the same size after the first tap (on record 2026-09-29; 67.23).
+- **L13 — the key-earned timing.** The motion plays, holds 0.5s at most, and the next screen opens by itself; no tap, no skip, no "tap to open
+  the chest". Supersedes the 2026-09-18 tap-to-skip and the 2026-09-20 tap prompt. The 2026-09-18 rule tied the ceremony's length to the earn
+  music (~5s); the music now carries on into the next screen and fades there.
+- **L14 — first-time moments first, never late.** A tour, intro animation, mandatory video or ceremony runs on the FIRST visit to its screen,
+  before anything else there. Tutorials before toasts (67.3 reverses FEEDBACK-v34 A1); a toast whose news the tutorial gives is dropped. A visit
+  that has passed drops its moment for good (67.22 withdraws 65.2's "next calm moment" as a normal path); the replay survives only as the net for
+  a reload or crash mid-moment.
+- **L15 — tutorials never cover, never scroll, never navigate.** No box over anything that takes a tap (67.2, every element, not only its
+  ring); no clear space → over a dimmed, untappable area. An off-screen target gets an arrow and the step waits for the player to scroll (67.9).
+  A tutorial never changes screen (65.9).
+- **L16 — music is one game-wide choice** (2026-09-29, 64.20).
+- **L17 — the Pro chest's opening is not to be changed** (2026-09-18). The gate pins a fingerprint of `CEREMONY.pro`, `CHEST_LOOK.pro`,
+  `COVER_LOOK.pro`, `CONFETTI.pro`, `CHEER_LOOK.pro`, `GIFT_LOOK.pro` and `CHEST_FX.pro`.
+- **L18 — no secret achievements**: every achievement shows its name and requirement (2026-09-28, 61.14).
+- **L19 — Streak modes sit outside the Games chest count** (2026-09-29, 64 A1).
+- **L20 — the Welcome is mandatory** (67.7): no Later. The other seven messages keep Later.
