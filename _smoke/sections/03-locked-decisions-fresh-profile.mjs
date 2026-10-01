@@ -48,10 +48,14 @@ export async function run() {
       .replace('{names}', and(X.names)).replace('{all}', and(X.lens.map(String))).replace('{game}', X.game).replace('{second}', X.names[1]).replace('{row}', X.row));
     // build 65 (64.2): the first result's lines as the config makes them
     const fillO = s => s.replace('{count}', count).replace('{second}', X.names[1]).replace('{long}', X.names[2]).replace('{dots}', X.dots).replace('{row}', X.row);
-    const box = () => page.evaluate(() => { const t = document.getElementById('tut'); if (!t || t.hidden) return null; const q = t.querySelector('.tring'), drawn = getComputedStyle(q).display !== 'none', r = q.getBoundingClientRect();
+    // build 66 (65.5): a box glides between spots, so it is read once it has come to rest
+    const box = () => page.evaluate(async () => { const t = document.getElementById('tut'); if (!t || t.hidden) return null;
+      for (let i = 0; i < 40 && t.getAnimations({ subtree: true }).some(a => a.playState === 'running' && a.effect.getComputedTiming().iterations !== Infinity); i++) await new Promise(r => setTimeout(r, 30));
+      const q = t.querySelector('.tring'), drawn = getComputedStyle(q).display !== 'none', r = q.getBoundingClientRect(), tl = t.querySelector('.ttail');
       const b = t.querySelector('.tbox').getBoundingClientRect(), over = drawn && !(r.bottom <= b.top || r.top >= b.bottom), a = t.querySelector('.tarrow');
       return { text: t.querySelector('p').textContent, buttons: t.querySelectorAll('button').length, drawn, ring: [Math.round(r.width), Math.round(r.height)], col: getComputedStyle(q).borderTopColor,
-        tag: drawn ? t.querySelector('.ttag').textContent : '', arrow: getComputedStyle(a).display !== 'none', centre: [Math.round(b.x + b.width / 2 - innerWidth / 2), Math.round(b.y + b.height / 2 - innerHeight / 2)], top: Math.round(b.top), covers: over }; });
+        tag: drawn ? t.querySelector('.ttag').textContent : '', arrow: getComputedStyle(a).display !== 'none', centre: [Math.round(b.x + b.width / 2 - innerWidth / 2), Math.round(b.y + b.height / 2 - innerHeight / 2)], top: Math.round(b.top), covers: over,
+        inside: b.top >= 0 && b.bottom <= innerHeight && b.left >= 0 && b.right <= innerWidth, tail: getComputedStyle(tl).display !== 'none', glow: document.querySelectorAll('.tglow').length }; });
     // the Welcome card may come up on a result (before 62.12 moved it, it did on the first one); "Later" is what a player would tap
     const later = () => page.evaluate(() => { const w = document.getElementById('welcome'); if (w && !w.hidden && w.getClientRects().length) w.querySelector('[data-act="wlater"]')?.click(); });
     const waitText = async (want, n = 80) => { for (let i = 0; i < n; i++) { const b = await box(); if (b && b.text === want) return b; await later(); await sleep(100); } return await box(); };
@@ -109,10 +113,11 @@ export async function run() {
     (!seen[0].drawn && !seen[1].drawn && !seen[2].drawn && [3, 5, 7, 11].every(i => seen[i].drawn && seen[i].ring[0] > 0 && seen[i].ring[0] < 380) && seen[5].tag === C.start && seen[10].drawn)
       ? ok(`62.6 no outline on the boxes about the whole list; one round each thing to tap (and With a friend), Quick Tap's labelled "${C.start}"`)
       : bad('62.6 the outlines', JSON.stringify(seen.map(b => b && { t: b.text.slice(0, 20), drawn: b.drawn, ring: b.ring, tag: b.tag })));
-    // 62.7: every box in the centre of the phone, the same top, never over what it rings; 62.8: no button on any of them
-    (seen.every(b => b && Math.abs(b.centre[0]) <= 2 && Math.abs(b.centre[1]) <= 2 && b.top === seen[0].top && !b.covers && b.buttons === 0))
-      ? ok(`62.7 / 62.8 all twelve boxes sit in the centre of the phone at one spot (top ${seen[0].top}px), none over what it rings, no Skip and no Next on any`)
-      : bad('62.7 / 62.8 the centred box', JSON.stringify(seen.map(b => b && { t: b.text.slice(0, 20), c: b.centre, top: b.top, covers: b.covers, buttons: b.buttons })));
+    /* AMENDED at build 66 (65.5, superseding 62.7's one centred spot): every box is on the phone, centred across it, never over what it rings, and a
+       ringed box has its tail; the boxes move (not one spot); 62.8: no button on any of them */
+    (seen.every(b => b && Math.abs(b.centre[0]) <= 2 && b.inside && !b.covers && b.buttons === 0 && (!b.drawn || b.tail)) && new Set(seen.map(b => b.top)).size > 2)
+      ? ok(`65.5 / 62.8 all twelve boxes sit beside what they ring (tops ${[...new Set(seen.map(b => b.top))].join(', ')}px), never over it, a tail on every ringed one, no Skip and no Next on any`)
+      : bad('65.5 / 62.8 where the box sits', JSON.stringify(seen.map(b => b && { t: b.text.slice(0, 20), c: b.centre, top: b.top, covers: b.covers, inside: b.inside, tail: b.tail, drawn: b.drawn, buttons: b.buttons })));
     /* build 65 (64.3): every toast from here on, with the screen it showed on and whether a walkthrough box was up at the same moment — this first
        run is Aiden's v0.64 case, a Sprint fast enough to open Dash (7 in a row) and Four (15 in a row) at once */
     await page.evaluate(() => { window.__toasts = []; window.__overlap = 0; const t = document.getElementById('toast'), tut = () => { const b = document.getElementById('tut'); return !!b && !b.hidden; };
@@ -155,9 +160,9 @@ export async function run() {
     const dashW = await page.evaluate(() => document.querySelector('#over-chips2 .chip:nth-child(2)').getBoundingClientRect().width);
     const still = await state();
     const rings = await page.evaluate(() => ({ again: document.getElementById('again').getBoundingClientRect().width, back: document.getElementById('over-back').getBoundingClientRect() }));
-    (over.every((b, i) => b && b.text === OW[i]) && over[1].drawn && Math.abs(over[1].ring[0] - rings.again - 12) <= 2 && !over[2].drawn && over[3].drawn && Math.abs(over[3].ring[0] - dashW - 12) <= 2 && over[4].arrow && !over[4].drawn && !over[0].drawn && still.screen === 's-over' && !still.game
-      // AMENDED at build 65 (64.4): the result no longer scrolls, so a box whose ring sits at the centre (TRY AGAIN) moves clear of it instead
-      && over.every(b => (Math.abs(b.centre[1]) <= 2 || b.drawn) && !b.covers) && !/\{/.test(OW.join('')))
+    (over.every((b, i) => b && b.text === OW[i]) && over[1].drawn && Math.abs(over[1].ring[0] - rings.again - 12) <= 2 && over[2].drawn && Math.abs(over[2].ring[0] - dashW - 12) <= 2 && over[3].drawn && Math.abs(over[3].ring[0] - dashW - 12) <= 2 && over[4].arrow && !over[4].drawn && !over[0].drawn && still.screen === 's-over' && !still.game
+      // AMENDED at build 66 (65.5): no box is parked in the centre — each sits beside what it rings, never over it
+      && over.every(b => b.inside && !b.covers) && !/\{/.test(OW.join('')))
       ? ok(`62.11 / 64.2 the first result's boxes in order, centred: TRY AGAIN ringed, "${OW[2]}", then "${OW[3]}" with Dash ringed, an arrow at BACK — and tapping either does nothing until the last box`)
       : bad('62.11 the result boxes', JSON.stringify({ want: OW, over: over.map(b => b && { t: b.text, drawn: b.drawn, ring: b.ring, arrow: b.arrow, c: b.centre, covers: b.covers }), still, rings }));
     // 62.14: "Good luck!" is answered — Off the Rails banked, the walkthrough gone, the result screen live again (and the second run can be quit)
@@ -287,8 +292,10 @@ export async function run() {
         ? ok(`64.12 the Scores tutorial after the first Reaction run: Scores ringed on the menu, a welcome, "${want12[2]}" with its chip to tap, the web chart ringed`)
         : bad('64.12 the Scores tutorial', JSON.stringify({ q: q.map(b => b && { t: b.text, drawn: b.drawn, ring: b.ring }), radarW, qEnd }));
     }
-    /* 64.14: THE GAMES CHEST TUTORIAL — every mode open, the Games chest opened from the map: the first box when its words have spilt, then the Skill
-       Key (after its own first animation), Quick Tap's node to tap, the menu with Customise ringed, and the Games chest's background to pick */
+    /* 64.14, REWRITTEN at build 66 (65.9): THE GAMES CHEST TUTORIAL — every mode open, the Games chest opened from the map: the first box when its
+       words have spilt, then the SKILL KEY word ringed to tap (the tutorial takes the player nowhere itself), the key (after its own first animation)
+       with every spoke lit, Quick Tap's node to tap, BACK ringed to tap, the menu with Customise, and the Games chest's background to pick. Every screen
+       change on the way is recorded with the tap before it: each follows a tap on a ring, none a tap on a text box or no tap at all */
     {
       const keys = await page.evaluate(async () => (await import('./config/unlocks.js')).UNLOCKS.map(u => u.key).filter(k => k !== 'sequence:practice'));
       const unl = Object.fromEntries(keys.map(k => [k, 1]));
@@ -296,20 +303,31 @@ export async function run() {
       await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
       await page.evaluate(async () => (await import('./ui/router.js')).show('s-pick')); await sleep(900);
       await page.evaluate(() => document.querySelector('#grid .chest[data-chest="games"]').click()); await sleep(600); await revealDone(); await sleep(400);
-      const CG = await page.evaluate(async () => (await import('./config/copy.js')).TUTORIAL.games), gg = [];
+      const CG = await page.evaluate(async () => (await import('./config/copy.js')).TUTORIAL.games), gg = [], UG = CG.map(s => s.replace(/\[\/?(green|yellow|red)\]/g, ''));
+      await page.evaluate(async () => { const E = await import('./core/events.js'); window.__nav = []; window.__clk = null;
+        window.addEventListener('click', () => { const t = document.getElementById('tut'); window.__clk = { t: performance.now(), up: !!t && !t.hidden, text: !!t && !t.hidden && t.classList.contains('text') }; }, true);
+        E.on('screen:change', ({ id }) => { const c = window.__clk; window.__nav.push({ id, dt: c ? Math.round(performance.now() - c.t) : null, ring: !!c && c.up && !c.text }); }); });
       const clearIntro = async () => { for (let i = 0; i < 6; i++) { await revealDone(); await sleep(300); } };
-      gg.push(await waitText(CG[0], 150)); await anywhere(); await clearIntro(); gg.push(await waitText(CG[1], 150));
-      await anywhere(); gg.push(await waitText(CG[2])); await anywhere(); gg.push(await waitText(CG[3]));
+      gg.push(await waitText(UG[0], 150)); const onMap = (await state()).screen; await anywhere(); gg.push(await waitText(UG[1]));
+      await click('#grid .chestwords .cw[data-to="s-custom"]'); await sleep(200); const heldW = { s: (await state()).screen, t: (await box() || {}).text };
+      await click('#grid .chestwords .cw[data-to="key:0"]'); await clearIntro(); gg.push(await waitText(UG[2], 150));
+      await anywhere(); gg.push(await waitText(UG[3])); await anywhere(); gg.push(await waitText(UG[4]));
       await click('#s-menu .item[data-go="s-about"]'); await sleep(200); const heldK = (await state()).screen;
-      await page.evaluate(() => document.querySelector('#s-key .knode[data-kg="quick-tap"]').dispatchEvent(new MouseEvent('click', { bubbles: true }))); gg.push(await waitText(CG[4]));
-      await anywhere(); gg.push(await waitText(CG[5])); const onMenu = (await state()).screen;
-      await click('#s-menu .item[data-go="s-custom"]'); gg.push(await waitText(CG[6])); await anywhere(); gg.push(await waitText(CG[7]));
+      await page.evaluate(() => document.querySelector('#s-key .knode[data-kg="quick-tap"]').dispatchEvent(new MouseEvent('click', { bubbles: true }))); gg.push(await waitText(UG[5]));
+      await anywhere(); await sleep(200); const stillK = (await state()).screen;
+      await click('#s-key > .back'); gg.push(await waitText(UG[6])); const onMenu = (await state()).screen;
+      await click('#s-menu .item[data-go="s-custom"]'); gg.push(await waitText(UG[7])); await anywhere(); gg.push(await waitText(UG[8]));
       await click('#c-bg button[data-v="grid"]'); await sleep(200); const heldC = (await box() || {}).text;
-      await click('#c-bg button[data-v="snow"]'); gg.push(await waitText(CG[8])); await anywhere(); await sleep(400);
-      const gEnd = await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('ne')).prefs; return { done: p.tuts.games, bg: p.bg, box: !document.getElementById('tut').hidden }; });
-      (gg.map(b => b && b.text).join('|') === CG.join('|') && heldK === 's-key' && onMenu === 's-menu' && heldC === CG[7] && gg[3].drawn && gg[5].drawn && gg[7].drawn && gEnd.done === 'done' && gEnd.bg === 'snow' && !gEnd.box)
-        ? ok('64.14 the Games chest tutorial: from the map once the chest has opened, to the Skill Key (after its animation), Quick Tap to tap, the menu with Customise, and Snow picked — nine boxes in order, done once')
-        : bad('64.14 the Games chest tutorial', JSON.stringify({ gg: gg.map(b => b && { t: b.text, drawn: b.drawn }), heldK, onMenu, heldC, gEnd }));
+      await click('#c-bg button[data-v="snow"]'); gg.push(await waitText(UG[9])); await anywhere(); await sleep(400);
+      const gEnd = await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('ne')).prefs; return { done: p.tuts.games, bg: p.bg, box: !document.getElementById('tut').hidden, nav: window.__nav }; });
+      const navBad = gEnd.nav.filter(n => !n.ring || n.dt === null || n.dt > 1000);
+      (gg.map(b => b && b.text).join('|') === UG.join('|') && onMap === 's-pick' && heldW.s === 's-pick' && heldW.t === UG[1] && heldK === 's-key' && stillK === 's-key' && onMenu === 's-menu' && heldC === UG[8]
+        && gg[1].drawn && gg[1].tail && gg[3].glow === Object.keys(await page.evaluate(async () => (await import("./games/registry.js")).GAMES)).length && !gg[3].covers && gg[4].drawn && gg[5].drawn && gg[6].drawn && gg[8].drawn && gg.every(b => b.inside && !b.covers) && gEnd.done === 'done' && gEnd.bg === 'snow' && !gEnd.box)
+        ? ok('64.14 / 65.9 the Games chest tutorial: map → the SKILL KEY word ringed and tapped → the key with every spoke lit → Quick Tap tapped → BACK ringed and tapped → Customise → Snow picked — ten boxes in order, done once')
+        : bad('64.14 / 65.9 the Games chest tutorial', JSON.stringify({ gg: gg.map(b => b && { t: b.text, drawn: b.drawn, glow: b.glow, covers: b.covers, inside: b.inside }), onMap, heldW, heldK, stillK, onMenu, heldC, gEnd }));
+      (gEnd.nav.length >= 3 && !navBad.length)
+        ? ok(`65.9 the tutorial never moves the player: all ${gEnd.nav.length} screen changes (${gEnd.nav.map(n => n.id).join(' → ')}) came straight after a tap on a ringed thing, none after a tap on a text box`)
+        : bad('65.9 a tutorial changed the screen by itself', JSON.stringify(gEnd.nav));
     }
     /* build 66 (65.19): COLOUR MARKS. Every line of tutorial copy (section C writes them with [green] / [yellow] / [red]) renders with no "[" left in
        it, and each mark is drawn in the game's own colour — green --ok, yellow --tut, red the game's red */

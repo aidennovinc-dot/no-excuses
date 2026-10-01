@@ -322,7 +322,8 @@ export const TUTORIAL = {
   board:[ "You've unlocked Scores", 'Welcome to the scores section!', "Let's check your {game} scores", 'This thing up here shows your overall performance across all games' ],
   /* build 65 (64.14): THE GAMES CHEST TUTORIAL, after the chest opens (and its video, if the player plays it) — Aiden's lines, the names standardised
      to "Skill Key" / "Skill Chest" (Cowork: he dictated "Skill's" / "Skills") */
-  games:[ 'Wow, you unlocked the Games Chest. Well done!', "You've unlocked the Skill Key, which opens the Skill Chest", "To be able to use this key, you'll have to fill all the bars",
+  /* build 66 (65.9): the second line is Aiden's — the must-tap box on the map that rings the SKILL KEY word, so he gets to the key himself */
+  games:[ 'Wow, you unlocked the Games Chest. Well done!', 'Tap the [yellow]Skill Key[/yellow] to take a look', "You've unlocked the Skill Key, which opens the Skill Chest", "To be able to use this key, you'll have to fill all the bars",
     'Click one to see what to aim for!', "Open the Skill Chest and you'll have 100%'d the game!", "You've also unlocked something fun, let's see!",
     'This is where you can customise your game! See if you can unlock them all.', "Why don't you try now", 'Remember, you can always check the progress screen to see how to unlock everything!' ],
   over:{ hi:'Congratulations! You finished your first run', again:'You can try again',

@@ -1,6 +1,8 @@
 /* No Excuses — THE FIRST-TIME SYSTEM (build 65, A1). Build 62 made the first-run walkthrough (61.3), build 64 rewrote it (62.9 – 62.11);
-   build 65 turns it into ONE MECHANISM and every first-time tutorial into data for it. Not a screen: one centred box, and a yellow ring round
-   the thing a box is about, laid over whatever screen is up, the way ui/welcome.js lays its ceremony over the result screen.
+   build 65 turns it into ONE MECHANISM and every first-time tutorial into data for it. Not a screen: one box, and a yellow ring round the thing
+   a box is about, laid over whatever screen is up, the way ui/welcome.js lays its ceremony over the result screen. Build 66 (65.5): the box sits
+   BESIDE what it rings, never over it, with a tail pointing at the ring, and glides from one spot to the next; (65.9) a tutorial never moves the
+   player to another screen — when its next box lives elsewhere, the box before it rings the way there and waits for that tap.
 
    A TUTORIAL is an id and a list of STEPS (`DEFS` below; the words are config/copy.js TUTORIAL, Aiden's copy). A step says where it lives
    (`on`), what it is about (`el`), and whether it waits for a tap ON that thing (`tap`) or moves on at a tap anywhere. The rules, for all of them:
@@ -85,6 +87,8 @@ const nameOf=k=>{ const [g,d,s]=String(k).split(':'); if(!GAMES[g]) return ''; i
    ring; `arrow` an arrow at it instead of a ring; `enter` what happens as the step starts. */
 const map=()=>onScreen('s-pick')&&!sheetUp()&&!lockUp();
 const L=TUTORIAL.steps;
+/* build 66 (65.9): where a step's ring goes is also where the player's tap goes. A ring of several things (`el` returns a list) is drawn round all of
+   them at once and each one lights (`.tglow`); `keep` names something else on the screen the box must also stay clear of */
 const FIRST=[
   { on:()=>map()&&mapSettled(), el:()=>$('#grid'), ring:0, text:L[0] },
   { on:map, el:()=>$('#grid'), ring:0, text:L[1] },
@@ -112,7 +116,7 @@ const dashOpen=()=>{ const m=QM(), s=GC(QT,m).lens[1]; return s!==undefined&&len
 function overSteps(){ const dash=()=>$(`#over-chips2 .chip[data-v="${GC(QT,QM()).lens[1]}"]`)||$('#over-chips2 .chip:nth-child(2)');
   const dots=()=>GAMES.dots.modes.some(m=>(store.unlock||{})['dots:'+m]);
   const mid=dashOpen()
-    ? [ { on:oOn, text:()=>say(O.got,{names:list(gotKeys().map(nameOf).filter(Boolean))||nums().second}) }, ...(dots()?[]:[{ on:oOn, el:dash, text:()=>say(O.next) }]) ]
+    ? [ { on:oOn, el:dash, text:()=>say(O.got,{names:list(gotKeys().map(nameOf).filter(Boolean))||nums().second}) }, ...(dots()?[]:[{ on:oOn, el:dash, text:()=>say(O.next) }]) ]
     : [ { on:oOn, el:()=>$('#again'), text:()=>say(O.miss) } ];
   return [ { on:oOn, text:O.hi }, { on:oOn, el:()=>$('#again'), text:O.again }, ...mid, { on:oOn, el:()=>$('#over-back'), arrow:1, text:O.back },
     ...O.end.map(t=>({ on:oOn, text:t })) ]; }
@@ -168,56 +172,79 @@ tutorial('board',[
   { on:bd, el:()=>$('#radar'), text:B12[3] },
 ],{ opened:()=>menuOpen('s-board') });
 
-/* 64.14: THE GAMES CHEST, armed the moment it opens (`chest:opened`, progress/key.js). It starts where the opening leaves the player — the map once
-   the chest's words have spilt, or About once its video has played — then takes them to the Skill Key (whose own first animation plays before the
-   next box), has them tap Quick Tap's node to see what to aim for, takes them to the menu with Customise ringed, and has them pick the Games chest's
-   own background (64.15) before the last line */
+/* 64.14: THE GAMES CHEST, armed the moment it opens (`chest:opened`, progress/key.js). It starts on the map once the chest's words have spilt.
+   Build 66 (65.9): the player gets everywhere by their own tap — the SKILL KEY word beside the chest is ringed and must be tapped ("Tap the Skill Key
+   to take a look", Aiden's line) before the key's boxes; on the key, the spokes light for "fill all the bars", Quick Tap's node is tapped, then BACK
+   is ringed and tapped to the menu, where Customise is ringed and tapped for "something fun"; Snow (64.15) is scrolled into view and picked. Build
+   65 started it on About too, once the chest's video had played, and then took the player to the key itself — it waits for the map now */
 const G14=TUTORIAL.games, ks=()=>onScreen('s-key'), cu=()=>onScreen('s-custom');
+const word=to=>()=>$(`#grid .chestwords .cw[data-for="games"][data-to="${to}"]`);
 tutorial('games',[
-  { on:()=>(onScreen('s-pick')&&!sheetUp()&&!lockUp()&&mapSettled())||onScreen('s-about'), text:G14[0] },
-  { on:ks, el:()=>$('#s-key .kkey[data-kt="0"]'), text:G14[1], enter(){ show('s-key',{ tier:0 }); } },
-  { on:ks, text:G14[2] },
-  { on:ks, el:()=>$(`#s-key .knode[data-kg="${QT}"]`), tap:1, hit:t=>!!(t.closest&&t.closest(`#s-key [data-kg="${QT}"]`)), text:G14[3] },
-  { on:ks, text:G14[4] },
-  { on:menuOn, el:item('s-custom'), tap:1, text:G14[5], enter(){ show('s-menu'); } },
-  { on:cu, text:G14[6] },
-  { on:cu, el:()=>$('#c-bg button[data-v="snow"]'), tap:1, text:G14[7] },
-  { on:cu, text:G14[8] },
+  { on:()=>map()&&mapSettled(), text:G14[0] },
+  { on:()=>map()&&mapSettled(), el:word('key:0'), tap:1, text:G14[1] },
+  { on:ks, el:()=>$('#s-key .kkey[data-kt="0"]'), text:G14[2] },
+  { on:ks, el:()=>[...document.querySelectorAll('#key-ring .kr')], glow:1, keep:()=>$('#key-count'), text:G14[3] },
+  { on:ks, el:()=>$(`#s-key .knode[data-kg="${QT}"]`), tap:1, hit:t=>!!(t.closest&&t.closest(`#s-key [data-kg="${QT}"]`)), text:G14[4] },
+  { on:ks, el:()=>$('#s-key > .back'), tap:1, text:G14[5] },
+  { on:menuOn, el:item('s-custom'), tap:1, text:G14[6] },
+  { on:cu, text:G14[7] },
+  { on:cu, el:()=>$('#c-bg button[data-v="snow"]'), tap:1, text:G14[8] },
+  { on:cu, text:G14[9] },
 ],{ opened:()=>chestOpen('games') });
 on('chest:opened',({id})=>{ if(id==='games') arm('games'); });
 
 /* ---------- the box ---------- */
-let host=null, timer=0, fromTut=false, passing=false, cur=null;
+let host=null, timer=0, fromTut=false, passing=false, cur=null, last=null, lit=[];
+const REDUCE=matchMedia('(prefers-reduced-motion: reduce)').matches;
 function build(){ if(host) return host;
   // build 64 (62.8): the box is its line and nothing else — no Skip, no Next; a tap anywhere moves a text box on (the capture below)
   host=document.createElement('div'); host.id='tut'; host.hidden=true;
-  host.innerHTML='<div class="tring"><span class="ttag"></span></div><div class="tarrow"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M40 40L10 10M10 10h14M10 10v14"></path></svg></div><div class="tbox"><p></p></div>';
+  host.innerHTML='<div class="tring"><span class="ttag"></span></div><div class="tarrow"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M40 40L10 10M10 10h14M10 10v14"></path></svg></div><div class="tbox"><p></p></div><i class="ttail"></i>';
   document.body.appendChild(host); return host; }
-function hide(){ if(host) host.hidden=true; cur=null; }
-/* build 64 (62.7): THE BOX SITS IN THE CENTRE, THE SAME SPOT ON EVERY STEP, between the two safe areas; its height is held by a min-height so one
-   line or two does not shift it. A target the box would cover is moved instead: its screen scrolls until it is clear of the box, above it if it
-   sat above the centre, below it if below. The insets come off a probe, as the stylesheet sees them. */
+function glow(els){ for(const e of lit) if(!els.includes(e)) e.classList.remove('tglow'); for(const e of els) e.classList.add('tglow'); lit=els; }
+function hide(){ if(host){ host.hidden=true; host.classList.remove('glide'); } glow([]); cur=null; }
+// the insets come off a probe, as the stylesheet sees them
 let inset=null;
 function insets(){ if(!inset){ inset=document.createElement('div'); inset.style.cssText='position:fixed;left:0;width:0;top:env(safe-area-inset-top);bottom:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none'; document.body.appendChild(inset); }
   const r=inset.getBoundingClientRect(); return { top:r.top, bottom:innerHeight-r.bottom }; }
-function clear(el,bt,bb){ const sc=el.closest('.tscroll')||el.closest('.screen'); if(!sc||sc.scrollHeight<=sc.clientHeight+1) return; const r=el.getBoundingClientRect(), gap=16;
-  if(r.bottom<=bt-gap||r.top>=bb+gap) return;
-  const up=r.top+r.height/2<(bt+bb)/2, before=sc.scrollTop;
-  sc.scrollTop+=up?r.bottom-(bt-gap):-(bb+gap-r.top);
-  // the screen could not move that way far enough (the top or the end of it): the other side of the box
-  const n=el.getBoundingClientRect(); if(n.bottom>bt-gap&&n.top<bb+gap){ sc.scrollTop=before; sc.scrollTop+=up?-(bb+gap-r.top):r.bottom-(bt-gap); } }
-function place(el,text,o={}){ const h=build(), pad=6, ring=h.querySelector('.tring'), box=h.querySelector('.tbox'), arrow=h.querySelector('.tarrow');
-  h.hidden=false; h.querySelector('p').innerHTML=marks(text); h.classList.toggle('text',!o.tap); ring.hidden=!!o.noRing||!el;
-  const bw=Math.min(320,innerWidth-32), bh=box.offsetHeight||90, s=insets(), top=Math.round(s.top+(innerHeight-s.top-s.bottom-bh)/2);
-  Object.assign(box.style,{ width:bw+'px', left:Math.round((innerWidth-bw)/2)+'px', top:top+'px' });
-  arrow.hidden=!o.arrow||!el;
-  if(!el) return;
-  if(!ring.hidden) clear(el,top,top+bh);
-  const r=el.getBoundingClientRect();
-  /* build 65 (64.4): a screen that cannot scroll (the result, which fits one screen now) cannot move its target out from under the box, so for that
-     box alone the BOX moves: just below the target if it fits above the home indicator, else just above it. Never over what it rings */
-  if(!ring.hidden&&r.bottom>top-pad&&r.top<top+bh+pad){ const below=Math.round(r.bottom+pad+16), above=Math.round(r.top-pad-16-bh);
-    box.style.top=(below+bh<=innerHeight-s.bottom-8?below:Math.max(s.top+8,above))+'px'; }
+// the rectangle round several things at once
+function union(els){ const rs=els.map(e=>e.getBoundingClientRect()).filter(r=>r.width||r.height); if(!rs.length) return null;
+  const l=Math.min(...rs.map(r=>r.left)), t=Math.min(...rs.map(r=>r.top)), rt=Math.max(...rs.map(r=>r.right)), b=Math.max(...rs.map(r=>r.bottom));
+  return { left:l, top:t, right:rt, bottom:b, width:rt-l, height:b-t }; }
+// what scrolls a thing: its nearest ancestor that can, or the page
+function scroller(el){ for(let p=el.parentElement;p&&p!==document.body;p=p.parentElement){ const o=getComputedStyle(p).overflowY; if((o==='auto'||o==='scroll')&&p.scrollHeight>p.clientHeight+1) return p; }
+  const d=document.scrollingElement; return d&&d.scrollHeight>d.clientHeight+1?d:null; }
+/* build 66 (65.5 / 65.11): A RINGED THING THE BOX CANNOT SIT BESIDE IS SCROLLED TO FIRST — off the screen (Snow, below Customise's fold, which Aiden
+   had to find himself), or too near an edge for the box to fit on either side of it. The thing and the box are centred between the safe areas as a
+   pair; a thing too tall for that goes to the top */
+function into(els,bh,lo,hi,gap){ const r=union(els); if(!r) return; if(r.top>=lo&&r.bottom<=hi&&(r.bottom+gap+bh<=hi||r.top-gap-bh>=lo)) return;
+  const sc=scroller(els[0]); if(!sc) return; const pair=r.height+gap+bh, want=pair<=hi-lo?lo+(hi-lo-pair)/2:lo;
+  sc.scrollTo({ top:sc.scrollTop+r.top-want, behavior:'instant' }); }
+/* build 66 (65.5, superseding build 64's 62.7 — one centred spot for every box): THE BOX SITS BESIDE WHAT IT IS ABOUT. Below it if there is room
+   above the home indicator, else above it, never over it, with a tail pointing at the ring; a thing too tall for either side gets the box on its
+   roomier side, inside the safe areas. A box about nothing (or about the whole screen) stays where the tutorial's last box was, or the centre for
+   its first. Between boxes the box and the ring glide to their new spot (`.glide`, 250ms, ease-out); reduced motion jumps. */
+function place(el,text,o={}){ const h=build(), pad=6, ring=h.querySelector('.tring'), box=h.querySelector('.tbox'), arrow=h.querySelector('.tarrow'), tail=h.querySelector('.ttail');
+  const was=!h.hidden; h.hidden=false; h.classList.toggle('glide',was&&!REDUCE);
+  h.querySelector('p').innerHTML=marks(text); h.classList.toggle('text',!o.tap);
+  const els=(Array.isArray(el)?el:el?[el]:[]).filter(vis), keep=o.keep?[o.keep()].filter(e=>e&&vis(e)):[];
+  const ringed=!!els.length&&!o.noRing, aimed=ringed||(!!o.arrow&&!!els.length);
+  ring.hidden=!ringed; arrow.hidden=!(o.arrow&&els.length); glow(o.glow?els:[]);
+  const s=insets(), lo=s.top+8, hi=innerHeight-s.bottom-8, bw=Math.min(320,innerWidth-32), left=Math.round((innerWidth-bw)/2);
+  box.style.width=bw+'px'; const bh=box.offsetHeight||92, gap=pad+(o.arrow?48:16);
+  if(aimed) into(els,bh,lo,hi,gap);
+  const U=union(els.concat(keep)); let top=null, side=0;
+  // a thing the box is about but does not ring (a row, the lock box) is kept clear too, unless it is most of the screen (the whole map)
+  if(U&&(aimed||U.height<(hi-lo)*.55)){
+    if(U.bottom+gap+bh<=hi){ top=U.bottom+gap; side=1; } else if(U.top-gap-bh>=lo){ top=U.top-gap-bh; side=-1; }
+    else if(aimed) top=hi-U.bottom>=U.top-lo?hi-bh:lo; }
+  if(top===null) top=last&&last.id===o.id?last.top:lo+(hi-lo-bh)/2;
+  top=Math.round(Math.max(lo,Math.min(hi-bh,top))); last={ id:o.id, top };
+  Object.assign(box.style,{ left:left+'px', top:top+'px' });
+  tail.hidden=!(aimed&&side); tail.classList.toggle('up',side<0);
+  if(aimed&&side){ const R=union(els); Object.assign(tail.style,{ left:Math.round(Math.max(left+14,Math.min(left+bw-26,R.left+R.width/2-6)))+'px', top:(side>0?top-5:top+bh-7)+'px' }); }
+  if(!els.length) return;
+  const r=union(els);
   Object.assign(ring.style,{ left:(r.left-pad)+'px', top:(r.top-pad)+'px', width:(r.width+pad*2)+'px', height:(r.height+pad*2)+'px' });
   const tag=ring.querySelector('.ttag'); tag.textContent=o.tag||''; tag.hidden=!o.tag;
   // 62.11: an arrow just under and right of BACK, pointing up at it
@@ -235,9 +262,9 @@ function tick(){
   if(!s) return hide();
   if(s.tap&&s.done&&s.done()){ advance(id); return tick(); }
   if(busy()||!s.on()) return hide();
-  const el=s.el?s.el():null; if(el&&!vis(el)) return hide();
+  const el=s.el?s.el():null, first=Array.isArray(el)?el[0]:el; if(s.el&&!(first&&vis(first))) return hide();
   cur={ id, i, s };
-  place(el,typeof s.text==='function'?s.text():s.text,{ tap:s.tap, noRing:s.ring===0||!!s.arrow, arrow:s.arrow, tag:s.tag }); }
+  place(el,typeof s.text==='function'?s.text():s.text,{ id, tap:s.tap, noRing:s.ring===0||!!s.arrow, arrow:s.arrow, tag:s.tag, glow:s.glow, keep:s.keep }); }
 function run(){ if(!timer) timer=setInterval(tick,200); }
 // the next step, or the end: the last tap on a tutorial is what finishes it
 function advance(id){ const d=DEFS[id], steps=stepsOf(d), n=d.step()+1;
@@ -256,7 +283,7 @@ function bankRails(say){ const g=got(); if(g.rails) return; g.rails=Date.now(); 
    every tap alone, which is what keeps the screen from ever being held with no box on it (64.3). */
 const shown=()=>!!host&&!host.hidden&&!!cur;
 const waiting=()=>!overlay()&&((wanted()&&firstAt===0&&onScreen('s-pick')&&!sheetUp()&&!lockUp())||(results()&&onScreen('s-over')));
-function lets(t){ if(!shown()||!cur.s.tap) return false; if(cur.s.hit) return !!cur.s.hit(t); const el=cur.s.el(); return !!el&&el.contains(t); }
+function lets(t){ if(!shown()||!cur.s.tap) return false; if(cur.s.hit) return !!cur.s.hit(t); return [].concat(cur.s.el()||[]).some(el=>el.contains(t)); }
 document.addEventListener('click',e=>{ if(passing) return;
   tick();   // what is on the screen NOW decides — a box whose tutorial ended since the last turn of the loop owns nothing
   if(!shown()){ if(waiting()){ e.stopPropagation(); e.preventDefault(); } return; }
@@ -311,4 +338,8 @@ define({
 run();
 setTimeout(resumeOver,0);
 
-export { arm, busy as tutBusy, tutDone, tutorial };
+/* build 66: where the tutorials are, for Testing and the gate — the one that has the floor, its step, how many it has, and whether its box is up
+   and waiting for a tap on its ring */
+function tutNow(){ const id=active(); if(!id) return null; const d=DEFS[id]; return { id, i:d.step(), n:stepsOf(d).length, shown:shown()&&cur.id===id, tap:shown()&&!!cur.s.tap }; }
+
+export { arm, busy as tutBusy, tutDone, tutNow, tutorial };

@@ -1232,6 +1232,16 @@
   /* build 66 (65.19): a colour mark in a line of copy (core.js marks()) — green the goal, yellow the thing named, red how you fail */
   .mk-green{color:var(--ok)} .mk-yellow{color:var(--tut)} .mk-red{color:#E0453B}
   #tut .tring[hidden]{display:none}
+  /* build 66 (65.5): the box's tail, pointing at what it rings — on its top edge when the box sits below, its bottom edge when above */
+  #tut .ttail{position:fixed;width:12px;height:12px;background:#141414;border:2px solid var(--tut);border-right:0;border-bottom:0;transform:rotate(45deg);pointer-events:none;z-index:1}
+  #tut .ttail.up{transform:rotate(225deg)}
+  #tut .ttail[hidden]{display:none}
+  /* build 66 (65.5): from one box to the next, the box, its tail and the ring glide (ui/tutorial.js turns .glide on only between boxes) */
+  #tut.glide .tbox,#tut.glide .ttail{transition:top .25s ease-out,left .25s ease-out}
+  #tut.glide .tring{transition:left .25s ease-out,top .25s ease-out,width .25s ease-out,height .25s ease-out}
+  @media (prefers-reduced-motion:reduce){#tut.glide .tbox,#tut.glide .ttail,#tut.glide .tring{transition:none}}
+  /* build 66 (65.9 / games-03): every spoke lit at once for "fill all the bars" */
+  #key-ring .kr.tglow .kroot,#key-ring .kr.tglow .khalo{stroke:var(--tut);filter:drop-shadow(0 0 4px var(--tut))}
   /* build 64 (62.9 step 6): the ring's label ("Start here"), sat on its bottom edge, clear of the tile's name */
   #tut .ttag{position:absolute;left:50%;top:100%;transform:translate(-50%,-50%);background:var(--tut);color:#141414;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;padding:4px 9px;border-radius:6px;white-space:nowrap}
   #tut .ttag[hidden]{display:none}
