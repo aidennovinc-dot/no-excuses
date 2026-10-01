@@ -168,6 +168,19 @@ export async function run() {
       ? ok('B.10 seedSeen() covers the cosmetics - an item that was open from the start no longer wears L8 green as if something had just earned it')
       : bad('B.10 an open-from-the-start cosmetic is seeded as seen', r.unseeded.join(', '));
   }
+  /* build 68 (67.36): FRESH GAME RESETS EVERY FIRST-TIME MOMENT. A profile that has seen every tour, spent its rooms, had its key intros, its Welcome,
+     its next-unlock card and made excuses takes Fresh game from Testing: all of it is forgotten, and the walkthrough is back on the games menu */
+  {
+    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS, tuts: { about: 'done', prog: 'done', board: 'done', games: 'done', est: 'done' }, rooms: { 's-about': 1, 's-prog': 1 }, keyIntro: { clear: 1, pro: 1 }, welcomeSeen: 1, nextSeen: 1, excuses: { 7: 2 }, menuSeen: 1 }, runs: [{ g: 'quick-tap', d: 'two', s: 5, t: Date.now() - 4e6, hits: 9, misses: 0, v: 4 }], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await page.evaluate(async () => (await import('./ui/router.js')).show('s-testing')); await sleep(400);
+    await page.evaluate(() => document.querySelector('[data-act="dev-fresh"]').click()); await sleep(700);
+    const f36 = await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('ne')).prefs; return { tut: p.tut || 0, tutRun: !!p.tutRun, tuts: Object.keys(p.tuts || {}).length, rooms: Object.keys(p.rooms || {}).length, keyIntro: Object.keys(p.keyIntro || {}).length, welcomeSeen: p.welcomeSeen || 0, nextSeen: p.nextSeen || 0, excuses: Object.keys(p.excuses || {}).length }; });
+    await page.evaluate(async () => (await import('./ui/router.js')).show('s-pick')); let walk = null; for (let i = 0; i < 20 && !(walk && walk.shown); i++) { await sleep(300); walk = await page.evaluate(async () => (await import('./ui/tutorial.js')).tutNow()); }
+    (!f36.tut && !f36.tutRun && !f36.tuts && !f36.rooms && !f36.keyIntro && !f36.welcomeSeen && !f36.nextSeen && !f36.excuses && walk && walk.id === 'first' && walk.shown)
+      ? ok(`67.36 Fresh game forgets every first-time moment — the walkthrough, the tours, the rooms, the key intros, the Welcome, the next-unlock card's green and the Excuses — and the walkthrough is back on the games menu (step ${walk.i + 1} of ${walk.n})`)
+      : bad('67.36 what Fresh game resets', JSON.stringify({ f36, walk }));
+  }
 
   // ---- B.11: nothing on the Achievements screen calls itself an unlock ----
   {

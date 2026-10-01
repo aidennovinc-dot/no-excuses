@@ -497,7 +497,8 @@ on('screen:change',({id})=>{ const g=$('#game');
 on('run:abort',()=>{ firstRun=false; });
 on('run:finish',({run:r,two,fresh})=>{ if(!firstRun||two||r.demo||r.practice||r.chal||r.gaunt) return; firstRun=false;
   prefs.tut=1; prefs.tutRun=Object.assign({},r,{ got:(fresh||[]).map(u=>u.key).filter(Boolean) }); save(); overAt=0; overList=null; run(); });
-on('store:reset',()=>{ firstAt=0; if(prefs.tut===2) bankRails(false); });
+// build 68 (67.36): a Fresh game forgets the walkthrough with everything else, so it plays again and banks Rails at its end like any first time
+on('store:reset',()=>{ firstAt=0; overAt=0; overList=null; });
 /* build 65 (64.7): THE MENU'S OWN UNLOCKS ARM THEIR TUTORIALS. Progress and Scores open with a run (run/run.js, progress/menu.js) and come down on
    its result's list with the rest of what it opened; About opens when the Welcome clip finishes — ended or closed, the same moment — and the
    player is taken straight to the main menu, where its tutorial waits (64.8). Put off with Later, About still opens, because the clip is waiting
