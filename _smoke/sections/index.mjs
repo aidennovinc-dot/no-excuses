@@ -64,4 +64,6 @@ export const SECTIONS = [
   // performance.now; the two clocks start a few real ms apart, and the test clock multiplies that gap into hundreds of page ms
   { file: "39e-build-46-batch-18-the-unlock-experience-sound-an.mjs", names: ["build 46 - batch 18, the unlock experience, sound and About"], clock: 1 },
   { file: "39f-build-46-batch-18-the-unlock-experience-sound-an.mjs", names: ["build 46 - batch 18, the unlock experience, sound and About"] },
+  // build 68 (67.41): one scripted run from a wiped profile through every first-time moment it can earn
+  { file: "41-new-player-journey.mjs", names: ["new-player journey"] },
 ];

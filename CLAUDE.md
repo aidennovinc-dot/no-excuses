@@ -199,6 +199,7 @@ list, with its check, in the build that implements it (67.37b, build 68).**
 | L19 | **Streak modes sit outside the Games chest count** (2026-09-29): the Games chest is its 13 modes, "Streak not counted". |
 | L20 | **The Welcome is mandatory** (67.7): no Later; it plays on the result screen of the run that opens Dots; the other seven messages keep Later. |
 | L21 | **No Restart in a run** (67.5): ✕ → the Abandoned screen → Retry, in every mode, Pass & play and Versus included; the run's top row is ✕ alone (67.16). |
+| L22 | **Tap sound is ONE game-wide choice** (67.35): one row in Customise above the game tabs, beside Music (Off its last choice, 67.34) and Background. |
 
 **Code decisions A1–A10 in `ARCHITECTURE.md` — same quote-the-ID rule.** A feedback line changes one only when it names the ID.
 

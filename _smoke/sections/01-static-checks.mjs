@@ -148,6 +148,19 @@ export async function run() {
      its one line — never delete a sentence. The gate's own time budget is the runner's (lib/parallel.mjs), not a check here. */
   { const kb = fs.statSync(path.join(root, 'CLAUDE.md')).size / 1024;
     kb <= 40 ? ok(`A10 CLAUDE.md is ${kb.toFixed(1)}KB, inside its 40KB budget`) : bad('A10 CLAUDE.md is over its 40KB budget', `${kb.toFixed(1)}KB — move rules' full text to docs/RULES-HISTORY.md and keep one line each`); }
+  /* build 68 (67.37b): EVERY LOCKED DECISION HAS A GATE CHECK THAT NAMES IT. The locked table in CLAUDE.md is read for its L-IDs, and each must appear in the
+     label of at least one check in _smoke/sections */
+  {
+    const md = fs.readFileSync(path.join(root, 'CLAUDE.md'), 'utf8');
+    const ids = [...new Set([...md.matchAll(/^\|\s*\*{0,2}(L\d+)\*{0,2}\s*\|/gm)].map(m => m[1]))];
+    const src = fs.readdirSync(path.join(root, '_smoke', 'sections')).filter(f => f.endsWith('.mjs')).map(f => fs.readFileSync(path.join(root, '_smoke', 'sections', f), 'utf8')).join('\n');
+    const labels = [...src.matchAll(/\bok\(\s*(['`"])([\s\S]*?)\1/g)].map(m => m[2]);
+    const none = ids.filter(id => !labels.some(l => new RegExp('\\b' + id + '\\b').test(l)));
+    (ids.length >= 21 && !none.length)
+      ? ok(`67.37b every locked decision in CLAUDE.md (${ids[0]}–${ids[ids.length - 1]}, ${ids.length}) is named in the label of at least one gate check`)
+      : bad('67.37b a locked decision with no check', JSON.stringify({ ids, none }));
+  }
+
   /* build 65 (64.17): NO PLAYER-FACING STRING CARRIES A SPEC REFERENCE — "(B.1b)", "(v19 C.5)", "(C.6)". Every string every config module exports,
      and the text of the page as it loads, read with one pattern */
   {

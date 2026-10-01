@@ -82,8 +82,17 @@ function closeWelcome() { if (!host || host.hidden) return false;
 /* build 68 (67.13 / 67.22): DUE until it has done its job, which is opening About. It used to be spent the moment it started (`welcomeSeen`), so a
    reload mid-ceremony or mid-clip left About shut for good; now a Welcome cut off that way is due again — the one net. Never over itself or the player */
 const due = () => { const m = slotOf(); return !!m && !prefs.welcomeSeen && msgOpen(m) && !menuOpen('s-about'); };
+/* build 68 (67.41 — found by the new-player journey): THE WALKTHROUGH'S OWN RESULT GOES FIRST. A first run good enough to open Dots (35 hits — the
+   run the walkthrough itself asks for) put the Welcome card up in the middle of the walkthrough's result boxes, over the box being read, so the tap
+   on that box answered nothing. Both are first-time moments on one screen (L14); the walkthrough began first and is still talking, so the Welcome
+   is held until it ends (tut:done) and then plays on the same result */
+const walking = () => prefs.tut === 1 && !!prefs.tutRun;
+let held = false;
+// at once, in the same task: a toast the walkthrough was holding back must not slip out ahead of the Welcome in the gap (L14)
+on('tut:done', () => { if (!held) return; held = false; if ($('#s-over')?.classList.contains('on')) welcomeCheck(false); });
 function welcomeCheck(live) {
   if (live || !due()) return false;
+  if (walking()) { held = true; return false; }
   const vp = $('#vplay'); if ((host && !host.hidden) || (vp && !vp.hidden)) return false;
   return playWelcome();
 }

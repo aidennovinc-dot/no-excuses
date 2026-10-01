@@ -417,7 +417,7 @@ export async function run() {
       o.stored = JSON.parse(localStorage.getItem('ne')).prefs.snd; return o; });
     (fit.every(x => x.top === 0 && x.order && x.inView) && fit[0].sat === 47 && fit[0].sab === 34 && fit.every(x => x.r[3].ar <= .45)
       && !b35.bgcolRow && b35.badges === 1 && b35.on === 'rain' && b35.wheel && b35.noneShown && b35.closed && b35.tint === '' && b35.snd.join() === 'wood,wood,wood' && b35.stored === 'wood')
-      ? ok(`67.35 Customise fits: Music, Background and Tap sound (one row each), the preview and the game tabs are all on screen with no scroll — the tabs end at ${fit.map(x => x.r[4].b + ' of ' + x.h + ' (' + x.w + ' wide, insets ' + x.sat + '/' + x.sab + ')').join(' and ')}; the picked background's small wheel opens its colour and "No colour" puts the ground back; Tap sound is one setting across the game tabs`)
+      ? ok(`L22 / 67.35 Customise fits: Music, Background and Tap sound (one row each), the preview and the game tabs are all on screen with no scroll — the tabs end at ${fit.map(x => x.r[4].b + ' of ' + x.h + ' (' + x.w + ' wide, insets ' + x.sat + '/' + x.sab + ')').join(' and ')}; the picked background's small wheel opens its colour and "No colour" puts the ground back; Tap sound is one setting across the game tabs`)
       : bad('67.35 the Customise layout', JSON.stringify({ fit, b35 }));
   }
   /* build 68 (67.30, Cowork): NO BLACK BACKING BOX BEHIND TEXT OR AN ICON, ANYWHERE — the menu, the map with a chest's "You found" words, Customise, on the

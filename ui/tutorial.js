@@ -183,7 +183,11 @@ const gone=s=>!!s&&((!!s.room&&spent(s.room))||(!!s.door&&(spent(s.door)||roomNo
 // a stored step past the end (a profile saved before a tutorial was split) finishes it
 function drop(id){ const d=DEFS[id]; for(let n=0;n<60&&d&&d.live();n++){ const s=stepsOf(d)[d.step()]; if(!s&&d!==DEFS.first&&d!==DEFS.over){ d.finish(); return; } if(!gone(s)) return; advance(id); } }
 let inRoom='';
-on('screen:change',()=>{ const was=inRoom; inRoom='';
+/* build 68 (67.41 — found by the new-player journey, L15): A NEW SCREEN'S FIRST BOX WAITS ONE TICK. A tour walked into Customise placed its box against
+   the menu's last position before the screen had laid out, then glided across the Background and Tap sound rows to its spot; the gate, mid-glide,
+   saw it over both. `scrAt` holds the box back until the screen has settled, and place() never glides from one screen to another */
+let scrAt=0;
+on('screen:change',()=>{ const was=inRoom; inRoom=''; scrAt=performance.now();
   if(was&&!spent(was)){ prefs.rooms=Object.assign({},prefs.rooms,{[was]:1}); save(); }
   for(const id of ORDER) drop(id); setTimeout(tick,0); });
 
@@ -376,7 +380,8 @@ function blocks(on,r,pad){ const bs=[...build().querySelectorAll('.tblk')], W=in
   const L=r.left-pad, T=r.top-pad, R=r.right+pad, B=r.bottom+pad;
   set(bs[0],0,0,W,T); set(bs[1],0,B,W,H-B); set(bs[2],0,T,L,B-T); set(bs[3],R,T,W-R,B-T); }
 function place(el,text,o={}){ const h=build(), pad=6, ring=h.querySelector('.tring'), box=h.querySelector('.tbox'), arrow=h.querySelector('.tarrow'), tail=h.querySelector('.ttail');
-  const was=!h.hidden; h.hidden=false; h.classList.toggle('glide',was&&!REDUCE);
+  const scr=($('.screen.on')||{}).id||'game', same=!!last&&last.scr===scr;
+  const was=!h.hidden; h.hidden=false; h.classList.toggle('glide',was&&!REDUCE&&same);
   h.querySelector('p').innerHTML=marks(text); h.classList.toggle('text',!o.tap);
   const els=(Array.isArray(el)?el:el?[el]:[]).filter(vis), keep=o.keep?[o.keep()].filter(e=>e&&vis(e)):[];
   const s=insets(), lo=s.top+8, hi=innerHeight-s.bottom-8, bw=Math.min(320,innerWidth-32), left=Math.round((innerWidth-bw)/2);
@@ -394,8 +399,8 @@ function place(el,text,o={}){ const h=build(), pad=6, ring=h.querySelector('.tri
   const U=union(els.concat(keep));
   if(U&&!whole&&!far) obs.push({ left:U.left-pad, right:U.right+pad, top:U.top-gap+4, bottom:U.bottom+gap-4, w:1000 });
   const sheet=sheetUp()?$('#sheet').getBoundingClientRect():null; if(sheet) obs.push({ left:0, right:innerWidth, top:sheet.top, bottom:innerHeight });
-  const wish=far>0?[hi-bh-56]:far<0?[lo+56]:sheet&&aimed?[sheet.top-gap-bh]:aimed&&U?[U.bottom+gap,U.top-gap-bh]:[last&&last.id===o.id?last.top:lo+(hi-lo-bh)/2];
-  const at=spot(obs,left,bw,bh,lo,hi,wish), top=at.y; last={ id:o.id, top };
+  const wish=far>0?[hi-bh-56]:far<0?[lo+56]:sheet&&aimed?[sheet.top-gap-bh]:aimed&&U?[U.bottom+gap,U.top-gap-bh]:[last&&last.id===o.id&&same?last.top:lo+(hi-lo-bh)/2];
+  const at=spot(obs,left,bw,bh,lo,hi,wish), top=at.y; last={ id:o.id, top, scr };
   // 67.9: while the target is off the screen the dim is only a look — the player has to be able to scroll to it (`#tut.far`)
   blocks(at.fall,ringed?union(els):null,pad); h.classList.toggle('over',at.fall); h.classList.toggle('far',!!far);
   Object.assign(box.style,{ left:left+'px', top:top+'px' });
@@ -436,6 +441,7 @@ function tick(){
   const el=s.el?s.el():null, first=Array.isArray(el)?el[0]:el; if(s.el&&!(first&&vis(first))) return hide();
   // build 66.1: a must-tap box never shows on something that cannot take the tap (a crossed-out menu item, one mid-animation) — it waits
   if(s.tap&&getComputedStyle(first).pointerEvents==='none') return hide();
+  if(performance.now()-scrAt<150) return hide();
   cur={ id, i, s };
   cur.far=place(el,typeof s.text==='function'?s.text():s.text,{ id, i, tap:s.tap, noRing:s.ring===0||!!s.arrow, arrow:s.arrow, tag:s.tag, glow:s.glow, keep:s.keep }).far; }
 function run(){ if(!timer) timer=setInterval(tick,200); }
