@@ -969,6 +969,13 @@
   .sw button.bg-thorn,.rwsw.bg-thorn{background-image:conic-gradient(from 165deg at 50% 0,transparent 0 15deg,rgba(255,255,255,.75) 15deg 30deg,transparent 30deg),conic-gradient(from -15deg at 50% 100%,transparent 0 15deg,rgba(255,255,255,.75) 15deg 30deg,transparent 30deg)}
   .opt{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;padding:9px 13px;border:1px solid var(--line);color:var(--mute)}
   .opt.sel{color:var(--ink);border-color:var(--ink)}
+  /* build 68 (67.33): a Music or Background choice wears the colour of where it came from (config/theme.js ORIGIN_LOOK, set on the tile as --oc);
+     selected is a brighter border and a glow in that colour. The first-seen green (L8) still wins while it shows */
+  #c-track .opt,#c-bg button{border-color:color-mix(in srgb,var(--oc,#FFFFFF) 38%,transparent)}
+  #c-track .opt{color:color-mix(in srgb,var(--oc,#FFFFFF) 62%,var(--mute))}
+  #c-track .opt.sel,#c-bg button.sel{border-color:var(--oc,#FFFFFF);color:var(--oc,#FFFFFF);outline:none;box-shadow:0 0 12px 1px color-mix(in srgb,var(--oc,#FFFFFF) 55%,transparent)}
+  #c-track .opt.othorn,#c-bg button.othorn{border:1px solid transparent;border-image:repeating-linear-gradient(45deg,#FFFFFF 0 3px,#000000 3px 6px) 1}
+  #c-track .opt.othorn.sel,#c-bg button.othorn.sel{border-width:2px;border-image-slice:2}
   .opt.locked{opacity:.35;text-decoration:line-through}
   /* v17 (B.32): a locked TRACK row is not a struck-out option — it is the track this game plays, readable, with a
      padlock drawn beside it and no text about what opens it (A.1). The padlock is two boxes, so nothing is asked of a

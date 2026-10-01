@@ -368,6 +368,24 @@ export async function run() {
       ? ok(`67.34 the Music on / off row is gone and Off is the Music row's last choice: Off lights alone and silences the menus and every run; "${m34.on.lit[0]}" after it turns the music back on`)
       : bad('67.34 Off on the Music row', JSON.stringify(m34));
   }
+  /* build 68 (67.33): A CHOICE WEARS WHERE IT CAME FROM. On the Music and Background rows, Lantern is the Skill key's gold, Circuit the Pro key's light
+     blue, Thorns black-and-white thorns, and the starting choices plain white; the selected one has a brighter border in its own colour and a glow */
+  {
+    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS, bg: 'lantern', everywhere: 'pro', menuTrack: 'theme:pro' }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+    // Customise is opened twice: the first visit wears L8's first-seen green on the key choices, which rightly wins over the origin colour
+    const o33 = await page.evaluate(async () => { const R = await import('./ui/router.js'), w = ms => new Promise(r => setTimeout(r, ms)); R.show('s-custom'); await w(400); R.show('s-menu'); await w(200); R.show('s-custom'); await w(500);
+      const cs = el => el ? getComputedStyle(el) : null, oc = el => el ? cs(el).getPropertyValue('--oc').trim().toUpperCase() : '';
+      const bg = v => document.querySelector(`#c-bg [data-v="${v}"]`), tr = v => document.querySelector(`#c-track [data-v="${v}"]`);
+      const sel = document.querySelector('#c-bg .sel'), tsel = document.querySelector('#c-track .sel');
+      return { lantern: oc(bg('lantern')), circuit: oc(bg('circuit')), thorn: bg('thorn')?.classList.contains('othorn'), stars: oc(bg('stars')), rain: oc(bg('rain')),
+        tKey: oc(tr('key:key')), tPro: oc(tr('key:pro')), tThorn: tr('key:thorns')?.classList.contains('othorn'), tFirst: oc(document.querySelector('#c-track button')),
+        selBg: sel?.dataset.v, selBorder: cs(sel)?.borderTopColor, selGlow: cs(sel)?.boxShadow !== 'none', tSel: tsel?.dataset.v, tBorder: cs(tsel)?.borderTopColor, tGlow: cs(tsel)?.boxShadow !== 'none' }; });
+    (o33.lantern === '#E8B84A' && o33.circuit === '#BFE6FF' && o33.thorn && o33.stars === '#FFFFFF' && o33.rain === '#FFFFFF' && o33.tKey === '#E8B84A' && o33.tPro === '#BFE6FF' && o33.tThorn && o33.tFirst === '#FFFFFF'
+      && o33.selBg === 'lantern' && o33.selBorder === 'rgb(232, 184, 74)' && o33.selGlow && o33.tSel === 'key:pro' && o33.tBorder === 'rgb(191, 230, 255)' && o33.tGlow)
+      ? ok('67.33 Music and Background choices wear where they came from — Lantern gold, Circuit light blue, Thorns thorns, the starting ones white — and the selected one a bright border and a glow in its own colour')
+      : bad('67.33 the origin colours', JSON.stringify(o33));
+  }
   /* build 68 (67.30, Cowork): NO BLACK BACKING BOX BEHIND TEXT OR AN ICON, ANYWHERE — the menu, the map with a chest's "You found" words, Customise, on the
      brightest backgrounds: nothing is cut out of the background behind them (so nothing can show before the text it backs), and every line wears its
      own soft dark shadow instead */

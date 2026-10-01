@@ -17,7 +17,7 @@ import { Music, Snd } from "../../audio.js";
 import { KEY_THEMES, MUSIC_LIST, MUSIC_PICK, SCALES, TRACKS } from "../../config/audio.js";
 import { KEYS } from "../../config/keys.js";
 import { CUSTOM, GRID, ITEM_WORD } from "../../config/copy.js";
-import { DESIGNS, ITEMS } from "../../config/theme.js";
+import { DESIGNS, ITEMS, ORIGIN_LOOK } from "../../config/theme.js";
 import { TINY_AIDEN } from "../../config/excuses.js";
 import { excuseCount } from "../../progress/excuses.js";
 import { $, $$, T, esc } from "../../core.js";
@@ -62,6 +62,8 @@ function lockLine(set,L){ const el=$('#lk-'+set); if(!el) return;
   el.innerHTML=T(L.id?CUSTOM.lockLine:CUSTOM.lockPlain,{name:L.name,how:L.how}); el.dataset.ach=L.id||''; }
 // which groups a game shows — the same four tests renderCustom applies to the group rows below
 const shows=(g,set)=>set==='lead'?!!GAMES[g].lead:set==='cut'?g==='hold':set==='scale'?g==='sequence':set==='rate'?!!GAMES[g].timed:true;
+// build 68 (67.33): the colour of where a choice came from — a key's, or plain white
+const originOf=k=>ORIGIN_LOOK[k]||ORIGIN_LOOK.plain;
 function renderCustom(){
   const fresh=[];
   /* v29 Section A (57.11b, build 57): `bg` is the PATTERN and `bgcol` is the COLOUR — two rows, two settings. A pattern swatch is selected on
@@ -75,7 +77,9 @@ function renderCustom(){
     const cls=`${selNow?'sel':''} ${L?'locked':''}${nw} ${pvTry.set===set&&pvTry.v===it.v?'pvw':''} ${isWheel?'wheel':''} ${set==='bg'?'bg-'+it.v:''}${set==='bgcol'&&!isWheel?' bgnone':''}`;
     const style=set==='bg'?`background-color:${DESIGNS[it.v]?.tint||'transparent'}`
       :set==='bgcol'?(isWheel?'':`background:${DESIGNS[prefs.bg]?.tint||'#000'}`):isWheel?'':`background:${it.v}`;
-    return `<button data-act="item" data-v="${it.v}" class="${cls}" data-lock="${L?L.id:''}" style="${style}" aria-label="${it.v}${L?' locked':''}"></button>`; }).join('');
+    // build 68 (67.33): a background wears where it came from
+    const o=set==='bg'?originOf(it.key):null;
+    return `<button data-act="item" data-v="${it.v}" class="${cls}${o&&o.thorns?' othorn':''}" data-lock="${L?L.id:''}" style="${style}${o?';--oc:'+o.col:''}" aria-label="${it.v}${L?' locked':''}"></button>`; }).join('');
   for(const set of ['snd','scale']) $('#c-'+set).innerHTML = itemsOf(set).map(it=>{ const L=lockedBy(it); const nw=L?'':newMark('cos:'+set+':'+it.v,fresh); return `<button data-act="item" data-v="${it.v}" class="opt ${String(prefs[set])===String(it.v)?'sel':''} ${L?'locked':''}${nw}" data-lock="${L?L.id:''}">${it.label}</button>`; }).join('');
   /* v18 (B.28) → v28 (items 2 / 3, build 53): ONE MUSIC ROW, AND IT IS THE WHOLE OF THE MUSIC CHOICE. B.28 made the row the track;
      build 42 put an EVERYWHERE row above it (Per game / Key / Pro / Thorns) for the same decision said a second way, and Aiden's line was
@@ -94,7 +98,8 @@ function renderCustom(){
     return k?{ v:m.v, name:(TRACKS[KEY_THEMES[m.key]]||{}).name||k.theme, key:k, sel:ev===m.key }:{ v:m.v, name:m.name||(TRACKS[m.track]||{}).name||m.v, key:null, sel:ev==='game'&&m.track===cur }; });
   // L8's first-seen green is for the KEY tracks: the game tracks are not new
   $('#c-track').innerHTML = rows.map(r=>{ const L=r.key&&!keyFinished(r.key.id); const nw=(L||!r.key)?'':newMark('cos:track:'+r.v,fresh);
-    return `<button data-act="item" data-v="${r.v}" class="opt ${r.sel&&mOn?'sel':''} ${L?'locked':''}${nw}" data-keyname="${r.key?esc(r.key.name):''}">${esc(r.name)}</button>`; }).join('')
+    const o=originOf(r.key&&r.key.id);
+    return `<button data-act="item" data-v="${r.v}" class="opt ${r.sel&&mOn?'sel':''} ${L?'locked':''}${nw}${o.thorns?' othorn':''}" style="--oc:${o.col}" data-keyname="${r.key?esc(r.key.name):''}">${esc(r.name)}</button>`; }).join('')
     // build 68 (67.34): Off is the row's last choice — the Music on / off row it replaces is gone
     + `<button data-act="item" data-v="off" class="opt ${mOn?'':'sel'}">${esc(CUSTOM.off)}</button>`;
   // the menu loop is not a game's, so it gets its own switch rather than hiding inside one game's row

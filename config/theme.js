@@ -27,6 +27,10 @@ export const BG_LAYER = { dim: .5, clear: .94, pad: 6 };
 export const DESIGNS = { stars:{tint:'#050506'}, grid:{tint:'#0A1430'}, rain:{tint:'#0B1008'}, orbs:{tint:'#0E0608'}, snow:{tint:'#101C33'}, lantern:{tint:'#1A1024'}, circuit:{tint:'#05080E'}, thorn:{tint:'#020202'} };
 // Customise: every item, and the achievement id that earns it (`by`). No `by` = open from the start
 // v24 (C.6, build 43): `key` is the other kind of lock — the key tier that has to be FINISHED (every bar on it cleared) before the item opens
+/* build 68 (67.33): WHERE A CHOICE CAME FROM, AS A COLOUR. A Music or Background choice a key opened wears that key's colour — Lantern gold, Circuit
+   Pro light blue, Thorns black-and-white thorns — and every other choice, the starting ones among them, is plain white. Selected is a brighter
+   border and a glow in the same colour. Keyed by config/keys.js id, which is what ITEMS.bg's `key` and a key track's KEYS row carry */
+export const ORIGIN_LOOK = { clear: { col: '#E8B84A' }, pro: { col: '#BFE6FF' }, author: { col: '#FFFFFF', thorns: 1 }, plain: { col: '#FFFFFF' } };
 export const ITEMS = {
   sq:  [{v:'#FFFFFF'},{v:'#FFE9C4',by:'first'},{v:'#9BE8FF',by:'qt_clean5'},{v:'#FFD1DC',by:'dt_pin'},{v:'#F3D9FF',by:'hd_steady'},{v:'#C6FF7A',by:'qt_clean30'},{v:'#FFF3A0',by:'sq_12'},{v:'wheel',by:'fullset'}],
   lead:[{v:'#C8322A'},{v:'#FFB020',by:'every'},{v:'#7CFFB2',by:'dt_sweep'},{v:'#4FD9FF',by:'qt_r5'},{v:'#FF4FD8',by:'qt_eyes'},{v:'#FFFFFF',by:'hd_est'},{v:'wheel',by:'fullset'}],
