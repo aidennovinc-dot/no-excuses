@@ -110,7 +110,7 @@ export const strip = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`]
    fixture that has not seen it would have one play over whatever that section is driving; the section that tests it clears the field itself. */
 /* build 65 (A1): a played-in profile is past every first-time tutorial too (`tuts`), not only the walkthrough — each tutorial is walked in its own
    check (locked decisions), and one armed by a chest a section opens would otherwise hold that section's next taps */
-export const PLAIN = { tut: 2, tuts: { about: 'done', prog: 'done', board: 'done', games: 'done' }, welcomeSeen: 1, story: 1, gridSeen: 1, played: 1, menuSeen: 1, keySeen: 1, keysSeen: 1, snd: 'off', musicG: {}, spill: {}, readySeen: {}, keyIntro: { clear: 1, pro: 1, author: 1 } };
+export const PLAIN = { tut: 2, tuts: { about: 'done', prog: 'done', board: 'done', games: 'done', est: 'done', mini: 'done', mega: 'done' }, welcomeSeen: 1, story: 1, gridSeen: 1, played: 1, menuSeen: 1, keySeen: 1, keysSeen: 1, snd: 'off', musicG: {}, spill: {}, readySeen: {}, keyIntro: { clear: 1, pro: 1, author: 1 } };
 export const boot = async (prefs, extra = {}, { v = 7, plain = PLAIN } = {}) => { await setStorage({ ne: Object.assign({ v, prefs: { ...plain, ...prefs }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} }, extra) }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(450); };
 export const NOW = Date.now();   // the fixtures' clock; storage fixtures, build 32 and build 38 stamp with it
 /* v29 Section A (58.2, build 58): A FINISHED GAUNTLET, as the store holds one. The Pro chest needs Gauntlet Mini and the Author chest

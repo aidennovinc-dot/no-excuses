@@ -341,6 +341,20 @@ export const TUTORIAL = {
     'Let’s [yellow]click one[/yellow] to see what to aim for!', "Open the [yellow]Skill Chest[/yellow] and you'll have [green]100%'d [/green]the game!", "You've also unlocked [yellow]something fun[/yellow], let's see!",
     'This is where you can [yellow]customise[/yellow] your game! See if you can [green]unlock them all.[/green]', "Why don't you try now",
     'Remember, you can always check the [yellow]Progress screen [/yellow]to see how to unlock everything!' ],
+  /* build 66 (65.8): ESTIMATE'S TWO MODES, on its pick sheet the first time — Cowork's wording, for Aiden to reword on the map. {set} / {streak} are
+     the lengths' names, {n} the Set's rounds for the variant on the sheet, {bud} the Streak's budget (ESTIMATE.STREAK_BUD). A Streak has no fixed
+     "N% off" that ends it: it ends when the rounds' % off ADDS UP past the budget, and on Grow the first {free}% of each round is free — so box 3 says
+     that in plain words (Claude's call, as the feedback asked) */
+  est:[ 'Estimate has two [yellow]modes[/yellow]', '[yellow]{set}[/yellow] is [green]{n} rounds[/green]. The [green]lowest average % off[/green] wins',
+    "[yellow]{streak}[/yellow] keeps going until your [red]% off adds up past {bud}%[/red]{free}. See how many [green]rounds[/green] you can last!",
+    'Pick one and press [green]GO[/green]!' ],
+  estFree:' ({free}% a round is free)',
+  /* build 66 (65.16): A GAUNTLET, when the chest before it opens — Cowork's wording, for Aiden to reword on the map. {name} the Gauntlet, {games} what its
+     roster plays ("every game" / "every game but Sequence", from config/gauntlets.js), {key} / {chest} the key and chest it opens with. "Finish", never
+     "beat": the chest asks for it finished once, with no score (config/chests.js `gaunt`) */
+  gaunt:[ "You've unlocked [yellow]{name}[/yellow]!", "It's [green]{games}, back to back[/green], scored as one run", 'Quit part way and you [red]start again from the first game[/red]',
+    '[green]Finish it once[/green] and, with the [yellow]{key}[/yellow], it opens the [yellow]{chest}[/yellow]' ],
+  gauntAll:'every game', gauntBut:'every game but {names}',
   // build 66 (section C): `got` comes straight after `hi` now — "the unlock is the reward for the run, so it comes first" (Aiden, over-03)
   over:{ hi:'[green]Congratulations![/green] You finished your first run', again:'You can [yellow]Try Again[/yellow]',
     got:'Great job, you [green]unlocked[/green] [yellow]{names}[/yellow]!', next:"Let's see if you can get [yellow]{count}[/yellow] in a [yellow]{second}[/yellow] to [green]unlock {dots}[/green]. If not, [red]unlock {long}[/red] and try there!",

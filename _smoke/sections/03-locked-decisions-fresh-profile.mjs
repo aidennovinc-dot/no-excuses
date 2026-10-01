@@ -349,6 +349,48 @@ export async function run() {
         ? ok(`65.9 the tutorial never moves the player: all ${gEnd.nav.length} screen changes (${gEnd.nav.map(n => n.id).join(' → ')}) came straight after a tap on a ringed thing, none after a tap on a text box`)
         : bad('65.9 a tutorial changed the screen by itself', JSON.stringify(gEnd.nav));
     }
+    /* build 66 (65.8): ESTIMATE'S SET AND STREAK — the first time its sheet shows the Mode row, on a profile with Estimate open and no Estimate run: the
+       row, Set ringed with its rounds from SET_COPY, Streak ringed with how it really ends (the budget, and Grow's free share), then "Pick one" */
+    {
+      await page.evaluate(si => { localStorage.setItem('ne', JSON.stringify({ v: 7, prefs: { story: 1, gridSeen: 1, menuSeen: 1, snd: 'off', played: 1, tut: 2, welcomeSeen: 1, tuts: {} }, runs: [], ach: {}, unlock: { 'hold:grow': 1 }, intro: si, seen: {}, bars: {} })); }, SEEN_INTRO);
+      await page.reload({ waitUntil: 'networkidle0' }); await sleep(300); await page.evaluate(async () => (await import('./ui/router.js')).show('s-pick')); await sleep(900);
+      await click('.tile[data-game="hold"]'); await sleep(400);
+      if (!(await page.evaluate(() => document.getElementById('sheet').classList.contains('len')))) { await click('#diff-row .choice[data-diff="grow"]'); await sleep(400); }
+      const E = await page.evaluate(async () => { const C = (await import('./config/copy.js')).TUTORIAL, G = await import('./config/games.js'), R = await import('./games/registry.js');
+        const l = R.GC('hold', 'grow').lens, set = l.find(x => x !== G.STREAK), f = s => s.replace('{set}', R.lenName('hold', set, 'grow')).replace('{streak}', R.lenName('hold', G.STREAK, 'grow')).replace('{n}', G.SET_COPY['hold:grow'].rounds)
+          .replace('{bud}', G.ESTIMATE.STREAK_BUD).replace('{free}', C.estFree.replace('{free}', G.ESTIMATE.GROW_FREE));
+        return { want: C.est.map(f), set, streak: G.STREAK }; });
+      const W8 = um(E.want), e8 = [await waitText(W8[0], 60)];
+      for (let i = 1; i < 4; i++) { await anywhere(); e8.push(await waitText(W8[i])); }
+      const wd = await page.evaluate(s => ({ set: document.querySelector(`#time-row .tbtn[data-time="${s.set}"]`).getBoundingClientRect().width, streak: document.querySelector(`#time-row .tbtn[data-time="${s.streak}"]`).getBoundingClientRect().width }), E);
+      await anywhere(); await sleep(300);
+      const e8End = await page.evaluate(() => ({ done: JSON.parse(localStorage.getItem('ne')).prefs.tuts.est, box: !document.getElementById('tut').hidden, sheet: document.getElementById('sheet').classList.contains('up') }));
+      (e8.every((b, i) => b && b.text === W8[i]) && !e8[0].drawn && e8[1].drawn && Math.abs(e8[1].ring[0] - wd.set - 12) <= 2 && e8[2].drawn && Math.abs(e8[2].ring[0] - wd.streak - 12) <= 2 && e8.every(b => !b.covers && b.inside)
+        && !/\{|\[/.test(W8.join('')) && e8End.done === 'done' && !e8End.box && e8End.sheet)
+        ? ok(`65.8 Estimate's modes, the first time its sheet shows the Mode row: "${W8[1]}" with Set ringed, "${W8[2]}" with Streak ringed, then "${W8[3]}" — done once, the sheet left up`)
+        : bad('65.8 the Estimate modes tutorial', JSON.stringify({ e8: e8.map(b => b && { t: b.text, drawn: b.drawn, ring: b.ring, covers: b.covers }), W8, wd, e8End }));
+    }
+    /* build 66 (65.16): A GAUNTLET'S TUTORIAL, when the chest before it opens — Mini with the Skill chest, Mega with the Pro chest. On the map the
+       reveal hands back to, its tile ringed and tapped; then three lines on its screen, every fact from config ("finish", never "beat") */
+    for (const [id, g, chests] of [['mini', 'g1', { games: 1, key: 1 }], ['mega', 'g2', { games: 1, key: 1, pro: 1 }]]) {
+      await page.evaluate((si, ch) => { localStorage.setItem('ne', JSON.stringify({ v: 7, prefs: { story: 1, gridSeen: 1, menuSeen: 1, snd: 'off', played: 1, tut: 2, welcomeSeen: 1, keySeen: 1, keysSeen: 1, spill: {}, readySeen: {}, keyIntro: { clear: 1, pro: 1, author: 1 }, chests: ch, tuts: { games: 'done', est: 'done' }, menuUnl: { about: 1, prog: 1, board: 1 } }, runs: [], ach: {}, unlock: {}, intro: si, seen: {}, bars: {} })); }, SEEN_INTRO, chests);
+      await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+      await page.evaluate(async c => { const E = await import('./core/events.js'); E.emit('chest:opened', { id: c }); }, id === 'mini' ? 'key' : 'pro');
+      await page.evaluate(async () => (await import('./ui/router.js')).show('s-pick')); await sleep(900);
+      const F = await page.evaluate(async g => { const C = (await import('./config/copy.js')), N = C.GAUNTLET.name[g]; return { lines: C.TUTORIAL.gaunt, name: N }; }, g);
+      const G16 = [];
+      for (let i = 0; i < 80 && !(G16[0] = await box()); i++) await sleep(100);
+      const tw = await page.evaluate(g => document.querySelector(`#grid .tile[data-gauntlet="${g}"]`)?.getBoundingClientRect().width, g);
+      await click(`#grid .tile[data-gauntlet="${g}"]`); await sleep(300); const onG = (await state()).screen;
+      for (let i = 1; i < 4; i++) { for (let j = 0; j < 40 && (!(G16[i] = await box()) || G16[i].text === (G16[i - 1] || {}).text); j++) await sleep(100); if (i < 4) await anywhere(); }
+      await sleep(300);
+      const gEnd = await page.evaluate(id => ({ done: JSON.parse(localStorage.getItem('ne')).prefs.tuts[id], box: !document.getElementById('tut').hidden }), id);
+      const txt = G16.map(b => b && b.text), named = (txt[0] || '').includes(F.name), finish = /^Finish it once/.test(txt[3] || '') && !/beat/i.test(txt.join(' '));
+      (onG === 's-gauntlet' && G16[0] && G16[0].drawn && Math.abs(G16[0].ring[0] - tw - 12) <= 2 && named && /but Sequence/.test(txt[1] || '') && finish && /(Pro|Author) Key/.test(txt[3]) && /(Pro|Author) Chest/.test(txt[3])
+        && !/\{|\[/.test(txt.join('')) && gEnd.done === 'done' && !gEnd.box)
+        ? ok(`65.16 ${F.name}'s tutorial: its tile ringed on the map and tapped, then "${txt[1]}", "${txt[2]}", "${txt[3]}" — done once`)
+        : bad(`65.16 the ${F.name} tutorial`, JSON.stringify({ txt, onG, ring: G16[0] && G16[0].ring, tw, gEnd }));
+    }
     /* build 66 (65.19): COLOUR MARKS. Every line of tutorial copy (section C writes them with [green] / [yellow] / [red]) renders with no "[" left in
        it, and each mark is drawn in the game's own colour — green --ok, yellow --tut, red the game's red */
     {

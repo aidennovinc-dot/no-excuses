@@ -22,11 +22,14 @@
    preference: Fresh game keeps it, so a player gets the walkthrough once.
    EVERY OTHER TUTORIAL is in `prefs.tuts`: `{ id: n }` armed and at step n, `{ id: 'done' }` finished. Also a preference. Testing's "reset
    all first-time tutorials" empties it, puts the walkthrough back to its start, and re-arms every tutorial whose thing is already open. */
-import { TOAST, TUTORIAL } from "../config/copy.js";
-import { MODE_NAME } from "../config/games.js";
+import { GAUNTLET, GRID, TOAST, TUTORIAL } from "../config/copy.js";
+import { ESTIMATE, MODE_NAME, SET_COPY, STREAK } from "../config/games.js";
 import { LEN_RULES, MENU_UNLOCK } from "../config/unlocks.js";
 import { bankMenu, menuOpen } from "../progress/menu.js";
 import { chestOpen } from "../progress/key.js";
+import { CHESTS } from "../config/chests.js";
+import { GAUNTLET_RUNS } from "../config/gauntlets.js";
+import { KEYS } from "../config/keys.js";
 import { $, T, marks } from "../core.js";
 import { emit, on } from "../core/events.js";
 import { CHAL } from "../core/platform.js";
@@ -205,6 +208,38 @@ tutorial('games',[
 ],{ opened:()=>chestOpen('games') });
 on('chest:opened',({id})=>{ if(id==='games') arm('games'); });
 
+/* build 66 (65.8): ESTIMATE'S SET AND STREAK, the first time its pick sheet shows the Mode row — armed right there, for a player with no Estimate run on
+   record (a player who has played it has met both already; Testing's reset all shows it again). The row about the two, each one ringed, then the
+   player picks. The numbers are the variant on the sheet's: its Set's rounds (SET_COPY), the Streak's budget and Grow's free share (ESTIMATE) */
+const E8=TUTORIAL.est, EG='hold', eOn=()=>lenStage()&&sel.game===EG;
+const eLen=st=>()=>{ const l=GC(EG,sel.diff).lens, s=st?STREAK:l.find(x=>x!==STREAK); return $(`#time-row .tbtn[data-time="${s}"]`); };
+const eSay=line=>()=>{ const d=sel.diff, l=GC(EG,d).lens, set=l.find(x=>x!==STREAK);
+  return T(line,{ set:lenName(EG,set,d), streak:lenName(EG,STREAK,d), n:(SET_COPY[EG+':'+d]||{}).rounds||set, bud:ESTIMATE.STREAK_BUD,
+    free:d==='grow'?T(TUTORIAL.estFree,{free:ESTIMATE.GROW_FREE}):'' }); };
+tutorial('est',[
+  { on:eOn, el:()=>$('#time-row'), ring:0, text:E8[0] },
+  { on:eOn, el:eLen(0), text:eSay(E8[1]) },
+  { on:eOn, el:eLen(1), text:eSay(E8[2]) },
+  { on:eOn, text:E8[3] },
+],{ opened:()=>GAMES[EG].modes.some(d=>(store.unlock||{})[EG+':'+d]) });
+const estFirst=()=>eOn()&&(prefs.tuts||{}).est===undefined&&!(store.runs||[]).some(r=>r.g===EG);
+
+/* build 66 (65.16): A GAUNTLET, when the chest whose spill brings it in opens — Mini with the Skill chest, Mega with the Pro chest. It starts on the map
+   the reveal hands back to: the Gauntlet's tile is ringed and must be tapped (65.9 — the player goes in by themselves), then three lines on its own
+   screen. Every fact is config's: what it plays (its roster, every game but those it leaves out), and the key and chest a finished run opens */
+const G16=TUTORIAL.gaunt, cap=s=>String(s).replace(/(^|\s)(\S)/g,(m,a,b)=>a+b.toUpperCase());
+const gauntFacts=g=>{ const c=CHESTS.find(x=>x.gaunt===g)||{}, k=KEYS.find(x=>x.id===c.needs)||{}, played=new Set((GAUNTLET_RUNS[g]||[]).map(s=>s.g)), left=Object.keys(GAMES).filter(x=>!played.has(x));
+  return { name:GAUNTLET.name[g]||g, games:left.length?T(TUTORIAL.gauntBut,{names:list(left.map(x=>GAMES[x].name))}):TUTORIAL.gauntAll,
+    key:cap(/key/i.test(k.name||'')?k.name:(k.name||'')+' key'), chest:cap(GRID.chest[c.id]||c.id||'') }; };
+for(const [id,g,from] of [['mini','g1','key'],['mega','g2','pro']]){ const gOn=()=>onScreen('s-gauntlet')&&$('#s-gauntlet').dataset.g===g, say=i=>()=>T(G16[i],gauntFacts(g));
+  tutorial(id,[
+    { on:()=>map()&&mapSettled(), el:()=>$(`#grid .tile[data-gauntlet="${g}"]`), tap:1, text:say(0) },
+    { on:gOn, text:say(1) },
+    { on:gOn, text:say(2) },
+    { on:gOn, text:say(3) },
+  ],{ opened:()=>chestOpen(from) });
+  on('chest:opened',({id:c})=>{ if(c===from) arm(id); }); }
+
 /* ---------- the box ---------- */
 let host=null, timer=0, fromTut=false, passing=false, cur=null, last=null, lit=[];
 const REDUCE=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -269,6 +304,7 @@ function through(fn){ passing=true; try{ fn(); } finally{ passing=false; } }
 // the tutorial that has the floor: the first live one in ORDER. Its box shows only where its step lives, and only when nothing is busy
 function active(){ for(const id of ORDER){ const d=DEFS[id]; if(d&&d.live()) return id; } return null; }
 function tick(){
+  if(estFirst()) arm('est');
   const id=active(); if(!id) return hide();
   const d=DEFS[id], steps=stepsOf(d), i=d.step(), s=steps[i];
   if(!s) return hide();
