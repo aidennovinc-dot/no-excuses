@@ -190,6 +190,9 @@ define({ nextup(){ if(nextWhere) goWhere(nextWhere); return 'click'; },
   // v24 (A.1, build 43): the Keys row and the meter line. Locked, they say what opens them and stay put
   keys(){ if(!chestOpen('games')){ toast(TOAST.keysLocked,'','',true); return 'pick'; } show('s-key'); return 'click'; } });
 on('store:reset',()=>{ menuWasFirst=true; cusWasLocked=true; keysWasLocked=true; dimWas={}; });
+/* build 66.1: AN ITEM THAT OPENS WHILE THE MENU IS UP IS REDRAWN OPEN. Aiden on v0.66: the Welcome now plays on the main menu (65.2), and putting it
+   off with Later opens About without leaving the menu — so nothing redrew it, About stayed crossed out (no taps), and its tutorial rang it: stuck */
+on('menu:opened',()=>{ if($('#s-menu').classList.contains('on')) renderMenu(); });
 /* v26 (item 3, build 48): AN ITEM IS OPENED WHEN ITS SCREEN IS OPENED FROM THIS MENU — the row itself, or the meter line under it, which opens
    Keys. A screen reached some other way (a run's key interlude, a chest ceremony, a Testing replay, Progress's key row) was not opened from its
    item, so the item stays green. The router announces a screen before it draws it, so the item is spent on the tap that opens it. */

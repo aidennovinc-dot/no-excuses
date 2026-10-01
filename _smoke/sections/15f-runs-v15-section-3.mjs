@@ -174,8 +174,11 @@ export async function run() {
   {
     await openSheet('quick-tap', 0, 0); await click('#go-btn');
     for (let i = 0; i < 140 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) { await clearReady('quick-tap'); await sleep(100); }
-    const bright = () => page.evaluate(async () => { const cv = document.getElementById('stars'), d = cv.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, cv.width, cv.height).data;
-      let s = 0, n = 0; for (let i = 0; i < d.length; i += 4 * 211) { n++; s += Math.max(d[i], d[i + 1], d[i + 2]) * d[i + 3] / 255; } return { b: +(s / n).toFixed(2), op: getComputedStyle(cv).opacity, pe: getComputedStyle(cv).pointerEvents }; });
+    /* AMENDED at build 67: like for like — only the canvas above the bottom strip is read. Since 65.10 the strip (inset + 40px, and its fade) is flat with
+       no art on the menu but not in a run, which made the menu read darker than the run by the strip's share and tipped Snow's ratio over the line */
+    const bright = () => page.evaluate(async () => { const cv = document.getElementById('stars'), r = cv.getBoundingClientRect(), d = cv.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, cv.width, cv.height).data;
+      const last = Math.floor((innerHeight - 70 - r.top) * cv.height / r.height) * cv.width * 4;
+      let s = 0, n = 0; for (let i = 0; i < Math.min(d.length, last); i += 4 * 211) { n++; s += Math.max(d[i], d[i + 1], d[i + 2]) * d[i + 3] / 255; } return { b: +(s / n).toFixed(2), op: getComputedStyle(cv).opacity, pe: getComputedStyle(cv).pointerEvents }; });
     const setBg = bg => page.evaluate(async bg => { const S = await import('./core/store.js'); S.prefs.bg = bg; S.prefs.tint = ''; await new Promise(r => setTimeout(r, 500)); }, bg);
     const BGS = await page.evaluate(async () => Object.keys((await import('./config/theme.js')).DESIGNS)), dim = await page.evaluate(async () => (await import('./config/theme.js')).BG_LAYER.dim);
     const inRun = {}; for (const bg of BGS) { await setBg(bg); inRun[bg] = await bright(); }

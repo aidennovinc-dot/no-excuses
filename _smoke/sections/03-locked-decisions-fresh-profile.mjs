@@ -469,6 +469,22 @@ export async function run() {
         ? ok(`65.11 / 65.1 / 65.5 / 65.9 every tutorial walked with real taps at 390×844 (47/34 insets) and on an SE: ${taps} boxes (${out.filter(o => o.at === '390x844').map(o => o.id + ' ' + o.n).join(', ')}) — every must-tap ring answers a real tap, no box over its ring or outside the safe areas, no "[" left, no screen change after a text box`)
         : bad('65.11 a tutorial soft-locks or misplaces a box', JSON.stringify(fails));
     }
+    /* build 66.1: THE WELCOME PUT OFF ON THE MAIN MENU. Aiden on v0.66: Later on the Welcome (which now plays on the menu, 65.2) opened About without
+       redrawing the menu, so About stayed crossed out and untappable while its tutorial rang it. Now: Later → About drawn open → its box rings it →
+       a REAL tap on the ring opens About */
+    {
+      await page.evaluate(si => { localStorage.setItem('ne', JSON.stringify({ v: 7, prefs: { story: 1, gridSeen: 1, menuSeen: 1, snd: 'off', played: 1, tut: 2, welcomeSeen: 0, menuUnl: {}, tuts: { games: 'done', est: 'done', mini: 'done', mega: 'done', prog: 'done', board: 'done' } }, runs: [], ach: {}, unlock: { 'dots:blind': 1 }, intro: si, seen: {}, bars: {} })); }, SEEN_INTRO);
+      await page.reload({ waitUntil: 'networkidle0' }); await sleep(300); await page.evaluate(async () => (await import('./ui/router.js')).show('s-menu'));
+      let wl = false; for (let i = 0; i < 80 && !(wl = await page.evaluate(() => { const w = document.getElementById('welcome'); return !!w && !w.hidden; })); i++) await sleep(100);
+      await sleep(400); await page.evaluate(() => document.querySelector('#welcome [data-act="wlater"]').click());
+      let st = null; for (let i = 0; i < 150 && !((st = await page.evaluate(async () => (await import('./ui/tutorial.js')).tutNow())) || {}).shown; i++) await sleep(100);
+      const aim = await page.evaluate(async () => (await import('./ui/tutorial.js')).tutAim()), dim = await page.evaluate(() => document.querySelector('#s-menu .item[data-go="s-about"]').classList.contains('dim'));
+      if (aim) await page.mouse.click(aim[0], aim[1]); await sleep(600);
+      const on661 = (await state()).screen;
+      (wl && st && st.id === 'about' && st.shown && !dim && aim && on661 === 's-about')
+        ? ok('66.1 the Welcome put off with Later on the main menu: About is drawn open at once, its box rings it, and a real tap on the ring opens About')
+        : bad('66.1 the About soft lock', JSON.stringify({ wl, st, dim, aim, on661 }));
+    }
     /* build 66 (65.19): COLOUR MARKS. Every line of tutorial copy (section C writes them with [green] / [yellow] / [red]) renders with no "[" left in
        it, and each mark is drawn in the game's own colour — green --ok, yellow --tut, red the game's red */
     {

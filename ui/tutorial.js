@@ -337,6 +337,8 @@ function tick(){
   if(s.tap&&s.done&&s.done()){ advance(id); return tick(); }
   if(busy()||!s.on()) return hide();
   const el=s.el?s.el():null, first=Array.isArray(el)?el[0]:el; if(s.el&&!(first&&vis(first))) return hide();
+  // build 66.1: a must-tap box never shows on something that cannot take the tap (a crossed-out menu item, one mid-animation) — it waits
+  if(s.tap&&getComputedStyle(first).pointerEvents==='none') return hide();
   cur={ id, i, s };
   place(el,typeof s.text==='function'?s.text():s.text,{ id, i, tap:s.tap, noRing:s.ring===0||!!s.arrow, arrow:s.arrow, tag:s.tag, glow:s.glow, keep:s.keep }); }
 function run(){ if(!timer) timer=setInterval(tick,200); }
