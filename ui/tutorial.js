@@ -25,7 +25,7 @@ import { MODE_NAME } from "../config/games.js";
 import { LEN_RULES, MENU_UNLOCK } from "../config/unlocks.js";
 import { bankMenu, menuOpen } from "../progress/menu.js";
 import { chestOpen } from "../progress/key.js";
-import { $, T } from "../core.js";
+import { $, T, marks } from "../core.js";
 import { emit, on } from "../core/events.js";
 import { CHAL } from "../core/platform.js";
 import { sel } from "../core/state.js";
@@ -207,7 +207,7 @@ function clear(el,bt,bb){ const sc=el.closest('.tscroll')||el.closest('.screen')
   // the screen could not move that way far enough (the top or the end of it): the other side of the box
   const n=el.getBoundingClientRect(); if(n.bottom>bt-gap&&n.top<bb+gap){ sc.scrollTop=before; sc.scrollTop+=up?-(bb+gap-r.top):r.bottom-(bt-gap); } }
 function place(el,text,o={}){ const h=build(), pad=6, ring=h.querySelector('.tring'), box=h.querySelector('.tbox'), arrow=h.querySelector('.tarrow');
-  h.hidden=false; h.querySelector('p').textContent=text; h.classList.toggle('text',!o.tap); ring.hidden=!!o.noRing||!el;
+  h.hidden=false; h.querySelector('p').innerHTML=marks(text); h.classList.toggle('text',!o.tap); ring.hidden=!!o.noRing||!el;
   const bw=Math.min(320,innerWidth-32), bh=box.offsetHeight||90, s=insets(), top=Math.round(s.top+(innerHeight-s.top-s.bottom-bh)/2);
   Object.assign(box.style,{ width:bw+'px', left:Math.round((innerWidth-bw)/2)+'px', top:top+'px' });
   arrow.hidden=!o.arrow||!el;

@@ -10,6 +10,13 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 // build 16: fill a config/copy.js template — T('Round {n} of {s}', {n, s}). A missing value is an empty string; values are not escaped here
 const T=(s,v)=>String(s).replace(/\{(\w+)\}/g,(_,k)=>v&&v[k]!=null?v[k]:'');
+/* build 66 (65.19): COLOUR MARKS in a line of copy — [green]…[/green], [yellow]…[/yellow], [red]…[/red] — drawn as the game's own green, yellow
+   and red (.mk-* in styles/app.css). The line is escaped first, so a mark is the only markup it can carry; a stray closing mark is dropped and an
+   unclosed one is closed at the end, so a mark never shows as text. `unmark` is the same line as plain words */
+const MARK=/\[(\/?)(green|yellow|red)\]/g;
+const marks=s=>{ let open=0; const out=esc(s).replace(MARK,(_,c,k)=>{ if(!c){ open++; return `<span class="mk-${k}">`; } if(!open) return ''; open--; return '</span>'; });
+  return out+'</span>'.repeat(open); };
+const unmark=s=>String(s??'').replace(MARK,'');
 const vmin=()=>Math.min(innerWidth,innerHeight)/100;
 const f2=n=>(Math.round(n*100)/100).toFixed(2);
 const pWho=p=>`<span class="${p?'p2':'p1'}">${T(PLAYER.who,{n:p+1})}</span>`;
@@ -22,4 +29,4 @@ const sum=a=>a.reduce((x,y)=>x+y,0);
 const winner=(a,b)=>a>b?0:b>a?1:-1;
 const minMax=a=>a.length?[Math.min(...a),Math.max(...a)]:[0,0];
 
-export { $, $$, T, esc, f2, mean, minMax, pWho, seqStep, sum, vmin, winner };
+export { $, $$, T, esc, f2, marks, mean, minMax, pWho, seqStep, sum, unmark, vmin, winner };

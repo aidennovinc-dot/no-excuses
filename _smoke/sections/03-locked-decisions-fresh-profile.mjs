@@ -311,6 +311,21 @@ export async function run() {
         ? ok('64.14 the Games chest tutorial: from the map once the chest has opened, to the Skill Key (after its animation), Quick Tap to tap, the menu with Customise, and Snow picked — nine boxes in order, done once')
         : bad('64.14 the Games chest tutorial', JSON.stringify({ gg: gg.map(b => b && { t: b.text, drawn: b.drawn }), heldK, onMenu, heldC, gEnd }));
     }
+    /* build 66 (65.19): COLOUR MARKS. Every line of tutorial copy (section C writes them with [green] / [yellow] / [red]) renders with no "[" left in
+       it, and each mark is drawn in the game's own colour — green --ok, yellow --tut, red the game's red */
+    {
+      const M = await page.evaluate(async () => { const C = (await import('./config/copy.js')).TUTORIAL, { marks } = await import('./core.js'), lines = [];
+        const walk = v => { if (typeof v === 'string') lines.push(v); else if (v && typeof v === 'object') Object.values(v).forEach(walk); }; walk(C);
+        const d = document.createElement('div'); document.body.appendChild(d); const left = [];
+        for (const s of lines) { d.innerHTML = marks(s); if (/\[|\]/.test(d.textContent)) left.push(d.textContent); }
+        d.innerHTML = marks('[green]a[/green][yellow]b[/yellow][red]c[/red] [/green]d');
+        const col = [...d.querySelectorAll('span')].map(x => getComputedStyle(x).color), txt = d.textContent; d.remove();
+        const cs = getComputedStyle(document.documentElement), probe = v => { const p = document.createElement('i'); p.style.color = v; document.body.appendChild(p); const c = getComputedStyle(p).color; p.remove(); return c; };
+        return { n: lines.length, marked: lines.filter(s => /\[(green|yellow|red)\]/.test(s)).length, left, col, txt, want: [probe(cs.getPropertyValue('--ok').trim()), probe(cs.getPropertyValue('--tut').trim()), probe('#E0453B')] }; });
+      (M.n > 40 && !M.left.length && M.txt === 'abc d' && M.col.join('|') === M.want.join('|'))
+        ? ok(`65.19 colour marks: all ${M.n} lines of tutorial copy render with no "[" left (${M.marked} carry marks); green, yellow and red are the game's own; a stray closing mark is dropped`)
+        : bad('65.19 colour marks', JSON.stringify(M));
+    }
     await page.evaluate(async () => { const S = await import('./core/store.js'); S.prefs.tut = 2; S.save(); });
   }
 }
