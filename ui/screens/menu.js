@@ -11,7 +11,9 @@ import { MODE_NAME } from "../../config/games.js";
 import { GAMES } from "../../games/registry.js";
 import { sel } from "../../core/state.js";
 import { $, $$, T, esc } from "../../core.js";
-import { chestOpen, meter, meterPct, msgDot, readyChest } from "../../progress/key.js";
+import { chestOpen, meter, meterPct, msgDot, msgTitle, readyChest } from "../../progress/key.js";
+import { MENU_UNLOCK } from "../../config/unlocks.js";
+import { MESSAGES } from "../../config/messages.js";
 import { meterLook } from "../chest.js";
 import { countUp } from "../../core/count.js";
 import { emit, on } from "../../core/events.js";
@@ -51,9 +53,12 @@ function renderMenu(){ const first=firstRun(); const opening=menuWasFirst&&!firs
      (config/build.js TARGET, scripts/native.mjs) */
   /* build 65 (64.7): Scores, Progress and About each open at their own moment (progress/menu.js menuOpen); the first-run dimming still holds
      Customise and Keys until the walkthrough is behind the player. An item that has just opened wipes its strike off, one after another */
+  /* build 66 (65.3): AND EACH OF THOSE THREE SAYS WHAT OPENS IT, in green under it, crossed out like Keys and Customise rather than faded (a faded
+     line read as broken) — from MENU_UNLOCK, so the line is the real trigger. Before the first run everything is faded and says nothing */
   let k=0;
   $$('#s-menu .item').forEach((b,i)=>{ const dev=b.dataset.dev!==undefined, go=b.dataset.go, gov=!!menuKey(go), x=!dev&&go!=='s-pick'&&(gov?!menuOpen(go):first), was=dimWas[go];
     b.classList.toggle('dim',x); b.classList.remove('unx'); b.style.removeProperty('--ud'); dimWas[go]=x;
+    const nd=gov&&b.querySelector('.cusneed'); if(nd){ const say=x&&!first; nd.hidden=!say; nd.textContent=say?menuNeed(go):''; b.classList.toggle('govlock',say); }
     if((gov?was===true&&!x:opening&&go!=='s-pick')&&!dev){ const d=(k++)*90; b.style.setProperty('--ud',d+'ms'); b.classList.add('unx'); b.style.pointerEvents='none'; setTimeout(()=>{ b.classList.remove('unx'); b.style.removeProperty('--ud'); b.style.pointerEvents=''; },700+d); } });
   renderCustomise(first); renderKeys(first);
   /* v26 (item 3, build 48): EVERY HOME MENU ITEM IS GREEN FROM THE MOMENT IT IS AVAILABLE UNTIL IT HAS BEEN OPENED ONCE. FEEDBACK-v20 (D.5) asked
@@ -97,6 +102,9 @@ function renderResume(){ const row=$('#resumerow'); if(!row) return;
    Games chest" under it, and a tap says so and goes nowhere. The first draw after the chest opens wipes the strike off (the menu's own
    unstrike, the one first-run items use), and the row is GREEN until Customise is first opened (L8 / v20 D.5 — `prefs.cusSeen`, set by
    ui/screens/customise.js). The first-run dimming outranks all of this: before any run every item but Play is dimmed anyway. */
+// build 66 (65.3): what opens a home menu item MENU_UNLOCK governs — its game's first run, or watching the clip that opens it
+function menuNeed(go){ const m=MENU_UNLOCK[menuKey(go)]; if(!m) return ''; if(m.game) return T(MENU.playNeed,{game:GAMES[m.game].name});
+  return T(MENU.watchNeed,{title:String(msgTitle(MESSAGES.find(x=>x.id===m.video))||'').toLowerCase()}); }
 function renderCustomise(first){ const b=$('[data-go="s-custom"]'), need=$('#cus-need'); if(!b||!need) return;
   const locked=!chestOpen('games'), wiped=cusWasLocked&&!locked; cusWasLocked=locked;
   b.classList.toggle('cuslock',locked&&!first); need.hidden=!locked||first; need.textContent=locked?MENU.cusNeed:'';

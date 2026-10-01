@@ -42,14 +42,14 @@
        any more, and with the build-51 title impact firing once per line its own fade-in went with it. The title line keeps the heavier hit -->
   <div style="height:6px"></div>
   <button data-act="go" class="item glow" data-go="s-pick">Play</button>
-  <button data-act="go" class="item glow" data-go="s-board">Scores</button>
+  <button data-act="go" class="item glow" data-go="s-board">Scores<small class="cusneed" hidden></small></button>
   <!-- v18 (B.31, build 33): ONE item, THREE tabs. v15 (2.4) split Unlocks from Achievements because they are different
        things — an unlock opens something, an achievement marks something you already have — and the split survives as
        the tabs, Game unlocks first because unlocks outrank achievements (2.2). Build 29 took the second row off this
        menu. Build 33 took the third, Customise, into the tabs; build 39 (v21 G.6 / v23 L.4a, amending B.31) gives it back,
        and the middle tab is the LIST of customisation unlocks. Keys stays its own row — it is a second progression
        system and nothing about it is a picture of the first -->
-  <button data-act="go" class="item glow" data-go="s-prog">Progress</button>
+  <button data-act="go" class="item glow" data-go="s-prog">Progress<small class="cusneed" hidden></small></button>
   <!-- v15 (5.3): "Keys", plural — three tiers over the same combinations (A.1), the shell for #372 -->
   <!-- v24 (A.1, build 43): LOCKED until the Games chest opens, the Customise treatment - crossed out with "open the Games chest" under it,
        green until the key screen is first seen. data-act="keys" so ui/screens/menu.js can refuse the tap -->
@@ -59,7 +59,7 @@
   <!-- v23 (L.11a, build 40): LOCKED until the Games chest opens - crossed out (v17: crossed, not greyed) with what opens it under
        it, and green until first opened once it is (L8, v20 D.5). data-act="custom" so ui/screens/menu.js can refuse the tap -->
   <button data-act="custom" class="item glow" data-go="s-custom">Customise<small class="cusneed" id="cus-need" hidden></small></button>
-  <button data-act="go" class="item glow" data-go="s-about">About</button>
+  <button data-act="go" class="item glow" data-go="s-about">About<small class="cusneed" hidden></small></button>
   <button data-act="go" class="item glow" data-go="s-testing" data-dev>Testing</button>
   <!-- v17 (§A.6.7): percentage complete, key 1 only. The same line the keys screen carries, on the front of the app, so
        the number that moves on nearly every run is visible without opening anything. Hidden on a profile with no runs -->

@@ -121,7 +121,10 @@ export const VERDICT = { fail:'Run over — go again.', nothing:'Nothing landed.
 // v23 (L.11a, build 40): `cusNeed` sits under the crossed-out Customise row until the Games chest opens
 // v24 (A.1, build 43): `keysNeed` sits under the crossed-out Keys row until the Games chest opens — the Customise treatment
 // v31 (60.27, build 60): `resume` is the offer a killed app comes back to, and `resumeGaunt` the Gauntlet's own wording
-export const MENU = { next:'<em>Next unlock</em><span>{need} → {name}</span>', nextAch:'<em>Next achievement</em><span>{need} → {name}</span>', cusNeed:'open the Games chest', keysNeed:'open the Games chest',
+/* build 66 (65.3): what opens a crossed-out Scores, Progress or About, in green under it like Keys and Customise — composed from MENU_UNLOCK
+   (config/unlocks.js) by ui/screens/menu.js: a game's first run, or the clip that opens About, by its own title */
+export const MENU = { playNeed:'play {game}', watchNeed:'watch the {title} clip',
+  next:'<em>Next unlock</em><span>{need} → {name}</span>', nextAch:'<em>Next achievement</em><span>{need} → {name}</span>', cusNeed:'open the Games chest', keysNeed:'open the Games chest',
   resume:'<em>Resume your streak</em><span>{game} · round {n}</span>', resumeGaunt:'<em>Resume the Gauntlet</em><span>{game} · step {n}</span>' };
 /* v15 (2.4): the Unlocks screen — the chain on its own page, split off from Achievements. Everything that OPENS something
    lives here; Achievements keeps the rest. What sits behind keys 2 and 3 is register #372 and is not decided, so the key

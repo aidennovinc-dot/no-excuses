@@ -1788,6 +1788,9 @@
   /* v24 (A.1, build 43): Keys waits for the Games chest the same way — `keylock`, the same strike */
   .item.cuslock,.item.keylock{position:relative}
   .item.cuslock::after,.item.keylock::after{content:"";position:absolute;left:14px;right:14px;top:23px;height:2px;background:var(--cue);pointer-events:none}
+  /* build 66 (65.3): a crossed-out Scores, Progress or About with its green line reads like Keys and Customise — struck, not faded */
+  .item.dim.govlock{opacity:1}
+  .item.dim.govlock::after{top:23px}
   .item .cusneed{display:block;font-family:var(--mono);font-size:10px;font-weight:400;letter-spacing:.1em;text-transform:none;color:var(--ok);margin-top:3px}
   .item.newthing{color:var(--ok)}
   /* L.8b's plain lid-up banner (build 40) is RETIRED at build 41 — the open is a ceremony (L.6), styled at the end of this file */

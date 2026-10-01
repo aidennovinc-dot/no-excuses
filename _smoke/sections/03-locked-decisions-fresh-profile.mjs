@@ -247,6 +247,17 @@ export async function run() {
       const dims = () => page.evaluate(() => Object.fromEntries(['s-board', 's-prog', 's-about'].map(g => [g, document.querySelector(`#s-menu .item[data-go="${g}"]`).classList.contains('dim')])));
       const toasts = () => page.evaluate(() => { const t = document.getElementById('toast'); window.__t64 = window.__t64 || []; if (!window.__t64o) { window.__t64o = 1; new MutationObserver(() => { if (t.classList.contains('on')) window.__t64.push(t.textContent); }).observe(t, { attributes: true, attributeFilter: ['class'] }); } return window.__t64; });
       const before = await dims(); await toasts();
+      /* build 66 (65.3): each of the three, crossed out, says what opens it in green — the line composed from MENU_UNLOCK, never typed */
+      {
+        const L3 = await page.evaluate(async () => { const U = (await import('./config/unlocks.js')).MENU_UNLOCK, C = (await import('./config/copy.js')).MENU, R = await import('./games/registry.js'), M = (await import('./config/messages.js')).MESSAGES;
+          const want = { 's-board': C.playNeed.replace('{game}', R.GAMES[U.board.game].name), 's-prog': C.playNeed.replace('{game}', R.GAMES[U.prog.game].name), 's-about': C.watchNeed.replace('{title}', M.find(m => m.id === U.about.video).title.toLowerCase()) };
+          const ok = getComputedStyle(document.documentElement).getPropertyValue('--ok').trim(), p = document.createElement('i'); p.style.color = ok; document.body.appendChild(p); const green = getComputedStyle(p).color; p.remove();
+          return Object.entries(want).map(([go, w]) => { const b = document.querySelector(`#s-menu .item[data-go="${go}"]`), n = b.querySelector('.cusneed');
+            return { go, w, t: n && !n.hidden ? n.textContent : null, green: n ? getComputedStyle(n).color === green : false, op: getComputedStyle(b).opacity }; }); });
+        (L3.every(x => x.t === x.w && x.green && +x.op === 1))
+          ? ok(`65.3 crossed-out Scores, Progress and About each say what opens them in green: ${L3.map(x => '"' + x.t + '"').join(', ')} (from MENU_UNLOCK)`)
+          : bad('65.3 the locked menu lines', JSON.stringify(L3));
+      }
       /* build 66 (section C, prog-01): the first Estimate run's RESULT says the Progress tutorial's first line once its toasts are done — it is read there
          and moved on with a tap, as a player would */
       const P0 = await page.evaluate(async () => { const C = (await import('./config/copy.js')).TUTORIAL.prog[0], R = await import('./games/registry.js'); return C.replace('{game}', R.GAMES.hold.name); }), est = {};
