@@ -1228,7 +1228,12 @@
   #tut[hidden]{display:none}
   #tut .tring{position:fixed;border:2px solid var(--tut);border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.5),0 0 18px var(--tut);pointer-events:none}
   /* build 64 (62.7): centred by ui/tutorial.js place(); the min-height keeps one line and two in the same spot */
-  #tut .tbox{min-height:92px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;position:fixed;pointer-events:auto;background:#141414;border:2px solid var(--tut);border-radius:12px;padding:14px 16px;color:var(--ink);font-family:var(--mono);font-size:14px;line-height:1.4}
+  /* build 68 (67.2): the box is as tall as its line, no taller — a 92px floor left no gap on the main menu it could sit in */
+  #tut .tblk{position:fixed;pointer-events:auto;background:transparent}
+  #tut .tblk[hidden]{display:none}
+  #tut.tdim .tblk{background:rgba(0,0,0,.5)}
+  #tut.far .tblk{pointer-events:none}
+  #tut .tbox{min-height:0;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;position:fixed;pointer-events:auto;background:#141414;border:2px solid var(--tut);border-radius:12px;padding:14px 16px;color:var(--ink);font-family:var(--mono);font-size:14px;line-height:1.4}
   #tut .tbox p{margin:0}
   /* build 66 (65.19): a colour mark in a line of copy (core.js marks()) — green the goal, yellow the thing named, red how you fail */
   .mk-green{color:var(--ok)} .mk-yellow{color:var(--tut)} .mk-red{color:#E0453B}
@@ -1253,8 +1258,10 @@
   @keyframes tbob{to{transform:translate(-5px,-5px)}}
   /* build 64 (62.9 step 5): the Dots lock box, opened by the walkthrough, sits in the top half so its rule shows above the centred box; its two
      buttons are hidden, since nothing but the walkthrough takes a tap while it is up */
-  #lockwrap.tut{place-items:start center;padding-top:calc(env(safe-area-inset-top) + 28px)}
-  #lockwrap.tut #lockbox .row{visibility:hidden;height:0;overflow:hidden}
+  /* build 68 (67.1): #lockwrap.tut is gone — the lock popup never moves for a tutorial box. (67.29) a Gauntlet's Enter waits out its tour, then arrives */
+  #s-gauntlet.tuthold .gtgo{visibility:hidden}
+  #s-gauntlet.tutin .gtgo{animation:gtin .55s cubic-bezier(.2,.8,.2,1) both,gflick var(--gflick) steps(1,end) .55s infinite}
+  @keyframes gtin{from{opacity:0;transform:translateY(14px) scale(.94)}}
   /* build 64 (62.10): the walkthrough's first run can't be quit — no Exit and no Restart on it */
   #game.tutrun #quit,#game.tutrun #restart{display:none}
   /* build 62 (61.26): the Skill key at the foot of the Games chest tab — its art and one line; dim until the key is open, then lit */

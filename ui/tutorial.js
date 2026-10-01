@@ -107,9 +107,10 @@ const FIRST=[
   { on:map, el:()=>$('#grid'), ring:0, text:L[1] },
   { on:map, el:()=>$('#grid'), ring:0, text:L[2] },
   { on:map, el:()=>$('#grid .tile[data-game="dots"]'), tap:1, done:lockUp, text:()=>say(L[3]) },
-  { on:()=>onScreen('s-pick')&&lockUp(), el:()=>$('#lockbox'), ring:0, text:()=>say(L[4]), enter(){ $('#lockwrap').classList.add('tut'); } },
+  // build 68 (67.1): the lock popup stays where it always sits — the box goes round it, it never moves for the box
+  { on:()=>onScreen('s-pick')&&lockUp(), el:()=>$('#lockbox'), ring:0, text:()=>say(L[4]) },
   { on:map, el:()=>$(`#grid .tile[data-game="${QT}"]`), tap:1, done:()=>sheetUp()&&!lenStage(), tag:TUTORIAL.start, text:L[5],
-    enter(){ if(lockUp()) through(()=>$('#lock-no').click()); $('#lockwrap').classList.remove('tut'); } },
+    enter(){ if(lockUp()) through(()=>$('#lock-no').click()); } },
   { on:()=>sheetUp()&&!lenStage(), el:()=>$('#diff-row'), ring:0, text:()=>say(L[6]) },
   { on:()=>sheetUp()&&!lenStage(), el:()=>$(`#diff-row .choice[data-diff="${QM()}"]`), tap:1, done:lenStage, text:()=>say(L[7]) },
   { on:lenStage, el:()=>$('#time-row'), ring:0, text:()=>say(L[8]) },
@@ -286,7 +287,8 @@ tutorial('est',[
   { on:eOn, el:()=>$('#time-row'), ring:0, text:E8[0] },
   { on:eOn, el:eLen(0), text:eSay(E8[1]) },
   { on:eOn, el:eLen(1), text:eSay(E8[2]) },
-  { on:eOn, text:E8[3] },
+  // build 68 (67.10): every box points at something — the last one at the row it asks the player to pick from
+  { on:eOn, el:()=>$('#time-row'), ring:0, text:E8[3] },
 ],{ opened:()=>GAMES[EG].modes.some(d=>(store.unlock||{})[EG+':'+d]),
   meta:{ name:'Estimate · Set and Streak', trigger:'Estimate\'s pick sheet shows its Mode row for the first time, with no Estimate run on record', start:'Estimate\'s pick sheet, Mode row',
     why:'The two modes score in opposite ways, and the cards alone don\'t say how a Streak ends',
@@ -318,10 +320,11 @@ const REDUCE=matchMedia('(prefers-reduced-motion: reduce)').matches;
 function build(){ if(host) return host;
   // build 64 (62.8): the box is its line and nothing else — no Skip, no Next; a tap anywhere moves a text box on (the capture below)
   host=document.createElement('div'); host.id='tut'; host.hidden=true;
-  host.innerHTML='<div class="tring"><span class="ttag"></span></div><div class="tarrow"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M40 40L10 10M10 10h14M10 10v14"></path></svg></div><div class="tbox"><p></p></div><i class="ttail"></i>';
+  // build 68 (67.2): four blocks round the ring — the dimmed, untappable ground a box sits on when the screen has no free spot for it
+  host.innerHTML='<i class="tblk" hidden></i><i class="tblk" hidden></i><i class="tblk" hidden></i><i class="tblk" hidden></i><div class="tring"><span class="ttag"></span></div><div class="tarrow"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M40 40L10 10M10 10h14M10 10v14"></path></svg></div><div class="tbox"><p></p></div><i class="ttail"></i>';
   document.body.appendChild(host); return host; }
 function glow(els){ for(const e of lit) if(!els.includes(e)) e.classList.remove('tglow'); for(const e of els) e.classList.add('tglow'); lit=els; }
-function hide(){ if(host){ host.hidden=true; host.classList.remove('glide'); } glow([]); cur=null; brought=''; }
+function hide(){ if(host){ host.hidden=true; host.classList.remove('glide'); } glow([]); cur=null; }
 // the insets come off a probe, as the stylesheet sees them
 let inset=null;
 function insets(){ if(!inset){ inset=document.createElement('div'); inset.style.cssText='position:fixed;left:0;width:0;top:env(safe-area-inset-top);bottom:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none'; document.body.appendChild(inset); }
@@ -330,46 +333,78 @@ function insets(){ if(!inset){ inset=document.createElement('div'); inset.style.
 function union(els){ const rs=els.map(e=>e.getBoundingClientRect()).filter(r=>r.width||r.height); if(!rs.length) return null;
   const l=Math.min(...rs.map(r=>r.left)), t=Math.min(...rs.map(r=>r.top)), rt=Math.max(...rs.map(r=>r.right)), b=Math.max(...rs.map(r=>r.bottom));
   return { left:l, top:t, right:rt, bottom:b, width:rt-l, height:b-t }; }
-// what scrolls a thing: its nearest ancestor that can, or the page
-function scroller(el){ for(let p=el.parentElement;p&&p!==document.body;p=p.parentElement){ const o=getComputedStyle(p).overflowY; if((o==='auto'||o==='scroll')&&p.scrollHeight>p.clientHeight+1) return p; }
-  const d=document.scrollingElement; return d&&d.scrollHeight>d.clientHeight+1?d:null; }
-/* build 66 (65.5 / 65.11): A RINGED THING THE BOX CANNOT SIT BESIDE IS SCROLLED TO FIRST — off the screen (Snow, below Customise's fold, which Aiden
-   had to find himself), or too near an edge for the box to fit on either side of it. The thing and the box are centred between the safe areas as a
-   pair; a thing too tall for that goes to the top. ONCE PER BOX: after that the screen is the player's and the box follows the ring. Build 65 did
-   the opposite — it scrolled the SCREEN every 200ms whenever the ringed thing came under its centred box, so a player who scrolled Snow up to the
-   middle had the screen jump away under their finger, and a moving screen takes a tap as a scroll */
-function into(els,bh,lo,hi,gap,key){ const r=union(els); if(!r||brought===key) return; brought=key; if(r.top>=lo&&r.bottom<=hi&&(r.bottom+gap+bh<=hi||r.top-gap-bh>=lo)) return;
-  const sc=scroller(els[0]); if(!sc) return; const pair=r.height+gap+bh, want=pair<=hi-lo?lo+(hi-lo-pair)/2:lo;
-  sc.scrollTo({ top:sc.scrollTop+r.top-want, behavior:'instant' }); }
-/* build 66 (65.5, superseding build 64's 62.7 — one centred spot for every box): THE BOX SITS BESIDE WHAT IT IS ABOUT. Below it if there is room
-   above the home indicator, else above it, never over it, with a tail pointing at the ring; a thing too tall for either side gets the box on its
-   roomier side, inside the safe areas. A box about nothing (or about the whole screen) stays where the tutorial's last box was, or the centre for
-   its first. Between boxes the box and the ring glide to their new spot (`.glide`, 250ms, ease-out); reduced motion jumps. */
+
+/* build 68 (67.2 / 67.10 / 67.9 / 67.1, L15): THE BOX GOES WHERE NOTHING CAN BE TAPPED, AND NEVER MOVES THE SCREEN.
+   Build 66 (65.5) kept a box clear of its own ring and nothing else, so on Aiden's phone it sat over the Two / Four chips, the first result's mode
+   tiles and Sprint / Dash / Marathon, and Estimate's Grow / Cut row. Now every spot is tested against EVERYTHING on the screen that takes a tap
+   (`taps()`: a control whose own middle is the top thing there — a tile under the map's dim is not), and the box takes the free spot nearest where it
+   wants to be: beside its target (under it, else over it), or ON A PICK SHEET above the sheet over the dimmed map, its tail pointing down (67.10).
+   With no free spot at all it goes over whatever has the least to tap, and the ring's own shade dims it. Every box with a target points at it.
+   IT NEVER SCROLLS (67.9, superseding 65.5's "scrolled in once"): a target off the screen gets an arrow toward it, the ring waits, and the step waits
+   with it (`far`) until the player brings the target in — then the ring lands. And the game's own UI never moves for a box (67.1: the lock popup is
+   where it always is; build 66's `#lockwrap.tut` is gone). Between boxes the box and the ring glide (`.glide`, 250ms); reduced motion jumps. */
+const TAPS='button,a[href],input,select,textarea,[data-act],[data-go],.tile,.chip,.chest,.cw';
+function taps(skip){ const out=[], W=innerWidth, H=innerHeight;
+  for(const el of document.querySelectorAll(TAPS)){
+    if(host&&host.contains(el)) continue; if(skip.some(x=>x===el||x.contains(el))) continue; if(!vis(el)) continue;
+    const r=el.getBoundingClientRect(); if(r.width<4||r.height<4||r.width*r.height>W*H*.4||r.bottom<=0||r.top>=H||r.right<=0||r.left>=W) continue;
+    const t=document.elementFromPoint(Math.min(W-1,Math.max(0,r.left+r.width/2)),Math.min(H-1,Math.max(0,r.top+r.height/2)));
+    if(t&&(t===el||el.contains(t))) out.push(r); }
+  return out; }
+// the free top nearest the first wish, then the next; with none free, the one over least
+// an obstacle may carry a weight: the box's own target (`w` 1000) is the last thing it may ever sit on
+function spot(obs,left,bw,bh,lo,hi,wish){ const ys=[], over=y=>{ let c=0; for(const r of obs){ const w=Math.min(r.right,left+bw+4)-Math.max(r.left,left-4), h=Math.min(r.bottom,y+bh+4)-Math.max(r.top,y-4); if(w>0&&h>0) c+=w*h*(r.w||1); } return c; };
+  for(let y=lo;y<=hi-bh;y+=2) ys.push(Math.round(y)); if(!ys.length) return { y:Math.round(lo), fall:true };
+  const cost=new Map(ys.map(y=>[y,Math.min(...wish.map((p,i)=>Math.abs(y-p)+i*40))])); ys.sort((a,b)=>cost.get(a)-cost.get(b));
+  for(const y of ys) if(!over(y)) return { y, fall:false };
+  return { y:ys.reduce((b,y)=>over(y)<over(b)?y:b,ys[0]), fall:true }; }
+/* NO FREE SPOT (the whole map, a long list): what the box sits over is DIMMED AND TAKES NO TAP — four blocks round the ring (one for the whole screen
+   when there is no ring), dark where no ring's own shade already darkens it. The tutorial owned those taps anyway; now nothing under the box can be
+   mistaken for live (67.2: "No clear space → the box goes over a dimmed, non-tappable area") */
+function blocks(on,r,pad){ const bs=[...build().querySelectorAll('.tblk')], W=innerWidth, H=innerHeight;
+  host.classList.toggle('tdim',on&&!r); if(!on){ bs.forEach(b=>{ b.hidden=true; }); return; }
+  const set=(b,l,t,w,h)=>{ b.hidden=!(w>0&&h>0); Object.assign(b.style,{ left:l+'px', top:t+'px', width:Math.max(0,w)+'px', height:Math.max(0,h)+'px' }); };
+  if(!r){ set(bs[0],0,0,W,H); bs.slice(1).forEach(b=>{ b.hidden=true; }); return; }
+  const L=r.left-pad, T=r.top-pad, R=r.right+pad, B=r.bottom+pad;
+  set(bs[0],0,0,W,T); set(bs[1],0,B,W,H-B); set(bs[2],0,T,L,B-T); set(bs[3],R,T,W-R,B-T); }
 function place(el,text,o={}){ const h=build(), pad=6, ring=h.querySelector('.tring'), box=h.querySelector('.tbox'), arrow=h.querySelector('.tarrow'), tail=h.querySelector('.ttail');
   const was=!h.hidden; h.hidden=false; h.classList.toggle('glide',was&&!REDUCE);
   h.querySelector('p').innerHTML=marks(text); h.classList.toggle('text',!o.tap);
   const els=(Array.isArray(el)?el:el?[el]:[]).filter(vis), keep=o.keep?[o.keep()].filter(e=>e&&vis(e)):[];
-  const ringed=!!els.length&&!o.noRing, aimed=ringed||(!!o.arrow&&!!els.length);
-  ring.hidden=!ringed; arrow.hidden=!(o.arrow&&els.length); glow(o.glow?els:[]);
   const s=insets(), lo=s.top+8, hi=innerHeight-s.bottom-8, bw=Math.min(320,innerWidth-32), left=Math.round((innerWidth-bw)/2);
   box.style.width=bw+'px'; const bh=box.offsetHeight||92, gap=pad+(o.arrow?48:16);
-  if(aimed) into(els,bh,lo,hi,gap,o.id+':'+o.i);
-  const U=union(els.concat(keep)); let top=null, side=0;
-  // a thing the box is about but does not ring (a row, the lock box) is kept clear too, unless it is most of the screen (the whole map)
-  if(U&&(aimed||U.height<(hi-lo)*.55)){
-    if(U.bottom+gap+bh<=hi){ top=U.bottom+gap; side=1; } else if(U.top-gap-bh>=lo){ top=U.top-gap-bh; side=-1; }
-    else if(aimed) top=hi-U.bottom>=U.top-lo?hi-bh:lo; }
-  if(top===null) top=last&&last.id===o.id?last.top:lo+(hi-lo-bh)/2;
-  top=Math.round(Math.max(lo,Math.min(hi-bh,top))); last={ id:o.id, top };
+  const T0=union(els), whole=!!T0&&T0.height>=(hi-lo)*.55;
+  // 67.9: a target less than half on the screen (between the clock and the home indicator) is FAR — no ring yet, an arrow toward it, the box at that edge
+  const seen=T0?(Math.min(T0.bottom,innerHeight-s.bottom)-Math.max(T0.top,s.top))/Math.max(1,T0.height):1;
+  const far=!!T0&&!whole&&seen<.5?(T0.top+T0.height/2>innerHeight/2?1:-1):0;
+  const ringed=!!els.length&&!o.noRing&&!far, aimed=!!els.length&&!whole&&!far;
+  ring.hidden=!ringed; glow(o.glow&&!far?els:[]);
+  // a target that is the whole screen (the map) or not yet on it does not hide what is inside it: those tiles are obstacles like any other
+  // measured with the box and last turn's blocks out of the way — a block still taking hits would make every control under it look untappable
+  const lift=[box,...h.querySelectorAll('.tblk')]; lift.forEach(e=>{ e.style.pointerEvents='none'; });
+  const obs=taps(whole||far?keep:els.concat(keep)); lift.forEach(e=>{ e.style.pointerEvents=''; });
+  const U=union(els.concat(keep));
+  if(U&&!whole&&!far) obs.push({ left:U.left-pad, right:U.right+pad, top:U.top-gap+4, bottom:U.bottom+gap-4, w:1000 });
+  const sheet=sheetUp()?$('#sheet').getBoundingClientRect():null; if(sheet) obs.push({ left:0, right:innerWidth, top:sheet.top, bottom:innerHeight });
+  const wish=far>0?[hi-bh-56]:far<0?[lo+56]:sheet&&aimed?[sheet.top-gap-bh]:aimed&&U?[U.bottom+gap,U.top-gap-bh]:[last&&last.id===o.id?last.top:lo+(hi-lo-bh)/2];
+  const at=spot(obs,left,bw,bh,lo,hi,wish), top=at.y; last={ id:o.id, top };
+  // 67.9: while the target is off the screen the dim is only a look — the player has to be able to scroll to it (`#tut.far`)
+  blocks(at.fall,ringed?union(els):null,pad); h.classList.toggle('over',at.fall); h.classList.toggle('far',!!far);
   Object.assign(box.style,{ left:left+'px', top:top+'px' });
-  tail.hidden=!(aimed&&side); tail.classList.toggle('up',side<0);
-  if(aimed&&side){ const R=union(els); Object.assign(tail.style,{ left:Math.round(Math.max(left+14,Math.min(left+bw-26,R.left+R.width/2-6)))+'px', top:(side>0?top-5:top+bh-7)+'px' }); }
-  if(!els.length) return;
+  const side=aimed&&U?(top>=U.bottom?1:top+bh<=U.top?-1:0):0;
+  tail.hidden=!side; tail.classList.toggle('up',side<0);
+  if(side){ const R=union(els); Object.assign(tail.style,{ left:Math.round(Math.max(left+14,Math.min(left+bw-26,R.left+R.width/2-6)))+'px', top:(side>0?top-5:top+bh-7)+'px' }); }
+  const sv=arrow.querySelector('svg');
+  arrow.hidden=!((o.arrow&&els.length&&!far)||far);
+  if(far){ sv.style.transform=far>0?'rotate(225deg)':'rotate(45deg)'; Object.assign(arrow.style,{ left:Math.round(Math.max(8,Math.min(innerWidth-48,T0.left+T0.width/2-20)))+'px', top:Math.round(far>0?top+bh+6:top-46)+'px' }); }
+  else sv.style.transform='';
+  if(!els.length||far) return { far };
   const r=union(els);
   Object.assign(ring.style,{ left:(r.left-pad)+'px', top:(r.top-pad)+'px', width:(r.width+pad*2)+'px', height:(r.height+pad*2)+'px' });
   const tag=ring.querySelector('.ttag'); tag.textContent=o.tag||''; tag.hidden=!o.tag;
   // 62.11: an arrow just under and right of BACK, pointing up at it
-  if(o.arrow) Object.assign(arrow.style,{ left:Math.round(r.right-6)+'px', top:Math.round(r.bottom+2)+'px' }); }
+  if(o.arrow) Object.assign(arrow.style,{ left:Math.round(r.right-6)+'px', top:Math.round(r.bottom+2)+'px' });
+  return { far:0 }; }
 
 // a click the walkthrough makes itself (the lock box's own close, Go after Sprint) passes its own capture
 function through(fn){ passing=true; try{ fn(); } finally{ passing=false; } }
@@ -382,6 +417,9 @@ function tick(){
   if(estFirst()) arm('est');
   { const r=roomNow(); if(r) inRoom=r; }
   for(const k of ORDER) drop(k);
+  /* 67.29: a Gauntlet's own Enter button is out of sight while its tour talks on its screen, and arrives as the last box closes — it was under the box */
+  { const g=$('#s-gauntlet'), on=['mini','mega'].some(k=>{ const d=DEFS[k]; if(!d||!d.live()) return false; const s=stepsOf(d)[d.step()]; return !!s&&!!s.room; });
+    if(g&&g.classList.contains('tuthold')!==on){ g.classList.toggle('tuthold',on); g.classList.toggle('tutin',!on); if(!on) setTimeout(()=>g.classList.remove('tutin'),700); } }
   const id=active(); if(!id) return hide();
   const d=DEFS[id], steps=stepsOf(d), i=d.step(), s=steps[i];
   if(!s) return hide();
@@ -391,7 +429,7 @@ function tick(){
   // build 66.1: a must-tap box never shows on something that cannot take the tap (a crossed-out menu item, one mid-animation) — it waits
   if(s.tap&&getComputedStyle(first).pointerEvents==='none') return hide();
   cur={ id, i, s };
-  place(el,typeof s.text==='function'?s.text():s.text,{ id, i, tap:s.tap, noRing:s.ring===0||!!s.arrow, arrow:s.arrow, tag:s.tag, glow:s.glow, keep:s.keep }); }
+  cur.far=place(el,typeof s.text==='function'?s.text():s.text,{ id, i, tap:s.tap, noRing:s.ring===0||!!s.arrow, arrow:s.arrow, tag:s.tag, glow:s.glow, keep:s.keep }).far; }
 function run(){ if(!timer) timer=setInterval(tick,200); }
 // the next step, or the end: the last tap on a tutorial is what finishes it
 function advance(id){ const d=DEFS[id], steps=stepsOf(d), n=d.step()+1;
@@ -428,7 +466,8 @@ document.addEventListener('click',e=>{ if(passing) return;
   // build 68: only if the step is still the one tapped — a tap that changes screen has already passed its doorway step on the way (67.22)
   if(lets(e.target)){ const {id,i,s}=cur; if(!s.done) setTimeout(()=>{ if(active()===id&&DEFS[id].step()===i) advance(id); tick(); },0); return; }
   e.stopPropagation(); e.preventDefault();
-  if(!cur.s.tap){ Snd.click(); advance(cur.id); tick(); } },true);
+  // 67.9: a box whose target is still off the screen waits for the player to bring it in; a tap does not move it on
+  if(!cur.s.tap&&!cur.far){ Snd.click(); advance(cur.id); tick(); } },true);
 /* step 12: Sprint picked, the run starts — there is no box for Go. The tap selected the length (pick.js's own handler, bubbling after this
    capture); Go is pressed for it on the next turn of the loop */
 document.addEventListener('click',e=>{ if(passing||!shown()||cur.id!=='first'||cur.i!==FIRST.length-1) return;
@@ -442,7 +481,7 @@ on('screen:change',({id})=>{ const g=$('#game');
   if(id==='game'){ hide(); if(fromTut&&wanted()) firstRun=true; g.classList.toggle('tutrun',firstRun); return; }
   g.classList.remove('tutrun'); fromTut=false;
   // the map, come back to before the first run was finished (an abandoned run, a reload): from step one again
-  if(id==='s-pick'&&wanted()){ firstAt=0; $('#lockwrap').classList.remove('tut'); } });
+  if(id==='s-pick'&&wanted()) firstAt=0; });
 /* 64.3: THE RUN THE WALKTHROUGH STARTED IS ITS FIRST RUN, whatever happens on the way (`firstRun`, set as the game layer comes up and kept until
    that run finishes or is quit). Build 64 asked at the finish, through a flag any screen change wiped and a test the finished run itself made
    false (the run is on record by then), and a first run that lost it was never marked — the result boxes never came, the walkthrough stayed "not yet", and the next visit to the map
@@ -480,7 +519,7 @@ setTimeout(resumeOver,0);
 
 /* build 66: where the tutorials are, for Testing and the gate — the one that has the floor, its step, how many it has, and whether its box is up
    and waiting for a tap on its ring */
-function tutNow(){ const id=active(); if(!id) return null; const d=DEFS[id]; return { id, i:d.step(), n:stepsOf(d).length, shown:shown()&&cur.id===id, tap:shown()&&!!cur.s.tap }; }
+function tutNow(){ const id=active(); if(!id) return null; const d=DEFS[id]; return { id, i:d.step(), n:stepsOf(d).length, shown:shown()&&cur.id===id, tap:shown()&&!!cur.s.tap, far:shown()&&cur.far||0 }; }
 /* build 66 (65.4): EVERY TUTORIAL AS THE REVIEW CATALOGUE PRINTS IT — the Tutorials section (_review/scripts/catalogue.ref.mjs tutorialsRef) is built
    from this, so it cannot drift from the game: each tutorial's trigger, starting screen and purpose (`meta`, beside its definition), then each box —
    its screen, what it rings, whether it waits for a tap on that, and its line exactly as the copy has it, colour marks and all, with every number
@@ -504,7 +543,7 @@ function tutMap(){ const out=[], text=t=>{ try{ return typeof t==='function'?t()
 
 /* build 66 (65.11): WHERE A REAL TAP ON A MUST-TAP BOX'S RING LANDS AND IS ANSWERED — a point on the screen, inside the ring, whose top element the box
    lets through; null when there is none (the ring is round something covered, off the screen or not the thing that answers), which is a soft lock */
-function tutAim(){ if(!shown()||!cur.s.tap) return null; const r=union([].concat(cur.s.el()||[]).filter(vis)); if(!r) return null;
+function tutAim(){ if(!shown()||!cur.s.tap||cur.far) return null; const r=union([].concat(cur.s.el()||[]).filter(vis)); if(!r) return null;
   for(const fy of [.5,.3,.7,.15,.85]) for(const fx of [.5,.3,.7,.15,.85]){ const x=r.left+r.width*fx, y=r.top+r.height*fy; if(x<0||y<0||x>=innerWidth||y>=innerHeight) continue;
     const t=document.elementFromPoint(x,y); if(t&&lets(t)) return [Math.round(x),Math.round(y)]; } return null; }
 

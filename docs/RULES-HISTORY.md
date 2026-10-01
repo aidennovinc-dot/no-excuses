@@ -1726,3 +1726,16 @@ anything Aiden settles goes on the list in the build that implements it.
     played again; the main menu's calm-moment replay (65.2) asks the same `due()` and is only that net.
   - **The key intro (57.6 amended).** On the first visit the arrival plays and the intro straight after it (`kintro` holds tutorial boxes until it
     starts); a first visit that is a chest opening or the key's earn spends it; a tier first seen from its tab gets it then.
+
+- **Where a box goes (67.2 / 67.10 / 67.9 / 67.1 / 67.29, L15; superseding 65.5's "beside its ring" and its "scrolled in once").** `place()` tests
+  every spot against everything on the screen that takes a tap (`taps()`: a button, chip, tile, chest or `data-act` control whose own middle is
+  the top thing there — a tile under the map's dim is not one) plus its target with the tail's gap, and takes the free spot nearest where it wants
+  to be: under its target, else over it; on a pick sheet, above the sheet over the dimmed map with its tail pointing down (the sheet itself is
+  off limits). With no free spot it goes over whatever has least to tap. Every box with a target points at it (Estimate's "two modes" box at the
+  Mode row; its last box too). A target not wholly on the screen is `far`: no ring, an arrow toward it, the box at that edge, a tap does not move
+  the step on; once the player scrolls it in, the ring lands. Nothing in `ui/tutorial.js` scrolls any more (`into()` and `scroller()` are gone).
+  The lock popup stays where it sits (`#lockwrap.tut` is gone, its buttons stay). A Gauntlet's Enter button is hidden while its tour talks on its
+  screen (`#s-gauntlet.tuthold`) and animates in as the last box closes (`tutin`).
+  **Why build 66's gate passed while the phone showed overlaps:** its `covers` compared the box with its own ring and nothing else, and only when
+  a ring was drawn — a ring-less box, and every chip, tile and button that was not the ring, was never measured. The walk now measures every box
+  against every tappable control at 390×844 and on an SE, and counts any scroll made from `ui/tutorial.js`.

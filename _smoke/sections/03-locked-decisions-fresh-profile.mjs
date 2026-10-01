@@ -98,7 +98,7 @@ export async function run() {
     // box 4 → Dots: its lock box opens with its rule, and box 5 says the rule back
     await click('.tile[data-game="dots"]');
     seen.push(await waitText(want[4]));
-    const rule = await page.evaluate(() => ({ lock: document.getElementById('lockwrap').classList.contains('on'), text: document.getElementById('lock-text').textContent }));
+    const rule = await page.evaluate(() => ({ lock: document.getElementById('lockwrap').classList.contains('on'), text: document.getElementById('lock-text').textContent, top: Math.round(document.getElementById('lockbox').getBoundingClientRect().top), row: getComputedStyle(document.querySelector('#lockbox .row')).visibility }));
     await anywhere(); seen.push(await waitText(want[5]));
     const closed = await state();
     await click('.tile[data-game="quick-tap"]'); seen.push(await waitText(want[6]));
@@ -203,6 +203,15 @@ export async function run() {
       (!a.box && a.tut === 2 && !b && !c.box && c.tut === 2 && opened)
         ? ok('64.3 once finished the walkthrough never replays: no box on the map or its sheet, before or after a reload, and the map answers taps')
         : bad('64.3 the walkthrough replayed', JSON.stringify({ a, b, c, opened }));
+      /* build 68 (67.1, L15): THE LOCK POPUP STAYS WHERE IT ALWAYS SITS. Build 66 moved it up (and hid its buttons) to make room for box 5; the same Dots
+         popup opened with no tutorial about is at exactly the place it was under the walkthrough's box */
+      await page.evaluate(async () => (await import('./ui/router.js')).show('s-pick')); await sleep(700);
+      await click('.tile[data-game="dots"]'); await sleep(500);
+      const plain1 = await page.evaluate(() => ({ top: Math.round(document.getElementById('lockbox').getBoundingClientRect().top), row: getComputedStyle(document.querySelector('#lockbox .row')).visibility }));
+      await page.evaluate(() => document.getElementById('lock-no')?.click()); await sleep(300);
+      (rule.lock && Math.abs(plain1.top - rule.top) <= 1 && rule.row === plain1.row && rule.row === 'visible')
+        ? ok(`L15 / 67.1 the Dots lock popup sits at ${rule.top}px under the walkthrough's box, exactly where it sits with no tutorial (${plain1.top}px), its buttons in place — the box went round it`)
+        : bad('L15 / 67.1 the lock popup moved for a box', JSON.stringify({ rule, plain1 }));
       await page.evaluate(async () => (await import('./ui/router.js')).show('s-menu')); await sleep(200);
     }
     /* 62.14: what locks them — a profile that has not finished it has Scores, Progress and About crossed out; one from before build 64 that has
@@ -425,16 +434,21 @@ export async function run() {
       const F = await page.evaluate(async g => { const C = (await import('./config/copy.js')), N = C.GAUNTLET.name[g]; return { lines: C.TUTORIAL.gaunt, name: N }; }, g);
       const G16 = [];
       for (let i = 0; i < 80 && !(G16[0] = await box()); i++) await sleep(100);
+      // AMENDED at build 68 (67.9): a tile below the fold is not scrolled to by the tutorial — the player brings it in, and then the ring lands
+      if (((await page.evaluate(async () => (await import('./ui/tutorial.js')).tutNow())) || {}).far) { await page.evaluate(g => document.querySelector(`#grid .tile[data-gauntlet="${g}"]`).scrollIntoView({ block: 'center' }), g); await sleep(500); G16[0] = await box(); }
       const tw = await page.evaluate(g => document.querySelector(`#grid .tile[data-gauntlet="${g}"]`)?.getBoundingClientRect().width, g);
       await click(`#grid .tile[data-gauntlet="${g}"]`); await sleep(300); const onG = (await state()).screen;
+      // build 68 (67.29): Enter the Gauntlet is out of sight while the tour talks on its screen
+      const hid29 = await page.evaluate(() => getComputedStyle(document.querySelector('#s-gauntlet .gtgo')).visibility);
       for (let i = 1; i < 4; i++) { for (let j = 0; j < 40 && (!(G16[i] = await box()) || G16[i].text === (G16[i - 1] || {}).text); j++) await sleep(100); if (i < 4) await anywhere(); }
       await sleep(300);
-      const gEnd = await page.evaluate(id => ({ done: JSON.parse(localStorage.getItem('ne')).prefs.tuts[id], box: !document.getElementById('tut').hidden }), id);
+      const gEnd = await page.evaluate(id => { const g = document.querySelector('#s-gauntlet .gtgo'), cs = getComputedStyle(g);
+        return { done: JSON.parse(localStorage.getItem('ne')).prefs.tuts[id], box: !document.getElementById('tut').hidden, vis: cs.visibility, anim: cs.animationName }; }, id);
       const txt = G16.map(b => b && b.text), named = (txt[0] || '').includes(F.name), finish = /^Finish it once/.test(txt[3] || '') && !/beat/i.test(txt.join(' '));
       (onG === 's-gauntlet' && G16[0] && G16[0].drawn && Math.abs(G16[0].ring[0] - tw - 12) <= 2 && named && /but Sequence/.test(txt[1] || '') && finish && /(Pro|Author) Key/.test(txt[3]) && /(Pro|Author) Chest/.test(txt[3])
-        && !/\{|\[/.test(txt.join('')) && gEnd.done === 'done' && !gEnd.box)
-        ? ok(`65.16 ${F.name}'s tutorial: its tile ringed on the map and tapped, then "${txt[1]}", "${txt[2]}", "${txt[3]}" — done once`)
-        : bad(`65.16 the ${F.name} tutorial`, JSON.stringify({ txt, onG, ring: G16[0] && G16[0].ring, tw, gEnd }));
+        && !/\{|\[/.test(txt.join('')) && gEnd.done === 'done' && !gEnd.box && hid29 === 'hidden' && gEnd.vis === 'visible' && /gtin/.test(gEnd.anim))
+        ? ok(`65.16 / 67.29 ${F.name}'s tutorial: its tile ringed on the map and tapped, then "${txt[1]}", "${txt[2]}", "${txt[3]}" with Enter the Gauntlet out of sight, which arrives as the last box closes — done once`)
+        : bad(`65.16 / 67.29 the ${F.name} tutorial`, JSON.stringify({ txt, onG, ring: G16[0] && G16[0].ring, tw, gEnd, hid29 }));
     }
     /* build 66 (65.11 / 65.1 / 65.5 / 65.9): EVERY TUTORIAL, WALKED WITH REAL TAPS, at 390×844 with a phone's insets and on an SE. Each box is measured
        — on the phone between its safe areas, never over its ring, no "[" left in it — and moved on the way a player would: a text box by a real tap on it,
@@ -458,6 +472,11 @@ export async function run() {
         { id: 'mini', prefs: { ...PL, tuts: { mini: 0 }, chests: { games: 1, key: 1 }, spill: { games: 1, key: 1 } }, go: 's-pick' },
         { id: 'mega', prefs: { ...PL, tuts: { mega: 0 }, chests: { games: 1, key: 1, pro: 1 }, spill: { games: 1, key: 1, pro: 1 } }, go: 's-pick' },
       ];
+      /* build 68 (67.9, L15): NOTHING IN ui/tutorial.js EVER SCROLLS. Every scroll call the page makes is wrapped, and one made from the tutorial module
+         is counted — the walker's own wheel turns, as a player's would, are not */
+      await page.evaluateOnNewDocument(() => { window.__tscroll = 0; const mine = () => /ui\/tutorial\.js/.test(new Error().stack || '');
+        for (const [o, k] of [[Element.prototype, 'scrollTo'], [Element.prototype, 'scrollBy'], [Element.prototype, 'scrollIntoView'], [window, 'scrollTo'], [window, 'scrollBy']]) { const f = o[k]; o[k] = function (...a) { if (mine()) window.__tscroll++; return f.apply(this, a); }; }
+        const d = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollTop'); Object.defineProperty(Element.prototype, 'scrollTop', { configurable: true, get: d.get, set(v) { if (mine()) window.__tscroll++; d.set.call(this, v); } }); });
       const cdp = await page.createCDPSession(), out = [];
       for (const [w, h, top, bottom] of [[390, 844, 47, 34], [375, 667, 20, 0]]) {
         await page.setViewport({ width: w, height: h, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
@@ -477,6 +496,29 @@ export async function run() {
             const m = await page.evaluate(() => { const p = document.createElement('div'); p.style.cssText = 'position:fixed;top:env(safe-area-inset-top);bottom:env(safe-area-inset-bottom);width:1px'; document.body.appendChild(p); const r = p.getBoundingClientRect(); p.remove();
               const bx = document.querySelector('#tut .tbox').getBoundingClientRect(); return { safe: bx.top >= r.top - .5 && bx.bottom <= r.bottom + .5 && bx.left >= 0 && bx.right <= innerWidth, scr: document.querySelector('.screen.on')?.id }; });
             const rec = { i: st.i, tap: st.tap, t: b.text.slice(0, 28), covers: b.covers, safe: m.safe, marks: /\[|\]/.test(b.text) };
+            /* build 68 (67.2 / 67.10, L15): THE BOX COVERS NOTHING THAT TAKES A TAP — every control on the screen whose own middle is the top thing there,
+               not only the box's ring (build 66 measured the ring alone, and only when one was drawn); and on a pick sheet it sits above the sheet with its
+               tail pointing down */
+            // the box, its tail, arrow and ring are lifted out of the way to look under them; the dimmed blocks a box with no free spot sits on stay (67.2)
+            const lift = '#tut .tbox,#tut .ttail,#tut .tarrow,#tut .tring';
+            const cov = await page.evaluate(lift => { const t = document.getElementById('tut'), b = t.querySelector('.tbox').getBoundingClientRect(), tl = t.querySelector('.ttail'), hit = [], over = t.classList.contains('over');
+              const tl0 = getComputedStyle(tl).display !== 'none', tlUp = tl.classList.contains('up'); document.querySelectorAll(lift).forEach(e => { e.style.visibility = 'hidden'; });
+              for (const el of document.querySelectorAll('button,a[href],input,select,textarea,[data-act],[data-go],.tile,.chip,.chest,.cw')) { if (t.contains(el)) continue; const r = el.getBoundingClientRect();
+                if (r.width < 4 || r.height < 4 || r.width * r.height > innerWidth * innerHeight * .4 || getComputedStyle(el).visibility === 'hidden') continue;
+                const e = document.elementFromPoint(Math.min(innerWidth - 1, Math.max(0, r.left + r.width / 2)), Math.min(innerHeight - 1, Math.max(0, r.top + r.height / 2)));
+                if (!e || !(e === el || el.contains(e))) continue;
+                if (r.left < b.right && r.right > b.left && r.top < b.bottom && r.bottom > b.top) hit.push((el.id ? '#' + el.id : String(el.className).split(' ')[0] || el.tagName) + (el.dataset.v ? '[' + el.dataset.v + ']' : el.dataset.act ? '[' + el.dataset.act + ']' : '')); }
+              document.querySelectorAll(lift).forEach(e => { e.style.visibility = ''; }); const sh = document.getElementById('sheet'), up = !!sh && !sh.hidden && sh.classList.contains('up');
+              return { hit, over, sheetBad: up && (b.bottom > sh.getBoundingClientRect().top + 1 || !tl0 || !tlUp) }; }, lift);
+            if (cov.hit.length) { rec.covers = true; rec.over = cov.hit.join(','); } if (cov.sheetBad) rec.sheetBad = 1; if (cov.over) rec.dimmed = 1;
+            // the state is read again once the box has come to rest: a sheet still sliding up carries its target in from off the screen
+            Object.assign(st, (await page.evaluate(async () => (await import('./ui/tutorial.js')).tutNow())) || {});
+            /* 67.9: a target off the screen — the box waits with an arrow toward it and no ring; the walker brings it in with the wheel, as a thumb would */
+            /* a box waiting for an off-screen target sits at that edge over a screen that must still scroll, so what is under it is dimmed but not blocked —
+               it is not held to 67.2 until the target is in and the ring lands */
+            if (st.far) { delete rec.over; rec.covers = false; const b2 = await box(); rec.far = st.far; rec.farOk = !!b2 && !b2.drawn && b2.arrow; await page.mouse.move(8, Math.round(h / 2)); let still = true;
+              for (let k = 0; k < 30 && (still = !!((await page.evaluate(async () => (await import('./ui/tutorial.js')).tutNow())) || {}).far); k++) { await page.mouse.wheel({ deltaY: st.far * 140 }); await sleep(150); }
+              rec.moved = !still; boxes.push(rec); if (!rec.farOk) { why = 'an off-screen target was ringed, or had no arrow'; break; } if (still) { why = 'an off-screen target the player cannot scroll to'; break; } continue; }
             let pt = null;
             if (st.tap) { pt = await page.evaluate(async () => (await import('./ui/tutorial.js')).tutAim()); if (!pt) { rec.lock = 'no point on the ring answers a tap'; boxes.push(rec); why = 'soft lock'; break; } }
             else pt = await page.evaluate(() => { const r = document.querySelector('#tut .tbox').getBoundingClientRect(); return [Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2)]; });
@@ -489,7 +531,9 @@ export async function run() {
             if (T.endOnGame && after.game) { await page.evaluate(async () => (await import('./run/run.js')).abort(true)); break; }
           }
           const done = await page.evaluate(id => { const v = (JSON.parse(localStorage.getItem('ne')).prefs.tuts || {})[id]; return v; }, T.id);
-          out.push({ at: w + 'x' + h, id: T.id, n: boxes.length, why, done: T.id === 'first' || T.id === 'over' ? 'n/a' : done, bad: boxes.filter(b => b.covers || !b.safe || b.marks || b.lock || !b.moved || b.nav) });
+          const scrolled = await page.evaluate(() => window.__tscroll || 0);
+          out.push({ at: w + 'x' + h, id: T.id, n: boxes.length, why: why || (scrolled ? `ui/tutorial.js scrolled the screen ${scrolled} time(s)` : ''), done: T.id === 'first' || T.id === 'over' ? 'n/a' : done,
+            far: boxes.filter(b => b.far).length, dimmed: boxes.filter(b => b.dimmed).length, bad: boxes.filter(b => b.covers || !b.safe || b.marks || b.lock || !b.moved || b.nav || b.sheetBad) });
         }
       }
       try { await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0, bottom: 0, left: 0, right: 0 } }); } catch (e) {}
@@ -497,8 +541,8 @@ export async function run() {
       const fails = out.filter(o => o.bad.length || o.why || !o.n || (o.done !== 'n/a' && o.done !== 'done'));
       const taps = out.reduce((n, o) => n + o.n, 0);
       (!fails.length)
-        ? ok(`65.11 / 65.1 / 65.5 / 65.9 every tutorial walked with real taps at 390×844 (47/34 insets) and on an SE: ${taps} boxes (${out.filter(o => o.at === '390x844').map(o => o.id + ' ' + o.n).join(', ')}) — every must-tap ring answers a real tap, no box over its ring or outside the safe areas, no "[" left, no screen change after a text box`)
-        : bad('65.11 a tutorial soft-locks or misplaces a box', JSON.stringify(fails));
+        ? ok(`L15 / 67.2 / 67.9 / 67.10 / 65.11 / 65.9 every tutorial walked with real taps at 390×844 (47/34 insets) and on an SE: ${taps} boxes (${out.filter(o => o.at === '390x844').map(o => o.id + ' ' + o.n).join(', ')}) — no box over ANYTHING that takes a tap (${out.reduce((n, o) => n + o.dimmed, 0)} with no free spot sat on dimmed ground that takes none), on a pick sheet every box above it with its tail down, ${out.reduce((n, o) => n + o.far, 0)} off-screen target(s) waited for with an arrow and the screen never scrolled by the tutorial, every must-tap ring answers a real tap, all inside the safe areas, no "[" left, no screen change after a text box`)
+        : bad('L15 a tutorial covers something tappable, scrolls, soft-locks or misplaces a box', JSON.stringify(fails));
     }
     /* build 66.1: THE WELCOME PUT OFF ON THE MAIN MENU. Aiden on v0.66: Later on the Welcome (which now plays on the menu, 65.2) opened About without
        redrawing the menu, so About stayed crossed out and untappable while its tutorial rang it. Now: Later → About drawn open → its box rings it →
