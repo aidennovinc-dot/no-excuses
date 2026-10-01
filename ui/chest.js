@@ -58,7 +58,9 @@ const quoted = s => s ? MSG.quote[0] + s + MSG.quote[1] : '';
 const videoWord = id => { const m = msgOfChest(id); return !m || (HIDE_UNRECORDED && !m.file) ? [] : [{ w: T(MSG.reward, { title: quoted(msgTitle(m)) }), sym: 'video', to: 'msg:' + m.id, msg: m.id, msgObj: m }]; };
 /* v28 (item 10, build 53): a chest word that GIVES A GAUNTLET carries `gaunt`, not a word — its name is composed off GAUNTLET.name here, in
    capitals like every other chest word, so Gauntlet Mini and Gauntlet Mega are spelled in exactly one place. */
-const wordsOf = id => (CHEST_WORDS[id] || []).map(x => x.gaunt ? Object.assign({}, x, { w: (GAUNTLET.name[x.gaunt] || x.gaunt).toUpperCase() }) : x).concat(videoWord(id));
+// build 68 (67.32): a key's chest also gives its theme as the game's music — its own "You found" line, "LANTERN (music)", which goes to Customise
+const musicWord = id => { const k = KEYS.find(x => x.music === id); return k && k.theme ? [{ w: String(k.theme).toUpperCase(), sym: 'music', to: 's-custom' }] : []; };
+const wordsOf = id => (CHEST_WORDS[id] || []).map(x => x.gaunt ? Object.assign({}, x, { w: (GAUNTLET.name[x.gaunt] || x.gaunt).toUpperCase() }) : x).concat(musicWord(id), videoWord(id));
 // what one chest gives, as the reveal and the map want it: the word, its symbol, where it goes and whether it is a placeholder reward
 const giftsOf = id => wordsOf(id).map(x => ({ w: x.w, sym: x.sym || '', kind: kindOf(x.sym), tba: !!x.tba, to: x.to || 'soon', msg: x.msg || '', msgObj: x.msgObj || null }));
 // build 66 (65.15): "(background)", "(key)", "(video)" — the kind of a reward, by its symbol

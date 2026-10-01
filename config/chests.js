@@ -200,6 +200,8 @@ export const SPILL = { stagger: 120, ms: 520, delay: 450, particles: 10, burstMs
    the key on the Keys screen. `col` is a symbol's own colour; with neither, a symbol takes the colour of the chest it came from (CHEST_LOOK `gift`,
    or its band colour). `video` is item 5's play symbol, `gauntlet2` item 13's spiked glove in the Pro key's theme colour (drafts, guess). */
 export const SYMBOLS = {
+  // build 68 (67.32): music — two joined notes, the heads filled; what a key's chest gives when it sets the game's music to that key's theme
+  music: { col: '#E8E6E1', p: ['M9 17.5V5.5l11-2.2v12'], f: ['M6.4 14.9a2.6 2.6 0 1 0 0 5.2 2.6 2.6 0 1 0 0-5.2', 'M17.4 12.7a2.6 2.6 0 1 0 0 5.2 2.6 2.6 0 1 0 0-5.2'] },
   key: { key: 'clear' },
   keypro: { key: 'pro' },
   keyauthor: { key: 'author' },

@@ -242,7 +242,9 @@ export async function run() {
       /* v30 (59.3, build 59): the video's reward word now wears QUOTATION MARKS, so the name reads as the name of a clip rather than as a tab
          label or a sentence. The marks come off MSG.quote here as they do in ui/chest.js, so this still spells no punctuation of its own. */
       const q49 = s => CP48.MSG.quote[0] + s + CP48.MSG.quote[1];
-      const want = (CP48.CHEST_WORDS[id] || []).map(x => x.w || (CP48.GAUNTLET.name[x.gaunt] || '').toUpperCase()).concat(fill49(CP48.MSG.reward, { title: q49(title49(slot)) }));
+      // AMENDED at build 68 (67.32): a chest whose key has a track names it among what you found, before the video — its theme, as config/keys.js spells it
+      const mus49 = KY49.KEYS.find(k => k.music === id), musW = mus49 && mus49.theme ? [String(mus49.theme).toUpperCase()] : [];
+      const want = (CP48.CHEST_WORDS[id] || []).map(x => x.w || (CP48.GAUNTLET.name[x.gaunt] || '').toUpperCase()).concat(musW, fill49(CP48.MSG.reward, { title: q49(title49(slot)) }));
       const g = s.start.gifts, n = g.length, pops = s.landed.log.filter(e => e[0] === 'pop'), gifts = s.landed.log.filter(e => e[0] === 'gift');
       const why = [];
       if (!s.start.placed) why.push('row not placed');
@@ -859,6 +861,21 @@ export async function run() {
     (all.length >= 8 && all.every(g => bare(g.sym) ? g.kind === '' : /^\(.+\)$/.test(g.kind)) && all.some(g => bare(g.sym)) && words.every(w => w.k === '' || /^\(.+\)$/.test(w.k)) && lantern && lantern.kind === K15.bg)
       ? ok(`67.12 / 65.15 every reward says its kind under its name (${[...new Set(all.map(g => g.kind).filter(Boolean))].join(' ')}) except Customise and the keys, which say none — on the chest's screen and beside the chest on the map; "${lantern.w}" reads ${lantern.kind}`)
       : bad('65.15 the reward kinds', JSON.stringify(K15));
+  }
+  /* build 68 (67.32): OPENING A KEY'S CHEST SETS THE GAME'S MUSIC TO THAT KEY'S THEME, and says so in its "You found" list — Skill → Lantern, Pro → Circuit,
+     Author → Thorns; the Games chest leaves the music alone; the background never switches */
+  {
+    const m32 = [];
+    for (const chest of ['games', 'key', 'pro', 'thorns']) {
+      await boot({});
+      m32.push(await page.evaluate(async chest => { const K = await import('./progress/key.js'), P = await import('./progress.js'), S = await import('./core/store.js'), C = await import('./ui/chest.js'), KS = (await import('./config/keys.js')).KEYS;
+        S.prefs.allOpen = false; S.prefs.chests = {}; S.store.bars = {}; S.prefs.everywhere = 'quick-tap:held'; S.prefs.menuTrack = 'quick-tap:held'; S.prefs.bg = 'stars'; S.save();
+        K.devReach(chest, P.devModesAll); S.prefs.everywhere = 'quick-tap:held'; S.prefs.menuTrack = 'quick-tap:held'; S.save(); K.openChest(chest);
+        const k = KS.find(x => x.music === chest), g = C.giftsOf(chest).find(x => x.sym === 'music');
+        return { chest, every: S.prefs.everywhere, track: S.prefs.menuTrack, bg: S.prefs.bg, want: k ? k.track : 'quick-tap:held', theme: k ? k.theme : '', gift: g ? g.w + ' ' + g.kind : '' }; }, chest)); }
+    (m32.every(o => o.track === o.want && o.bg === 'stars' && (o.theme ? o.gift === o.theme.toUpperCase() + ' (music)' : !o.gift)))
+      ? ok(`67.32 opening a key's chest sets the game's music to its theme and lists it — ${m32.filter(o => o.theme).map(o => o.gift).join(', ')}; the Games chest leaves it alone; the background never switches`)
+      : bad('67.32 the chest music', JSON.stringify(m32));
   }
   // build 66 (65.17): no chest promises a reward it does not give — not one chest word is a `tba` placeholder (the Pro chest's "COSMETIC SET" is out)
   {

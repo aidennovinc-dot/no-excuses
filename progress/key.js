@@ -325,8 +325,13 @@ const chestAt = id => { const i = chestIx(id); if (i < 0) return null; const n =
 /* L.8b: THE OPEN, and it happens on the key screen by itself — no "Open the chest?", no "progress to Pro?". Only a READY chest opens;
    it is stored for good, the tier it reveals is credited against saved bests SILENTLY (G.4, which now reaches key 1 as well), and what
    comes back is the meter before and after, so the screen can count it up (D.4). Opened is opened: a second call is null. */
+/* build 68 (67.32): OPENING A KEY'S CHEST SETS THE GAME-WIDE MUSIC TO THAT KEY'S THEME — Skill → Lantern, Pro → Circuit, Author → Thorns (the KEYS row whose
+   `music` names this chest). The Games chest changes nothing. The player can change it back in Customise; backgrounds do not switch (Cowork: Lantern
+   was too bright to read on, 2026-09-20) */
 function openChest(id) { if (chestState(id) !== 'ready') return null; const c = chestOf(id), was = meter();
-  prefs.chests = Object.assign({}, prefs.chests, { [id]: 1 }); save();
+  prefs.chests = Object.assign({}, prefs.chests, { [id]: 1 });
+  { const k = KEYS.find(x => x.music === id); if (k && k.track) { prefs.everywhere = k.music; prefs.menuTrack = k.track; } }
+  save();
   const fresh = c.opens ? retroBank([c.opens]) : [];
   emit('chest:opened', { id });   // build 65 (64.14): the Games chest's tutorial is armed by this
   return { id, was, now: meter(), fresh }; }
