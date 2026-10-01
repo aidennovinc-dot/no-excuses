@@ -851,9 +851,13 @@ export async function run() {
       const out = ids.map(id => { d.innerHTML = C.wordsHtml(id); const words = [...d.querySelectorAll('.cw')].map(w => ({ w: w.dataset.w, k: (w.querySelector('.cwk') || {}).textContent || '' }));
         return { id, gifts: C.giftsOf(id).map(g => ({ w: g.w, kind: g.kind })), words }; }); d.remove();
       return { out, bg: CP.REWARD_KIND.line.replace('{kind}', CP.REWARD_KIND.bg) }; });
-    const all = K15.out.flatMap(o => o.gifts), words = K15.out.flatMap(o => o.words), lantern = all.find(g => /LANTERN/.test(g.w));
-    (all.length >= 8 && all.every(g => /^\(.+\)$/.test(g.kind)) && words.every(w => /^\(.+\)$/.test(w.k)) && lantern && lantern.kind === K15.bg)
-      ? ok(`65.15 every reward any chest holds says its kind under its name (${[...new Set(all.map(g => g.kind))].join(' ')}) on the chest's screen and beside the chest on the map — "${lantern.w}" reads ${lantern.kind}`)
+    /* AMENDED at build 68 (67.12): Customise and the keys carry no kind word any more; every other reward still does, the same on the chest's screen
+       and beside the chest on the map */
+    const syms = await page.evaluate(async () => { const C = await import('./ui/chest.js'); return Object.fromEntries(['games', 'key', 'pro', 'thorns'].map(id => [id, C.giftsOf(id).map(g => g.sym)])); });
+    const bare = s => s === 'palette' || /^key/.test(s);
+    const all = K15.out.flatMap(o => o.gifts.map((g, i) => Object.assign({ sym: syms[o.id][i] }, g))), words = K15.out.flatMap(o => o.words), lantern = all.find(g => /LANTERN/.test(g.w));
+    (all.length >= 8 && all.every(g => bare(g.sym) ? g.kind === '' : /^\(.+\)$/.test(g.kind)) && all.some(g => bare(g.sym)) && words.every(w => w.k === '' || /^\(.+\)$/.test(w.k)) && lantern && lantern.kind === K15.bg)
+      ? ok(`67.12 / 65.15 every reward says its kind under its name (${[...new Set(all.map(g => g.kind).filter(Boolean))].join(' ')}) except Customise and the keys, which say none — on the chest's screen and beside the chest on the map; "${lantern.w}" reads ${lantern.kind}`)
       : bad('65.15 the reward kinds', JSON.stringify(K15));
   }
   // build 66 (65.17): no chest promises a reward it does not give — not one chest word is a `tba` placeholder (the Pro chest's "COSMETIC SET" is out)
