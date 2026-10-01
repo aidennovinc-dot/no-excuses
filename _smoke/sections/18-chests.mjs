@@ -119,7 +119,12 @@ export async function run() {
   const p3 = await page.evaluate(() => window.__k48.p3 || {});
   const ask2 = await page.evaluate(() => document.getElementById('key-ask').hidden);
   await revealDone(); await sleep(500);
-  const back2 = await onScreen();
+  /* build 68 (67.28): the Skill chest's video comes straight after its card, over the Keys screen, and the run's result comes only once it is
+     closed — so the video is up here, and closing it is what goes back */
+  const vid28 = await page.evaluate(() => { const v = document.getElementById('vplay'); return !!v && !v.hidden; });
+  // a chest's video the first time is one the player must watch (it cannot be closed), so the check plays it to its end
+  if (vid28) { await page.evaluate(() => { const v = document.querySelector('#vplay video'); if (v) v.dispatchEvent(new Event('ended')); }); await sleep(1600); }
+  const back2 = vid28 ? await onScreen() : 'no video';
   const p4 = await read48();
   (run1 === 's-over' && !why48(p0).length && p0.store.chests.join() === 'locked,before,before,before' && p1.store.chests[0] === 'ready' && !why48(p1).length
     && stage7.on && !stage7.meter && !/%/.test(stage7.txt) && card7.length && !card7.some(x => /%/.test(x)) && p2.store.chests.join() === 'open,locked,before,before' && !why48(p2).length

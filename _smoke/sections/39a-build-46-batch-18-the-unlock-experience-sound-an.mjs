@@ -95,7 +95,10 @@ export async function run() {
     await sleep(CH46.REVEAL.cardAt + CH46.REVEAL.cardGo + 350);
     const late = await revState();
     await page.evaluate(() => document.querySelector('#key-cere .rgo').click()); await sleep(600);
-    const done = await onScreen();
+    // build 68 (67.28): Continue goes straight into the chest's video, over this screen, and the map comes when it has ended — never before it
+    const vid28 = await page.evaluate(() => { const v = document.getElementById('vplay'); return { up: !!v && !v.hidden, scr: (document.querySelector('.screen.on') || {}).id }; });
+    if (vid28.up) { await page.evaluate(() => { const v = document.querySelector('#vplay video'); if (v) v.dispatchEvent(new Event('ended')); }); await sleep(1600); }
+    const done = vid28.up && vid28.scr === 's-key' ? await onScreen() : 'video ' + JSON.stringify(vid28);
     (during.screen === 's-key' && during.on && !during.card && st === 'tap' && atTap.tap && early.card && early.go === 'off' && late.go === 'on' && done === 's-pick')
       ? ok(`items 6 / 11 / 22 the reveal cannot be tapped out of: eight taps and Back during it do nothing and none of them is queued; the tap that lands brings the card up, whose Continue is dead for ${CH46.REVEAL.cardGo}ms and then takes it to the map`)
       : bad('items 6 / 11 taps swallowed', JSON.stringify({ during, st, atTap, early, late, done }));

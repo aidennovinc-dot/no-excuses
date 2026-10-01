@@ -112,4 +112,33 @@ export async function run() {
       ? ok(`67.6b the player's frame is landscape, ${f68.ar} wide to 1 high, for the portrait test clip too — letterboxed inside it (object-fit ${f68.fit}); no row carries a shape of its own`)
       : bad('67.6b the landscape frame', JSON.stringify(f68));
   }
+  /* build 68 (#496, answered 2026-10-01): A CHEST VIDEO'S FIRST VIEWING IS FULL SCREEN — the picture the phone's whole width, letterboxed (contain), on black;
+     a replay from About keeps the inset player. Every chest drives its own: opened on the key screen, tapped through to its card, Continue → the video,
+     and (67.28) the chest's own screen is still under it — the map never shows in between — until the clip ends and switches off. And a Gauntlet reward
+     says "(challenge)" */
+  {
+    const v28 = [];
+    for (const chest of ['games', 'key', 'pro', 'thorns']) {
+      await boot({});
+      v28.push(await page.evaluate(async chest => { const K = await import('./progress/key.js'), P = await import('./progress.js'), R = await import('./ui/router.js'), S = await import('./core/store.js'), w = ms => new Promise(r => setTimeout(r, ms));
+        S.prefs.allOpen = false; S.prefs.supporter = false; S.prefs.msgSeen = {}; S.prefs.chests = {}; S.prefs.revealed = {}; S.store.bars = {}; S.save();
+        K.devReach(chest, P.devModesAll); R.show('s-key', { open: chest });
+        let b = null; for (let i = 0; i < 260 && !(b = document.querySelector('#key-cere .rgo:not([disabled])')); i++) { const h = document.getElementById('key-cere'); if (h && h.classList.contains('tap')) h.click(); await w(80); }
+        if (!b) return { chest, err: 'no card' }; b.click(); await w(400);
+        const h = document.getElementById('vplay'), fr = h && h.querySelector('.vframe'), r = fr ? fr.getBoundingClientRect() : null, v = h && h.querySelector('video');
+        const o = { chest, up: !!h && !h.hidden, full: !!h && h.classList.contains('vfull'), must: !!h && h.classList.contains('vmust'), under: document.querySelector('.screen.on')?.id, w: r ? Math.round(r.width) : 0, iw: innerWidth,
+          ar: r ? +(r.width / r.height).toFixed(2) : 0, fit: v ? getComputedStyle(v).objectFit : '', edge: fr ? getComputedStyle(fr).borderTopColor : '', thorn: !!h && h.classList.contains('vthorn') };
+        if (v) v.dispatchEvent(new Event('ended')); await w(1500);
+        o.after = document.querySelector('.screen.on')?.id; o.closed = !h || h.hidden;
+        // a replay from About is the inset player
+        const M = (await import('./config/messages.js')).MESSAGES, V = await import('./ui/video.js'), m = M.find(x => x.by && x.by.chest === chest); V.playVideo(m); await w(800);
+        const f2 = h.querySelector('.vframe').getBoundingClientRect(); o.replayFull = h.classList.contains('vfull'); o.replayW = Math.round(f2.width); V.closeVideo(); await w(900);
+        return o; }, chest)); }
+    const kind = await page.evaluate(async () => (await import('./config/copy.js')).REWARD_KIND);
+    (v28.every(o => o.up && o.full && o.must && o.under === 's-key' && o.w === o.iw && Math.abs(o.ar - 1.78) < .03 && o.fit === 'contain' && o.closed && (o.after === 's-pick') && !o.replayFull && o.replayW < o.iw)
+      && kind.gauntlet === 'challenge' && kind.gauntlet2 === 'challenge')
+      ? ok(`#496 / 67.28 every chest's video comes straight from its card over the chest's own screen — ${v28.map(o => o.chest).join(', ')} — full screen the first time (${v28[0].w}px wide, letterboxed, contain, mandatory), and only when it ends does the map come; a replay from About is the inset player; a Gauntlet reward says "(${kind.gauntlet})"`)
+      : bad('#496 / 67.28 the chest videos', JSON.stringify({ v28, kind: [kind.gauntlet, kind.gauntlet2] }));
+    globalThis.__v28 = v28;
+  }
 }

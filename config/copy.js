@@ -234,7 +234,7 @@ export const GRID = { chest:{ games:'Games chest', key:'Skill chest', pro:'Pro c
 /* build 66 (65.15): WHAT KIND OF THING EACH REWARD IS, under its name in brackets on the chest's screen and beside the chest on the map — keyed by the
    reward's symbol (config/chests.js SYMBOLS), so a reward is never typed twice: every `bg-` symbol is a background, every key symbol a key. `line`
    wraps it. Elsewhere the kind is already said: an achievement's toast reads "unlocks rain background", and Progress groups its unlocks by kind */
-export const REWARD_KIND = { line:'({kind})', bg:'background', palette:'screen', key:'key', keypro:'key', keyauthor:'key', video:'video', gauntlet:'game mode', gauntlet2:'game mode', cosmetic:'music, sound and colours' };
+export const REWARD_KIND = { line:'({kind})', bg:'background', palette:'screen', key:'key', keypro:'key', keyauthor:'key', video:'video', gauntlet:'challenge', gauntlet2:'challenge', cosmetic:'music, sound and colours' };
 export const CHEST_WORDS = {
   // build 65 (64.15): and one background, Snow, so the Games chest tutorial always has something to pick
   games:[{ w:'CUSTOMISE', sym:'palette', to:'s-custom' }, { w:'SKILL KEY', sym:'key', to:'key:0' }, { w:'SNOW SKY', sym:'bg-snow', to:'s-custom' }],

@@ -75,6 +75,7 @@ import { CHESTS, GAUNTLETS } from "../../config/chests.js";
 import { CARD, GAUNTLET, GRID, KEY, SHEET } from "../../config/copy.js";
 import { EARN_NEXT, EARN_SKIP_AT, KEY_ART, KEY_EARN, KEY_FINISH, KEY_INTRO } from "../../config/keys.js";
 import { MESSAGES } from "../../config/messages.js";
+import { playVideo } from "../video.js";
 import { MODE_NAME } from "../../config/games.js";
 import { $, T, esc } from "../../core.js";
 import { emit, on } from "../../core/events.js";
@@ -657,7 +658,12 @@ function openNow(id) { if (chestState(id) !== 'ready') return false; askClose();
      congratulations card ends it (item 22). The tap still goes to the MAP with the chest in view, where its words spill out (L.11b). */
   playReveal($('#key-cere'), { kind: 'chest', id, col: chestCol(id), stage: chestStage(id, { was: r.was, now: r.now }), gifts: giftsOf(id), card: chestCard(id, r.now),
     // v26 (item 11, build 48): a chest opened from a key a run just finished goes back to that run's result; otherwise to the map, its words spilling
-    onDone: () => { if (autoBack) { handBack(); return; } show('s-pick', { chest: id }); } });
+    /* build 68 (67.28 / #496): AND THE CHEST'S VIDEO COMES STRAIGHT AFTER ITS CARD — the TV comes on over the chest's own screen, full screen the first
+       time, and only when it has ended (or been closed) and switched off does the map come, its rewards under "You found". The map never shows in
+       between; it used to, with the video popping up a second later */
+    onDone: () => { const next = () => { if (autoBack) { handBack(); return; } show('s-pick', { chest: id }); };
+      const m = MESSAGES.find(x => x.by && x.by.chest === id && x.file);
+      if (m && playVideo(m, { full: !(prefs.msgSeen || {})[m.id], after: next })) return; next(); } });
   if (c && typeof c.screen === 'number') openKey = c.screen;
   render(); Music.menu(themeOf(keyTiers()[openKey]));
   return true; }

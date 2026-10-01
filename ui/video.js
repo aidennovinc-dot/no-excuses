@@ -83,8 +83,11 @@ const dueClear = () => { if (prefs.mustWatch) { prefs.mustWatch = ''; save(); } 
 const otherUp = () => [...document.querySelectorAll('.cere')].some(e => !e.hidden) || !!(document.getElementById('welcome') && !document.getElementById('welcome').hidden) || !!$('#adbreak.on');
 document.addEventListener('click', e => { const id = videoDue(); if (!id || videoOn() || otherUp()) return;
   e.stopImmediatePropagation(); e.preventDefault(); playVideo(MESSAGES.find(m => m.id === id)); }, true);
-function playVideo(m) { if (!m || !m.file) return false;
+/* build 68 (#496, 67.28): `o.full` — a chest video's FIRST viewing is full screen, the picture the phone's whole width, letterboxed (contain, never
+   crop), its chest's colour as the edge; a replay from About keeps the inset player. `o.after` runs once the player has closed (the map after a chest) */
+function playVideo(m, o = {}) { if (!m || !m.file) return false;
   build(); clearAt(); closing = 0;
+  host._after = typeof o.after === 'function' ? o.after : null; host.classList.toggle('vfull', !!o.full);
   must = videoDue() === m.id; if (must) dueClear();
   host.hidden = false; host.classList.remove('voff', 'vlit'); host.classList.toggle('vmust', must); host.dataset.msg = m.id;
   host.style.setProperty('--vg', msgCol(m) || '#FFFFFF');
@@ -159,7 +162,8 @@ function closeVideo() { if (!host || host.hidden || closing || must) return fals
     if (vid) { try { vid.pause(); vid.removeAttribute('src'); vid.load(); } catch (e) { } }
     const was = host.dataset.msg; delete host.dataset.msg; host.querySelector('.vpic').innerHTML = ''; host.querySelector('.vcc').textContent = ''; vid = null; closing = 0;
     // build 65 (64.7 / 64.14): the clip is over and the player gone — ended or tapped away, the same event. The first-time tutorials start here
-    emit('video:closed', { id: was || '' }); });
+    emit('video:closed', { id: was || '' });
+    const after = host._after; host._after = null; host.classList.remove('vfull'); if (after) after(); });
   return true; }
 
 const videoOn = () => !!(host && !host.hidden);

@@ -362,19 +362,20 @@ export async function run() {
          anywhere opens it, the Welcome clip for now; a tap outside and a tap on the picture do nothing — it plays to the end, then the tutorial
          starts. A replay from About closes at a tap */
       await page.evaluate(() => document.querySelector('#grid .chest[data-chest="games"]').click()); await sleep(600); await revealDone({ owed: true }); await sleep(400);
-      const v18 = { owed: await page.evaluate(async () => (await import('./ui/video.js')).videoDue()), boxBefore: await box() };
+      // AMENDED at build 68 (67.28 / #496): the video is not owed to a later tap any more — it is already playing, full screen, over the chest's own screen
+      const v18 = { owed: await page.evaluate(() => { const h = document.getElementById('vplay'); return h && !h.hidden && h.classList.contains('vfull') ? h.dataset.msg : ''; }), boxBefore: await box(), under: (await state()).screen };
       await anywhere(); await sleep(400);
       Object.assign(v18, await page.evaluate(async () => { const h = document.getElementById('vplay'), v = h && h.querySelector('video'), wait = ms => new Promise(r => setTimeout(r, ms));
         const o = { open: !!h && !h.hidden, msg: h && h.dataset.msg, src: v ? v.querySelector('source').getAttribute('src') : '', must: h.classList.contains('vmust') };
         h.querySelector('.vback')?.click(); h.click(); await wait(300); o.afterOutside = !h.hidden;
         h.querySelector('.vframe')?.click(); await wait(100); o.notPaused = !!v && !v.paused;
-        v.dispatchEvent(new Event('ended')); await wait(1500); o.closedAtEnd = h.hidden; o.seen = !!JSON.parse(localStorage.getItem('ne')).prefs.msgSeen.games;
+        v.dispatchEvent(new Event('ended')); await wait(1500); o.closedAtEnd = h.hidden; o.seen = !!JSON.parse(localStorage.getItem('ne')).prefs.msgSeen.games; o.mapAfter = document.querySelector('.screen.on')?.id;
         const M = (await import('./config/messages.js')).MESSAGES, V = await import('./ui/video.js'); V.playVideo(M.find(m => m.id === 'games')); await wait(300);
         o.replayMust = h.classList.contains('vmust'); h.click(); await wait(1200); o.replayClosed = h.hidden; return o; }));
       const files18 = await page.evaluate(async () => { const M = (await import('./config/messages.js')).MESSAGES; return M.filter(m => m.by && m.by.chest).map(m => m.file); });
-      (v18.owed === 'games' && !v18.boxBefore && v18.open && v18.msg === 'games' && v18.src === 'video/welcome-test.mp4' && v18.must && v18.afterOutside && v18.notPaused && v18.closedAtEnd && v18.seen
+      (v18.owed === 'games' && v18.under !== 's-pick' && v18.mapAfter === 's-pick' && !v18.boxBefore && v18.open && v18.msg === 'games' && v18.src === 'video/welcome-test.mp4' && v18.must && v18.afterOutside && v18.notPaused && v18.closedAtEnd && v18.seen
         && !v18.replayMust && v18.replayClosed && files18.length === 4 && files18.every(f => f === 'video/welcome-test.mp4'))
-        ? ok('65.18 a chest\'s video is owed when its card is continued: no tutorial box meanwhile; the next tap anywhere plays it (the Welcome clip, named per chest for all four), a tap outside or on the picture does nothing, it closes at its end; a replay from About closes at a tap')
+        ? ok('67.28 / 65.18 a chest\'s video plays straight from its card, full screen, over the chest\'s own screen (no map in between, no tutorial box meanwhile); a tap outside or on the picture does nothing the first time, it closes at its end and only then the map; a replay from About closes at a tap')
         : bad('65.18 the owed chest video', JSON.stringify({ v18, files18 }));
       const CG = await page.evaluate(async () => (await import('./config/copy.js')).TUTORIAL.games), gg = [], UG = CG.map(s => s.replace(/\[\/?(green|yellow|red)\]/g, ''));
       await page.evaluate(async () => { const E = await import('./core/events.js'); window.__nav = []; window.__clk = null;
