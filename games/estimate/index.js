@@ -47,7 +47,11 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
   /* how much the reveal has to shrink its two shapes so neither reaches the panel. The bars and the numbers are worked out
      from the REAL sizes before this is applied, and both shapes take the SAME factor, so nothing about the comparison moves —
      it is the drawing that is scaled, not the estimate. 1 whenever there is room, which is most rounds. */
-  revK(...sizes){ if(this.cut()) return 1;
+  /* build 66 (65.6): RETIRED — the reveal draws both shapes at their TRUE scale. Aiden: "when the shape gets grown and then when it gets calculated, it
+     shrinks itself ... if it gets shrunk, it makes it confusing." A shape too big for the room spills past its outline or runs under the panel, and
+     the panel (#hcalc, above the field) sits over it; overflow is the lesser problem. Kept as the one place a factor would go */
+  revK(){ return 1; },
+  revKWas(...sizes){ if(this.cut()) return 1;
     const f=$('#hfield').getBoundingClientRect();
     // the panel is `display:none` until calc() shows it, so its top is taken from the SPLIT rather than from its box — which is
     // the same number the panel is positioned by (mount writes it), so the two can never drift

@@ -261,6 +261,9 @@ export async function run() {
       ? ok(`60.23 the player picker is ONE component on both screens — the same two rows, the same words ("${pc60.sheetSolo.top.map(c => c.text).join('" | "')}"), equal widths (${pc60.sheetSolo.top.map(c => c.w).join(' and ')}px on the sheet, ${pc60.resultSolo.top.map(c => c.w).join(' and ')}px on the result), the selected one in the same orange (${PRESS60}) on both — and so is the selected game tile under it — with the Pass & play / Versus row hidden until With a friend is picked and sliding in from 0px when it is`)
       : bad('60.23 the player picker', JSON.stringify(pc60)); }
 
+  /* ---- REWRITTEN at build 66 (65.6, reversing 60.21's shrink): THE GROW RESULT KEEPS THE SHAPE AT ITS TRUE SCALE. The shape YOU made is drawn on the
+     result at exactly the size it was when you let go — never scaled down to clear the panel — and where a big one runs under the panel, the panel
+     is on top (the top element at an overlapping point is the panel's). 60.21's own words below, for the history: */
   /* ---- v31 (60.21, build 60): THE GROW RESULT'S SHAPE AND ITS PANEL NEVER OVERLAP ----
      Both were centred on the field, so a grown shape was drawn straight through the TARGET / YOURS bars and their numbers. The
      panel is at the foot of the field now (HOLD_LAYOUT.split) and the reveal scales BOTH shapes by one factor so neither can
@@ -283,15 +286,21 @@ export async function run() {
         if (!HD.ctx) break;
         // a 60% overshoot: the round that used to draw through the panel
         const ms = HD.target / (G.CFG.holdRate * C.vmin()) * 1000 * Math.sqrt(1.6);
-        HD.down({ type: 'down', x: 0, y: 0 }); await wait(ms); HD.up();
+        HD.down({ type: 'down', x: 0, y: 0 }); await wait(ms);
+        const held = document.querySelector('#hm path').getBoundingClientRect(); HD.up();
         for (let i = 0; i < 500 && !document.getElementById('hcalc').classList.contains('on'); i++) await wait(25);
         await wait(2400);
         const f = document.getElementById('hfield').getBoundingClientRect(), c = document.getElementById('hcalc').getBoundingClientRect();
+        const now = document.querySelector('#hm path').getBoundingClientRect();
+        // where the shape runs under the panel, what a tap there would hit is the panel
+        const ov = { l: Math.max(now.left, c.left), r: Math.min(now.right, c.right), t: Math.max(now.top, c.top), b: Math.min(now.bottom, c.bottom) };
+        const under = ov.r > ov.l && ov.b > ov.t ? (() => { const s = getComputedStyle(document.getElementById('hcalc')).pointerEvents; document.getElementById('hcalc').style.pointerEvents = 'auto';
+          const t = document.elementFromPoint((ov.l + ov.r) / 2, (ov.t + ov.b) / 2); document.getElementById('hcalc').style.pointerEvents = s; return !!t && !!t.closest('#hcalc'); })() : null;
         const boxes = [...document.querySelectorAll('#hg path,#ht path,#hm path')].filter(p => p.getAttribute('d'))
           .map(p => p.getBoundingClientRect()).filter(r => r.width > 1);
         const hit = (a, b) => a.x < b.right && b.x < a.right && a.y < b.bottom && b.y < a.bottom;
         const rows = [...document.querySelectorAll('#hcalc b, #hcalc .hrow, #hcalc span')].map(e => e.getBoundingClientRect()).filter(r => r.width > 1);
-        out.rounds.push({ shapes: boxes.length,
+        out.rounds.push({ shapes: boxes.length, held: [Math.round(held.width), Math.round(held.height)], drawn: [Math.round(now.width), Math.round(now.height)], under,
           gap: boxes.length ? Math.round(c.top - Math.max(...boxes.map(b => b.bottom))) : null,
           panelHits: boxes.filter(b => hit(b, c)).length,
           textHits: rows.filter(r => boxes.some(b => hit(b, r))).length,
@@ -299,10 +308,11 @@ export async function run() {
         HD.input(HD.ctx, { type: 'down', x: 0, y: 0 }); await wait(700);
       }
       (await import('./run/run.js')).abort(); await wait(300); return out; });
-    const bad60 = gr60.rounds.filter(r => !r.shapes || r.panelHits || r.textHits || r.gap === null || r.gap < 0);
+    // held is read on the last frame of the hold, so the shape at release can be a few frames bigger; a shrink (the old reveal) makes it smaller
+    const bad60 = gr60.rounds.filter(r => !r.shapes || [0, 1].some(i => r.drawn[i] < r.held[i] - 1 || r.drawn[i] > r.held[i] * 1.06) || r.under === false);
     (gr60.rounds.length >= 4 && bad60.length === 0)
-      ? ok(`60.21 the Grow result's shape and its TARGET / YOURS panel never overlap — ${gr60.rounds.length} rounds each held 60% over, every one with the panel at ${gr60.rounds[0].panelTopShare} of the field (HOLD_LAYOUT.split ${gr60.split}) and the shape clear above it by ${gr60.rounds.map(r => r.gap).join(', ')}px; no shape box touches the panel or any of its bars or numbers`)
-      : bad('60.21 the Grow result overlaps', JSON.stringify({ rounds: gr60.rounds.length, bad60 })); }
+      ? ok(`65.6 the Grow result draws your shape at its true scale — ${gr60.rounds.length} rounds each held 60% over, drawn ${gr60.rounds.map(r => r.drawn[0] + 'px').join(', ')} wide, the size each was at release; where one runs under the panel (${gr60.rounds.filter(r => r.under).length} of them) the panel is on top`)
+      : bad('65.6 the Grow result shrinks or hides the shape', JSON.stringify({ rounds: gr60.rounds.length, bad60 })); }
 
   /* ---- v31 (60.20, build 60): A GOAL BADGE THAT DOES NOT FIT SCANS, AND FREEZES WHILE A ROUND IS LIVE ----
      Three facts, and the third is the one that matters: movement in peripheral vision provokes false starts in Flash, Dots and
