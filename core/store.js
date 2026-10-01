@@ -132,6 +132,8 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
     /* v25 (item 23, build 46): which of the eight messages on About have been watched — the small dot beside the menu row comes off a slot
        once it has. Progress: Fresh game clears it. An id no longer in config/messages.js is dropped, so deleting a slot costs nothing. */
     msgSeen:isObj(p.msgSeen)?Object.fromEntries(Object.entries(p.msgSeen).filter(([k,v])=>MESSAGES.some(m=>m.id===k)&&v).map(([k])=>[k,1])):{},
+    // build 66 (65.18): a chest's video owed to the player — its first viewing is the next tap, and it plays to the end (ui/video.js)
+    mustWatch:typeof p.mustWatch==='string'&&MESSAGES.some(m=>m.id===p.mustWatch)?p.mustWatch:'',
     /* v27 (item 8, build 52): WHICH GAUNTLETS HAVE BEEN PLAYED — written by ui/screens/gauntlet.js the first time that Gauntlet's screen is
        opened, and what opens its message slot. Not the chest it came out of: the chest only makes the Gauntlet exist. Progress: Fresh game
        clears it. No ladder step — an absent field means neither has been played, which is what it means. */

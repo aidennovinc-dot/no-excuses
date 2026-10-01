@@ -576,14 +576,15 @@ export async function run() {
     await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-about'); }); await sleep(500);
     const play = await page.evaluate(async P => { const CH = await import('./ui/chest.js'); const M = await import('./config/messages.js');
       const wait = ms => new Promise(r => setTimeout(r, ms));
-      document.querySelector('#msglist .msgrow[data-msg="pro"]').click(); await wait(60);
+      // AMENDED at build 66 (65.18): the chest slots hold the portrait Welcome clip now, so the 16:9-with-captions player is driven on Gauntlet Mini's slot
+      document.querySelector('#msglist .msgrow[data-msg="g1"]').click(); await wait(60);
       const h = document.getElementById('vplay'), fr = h.querySelector('.vframe'), v = h.querySelector('video');
       const anim = el => el.getAnimations().map(a => a.animationName).filter(Boolean).join();
       const out = { built: !!h, hidden: h.hidden, von: h.classList.contains('von'), title: h.querySelector('.vtitle').textContent,
         foot: h.querySelector('.vfoot').textContent, over: !!h.querySelector('.vpic video') && !h.querySelector('.vframe .vtitle, .vframe .vcc, .vframe .vfoot'),
         ctrl: v ? v.hasAttribute('controls') : true, inline: v ? v.hasAttribute('playsinline') : false, auto: v ? v.hasAttribute('autoplay') : true,
         src: v ? v.querySelector('source').getAttribute('src') : '', cc: v ? !!v.querySelector('track[kind="captions"][default]') : false,
-        glowVar: h.style.getPropertyValue('--vg'), want: CH.msgCol(M.MESSAGES.find(x => x.id === 'pro')),
+        glowVar: h.style.getPropertyValue('--vg'), want: CH.msgCol(M.MESSAGES.find(x => x.id === 'g1')), wantTitle: (await import('./progress/key.js')).msgTitle(M.MESSAGES.find(x => x.id === 'g1')),
         vars: [].concat(P.on.steps, P.off.steps).every(x => h.style.getPropertyValue('--v-' + x.name + '-at') === x.at + 'ms' && h.style.getPropertyValue('--v-' + x.name + '-ms') === x.ms + 'ms'),
         anims: [anim(fr), anim(h.querySelector('.vpic')), anim(h.querySelector('.vline'))].join('/') };
       // the frame is inset from every edge, and it is 16:9 - measured off the box the page actually laid out
@@ -600,7 +601,7 @@ export async function run() {
       out.voff = h.classList.contains('voff'); out.offAnims = [anim(fr), anim(h.querySelector('.vpic')), anim(h.querySelector('.vline'))].join('/');
       await wait(P.off.ms + 250); out.gone = h.hidden && !h.querySelector('video');
       return out; }, P52);
-    const shown = play.built && !play.hidden && play.von && play.title === 'Have you gone pro?' && /tap outside to close/i.test(play.foot)
+    const shown = play.built && !play.hidden && play.von && play.title === play.wantTitle && /tap outside to close/i.test(play.foot)
       && play.inline && !play.ctrl && !play.auto && play.src === 'video/test-card.mp4' && play.cc && play.trackMode === 'hidden' && play.ccBelow && play.over;
     const framed = play.box.l >= 12 && Math.abs(play.box.l - play.box.rr) <= 2 && play.box.t > 0 && play.box.b > 0 && Math.abs(play.box.ratio - 16 / 9) < .05
       && Math.abs(play.box.w - (390 - 390 * P52.inset / 100 * 2)) <= 4;

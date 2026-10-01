@@ -43,6 +43,7 @@ import { Snd } from "../audio.js";
 import { define } from "./actions.js";
 import { show } from "./router.js";
 import { toast, toastBusy } from "./toast.js";
+import { videoDue } from "./video.js";
 
 /* ---------- where things are ---------- */
 // a fixed element has no offsetParent, so "on screen" is: not hidden, laid out, and not made invisible
@@ -56,7 +57,8 @@ const overlay=()=>vis($('#welcome'))||vis($('#vplay'))||!!$('#adbreak.on');
 /* 64.3: EVERYTHING A TUTORIAL WAITS FOR. The first run's result used to wait a flat 1.5s and then talk over the unlock toasts; now nothing shows
    while a toast is up or queued, while the result screen still has toasts it has not sent (`#s-over[data-busy]`, ui/screens/result.js), or while
    a chest ceremony, a reveal, a key animation or the key's own question is on the screen */
-const busy=()=>overlay()||toastBusy()||$('#s-over').hasAttribute('data-busy')||[...document.querySelectorAll('.cere')].some(vis)
+// build 66 (65.18): and while a chest's video is owed, so the next tap is the video's
+const busy=()=>overlay()||!!videoDue()||toastBusy()||$('#s-over').hasAttribute('data-busy')||[...document.querySelectorAll('.cere')].some(vis)
   ||$('#s-key').classList.contains('kearning')||vis($('#key-ask'));
 // the map's first open is drawn out; the walkthrough waits for it. A chest that breathes forever is not "the intro"
 const mapSettled=()=>!$('#grid').getAnimations({subtree:true}).some(a=>{ try{ return a.playState==='running'&&a.effect.getComputedTiming().iterations!==Infinity; }catch(e){ return false; } });

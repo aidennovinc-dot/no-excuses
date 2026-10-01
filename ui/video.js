@@ -25,7 +25,7 @@
 
    Presentation only (L10): watching a clip marks it watched and nothing else. */
 import { MSG } from "../config/copy.js";
-import { PLAYER } from "../config/messages.js";
+import { MESSAGES, PLAYER } from "../config/messages.js";
 import { Snd } from "../audio.js";
 import { $, esc } from "../core.js";
 import { emit } from "../core/events.js";
@@ -69,9 +69,24 @@ const glow = on => { if (host) host.classList.toggle('vlit', !!on); };
 
 /* OPEN. The picture is built, the power-on runs its three steps, and the clip starts as the frame opens — so the first frame the player sees is
    the picture arriving, not a black box waiting. Marks the slot watched, which is what takes the green off the About row (item 23 / v26 item 4). */
+/* ---------- build 66 (65.18): A CHEST'S VIDEO IS WATCHED ONCE, TO THE END ----------
+   Aiden: "make all of the videos that get unlocked from the chests as mandatory viewing. It's a click anywhere type of thing." When a chest's
+   congratulations card is continued, its video is OWED (`prefs.mustWatch`, so a reload keeps it): the next tap anywhere opens it, and that first
+   viewing cannot be closed or paused until it ends — the foot line goes and a tap outside does nothing. A clip that fails to play can still be
+   closed, so a missing file never traps anyone. Watched once, it is an ordinary message: a replay from About closes at a tap. The first-time
+   tutorials wait for it the way they wait for the Welcome (ui/tutorial.js busy()) */
+let must = false;
+const videoDue = () => { const id = prefs.mustWatch; return id && !(prefs.msgSeen || {})[id] ? id : ''; };
+function mustWatch(id) { if (!id || (prefs.msgSeen || {})[id] || !MESSAGES.some(m => m.id === id && m.file)) return; prefs.mustWatch = id; save(); }
+const dueClear = () => { if (prefs.mustWatch) { prefs.mustWatch = ''; save(); } };
+// something else owns the screen: a ceremony, the Welcome moment, an ad break — the owed clip waits for the next tap after it
+const otherUp = () => [...document.querySelectorAll('.cere')].some(e => !e.hidden) || !!(document.getElementById('welcome') && !document.getElementById('welcome').hidden) || !!$('#adbreak.on');
+document.addEventListener('click', e => { const id = videoDue(); if (!id || videoOn() || otherUp()) return;
+  e.stopImmediatePropagation(); e.preventDefault(); playVideo(MESSAGES.find(m => m.id === id)); }, true);
 function playVideo(m) { if (!m || !m.file) return false;
   build(); clearAt(); closing = 0;
-  host.hidden = false; host.classList.remove('voff', 'vlit'); host.dataset.msg = m.id;
+  must = videoDue() === m.id; if (must) dueClear();
+  host.hidden = false; host.classList.remove('voff', 'vlit'); host.classList.toggle('vmust', must); host.dataset.msg = m.id;
   host.style.setProperty('--vg', msgCol(m) || '#FFFFFF');
   host.querySelector('.vtitle').textContent = msgTitle(m);
   host.querySelector('.vcc').textContent = '';
@@ -110,7 +125,7 @@ function playVideo(m) { if (!m || !m.file) return false;
      THE CHEST CARD'S BUTTON IS NOT A SECOND CASE. The item allows for "inline videos on a Congratulations card can't close, so
      they go back to their play button" — there are none: `reveal-msg` takes the player to About and plays it in this same shared
      player (item 23), so a clip opened from a card closes the way every other one does. Named in the outcome. */
-  vid.addEventListener('ended', () => { glow(false); closeVideo(); });
+  vid.addEventListener('ended', () => { glow(false); must = false; closeVideo(); });
   /* v29 (item 10, build 55): A CLIP THAT WILL NOT PLAY SAYS SO, AND play() IS CALLED IN THE TAP'S OWN TASK.
      Nothing listened for `error` and the play() rejection was swallowed by a bare catch, so a missing file, a 404 or an iOS
      NotAllowedError all showed the same thing: a silent black rectangle inside a glowing frame that never lit, with "tap outside to
@@ -118,7 +133,7 @@ function playVideo(m) { if (!m || !m.file) return false;
      un-muted playback through a transient-activation window that current iOS is generous with and iOS <= 16.3 and some WKWebView
      configurations are not. It is called synchronously now; the frame is still clipped shut for those 320ms, so the picture still
      OPENS, and the power-on sound still lands on its own beat. */
-  const failed = () => { if (!host || host.dataset.msg !== m.id) return; glow(false); host.classList.add('vfail');
+  const failed = () => { if (!host || host.dataset.msg !== m.id) return; glow(false); host.classList.add('vfail'); must = false; host.classList.remove('vmust');
     const box = host.querySelector('.vcc'); if (box) box.textContent = MSG.unavailable; };
   vid.addEventListener('error', failed);
   const src = pic.querySelector('source'); if (src) src.addEventListener('error', failed);
@@ -134,7 +149,7 @@ function playVideo(m) { if (!m || !m.file) return false;
 
 /* CLOSE. The reverse, and the clip stops on the first beat of it so nothing is heard playing behind a picture that is collapsing. The element is
    emptied at the end rather than removed: one player, built once (item 10). A second close while one is running is ignored. */
-function closeVideo() { if (!host || host.hidden || closing) return false;
+function closeVideo() { if (!host || host.hidden || closing || must) return false;
   closing = 1; clearAt();
   if (vid) { try { vid.pause(); } catch (e) { } }
   glow(false); host.classList.remove('von'); void host.offsetWidth; host.classList.add('voff');
@@ -155,6 +170,6 @@ const onVideoSeen = fn => { onSeen = fn; };
 /* the two taps. A tap on the picture pauses and plays it — the only control there is, because item 9 puts nothing over the picture; a tap anywhere
    else closes. Both are silent: the player has its own power-on and power-off, and a click sound on top of a thunk is one sound too many. */
 define({ vclose() { closeVideo(); },
-  vtap() { if (!vid) return; if (vid.paused) { const p = vid.play(); if (p && p.catch) p.catch(() => { }); } else vid.pause(); } });
+  vtap() { if (!vid || must) return; if (vid.paused) { const p = vid.play(); if (p && p.catch) p.catch(() => { }); } else vid.pause(); } });
 
-export { closeVideo, onVideoSeen, playVideo, videoOn };
+export { closeVideo, mustWatch, onVideoSeen, playVideo, videoDue, videoOn };

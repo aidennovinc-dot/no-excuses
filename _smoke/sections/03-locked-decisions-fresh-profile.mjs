@@ -59,7 +59,7 @@ export async function run() {
       const b = t.querySelector('.tbox').getBoundingClientRect(), over = drawn && !(r.bottom <= b.top || r.top >= b.bottom), a = t.querySelector('.tarrow');
       return { text: t.querySelector('p').textContent, buttons: t.querySelectorAll('button').length, drawn, ring: [Math.round(r.width), Math.round(r.height)], col: getComputedStyle(q).borderTopColor,
         tag: drawn ? t.querySelector('.ttag').textContent : '', arrow: getComputedStyle(a).display !== 'none', centre: [Math.round(b.x + b.width / 2 - innerWidth / 2), Math.round(b.y + b.height / 2 - innerHeight / 2)], top: Math.round(b.top), covers: over,
-        inside: b.top >= 0 && b.bottom <= innerHeight && b.left >= 0 && b.right <= innerWidth, tail: getComputedStyle(tl).display !== 'none', glow: document.querySelectorAll('.tglow').length }; });
+        inside: b.top >= 0 && b.bottom <= innerHeight && b.left >= 0 && b.right <= innerWidth, tail: getComputedStyle(tl).display !== 'none', glow: document.querySelectorAll('.tglow').length, rt: Math.round(r.top) }; });
     // the Welcome card may come up on a result (before 62.12 moved it, it did on the first one); "Later" is what a player would tap
     const later = () => page.evaluate(() => { const w = document.getElementById('welcome'); if (w && !w.hidden && w.getClientRects().length) w.querySelector('[data-act="wlater"]')?.click(); });
     const waitText = async (want, n = 80) => { for (let i = 0; i < n; i++) { const b = await box(); if (b && b.text === want) return b; await later(); await sleep(100); } return await box(); };
@@ -322,7 +322,24 @@ export async function run() {
       await page.evaluate((u, si) => { localStorage.setItem('ne', JSON.stringify({ v: 7, prefs: { story: 1, gridSeen: 1, menuSeen: 1, snd: 'off', played: 1, tut: 2, welcomeSeen: 1 }, runs: [], ach: {}, unlock: u, intro: si, seen: {}, bars: {} })); }, unl, SEEN_INTRO);
       await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
       await page.evaluate(async () => (await import('./ui/router.js')).show('s-pick')); await sleep(900);
-      await page.evaluate(() => document.querySelector('#grid .chest[data-chest="games"]').click()); await sleep(600); await revealDone(); await sleep(400);
+      /* build 66 (65.18): THE CHEST'S VIDEO IS OWED FIRST. The card continued, the Games chest's clip is owed: no tutorial box shows; the next tap
+         anywhere opens it, the Welcome clip for now; a tap outside and a tap on the picture do nothing — it plays to the end, then the tutorial
+         starts. A replay from About closes at a tap */
+      await page.evaluate(() => document.querySelector('#grid .chest[data-chest="games"]').click()); await sleep(600); await revealDone({ owed: true }); await sleep(400);
+      const v18 = { owed: await page.evaluate(async () => (await import('./ui/video.js')).videoDue()), boxBefore: await box() };
+      await anywhere(); await sleep(400);
+      Object.assign(v18, await page.evaluate(async () => { const h = document.getElementById('vplay'), v = h && h.querySelector('video'), wait = ms => new Promise(r => setTimeout(r, ms));
+        const o = { open: !!h && !h.hidden, msg: h && h.dataset.msg, src: v ? v.querySelector('source').getAttribute('src') : '', must: h.classList.contains('vmust') };
+        h.querySelector('.vback')?.click(); h.click(); await wait(300); o.afterOutside = !h.hidden;
+        h.querySelector('.vframe')?.click(); await wait(100); o.notPaused = !!v && !v.paused;
+        v.dispatchEvent(new Event('ended')); await wait(1500); o.closedAtEnd = h.hidden; o.seen = !!JSON.parse(localStorage.getItem('ne')).prefs.msgSeen.games;
+        const M = (await import('./config/messages.js')).MESSAGES, V = await import('./ui/video.js'); V.playVideo(M.find(m => m.id === 'games')); await wait(300);
+        o.replayMust = h.classList.contains('vmust'); h.click(); await wait(1200); o.replayClosed = h.hidden; return o; }));
+      const files18 = await page.evaluate(async () => { const M = (await import('./config/messages.js')).MESSAGES; return M.filter(m => m.by && m.by.chest).map(m => m.file); });
+      (v18.owed === 'games' && !v18.boxBefore && v18.open && v18.msg === 'games' && v18.src === 'video/welcome-test.mp4' && v18.must && v18.afterOutside && v18.notPaused && v18.closedAtEnd && v18.seen
+        && !v18.replayMust && v18.replayClosed && files18.length === 4 && files18.every(f => f === 'video/welcome-test.mp4'))
+        ? ok('65.18 a chest\'s video is owed when its card is continued: no tutorial box meanwhile; the next tap anywhere plays it (the Welcome clip, named per chest for all four), a tap outside or on the picture does nothing, it closes at its end; a replay from About closes at a tap')
+        : bad('65.18 the owed chest video', JSON.stringify({ v18, files18 }));
       const CG = await page.evaluate(async () => (await import('./config/copy.js')).TUTORIAL.games), gg = [], UG = CG.map(s => s.replace(/\[\/?(green|yellow|red)\]/g, ''));
       await page.evaluate(async () => { const E = await import('./core/events.js'); window.__nav = []; window.__clk = null;
         window.addEventListener('click', () => { const t = document.getElementById('tut'); window.__clk = { t: performance.now(), up: !!t && !t.hidden, text: !!t && !t.hidden && t.classList.contains('text') }; }, true);
@@ -424,7 +441,8 @@ export async function run() {
             const st = await page.evaluate(async () => (await import('./ui/tutorial.js')).tutNow());
             if (!st || st.id !== T.id) break;
             if (!st.shown) { if (++idle > 60) { why = 'no box came at step ' + st.i; break; } await sleep(120); continue; }
-            idle = 0; const b = await box(); if (!b) continue;
+            // measured once the box and its ring have stopped moving — a sheet still sliding up carries its ring with it
+            idle = 0; let b = await box(); for (let k = 0; k < 12 && b; k++) { await sleep(250); const b2 = await box(); if (b2 && b2.top === b.top && b2.rt === b.rt) break; b = b2; } if (!b) continue;
             const m = await page.evaluate(() => { const p = document.createElement('div'); p.style.cssText = 'position:fixed;top:env(safe-area-inset-top);bottom:env(safe-area-inset-bottom);width:1px'; document.body.appendChild(p); const r = p.getBoundingClientRect(); p.remove();
               const bx = document.querySelector('#tut .tbox').getBoundingClientRect(); return { safe: bx.top >= r.top - .5 && bx.bottom <= r.bottom + .5 && bx.left >= 0 && bx.right <= innerWidth, scr: document.querySelector('.screen.on')?.id }; });
             const rec = { i: st.i, tap: st.tap, t: b.text.slice(0, 28), covers: b.covers, safe: m.safe, marks: /\[|\]/.test(b.text) };

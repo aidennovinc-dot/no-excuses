@@ -858,7 +858,8 @@ export async function run() {
      Testing, tapped through to the card, measured, then closed by a REAL tap on the dim ground above it */
   { const c61 = [];
     for (const id of ['key', 'pro', 'thorns']) {
-      await page.evaluate(id => { const n = JSON.parse(localStorage.getItem('ne')); n.prefs.chests = { games: 1, key: id !== 'key' ? 1 : 0, pro: id === 'thorns' ? 1 : 0 }; n.prefs.allOpen = true; localStorage.setItem('ne', JSON.stringify(n)); }, id);
+      // AMENDED at build 66 (65.18): the card closed in the loop before leaves its chest's video owed; this check is about the card, so it is settled
+      await page.evaluate(id => { const n = JSON.parse(localStorage.getItem('ne')); n.prefs.mustWatch = ''; n.prefs.chests = { games: 1, key: id !== 'key' ? 1 : 0, pro: id === 'thorns' ? 1 : 0 }; n.prefs.allOpen = true; localStorage.setItem('ne', JSON.stringify(n)); }, id);
       await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
       await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-testing'); }); await sleep(400);
       await page.evaluate(id => document.querySelector(`[data-act="dev-chest"][data-chest="${id}"]`).click(), id);

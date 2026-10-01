@@ -1913,6 +1913,8 @@
      config/chests.js METER_BANDS. 0–100 --mute with no effects, 100–200 --ink, 200–300 gold with an outer glow that strengthens across the
      band, 300–400 white on black with a spiked edge, a cold glow and a continuous shake. The shake steps between whole pixels, so the
      number never blurs. Green is never used (B.22). Presentation only (L10). */
+  /* build 66 (65.18): a chest's video on its first viewing plays to the end — no "tap outside to close" under it */
+  #vplay.vmust .vfoot{visibility:hidden}
   .meterv{font-weight:inherit;color:var(--mcol,var(--ink));display:inline-block;position:relative}
   /* build 66 (65.14): the Skill chest's 100% — a flash and a swell, then it stays gold: the moment the game is finished */
   .meterv.whole{color:#E8B84A;text-shadow:0 0 14px rgba(232,184,74,.75),0 0 30px rgba(232,184,74,.4);animation:mwhole .9s cubic-bezier(.2,1.4,.4,1) both}

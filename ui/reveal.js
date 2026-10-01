@@ -40,6 +40,7 @@ import { CARD, KEY } from "../config/copy.js";
 import { Music, Snd } from "../audio.js";
 import { esc } from "../core.js";
 import { chestSvg, msgPreview, symSvg } from "./chest.js";
+import { mustWatch } from "./video.js";
 
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -264,7 +265,9 @@ function tap(out) { if (!cur) return false;
   c.timers.push(setTimeout(() => { if (cur !== c) return; const b = c.host.querySelector('.rgo'); if (b) { b.disabled = false; b.classList.add('on'); } }, REVEAL.cardAt + REVEAL.cardGo));
   return true; }
 // the card's Continue. Answers whether it ended one
+// build 66 (65.18): continuing a chest's card leaves its video owed — the next tap anywhere plays it, to the end, the first time (ui/video.js)
 function go() { if (!cur || !cur.carded) return false; const c = cur; const b = c.host.querySelector('.rgo'); if (b && b.disabled) return false;
+  if (c.card && c.card.msg) mustWatch(c.card.msg);
   stop(); if (c.onDone) c.onDone(); return true; }
 const on = () => !!cur;
 // which message the card is offering, if any — ui/screens/key.js hands it to the About screen

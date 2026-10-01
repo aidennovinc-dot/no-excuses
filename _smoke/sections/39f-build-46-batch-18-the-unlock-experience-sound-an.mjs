@@ -47,19 +47,21 @@ export async function run() {
     await show46('s-about'); await sleep(600);
     const all = await page.evaluate(() => [...document.querySelectorAll('#msglist .msgrow')].map(r => r.classList.contains('locked')));
     // a clip is a file name and nothing else: empty one and the row says "video coming soon" and opens no player; put it back and it plays again
+    /* AMENDED at build 66 (65.18): the four chest slots carry the portrait Welcome clip with no captions now, so the clip-is-a-file-name round trip is
+       driven on the support slot, which keeps the 16:9 test card and its captions */
     const withFile = await page.evaluate(async () => { const M = await import('./config/messages.js'); const A = await import('./ui/router.js'); const wait = ms => new Promise(r => setTimeout(r, ms));
-      const m = M.MESSAGES.find(x => x.id === 'games'), keep = { file: m.file, cc: m.cc };
+      const m = M.MESSAGES.find(x => x.id === 'thanks'), keep = { file: m.file, cc: m.cc };
       m.file = ''; m.cc = '';
       A.show('s-menu'); await wait(120); A.show('s-about'); await wait(400);
-      document.querySelector('#msglist .msgrow[data-msg="games"]').click(); await wait(250);
-      const out = { soon: /video coming soon/i.test(document.querySelector('#msglist .msgrow[data-msg="games"] .msgtxt small').textContent), noPlayer: !document.querySelector('#vplay:not([hidden])') };
+      document.querySelector('#msglist .msgrow[data-msg="thanks"]').click(); await wait(250);
+      const out = { soon: /video coming soon/i.test(document.querySelector('#msglist .msgrow[data-msg="thanks"] .msgtxt small').textContent), noPlayer: !document.querySelector('#vplay:not([hidden])') };
       m.file = keep.file; m.cc = keep.cc;
       A.show('s-menu'); await wait(120); A.show('s-about'); await wait(400);
-      document.querySelector('#msglist .msgrow[data-msg="games"]').click(); await wait(500);
+      document.querySelector('#msglist .msgrow[data-msg="thanks"]').click(); await wait(500);
       const h = document.getElementById('vplay'), v = h && h.querySelector('video');
       out.has = !!v; out.inline = v ? v.hasAttribute('playsinline') : false; out.full = v ? !v.hasAttribute('autoplay') : false;
       out.src = v ? v.querySelector('source').getAttribute('src') : ''; out.cc = v ? !!v.querySelector('track[kind="captions"][default]') : false;
-      out.seen = JSON.parse(localStorage.getItem('ne')).prefs.msgSeen.games === 1;
+      out.seen = JSON.parse(localStorage.getItem('ne')).prefs.msgSeen.thanks === 1;
       const V = await import('./ui/video.js'); V.closeVideo(); await wait(700);
       /* the dot is "any open slot with a clip not yet watched", and since item 11 every slot HAS a clip — so the seven others are marked watched
          here and the eighth, watched above, is what the dot is then read against. Before build 52 every slot was a placeholder and one clip was
