@@ -155,4 +155,17 @@ export async function run() {
       ? ok(`67.27 each chest's video wears its chest's colour, in the player and on its About row: Games ${want.games}, Skill ${want.key}, Pro ${want.pro}, Author black-and-white teeth`)
       : bad('67.27 the chest video colours', JSON.stringify({ want, v: (globalThis.__v28 || []).map(o => [o.chest, o.edge, o.thorn]), rows }));
   }
+  /* build 68 (67.8): EVERY VIDEO HAS A THUMBNAIL — never a blank black box: About's every row, the Welcome card and a chest card's message row each show the
+     clip's still or, until the clip exists, the placeholder card carrying its name, with the play arrow over it */
+  {
+    await boot({ allOpen: true });
+    const th = await page.evaluate(async () => { (await import('./ui/router.js')).show('s-about'); await new Promise(r => setTimeout(r, 500));
+      const C = await import('./ui/chest.js'), M = (await import('./config/messages.js')).MESSAGES;
+      const rows = [...document.querySelectorAll('#msglist .msgrow .msgframe')].map(f => ({ card: !!f.querySelector('.mcard, .mthumb'), name: (f.querySelector('.mcard b') || {}).textContent || '' }));
+      const d = document.createElement('div'); d.innerHTML = C.msgPreview(M[0], { title: false }); const prev = { card: !!d.querySelector('.mcard, .mthumb'), play: !!d.querySelector('.mpplay') };
+      return { rows, prev }; });
+    (th.rows.length >= 5 && th.rows.every(r => r.card) && th.rows.filter(r => r.name).length >= 5 && th.prev.card && th.prev.play)
+      ? ok(`67.8 every video has a thumbnail — all ${th.rows.length} rows on About and the player's preview card show the placeholder card with the clip's name ("${th.rows[0].name}"…) under the play arrow; no blank black box`)
+      : bad('67.8 the video thumbnails', JSON.stringify(th));
+  }
 }

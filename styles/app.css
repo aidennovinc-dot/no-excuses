@@ -2326,6 +2326,13 @@
   /* build 68 (67.27): the frame IS the chest's colour now, not only its glow — the player, the thumbnail and the About row alike; the Author chest's
      edge is black-and-white teeth */
   .vframe,.mpframe,.msgframe{border-color:var(--vg,#FFFFFF)}
+  /* build 68 (67.8): the thumbnail — a dimmed still, or the placeholder card with the clip's name in the game's own face; the play arrow sits over it */
+  .mcard,.mthumb{position:absolute;inset:0;width:100%;height:100%}
+  .mcard{display:flex;align-items:center;justify-content:center;padding:0 8%;box-sizing:border-box;background:radial-gradient(120% 95% at 50% 35%,#202020,#040404);opacity:.6;pointer-events:none}
+  .mcard b{font-family:var(--title);font-size:clamp(8px,3.2vw,14px);letter-spacing:.14em;text-transform:uppercase;color:var(--ink);text-align:center;line-height:1.35;font-weight:700}
+  .msgframe .mcard b{font-size:6px;letter-spacing:.08em}
+  .mthumb{object-fit:cover;opacity:.55}
+  .mpplay,.mpsoon,.msgframe>i{position:relative;z-index:1}
   #vplay.vthorn .vframe,.vthorn .mpframe,.msgframe.vthorn{border:2px solid transparent;border-image:repeating-linear-gradient(45deg,#FFFFFF 0 3px,#000000 3px 6px) 2}
   #vplay.vfull{padding:0}
   #vplay.vfull .vback{background:#000}

@@ -107,11 +107,14 @@ function burstHtml(id) { const n = SPILL.particles;
 /* v30 (59.10, build 59): AND THE CARD'S SMALL FRAME TAKES THE CLIP'S SHAPE TOO. It is a POWERED-OFF frame — there is no video
    element in it to measure — so it reads `ratio` off the slot, which is why that field exists at all; the big player reads the
    file itself. A row with no `ratio` is 16:9, which is what the test card is, so nothing that has not been re-shot moves. */
+/* build 68 (67.8): EVERY VIDEO HAS A THUMBNAIL — a dimmed still from the clip (`thumb` on its row) with the play arrow over it, or, until the real clip
+   exists, a placeholder card in the game's style carrying the video's name. Never a blank black box. The same in About's list */
+const thumbHtml = m => m && m.thumb ? `<img class="mthumb" src="${esc(m.thumb)}" alt="">` : `<span class="mcard"><b>${esc(quoted(msgTitle(m)))}</b></span>`;
 function msgPreview(m, o = {}) { if (!m) return '';
   const col = msgCol(m) || '', has = !!m.file && !o.soon;
   // build 68 (67.6b): every frame is 16:9 — the row's own shape is no longer read
   return `<span class="mprev${o.big ? ' big' : ''}${has ? ' has' : ''}${msgThorn(m) ? ' vthorn' : ''}" style="${col ? `--vg:${col};` : ''}">`
-    + `<span class="mpframe"><span class="mppic">${has ? '<i class="mpplay"></i>' : `<i class="mpsoon">${esc(o.soon || MSG.soon)}</i>`}</span></span>`
+    + `<span class="mpframe"><span class="mppic">${thumbHtml(m)}${has ? '<i class="mpplay"></i>' : `<i class="mpsoon">${esc(o.soon || MSG.soon)}</i>`}</span></span>`
     + (o.title === false ? '' : `<b class="mptitle">${esc(quoted(msgTitle(m)))}</b>`) + '</span>'; }
 
 /* L.8d / L.8e: THE BAND A METER FIGURE IS IN, worn as `mb0`–`mb3` with its strength inside the band (`--mk`, 0..1), so 105% and 195% look
@@ -127,4 +130,4 @@ function meterLook(el, v, vars) { if (!el) return; const { i, k } = meterBand(v)
   el.style.setProperty('--shp', String(B.shake && B.shake[1] ? (k < .5 ? B.shake[0] : B.shake[1]) : 0)); }
 
 export { kindOf };
-export { burstHtml, chestSvg, giftsOf, meterLook, msgCol, msgOfChest, msgPreview, msgThorn, spillVars, symSvg, wordsHtml };
+export { burstHtml, chestSvg, giftsOf, meterLook, msgCol, msgOfChest, msgPreview, msgThorn, spillVars, symSvg, thumbHtml, wordsHtml };
