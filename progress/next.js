@@ -15,11 +15,12 @@ import { CHESTS } from "../config/chests.js";
 import { GAUNTLET, GRID, NEXT_CARD } from "../config/copy.js";
 import { MODE_NAME } from "../config/games.js";
 import { KEYS } from "../config/keys.js";
-import { NEXT_CARD_ORDER, UNLOCKS } from "../config/unlocks.js";
+// UNLOCKS from progress.js, not config: a goal this hands run.js needs the `test` progress.js joins on (build 68 fix)
+import { NEXT_CARD_ORDER } from "../config/unlocks.js";
 import { T } from "../core.js";
 import { prefs } from "../core/store.js";
 import { GAMES, GC, lenName } from "../games/registry.js";
-import { Scores, isOpen, lenGoal, lenLock, lenOpen, unlockName, unlocked } from "../progress.js";
+import { Scores, UNLOCKS, isOpen, lenGoal, lenLock, lenOpen, unlockName, unlocked } from "../progress.js";
 import { COMBOS, barOf, chestOpen, gauntDone, isCleared, isShell, keyGoal, keyState, modesOpen, tierOpen, wantOf } from "./key.js";
 import { LEN_BEST, UNLOCK_BEST } from "./rules.js";
 import { scoreTxt } from "../ui/format.js";

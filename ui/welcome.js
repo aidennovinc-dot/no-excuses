@@ -63,8 +63,8 @@ function playWelcome() {
     + `<div class="wcard" data-act="wplay">`
     // build 66 (section C, welcome-01): one line, Aiden's, with the title in green
     + `<b class="wline">${marks(T(WELCOME.line, { title: msgTitle(m) || WELCOME.fallback }))}</b>`
-    + `<div class="wrow"><button class="item wplay" data-act="wplay">${esc(WELCOME.play)}</button>`
-    + `<button class="item sub wlater" data-act="wlater">${esc(WELCOME.later)}</button></div></div>`;
+    // build 68 (67.7, L20): THE WELCOME IS MANDATORY — Play and nothing else; the other seven messages keep their own way out
+    + `<div class="wrow"><button class="item wplay" data-act="wplay">${esc(WELCOME.play)}</button></div></div>`;
   host.hidden = false; host.classList.remove('wgo'); void host.offsetWidth; host.classList.add('won');
   // the sting lands on the beat the picture arrives, the same beat the player's own thunk lands on
   for (const s of PLAYER.on.steps) if (s.name === 'open') at(s.at, () => Snd.welcome());
@@ -105,8 +105,6 @@ define({
   // a tap on the card itself does nothing: the two buttons are the only way out, so neither is missed by a stray tap
   wcard() { return 'pick'; },
   wplay() { const m = slotOf(); closeWelcome(); if (m) playVideo(m); return 'click'; },
-  // build 65 (64.7): put off, the clip still opens About, so the player can watch it there
-  wlater() { closeWelcome(); emit('welcome:later', {}); return 'click'; },
 });
 
 export { closeWelcome, welcomeCheck };

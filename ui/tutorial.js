@@ -506,7 +506,6 @@ on('run:finish',({fresh,two})=>{ if(two) return; for(const u of fresh||[]) if(u.
 /* build 68 (67.15): no toast — About's first box says it — and the player is not taken anywhere (65.9): the box is on the screen the Welcome played over */
 function openAbout(){ if(!bankMenu('about')) return; arm('about'); }
 on('video:closed',({id})=>{ if(id===MENU_UNLOCK.about.video) openAbout(); });
-on('welcome:later',()=>openAbout());
 // an app reopened between the first result and its last box: that run's result, as it was, and the boxes from the first
 function resumeOver(){ const r=prefs.tutRun; if(!results()||!r||!GAMES[r.g]) return;
   sel.game=r.g; sel.diff=r.d; sel.secs=r.s; sel.vs=0; sel.practice=0; overAt=0; overList=null;

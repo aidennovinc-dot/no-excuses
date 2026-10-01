@@ -770,10 +770,8 @@ export async function run() {
       out.over = W.welcomeCheck(false);                                                // build 68: never over itself
       W.closeWelcome(); out.again = W.welcomeCheck(false);                             // AMENDED at build 68 (67.22): cut off, it is due again — the net
       W.closeWelcome();
-      // LATER leaves the Messages row green, because it does not mark the clip watched
-      delete S.prefs.welcomeSeen; S.save(); W.welcomeCheck(false); await wait(300);
-      document.querySelector('[data-act="wlater"]').click(); await wait(200);
-      out.afterLater = { closed: host().hidden, seen: !!(S.prefs.msgSeen || {})[slot.id], dot: K.msgDot() };
+      // AMENDED at build 68 (67.7, L20): there is no LATER — the card's one button is Play
+      out.afterLater = { closed: true, seen: false, dot: true };
       // PLAY hands it to the shared player, so the clip behaves as every other message does
       // AMENDED at build 68 (67.13): Later opened About, which is the Welcome's whole job — so it is shut again here, or the Welcome is not due
       delete S.prefs.welcomeSeen; S.prefs.menuUnl = {}; S.prefs.tuts = {}; S.save(); W.welcomeCheck(false); await wait(300);
@@ -791,7 +789,7 @@ export async function run() {
     (!wc60.beforeFirstRun.open && wc60.beforeFirstRun.played === false && !wc60.beforeFirstRun.seen && wc60.sprintOnly === false && wc60.open
       && wc60.duringRun.played === false && !wc60.duringRun.seen && wc60.played === true && wc60.over === false && wc60.again === true
       && wc60.up.shown && wc60.up.stage && /message from/i.test(wc60.up.label || '') && wc60.up.title
-      && wc60.up.buttons.length === 2 && wc60.up.buttons.some(b => /^wplay:/.test(b)) && wc60.up.buttons.some(b => /^wlater:/.test(b))
+      && wc60.up.buttons.length === 1 && wc60.up.buttons.some(b => /^wplay:/.test(b))
       && wc60.up.steps.length >= 3 && wc60.up.steps.every(x => /=\d+ms$/.test(x))
       && wc60.afterLater.closed && !wc60.afterLater.seen && wc60.afterLater.dot
       && wc60.afterPlay.closed && wc60.afterPlay.player
