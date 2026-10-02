@@ -2159,6 +2159,24 @@ scene('68.5', async (page, browser) => {
   await frame(page, browser, '68.5-friend-box', 'The walkthrough’s friend box on the sheet’s variant step, ringing the real With a friend chip — the row every player sees there (v0.68: forced onto the length step)');
 });
 
+// a Quick Tap run started from its sheet, `n` lit pads pressed in a row and nothing else, to its result
+async function qtRun(page, n) { await runOf(page, 'quick-tap', 0, 0);
+  for (let i = 0, k = 0; i < 400 && !(await page.evaluate(() => document.getElementById('s-over').classList.contains('on') && !document.getElementById('game').classList.contains('on'))); i++) {
+    await page.evaluate(() => { const a = document.getElementById('adbreak'), b = document.getElementById('adskip'); if (a.classList.contains('on') && !b.disabled) b.click(); });
+    if (k < n && await page.evaluate(() => { for (let i = 0; i < 4; i++) if (document.getElementById('sq' + i)?.style.getPropertyValue('--v').trim() === '1') { const t = document.querySelector('.pad[data-side="' + i + '"]'), r = t.getBoundingClientRect(); t.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1 })); return true; } return false; })) k++;
+    await sleep(60); } await sleep(900); }
+
+/* 68.6: his case — the first run on record missed Dash (its result's boxes done); the SECOND run gets 8 in a row, and its own result says "Great job, you
+   unlocked Dash!" with Dash ringed (v0.68: no box on this run) */
+scene('68.6', async (page, browser) => {
+  const r = { g: 'quick-tap', d: 'two', s: 5, t: Date.now() - 6e4, hits: 4, misses: 3, v: 4 };
+  await load(page, { ...PLAIN, welcomeSeen: 1, menuUnl: { about: 1, prog: 1, board: 1 }, tuts: { next: 'done' } }, { runs: [r] });
+  await qtRun(page, 8);
+  for (let i = 0; i < 4; i++) { const b = await pBox(page, '', 4000); if (!b) break; say('box', b.text); if (/unlocked/.test(b.text)) break; await tutTap(page); await sleep(400); }
+  await sleep(2500); say('chips', await page.evaluate(() => [...document.querySelectorAll('#over-chips2 .chip')].map(c => c.textContent + ':' + getComputedStyle(c).opacity + ':' + getComputedStyle(c.closest('.change')).opacity + ':' + getComputedStyle(c.closest('.change')).visibility)));
+  await frame(page, browser, '68.6-dash-box-second-run', 'The second run’s result (8 in a row, the first run having missed): “Great job, you unlocked Dash!”, Dash ringed, on the result of the run that opened it (v0.68: no box)');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

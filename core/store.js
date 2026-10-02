@@ -81,7 +81,8 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
        recorded, and its row shows the requirement and the tick only, which is what an absent entry means. */
     unlBy:isObj(p.unlBy)?Object.fromEntries(Object.entries(p.unlBy).filter(([k,v])=>typeof k==='string'&&k.length<64&&isObj(v)&&has(GAMES,v.g)&&typeof v.h==='number'&&Number.isFinite(v.h)&&typeof v.t==='number'&&Number.isFinite(v.t))
       .map(([k,v])=>[k,{g:v.g,d:String(v.d||''),s:Number(v.s)||0,h:v.h,t:v.t}])):{},
-    tuts:isObj(p.tuts)?Object.fromEntries(Object.entries(p.tuts).filter(([k,v])=>/^[a-z]+$/.test(k)&&(v==='done'||(Number.isInteger(v)&&v>=0&&v<40)))):{},
+    // build 69 (68.19 / 68.6): an unlock's own tour is named for its key, unl-<key> — letters, digits and hyphens
+    tuts:isObj(p.tuts)?Object.fromEntries(Object.entries(p.tuts).filter(([k,v])=>/^[a-z][a-z0-9-]*$/.test(k)&&(v==='done'||(Number.isInteger(v)&&v>=0&&v<40)))):{},
     // build 68 (67.22): the rooms whose first visit is spent — a tour still to come there is dropped (ui/tutorial.js). A preference, like `tuts`
     // build 68 (67.40): the next-unlock card has been tapped once, so it is no longer green. Progress: Fresh game clears it
     nextSeen:p.nextSeen?1:0,

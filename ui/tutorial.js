@@ -123,21 +123,13 @@ const FIRST=[
   // step 12: Sprint picked, the run starts — there is no box for Go (the second capture below presses it)
   { on:lenStage, el:()=>$(`#time-row .tbtn[data-time="${GC(QT,QM()).lens[0]}"]`), tap:1, done:()=>false, text:L[11] },
 ];
-/* THE FIRST RESULT (62.11, 64.2). Every box moves on at a tap anywhere and nothing on the screen can be tapped until the last. The third box
-   BRANCHES on what the first run opened (64.2 — the game knows, so it no longer hedges): Dash open → "Great job, you unlocked Dash!", naming every
-   unlock the run made, then the Dots line with Dash ringed; Dash still shut → Dash's own rule, with TRY AGAIN ringed. */
+/* THE FIRST RESULT (62.11, 64.2). Every box moves on at a tap anywhere and nothing on the screen can be tapped until the last. A first run that left
+   Dash shut says Dash's own rule, with TRY AGAIN ringed. Build 69 (68.6): "Great job, you unlocked Dash!" and the Dots line are no longer this
+   result's — they belong to the run that OPENS Dash, whichever run that is (the `unl-…` tours below), so a first run that opens it shows them there */
 const O=TUTORIAL.over, oOn=()=>onScreen('s-over');
-const gotKeys=()=>((prefs.tutRun||{}).got||[]).filter(k=>GAMES[String(k).split(':')[0]]);
 const dashOpen=()=>{ const m=QM(), s=GC(QT,m).lens[1]; return s!==undefined&&lenOpen(QT,m,s); };
-function overSteps(){ const dash=()=>$(`#over-chips2 .chip[data-v="${GC(QT,QM()).lens[1]}"]`)||$('#over-chips2 .chip:nth-child(2)');
-  const dots=()=>GAMES.dots.modes.some(m=>(store.unlock||{})['dots:'+m]);
-  const mid=dashOpen()
-    ? [ { on:oOn, el:dash, text:()=>say(O.got,{names:list(gotKeys().map(nameOf).filter(Boolean))||nums().second}) }, ...(dots()?[]:[{ on:oOn, el:dash, text:()=>say(O.next) }]) ]
-    : [ { on:oOn, el:()=>$('#again'), text:()=>say(O.miss) } ];
-  /* build 66 (section C, over-03): when the run opened something, "Great job, you unlocked …" comes straight after the first box, ahead of Try Again
-     — the unlock is the reward for the run, so it comes first */
-  const again={ on:oOn, el:()=>$('#again'), text:O.again };
-  const body=dashOpen()?[mid[0],again,...mid.slice(1)]:[again,...mid];
+function overSteps(){ const again={ on:oOn, el:()=>$('#again'), text:O.again };
+  const body=dashOpen()?[again]:[again,{ on:oOn, el:()=>$('#again'), text:()=>say(O.miss) }];
   return [ { on:oOn, text:O.hi }, ...body, { on:oOn, el:()=>$('#over-back'), arrow:1, text:O.back },
     ...O.end.map(t=>({ on:oOn, text:t })) ]; }
 
@@ -181,7 +173,8 @@ function roomNow(){ const s=$('.screen.on'); if(!s||!ROOMS.includes(s.id)) retur
   return s.id==='s-gauntlet'?(s.dataset.g?'s-gauntlet:'+s.dataset.g:''):s.id; }
 const spent=r=>!!(prefs.rooms||{})[r];
 // a step in a spent room, or a doorway into the room the player is in (or has spent), is passed
-const gone=s=>!!s&&((!!s.room&&spent(s.room))||(!!s.door&&(spent(s.door)||roomNow()===s.door)));
+// build 69 (68.6): and a step whose `skip` says it has nothing to say now (Dash's Dots line, once Dots is open)
+const gone=s=>!!s&&((!!s.room&&spent(s.room))||(!!s.door&&(spent(s.door)||roomNow()===s.door))||(!!s.skip&&s.skip()));
 // a stored step past the end (a profile saved before a tutorial was split) finishes it
 function drop(id){ const d=DEFS[id]; for(let n=0;n<60&&d&&d.live();n++){ const s=stepsOf(d)[d.step()]; if(!s&&d!==DEFS.first&&d!==DEFS.over){ d.finish(); return; } if(!gone(s)) return; advance(id); } }
 let inRoom='';
@@ -213,11 +206,27 @@ const res=()=>oOn()||menuOn(), MU=k=>(MENU_UNLOCK[k]||{}).name||'';
    and rings it; it never opens it. A step marked `res` lives on that run's result and is dropped with it (L14) */
 const unlId=k=>'unl-'+String(k).replace(/:/g,'-');
 const GAME_KEYS=Object.keys(GAMES).filter(g=>g!==QT).map(g=>(UNLOCKS.find(u=>u.key.split(':')[0]===g)||{}).key).filter(Boolean);
+/* build 69 (68.6): A MODE OR LENGTH BOX FIRES WHEN IT UNLOCKS, ON WHICHEVER RUN THAT IS. Aiden on v0.68: his first run missed Dash, the second opened it
+   and no box came. The cause: 67.22 made "Great job, you unlocked Dash!" one of the walkthrough's first-result boxes, so it belonged to the first result
+   and not to the unlock. Now every mode and length the chain opens is a one-box tour, armed by the run that opens it: on that run's result, "Great
+   job, you unlocked Marathon!" (the walkthrough's `got` wording, the name as its toast names it) with the new chip ringed when it is on this result,
+   and its toast dropped (L14). Dash's carries the Dots line after it while Dots is still shut (`skip`) */
+const MODE_KEYS=UNLOCKS.map(u=>u.key).filter(k=>{ const [g,d]=k.split(':'); return !GAME_KEYS.includes(k)&&!!GAMES[g]&&GAMES[g].modes.includes(d); });
+const LEN_KEYS=Object.keys(GAMES).flatMap(g=>GAMES[g].modes.flatMap(d=>GC(g,d).lens.slice(1).map(s=>g+':'+d+':'+s)));
+// the chip on the result that IS this unlock, when the result is for its game (and, for a length, its mode)
+const chipOf=k=>()=>{ const [g,d,s]=k.split(':'); if(sel.game!==g) return null; return s===undefined?$(`#over-chips .mch[data-v="${d}"]`):sel.diff===d?$(`#over-chips2 .chip[data-v="${s}"]`):null; };
+const dotsOpen=()=>GAMES.dots.modes.some(m=>(store.unlock||{})['dots:'+m]);
+const DASH=QT+':'+QM()+':'+GC(QT,QM()).lens[1];
+for(const k of [...LEN_KEYS,...MODE_KEYS]) tutorial(unlId(k),[
+  { on:oOn, res:1, el:chipOf(k), opt:1, text:()=>say(O.got,{names:nameOf(k)}) },
+  ...(k===DASH?[{ on:oOn, res:1, el:chipOf(k), opt:1, skip:dotsOpen, text:()=>say(O.next) }]:[]),
+]);
 for(const k of GAME_KEYS){ const g=k.split(':')[0], nm=()=>GAMES[g].name;
   tutorial(unlId(k),[
     { on:oOn, res:1, text:()=>say(O.got,{names:nm()}) },
     { on:map, mapStep:1, el:()=>$(`#grid .tile[data-game="${g}"]`), tap:1, done:()=>sheetUp()&&sel.game===g, text:()=>T(TUTORIAL.newGame,{name:nm()}) },
   ]); }
+const UNL_KEYS=[...LEN_KEYS,...MODE_KEYS,...GAME_KEYS];
 const got1=k=>()=>T(TUTORIAL.got,{name:MU(k)}), look=k=>()=>T(TUTORIAL.look,{name:MU(k)});
 /* 64.8: ABOUT, after the Welcome clip. The menu with About ringed and the only thing that answers; then inside it, on rails — the videos, the
    feedback line, the support button, and away */
@@ -467,7 +476,7 @@ function tick(){
   if(!s) return hide();
   if(s.tap&&s.done&&s.done()){ advance(id); return tick(); }
   if(busy()||!s.on()) return hide();
-  const el=s.el?s.el():null, first=Array.isArray(el)?el[0]:el; if(s.el&&!(first&&vis(first))) return hide();
+  const el=s.el?s.el():null, first=Array.isArray(el)?el[0]:el; if(s.el&&!s.opt&&!(first&&vis(first))) return hide();
   // build 66.1: a must-tap box never shows on something that cannot take the tap (a crossed-out menu item, one mid-animation) — it waits
   if(s.tap&&getComputedStyle(first).pointerEvents==='none') return hide();
   if(performance.now()-scrAt<150) return hide();
@@ -508,15 +517,14 @@ const waiting=()=>!overlay()&&((wanted()&&firstAt===0&&onScreen('s-pick')&&!shee
 /* build 68 (67.3, L14): WHAT A TOAST WAITS FOR — a box up, a box due on this screen (its thing laid out), the first result before its first box, or a
    moment that owns the screen. ui/toast.js asks this before it shows one, so "you unlocked …" can never land ahead of the box that says it */
 function holds(){ if(overlay()||shown()||waiting()) return true; const id=active(); if(!id) return false;
-  const d=DEFS[id], s=stepsOf(d)[d.step()]; if(!s||!s.on()) return false; const el=s.el?s.el():null, f=Array.isArray(el)?el[0]:el; return !s.el||(!!f&&vis(f)); }
+  const d=DEFS[id], s=stepsOf(d)[d.step()]; if(!s||!s.on()) return false; const el=s.el?s.el():null, f=Array.isArray(el)?el[0]:el; return !s.el||!!s.opt||(!!f&&vis(f)); }
 setToastGate(holds);
 /* build 68 (67.3): THE TOASTS A FIRST-TIME BOX ALREADY SAYS, so the result screen drops them: a menu item's "you unlocked …" (its tour's first box
    says it, 67.15), and every unlock of the first run when the walkthrough's result names them ("Great job, you unlocked Dash and Four!") */
 function tutTells(run){ const out=new Set();
   for(const k of Object.keys(MENU_UNLOCK)) if((prefs.tuts||{})[k]===0) out.add('menu:'+k);
   // build 69 (68.19): an unlock whose own tour says it on this result
-  for(const k of GAME_KEYS) if((prefs.tuts||{})[unlId(k)]===0) out.add(k);
-  if(results()&&run&&prefs.tutRun.t===run.t&&dashOpen()) for(const k of gotKeys()) out.add(k);
+  for(const k of UNL_KEYS) if((prefs.tuts||{})[unlId(k)]===0) out.add(k);
   return out; }
 function lets(t){ if(!shown()||!cur.s.tap) return false; if(cur.s.hit) return !!cur.s.hit(t); return [].concat(cur.s.el()||[]).some(el=>el.contains(t)); }
 document.addEventListener('click',e=>{ if(passing) return;
@@ -554,11 +562,9 @@ on('store:reset',()=>{ firstAt=0; overAt=0; overList=null; });
    player is taken straight to the main menu, where its tutorial waits (64.8). Put off with Later, About still opens, because the clip is waiting
    there, and its tutorial shows the next time the player is on the menu (Cowork's call: a Welcome put off must not lock About for good). */
 on('run:finish',({fresh,two})=>{ if(two) return; for(const u of fresh||[]) if(u.menu) arm(u.menu); });
-/* build 69 (68.19): a run that opens a GAME arms that game's tour. The walkthrough's first result names its own unlocks, so a game the first run
-   opened starts at its map ring */
+/* build 69 (68.19 / 68.6): a run that opens a game, a mode or a length arms that unlock's own tour — the first run included */
 on('run:finish',({run:r,fresh,two})=>{ if(two||!r||r.demo||r.practice||r.chal||r.gaunt) return;
-  for(const u of fresh||[]){ if(!GAME_KEYS.includes(u.key)) continue; const id=unlId(u.key); if((prefs.tuts||{})[id]!==undefined) continue; arm(id);
-    if(results()&&prefs.tutRun&&prefs.tutRun.t===r.t&&armed(id)) DEFS[id].setStep(1); } });
+  for(const u of fresh||[]) if(UNL_KEYS.includes(u.key)&&(prefs.tuts||{})[unlId(u.key)]===undefined) arm(unlId(u.key)); });
 /* build 68 (67.15): no toast — About's first box says it — and the player is not taken anywhere (65.9): the box is on the screen the Welcome played over */
 function openAbout(){ if(!bankMenu('about')) return; arm('about'); }
 on('video:closed',({id})=>{ if(id===MENU_UNLOCK.about.video) openAbout(); });
@@ -596,8 +602,7 @@ function tutMap(){ const out=[], text=t=>{ try{ return typeof t==='function'?t()
   for(const id of ORDER){ const d=DEFS[id], m=d&&d.meta; if(!m) continue;
     let boxes;
     if(id==='over'){ const R='Result', n=nums();
-      boxes=[ { screen:R, ring:'', tap:0, text:O.hi }, { screen:R+' · if the run opened '+n.second, ring:n.second+' chip', tap:0, text:T(O.got,Object.assign({},n,{ names:n.second })) },
-        { screen:R+' · if the run opened '+n.second+', not '+n.dots, ring:n.second+' chip', tap:0, text:say(O.next) }, { screen:R, ring:'Try again', tap:0, text:O.again },
+      boxes=[ { screen:R, ring:'', tap:0, text:O.hi }, { screen:R, ring:'Try again', tap:0, text:O.again },
         { screen:R+' · if '+n.second+' is still shut', ring:'Try again', tap:0, text:say(O.miss) }, { screen:R, ring:'Back (an arrow at it)', tap:0, text:O.back },
         ...O.end.map(t=>({ screen:R, ring:'', tap:0, text:t })) ]; }
     else boxes=stepsOf(d).map((s,i)=>({ screen:(m.at[i]||[])[0]||'', ring:(m.at[i]||[])[1]||'', tap:s.tap?1:0, text:text(s.text) }));
@@ -606,6 +611,12 @@ function tutMap(){ const out=[], text=t=>{ try{ return typeof t==='function'?t()
     if(id==='over') out.push({ id:'welcome', name:'Welcome moment', trigger:'Dots unlocks — on that result as soon as it opens, ahead of its toasts (the main menu only after a reload or crash mid-way)',
       start:'Result screen', why:'The first thing the game gives you: Aiden\'s welcome clip, and watching it opens About', steps:1, at:1,
       boxes:[{ key:'welcome-01', screen:'The result that opens Dots', ring:'', tap:1, text:WELCOME.from+' · '+T(WELCOME.name,{ title:WELCOME.fallback }) }] }); }
+  // build 69 (68.6): every new mode or length's box, Dash's as the example (with its Dots line)
+  { const n=nums();
+    out.push({ id:'unl-mode', name:'A new mode or length', trigger:'A run opens a mode or a length (each one, the first time)', start:'That run\'s result',
+      why:'The reward for the run, on the run that earned it, with the new chip ringed', steps:2, at:2,
+      boxes:[ { key:'unl-mode-01', screen:'The result of the run that opened '+n.second, ring:n.second+' chip', tap:0, text:T(O.got,Object.assign({},n,{ names:n.second })) },
+        { key:'unl-mode-02', screen:'The same result, while '+n.dots+' is still shut', ring:n.second+' chip', tap:0, text:say(O.next) } ] }); }
   // build 69 (68.19): every new game's two boxes, Estimate's as the example
   { const g=(GAME_KEYS.find(k=>k.startsWith('hold:'))||GAME_KEYS[0]).split(':')[0], nm=GAMES[g].name;
     out.push({ id:'unl-game', name:'A new game', trigger:'A run opens a game (each game, the first time)', start:'That run\'s result, then the games menu',

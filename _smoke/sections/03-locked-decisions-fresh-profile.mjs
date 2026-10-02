@@ -169,25 +169,25 @@ export async function run() {
     (first.game && first.exit === 'none' && first.tut !== 1 && rec.tut === 1 && rec.run === 'quick-tap' && r1 && back && back.text === OV[0] && backOn === 's-over')
       ? ok('62.10 the first run has no Exit and no Restart; once it is on record, an app reopened before "Good luck!" lands on its result and starts the eight boxes again')
       : bad('62.10 the first run and the resume', JSON.stringify({ first, rec, r1: r1 && r1.text, back: back && back.text, backOn }));
-    /* 62.11 / 64.2: the boxes, each moved on by any tap — a tap on TRY AGAIN (ringed) or BACK (arrowed) does neither thing. This run opened Dash and
-       Four, so the third box names both and the fourth rings Dash with the Dots line */
+    /* 62.11 / 64.2: the boxes, each moved on by any tap — a tap on TRY AGAIN (ringed) or BACK (arrowed) does neither thing. AMENDED at build 69 (68.6):
+       "Great job, you unlocked Dash!" and the Dots line are the Dash unlock's own boxes, armed by the run that opened it, and Four has its own ("Great job,
+       you unlocked Four!", Four ringed) — they come after the walkthrough's boxes, each with its chip ringed */
     const G2 = await page.evaluate(async () => { const R = await import('./games/registry.js'), G = await import('./config/games.js'); return { dash: R.lenName('quick-tap', R.GC('quick-tap', 'two').lens[1], 'two'), four: G.MODE_NAME.four }; });
-    // AMENDED at build 66 (section C, over-03): the unlock line comes straight after the first box, ahead of Try Again
-    const OW = [C.over.hi, C.over.got.replace('{names}', G2.dash + ' and ' + G2.four), C.over.again, fillO(C.over.next), C.over.back, ...C.over.end];
+    const gotD = C.over.got.replace('{names}', G2.dash), gotF = C.over.got.replace('{names}', G2.four);
+    const OW = [C.over.hi, C.over.again, C.over.back, ...C.over.end, gotD, fillO(C.over.next), gotF];
     const over = [back];
-    await click('#again'); over.push(await waitText(OW[1]));
-    await click('#again'); over.push(await waitText(OW[2]));
-    await click('#again'); over.push(await waitText(OW[3]));
-    await click('#over-back'); over.push(await waitText(OW[4]));
-    for (let i = 5; i < OW.length; i++) { await click('#over-back'); over.push(await waitText(OW[i])); }
-    const dashW = await page.evaluate(() => document.querySelector('#over-chips2 .chip:nth-child(2)').getBoundingClientRect().width);
+    for (let i = 1; i < OW.length; i++) { await click(i < 3 ? '#again' : '#over-back'); over.push(await waitText(OW[i])); }
+    const at = t => over.find(b => b && b.text === t) || {};
+    const dashW = await page.evaluate(() => document.querySelector('#over-chips2 .chip:nth-child(2)').getBoundingClientRect().width), fourW = await page.evaluate(() => document.querySelector('#over-chips .mch[data-v="four"]').getBoundingClientRect().width);
     const still = await state();
     const rings = await page.evaluate(() => ({ again: document.getElementById('again').getBoundingClientRect().width, back: document.getElementById('over-back').getBoundingClientRect() }));
-    (over.every((b, i) => b && b.text === OW[i]) && over[1].drawn && Math.abs(over[1].ring[0] - dashW - 12) <= 2 && over[2].drawn && Math.abs(over[2].ring[0] - rings.again - 12) <= 2 && over[3].drawn && Math.abs(over[3].ring[0] - dashW - 12) <= 2 && over[4].arrow && !over[4].drawn && !over[0].drawn && still.screen === 's-over' && !still.game
+    (over.every((b, i) => b && b.text === OW[i]) && at(C.over.again).drawn && Math.abs(at(C.over.again).ring[0] - rings.again - 12) <= 2 && at(C.over.back).arrow && !at(C.over.back).drawn && !over[0].drawn
+      && at(gotD).drawn && Math.abs(at(gotD).ring[0] - dashW - 12) <= 2 && at(fillO(C.over.next)).drawn && Math.abs(at(fillO(C.over.next)).ring[0] - dashW - 12) <= 2 && at(gotF).drawn && Math.abs(at(gotF).ring[0] - fourW - 12) <= 2
+      && still.screen === 's-over' && !still.game
       // AMENDED at build 66 (65.5): no box is parked in the centre — each sits beside what it rings, never over it
       && over.every(b => b.inside && !b.covers) && !/\{/.test(OW.join('')))
-      ? ok(`62.11 / 64.2 / section C the first result's boxes in order: "${OW[1]}" with Dash ringed, TRY AGAIN ringed, then "${OW[3]}" with Dash ringed, an arrow at BACK — and tapping either does nothing until the last box`)
-      : bad('62.11 the result boxes', JSON.stringify({ want: OW, over: over.map(b => b && { t: b.text, drawn: b.drawn, ring: b.ring, arrow: b.arrow, c: b.centre, covers: b.covers }), still, rings }));
+      ? ok(`62.11 / 64.2 / 68.6 the first result's boxes in order: TRY AGAIN ringed, an arrow at BACK, then the run's own unlocks — "${gotD}" and "${fillO(C.over.next)}" with ${G2.dash} ringed, "${gotF}" with ${G2.four} ringed — and tapping either button does nothing until the last box`)
+      : bad('62.11 the result boxes', JSON.stringify({ want: OW, over: over.map(b => b && { t: b.text, drawn: b.drawn, ring: b.ring, arrow: b.arrow, c: b.centre, covers: b.covers }), still, rings, dashW, fourW }));
     // 62.14: "Good luck!" is answered — Off the Rails banked, the walkthrough gone, the result screen live again (and the second run can be quit)
     await anywhere(); await sleep(300);
     const done = await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('ne')); return { tut: s.prefs.tut, tutRun: !!s.prefs.tutRun, rails: !!s.ach.rails, hidden: document.getElementById('tut').hidden }; });
@@ -509,6 +509,33 @@ export async function run() {
       (['prog', 'about', 'board'].every(k => { const r = R18[k], go = { prog: 's-prog', about: 's-about', board: 's-board' }[k]; return r.got === C18.got[k] && r.on === 's-over' && r.menu === 's-menu' && r.ring && r.held === 's-menu' && r.inside === C18.inside[k] && r.room === go; }))
         ? ok(`68.18 a menu item's congratulations box walks the player to it: a tap on "${C18.got.prog}", "${C18.got.about}" or "${C18.got.board}" on the result lands on the main menu with that item ringed and the only thing that answers; the player's tap on it opens it and its tour's first box is inside`)
         : bad('68.18 a congratulations box left the player on the result, or the menu ring did not hold', JSON.stringify(R18));
+    }
+    /* build 69 (68.6): THE DASH BOX FIRES ON THE RUN THAT OPENS DASH, WHICHEVER RUN THAT IS. Aiden on v0.68: his first run missed Dash, "the second unlocked
+       it and no box came". A first result that did not open Dash says what opens it; Try Again, a run of 7 in a row: THAT result says "Great job, you
+       unlocked Dash!" with Dash ringed; Try Again, 15 in a row: its result says Four's, with Four ringed. Every box read with a tap anywhere */
+    {
+      const r = { g: 'quick-tap', d: 'two', s: X.lens[0], t: Date.now(), hits: 4, misses: 3, v: 4 };
+      await page.evaluate((r, si) => { localStorage.setItem('ne', JSON.stringify({ v: 7, prefs: { story: 1, gridSeen: 1, menuSeen: 1, snd: 'off', played: 1, tut: 1, tutRun: r, welcomeSeen: 1, menuUnl: { about: 1, prog: 1, board: 1 } }, runs: [r], ach: {}, unlock: {}, intro: si, seen: {}, bars: {} })); }, r, SEEN_INTRO);
+      await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+      // every box on this result, in order, each with the chip its ring is round (by the chip's value), read and moved on with a tap anywhere
+      const readAll = async () => { const out = []; for (let i = 0; i < 14; i++) { let b = null; for (let k = 0; k < 40 && !(b = await box()); k++) { await later(); await sleep(100); } if (!b) break;
+          const ring = await page.evaluate(() => { const q = document.querySelector('#tut .tring'), d = getComputedStyle(q).display !== 'none' ? q.getBoundingClientRect() : null; if (!d || !d.width) return null;
+            const c = [...document.querySelectorAll('#over-chips .mch, #over-chips2 .chip')].find(c => { const r = c.getBoundingClientRect(); return Math.abs(r.left + r.width / 2 - d.left - d.width / 2) <= 6 && Math.abs(r.top + r.height / 2 - d.top - d.height / 2) <= 6; }); return c ? c.dataset.v : 'other'; });
+          out.push({ t: b.text, ring }); await anywhere(); for (let k = 0; k < 30; k++) { const n = await box(); if (!n || n.text !== b.text) break; await sleep(100); } }
+        return out; };
+      // Try Again, and a run with `n` hits in a row (the lit pad pressed, nothing else), to its result
+      const again = async n => { await click('#again'); for (let i = 0; i < 60 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) await sleep(100);
+        for (let i = 0, k = 0; i < 300 && !(await page.evaluate(() => document.getElementById('s-over').classList.contains('on') && !document.getElementById('game').classList.contains('on'))); i++) {
+          await page.evaluate(() => { const a = document.getElementById('adbreak'), b = document.getElementById('adskip'); if (a.classList.contains('on') && !b.disabled) b.click(); });
+          if (k < n && await page.evaluate(() => { for (let i = 0; i < 4; i++) if (document.getElementById('sq' + i)?.style.getPropertyValue('--v').trim() === '1') { const t = document.querySelector('.pad[data-side="' + i + '"]'), r = t.getBoundingClientRect(); t.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1 })); return true; } return false; })) k++;
+          await sleep(60); } await sleep(400); };
+      const N6 = await page.evaluate(async () => { const R = await import('./games/registry.js'), G = await import('./config/games.js'); return { dash: R.lenName('quick-tap', R.GC('quick-tap', 'two').lens[1], 'two'), dashV: String(R.GC('quick-tap', 'two').lens[1]), four: G.MODE_NAME.four }; });
+      const R6 = { first: await readAll() }; await again(8); R6.second = await readAll(); R6.u2 = await page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('ne')).unlock));
+      await again(16); R6.third = await readAll(); R6.u3 = await page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('ne')).unlock));
+      const gotD = C.over.got.replace('{names}', N6.dash), gotF = C.over.got.replace('{names}', N6.four);
+      (R6.first.some(b => b.t === fillO(C.over.miss)) && !R6.first.some(b => b.t === gotD) && R6.second.some(b => b.t === gotD && b.ring === N6.dashV) && R6.third.some(b => b.t === gotF && b.ring === 'four'))
+        ? ok(`68.6 a first run that misses ${N6.dash} says what opens it ("${fillO(C.over.miss)}"); the SECOND run, which opens it, says "${gotD}" with ${N6.dash} ringed on its own result; a later run that opens ${N6.four} says "${gotF}" with ${N6.four} ringed — each box armed by its unlock, whichever run that is`)
+        : bad('68.6 an unlock with no box on the run that made it', JSON.stringify(R6));
     }
     /* build 66 (65.16): A GAUNTLET'S TUTORIAL, when the chest before it opens — Mini with the Skill chest, Mega with the Pro chest. On the map the
        reveal hands back to, its tile ringed and tapped; then three lines on its screen, every fact from config ("finish", never "beat") */

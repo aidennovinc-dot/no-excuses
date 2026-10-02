@@ -1962,3 +1962,16 @@ anything Aiden settles goes on the list in the build that implements it.
   the row onto the length step for box 11 (`enter(){ $('#vs-wrap').style.display=''; }`). The box now comes right after the variants box, on the
   variant step, ringing the real chip, ahead of "Let's start with Quick Tap · Two" — the least reorder; the override is gone, so the walkthrough
   never alters the sheet (68.19). Gate: `locked decisions` section C, "68.5".
+- **A mode or length box fires on the run that unlocks it, whichever run that is (68.6).** Aiden on v0.68: his first run missed Dash; "the second
+  unlocked it and no box came." The cause, named: 67.22 made "Great job, you unlocked Dash!" (and the Dots line after it) one of the walkthrough's
+  FIRST-RESULT boxes (`overSteps()`), so it belonged to the first result and not to the unlock; a later run that opened Dash had only its toast.
+  Now every mode and every length past the first is a one-box tour of its own, `unl-<key>` (`MODE_KEYS` from `UNLOCKS`, `LEN_KEYS` from `GAMES` ×
+  modes × `GC().lens`), armed by the run that opens it (`run:finish`, its key among `fresh`, the walkthrough's first run included): on that
+  run's result, "Great job, you unlocked Marathon!" (the `got` wording, the name as its toast names it, `nameOf`), the new chip ringed when it is
+  on this result (`opt`: no chip, no ring), its toast dropped (`tutTells`, L14). Dash's tour carries the Dots line ("Let's see if you can get 35
+  hits in a Dash …") while Dots is still shut (`skip`). A first result that leaves Dash shut keeps its own box saying what opens it. The
+  walkthrough's first result is now hi, Try Again (and the miss line), Game Select, then the run's own unlock boxes. A result box the player
+  leaves unread is dropped with the result (L14). Also fixed here: `cleanPrefs` kept only all-letter tour ids in `prefs.tuts`, so 68.19's
+  `unl-…` tours were forgotten by a reload; it now keeps letters, digits and hyphens. Gate: `locked decisions` section C, "68.6": a first run that
+  misses Dash (its miss box), Try Again with 7 in a row (that result's Dash box, Dash ringed), Try Again with 15 in a row (Four's box, Four
+  ringed); 62.11 reads the walkthrough's first result in its new order.
