@@ -418,6 +418,9 @@ export const ABOUT = { tier:['No ads, ever.','Every colour, background and sound
   // v21 (F.2, build 35): the audio context read out live — its state, how many times it has been rebuilt, the last thing that happened
   // v22 (§J.1, build 36): the clock beside the state — the state is the value that lied. STOPPED is a running state with a still clock
   devAudio:'audio · {state} · clock {clock} · context {gen}{why}', devClock:'+{dt}s in {wall}s', devClockStopped:'+0.000s in {wall}s · STOPPED', devClockWait:'measuring',
+  // build 69 (68.23): the unlock switches and the "play this tour" list
+  devUnl:'unlocks · one switch each, a real unlock (off takes it back with its first-time moments)', devUnlGame:'the game', devUnlMenu:'menu items',
+  devTour:'play this tour', devTourKey:'Skill Key intro', devTourWelcome:'Welcome video',
   devAnim:'animations · nothing is stored', devKeyIn:'key arrival', devSeg:'segment advance', devWhole:'key complete', devChest:'chest {n} opening',
   // v23 (L.8f, build 40): the meter as the app reads it right now, and whether Testing's override is what it is reading
   // v28 (item 9, build 53): Testing is the one screen that works in the RAW meter (three bands of 100); everywhere a player looks it is meterPct(), 0–100

@@ -2204,6 +2204,18 @@ scene('68.25', async (page, browser) => {
   await frame(page, browser, '68.25-scores-ring-box', 'The Scores tour: “The gold ring is the Skill key standard, 100” with the gold ring ringed (the value from RADAR) — one box per ring, then past the edge, a spoke, a game to tap and Overall');
 });
 
+/* 68.23: the Testing screen's new rows — a switch per game, mode and length (Estimate switched on), then the menu items and "play this tour" */
+scene('68.23', async (page, browser) => {
+  await load(page, { ...PLAIN, welcomeSeen: 1, menuUnl: { about: 1 } }, { unlock: { 'dots:blind': Date.now() } });
+  await show(page, 's-testing'); await sleep(500);
+  await page.evaluate(() => document.querySelector('#dev-unl [data-k="hold:grow"]').click()); await sleep(5200);
+  say('switches', await page.evaluate(() => ({ unl: document.querySelectorAll('#dev-unl [data-act="dev-unl"]').length, on: [...document.querySelectorAll('#dev-unl .sel')].map(b => b.dataset.k), menu: document.querySelectorAll('#dev-menu button').length, tours: [...document.querySelectorAll('#dev-tour button')].map(b => b.textContent) })));
+  await page.evaluate(() => document.getElementById('dev-unl-hint').scrollIntoView({ block: 'start' })); await sleep(400);
+  await frame(page, browser, '68.23-testing-switches', 'Testing: a switch per game, mode and length, each row a game (Estimate’s “the game” switched on, Dots’ Blind on as earned)');
+  await page.evaluate(() => document.getElementById('dev-tour').scrollIntoView({ block: 'center' })); await sleep(400);
+  await frame(page, browser, '68.23-testing-tours', 'Testing, further down: the menu items’ switches (About on) and the “play this tour” list — About, Progress, Scores, Customise, Skill Key intro, Welcome video');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

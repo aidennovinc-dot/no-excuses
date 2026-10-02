@@ -527,4 +527,23 @@ export async function run() {
       ? ok(`68.40 / 68.41 every chest tab lists every bar: on the Skill, Pro and Author chests' tabs each game lists its ${c7[0].per.map(p => p.cfg).join(' / ')} bars from config/key-bars.js, each once, and each tab counts ${c7[0].want} (${c7[0].want - c7[0].per.length - 1} bars + ${c7[0].per.length} games + the key entire)`)
       : bad('68.40 / 68.41 the chest tab counts', JSON.stringify(c7.map(t => ({ tab: t.tab, M: t.M, want: t.want, off: t.per.filter(p => p.listed !== p.cfg || p.twice || p.missing.length) }))));
   }
+  /* build 69 (68.23): TESTING'S UNLOCK SWITCHES ARE REAL UNLOCKS. Aiden: "The tutorial should allow me to unlock games individually so that I can test the
+     tutorial." Estimate switched ON from Testing leaves the store as a real Dots run that opens Estimate does once its result has been read and left —
+     the unlock banked, its own tour armed at the map's ring — and OFF takes the unlock, the tour and Estimate's first play away again */
+  {
+    const fx = { v: 7, prefs: { story: 1, gridSeen: 1, menuSeen: 1, snd: 'off', played: 1, tut: 2, welcomeSeen: 1, menuUnl: { about: 1, prog: 1, board: 1 }, tuts: { next: 'done' } }, runs: [], ach: {}, unlock: { 'dots:blind': 1 }, intro: SEEN_INTRO, seen: {}, bars: {} };
+    const snap = () => page.evaluate(() => { const s = JSON.parse(localStorage.getItem('ne')); return { unl: !!s.unlock['hold:grow'], tut: (s.prefs.tuts || {})['unl-hold-grow'], intro: !!(s.intro || {})['hold:grow'], map: document.querySelector('.screen.on')?.id }; });
+    await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fx); await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await page.evaluate(async () => (await import('./run/run.js')).goWhere({ g: 'dots' })); await driveToResult('dots', '68.23 a Dots run that opens Estimate', 60000, true);
+    for (let i = 0; i < 8; i++) { let up = false; for (let k = 0; k < 30 && !(up = await page.evaluate(() => { const t = document.getElementById('tut'); return !!t && !t.hidden; })); k++) await sleep(100); if (!up) break;
+      await page.evaluate(() => { const b = document.querySelector('#tut .tbox').getBoundingClientRect(); document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2).click(); }); await sleep(300); }
+    await click('#over-back'); await sleep(500); const played = await snap();
+    await page.evaluate(f => localStorage.setItem('ne', JSON.stringify(f)), fx); await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await page.evaluate(async () => (await import('./ui/router.js')).show('s-testing')); await sleep(300);
+    const sw = await click('#dev-unl [data-k="hold:grow"]'); await sleep(300); const on = await snap();
+    await click('#dev-unl [data-k="hold:grow"]'); await sleep(300); const off = await snap();
+    (sw && played.unl && on.unl && on.tut === played.tut && on.tut === 1 && !off.unl && off.tut === undefined && !off.intro)
+      ? ok(`68.23 Testing's Estimate switch is a real unlock: ON leaves the store as a real Dots run that opens Estimate does once its result is read (unlocked, its tour at the map's ring, step ${on.tut}); OFF takes the unlock, the tour and its first play away`)
+      : bad('68.23 a Testing unlock switch that is not a real unlock', JSON.stringify({ sw, played, on, off }));
+  }
 }

@@ -32,7 +32,13 @@ import { ABOUT, GRID, TOAST } from "../../config/copy.js";
 import { $, $$, T } from "../../core.js";
 import { prefs, reset, save } from "../../core/store.js";
 import { GAMES } from "../../games/registry.js";
-import { ACH, Scores, UNLOCKS, devModesAll, devModesReset, got, seedSeen, unlocked } from "../../progress.js";
+import { ACH, Scores, UNLOCKS, bankUnlock, devModesAll, devModesReset, got, seedSeen, unlockToast, unlocked } from "../../progress.js";
+import { MODE_NAME } from "../../config/games.js";
+import { MENU_UNLOCK } from "../../config/unlocks.js";
+import { store } from "../../core/store.js";
+import { lenName } from "../../games/registry.js";
+import { bankMenu } from "../../progress/menu.js";
+import { arm, tutForget, tutName, tutReplay, tutUnlockKeys, tutUnlocked } from "../tutorial.js";
 import { barsFaked, chestState, devBack, devMeterTo, devReach, fillBars, keyAch, meter, meterMax, meterPct } from "../../progress/key.js";
 import { define } from "../actions.js";
 import { register, show } from "../router.js";
@@ -67,7 +73,21 @@ function devState(){ if(!BUILD_FLAGS.dev) return; devAudio(); const u=Object.key
   const b=$('#dev-bars'); if(b) b.classList.toggle('sel',barsFaked());
   $$('#dev-keys [data-act="dev-chestall"]').forEach(x=>x.classList.toggle('sel',chestOn(x.dataset.chest)));
   const m=$('#dev-meter-now'); if(m) m.textContent=T(ABOUT.devMeter,{n:meter(),max:meterMax(),pct:meterPct()});
-  const h=$('#dev-anim-hint'); if(h) h.textContent=ABOUT.devAnim; }
+  const h=$('#dev-anim-hint'); if(h) h.textContent=ABOUT.devAnim; devUnl(); }
+/* build 69 (68.23): A SWITCH PER GAME, MODE AND LENGTH, AND PER MENU ITEM — each a real unlock, made through the same write a run makes (bankUnlock /
+   bankMenu), its toast, its map ring and its tour armed the way play leaves them; OFF takes it back with its first-time moments. And the "play this
+   tour" list. Every row is generated from the config: GAMES, the chain's keys (ui/tutorial.js tutUnlockKeys, off UNLOCKS and the lengths), MENU_UNLOCK */
+const TOURS=()=>[...Object.keys(MENU_UNLOCK).map(k=>[k,MENU_UNLOCK[k].name]),['gcust',tutName('gcust')],['keyintro',ABOUT.devTourKey],['welcome',ABOUT.devTourWelcome]];
+function devUnl(){ const host=$('#dev-unl'); if(!host) return; const K=tutUnlockKeys(), u=unlocked(), all=[...K.game,...K.mode,...K.len];
+  const label=k=>{ const [g,d,s]=k.split(':'); return s!==undefined?[MODE_NAME[d],lenName(g,+s,d)].filter(Boolean).join(' · '):K.game.includes(k)?ABOUT.devUnlGame:MODE_NAME[d]; };
+  host.innerHTML=Object.keys(GAMES).map(g=>`<div class="hint">${GAMES[g].name}</div><div class="chips">${all.filter(k=>k.split(':')[0]===g).map(k=>`<button data-act="dev-unl" data-k="${k}" class="chip${u[k]?' sel':''}">${label(k)}</button>`).join('')}</div>`).join('');
+  $('#dev-menu').innerHTML=Object.keys(MENU_UNLOCK).map(k=>`<button data-act="dev-menu" data-k="${k}" class="chip${(prefs.menuUnl||{})[k]?' sel':''}">${MENU_UNLOCK[k].name}</button>`).join('');
+  $('#dev-tour').innerHTML=TOURS().map(([t,n])=>`<button data-act="dev-tour" data-t="${t}" class="chip">${n}</button>`).join('');
+  $('#dev-unl-hint').textContent=ABOUT.devUnl; $('#dev-menu-hint').textContent=ABOUT.devUnlMenu; $('#dev-tour-hint').textContent=ABOUT.devTour; }
+// OFF: the unlock goes, with the first-play intro of what it opened (its mode, and for a game the game's own) and its tours
+function devUnlOff(k){ const u=unlocked(), [g,d,s]=k.split(':'); delete u[k];
+  if(s===undefined){ store.intro=Object.assign({},store.intro); delete store.intro[g+':'+d]; if(tutUnlockKeys().game.includes(k)) delete store.intro[g]; }
+  save(); tutForget(k); }
 // Fresh game: progress goes, the look and the name stay, and the title sequence plays again (L1)
 function freshGame(){ reset(); seedSeen(); show('s-menu',{story:true}); }
 
@@ -99,6 +119,10 @@ define({
   // "set meter to N%" — the keys backed out, then played forward to N: bars cleared and chests opened in play's own order (0–300)
   'dev-meter'(){ const v=$('#dev-meter').value; if(v==='') return 'pick'; const n=devMeterTo(Math.min(meterMax(),+v),modes); devState(); toast(T(TOAST.devMeterSet,{n})); return 'pick'; },
   'dev-fresh'(){ freshGame(); devState(); toast(TOAST.fresh); return 'pick'; },
+  // build 69 (68.23): an unlock on or off, a menu item on or off, a tour played again from its start
+  'dev-unl'(b){ const k=b.dataset.k; if(unlocked()[k]) devUnlOff(k); else if(bankUnlock(k)){ tutUnlocked(k); toast(unlockToast(k),'','ok'); } devState(); return 'pick'; },
+  'dev-menu'(b){ const k=b.dataset.k; if((prefs.menuUnl||{})[k]){ const m=Object.assign({},prefs.menuUnl); delete m[k]; prefs.menuUnl=m; tutForget(k); save(); } else if(bankMenu(k)) arm(k); devState(); return 'pick'; },
+  'dev-tour'(b){ if(!tutReplay(b.dataset.t)) toast(TOAST.cusLocked,'','',true); return 'pick'; },
   'dev-story'(){ show('s-menu',{story:true}); return 'pick'; },
   // B.26: the animations, each on its own screen, nothing stored
   'dev-keyin'(){ show('s-key',{arrive:1,from:'s-testing'}); return 'pick'; },

@@ -2004,3 +2004,14 @@ anything Aiden settles goes on the list in the build that implements it.
   `ui/screens/board.js` — not `data-g`, so a spoke is not a tap target); Quick Tap's name on the web, must-tap (it opens that game's detail,
   67.21); Overall (`#radar-all`). Every other box is a line. Cowork's wording in `TUTORIAL.board`; the chip and "This thing up here …" lines are
   gone with the chip row (68.1 / 68.2). Gate: `locked decisions` section C, "68.25".
+- **Testing: a switch per game, mode, length and menu item, and "play this tour" (68.23).** Aiden: "The tutorial should allow me to unlock games
+  individually so that I can test the tutorial because right now I have to play through them." `ui/screens/testing.js` draws, from config, a row
+  per game with a switch for the game itself (its first unlocked mode), each mode the chain opens and each length past the first
+  (`tutUnlockKeys()` in `ui/tutorial.js`), then About / Progress / Scores (`MENU_UNLOCK`), then "play this tour" (About, Progress, Scores,
+  Customise, Skill Key intro, Welcome video). ON is a real unlock — `bankUnlock()` (the same write as `bankLen()` and `checkUnlocks()`) or
+  `bankMenu()`, its toast, its tour armed as play leaves it once the result is read (`tutUnlocked()`: a new game's ring waits on the map) — and
+  OFF takes it back with its first-time moments (`tutForget()`: its tour, Estimate's `est` for Estimate, the mode's and the game's first-play
+  intro; for a menu item its room and its first-open green). "Play this tour" re-arms that tour from its first box and puts the player where it
+  starts (`tutReplay()`): the main menu for the three menu items (their congratulations box shows there) and Customise, the Skill Key for its
+  creation intro, the main menu with About shut again for the Welcome. Dev only (`[data-dev]`, S5). Gate: `side screens`, "68.23"; `button
+  actions` drives `dev-unl`, `dev-menu`, `dev-tour`.

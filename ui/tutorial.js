@@ -612,6 +612,25 @@ setTimeout(resumeOver,0);
 
 /* build 66: where the tutorials are, for Testing and the gate — the one that has the floor, its step, how many it has, and whether its box is up
    and waiting for a tap on its ring */
+/* build 69 (68.23): TESTING'S SWITCHES AND ITS "PLAY THIS TOUR" LIST. Aiden: "The tutorial should allow me to unlock games individually so that I can
+   test the tutorial because right now I have to play through them." Every unlock key a tour is armed by, as the config makes them */
+function tutUnlockKeys(){ return { game:GAME_KEYS.slice(), mode:MODE_KEYS.slice(), len:LEN_KEYS.slice() }; }
+// an unlock switched on arms its tour as play leaves it once that run's result has been read: a new game's ring waits on the map; a mode's box is spent
+function tutUnlocked(k){ const id=unlId(k), d=DEFS[id]; if(!d) return; arm(id); for(let n=0;n<9&&d.live()&&(stepsOf(d)[d.step()]||{}).res;n++) advance(id); }
+// switched off: the unlock's own tour is forgotten, with Estimate's sheet tour for Estimate; a menu item's tour, its room and its first-open green too
+function tutForget(k){ const t=Object.assign({},prefs.tuts); delete t[unlId(k)]; if(GAME_KEYS.includes(k)&&k.split(':')[0]===EG) delete t.est;
+  const m=MENU_UNLOCK[k]; if(m){ delete t[k]; const r=Object.assign({},prefs.rooms); delete r[m.go]; prefs.rooms=r; prefs.menuOpened=Object.assign({},prefs.menuOpened,{[m.go]:0}); }
+  prefs.tuts=t; save(); }
+const tutName=id=>((DEFS[id]||{}).meta||{}).name||id;
+/* "play this tour": re-armed from its first box, and the player put where it starts — a menu item's tour on the main menu (its congratulations box
+   says it there), Customise's on the main menu, the Skill Key's creation intro on the key, the Welcome on the main menu (About shut again so it is due).
+   Returns false when the thing it needs is not open yet (Customise before the Games chest) */
+function tutReplay(t){
+  if(MENU_UNLOCK[t]){ bankMenu(t); tutForget(t); prefs.tuts=Object.assign({},prefs.tuts,{[t]:0}); save(); run(); show('s-menu'); return true; }
+  if(t==='gcust'){ const r=Object.assign({},prefs.rooms); delete r['s-custom']; prefs.rooms=r; prefs.tuts=Object.assign({},prefs.tuts,{gcust:0}); save(); run(); show('s-menu'); return chestOpen('games'); }
+  if(t==='keyintro'){ const ki=Object.assign({},prefs.keyIntro); delete ki[KEYS[0].id]; prefs.keyIntro=ki; save(); show('s-key',{tier:0}); return true; }
+  if(t==='welcome'){ prefs.welcomeSeen=0; const mu=Object.assign({},prefs.menuUnl); delete mu.about; prefs.menuUnl=mu; tutForget('about'); save(); show('s-menu'); return true; }
+  return false; }
 // build 69 (68.19): a new game's ring is the next thing on the map — the result's Game Select lands there with no sheet up
 function tutMapDue(){ for(const id of ORDER){ const d=DEFS[id]; if(!d||!d.live()) continue; const s=stepsOf(d)[d.step()]; if(s&&s.mapStep) return true; } return false; }
 // `far` is always 0 since build 69 (68.12: no box waits for a scroll); the gate asserts it
@@ -654,4 +673,4 @@ function tutAim(){ if(!shown()||!cur.s.tap) return null; const r=union([].concat
   for(const fy of [.5,.3,.7,.15,.85]) for(const fx of [.5,.3,.7,.15,.85]){ const x=r.left+r.width*fx, y=r.top+r.height*fy; if(x<0||y<0||x>=innerWidth||y>=innerHeight) continue;
     const t=document.elementFromPoint(x,y); if(t&&lets(t)) return [Math.round(x),Math.round(y)]; } return null; }
 
-export { arm, busy as tutBusy, tutAim, tutDone, tutMap, tutMapDue, tutNow, tutTells, tutorial };
+export { arm, busy as tutBusy, tutAim, tutDone, tutForget, tutMap, tutMapDue, tutName, tutNow, tutReplay, tutTells, tutUnlockKeys, tutUnlocked, tutorial };

@@ -145,6 +145,9 @@ function checkUnlocks(run){ if(run.chal||run.practice||run.demo) return []; cons
    it can never collide with a mode key ('game:mode') or a seen-marker ('len:game:mode:length'). Called from the mid-run
    announcement and again at the finish, so what was announced is what is stored whether the run ended or was quit. */
 function bankLen(key){ const u=unlocked(); if(u[key]) return false; u[key]=Date.now(); save(); return true; }
+/* build 69 (68.23): the same write for any unlock key — a game's first mode, a mode or a length — for Testing's switches, which bank exactly what a
+   run banks (checkUnlocks writes the same field the same way, several at once) */
+function bankUnlock(key){ return bankLen(key); }
 /* the next thing to chase (v11). v15 (2.2): GAME UNLOCKS OUTRANK ACHIEVEMENTS wherever the "next thing" is surfaced —
    the chain first (a mode, then a length), and only when there is nothing left to unlock does the card fall back to an
    achievement. `ach` on the answer is what tells the caller which of the two it got, so the card can label itself.
@@ -302,4 +305,4 @@ function devModesAll(on){ const u=unlocked(), dk=Object.assign({},prefs.devKeys)
 function devModesReset(){ const u=unlocked(); for(const k of modeRows()) delete u[k]; if(prefs.devKeys) delete prefs.devKeys.games; save(); }
 
 export { lenGoal };
-export { ACH, Scores, UNLOCKS, achAll, achById, achTab, achToast, achWhere, nameless, bankLen, chalRun, checkAch, checkUnlocks, devModesAll, devModesOn, devModesReset, freeMode, gameDone, gameOpen, gameUnlocked, gamesDone, goalFor, got, isNew, isOpen, lenLock, lenNeed, lenNextLive, lenNextOf, lenOpen, lensOf, markSeen, modeCount, needFor, newMark, newPlay, nextAch, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, tierMin, tierOf, unlockArt, unlockHear, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict, verdictKey };
+export { ACH, Scores, UNLOCKS, achAll, achById, achTab, achToast, achWhere, nameless, bankLen, bankUnlock, chalRun, checkAch, checkUnlocks, devModesAll, devModesOn, devModesReset, freeMode, gameDone, gameOpen, gameUnlocked, gamesDone, goalFor, got, isNew, isOpen, lenLock, lenNeed, lenNextLive, lenNextOf, lenOpen, lensOf, markSeen, modeCount, needFor, newMark, newPlay, nextAch, nextGoal, pendingAim, pendingGoal, practiceOpen, seedSeen, seenAll, setPendingAim, setPendingGoal, tierMin, tierOf, unlockArt, unlockHear, unlockHtml, unlockName, unlockToast, unlockWord, unlocked, verdict, verdictKey };

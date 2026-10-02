@@ -306,6 +306,14 @@
        ready, a reset backs that chest out with every chest after it, and "set meter to N%" clears bars and opens chests to reach N (0-300).
        There is no override any more, so "meter · as earned" went with it -->
   <div class="chips" id="dev-meter-row"><input id="dev-meter" type="number" min="0" max="300" step="1" inputmode="numeric" placeholder="0–300" aria-label="meter percentage"><button data-act="dev-meter" class="chip" id="dev-meterset">set meter to N%</button></div>
+  <!-- build 69 (68.23): a switch per game, mode, length and menu item, each a real unlock, and a "play this tour" list; filled from config by
+       ui/screens/testing.js. Dev only (S5) -->
+  <div class="hint" id="dev-unl-hint"></div>
+  <div id="dev-unl"></div>
+  <div class="hint" id="dev-menu-hint"></div>
+  <div class="chips" id="dev-menu"></div>
+  <div class="hint" id="dev-tour-hint"></div>
+  <div class="chips" id="dev-tour"></div>
   <div class="chips" id="dev-anim"><button data-act="dev-keyin" class="chip">key arrival</button><button data-act="dev-seg" class="chip">segment advance</button><button data-act="dev-whole" data-tier="0" class="chip">key 1 earned</button><button data-act="dev-whole" data-tier="1" class="chip">pro key earned</button><button data-act="dev-whole" data-tier="2" class="chip">author key earned</button><button data-act="dev-keyintro" data-tier="0" class="chip">key 1 created</button><button data-act="dev-keyintro" data-tier="1" class="chip">pro key created</button><button data-act="dev-keyintro" data-tier="2" class="chip">author key created</button><button data-act="dev-chest" data-chest="games" class="chip">replay games chest opening</button><button data-act="dev-chest" data-chest="key" class="chip">replay key chest opening</button><button data-act="dev-chest" data-chest="pro" class="chip">replay pro chest opening</button><button data-act="dev-chest" data-chest="thorns" class="chip">replay thorns chest opening</button></div>
 </section>
 
