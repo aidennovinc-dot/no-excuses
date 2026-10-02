@@ -10,7 +10,7 @@ export const SECTION = ["new-player journey"];
    → the Keys screen. At every box: it fires ONCE (no box key twice), FIRST (no toast is up as a tutorial starts) and, for a tour that lives in a room,
    on that room's FIRST visit (L14); it never covers its own target, the thing it is about or the thing to tap (L15 as amended by 68.4 — it may sit over
    other tiles, which are dimmed and take no tap); nothing is cut out of the background behind it (67.30); and over the
-   whole journey the tutorials never scroll the screen (67.9). Every box is saved as a 390-wide frame with both insets for the review board's
+   whole journey no step waits on a scroll: its target is in view as its box shows, brought in by the game if it was not (68.12). Every box is saved as a 390-wide frame with both insets for the review board's
    Tutorials section (67.10b): _review/_shots/journey/<id>-NN.jpg. This is the check that stops the repeats — the per-tutorial walks in the locked
    decisions section set each tutorial up on its own fixture; this one lets each fire only because the play before it earned it. */
 export async function run() {
@@ -70,7 +70,11 @@ export async function run() {
       if (m.visit !== null && !roomsMet.has(st.id)) { roomsMet.add(st.id); if (m.visit !== 1) rec.notFirst = 'its room on visit ' + m.visit; }
       if (!fs.existsSync(path.join(FRAMES, key + '.jpg'))) await page.screenshot({ path: path.join(FRAMES, key + '.jpg'), type: 'jpeg', quality: 62 });
       n++;
-      if (st.far) { await page.mouse.move(8, 422); for (let j = 0; j < 30 && ((await tut()) || {}).far; j++) { await page.mouse.wheel({ deltaY: st.far * 140 }); await sleep(150); } continue; }
+      /* build 69 (68.12, superseding 67.9): no step waits on the player to scroll — its target is at least 90% inside the safe area as its box shows (the
+         game scrolls an off-screen one in), and no box is ever in the `far` state */
+      if (!rec.taps && st.tgt) { const fr = await page.evaluate(tg => { const p = document.createElement('div'); p.style.cssText = 'position:fixed;top:env(safe-area-inset-top);bottom:env(safe-area-inset-bottom);width:1px'; document.body.appendChild(p); const r = p.getBoundingClientRect(); p.remove();
+          return Math.round(100 * Math.max(0, Math.min(tg[3], r.bottom) - Math.max(tg[1], r.top)) / Math.max(1, Math.min(tg[3] - tg[1], r.bottom - r.top))) / 100; }, st.tgt); if (fr < .9) rec.unseen = fr; }
+      if (st.far) { rec.far = 'waited for the player to scroll (#tut.far)'; return; }
       const pt = st.tap ? await page.evaluate(async () => (await import('./ui/tutorial.js')).tutAim()) : await page.evaluate(() => { const r = document.querySelector('#tut .tbox').getBoundingClientRect(); return [Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2)]; });
       if (!pt) { rec.lock = 'no point on its ring answers'; return; }
       await page.mouse.click(pt[0], pt[1]); lastTap = Date.now();
@@ -139,11 +143,11 @@ export async function run() {
   await page.setViewport(vp);
 
   const ids = [...new Set(steps.map(s => s.key.split('-').slice(0, -1).join('-')))];
-  const badSteps = steps.filter(s => s.twice || s.covers || s.late || s.holes || s.notFirst || s.lock);
+  const badSteps = steps.filter(s => s.twice || s.covers || s.late || s.holes || s.notFirst || s.lock || s.far || s.unseen !== undefined);
   const want = ['first', 'over', 'welcome', 'about', 'prog', 'board', 'games'];
   const missing = want.filter(id => !ids.includes(id));
   fs.writeFileSync(path.join(FRAMES, 'journey.json'), JSON.stringify({ steps, trail, scrolled }, null, 1));
-  (!badSteps.length && !missing.length && !scrolled)
-    ? ok(`67.41 / L14 / L15 the new-player journey from a wiped profile: ${steps.length} boxes across ${ids.join(', ')} — each fired once, first and (a room's tour) on its first visit; none covered its own target; nothing cut out of the background; the tutorials never scrolled the screen. ${fs.readdirSync(FRAMES).filter(f => f.endsWith('.jpg')).length} frames for the review board`)
+  (!badSteps.length && !missing.length && scrolled <= steps.length)
+    ? ok(`67.41 / L14 / L15 the new-player journey from a wiped profile: ${steps.length} boxes across ${ids.join(', ')} — each fired once, first and (a room's tour) on its first visit; none covered its own target; nothing cut out of the background; every target in view as its box showed (the game scrolled ${scrolled} time(s) to bring one in) and no step waited on a scroll. ${fs.readdirSync(FRAMES).filter(f => f.endsWith('.jpg')).length} frames for the review board`)
     : bad('67.41 the new-player journey', JSON.stringify({ missing, scrolled, bad: badSteps, ids, trail }).slice(0, 2500));
 }

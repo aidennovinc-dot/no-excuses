@@ -378,7 +378,9 @@ function union(els){ const rs=els.map(e=>e.getBoundingClientRect()).filter(r=>r.
    back: `TUT_BOX.nudge`) and lands at least that far from the last box, so the player sees it is a new one; a box about the whole screen (the map)
    stays home. It may sit over other tiles and controls: those are dimmed and take no tap (`blocks()`, the ground build 68 used with no free spot).
    On a pick sheet the sheet is the target area, so the box sits above the sheet with its tail down (67.10). The game's UI never moves for a box
-   (67.1: the lock popup is where it always is). Between boxes the box and the ring glide (`.glide`, 250ms); reduced motion jumps. */
+   (67.1: the lock popup is where it always is). Between boxes the box and the ring glide (`.glide`, 250ms); reduced motion jumps.
+   Build 69 (68.12, superseding 67.9's arrow-and-wait, `far`): a target is always in view when its box is placed — tick() has the game scroll an
+   off-screen one in first (`bring()`) — so no box ever points an arrow at the edge and waits for the player to scroll. */
 const TAPS='button,a[href],input,select,textarea,[data-act],[data-go],.tile,.chip,.chest,.cw';
 // every control on the screen whose own middle is the top thing there (a tile under the map's dim is not one) — what a box over it must dim
 function taps(skip){ const out=[], W=innerWidth, H=innerHeight;
@@ -406,15 +408,13 @@ function place(el,text,o={}){ const h=build(), pad=6, ring=h.querySelector('.tri
   const els=(Array.isArray(el)?el:el?[el]:[]).filter(vis), keep=o.keep?[o.keep()].filter(e=>e&&vis(e)):[];
   const s=insets(), lo=s.top+8, hi=innerHeight-s.bottom-8, bw=Math.min(320,innerWidth-32), left=Math.round((innerWidth-bw)/2);
   box.style.width=bw+'px'; const bh=box.offsetHeight||92, gap=pad+(o.arrow?48:16);
-  const T0=union(els), whole=!!T0&&T0.height>=(hi-lo)*.55;
-  // 67.9: a target less than half on the screen (between the clock and the home indicator) is FAR — no ring yet, an arrow toward it, the box at that edge
-  const seen=T0?(Math.min(T0.bottom,innerHeight-s.bottom)-Math.max(T0.top,s.top))/Math.max(1,T0.height):1;
-  const far=!!T0&&!whole&&seen<.5?(T0.top+T0.height/2>innerHeight/2?1:-1):0;
-  const ringed=!!els.length&&!o.noRing&&!far, aimed=!!els.length&&!whole&&!far;
-  ring.hidden=!ringed; glow(o.glow&&!far?els:[]);
+  // a target as tall as the safe area (the map) is the whole screen: its box stays home; anything shorter is cleared if there is room beside it
+  const T0=union(els), whole=!!T0&&T0.height>=(hi-lo)*.9;
+  const ringed=!!els.length&&!o.noRing, aimed=!!els.length&&!whole;
+  ring.hidden=!ringed; glow(o.glow?els:[]);
   const N=TUT_BOX.nudge, U=union(els.concat(keep)), sheet=sheetUp()?$('#sheet').getBoundingClientRect():null, onSheet=!!sheet&&aimed;
   // what the box may never cover: its own target with room for the tail
-  const av=U&&!whole&&!far?{ left:U.left-pad, right:U.right+pad, top:U.top-gap, bottom:U.bottom+gap }:null;
+  const av=U&&!whole?{ left:U.left-pad, right:U.right+pad, top:U.top-gap, bottom:U.bottom+gap }:null;
   const ok=y=>y>=lo&&y+bh<=(sheet?Math.min(hi,sheet.top-4):hi)&&!(av&&av.left<left+bw&&av.right>left&&av.top<y+bh&&av.bottom>y);
   const home=Math.round(lo+(hi-lo-bh)/2), want=home+[0,N,-N][seq%3];
   // nowhere clear of the target (a target nearly the screen's height): the spot that covers least of it
@@ -422,34 +422,29 @@ function place(el,text,o={}){ const h=build(), pad=6, ring=h.querySelector('.tri
       if(sheet&&y+bh>sheet.top) c+=(y+bh-sheet.top)*bw; return c; };
     let b=lo; for(let y=lo;y<=hi-bh;y+=2){ const c=cost(y), cb=cost(b); if(c<cb||(c===cb&&Math.abs(y-want)<Math.abs(b-want))) b=y; } return b; };
   let top;
-  if(far) top=far>0?hi-bh-56:lo+56;
-  else if(onSheet) top=Math.round(sheet.top-gap-bh-(seq%2?N:0));
+  if(onSheet) top=Math.round(sheet.top-gap-bh-(seq%2?N:0));
   else if(ok(want)) top=want;
   else { const side=av?[Math.round(av.bottom),Math.round(av.top-bh)].filter(ok).sort((a,b)=>Math.abs(a-want)-Math.abs(b-want)):[]; top=side.length?side[0]:least(); }
   // a new box on the same screen lands at least the nudge from the last one, by the least move that keeps it clear
-  if(!far&&prevTop!==null&&Math.abs(top-prevTop)<N){ const fit=y=>onSheet?y>=lo&&y+bh<=sheet.top-4:ok(y);
+  if(prevTop!==null&&Math.abs(top-prevTop)<N){ const fit=y=>onSheet?y>=lo&&y+bh<=sheet.top-4:ok(y);
     const c=[1,-1,2,-2,3,-3,4,-4].map(k=>prevTop+k*N).filter(fit).sort((a,b)=>Math.abs(a-top)-Math.abs(b-top)); if(c.length) top=c[0]; }
   top=Math.round(top); last={ key, top, scr };
   // what the box sits over is dimmed and takes no tap — measured with the box and last turn's blocks out of the way
   const lift=[box,...h.querySelectorAll('.tblk')]; lift.forEach(e=>{ e.style.pointerEvents='none'; });
-  const under=!far&&taps(whole?keep:els.concat(keep)).some(r=>r.left<left+bw&&r.right>left&&r.top<top+bh&&r.bottom>top); lift.forEach(e=>{ e.style.pointerEvents=''; });
-  // 67.9: while the target is off the screen the dim is only a look — the player has to be able to scroll to it (`#tut.far`)
-  blocks(under,ringed?union(els):null,pad); h.classList.toggle('over',under); h.classList.toggle('far',!!far);
+  const under=taps(whole?keep:els.concat(keep)).some(r=>r.left<left+bw&&r.right>left&&r.top<top+bh&&r.bottom>top); lift.forEach(e=>{ e.style.pointerEvents=''; });
+  blocks(under,ringed?union(els):null,pad); h.classList.toggle('over',under);
   Object.assign(box.style,{ left:left+'px', top:top+'px' });
   const side=aimed&&U?(top>=U.bottom?1:top+bh<=U.top?-1:0):0;
   tail.hidden=!side; tail.classList.toggle('up',side<0);
   if(side){ const R=union(els); Object.assign(tail.style,{ left:Math.round(Math.max(left+14,Math.min(left+bw-26,R.left+R.width/2-6)))+'px', top:(side>0?top-5:top+bh-7)+'px' }); }
-  const sv=arrow.querySelector('svg');
-  arrow.hidden=!((o.arrow&&els.length&&!far)||far);
-  if(far){ sv.style.transform=far>0?'rotate(225deg)':'rotate(45deg)'; Object.assign(arrow.style,{ left:Math.round(Math.max(8,Math.min(innerWidth-48,T0.left+T0.width/2-20)))+'px', top:Math.round(far>0?top+bh+6:top-46)+'px' }); }
-  else sv.style.transform='';
-  if(!els.length||far) return { far, whole, tgt:T0 };
+  arrow.hidden=!(o.arrow&&els.length);
+  if(!els.length) return { whole, tgt:T0 };
   const r=union(els);
   Object.assign(ring.style,{ left:(r.left-pad)+'px', top:(r.top-pad)+'px', width:(r.width+pad*2)+'px', height:(r.height+pad*2)+'px' });
   const tag=ring.querySelector('.ttag'); tag.textContent=o.tag||''; tag.hidden=!o.tag;
   // 62.11: an arrow just under and right of BACK, pointing up at it
   if(o.arrow) Object.assign(arrow.style,{ left:Math.round(r.right-6)+'px', top:Math.round(r.bottom+2)+'px' });
-  return { far:0, whole, tgt:T0 }; }
+  return { whole, tgt:T0 }; }
 
 // a click the walkthrough makes itself (the lock box's own close, Go after Sprint) passes its own capture
 function through(fn){ passing=true; try{ fn(); } finally{ passing=false; } }
@@ -474,11 +469,23 @@ function tick(){
   // build 66.1: a must-tap box never shows on something that cannot take the tap (a crossed-out menu item, one mid-animation) — it waits
   if(s.tap&&getComputedStyle(first).pointerEvents==='none') return hide();
   if(performance.now()-scrAt<150) return hide();
+  /* build 69 (68.12): NO STEP WAITS ON THE PLAYER TO SCROLL. Aiden on v0.68, About's videos box: it "doesn't let anyone progress until they scroll down
+     and then click once the box is around it, which is just ridiculous." A target less than 90% inside the safe area is brought in by the game as its
+     box comes up (smooth, once a step), and the box shows when it has arrived — or after BRING_MS whatever, so nothing can hold the player */
+  if(s.el){ const r=union([].concat(el).filter(vis)), k=id+':'+i;
+    if(r&&inView(r)<.9&&!(scrollFor===k&&performance.now()-scrollAt>BRING_MS)){ if(scrollFor!==k){ scrollFor=k; scrollAt=performance.now(); bring(first); } return hide(); } }
   cur={ id, i, s }; toastYield();
   const p=place(el,typeof s.text==='function'?s.text():s.text,{ id, i, tap:s.tap, noRing:s.ring===0||!!s.arrow, arrow:s.arrow, tag:s.tag, glow:s.glow, keep:s.keep });
   // build 69 (68.4): what the box is about, for the gate — its target's rectangle, and whether that is the whole screen
-  cur.far=p.far; cur.whole=!!p.whole; cur.tgt=p.tgt?[p.tgt.left,p.tgt.top,p.tgt.right,p.tgt.bottom].map(Math.round):null; }
+  cur.whole=!!p.whole; cur.tgt=p.tgt?[p.tgt.left,p.tgt.top,p.tgt.right,p.tgt.bottom].map(Math.round):null; }
 function run(){ if(!timer) timer=setInterval(tick,200); }
+// 68.12: how much of a target is inside the safe area (of as much of it as could be), and the game bringing it in
+let scrollFor='', scrollAt=0;
+const BRING_MS=1500;
+function inView(r){ const s=insets(), t=s.top, b=innerHeight-s.bottom; return Math.max(0,Math.min(r.bottom,b)-Math.max(r.top,t))/Math.max(1,Math.min(r.height,b-t)); }
+function bring(el){ try{ el.scrollIntoView({ block:'center', inline:'nearest', behavior:REDUCE?'auto':'smooth' }); }catch(e){} }
+// while the game brings a target in, the tap belongs to the tutorial as well (its box is about to show)
+function bringing(){ if(!scrollFor||performance.now()-scrollAt>=BRING_MS) return false; const id=active(), d=id&&DEFS[id]; return !!d&&scrollFor===id+':'+d.step(); }
 // the next step, or the end: the last tap on a tutorial is what finishes it
 function advance(id){ const d=DEFS[id], steps=stepsOf(d), n=d.step()+1;
   if(n>=steps.length){ d.finish(); hide(); return; }
@@ -512,12 +519,11 @@ function tutTells(run){ const out=new Set();
 function lets(t){ if(!shown()||!cur.s.tap) return false; if(cur.s.hit) return !!cur.s.hit(t); return [].concat(cur.s.el()||[]).some(el=>el.contains(t)); }
 document.addEventListener('click',e=>{ if(passing) return;
   tick();   // what is on the screen NOW decides — a box whose tutorial ended since the last turn of the loop owns nothing
-  if(!shown()){ if(waiting()){ e.stopPropagation(); e.preventDefault(); } return; }
+  if(!shown()){ if(waiting()||bringing()){ e.stopPropagation(); e.preventDefault(); } return; }
   // build 68: only if the step is still the one tapped — a tap that changes screen has already passed its doorway step on the way (67.22)
   if(lets(e.target)){ const {id,i,s}=cur; if(!s.done) setTimeout(()=>{ if(active()===id&&DEFS[id].step()===i) advance(id); tick(); },0); return; }
   e.stopPropagation(); e.preventDefault();
-  // 67.9: a box whose target is still off the screen waits for the player to bring it in; a tap does not move it on
-  if(!cur.s.tap&&!cur.far){ Snd.click(); const s=cur.s; advance(cur.id); if(s.go&&!onScreen(s.go)){ emit('tut:handover',{}); show(s.go); } tick(); } },true);
+  if(!cur.s.tap){ Snd.click(); const s=cur.s; advance(cur.id); if(s.go&&!onScreen(s.go)){ emit('tut:handover',{}); show(s.go); } tick(); } },true);
 /* step 12: Sprint picked, the run starts — there is no box for Go. The tap selected the length (pick.js's own handler, bubbling after this
    capture); Go is pressed for it on the next turn of the loop */
 document.addEventListener('click',e=>{ if(passing||!shown()||cur.id!=='first'||cur.i!==FIRST.length-1) return;
@@ -576,7 +582,8 @@ setTimeout(resumeOver,0);
    and waiting for a tap on its ring */
 // build 69 (68.19): a new game's ring is the next thing on the map — the result's Game Select lands there with no sheet up
 function tutMapDue(){ for(const id of ORDER){ const d=DEFS[id]; if(!d||!d.live()) continue; const s=stepsOf(d)[d.step()]; if(s&&s.mapStep) return true; } return false; }
-function tutNow(){ const id=active(); if(!id) return null; const d=DEFS[id]; return { id, i:d.step(), n:stepsOf(d).length, shown:shown()&&cur.id===id, tap:shown()&&!!cur.s.tap, far:shown()&&cur.far||0,
+// `far` is always 0 since build 69 (68.12: no box waits for a scroll); the gate asserts it
+function tutNow(){ const id=active(); if(!id) return null; const d=DEFS[id]; return { id, i:d.step(), n:stepsOf(d).length, shown:shown()&&cur.id===id, tap:shown()&&!!cur.s.tap, far:0,
   whole:shown()&&!!cur.whole, tgt:shown()&&cur.tgt||null }; }
 /* build 66 (65.4): EVERY TUTORIAL AS THE REVIEW CATALOGUE PRINTS IT — the Tutorials section (_review/scripts/catalogue.ref.mjs tutorialsRef) is built
    from this, so it cannot drift from the game: each tutorial's trigger, starting screen and purpose (`meta`, beside its definition), then each box —
@@ -607,7 +614,7 @@ function tutMap(){ const out=[], text=t=>{ try{ return typeof t==='function'?t()
 
 /* build 66 (65.11): WHERE A REAL TAP ON A MUST-TAP BOX'S RING LANDS AND IS ANSWERED — a point on the screen, inside the ring, whose top element the box
    lets through; null when there is none (the ring is round something covered, off the screen or not the thing that answers), which is a soft lock */
-function tutAim(){ if(!shown()||!cur.s.tap||cur.far) return null; const r=union([].concat(cur.s.el()||[]).filter(vis)); if(!r) return null;
+function tutAim(){ if(!shown()||!cur.s.tap) return null; const r=union([].concat(cur.s.el()||[]).filter(vis)); if(!r) return null;
   for(const fy of [.5,.3,.7,.15,.85]) for(const fx of [.5,.3,.7,.15,.85]){ const x=r.left+r.width*fx, y=r.top+r.height*fy; if(x<0||y<0||x>=innerWidth||y>=innerHeight) continue;
     const t=document.elementFromPoint(x,y); if(t&&lets(t)) return [Math.round(x),Math.round(y)]; } return null; }
 

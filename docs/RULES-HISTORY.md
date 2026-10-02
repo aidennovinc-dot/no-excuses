@@ -1946,3 +1946,13 @@ anything Aiden settles goes on the list in the build that implements it.
   tutorial (390×844 with insets, and an SE) and the journey (41) — no box over its own target; a whole-screen box within 40px of home; each new
   box on a screen at least the nudge from the last; none within 24px of the bottom inset unless its target is there. 67.2's "covers nothing that
   takes a tap" is withdrawn from both (Aiden's amendment).
+- **No tutorial step ever waits on the player to scroll (68.12, superseding 67.9's arrow-and-wait).** Aiden on v0.68, About's videos box: it
+  "doesn't let anyone progress until they scroll down and then click once the box is around it, which is just ridiculous." The cause: build 68's
+  L15 forbade the tutorial to scroll, so a target off the screen got an arrow (`far`), and a tap did not move the step on until the player had
+  scrolled it in. Now `tick()` in `ui/tutorial.js` asks how much of the step's target is inside the safe area (`inView()`); under 90%, the game
+  brings it in (`bring()`: `scrollIntoView({block:'center'})`, smooth, once a step) and the box shows when it has arrived (after `BRING_MS`,
+  1.5s, whatever happens, so nothing can hold the player); taps meanwhile belong to the tutorial (`bringing()`). The `far` state, its arrow, its
+  undimmed ground and `#tut.far` are gone; an information box always moves on at a tap anywhere. A target as tall as the safe area (the map)
+  counts as the whole screen (90% of it, was 55%), so a long list on a small phone gets its box beside it, not over it. Applies to every tour —
+  About, Progress, Scores, Customise (Snow), the Gauntlets' tiles below the fold. Gate: `locked decisions` section C's walk and the journey (41)
+  fail a box whose target is under 90% inside the safe area as it shows, or any `far` box; the tutorial may scroll at most once a box.

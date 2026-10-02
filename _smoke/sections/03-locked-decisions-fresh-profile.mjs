@@ -542,8 +542,8 @@ export async function run() {
         { id: 'mini', prefs: { ...PL, tuts: { mini: 0 }, chests: { games: 1, key: 1 }, spill: { games: 1, key: 1 } }, go: 's-pick' },
         { id: 'mega', prefs: { ...PL, tuts: { mega: 0 }, chests: { games: 1, key: 1, pro: 1 }, spill: { games: 1, key: 1, pro: 1 } }, go: 's-pick' },
       ];
-      /* build 68 (67.9, L15): NOTHING IN ui/tutorial.js EVER SCROLLS. Every scroll call the page makes is wrapped, and one made from the tutorial module
-         is counted — the walker's own wheel turns, as a player's would, are not */
+      /* build 68 (67.9, L15): every scroll call the page makes is wrapped, and one made from the tutorial module is counted. AMENDED at build 69 (68.12):
+         the game now scrolls an off-screen target in as its box comes up — once a box at most, never more */
       await page.evaluateOnNewDocument(() => { window.__tscroll = 0; const mine = () => /ui\/tutorial\.js/.test(new Error().stack || '');
         for (const [o, k] of [[Element.prototype, 'scrollTo'], [Element.prototype, 'scrollBy'], [Element.prototype, 'scrollIntoView'], [window, 'scrollTo'], [window, 'scrollBy']]) { const f = o[k]; o[k] = function (...a) { if (mine()) window.__tscroll++; return f.apply(this, a); }; }
         const d = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollTop'); Object.defineProperty(Element.prototype, 'scrollTop', { configurable: true, get: d.get, set(v) { if (mine()) window.__tscroll++; d.set.call(this, v); } }); });
@@ -596,12 +596,11 @@ export async function run() {
             if (cov.sheetBad) rec.sheetBad = 1; if (cov.over) rec.dimmed = 1;
             // the state is read again once the box has come to rest: a sheet still sliding up carries its target in from off the screen
             Object.assign(st, (await page.evaluate(async () => (await import('./ui/tutorial.js')).tutNow())) || {});
-            /* 67.9: a target off the screen — the box waits with an arrow toward it and no ring; the walker brings it in with the wheel, as a thumb would */
-            /* a box waiting for an off-screen target sits at that edge over a screen that must still scroll, so what is under it is dimmed but not blocked —
-               it is not held to 67.2 until the target is in and the ring lands */
-            if (st.far) { delete rec.over; rec.covers = false; const b2 = await box(); rec.far = st.far; rec.farOk = !!b2 && !b2.drawn && b2.arrow; await page.mouse.move(8, Math.round(h / 2)); let still = true;
-              for (let k = 0; k < 30 && (still = !!((await page.evaluate(async () => (await import('./ui/tutorial.js')).tutNow())) || {}).far); k++) { await page.mouse.wheel({ deltaY: st.far * 140 }); await sleep(150); }
-              rec.moved = !still; boxes.push(rec); if (!rec.farOk) { why = 'an off-screen target was ringed, or had no arrow'; break; } if (still) { why = 'an off-screen target the player cannot scroll to'; break; } continue; }
+            /* build 69 (68.12, superseding 67.9's arrow-and-wait): NO STEP WAITS ON THE PLAYER TO SCROLL. A box shows only with its target at least 90% inside
+               the safe area (the game scrolls an off-screen target in as the box comes up), and no box is ever in the `far` state: an arrow, the step held */
+            if (st.tgt) { const fr = await page.evaluate(tg => { const p = document.createElement('div'); p.style.cssText = 'position:fixed;top:env(safe-area-inset-top);bottom:env(safe-area-inset-bottom);width:1px'; document.body.appendChild(p); const r = p.getBoundingClientRect(); p.remove();
+                return Math.round(100 * Math.max(0, Math.min(tg[3], r.bottom) - Math.max(tg[1], r.top)) / Math.max(1, Math.min(tg[3] - tg[1], r.bottom - r.top))) / 100; }, st.tgt); if (fr < .9) rec.unseen = fr; }
+            if (st.far) { rec.far = st.far; boxes.push(rec); why = 'a box waited for the player to scroll (#tut.far)'; break; }
             let pt = null;
             if (st.tap) { pt = await page.evaluate(async () => (await import('./ui/tutorial.js')).tutAim()); if (!pt) { rec.lock = 'no point on the ring answers a tap'; boxes.push(rec); why = 'soft lock'; break; } }
             else pt = await page.evaluate(() => { const r = document.querySelector('#tut .tbox').getBoundingClientRect(); return [Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2)]; });
@@ -615,8 +614,8 @@ export async function run() {
           }
           const done = await page.evaluate(id => { const v = (JSON.parse(localStorage.getItem('ne')).prefs.tuts || {})[id]; return v; }, T.id);
           const scrolled = await page.evaluate(() => window.__tscroll || 0);
-          out.push({ at: w + 'x' + h, id: T.id, n: boxes.length, why: why || (scrolled ? `ui/tutorial.js scrolled the screen ${scrolled} time(s)` : ''), done: T.id === 'first' || T.id === 'over' ? 'n/a' : done,
-            far: boxes.filter(b => b.far).length, dimmed: boxes.filter(b => b.dimmed).length, bad: boxes.filter(b => b.covers || !b.safe || b.marks || b.lock || !b.moved || b.nav || b.sheetBad || b.home !== undefined || b.nudge !== undefined || b.pinned !== undefined) });
+          out.push({ at: w + 'x' + h, id: T.id, n: boxes.length, why: why || (scrolled > boxes.length ? `ui/tutorial.js scrolled the screen ${scrolled} time(s) for ${boxes.length} boxes` : ''), done: T.id === 'first' || T.id === 'over' ? 'n/a' : done,
+            far: boxes.filter(b => b.far).length, dimmed: boxes.filter(b => b.dimmed).length, bad: boxes.filter(b => b.covers || !b.safe || b.marks || b.lock || !b.moved || b.nav || b.sheetBad || b.home !== undefined || b.nudge !== undefined || b.pinned !== undefined || b.unseen !== undefined) });
         }
       }
       try { await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0, bottom: 0, left: 0, right: 0 } }); } catch (e) {}
@@ -624,7 +623,7 @@ export async function run() {
       const fails = out.filter(o => o.bad.length || o.why || !o.n || (o.done !== 'n/a' && o.done !== 'done'));
       const taps = out.reduce((n, o) => n + o.n, 0);
       (!fails.length)
-        ? ok(`L15 / 68.4 / 67.10 / 65.11 / 65.9 every tutorial walked with real taps at 390×844 (47/34 insets) and on an SE: ${taps} boxes (${out.filter(o => o.at === '390x844').map(o => o.id + ' ' + o.n).join(', ')}) — no box over its own target or the thing to tap (${out.reduce((n, o) => n + o.dimmed, 0)} sat over other controls, dimmed and taking no tap), every box about the whole screen at the home spot (±40px), each new box on a screen ${NUDGE}px or more from the last, none pinned at the bottom inset, on a pick sheet every box above it with its tail down, ${out.reduce((n, o) => n + o.far, 0)} off-screen target(s) waited for with an arrow and the screen never scrolled by the tutorial, every must-tap ring answers a real tap, all inside the safe areas, no "[" left, no screen change after a text box`)
+        ? ok(`L15 / 68.4 / 67.10 / 65.11 / 65.9 every tutorial walked with real taps at 390×844 (47/34 insets) and on an SE: ${taps} boxes (${out.filter(o => o.at === '390x844').map(o => o.id + ' ' + o.n).join(', ')}) — no box over its own target or the thing to tap (${out.reduce((n, o) => n + o.dimmed, 0)} sat over other controls, dimmed and taking no tap), every box about the whole screen at the home spot (±40px), each new box on a screen ${NUDGE}px or more from the last, none pinned at the bottom inset, on a pick sheet every box above it with its tail down, every target at least 90% in view as its box showed (the game scrolls an off-screen one in, at most once a box) and no box ever waiting for the player to scroll, every must-tap ring answers a real tap, all inside the safe areas, no "[" left, no screen change after a text box`)
         : bad('L15 a tutorial covers something tappable, scrolls, soft-locks or misplaces a box', JSON.stringify(fails));
     }
     /* build 66.1: THE WELCOME ON THE MAIN MENU OPENS ABOUT, DRAWN OPEN AT ONCE. AMENDED at build 68 (67.7, L20): there is no Later any more — the

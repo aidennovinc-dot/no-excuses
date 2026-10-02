@@ -1280,7 +1280,6 @@
   #tut .tblk{position:fixed;pointer-events:auto;background:transparent}
   #tut .tblk[hidden]{display:none}
   #tut.tdim .tblk{background:rgba(0,0,0,.5)}
-  #tut.far .tblk{pointer-events:none}
   #tut .tbox{min-height:0;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;position:fixed;pointer-events:auto;background:#141414;border:2px solid var(--tut);border-radius:12px;padding:14px 16px;color:var(--ink);font-family:var(--mono);font-size:14px;line-height:1.4}
   #tut .tbox p{margin:0}
   /* build 66 (65.19): a colour mark in a line of copy (core.js marks()) — green the goal, yellow the thing named, red how you fail */

@@ -2140,6 +2140,16 @@ scene('68.4', async (page, browser) => {
   await frame(page, browser, '68.4-box-beside-target', 'Box 5, the Dots rule: its target is the lock popup in the middle, so the box leaves home just far enough to sit beside it, tail pointing at it; the popup is where it always sits (67.1)');
 });
 
+/* 68.12: the About tour's videos box, About opened at the top as a player opens it — the game scrolls the list into view as the box comes up (v0.68: an
+   arrow down at the list off screen, and the step waiting for him to scroll) */
+scene('68.12', async (page, browser) => {
+  await load(page, { ...PLAIN, welcomeSeen: 1, menuUnl: { about: 1, prog: 1, board: 1 }, tuts: { next: 'done', about: 2 } });
+  await show(page, 's-about'); say('box', await pBox(page, 'Welcome')); await tutTap(page);
+  say('box', await pBox(page, 'videos'));
+  say('list', await page.evaluate(() => { const r = document.getElementById('msglist').getBoundingClientRect(), s = document.getElementById('s-about'); return { top: Math.round(r.top), bottom: Math.round(r.bottom), scrolled: Math.round(s.scrollTop), arrow: getComputedStyle(document.querySelector('#tut .tarrow')).display }; }));
+  await frame(page, browser, '68.12-about-videos', 'About, opened at the top: the game has scrolled the videos into view as the box came up — the list ringed, no arrow, a tap anywhere moves on (v0.68: an arrow at the list off screen, the step waiting for a scroll)');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }
