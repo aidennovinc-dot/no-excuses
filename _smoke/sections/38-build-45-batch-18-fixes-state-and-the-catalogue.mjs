@@ -273,7 +273,8 @@ export async function run() {
     /* AMENDED AT BUILD 59 (v30 59.15): keyCircuitPlan, the plan helper for the Pro key's electrical layer. Like keyEarnPlan beside
        it, it is not a sound of its own — Snd.keyEarn plays both plans through one gain node, so one stop() silences both — and a
        helper in this list is one the page's sound roster does not need a button for. */
-    const HELP = ['unlock', 'tone', 'plan', 'fx', 'noise', 'chestPlan', 'keyEarnPlan', 'keyCircuitPlan', 'keyIntroPlan', 'keyStepPlan', 'videoPlan', 'roundVerdictPlan', 'mapPlan', 'giftPlan', 'popPlan', 'cheerPlan', 'endLeft'];
+    // AMENDED at build 69 (68.37): confettiPlan, the plan helper for the confetti's own sound (Snd.confetti is the sound, and its row is on the list)
+    const HELP = ['unlock', 'tone', 'plan', 'fx', 'noise', 'chestPlan', 'keyEarnPlan', 'keyCircuitPlan', 'keyIntroPlan', 'keyStepPlan', 'videoPlan', 'roundVerdictPlan', 'mapPlan', 'giftPlan', 'popPlan', 'cheerPlan', 'confettiPlan', 'endLeft'];
     const srcs = rows.map(r => r.src).join(' ');
     const missed = snd.methods.filter(m => !HELP.includes(m) && !srcs.includes(m + '('));
     const packs = rows.filter(r => r.plays.length > 1).length;

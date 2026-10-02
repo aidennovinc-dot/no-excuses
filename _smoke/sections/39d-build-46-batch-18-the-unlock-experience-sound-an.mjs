@@ -40,16 +40,25 @@ export async function run() {
     await boot({ chests: { games: 1, key: 1, pro: 1, thorns: 1 }, bg: 'grid', revealed: { 'key:clear': 1, 'key:pro': 1, 'key:author': 1 } }, { unlock: ALL46, bars: tier46('clear', 'pro', 'author') });
     /* build 57: the grid draws in its own blue (#5B8CFF at .3), so "the chosen design is not drawn under a key layer" is countable — its pixels are
        on the canvas on the menu and must be gone on every key screen, where that key's own layer is the whole picture. */
-    const gridPx = () => page.evaluate(() => { const cv = document.getElementById('stars'), cx = cv.getContext('2d');
+    /* AMENDED at build 69 (68.39 follow-up): the art is drawn OPAQUE now, its colour already mixed onto the ground, so the grid's blue is no longer
+       #5B8CFF stored at .3 alpha. Its colour is read off the live page instead of typed: on the menu, the commonest colour on the canvas that is
+       not the page's own ground is the grid's line — and that colour must be on no key screen. */
+    const gridPx = col => page.evaluate(col => { const cv = document.getElementById('stars'), cx = cv.getContext('2d');
       const d = cx.getImageData(0, 0, cv.width, cv.height).data; let n = 0;
-      for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 8 && Math.abs(d[i] - 91) < 12 && Math.abs(d[i + 1] - 140) < 12 && Math.abs(d[i + 2] - 255) < 12) n++;
-      return n; });
+      for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 8 && Math.abs(d[i] - col[0]) <= 6 && Math.abs(d[i + 1] - col[1]) <= 6 && Math.abs(d[i + 2] - col[2]) <= 6) n++;
+      return n; }, col);
     await show46('s-menu'); await sleep(700);
-    const gridOnMenu = await gridPx();
+    const gridCol = await page.evaluate(() => { const cv = document.getElementById('stars'), d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+      const g = getComputedStyle(document.body).backgroundColor.match(/[\d.]+/g).slice(0, 3).map(Number), tally = {};
+      for (let i = 0; i < d.length; i += 4) { if (d[i + 3] < 250 || [0, 1, 2].every(j => Math.abs(d[i + j] - g[j]) <= 3)) continue; const k = d[i] + ',' + d[i + 1] + ',' + d[i + 2]; tally[k] = (tally[k] || 0) + 1; }
+      const top = Object.entries(tally).sort((x, y) => y[1] - x[1])[0]; return top ? top[0].split(',').map(Number) : [-99, -99, -99]; });
+    // and it IS the grid's blue: blue the strongest channel by a clear margin
+    const gridBlue = gridCol[2] > gridCol[0] + 30 && gridCol[2] > gridCol[1] + 20;
+    const gridOnMenu = gridBlue ? await gridPx(gridCol) : 0;
     const layers = [];
     for (const [tier, tab, style] of [['clear', 0, 'lantern'], ['pro', 1, 'circuit'], ['author', 2, 'thorn']]) {
       await show46('s-menu'); await sleep(150); await show46('s-key', { tier: tab }); await sleep(900);
-      layers.push(Object.assign({ tier, style, grid: await gridPx() }, await page.evaluate(async () => { const A = await import('./ui/atmosphere.js'); const S = await import('./core/store.js');
+      layers.push(Object.assign({ tier, style, grid: await gridPx(gridCol) }, await page.evaluate(async () => { const A = await import('./ui/atmosphere.js'); const S = await import('./core/store.js');
         return { style: document.getElementById('s-key').dataset.style, chosen: S.look('bg'), draws: !!A.LAYER }; })));
     }
     const replaces = gridOnMenu > 0 && layers.every(l => l.grid === 0);
@@ -61,7 +70,7 @@ export async function run() {
     const still = /const reduce=matchMedia/.test(atm) && /reduce\?0:t/.test(atm.replace(/\s/g, ''));
     (replaces && layers.every(l => l.style === l.style && l.chosen === 'grid') && inChest && still)
       ? ok(`item 15 on a key's screen only that key's background shows — the chosen design is not drawn at all while a key layer is over, DRIVEN at build 57: the grid's own blue is on ${gridOnMenu} pixels of the canvas on the menu and on ${layers.map(l => l.grid).join('/')} on the three key screens, so nothing is ever layered twice — and each key's background is one of the symbols its own chest pops out; Reduce Motion holds every layer still`)
-      : bad('item 15 the key backgrounds', JSON.stringify({ replaces, gridOnMenu, layers, off, inChest, still }));
+      : bad('item 15 the key backgrounds', JSON.stringify({ replaces, gridCol, gridOnMenu, layers, off, inChest, still }));
   }
 
 }
