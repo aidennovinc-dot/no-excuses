@@ -629,6 +629,17 @@ export async function run() {
       ? ok(`L26 / 68.11 the video frame takes the shape of its clip: the frame is ${l26.w}×${l26.h} for a ${l26.vw}×${l26.vh} clip (placeholder on the 16:9 test card until 68.11 is built)`)
       : bad('L26 / 68.11 the frame takes the clip\'s shape', JSON.stringify(l26));
   }
+  /* ---- build 69 (68.21): L25 A LOCKED KEY CARD'S "TO UNLOCK" LINE IS NOT GREEN. The Pro and Author cards printed "To unlock: open the Skill chest" /
+     "open the Pro chest" in --ok, which on this screen means a key that is whole. Read off the computed colour against a probe wearing var(--ok) ---- */
+  {
+    await boot({ chests: { games: 1 } });
+    const k25 = await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-key', { tier: 0 }); await new Promise(r => setTimeout(r, 600));
+      const p = document.createElement('i'); p.style.color = 'var(--ok)'; document.body.appendChild(p); const okc = getComputedStyle(p).color; p.remove();
+      return { okc, need: [...document.querySelectorAll('#key-keys .kkey.locked')].map(k => { const u = k.querySelector('u.need'); return { key: k.querySelector('b').textContent, txt: u ? u.textContent : '', col: u ? getComputedStyle(u).color : '' }; }) }; });
+    (k25.need.length === 2 && k25.need.every(x => /unlock/i.test(x.txt) && x.col && x.col !== k25.okc))
+      ? ok(`L25 / 68.21 the locked key cards' "To unlock" line is not green: ${k25.need.map(x => x.key + ' "' + x.txt + '" in ' + x.col).join(', ')} (--ok is ${k25.okc})`)
+      : bad('L25 / 68.21 a locked key card in green', JSON.stringify(k25));
+  }
   /* ---- v29 (items 1 / 10 / 11 / 13, build 55): the meter, the Next card, a dev-opened tier and a clip that will not load ---- */
   {
     /* item 1: build 53 put meterPct() over the top of meter() and clamped it to 100, so the front of the app read 100%

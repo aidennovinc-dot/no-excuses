@@ -436,4 +436,31 @@ export async function run() {
       ? ok(`67.30 no box is cut out of the background behind any text or icon — menu, map ("You found") and Customise on ${[...new Set(b30.map(x => x.bg))].join(', ')} — and every line carries its own soft dark shadow instead`)
       : bad('67.30 the backing boxes', JSON.stringify(b30));
   }
+  /* build 69 (68.21, L25): ON PROGRESS, GREEN MEANS DONE AND NOTHING ELSE. Aiden on v0.68, the Games chest tab under the Quick Tap filter: "Why is
+     there green text on locked games?" — the locked Four · Dash and Four · Marathon rows printed their requirement in --ok. Every element with text
+     inside a locked row is read off its computed colour against --ok's own (a probe wearing var(--ok), never a typed colour): first on his screen
+     (a profile with Quick Tap · Four locked, the Games chest tab, Quick Tap), then on every Progress tab of a profile with all four chests open and
+     nothing earned. Every earned row that is on screen is still green */
+  {
+    const scan25 = async (tabs, game) => page.evaluate(async ({ tabs, game }) => { const R = await import('./ui/router.js'), w = ms => new Promise(r => setTimeout(r, ms));
+      const p = document.createElement('i'); p.style.color = 'var(--ok)'; document.body.appendChild(p); const okc = getComputedStyle(p).color; p.remove();
+      const seen = e => e.getClientRects().length > 0, out = [];
+      for (const tab of tabs) { R.show('s-menu'); await w(80); R.show('s-prog', { tab }); await w(300);
+        const chip = game && document.querySelector(`${tab === 'ach' ? '#ach-g' : '#chest-g'} [data-v="${game}"]`); if (chip) { chip.click(); await w(200); }
+        const locked = [...document.querySelectorAll('#s-prog .lock')].filter(seen), done = [...document.querySelectorAll('#s-prog .done')].filter(seen);
+        const green = locked.flatMap(r => [r, ...r.querySelectorAll('*')]).filter(e => seen(e) && [...e.childNodes].some(n => n.nodeType === 3 && n.nodeValue.trim()) && getComputedStyle(e).color === okc).map(e => e.textContent.trim().slice(0, 50));
+        const doneOk = done.filter(r => { const s = r.querySelector('span'); return s && getComputedStyle(s).color === okc; }).length;
+        out.push({ tab, locked: locked.length, green, done: done.length, doneOk }); }
+      return { okc, out }; }, { tabs, game });
+    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS, allOpen: false, chests: { games: 1 } }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+    const his = await scan25(['c-games'], 'quick-tap');
+    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS, allOpen: false, chests: { games: 1, key: 1, pro: 1, thorns: 1 }, gauntSeen: { g1: 1, g2: 1 } }, runs: [], ach: {}, unlock: { 'quick-tap:four': Date.now() }, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+    const every = await scan25(['c-games', 'c-key', 'c-pro', 'c-thorns', 'cul', 'ach'], 'all');
+    const all25 = his.out.concat(every.out);
+    (his.out[0].locked > 0 && all25.every(x => !x.green.length && x.doneOk === x.done) && every.out.filter(x => x.locked > 0).length >= 5)
+      ? ok(`L25 / 68.21 on Progress green means done and nothing else: no text inside a locked row is --ok (${his.okc}) — ${his.out[0].locked} locked rows on the Games chest tab under Quick Tap, Quick Tap · Four locked, and ${all25.reduce((n, x) => n + x.locked, 0)} locked rows across every tab; ${all25.reduce((n, x) => n + x.done, 0)} earned rows on screen, every one green`)
+      : bad('L25 / 68.21 green on a locked row', JSON.stringify(all25));
+  }
 }

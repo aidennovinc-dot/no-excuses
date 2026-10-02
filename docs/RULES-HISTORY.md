@@ -1866,6 +1866,11 @@ anything Aiden settles goes on the list in the build that implements it.
   "**A tutorial never covers anything tappable, never scrolls the screen, never navigates** (67.2 / 67.9 / 65.9): no clear space → over a
   dimmed, untappable area; an off-screen target gets an arrow and the step waits." Its history (67.2 / 67.9 / 65.9) is under Build 68 above.
   Built in package P3 with 68.4, which rewrites the old strict gate checks (`locked decisions` section C, the journey 41).
+- **L25 — on Progress and the key cards, green means done and nothing else (68.21; settled 2026-09-14).** Aiden on v0.68: "Why is there green
+  text on locked games?" White for not yet earned, green for unlocked. A locked row's name and requirement are plain white on every Progress tab,
+  and the green "To unlock: open the Skill chest" on the locked Pro and Author key cards goes white too. An earned row is green with its tick.
+  Gate: `side screens` and `the keys`, "L25 / 68.21", read every element in a locked row and the locked key cards' "To unlock" line against
+  `--ok`, off the computed style.
 - **L26 — the video frame takes the shape of the clip (68.11, superseding 67.6b's "16:9 whatever the clip").** A portrait clip plays in a tall
   frame, a landscape clip in a wide one, never letterboxed inside the other shape, on first viewing and from About; thumbnails follow the clip.
   Built in package P5. Gate: `the keys`, "L26 / 68.11" — the player's frame ratio against the clip's own `videoWidth / videoHeight`; added at the

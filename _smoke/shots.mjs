@@ -2024,6 +2024,16 @@ scene('68.39', async (page, browser) => {
   await frame(page, browser, '68.39-orbs-progress', 'Progress on Snow (the navy "orbs"): the flakes drawn at most 0.45 of the text’s brightness, under every line and chip');
 });
 
+/* 68.21 (L25): green means done and nothing else — the Games chest tab under Quick Tap with Quick Tap · Four locked (his v0.68 frame), and the Skill
+   Key screen with the Pro and Author cards locked */
+scene('68.21', async (page, browser) => {
+  await load(page, { ...PLAIN, welcomeSeen: 1 }, { runs: [{ g: 'quick-tap', d: 'two', s: 5, t: Date.now() - 6e4, hits: 16, misses: 0, row: 16, v: 4 }] });
+  await show(page, 's-prog', { tab: 'c-games' }); await sleep(500); await tap68(page, '#chest-g [data-v="quick-tap"]'); await sleep(500);
+  await frame(page, browser, '68.21-games-tab', 'Games chest tab, Quick Tap: the locked Four rows’ names and requirements in plain white (v0.68: the requirement green)');
+  await load(page, { ...PLAIN, welcomeSeen: 1, chests: { games: 1 }, spill: { games: 1 } }); await show(page, 's-key', { tier: 0 }); await sleep(1200);
+  await frame(page, browser, '68.21-key-cards', 'The Skill Key screen: the locked Pro and Author cards say “To unlock: open the … chest” in plain white (v0.68: green)');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }
