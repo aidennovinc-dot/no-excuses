@@ -1809,3 +1809,21 @@ anything Aiden settles goes on the list in the build that implements it.
   result boxes; the Welcome now waits for the walkthrough to end (`tut:done`) and plays on the same result at once. (2) A tour entering a new screen
   placed its box against the last screen's spot and glided across Customise's rows; a new screen's first box now waits one tick, and a box never
   glides from one screen to another.
+
+
+## Build 69 (FEEDBACK-v37, 2026-10-02): the rules this build added or amended, in full
+
+- **L23 — the background runs to the physical bottom edge (68.27; first logged 2026-09-20, "I think I've told you this about 10 times
+  already").** On every screen, every background and under every overlay (the video player full screen and inset, a chest's ceremony, a key
+  being earned, the Welcome, a lock box, the ad break, the pick sheet, a run and its result) the bottom safe-area strip is the colour of whatever
+  is drawn directly above it, and buttons and text stay above the home bar. The cause, named: on an installed iPhone app every layer of ours
+  (the canvas, body, each screen, each fixed overlay) ends at the layout viewport, and the band under it (59px on Aiden's phone) shows html's
+  own background. 62.15 and 65.10 set that from the background layer alone (`--underlay`, with a guess that a `.cere` host meant `--ground`),
+  so it was Lantern's brown under the black full-screen player and Snow's navy under the Lantern key screen while the key-earn's host was up.
+  65.10's check compared the canvas with that page colour, the same colour twice, and passed with the fault live. One mechanism replaces both:
+  `stripOf()` in `ui/atmosphere.js` composites, every frame, what is stacked at the bottom edge (`elementsFromPoint`, each full-width layer
+  reaching the bottom at its background colour × its opacity) over the canvas's own floor, and html wears it (`--strip`); body keeps the
+  layer's ground (`--underlay`) under the canvas. A run's floor is painted too (the run dims the canvas and Snow's flakes reached the inset).
+  Gate: `the keys` section, "L23 / 68.27", reads a screenshot with insets 47 / 34 on every screen and overlay under stars, Lantern, Snow and
+  Orbs: the inset row against the row just above it, html's computed colour against the colour just above the inset, and no button or text
+  of ours inside the inset.

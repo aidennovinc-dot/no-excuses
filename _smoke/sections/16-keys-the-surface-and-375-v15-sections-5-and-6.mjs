@@ -916,6 +916,82 @@ export async function run() {
       ? ok(`65.10 the bottom 40px of every screen (${res.length} screen × background × phone) are the screen's own background: canvas and page agree within 6 at every sampled point, under the starfield and Lantern, at 390×844 with insets and on an SE; a ceremony gives the page --ground`)
       : bad('65.10 the bottom strip', JSON.stringify(off));
   }
+  /* build 69 (68.27, L23): THE BACKGROUND RUNS TO THE PHYSICAL BOTTOM EDGE — every screen, every background, under every overlay. On an installed
+     iPhone app everything of ours ends at the layout viewport, and the strip under it shows html's own background: Aiden's v0.68 frames have a
+     BROWN strip under the black full-screen player (Lantern's floor) and a NAVY one under the Lantern key screen (Snow's ground). 65.10 compared
+     the canvas with that page colour — the same colour twice — so it passed with the fault live; it never looked at what is drawn ON TOP. This
+     does, off a screenshot with both insets on: a row inside the bottom inset against the row just above it, and html's computed background against
+     the colour just above the inset (headless Chrome composites a fixed overlay past the inset where the phone does not, so the second pair is the
+     one that sees the phone's strip). A point over a button or a line of text of ours is skipped; every colour comes off the live page. */
+  {
+    const cdp = await page.createCDPSession(); let sent = true; const res = [];
+    await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    try { await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 47, bottom: 34, left: 0, right: 0 } }); } catch (e) { sent = false; }
+    const strip27 = async name => { await sleep(700);
+      const png = await page.screenshot({ type: 'png', clip: { x: 0, y: 844 - 60, width: 390, height: 60 } });
+      return page.evaluate(async (b64, name, clipTop) => {
+        const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode();
+        const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(img, 0, 0);
+        const k = c.width / innerWidth, pr = document.createElement('div'); pr.style.cssText = 'position:fixed;bottom:0;width:1px;height:env(safe-area-inset-bottom)'; document.body.appendChild(pr); const ib = pr.getBoundingClientRect().height; pr.remove();
+        const html = getComputedStyle(document.documentElement).backgroundColor.match(/[\d.]+/g).slice(0, 3).map(Number), yIn = innerHeight - 10, yUp = innerHeight - ib - 6;
+        const at = (X, Y) => [...x.getImageData(Math.round(X * k), Math.round((Y - clipTop) * k), 1, 1).data].slice(0, 3), gap = (a, b) => Math.max(...a.map((v, i) => Math.abs(v - b[i])));
+        let n = 0, strip = 0, pg = 0, seen = null, low = [];
+        // a button, a chip or a line of text of ours (the full-width backdrops — a screen, a dim, the player's ground — are what is being read)
+        const scr = document.querySelector('.screen.on'), st = document.getElementById('build'), rg = document.createRange(); if (st) rg.selectNodeContents(st); const sr = st && rg.getBoundingClientRect();
+        const ours = t => { if (!t || t === document.documentElement || t === document.body || t === scr) return false; const narrow = t.getBoundingClientRect().width < innerWidth - 2;
+          return [...t.childNodes].some(q => q.nodeType === 3 && q.nodeValue.trim()) || !!t.closest('svg,img,input,video') || (narrow && (!!t.closest('button,[data-act],.chip,.tile') || getComputedStyle(t).backgroundColor !== 'rgba(0, 0, 0, 0)')); };
+        for (const f of [.01, .04, .2, .35, .5, .65, .8, .96, .99]) { const X = innerWidth * f;
+          // the build stamp, a label of ours drawn behind every screen just above the inset
+          if (sr && sr.height && sr.bottom > innerHeight - 60 && X >= sr.left - 4 && X <= sr.right + 4) continue;
+          // and nothing of ours sits in the home bar's inset itself
+          const lo = document.elementFromPoint(X, yIn); if (ours(lo)) { low.push((lo.id || lo.className || lo.tagName).toString().slice(0, 24)); continue; }
+          if (ours(document.elementFromPoint(X, yUp))) continue;
+          const a = at(X, yIn), b = at(X, yUp); n++; strip = Math.max(strip, gap(a, b)); if (gap(b, html) > pg) { pg = gap(b, html); seen = b.join(','); } }
+        return { name, ib, n, strip, page: pg, html: html.join(','), above: seen, low }; }, png.toString('base64'), name, 844 - 60); };
+    const inPage = (fn, arg) => page.evaluate(fn, arg);
+    const GO = async (id, o) => inPage(async ([id, o]) => (await import('./ui/router.js')).show(id, o), [id, o]);
+    for (const bg of ['stars', 'lantern', 'snow', 'orbs']) {
+      await boot({ ...OPEN_PREFS, keySeen: 1, bg, tint: '', chests: { games: 1, key: 1, pro: 1, thorns: 1 } });
+      for (const [id, o] of [['s-menu', {}], ['s-board', {}], ['s-prog', { tab: 'c-games' }], ['s-custom', {}], ['s-key', { tier: 0 }], ['s-key', { tier: 1 }], ['s-key', { tier: 2 }], ['s-about', {}], ['s-testing', {}], ['s-gauntlet', { id: 'g1' }]]) {
+        // scrolled to its end, as 61.22 reads them: a list passing under the home bar mid-scroll is content, not the background
+        await GO(id, o); await sleep(300); await inPage(() => { for (const sc of document.querySelectorAll('.screen.on, .screen.on .scroll')) sc.scrollTop = sc.scrollHeight; });
+        res.push({ bg, ...(await strip27(id + (o.tier !== undefined ? ':' + o.tier : ''))) }); }
+      // the overlays, each over the Skill key screen (Lantern), where Aiden's v0.68 frame has the full-screen player
+      const vid = full => inPage(async full => { const V = await import('./ui/video.js'), M = await import('./config/messages.js'); V.playVideo(M.MESSAGES.find(m => m.by && m.by.chest === 'key' && m.file), { full }); }, full);
+      const cls = (sel, on) => inPage(([s, on]) => document.querySelector(s).classList.toggle('on', on), [sel, on]);
+      const unvid = () => inPage(async () => (await import('./ui/video.js')).closeVideo());
+      for (const [name, open, shut] of [['video full', () => vid(true), unvid], ['video inset', () => vid(false), unvid],
+        ['lock box', () => cls('#lockwrap', true), () => cls('#lockwrap', false)], ['ad break', () => cls('#adbreak', true), () => cls('#adbreak', false)]]) {
+        await GO('s-key', { tier: 0 }); await sleep(300); await open();
+        res.push({ bg, ...(await strip27(name)) }); await shut(); await sleep(300); }
+      // a chest's ceremony (the real reveal, on its host)
+      await GO('s-key', { tier: 0 }); await sleep(300);
+      await inPage(async () => { const RV = await import('./ui/reveal.js'), CE = await import('./ui/ceremony.js'), CH = await import('./ui/chest.js'), K = await import('./progress/key.js'), m = K.meter();
+        RV.playReveal(document.getElementById('key-cere'), { kind: 'chest', id: 'games', silent: true, stage: CE.chestStage('games', { was: m, now: m }), gifts: CH.giftsOf('games') }); });
+      res.push({ bg, ...(await strip27('chest ceremony')) });
+      await inPage(async () => (await import('./ui/reveal.js')).stopReveal()); await sleep(300);
+      // a key being earned (Testing's route), mid-animation
+      await GO('s-key', { whole: 1, tier: 0, from: 's-testing' }); res.push({ bg, ...(await strip27('key earn')) });
+      await GO('s-menu', {}); await sleep(300);
+      // the Welcome
+      // the Welcome (due on a save whose About is still shut and whose Dots has just opened — section 18's own fixture)
+      const was27 = await inPage(async () => { const S = await import('./core/store.js'), W = await import('./ui/welcome.js'), was = { allOpen: S.prefs.allOpen, chests: S.prefs.chests };
+        S.prefs.allOpen = 0; S.prefs.menuUnl = {}; S.prefs.chests = { games: 0, key: 0, pro: 0, thorns: 0 }; delete S.prefs.welcomeSeen; S.store.unlock['dots:blind'] = Date.now(); S.save(); W.welcomeCheck(false); return was; });
+      res.push({ bg, ...(await strip27('welcome')) });
+      await inPage(async was => { const S = await import('./core/store.js'); (await import('./ui/welcome.js')).closeWelcome(); Object.assign(S.prefs, was); S.prefs.welcomeSeen = 1; S.save(); }, was27);
+      // the map with the pick sheet up, a run, and its result
+      await GO('s-pick', {}); await sleep(400); await click('.tile[data-game="quick-tap"]'); res.push({ bg, ...(await strip27('s-pick sheet')) });
+      await inPage(() => { document.querySelector('#diff-row .choice').click(); document.querySelector('#time-row .tbtn').click(); document.getElementById('go-btn').click(); }); await sleep(1200);
+      res.push({ bg, ...(await strip27('game')) });
+      if (await driveToResult('quick-tap', 'L23 the run under the bottom strip')) res.push({ bg, ...(await strip27('s-over')) });
+    }
+    try { await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0, bottom: 0, left: 0, right: 0 } }); } catch (e) {}
+    const off = res.filter(x => !x.n || x.strip > 6 || x.page > 6 || x.low.length);
+    (!sent) ? ok('L23 the bottom strip — SKIPPED: this Chrome has no safe-area override')
+      : (!off.length && res.every(x => x.ib === 34))
+      ? ok(`L23 / 68.27 the background runs to the bottom edge: on ${res.length} screens and overlays × stars, Lantern, Snow and Orbs (insets 47 / 34), the bottom inset is the colour drawn just above it and so is the page under everything, within 6 at every sampled point; no button or text of ours sits in the inset`)
+      : bad('L23 / 68.27 the bottom strip is not the colour drawn above it', JSON.stringify(off.map(x => `${x.bg} ${x.name}: strip ${x.strip} page ${x.page} (html ${x.html} vs above ${x.above}, n ${x.n})${x.low.length ? ' in the inset: ' + x.low.join(' ') : ''}`)));
+  }
   /* build 62 (61.22): EVERY BACKGROUND FILLS THE WHOLE PAGE AND SITS BEHIND EVERYTHING, on the long screens, scrolled to the bottom, with a top
      and a bottom safe-area inset: the canvas runs from above the top inset to below the bottom one, and no art is left behind any text or
      control. Lantern, Circuit and Thorn, on Customise ("Settings"), the Skill key screen and the Games chest tab */

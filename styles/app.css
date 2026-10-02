@@ -79,8 +79,11 @@
   [hidden]{display:none!important}
   /* build 64 (62.15): --underlay is the background layer's own bottom colour when it paints one (ui/atmosphere.js), so a strip the fixed layer
      does not reach on an installed iPhone app shows that, not a flat band of --ground */
-  html,body{height:100%;background:var(--underlay,var(--ground));color:var(--ink);font-family:var(--display);overflow:hidden;touch-action:manipulation;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
-  body{position:fixed;inset:0}
+  /* build 69 (68.27, L23): html — the band an installed iPhone app shows under everything — wears `--strip`, the colour drawn at the bottom edge by
+     whatever is on top there (ui/atmosphere.js stripOf); body keeps the layer's own ground under the canvas */
+  html{background:var(--strip,var(--underlay,var(--ground)))}
+  html,body{height:100%;color:var(--ink);font-family:var(--display);overflow:hidden;touch-action:manipulation;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  body{position:fixed;inset:0;background:var(--underlay,var(--ground))}
   .screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;padding-top:max(24px,env(safe-area-inset-top))}
   .screen.on{display:flex}
   .screen.top{justify-content:flex-start;gap:12px;padding-top:max(18px,env(safe-area-inset-top))}

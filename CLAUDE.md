@@ -123,7 +123,7 @@ having written nothing. Gate checks read bars and names from `config/`, never a 
 - **Each Progress tab says `N of M unlocked`** (v28 item 4); the Games chest's line is its 13 modes, "Streak not counted" (A1). **Every Customise-unlock row shows the thing it unlocks** (`unlockArt()`, v28 item 6). **A Progress label is white until earned, green once, never red** (L.2).
 - **A locked cosmetic says what opens it UNDER its own row** (one `.lockline` per `.cgroup`, B.30).
 - **The version label shows on the HOME MENU only; the build stamp is drawn behind every screen** (`#build` at `z-index:0`, every scroller ends with a `--stampclear` `::after`).
-- **No background draws in the status-bar strip (A2), and html / body wear the layer's own bottom colour (`--underlay`, 62.15)**, so a strip the fixed layer misses on a phone is no `--ground` band. **The bottom strip (inset + 40px) is painted flat in that same page colour (`floorStrip`, 65.10); a ceremony gives the page `--ground`.**
+- **No background draws in the status-bar strip (A2); body wears the layer's ground (`--underlay`), the bottom (inset + 40px) is painted flat in it (`floorStrip`, 65.10), and html wears `--strip` — whatever is drawn on top at the bottom edge, composited every frame (`stripOf`, L23).**
 - **Nothing scrolls under the phone's clock, nothing in a run sits flush on the safe area** (`clip-path:inset(env(safe-area-inset-top) …)`, items 8 / 19). **The map is the phone's width and never scrolls sideways** (item 10).
 - **The game-select grid is a snake placed from `Object.keys(GAMES)`**; lines measured by `offsetLeft` / `offsetTop`; the Games chest is the last stop and the key chests sit under it in one column (L.10c).
 - **A sound tied to an animation reads the animation** (`getComputedTiming().delay`, items 1 / 2): the title's four beats (`TITLE_FX`, one impact each) and the map's first open, drawn out to ~3.5s once (`MAP_INTRO`, `introAt()`, halved at 62.1), its sounds × `MAP_INTRO_GAIN` (62.2).
@@ -203,6 +203,7 @@ list, with its check, in the build that implements it (67.37b, build 68).**
 | L20 | **The Welcome is mandatory** (67.7): no Later; it plays on the result screen of the run that opens Dots; the other seven messages keep Later. |
 | L21 | **No Restart in a run** (67.5): ✕ → the Abandoned screen → Retry, in every mode, Pass & play and Versus included; the run's top row is ✕ alone (67.16). |
 | L22 | **Tap sound is ONE game-wide choice** (67.35): one row in Customise above the game tabs, beside Music (Off its last choice, 67.34) and Background. |
+| L23 | **The background runs to the physical bottom edge** on every screen, every theme and under every overlay: the bottom safe-area strip is the colour of whatever is drawn directly above it; buttons and text stay above the home bar (68.27, 2026-10-02; first logged 2026-09-20). |
 
 **Code decisions A1–A10 in `ARCHITECTURE.md` — same quote-the-ID rule.** A feedback line changes one only when it names the ID.
 

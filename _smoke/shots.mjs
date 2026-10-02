@@ -1953,6 +1953,31 @@ scene('67.33-67.35', async (page, browser) => {
   await frame(page, browser, '67.35-customise', 'Customise at 390×844: Music (Off last, 67.34), Background with the small wheel on Lantern, Tap sound, the preview, the game tabs — no scroll; Lantern and its track in gold (67.33)');
 });
 
+/* =======================================================================================================
+   BUILD 69 — FEEDBACK-v37, one 390-wide frame per visual item, insets 47 / 34
+   ======================================================================================================= */
+/* 68.27 (L23): headless Chrome composites a fixed overlay past the bottom inset where an installed iPhone app does not, so these frames paint the
+   bottom inset in html's OWN background (#phone-strip, added for the frame and removed after it) — what the phone shows in that band */
+const phoneStrip = (page, on) => page.evaluate(on => { let d = document.getElementById('phone-strip'); if (!on) { if (d) d.remove(); return null; }
+  if (!d) { d = document.createElement('div'); d.id = 'phone-strip'; document.documentElement.appendChild(d); }
+  const bg = getComputedStyle(document.documentElement).backgroundColor;
+  d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;height:env(safe-area-inset-bottom);z-index:2147483647;pointer-events:none;background:' + bg; return bg; }, on);
+scene('68.27', async (page, browser) => {
+  await load(page, { ...PLAIN, ...ALL68, bg: 'stars' }); await show(page, 's-key', { tier: 0 }); await sleep(900);
+  await page.evaluate(async () => { const V = await import('./ui/video.js'), M = await import('./config/messages.js'); V.playVideo(M.MESSAGES.find(m => m.by && m.by.chest === 'key' && m.file), { full: true }); }); await sleep(1600);
+  say('html', await phoneStrip(page, true));
+  await frame(page, browser, '68.27-video-strip', 'The Skill chest video full screen over the Lantern key screen; the bottom 34px are html’s own background, as the installed app shows them: black under the black player (v0.68: Lantern brown)');
+  await phoneStrip(page, false); await page.evaluate(async () => (await import('./ui/video.js')).closeVideo()); await sleep(600);
+  await load(page, { ...PLAIN, ...ALL68, bg: 'orbs' }); await show(page, 's-key', { tier: 0 }); await sleep(1200);
+  say('html', await phoneStrip(page, true));
+  await frame(page, browser, '68.27-key-orbs', 'The Skill key screen with Orbs chosen in Customise; the bottom 34px are html’s own background: the key screen’s Lantern floor');
+  await phoneStrip(page, false);
+  await load(page, { ...PLAIN, ...ALL68, bg: 'snow' }); await show(page, 's-key', { whole: 1, tier: 0, from: 's-testing' }); await sleep(1400);
+  say('html', await phoneStrip(page, true));
+  await frame(page, browser, '68.27-key-snow-earn', 'The Skill key being earned with Snow (Aiden’s navy) chosen; the bottom 34px are html’s own background: Lantern’s floor (v0.68: Snow’s navy, his 68.36 frame)');
+  await phoneStrip(page, false);
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

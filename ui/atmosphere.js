@@ -13,7 +13,7 @@ import { KEYS, KEY_LAYER } from "../config/keys.js";
 import { $ } from "../core.js";
 import { on } from "../core/events.js";
 import { look } from "../core/store.js";
-import { BG_LAYER } from "../config/theme.js";
+import { BG_LAYER, DESIGNS } from "../config/theme.js";
 
 const cv=$('#stars'), cx=cv.getContext('2d'); let W,H,pts=[],dpr=1, paused=false, running=false, over=null, geo=null;
 // v29 (item 16, build 55): DPR IS CAPPED AT 2. It was uncapped, so a Pro / Pro Max drew this canvas at 3x - 1290x2796, 3.6 megapixels -
@@ -208,8 +208,8 @@ function draw(t){ if(paused){ running=false; return; }
   if(!ly) (DRAW[bg]||DRAW.stars)(t);
   if(ly){ if(!geo) geo=build(); LAYER[ly](t); }
   cx.globalAlpha=1;
-  if(inRun){ cx.fillStyle=`rgba(0,0,0,${BG_LAYER.dim})`; cx.fillRect(0,0,W,H); } else { punch(ly); floorStrip(ly); }
-  underlay(ly);
+  if(inRun){ cx.fillStyle=`rgba(0,0,0,${BG_LAYER.dim})`; cx.fillRect(0,0,W,H); } else punch(ly);
+  floorStrip(ly); underlay(ly);
   requestAnimationFrame(draw); }
 /* build 64 (62.15): THE PAGE UNDER THE LAYER WEARS THE LAYER'S OWN BOTTOM COLOUR. On an installed iPhone app a flat band of --ground (Lantern's
    purple) still showed under the last row of a long screen after 61.22 stretched the canvas past both insets — so something on the phone stops
@@ -219,11 +219,16 @@ function draw(t){ if(paused){ running=false; return; }
    opaque ground counts — Lantern's sky, worked out from the same KEY_LAYER numbers it is drawn with, or the colour wheel's tint; the
    starfield and the see-through layers already show --ground, which IS their colour. Worked out, never read back off the canvas: a pixel
    read twice a second kept headless Chrome from ever calling the page idle, and on a phone it is a GPU readback for a colour known in advance. */
-let ulWas='';
-function floorOf(ly){ if(ly!=='lantern') return null; const P=KEY_LAYER.lantern, s=P.sky.split(',').map(Number), g=P.glow.split(',').map(Number);
+let ulWas='', stWas='';
+const hexRgb=h=>[1,3,5].map(i=>parseInt(String(h).slice(i,i+2),16)||0);
+/* build 69 (68.27): the colour along the canvas's bottom edge, ALWAYS — Lantern's floor, worked out from the numbers it is drawn with, or for every
+   other layer the ground under it (the colour wheel's tint, else the design's own); `dim` is a run's dark overlay on top of it */
+function baseOf(ly){ if(ly!=='lantern') return hexRgb(look('tint')||(DESIGNS[look('bg')]||DESIGNS.stars).tint);
+  const P=KEY_LAYER.lantern, s=P.sky.split(',').map(Number), g=P.glow.split(',').map(Number);
   // the sky, the warm wash at its full strength along the bottom, and the horizon glow a quarter of the way in (see LAYER.lantern)
-  const R=.75*Math.max(W,H), a=P.hz*Math.max(0,1-Math.hypot(W/4,H*.02)/R), k=inRun?1-BG_LAYER.dim:1;
-  return s.map((v,i)=>Math.round(((v*(1-P.warm)+g[i]*P.warm)*(1-a)+g[i]*a)*k)); }
+  const R=.75*Math.max(W,H), a=P.hz*Math.max(0,1-Math.hypot(W/4,H*.02)/R);
+  return s.map((v,i)=>(v*(1-P.warm)+g[i]*P.warm)*(1-a)+g[i]*a); }
+function floorOf(ly){ const k=inRun?1-BG_LAYER.dim:1; return baseOf(ly).map(v=>Math.round(v*k)); }
 /* build 66 (65.10): THE BOTTOM STRIP IS ONE FLAT COLOUR, AND IT IS THE PAGE'S. Aiden's v0.65 still showed a lighter brown band along the bottom of the
    Key screen. Why build 64's fix (above) missed it: the page wore Lantern's colour at the CANVAS's bottom edge, which on a phone sits a whole inset
    below the screen (the canvas runs past both safe areas), and Lantern brightens towards that edge — so wherever the phone shows the page instead of
@@ -235,13 +240,35 @@ let botIn=null;
 function insetBottom(){ if(!botIn){ botIn=document.createElement('div'); botIn.style.cssText='position:fixed;bottom:0;left:0;width:0;height:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none'; document.body.appendChild(botIn); }
   return botIn.getBoundingClientRect().height; }
 const FLOOR_PX=40, FLOOR_FADE=24;
+/* build 69 (68.27): a run's floor is painted too — the run dims the canvas, and its art (Snow's flakes) ran into the bottom inset — and a layer that
+   paints no ground of its own still clears its floor to the page (body), which wears the same ground undimmed */
 function floorStrip(ly){ const y=(innerHeight-Math.max(FLOOR_PX,insetBottom())-cvTop)*dpr, fade=FLOOR_FADE*dpr; if(y>=H) return;
-  const f=floorOf(ly), c=f?`rgba(${f.join(',')},`:'rgba(0,0,0,', g=cx.createLinearGradient(0,y-fade,0,y);
+  const f=(ly==='lantern'||inRun)?floorOf(ly):null, c=f?`rgba(${f.join(',')},`:'rgba(0,0,0,', g=cx.createLinearGradient(0,y-fade,0,y);
   cx.save(); cx.globalAlpha=1; if(!f) cx.globalCompositeOperation='destination-out';
   g.addColorStop(0,c+'0)'); g.addColorStop(1,c+'1)'); cx.fillStyle=g; cx.fillRect(0,y-fade,W,fade); cx.fillStyle=c+'1)'; cx.fillRect(0,y,W,H-y); cx.restore(); }
-const cereUp=()=>[...document.querySelectorAll('.cere')].some(e=>!e.hidden);
-function underlay(ly){ const f=cereUp()?null:floorOf(ly), c=f?`rgb(${f.join(',')})`:cereUp()?'':(look('tint')||'');
-  if(c===ulWas) return; ulWas=c; const s=document.documentElement.style; if(c) s.setProperty('--underlay',c); else s.removeProperty('--underlay'); }
+/* build 69 (68.27, L23): THE STRIP UNDER THE HOME BAR IS WHATEVER IS DRAWN JUST ABOVE IT. The cause, named: on an installed iPhone app every layer
+   of ours — the canvas, the body, each screen and each fixed overlay — ends at the layout viewport, and the band under it (59px on Aiden's phone, the
+   height of the top inset) shows html's OWN background; that was set from the background layer alone, so it was Lantern's brown under the black
+   full-screen player and the chosen ground (Snow's navy) under the Lantern key screen while a ceremony host was up (62.15 / 65.10's `cereUp`). ONE
+   mechanism now, in this loop, every frame: what is stacked at the bottom edge of the screen (`elementsFromPoint`) is composited bottom-up over the
+   canvas's own floor — each full-width layer that reaches the bottom, at its background colour × its opacity — and html wears that (`--strip`). A
+   screen, a pick sheet, a dim, a ceremony, the Welcome, the player, the ad break: whatever is on top down there is the colour of the strip, with no
+   screen of its own to remember. body keeps the layer's ground (`--underlay`), which is what the canvas is laid over. A layer that takes no taps
+   (pointer-events:none) is not hit-tested and so not counted; no full-width backdrop of ours is one */
+// rgb()/rgba(), or the color(srgb r g b / a) a color-mix() computes to (channels 0–1)
+const rgbaOf=s=>{ s=String(s); const m=s.match(/[\d.]+/g); if(!m||m.length<3) return null; const k=/^color\(srgb/.test(s)?255:1;
+  return [m[0]*k,m[1]*k,m[2]*k,m.length>3?+m[3]:1]; };
+function opacityOf(e){ let o=1; for(let n=e;n&&n.nodeType===1&&n!==document.body;n=n.parentElement) o*=+getComputedStyle(n).opacity; return o; }
+function stripOf(floor){ let c=floor.slice(); const X=innerWidth/2, Y=innerHeight-1, stack=document.elementsFromPoint?document.elementsFromPoint(X,Y):[];
+  // top first: painted from the bottom of the stack up
+  for(let i=stack.length-1;i>=0;i--){ const e=stack[i]; if(e===cv||e===document.body||e===document.documentElement) continue;
+    const r=e.getBoundingClientRect(); if(r.left>1||r.right<innerWidth-1||r.bottom<innerHeight-1) continue;
+    const st=getComputedStyle(e), b=rgbaOf(st.backgroundColor); if(!b||!b[3]||st.visibility==='hidden') continue;
+    const a=b[3]*opacityOf(e); if(a<=0) continue; c=c.map((v,j)=>v*(1-a)+b[j]*a); }
+  return c.map(Math.round); }
+function underlay(ly){ const s=document.documentElement.style, u=baseOf(ly).map(Math.round).join(','), t=stripOf(floorOf(ly)).join(',');
+  if(u!==ulWas){ ulWas=u; s.setProperty('--underlay',`rgb(${u})`); }
+  if(t!==stWas){ stWas=t; s.setProperty('--strip',`rgb(${t})`); } }
 function resume(){ if(running) return; running=true; requestAnimationFrame(draw); }
 // build 62 (61.22): the canvas is sized from its own box, so a change to that box (an inset arriving) re-sizes it as a resize would
 function startAtmosphere(){ addEventListener('resize',size); if(window.ResizeObserver) new ResizeObserver(()=>size()).observe(cv); size(); running=true; draw(0); }
