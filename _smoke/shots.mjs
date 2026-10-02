@@ -2063,6 +2063,18 @@ scene('68.13', async (page, browser) => {
   await page.evaluate(() => { for (const a of document.getAnimations()) a.play(); });
 });
 
+/* 68.41 / 68.43: the two filters Aiden photographed — the Pro chest's tab under Quick Tap (no "The key entire"), Achievements under Dots (no "Off the
+   Rails", no "Grand tour") */
+scene('68.41', async (page, browser) => {
+  await load(page, { ...PLAIN, welcomeSeen: 1, chests: { games: 1, key: 1, pro: 1 }, spill: { games: 1, key: 1, pro: 1 }, gauntSeen: { g1: 1 } });
+  await show(page, 's-prog', { tab: 'c-pro' }); await sleep(500); await tap68(page, '#chest-g [data-v="quick-tap"]'); await sleep(500);
+  say('rows', await page.evaluate(() => [...document.querySelectorAll('#chest-list [data-ach]')].map(b => b.dataset.ach)));
+  await frame(page, browser, '68.41-pro-quicktap', 'The Pro chest’s tab under Quick Tap: Quick Tap’s rows and nothing else — “The key entire” is under ALL only (v0.68: listed here)');
+  await show(page, 's-prog', { tab: 'ach' }); await sleep(500); await tap68(page, '#ach-g [data-v="dots"]'); await sleep(500);
+  say('rows', await page.evaluate(() => [...document.querySelectorAll('#achlist [data-ach]')].map(b => b.dataset.ach)));
+  await frame(page, browser, '68.43-ach-dots', 'Achievements under Dots: the two Dots rows and nothing else — “Off the Rails” and “Grand tour” are under ALL only (v0.68: listed above them)');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

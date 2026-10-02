@@ -488,4 +488,23 @@ export async function run() {
       ? ok(`68.3 every web label is drawn once and inside its own picture: one label per game on Scores and on the Skill Key, on two opens in a row and after a tap on Spot re-rendered them, and none of the ${l3.board[0].n.length} on either screen reaches outside its SVG's box`)
       : bad('68.3 the web labels', JSON.stringify(l3));
   }
+  /* build 69 (68.41 / 68.43): A GAME FILTER SHOWS THAT GAME'S ROWS AND NOTHING ELSE. "The key entire" showed under Quick Tap on the Pro tab, and
+     "Off the Rails" and "Grand tour" under Dots on Achievements: a row whose `g` is 'all' passed every game filter. Every game filter on every key
+     chest's tab and on Achievements, profile with all four chests open: no row of another game and no general row (`g: 'all'`); under ALL the
+     general rows are there */
+  {
+    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS, chests: { games: 1, key: 1, pro: 1, thorns: 1 }, gauntSeen: { g1: 1, g2: 1 } }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+    const f41 = await page.evaluate(async () => { const R = await import('./ui/router.js'), P = await import('./progress.js'), K = await import('./progress/key.js'), ids = Object.keys((await import('./games/registry.js')).GAMES), w = ms => new Promise(r => setTimeout(r, ms));
+      const gOf = Object.fromEntries(P.achAll().concat(K.keyAch()).map(a => [a.id, a.g])), out = [];
+      for (const tab of ['c-key', 'c-pro', 'c-thorns', 'ach']) { R.show('s-menu'); await w(80); R.show('s-prog', { tab }); await w(300);
+        for (const g of ['all', ...ids]) { const chip = document.querySelector(`${tab === 'ach' ? '#ach-g' : '#chest-g'} [data-v="${g}"]`); if (chip) { chip.click(); await w(150); }
+          const rows = [...document.querySelectorAll(`${tab === 'ach' ? '#achlist' : '#chest-list'} [data-ach]`)].map(b => b.dataset.ach);
+          out.push({ tab, g, n: rows.length, wrong: rows.filter(id => g !== 'all' && gOf[id] !== g), general: rows.filter(id => gOf[id] === 'all') }); } }
+      R.show('s-menu'); return out; });
+    const leaks = f41.filter(x => x.wrong.length), allRows = f41.filter(x => x.g === 'all');
+    (!leaks.length && allRows.every(x => x.general.length > 0) && f41.filter(x => x.g !== 'all').every(x => x.n > 0 || x.tab === 'ach'))
+      ? ok(`68.41 / 68.43 a game filter shows that game's rows and nothing else: ${f41.length - allRows.length} game filters across the three key chests' tabs and Achievements, no row of another game and no general row under any of them; the general rows (${allRows.map(x => x.tab + ' ' + x.general.length).join(', ')}) show under ALL`)
+      : bad('68.41 / 68.43 the filter leaks', JSON.stringify({ leaks: leaks.map(x => ({ tab: x.tab, g: x.g, wrong: x.wrong })), all: allRows.map(x => ({ tab: x.tab, general: x.general.length })) }));
+  }
 }

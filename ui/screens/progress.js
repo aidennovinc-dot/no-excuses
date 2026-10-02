@@ -204,7 +204,9 @@ function renderChest(tab){
   if(!groupShown(key)){ list.innerHTML=`<h4>${PROGRESS_SCREEN.shut}</h4>`; tabCount('chest',0,0); return; }
   const rows=allAch().filter(a=>tabFor(a)===tab);
   const ctx={g,all,fsGame:gsel==='all'?sel.game:gsel,fresh};
-  const shown=rows.filter(a=>gsel==='all'||a.g===gsel||a.g==='all');
+  /* build 69 (68.41): A GAME FILTER SHOWS THAT GAME'S ROWS AND NOTHING ELSE. A whole-key row (`g:'all'`) passed every filter, so "The key entire"
+     sat under Quick Tap on the Pro tab. It is a general row now, under ALL only — the group 68.40's headings will call General */
+  const shown=rows.filter(a=>gsel==='all'||a.g===gsel);
   let html='';
   for(const gid in GAMES){ if(gsel!=='all'&&gid!==gsel) continue;
     const items=shown.filter(a=>a.g===gid); if(!items.length) continue;
@@ -246,7 +248,8 @@ const A={ g:'all' };
 function renderAch(){
   const g=got(), all=Scores.runs(), gsel=A.g; const fresh=[];
   $('#ach-g').innerHTML=`<button class="chip" data-act="chip-ach" data-chip="ach-g" data-v="all">${ACH_SCREEN.all}</button>`+Object.entries(GAMES).map(([id,x])=>`<button class="chip" data-act="chip-ach" data-chip="ach-g" data-v="${id}">${x.name}</button>`).join(''); chips('ach','g',gsel);
-  const list=allAch().filter(a=>tabFor(a)==='ach'&&(gsel==='all'||a.g===gsel||a.g==='all'));
+  // build 69 (68.43): the same rule here — "Off the Rails" and "Grand tour" are general rows, listed under ALL and under no game
+  const list=allAch().filter(a=>tabFor(a)==='ach'&&(gsel==='all'||a.g===gsel));
   const ctx={g,all,fsGame:gsel==='all'?sel.game:gsel,fresh};
   /* build 62 (61.13): ONE FLAT LIST. The Pro and Secret sections and their taglines are gone — Aiden: "I don't know why there's a pro section.
      It should just all be achievements." The rows keep the order they had (TIERS is still the order), under no heading at all. */

@@ -119,7 +119,7 @@ having written nothing. Gate checks read bars and names from `config/`, never a 
 
 **Screens and presentation**
 - **Customise is its own screen; Progress is ONE TAB PER CHEST** (58.3): Games · Skill · Pro · Author chest, Customise unlocks, Achievements; each chest tab opens with what it needs (`chestNeeds()`); one partition, `tabFor()` in `ui/screens/progress.js`; `prefs.progTab` `c-<chest>` / `cul` / `ach`.
-- **R3: a list appears the moment it is asked for** — no entry animation on any Progress tab or filter (v28 item 1). No secrets (61.14): every row shows its name and what earns it; Achievements is one flat list (61.13); a score-target row has no name (61.12).
+- **R3: a list appears the moment it is asked for** — no entry animation on any Progress tab or filter (v28 item 1). No secrets (61.14): every row shows its name and what earns it; Achievements is one flat list (61.13); a score-target row has no name (61.12); a game filter shows that game's rows only, general rows (`g:'all'`) under All (68.41).
 - **Each Progress tab says `N of M unlocked`** (v28 item 4); the Games chest's line is its 13 modes, "Streak not counted" (A1). **Every Customise-unlock row shows the thing it unlocks** (`unlockArt()`, v28 item 6). **A Progress label is white until earned, green once, never red** (L.2).
 - **A locked cosmetic says what opens it UNDER its own row** (one `.lockline` per `.cgroup`, B.30).
 - **The version label shows on the HOME MENU only; the build stamp is drawn behind every screen** (`#build` at `z-index:0`, every scroller ends with a `--stampclear` `::after`).

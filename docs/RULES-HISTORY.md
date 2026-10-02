@@ -1884,3 +1884,8 @@ anything Aiden settles goes on the list in the build that implements it.
   Motion) there is nothing to wait for. L1's beats and their times are untouched. The gate's drivers wait for the same beat (`tapTitle()` in
   `_smoke/lib/gate.mjs`). Gate: `cold start`, "L27 / 68.13" — from a new profile, taps 1s and 3s in on the hint's own clock leave the title up
   with no menu item reachable; a tap after the hint has begun reaches the menu.
+- **A game filter shows that game's rows and nothing else (68.41 / 68.43).** Aiden: "The key entire" showed under the Quick Tap filter on the Pro
+  tab, and "Off the Rails" and "Grand tour" under Dots on Achievements. The cause: `ui/screens/progress.js` let a row whose `g` is `'all'` pass
+  every game filter (`a.g===gsel||a.g==='all'`), on the chest tabs and on Achievements. A general row (`g:'all'`: a key entire, a whole-game
+  achievement) is listed under ALL only — the group 68.40's headings will call General. Gate: `side screens`, "68.41 / 68.43": every game filter
+  on the three key chests' tabs and on Achievements lists no row of another game and no general row; under ALL the general rows are there.
