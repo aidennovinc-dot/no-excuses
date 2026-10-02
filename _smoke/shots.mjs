@@ -2196,6 +2196,14 @@ scene('68.30', async (page, browser) => {
   await frame(page, browser, '68.30-list-box', 'The Skill Key tour after Quick Tap’s node: a box ringing the opened list — each row a target, green cleared — before “Open the Skill Chest …” with Back (v0.68: straight to Back, nothing said about the list)');
 });
 
+/* 68.25: the Scores tour on the web — its first ring box, the gold Skill key ring ringed with its value from RADAR */
+scene('68.25', async (page, browser) => {
+  await load(page, { ...PLAIN, welcomeSeen: 1, menuUnl: { about: 1, prog: 1, board: 1 }, tuts: { board: 0 }, rooms: {} }, { runs: [{ g: 'quick-tap', d: 'two', s: 5, t: Date.now() - 6e4, hits: 30, misses: 0, row: 30, v: 4 }] });
+  await show(page, 's-board'); await sleep(900);
+  for (let i = 0; i < 4; i++) { const b = await pBox(page, '', 5000); if (!b) break; say('box', b.text); if (/gold ring/.test(b.text)) break; await tutTap(page); await sleep(600); }
+  await frame(page, browser, '68.25-scores-ring-box', 'The Scores tour: “The gold ring is the Skill key standard, 100” with the gold ring ringed (the value from RADAR) — one box per ring, then past the edge, a spoke, a game to tap and Overall');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

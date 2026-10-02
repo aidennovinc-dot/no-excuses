@@ -1997,3 +1997,10 @@ anything Aiden settles goes on the list in the build that implements it.
   one to see what to aim for!" (Quick Tap's node, must-tap), a box ringing the opened list (`#key-list`) — "Each row is one target. Green means
   cleared. Clear every row in every game to earn the key" (Cowork's, `TUTORIAL.games[5]`, the array kept in reading order, so the Customise
   lines moved up one) — then the Skill Chest line with BACK ringed, must-tap. Gate: `locked decisions` section C, "68.30".
+- **The Scores tour is built out, on the web (68.25).** Aiden: "One box per ring (gold = Skill key standard, 100; blue dashed = Pro, 200; outer
+  white = Author, 300; past the edge = beating the author), then the spoke, tapping a game, and Overall with 'play everything to fill the web'."
+  The `board` tour inside Scores: Aiden's welcome; the gold ring (`.rring.r1`), the blue dashed ring (`.r2`) and the outer white ring (`.r3`), each
+  ringed, their numbers `RADAR.rings` (never typed); past the edge (the web, `#radar`); a spoke (`.rspoke[data-spoke]`, new on each `<line>` in
+  `ui/screens/board.js` — not `data-g`, so a spoke is not a tap target); Quick Tap's name on the web, must-tap (it opens that game's detail,
+  67.21); Overall (`#radar-all`). Every other box is a line. Cowork's wording in `TUTORIAL.board`; the chip and "This thing up here …" lines are
+  gone with the chip row (68.1 / 68.2). Gate: `locked decisions` section C, "68.25".

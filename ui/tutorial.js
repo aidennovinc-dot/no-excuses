@@ -29,7 +29,7 @@ import { bankMenu, menuOpen } from "../progress/menu.js";
 import { chestOpen } from "../progress/key.js";
 import { CHESTS } from "../config/chests.js";
 import { GAUNTLET_RUNS } from "../config/gauntlets.js";
-import { KEYS } from "../config/keys.js";
+import { KEYS, RADAR } from "../config/keys.js";
 import { $, T, marks } from "../core.js";
 import { emit, on } from "../core/events.js";
 import { CHAL } from "../core/platform.js";
@@ -269,18 +269,27 @@ tutorial('prog',[
 ],{ opened:()=>menuOpen('s-prog'),
   meta:{ name:'Progress', trigger:'The first Estimate run', start:'That run\'s result, ahead of its toasts (or the main menu, for a player who left it first)', why:'Progress is where every unlock lives, and how to earn it',
     at:[['Result, or the main menu',''],['Result, or the main menu',''],['Main menu','Progress'],['Progress',''],['Progress',''],['Progress','Games chest tab'],['Progress','Games chest tab'],['Progress · Games chest','a game filter (not All)']] } });
-/* 64.12: SCORES, after the first Reaction run. Scores ringed on the menu; inside, a welcome, Quick Tap's chip to tap (Claude's call — "let's
-   check" is a tap), then the web chart ringed */
+/* 64.12: SCORES, after the first Reaction run. Scores ringed on the menu; inside, a welcome, then (build 69, 68.25 — "The Scores tour is built out")
+   one box per ring of the web, each ringed with its value from RADAR — the Skill key's, Pro's, Author's — then past the edge (the web), one spoke, a
+   game's point on the web to tap (the one must-tap box: it opens that game's detail) and Overall. Written against the web, not the chip row, which is
+   going (68.1 / 68.2) */
 const B12=TUTORIAL.board, bd=()=>onScreen('s-board');
+const rv=()=>({ skill:RADAR.rings[0], pro:RADAR.rings[1], author:RADAR.rings[2] }), rring=j=>()=>$(`#radar .rring.r${j} .ring`);
 tutorial('board',[
   { on:res, door:'s-board', go:'s-menu', text:got1('board') },
   { on:menuOn, el:item('s-board'), tap:1, door:'s-board', text:look('board') },
   { on:bd, room:'s-board', text:B12[0] },
-  { on:bd, room:'s-board', el:()=>$(`#bd-g .chip[data-v="${QT}"]`), tap:1, text:()=>T(B12[1],{game:GAMES[QT].name}) },
-  { on:bd, room:'s-board', el:()=>$('#radar'), text:B12[2] },
+  { on:bd, room:'s-board', el:rring(1), text:()=>T(B12[1],rv()) },
+  { on:bd, room:'s-board', el:rring(2), text:()=>T(B12[2],rv()) },
+  { on:bd, room:'s-board', el:rring(3), text:()=>T(B12[3],rv()) },
+  { on:bd, room:'s-board', el:()=>$('#radar'), text:B12[4] },
+  { on:bd, room:'s-board', el:()=>$(`#radar .rspoke[data-spoke="${QT}"]`), text:B12[5] },
+  { on:bd, room:'s-board', el:()=>$(`#radar text[data-g="${QT}"]`), tap:1, hit:t=>!!(t.closest&&t.closest(`#radar [data-g="${QT}"]`)), text:B12[6] },
+  { on:bd, room:'s-board', el:()=>$('#radar-all'), text:B12[7] },
 ],{ opened:()=>menuOpen('s-board'),
-  meta:{ name:'Scores', trigger:'The first Reaction run', start:'That run\'s result, ahead of its toasts', why:'Shows each game\'s top ten and the web chart of every game together',
-    at:[['Result, or the main menu',''],['Main menu','Scores'],['Scores',''],['Scores','Quick Tap chip'],['Scores','the web chart']] } });
+  meta:{ name:'Scores', trigger:'The first Reaction run', start:'That run\'s result, ahead of its toasts', why:'The web: what each ring means, a spoke per game, a game\'s detail, and Overall',
+    at:[['Result, or the main menu',''],['Main menu','Scores'],['Scores',''],['Scores','the gold ring (Skill key)'],['Scores','the blue dashed ring (Pro)'],['Scores','the outer white ring (Author)'],
+      ['Scores','the web'],['Scores','Quick Tap\'s spoke'],['Scores','Quick Tap\'s name on the web'],['Scores','Overall']] } });
 
 /* 64.14: THE GAMES CHEST, armed the moment it opens (`chest:opened`, progress/key.js). It starts on the map once the chest's words have spilt.
    Build 66 (65.9): the player gets everywhere by their own tap — the SKILL KEY word beside the chest is ringed and must be tapped ("Tap the Skill Key

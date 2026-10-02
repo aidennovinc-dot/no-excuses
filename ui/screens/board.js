@@ -49,7 +49,8 @@ function renderRadar(){ const ids=Object.keys(GAMES), n=ids.length, C=100, R=88,
         return `<polygon class="rspike" points="${(x-uy*2).toFixed(1)},${(y+ux*2).toFixed(1)} ${(x+ux*5).toFixed(1)},${(y+uy*5).toFixed(1)} ${(x+uy*2).toFixed(1)},${(y-ux*2).toFixed(1)}"/>`; }).join(''):'';
     return `<g class="rring r${j+1}" data-rung="${t.id||''}" data-at="${v}" style="--kt:${t.tint||'#fff'}"><polygon class="ring" points="${P(k)}"/>${bits}</g>`; }).join('');
   const past=v=>RADAR.rings.filter(r=>v>r).length;
-  $('#radar').innerHTML=rings+ids.map((_,i)=>{ const [x,y]=pt(i,1); return `<line x1="${C}" y1="${C}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`; }).join('')
+  // build 69 (68.25): each spoke says which game it is (`data-spoke`, not `data-g`: a spoke is not a tap target), so the Scores tour can ring one
+  $('#radar').innerHTML=rings+ids.map((g,i)=>{ const [x,y]=pt(i,1); return `<line class="rspoke" data-spoke="${g}" x1="${C}" y1="${C}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`; }).join('')
     +`<g class="meg"><polygon class="me" points="${ids.map((_,i)=>pt(i,Math.max(.02,f(vals[i]))).map(v=>v.toFixed(1)).join(',')).join(' ')}"/>`
     +ids.map((g,i)=>{ const [x,y]=pt(i,Math.max(.02,f(vals[i]))); return `<circle class="${past(vals[i])?'past':''}" data-g="${g}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.5"/>`; }).join('')+'</g>'
     +ids.map((g,i)=>{ const [x,y]=pt(i,1.19); return `<text class="${past(vals[i])?'past':''}" data-g="${g}" x="${x.toFixed(1)}" y="${(y+3).toFixed(1)}" text-anchor="middle">${GAMES[g].name} ${Math.round(vals[i])}</text>`; }).join('');

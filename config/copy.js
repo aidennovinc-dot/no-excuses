@@ -361,7 +361,13 @@ export const TUTORIAL = {
     '[yellow]Press[/yellow] a[yellow] game mode[/yellow] to see how to unlock everything!' ],
   /* build 65 (64.12): THE SCORES TUTORIAL, after the first Reaction run — Aiden's lines; the first (Scores ringed on the menu) is Claude's, as
      About's is, and {game} is Quick Tap's name from config ("quick tap" in his note) */
-  board:[ '[green]Welcome[/green] to the scores section!', "Let's check your [yellow]{game}[/yellow] scores", 'This [red]thing[/red] up here shows your overall performance across all games' ],
+  /* build 69 (68.25): BUILT OUT, ON THE WEB — Cowork's wording for Aiden to reword: a box per ring, then past the edge, a spoke, a game to tap and Overall.
+     {skill} / {pro} / {author} are the rings' own values (config/keys.js RADAR), never typed here. The chip row the old second line pointed at is
+     going (68.1 / 68.2), so the tour is written against the web; Aiden's welcome stays first */
+  board:[ '[green]Welcome[/green] to the scores section!', 'The [yellow]gold ring[/yellow] is the Skill key standard, [green]{skill}[/green]',
+    'The [yellow]blue dashed ring[/yellow] is Pro, [green]{pro}[/green]', 'The [yellow]outer white ring[/yellow] is Author, [green]{author}[/green]',
+    "Past the edge means you're [green]beating the author[/green]", 'Each [yellow]spoke[/yellow] is one game', '[yellow]Tap a game[/yellow] to see its scores',
+    '[yellow]Overall[/yellow] is every game together. [green]Play everything to fill the web[/green]' ],
   /* build 65 (64.14): THE GAMES CHEST TUTORIAL, after the chest opens (and its video, if the player plays it) — Aiden's lines, the names standardised
      to "Skill Key" / "Skill Chest" (Cowork: he dictated "Skill's" / "Skills") */
   /* build 66 (65.9): the second line is Aiden's — the must-tap box on the map that rings the SKILL KEY word, so he gets to the key himself */

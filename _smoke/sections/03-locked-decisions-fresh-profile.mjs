@@ -360,14 +360,18 @@ export async function run() {
         : bad('64.9 the Progress tutorial', JSON.stringify({ est, P0, p: p.map(b => b && { t: b.text, drawn: b.drawn }), allHeld, pEnd }));
       await page.evaluate(async () => (await import('./ui/router.js')).show('s-menu'));
       // AMENDED at build 68 (67.15): the menu box is "Tap Scores to take a look"; "You've unlocked Scores" is gone (its result box says it)
-      const want12 = [W7.look.board, CP.board[0], CP.board[1].replace('{game}', QTN), CP.board[2]];
+      /* AMENDED at build 69 (68.25): inside, after the welcome, the tour is the web's — its rings, a spoke, a game to tap, Overall — walked here with a tap
+         anywhere (a real tap on the ring for the game) and checked box by box under "68.25"; the chip row it used to tap is going (68.1 / 68.2) */
+      const want12 = [W7.look.board, CP.board[0]], QTN0 = QTN;
       const q = [await waitText(want12[0])]; await click('#s-menu .item[data-go="s-board"]'); q.push(await waitText(want12[1]));
-      await anywhere(); q.push(await waitText(want12[2])); await click('#bd-g .chip[data-v="quick-tap"]'); q.push(await waitText(want12[3]));
-      const radarW = await page.evaluate(() => document.getElementById('radar').getBoundingClientRect().width); await anywhere(); await sleep(400);
+      for (let i = 0; i < 40; i++) { const st = await page.evaluate(async () => (await import('./ui/tutorial.js')).tutNow()); if (!st || st.id !== 'board') break; if (!st.shown) { await sleep(100); continue; }
+        const t0 = (await box() || {}).text; if (st.tap) { const a = await page.evaluate(async () => (await import('./ui/tutorial.js')).tutAim()); if (a) await page.mouse.click(a[0], a[1]); } else await anywhere();
+        for (let k = 0; k < 20 && ((await box()) || {}).text === t0; k++) await sleep(100); }
+      await sleep(400);
       const qEnd = await page.evaluate(() => ({ done: JSON.parse(localStorage.getItem('ne')).prefs.tuts.board, box: !document.getElementById('tut').hidden }));
-      (q.map(b => b && b.text).join('|') === want12.join('|') && q[0].drawn && q[2].drawn && q[3].drawn && Math.abs(q[3].ring[0] - radarW - 12) <= 2 && qEnd.done === 'done' && !qEnd.box)
-        ? ok(`64.12 the Scores tutorial after the first Reaction run: Scores ringed on the menu, a welcome, "${want12[2]}" with its chip to tap, the web chart ringed`)
-        : bad('64.12 the Scores tutorial', JSON.stringify({ q: q.map(b => b && { t: b.text, drawn: b.drawn, ring: b.ring }), radarW, qEnd }));
+      (q.map(b => b && b.text).join('|') === want12.join('|') && q[0].drawn && qEnd.done === 'done' && !qEnd.box && !!QTN0)
+        ? ok(`64.12 / 68.25 the Scores tutorial after the first Reaction run: Scores ringed on the menu, a welcome inside, then the web's own tour to its end, done once`)
+        : bad('64.12 the Scores tutorial', JSON.stringify({ q: q.map(b => b && { t: b.text, drawn: b.drawn, ring: b.ring }), qEnd }));
       /* build 68 (67.22, L14): ANY ROUTE IN STARTS A TOUR AT ONCE, AND A VISIT SPENDS IT. Scores armed again, its result box never read: the screen
          opened straight from Testing shows the tour's first box inside at once (its doorway boxes passed); leaving before the end drops the rest for
          good, and the next visit shows nothing */
@@ -527,6 +531,29 @@ export async function run() {
       (['prog', 'about', 'board'].every(k => { const r = R18[k], go = { prog: 's-prog', about: 's-about', board: 's-board' }[k]; return r.got === C18.got[k] && r.on === 's-over' && r.menu === 's-menu' && r.ring && r.held === 's-menu' && r.inside === C18.inside[k] && r.room === go; }))
         ? ok(`68.18 a menu item's congratulations box walks the player to it: a tap on "${C18.got.prog}", "${C18.got.about}" or "${C18.got.board}" on the result lands on the main menu with that item ringed and the only thing that answers; the player's tap on it opens it and its tour's first box is inside`)
         : bad('68.18 a congratulations box left the player on the result, or the menu ring did not hold', JSON.stringify(R18));
+    }
+    /* build 69 (68.25): THE SCORES TOUR IS BUILT OUT, ON THE WEB. A box per ring — the Skill key's, Pro's, Author's, each ringed and each saying its number from
+       RADAR (never typed) — then past the edge, a spoke, a game's point to tap (the only must-tap box) and Overall. Walked from Scores' first visit */
+    {
+      await page.evaluate(si => { localStorage.setItem('ne', JSON.stringify({ v: 7, prefs: { story: 1, gridSeen: 1, menuSeen: 1, snd: 'off', played: 1, tut: 2, welcomeSeen: 1, menuUnl: { about: 1, prog: 1, board: 1 }, tuts: { board: 0 }, rooms: {} }, runs: [{ g: 'quick-tap', d: 'two', s: 5, t: Date.now() - 6e4, hits: 20, misses: 0, row: 20, v: 4 }], ach: {}, unlock: {}, intro: si, seen: {}, bars: {} })); }, SEEN_INTRO);
+      await page.reload({ waitUntil: 'networkidle0' }); await sleep(300); await page.evaluate(async () => (await import('./ui/router.js')).show('s-board'));
+      const RR = await page.evaluate(async () => (await import('./config/keys.js')).RADAR.rings), Q = [];
+      let n25 = 0;
+      for (let i = 0; i < 12; i++) { let b = null, st = null; for (let k = 0; k < 60; k++) { st = await page.evaluate(async () => (await import('./ui/tutorial.js')).tutNow()); if (st && st.id === 'board' && st.shown) { b = await box(); if (b && (!Q.length || b.text !== Q[Q.length - 1].t)) break; } else if (Q.length && (!st || st.id !== 'board')) break; await sleep(100); }
+        if (!b || !st || st.id !== 'board') break; n25 = st.n;
+        const on = await page.evaluate(() => { const q = document.querySelector('#tut .tring'), d = getComputedStyle(q).display !== 'none' ? q.getBoundingClientRect() : null; if (!d || !d.width) return '';
+          const near = e => { if (!e) return false; const r = e.getBoundingClientRect(); return Math.abs(r.left + r.width / 2 - d.left - d.width / 2) <= 10 && Math.abs(r.top + r.height / 2 - d.top - d.height / 2) <= 10 && Math.abs(r.width + 12 - d.width) <= 14; };
+          for (const [sel, name] of [['#radar .rring.r1 .ring', 'ring1'], ['#radar .rring.r2 .ring', 'ring2'], ['#radar .rring.r3 .ring', 'ring3'], ['#radar-all', 'all'], ['#radar', 'web']]) if (near(document.querySelector(sel))) return name;
+          for (const e of document.querySelectorAll('#radar line')) if (near(e)) return 'spoke';
+          const g = document.querySelector('#radar text[data-g="quick-tap"]'); if (g) { const r = g.getBoundingClientRect(); if (r.left >= d.left - 1 && r.right <= d.right + 1 && r.top >= d.top - 1 && r.bottom <= d.bottom + 1) return 'game'; }
+          return 'other'; });
+        Q.push({ t: b.text, tap: st.tap, on });
+        if (st.tap) { const a = await page.evaluate(async () => (await import('./ui/tutorial.js')).tutAim()); if (!a) break; await page.mouse.click(a[0], a[1]); } else await anywhere(); await sleep(300); }
+      const ix = o => Q.findIndex(q => q.on === o), rings = ['ring1', 'ring2', 'ring3'].map(ix), done25 = await page.evaluate(() => JSON.parse(localStorage.getItem('ne')).prefs.tuts.board);
+      (n25 === 10 && Q.length === 8 && rings.every((i, j) => i >= 1 && Q[i].t.includes(String(RR[j])) && !Q[i].tap) && rings[0] < rings[1] && rings[1] < rings[2] && ix('web') > rings[2] && ix('spoke') > ix('web') && ix('game') > ix('spoke') && Q[ix('game')].tap
+        && Q.filter(q => q.tap).length === 1 && ix('all') === Q.length - 1 && done25 === 'done')
+        ? ok(`68.25 the Scores tour is built out on the web: ${n25} steps (${Q.length} inside) — ${rings.map(i => '"' + Q[i].t + '"').join(', ')} each ringing its own ring with its number from RADAR, then past the edge, a spoke, a game's name on the web to tap (the one must-tap box) and Overall`)
+        : bad('68.25 the Scores tour', JSON.stringify({ n25, Q, RR, done25 }));
     }
     /* build 69 (68.30): THE SKILL KEY TOUR EXPLAINS THE LIST BEFORE BACK. Aiden's v0.68 frame: Quick Tap's list open under the wheel (Two · Sprint CLEARED …),
        BACK ringed and "Open the Skill Chest and you'll have 100%'d the game!" — nothing had said what the list is. The order is: the card, the spokes, "Let's
