@@ -1975,3 +1975,10 @@ anything Aiden settles goes on the list in the build that implements it.
   `unl-…` tours were forgotten by a reload; it now keeps letters, digits and hyphens. Gate: `locked decisions` section C, "68.6": a first run that
   misses Dash (its miss box), Try Again with 7 in a row (that result's Dash box, Dash ringed), Try Again with 15 in a row (Four's box, Four
   ringed); 62.11 reads the walkthrough's first result in its new order.
+- **On a first result that opens Dash, the Dash box comes after Game Select (68.15).** Aiden: "It should come up after saying that you can
+  exit." Build 66 (section C, over-03) had put "Great job, you unlocked …" straight after the first box, ahead of Try Again. With 68.6 the
+  unlock's box is its own tour's; on the first result it now follows the walkthrough's Game Select box, and whatever the walkthrough has left
+  to say waits for the run's unlock boxes (`unlFirst()`). Order: "Congratulations! You finished your first run" → "You can Try Again" → "Or
+  return to the games menu" → "Great job, you unlocked Dash!" → the Dots line → any other unlock of that run. Gate: `locked decisions`
+  section C, "68.15". The chests section's 67.13 check (the Welcome on the Dots result) was amended in the same commit to read past the new
+  unlock boxes and to follow the result's toasts to the main menu (68.18).

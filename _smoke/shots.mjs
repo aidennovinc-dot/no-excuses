@@ -2177,6 +2177,17 @@ scene('68.6', async (page, browser) => {
   await frame(page, browser, '68.6-dash-box-second-run', 'The second run’s result (8 in a row, the first run having missed): “Great job, you unlocked Dash!”, Dash ringed, on the result of the run that opened it (v0.68: no box)');
 });
 
+/* 68.15: a first result whose run opened Dash and Four, the walkthrough's boxes walked: Try Again, Game Select, THEN "Great job, you unlocked Dash!" —
+   the frame is the Dash box, its place in the sequence in the note (v0.68: before the Game Select box) */
+scene('68.15', async (page, browser) => {
+  const r = { g: 'quick-tap', d: 'two', s: 5, t: Date.now() - 5000, hits: 20, misses: 0, row: 20, v: 4 };
+  await load(page, { story: 1, gridSeen: 1, menuSeen: 1, snd: 'off', played: 1, tut: 1, tutRun: r, tuts: { 'unl-quick-tap-two-15': 0, 'unl-quick-tap-four': 0 } }, { runs: [r], unlock: { 'quick-tap:two:15': Date.now(), 'quick-tap:four': Date.now() } });
+  const seq = [];
+  for (let i = 0; i < 9; i++) { const b = await pBox(page, '', 4000); if (!b) break; seq.push(b.text); if (/unlocked Dash/.test(b.text)) break; await tutTap(page); await sleep(500); }
+  say('sequence', seq);
+  await frame(page, browser, '68.15-order', 'A first result that opened Dash: box ' + seq.length + ' of the sequence — ' + seq.map((t, i) => (i + 1) + '. ' + t).join(' / ') + ' — the Dash box after “Or return to the games menu” (v0.68: before it)');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

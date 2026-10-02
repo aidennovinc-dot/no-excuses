@@ -960,11 +960,16 @@ export async function run() {
     await sleep(300); await page.evaluate(() => document.querySelector('#welcome [data-act="wplay"]')?.click()); await sleep(600);
     await page.evaluate(async () => (await import('./ui/video.js')).closeVideo()); await sleep(900);
     const gotA = await page.evaluate(async () => { const C = (await import('./config/copy.js')).TUTORIAL, U = (await import('./config/unlocks.js')).MENU_UNLOCK; return C.got.replace('{name}', U.about.name).replace(/\[\/?(green|yellow|red)\]/g, ''); });
-    let bx = null; for (let i = 0; i < 60 && !(bx = await page.evaluate(() => { const b = document.getElementById('tut'); return b && !b.hidden ? { t: b.querySelector('p').textContent, on: document.querySelector('.screen.on')?.id } : null; })); i++) await sleep(100);
+    /* AMENDED at build 69 (68.19 / 68.6): the run's own unlocks say themselves first, each in its own box ("Great job, you unlocked Four!" …), and are read
+       with a tap; (68.18) About's box hands the player to the main menu, and the result's toasts go with them — shown there, or still queued behind the
+       menu's box, never while a box is up */
+    const gotPre = await page.evaluate(async () => (await import('./config/copy.js')).TUTORIAL.over.got.split('{names}')[0].replace(/\[\/?(green|yellow|red)\]/g, ''));
+    let bx = null; for (let i = 0; i < 120; i++) { bx = await page.evaluate(() => { const b = document.getElementById('tut'); return b && !b.hidden ? { t: b.querySelector('p').textContent, on: document.querySelector('.screen.on')?.id } : null; });
+      if (bx && bx.t.startsWith(gotPre)) { await page.mouse.click(12, 400); await sleep(300); continue; } if (bx) break; await sleep(100); }
     const mid = await page.evaluate(() => window.__t13.filter(x => x.s === 's-over').length);
     await page.mouse.click(12, 400); await sleep(5000);
-    const t13 = await page.evaluate(() => window.__t13.filter(x => x.s === 's-over'));
-    (up && pre === 0 && bx && bx.t === gotA && bx.on === 's-over' && mid === 0 && t13.length > 0 && t13.every(x => !x.w && !x.v && !x.box))
+    const t13 = await page.evaluate(() => window.__t13.filter(x => x.s === 's-over' || x.s === 's-menu')), queued = await page.evaluate(async () => (await import('./ui/toast.js')).toastBusy());
+    (up && pre === 0 && bx && bx.t === gotA && bx.on === 's-over' && mid === 0 && (t13.length > 0 || queued) && t13.every(x => !x.w && !x.v && !x.box))
       ? ok(`L14 / L20 / 67.13 the Welcome comes up on the result of the run that opens Dots before any toast there; its clip played, "${bx.t}" follows on that same result, and only then the result's ${t13.length} toast(s) — none while the Welcome, the player or a box is up`)
       : bad('L14 / 67.13 the Welcome on the Dots result, ahead of toasts', JSON.stringify({ up, pre, bx, mid, t13 }));
   }

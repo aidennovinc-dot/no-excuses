@@ -130,8 +130,12 @@ const O=TUTORIAL.over, oOn=()=>onScreen('s-over');
 const dashOpen=()=>{ const m=QM(), s=GC(QT,m).lens[1]; return s!==undefined&&lenOpen(QT,m,s); };
 function overSteps(){ const again={ on:oOn, el:()=>$('#again'), text:O.again };
   const body=dashOpen()?[again]:[again,{ on:oOn, el:()=>$('#again'), text:()=>say(O.miss) }];
+  /* build 69 (68.15): the run's own unlock boxes come after Game Select ("It should come up after saying that you can exit") — the closing lines wait
+     for them (`unlFirst()`) */
   return [ { on:oOn, text:O.hi }, ...body, { on:oOn, el:()=>$('#over-back'), arrow:1, text:O.back },
-    ...O.end.map(t=>({ on:oOn, text:t })) ]; }
+    ...O.end.map(t=>({ on:()=>oOn()&&!unlFirst(), text:t })) ]; }
+// an unlock's own box still to come on this result
+function unlFirst(){ return UNL_KEYS.some(k=>{ const d=DEFS[unlId(k)]; if(!d||!d.live()) return false; const s=stepsOf(d)[d.step()]; return !!s&&!!s.res&&!gone(s); }); }
 
 /* every tutorial. `steps` is a list or a function that builds one; `step` / `setStep` / `finish` are where its state lives. The walkthrough's two
    halves keep build 64's fields (above); the rest share `prefs.tuts`. Order is priority: when two are armed, the first one listed goes first. */

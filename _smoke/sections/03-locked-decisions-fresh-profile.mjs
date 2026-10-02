@@ -174,7 +174,8 @@ export async function run() {
        you unlocked Four!", Four ringed) — they come after the walkthrough's boxes, each with its chip ringed */
     const G2 = await page.evaluate(async () => { const R = await import('./games/registry.js'), G = await import('./config/games.js'); return { dash: R.lenName('quick-tap', R.GC('quick-tap', 'two').lens[1], 'two'), four: G.MODE_NAME.four }; });
     const gotD = C.over.got.replace('{names}', G2.dash), gotF = C.over.got.replace('{names}', G2.four);
-    const OW = [C.over.hi, C.over.again, C.over.back, ...C.over.end, gotD, fillO(C.over.next), gotF];
+    // AMENDED at build 69 (68.15): the run's unlock boxes come straight after Game Select, ahead of the walkthrough's closing lines
+    const OW = [C.over.hi, C.over.again, C.over.back, gotD, fillO(C.over.next), gotF, ...C.over.end];
     const over = [back];
     for (let i = 1; i < OW.length; i++) { await click(i < 3 ? '#again' : '#over-back'); over.push(await waitText(OW[i])); }
     const at = t => over.find(b => b && b.text === t) || {};
@@ -188,6 +189,14 @@ export async function run() {
       && over.every(b => b.inside && !b.covers) && !/\{/.test(OW.join('')))
       ? ok(`62.11 / 64.2 / 68.6 the first result's boxes in order: TRY AGAIN ringed, an arrow at BACK, then the run's own unlocks — "${gotD}" and "${fillO(C.over.next)}" with ${G2.dash} ringed, "${gotF}" with ${G2.four} ringed — and tapping either button does nothing until the last box`)
       : bad('62.11 the result boxes', JSON.stringify({ want: OW, over: over.map(b => b && { t: b.text, drawn: b.drawn, ring: b.ring, arrow: b.arrow, c: b.centre, covers: b.covers }), still, rings, dashW, fourW }));
+    /* build 69 (68.15): ON A FIRST RESULT THAT OPENS DASH THE DASH BOX COMES LAST — "You can Try Again", then "Or return to the games menu", THEN "Great job,
+       you unlocked Dash!" and its Dots line, and only then anything else. Aiden: "It should come up after saying that you can exit." */
+    {
+      const ix = t => over.findIndex(b => b && b.text === t), seq = [C.over.hi, C.over.again, C.over.back, gotD, fillO(C.over.next)].map(ix), endAt = (C.over.end || []).length ? ix(C.over.end[0]) : Infinity;
+      (seq.every(i => i >= 0) && seq.every((v, i) => !i || v > seq[i - 1]) && endAt > seq[4])
+        ? ok(`68.15 a first result that opens ${G2.dash}: "${C.over.again}" → "${C.over.back}" → "${gotD}" with ${G2.dash} ringed → the Dots line, in that order, and only then anything else on that result — the unlock comes after the way out`)
+        : bad('68.15 the order of the first result\'s boxes', JSON.stringify({ seq, endAt, got: over.map(b => b && b.text) }));
+    }
     // 62.14: "Good luck!" is answered — Off the Rails banked, the walkthrough gone, the result screen live again (and the second run can be quit)
     await anywhere(); await sleep(300);
     const done = await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('ne')); return { tut: s.prefs.tut, tutRun: !!s.prefs.tutRun, rails: !!s.ach.rails, hidden: document.getElementById('tut').hidden }; });
