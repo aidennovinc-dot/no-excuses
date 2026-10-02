@@ -612,6 +612,23 @@ export async function run() {
       ? ok(`v27 items 9 / 10 / 11 one shared video player: the clip is 16:9 (${play.box.ratio}) and inset ${play.box.l}px a side of a 390px screen - ${P52.inset}% each edge, never edge to edge - in a drawn frame that glows the unlocking chest's colour (${play.want}) while it plays and dims the moment it is paused; the title is above it, the captions below it from a HIDDEN track so nothing paints over the picture, "tap outside to close" at the foot, and there is no native control bar - a tap on the picture pauses, a tap outside closes. The power-on is ${P52.on.ms}ms (item 10 caps it at 750) and the power-off ${P52.off.ms}ms, both built into the player from named steps (${P52.on.steps.map(x => x.name).join(' > ')} / ${P52.off.steps.map(x => x.name).join(' > ')}), so every clip gets them; all eight slots point at the test card (item 11) and it is not build 46's planted video/test.mp4`)
       : bad('v27 items 9 / 10 / 11 the video player', JSON.stringify({ timing, card, shown, framed, power, play }));
   }
+  /* ---- build 69 (68.11): L26 THE VIDEO FRAME TAKES THE SHAPE OF THE CLIP. A PLACEHOLDER written at the locked-list commit: the player's frame is
+     measured against the clip's own videoWidth / videoHeight once its metadata is in, on Gauntlet Mini's slot (the 16:9 test card), so today it
+     passes trivially. 68.11's build (package P5) makes it real with a portrait clip. ---- */
+  {
+    const l26 = await page.evaluate(async () => { const wait = ms => new Promise(r => setTimeout(r, ms));
+      const R = await import('./ui/router.js'), MS = await import('./config/messages.js'); R.show('s-about'); await wait(300);
+      document.querySelector('#msglist .msgrow[data-msg="g1"]').click();
+      const h = document.getElementById('vplay'), v = h.querySelector('video');
+      for (let i = 0; i < 200 && v && !v.videoWidth; i++) await wait(25);
+      await wait(MS.PLAYER.on.ms + 250);
+      const r = h.querySelector('.vframe').getBoundingClientRect();
+      const out = { vw: v ? v.videoWidth : 0, vh: v ? v.videoHeight : 0, w: Math.round(r.width), h: Math.round(r.height) };
+      h.querySelector('.vback').click(); await wait(MS.PLAYER.off.ms + 250); return out; });
+    (l26.vw > 0 && l26.h > 0 && Math.abs(l26.w / l26.h - l26.vw / l26.vh) < .05)
+      ? ok(`L26 / 68.11 the video frame takes the shape of its clip: the frame is ${l26.w}×${l26.h} for a ${l26.vw}×${l26.vh} clip (placeholder on the 16:9 test card until 68.11 is built)`)
+      : bad('L26 / 68.11 the frame takes the clip\'s shape', JSON.stringify(l26));
+  }
   /* ---- v29 (items 1 / 10 / 11 / 13, build 55): the meter, the Next card, a dev-opened tier and a clip that will not load ---- */
   {
     /* item 1: build 53 put meterPct() over the top of meter() and clamped it to 100, so the front of the app read 100%

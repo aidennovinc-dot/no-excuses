@@ -1856,3 +1856,17 @@ anything Aiden settles goes on the list in the build that implements it.
   (`CONFETTI_FX`) with it: the four chests' congratulations cards and the Skill chest's 100%. In addition to a chest's cheer. Level and shape in
   `docs/MUSIC.md` → Build 69. The Pro chest's card sounds it too: L17 pins the Pro chest's own rows (unchanged, the pin holds), and this is a
   game-wide sound Aiden asked for "for everything" — flagged for him. Gate: `chests`, "68.37".
+- **L15 amended — a tutorial box holds a home spot around the middle (68.4).** Aiden on v0.68: "The tutorial boxes should stay mostly in the
+  middle unless it gets in the way of an element that it's trying to show off … every time a new box pops up, it can move slightly just so that
+  they know they're on a new screen." The row now reads: a tutorial box never covers its own target or the thing the player must tap at that
+  step; it may sit over other tiles. It holds a home spot around the middle, leaves it only when it would cover its own target (and then just far
+  enough to sit beside it), and each new box nudges a little from the last (a nudge, not top-to-bottom); a box about the whole screen stays in
+  the home spot. A tutorial never scrolls the screen and never navigates; an off-screen target is scrolled to by the game as the box appears
+  (68.12). The strict "never covers anything tappable" is what pushed the map box to the bottom edge. The row as it stood at build 68, replaced:
+  "**A tutorial never covers anything tappable, never scrolls the screen, never navigates** (67.2 / 67.9 / 65.9): no clear space → over a
+  dimmed, untappable area; an off-screen target gets an arrow and the step waits." Its history (67.2 / 67.9 / 65.9) is under Build 68 above.
+  Built in package P3 with 68.4, which rewrites the old strict gate checks (`locked decisions` section C, the journey 41).
+- **L26 — the video frame takes the shape of the clip (68.11, superseding 67.6b's "16:9 whatever the clip").** A portrait clip plays in a tall
+  frame, a landscape clip in a wide one, never letterboxed inside the other shape, on first viewing and from About; thumbnails follow the clip.
+  Built in package P5. Gate: `the keys`, "L26 / 68.11" — the player's frame ratio against the clip's own `videoWidth / videoHeight`; added at the
+  locked-list commit as a placeholder on the 16:9 test card (it passes trivially there) and made real by 68.11's build.

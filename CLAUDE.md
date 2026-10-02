@@ -195,7 +195,7 @@ list, with its check, in the build that implements it (67.37b, build 68).**
 | L12 | **The key keeps its intro size after the first tap** (2026-09-29, 67.23): one size, before and after. |
 | L13 | **A key's earned animation: the motion plays, holds 0.5s at most, then the next screen opens by itself** (67.31): no tap, no skip, no "tap to open the chest"; the motion sets the length and nothing else holds it (`EARN_NEXT.late`, 68.36); the earn music carries on into the next screen and fades there. |
 | L14 | **A first-time moment (tour, intro animation, mandatory video, ceremony) runs on the FIRST visit, before anything else on that screen** (67.22 / 67.3): tutorial boxes before toasts, a toast whose news the box gives is dropped; a visit that has passed drops its moment for good — a later replay is only the reload / crash net. |
-| L15 | **A tutorial never covers anything tappable, never scrolls the screen, never navigates** (67.2 / 67.9 / 65.9): no clear space → over a dimmed, untappable area; an off-screen target gets an arrow and the step waits. |
+| L15 | **A tutorial box never covers its own target or the thing the player must tap at that step; it may sit over other tiles. It holds a home spot around the middle, leaves it only to clear its target (just far enough to sit beside it), and each new box nudges a little from the last. A tutorial never scrolls the screen and never navigates** (68.4, 2026-10-02, amending 67.2 / 67.9 / 65.9): an off-screen target is scrolled to by the game as the box appears (68.12). |
 | L16 | **Music is ONE game-wide choice** (2026-09-29, 64.20): one row in Customise above the game tabs, playing on the menus and through every run. |
 | L17 | **The Pro chest's opening is not to be changed** (2026-09-18): its ceremony, look, cover, gifts, confetti, cheer and sound as approved — pinned by the gate. |
 | L18 | **No secret achievements**: every achievement shows its name and its requirement (2026-09-28, 61.14). |
@@ -205,6 +205,7 @@ list, with its check, in the build that implements it (67.37b, build 68).**
 | L22 | **Tap sound is ONE game-wide choice** (67.35): one row in Customise above the game tabs, beside Music (Off its last choice, 67.34) and Background. |
 | L23 | **The background runs to the physical bottom edge** on every screen, every theme and under every overlay: the bottom safe-area strip is the colour of whatever is drawn directly above it; buttons and text stay above the home bar (68.27, 2026-10-02; first logged 2026-09-20). |
 | L24 | **Every intro and ceremony draws its first animation frame before anything else of that screen**: the finished screen is never on frame one (68.29, 2026-10-02; the same fault as 2026-09-20). |
+| L26 | **The video frame takes the shape of the clip**: a portrait clip plays in a tall frame, a landscape clip in a wide one, never letterboxed inside the other shape, on first viewing and from About; thumbnails follow the clip (68.11, 2026-10-02, supersedes 67.6b). |
 
 **Code decisions A1–A10 in `ARCHITECTURE.md` — same quote-the-ID rule.** A feedback line changes one only when it names the ID.
 
