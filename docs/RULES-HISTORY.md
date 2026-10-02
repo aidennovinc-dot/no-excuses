@@ -1845,3 +1845,10 @@ anything Aiden settles goes on the list in the build that implements it.
   before the chest takes the screen. Gate: `build 46` (39b, ×1), "L13 / 68.36": frames back to back at the wall clock, the moving background
   hidden; the longest stretch with nothing visibly changing from the earn's start to the next screen, on a live clear, by Testing's switch, and
   by Testing's switch with an invisible animation straggling past the motion, 600ms at most.
+- **Nothing in a background is as bright as the text over it (68.39).** Aiden on Progress over Snow (the navy background whose white flakes he
+  calls "the orbs"): "The whites are getting in the way of the text … Just make them less bright. But otherwise, good job." Snow's flake centres
+  were pure #F4F8FF at full strength, 1.18 × the luminance of `--ink`. Their colours and caps are config now (`SNOW` in `config/theme.js`: centre
+  at most .4, halo at most .35). The rule is every background's: the brightest pixel any of the eight in `ITEMS.bg` draws (the three key layers
+  among them), laid over the page, is at most `BG_LAYER.peak` (.6) × `--ink`'s luminance. Thorn's white crossing points were .75; its
+  `KEY_LAYER.thorn.alpha` went .5 → .4. Measured at build 69: stars .34, grid .35, rain .04, orbs .04, snow .45, lantern .48, circuit .32,
+  thorn .55. Gate: `the keys` section, "68.39".

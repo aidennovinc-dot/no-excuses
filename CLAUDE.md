@@ -114,7 +114,7 @@ having written nothing. Gate checks read bars and names from `config/`, never a 
 - **A finished key is bigger, brighter and breathes; an unfinished one has no glow** (`kdone`, `KEY_FINISH`). **The key screen fits the phone** (`kpanel`, item 16). **A game's name and count on the key are one text placed clear of every line** (`placeLabels()`, item 12).
 - **A whole key taps through to its chest** (`keyChest(tier)`, L.12). **A key unlock interrupts the result screen** — `show('s-key', {advance, auto})` under `lock()`, answered by `key:done` (A4).
 - **Each key screen draws its own background over the live one, and replaces the base there** (`LAYER` in `ui/atmosphere.js`, `KEY_LAYER`, item 15); each is a Customise background once that key is finished.
-- **The wheel is LOCKED to one size** (57.5); **all seven backgrounds draw, the starfield is the default's alone, and the colour wheel is a second setting on the background layer** (57.11).
+- **The wheel is LOCKED to one size** (57.5); **all seven backgrounds draw, the starfield is the default's alone, and the colour wheel is a second setting on the background layer** (57.11); **no background's brightest pixel passes `BG_LAYER.peak` × `--ink`'s luminance** (68.39).
 - **The Gauntlets are GAUNTLET MINI and GAUNTLET MEGA** (`GAUNTLET.name`, ids `g1` / `g2`): hidden until their chest opens (R1) and arrive on its spill; **a finished Gauntlet opens the next chest** (58.2 — Pro wants Mini, Author wants Mega; `chestMet()`, `gauntDone()`, `chestNeeds()`; the CHEST is gated, never the key; nobody is locked back out); **a Gauntlet deals evenly** (`GAUNTLET_BANDS`, `gauntBand()`, 58.1).
 
 **Screens and presentation**

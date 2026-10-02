@@ -2018,6 +2018,12 @@ scene('68.36', async (page, browser) => {
   await page.evaluate(async () => (await import('./ui/reveal.js')).stopReveal());
 });
 
+/* 68.39: Progress over Snow — the navy background with the white flakes Aiden calls "the orbs" — on the Author chest's tab, as his v0.68 frame */
+scene('68.39', async (page, browser) => {
+  await load(page, { ...PLAIN, welcomeSeen: 1, chests: { games: 1, key: 1 }, spill: { games: 1, key: 1 }, bg: 'snow' }); await show(page, 's-prog', { tab: 'c-thorns' }); await sleep(2200);
+  await frame(page, browser, '68.39-orbs-progress', 'Progress on Snow (the navy "orbs"): the flakes drawn at most 0.45 of the text’s brightness, under every line and chip');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

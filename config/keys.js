@@ -208,7 +208,8 @@ export const KEY_LAYER = {
      BETTER against dark, which is the whole reason the scene works. */
   lantern: { lanterns: 14, alpha: .5, rise: 10, far: .5, near: 1.5, flick: .35, sky: '5,5,6', glow: '255,176,90', col: '255,208,138', warm: .1, hz: .07 },
   circuit: { cell: 44, traces: 16, pulse: 1, alpha: .12, head: .5, edge: 3, col: '191,230,255' },
-  thorn: { branches: 10, thorns: 7, edge: .6, alpha: .5, grow: [6, 16], reach: [.24, .62], branch: [0, 3], wide: [.8, 2.4], spike: [5, 13], col: '255,255,255' },
+  // build 69 (68.39): `alpha` .5 → .4 — where a stem, a side branch and a thorn crossed, the white reached .75 of the text's own brightness (BG_LAYER.peak)
+  thorn: { branches: 10, thorns: 7, edge: .6, alpha: .4, grow: [6, 16], reach: [.24, .62], branch: [0, 3], wide: [.8, 2.4], spike: [5, 13], col: '255,255,255' },
 };
 
 // stroke paths, drawn in a 48x48 box. The bow first, then the shaft, then the teeth, then the theme's own flourish

@@ -1074,6 +1074,33 @@ export async function run() {
       ? ok(`L24 / 68.29 every intro and ceremony is the first thing painted: on frame one of each key's creation intro (Skill, Pro, Author — the screen opened on it, its tab, Testing's replay) the intro's stage is up and none of the key cards, the wheel or its labels show; an earn's frame one draws no wheel; a chest's ceremony covers the screen with neither its card nor its rewards`)
       : bad('L24 / 68.29 the finished screen is painted before its intro or ceremony', JSON.stringify(off));
   }
+  /* build 69 (68.39): NOTHING IN A BACKGROUND IS AS BRIGHT AS THE TEXT OVER IT. Aiden on v0.68's Progress screen over Snow (the navy one he calls
+     "the orbs"): "The whites are getting in the way of the text … Just make them less bright." Snow's near flakes were drawn in #F4F8FF at full
+     strength. One rule for every background: each of the eight (`ITEMS.bg` — the three key layers among them, which are also what the key screens
+     draw) is drawn for about two seconds with both insets on, the canvas read four times (a one-off read in the check, never in the draw loop),
+     each pixel laid over the page it sits on, and the brightest one's luminance must be at most `BG_LAYER.peak` × the luminance of `--ink`, read off
+     the live page */
+  {
+    const TH39 = await import(pathToFileURL(path.join(root, 'config', 'theme.js')).href);
+    const cdp = await page.createCDPSession(); try { await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 47, bottom: 34, left: 0, right: 0 } }); } catch (e) {}
+    const res39 = [];
+    for (const { v } of TH39.ITEMS.bg) {
+      await boot({ ...OPEN_PREFS, bg: v, tint: '', chests: { games: 1, key: 1, pro: 1, thorns: 1 } });
+      res39.push(await page.evaluate(async v => { (await import('./ui/router.js')).show('s-prog', { tab: 'c-games' });
+        const w = ms => new Promise(r => setTimeout(r, ms)), lin = c => { c /= 255; return c <= .03928 ? c / 12.92 : Math.pow((c + .055) / 1.055, 2.4); };
+        const lum = ([r, g, b]) => .2126 * lin(r) + .7152 * lin(g) + .0722 * lin(b), rgb = s => s.match(/[\d.]+/g).slice(0, 3).map(Number);
+        const pr = document.createElement('i'); pr.style.color = 'var(--ink)'; document.body.appendChild(pr); const ink = lum(rgb(getComputedStyle(pr).color)); pr.remove();
+        const page0 = rgb(getComputedStyle(document.body).backgroundColor), cv = document.getElementById('stars'), cx = cv.getContext('2d', { willReadFrequently: true });
+        let top = 0, at = null;
+        for (let i = 0; i < 4; i++) { await w(500); const d = cx.getImageData(0, 0, cv.width, cv.height).data;
+          for (let p = 0; p < d.length; p += 4) { const a = d[p + 3] / 255; if (!a) continue; const c = [0, 1, 2].map(j => d[p + j] * a + page0[j] * (1 - a)), l = lum(c); if (l > top) { top = l; at = c.map(Math.round).join(','); } } }
+        return { v, top: +top.toFixed(3), ink: +ink.toFixed(3), ratio: +(top / ink).toFixed(2), at }; }, v)); }
+    try { await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0, bottom: 0, left: 0, right: 0 } }); } catch (e) {}
+    const off39 = res39.filter(x => !(x.ratio <= TH39.BG_LAYER.peak));
+    (!off39.length && res39.length === TH39.ITEMS.bg.length)
+      ? ok(`68.39 nothing in any background is as bright as the text over it: the brightest pixel of each of the ${res39.length}, over the page, against --ink's luminance (at most BG_LAYER.peak ${TH39.BG_LAYER.peak}) — ${res39.map(x => x.v + ' ' + x.ratio).join(', ')}`)
+      : bad('68.39 a background as bright as the text', JSON.stringify({ off: off39, all: res39.map(x => x.v + ' ' + x.ratio) }));
+  }
   /* build 62 (61.6): AN ACHIEVEMENT TOAST THAT HAS GONE CATCHES NOTHING. It kept pointer-events after it faded, invisible over the top of every
      screen, so a tap on the Keys screen's Pro tile opened Achievements. Reproduced: a tappable toast shows and fades, then the Keys screen */
   {

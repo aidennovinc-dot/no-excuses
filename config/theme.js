@@ -21,7 +21,13 @@ export const KEYFILL = { name:'lilac', v:'#F3D9FF' };
 /* build 62 (61.7 / 61.20 / 61.22): THE BACKGROUND LAYER RULE's two numbers. `dim` — in a game the chosen background stays, under a dark
    overlay of this strength, so targets, dots and numbers stay the brightest thing on screen. `clear` — how much of the art is taken out from
    behind every piece of text and every control on a screen (1 = all of it), and `pad`, how far round each one, in CSS px. */
-export const BG_LAYER = { dim: .5, clear: .94, pad: 6 };
+/* build 69 (68.39): `peak` — the brightest pixel any background draws, as a share of the luminance of the text (`--ink`) over it. Aiden: Snow's white
+   flakes "are getting in the way of the text … Just make them less bright". The rule is every background's; the gate reads each one's brightest pixel */
+export const BG_LAYER = { dim: .5, clear: .94, pad: 6, peak: .6 };
+/* build 69 (68.39): SNOW'S FLAKES, DIMMED — Aiden's "orbs on the navy background". `flake` / `halo` are the two colours (r,g,b); `core` is the most a
+   flake's centre is ever drawn at (it was 1, pure #F4F8FF over the text) and `glow` the most its halo is, so the brightest flake on the navy is under
+   BG_LAYER.peak × --ink; each flake's own strength still varies under those caps (ui/atmosphere.js DRAW.snow) */
+export const SNOW = { flake: '244,248,255', halo: '220,232,255', core: .4, glow: .35 };
 /* build 66 (65.12): SNOW HAS A NIGHT OF ITS OWN. Its ground was #070A10 under white dots — the starfield's near-black under the starfield's dots — so
    its swatch and the default's were "exactly the same" (Aiden). It is a cold blue night now, the way Grid is navy */
 export const DESIGNS = { stars:{tint:'#050506'}, grid:{tint:'#0A1430'}, rain:{tint:'#0B1008'}, orbs:{tint:'#0E0608'}, snow:{tint:'#101C33'}, lantern:{tint:'#1A1024'}, circuit:{tint:'#05080E'}, thorn:{tint:'#020202'} };

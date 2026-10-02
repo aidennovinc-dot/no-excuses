@@ -13,7 +13,7 @@ import { KEYS, KEY_LAYER } from "../config/keys.js";
 import { $ } from "../core.js";
 import { on } from "../core/events.js";
 import { look } from "../core/store.js";
-import { BG_LAYER, DESIGNS } from "../config/theme.js";
+import { BG_LAYER, DESIGNS, SNOW } from "../config/theme.js";
 
 const cv=$('#stars'), cx=cv.getContext('2d'); let W,H,pts=[],dpr=1, paused=false, running=false, over=null, geo=null;
 // v29 (item 16, build 55): DPR IS CAPPED AT 2. It was uncapped, so a Pro / Pro Max drew this canvas at 3x - 1290x2796, 3.6 megapixels -
@@ -34,8 +34,8 @@ const DRAW={
      DESIGNS.snow, a cold blue) and its flakes are SNOW: three depths, a soft halo round each, the near ones bigger, faster and swaying wider */
   snow(t){ for(const [i,p] of pts.slice(0,60).entries()){ const d=i%7===0?2.6:i%3===0?1.7:1, r=p.r*1.3*d;
       if(!reduce){ p.y+=p.s*1.4*d; if(p.y>H+r*4) p.y=-r*4; } const x=p.x+(reduce?0:Math.sin(t/(2200+400*d)+p.ph)*7*d*dpr);
-      cx.globalAlpha=Math.min(1,p.a*.5*d); cx.fillStyle='#DCE8FF'; cx.beginPath(); cx.arc(x,p.y,r*2.4,0,6.28); cx.fill();
-      cx.globalAlpha=Math.min(1,p.a*1.3+.2); cx.fillStyle='#F4F8FF'; cx.beginPath(); cx.arc(x,p.y,r,0,6.28); cx.fill(); } },
+      cx.globalAlpha=Math.min(SNOW.glow,p.a*.5*d); cx.fillStyle=`rgb(${SNOW.halo})`; cx.beginPath(); cx.arc(x,p.y,r*2.4,0,6.28); cx.fill();
+      cx.globalAlpha=Math.min(SNOW.core,(p.a*1.3+.2)*SNOW.core); cx.fillStyle=`rgb(${SNOW.flake})`; cx.beginPath(); cx.arc(x,p.y,r,0,6.28); cx.fill(); } },
   stars(t){ for(const p of pts){ if(!reduce){ p.y-=p.s; if(p.y<-4) p.y=H+4; } cx.globalAlpha=p.a*(.6+.4*Math.sin(t/1400+p.ph)); cx.fillStyle='#E8E6E1'; cx.beginPath(); cx.arc(p.x,p.y,p.r,0,6.28); cx.fill(); } },
   /* grid (v8): the spacing breathes — lines drift apart and back together around the centre, and being evenly spaced they can never cross.
      v29 Section A (57.11c, build 57): IN BLUE. It was the app's off-white at 7%, on a blue-black ground, which read as grey on grey; the ground is a
