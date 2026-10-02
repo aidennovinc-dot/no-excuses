@@ -486,9 +486,12 @@ function keyStage(tier) { const E = earnOf(tier), el = $('#s-key'), ids = [];
     /* the settle waits for this: the end of every animation the start beat put up. A cancelled one resolves it too (a hold that could never end
        would strand the screen), and so does a ceiling at twice the animation's length, for a phone that stops painting in the background. A tap
        resolves it through `done` — the skip's whole job. */
+    /* build 69 (68.36, L13): THE MOTION SETS THE LENGTH, AND NOTHING ELSE HOLDS IT. The settle waited for every animation on the screen, up to twice the
+       motion's length plus a second (4.5s for the Skill key) — one that a phone is slow to finish, or that runs on past the motion and shows nothing,
+       held the finished key still for seconds before the chest: Aiden's ~3s. It now waits at most `EARN_NEXT.late` past the motion's own end */
     hold() { if (quick) return null;
-      const all = (anims || []).map(a => a.finished.then(() => 1, () => 0));
-      return Promise.race([Promise.all(all), new Promise(r => { done = r; setTimeout(r, E.ms * 2 + 1000); })]); },
+      const all = (anims || []).map(a => a.finished.then(() => 1, () => 0)), left = Math.max(0, began + E.ms + EARN_NEXT.late - performance.now());
+      return Promise.race([Promise.all(all), new Promise(r => { done = r; setTimeout(r, left); })]); },
     step() { },
     // build 68 (67.31): no skip — answering false is what makes ui/reveal.js swallow the tap
     skip() { return false; },
@@ -638,7 +641,10 @@ function keyReveal(tier, o = {}) {
    not cut: it carries into whatever comes next and fades there. Until build 68 the screen sat on a "tap the key to open the chest" prompt */
 let nextT = 0;
 const fadeEarn = () => { const m = earnMusic; earnMusic = null; try { if (m && m.fade) m.fade(EARN_NEXT.fade); } catch (e) { } };
+/* build 69 (68.36): and while that half-second runs, nothing new arrives on the key screen — the settle's own redraw put up "tap to open the Skill
+   chest" and SET THIS MUSIC for the 400ms before the chest took the screen, an instruction to tap that the next screen pre-empts (L13) */
 function earnNext(tier) { clearTimeout(nextT);
+  { const kc = keyChest(tier); if (pendingOpen || (kc && kc.state === 'ready') || autoBack) { $('#key-hint').textContent = ''; $('#key-music').hidden = true; } }
   nextT = setTimeout(() => { nextT = 0; if (!$('#s-key').classList.contains('on')) return fadeEarn();
     const kc = keyChest(tier), id = pendingOpen || (kc && kc.state === 'ready' ? kc.id : null); pendingOpen = null;
     if (id && chestState(id) === 'ready') { fadeEarn(); openNow(id); return; }

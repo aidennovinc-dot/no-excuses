@@ -1993,6 +1993,31 @@ scene('68.29', async (page, browser) => {
   }
 });
 
+/* 68.36 (L13): the Skill key earned through Testing's switch, frames back to back at the wall clock (the moving background hidden, as the gate reads
+   it) from the earn starting until the chest's ceremony is up; the frame kept is the LAST one that differs from the frame before it */
+scene('68.36', async (page, browser) => {
+  const U = await import('../config/unlocks.js');
+  await load(page, { ...PLAIN, chests: { games: 1 }, spill: { games: 1 }, readySeen: { games: 1 }, welcomeSeen: 1 }, { unlock: Object.fromEntries(U.UNLOCKS.map(u => [u.key, Date.now()])) });
+  await show(page, 's-testing'); await sleep(300); await page.evaluate(() => document.querySelector('[data-act="dev-chestall"][data-chest="key"]').click()); await sleep(300);
+  await page.evaluate(() => { const s = document.createElement('style'); s.id = 'shot-nobg'; s.textContent = '#stars{visibility:hidden!important}'; document.head.appendChild(s); });
+  await show(page, 's-key', { tier: 0 }); const shots = []; const t0 = Date.now(); let began = false;
+  while (Date.now() - t0 < 15000) { const st = await page.evaluate(() => { const h = document.getElementById('key-cere'); return h.hidden ? '' : h.dataset.kind; });
+    const png = await page.screenshot({ type: 'png', clip: { x: 0, y: 0, width: 390, height: 844, scale: .5 } }); if (st === 'key') began = true;
+    if (began) { shots.push({ t: Date.now(), st, png }); if (st === 'chest') break; } }
+  if (!lens) { lens = await browser.newPage(); await lens.goto('data:text/html,<canvas id=c></canvas>'); }
+  const d = await lens.evaluate(async list => { const dec = async b => { const i = new Image(); i.src = 'data:image/png;base64,' + b; await i.decode(); const c = document.getElementById('c'); c.width = i.naturalWidth; c.height = i.naturalHeight;
+      const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(i, 0, 0); return x.getImageData(0, 0, c.width, c.height).data; };
+    const out = []; let p = await dec(list[0]); for (let k = 1; k < list.length; k++) { const q = await dec(list[k]); let n = 0;
+      for (let j = 0; j < q.length; j += 4) if (Math.max(Math.abs(q[j] - p[j]), Math.abs(q[j + 1] - p[j + 1]), Math.abs(q[j + 2] - p[j + 2])) > 16) n++; out.push(n); p = q; } return { out, N: p.length / 4 }; }, shots.map(s => s.png.toString('base64')));
+  await page.bringToFront();
+  const nx = shots.findIndex((s, k) => k && (s.st === 'chest' || d.out[k - 1] > d.N * .25)); let last = 0; for (let k = 1; k < nx; k++) if (d.out[k - 1] > 300) last = k;
+  fs.writeFileSync(path.join(OUT, '68.36-last-frame.png'), shots[last].png);
+  manifest.push({ frame: '68.36-last-frame.png', note: 'The last frame that visibly changes after the Skill key is earned (Testing\u2019s switch); the chest\u2019s ceremony is up ' + (shots[nx].t - shots[last].t) + 'ms later', sab: SAB });
+  say('last change → chest', (shots[nx].t - shots[last].t) + 'ms, at ' + (shots[last].t - shots[0].t) + 'ms into the earn');
+  await page.evaluate(() => document.getElementById('shot-nobg')?.remove());
+  await page.evaluate(async () => (await import('./ui/reveal.js')).stopReveal());
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

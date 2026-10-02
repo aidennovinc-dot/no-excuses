@@ -80,7 +80,9 @@ export const EARN_SKIP_AT = 1500;
    chest, if it is ready, else the run's result the interlude came from. No tap at all, no skip, no "tap to open the chest" (supersedes the
    2026-09-18 tap-to-skip and the 2026-09-20 prompt). The earn music carries on into that screen and fades there over `fade` ms. EARN_SKIP_AT above
    now governs the creation intro's skip alone */
-export const EARN_NEXT = { hold: 400, fade: 1600 };
+/* build 69 (68.36): `late` — the most the finished key waits past the motion's own length (KEY_EARN[tier].ms) for an animation still running on the
+   screen. It waited for every one of them, up to twice that length plus a second, which on Aiden's phone was ~3s of a still key */
+export const EARN_NEXT = { hold: 400, fade: 1600, late: 120 };
 
 /* ---------- v29 Section A (57.6, build 57): THE KEY BEING CREATED — the first time its screen is opened ----------
    Aiden: "the first time a key's screen is opened, play an introduction of that key being created — really cool, with sound effects to match.

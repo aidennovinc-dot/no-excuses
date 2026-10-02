@@ -1836,3 +1836,12 @@ anything Aiden settles goes on the list in the build that implements it.
   their 300ms wait the same way. A chest's ceremony from the map already opened on the screen's first frame (B.2); it is now asserted.
   Gate: `the keys` section, "L24 / 68.29", reads the first painted frame (a requestAnimationFrame in the same task as the route, no sleep) for
   all three keys by every route in.
+- **L13 amended — nothing but the motion holds the next screen (68.36).** Aiden on v0.68: "I was sitting after the animation … for like three
+  seconds doing nothing", with 67.31's check green. That check timed from `ksettle`; the settle itself waited for EVERY animation on the key
+  screen, up to twice the motion's length plus a second (4.5s for the Skill key), so one animation a phone was slow to finish, or one running on
+  past the motion and showing nothing, held a still key on screen. His frame has the earn's host still up (the strip under it was the page's
+  `--ground`), which is that wait. The settle now waits at most `EARN_NEXT.late` (120ms) past `KEY_EARN[tier].ms`; no step that moves is
+  shortened. While the half-second hold runs, the settle's redraw no longer puts up "tap to open the Skill chest" or SET THIS MUSIC for the 400ms
+  before the chest takes the screen. Gate: `build 46` (39b, ×1), "L13 / 68.36": frames back to back at the wall clock, the moving background
+  hidden; the longest stretch with nothing visibly changing from the earn's start to the next screen, on a live clear, by Testing's switch, and
+  by Testing's switch with an invisible animation straggling past the motion, 600ms at most.
