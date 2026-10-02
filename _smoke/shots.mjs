@@ -2229,6 +2229,23 @@ scene('68.9', async (page, browser) => {
   await frame(page, browser, '68.9-goal-line', 'Quick Tap Two · Dash, five hits in: the goal’s progress is a thin line along the TOP edge of the goal box, filling from the left; the words have the box to themselves (v0.68: a short bar beside the words, scanned over by them)');
 });
 
+const start69 = (page, g, d, s, aim) => page.evaluate(async ([g, d, s, aim]) => { const S = await import('./core/state.js'), RN = await import('./run/run.js'), P = await import('./progress.js');
+  if (aim) P.setPendingAim(aim); Object.assign(S.sel, { game: g, diff: d, secs: s, vs: 0, practice: 0 }); RN.start(); }, [g, d, s, aim]);
+const goalRead = page => page.evaluate(() => { const t = document.querySelector('#goal > i'); return t ? { text: t.textContent, cls: t.className, anims: t.getAnimations().length, translate: getComputedStyle(t).translate, over: t.scrollWidth - t.clientWidth } : null; });
+scene('68.10', async (page, browser) => {
+  await load(page, RUN69, QT69); await start69(page, 'quick-tap', 'two', 15, '30 hits');
+  for (let i = 0; i < 80 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) await sleep(50);
+  await sleep(400); for (let k = 0; k < 3; k++) { await pressLit(page); await sleep(220); }
+  say('goal', await goalRead(page));
+  await frame(page, browser, '68.10-goal-still', 'Quick Tap Two · Dash just after Go with a goal that fits: it sits still, no scan class, no animation, through the 3-2-1 and the run');
+  await page.evaluate(async () => (await import('./run/run.js')).abort(true)); await sleep(400);
+  await load(page, RUN69, QT69); await start69(page, 'quick-tap', 'two', 15);
+  for (let i = 0; i < 80 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) await sleep(50);
+  await sleep(1500); for (let k = 0; k < 4; k++) { await pressLit(page); await sleep(220); }
+  say('goal', await goalRead(page));
+  await frame(page, browser, '68.10-long-held', 'The same run with the long goal ("15 hits in a row …", too long for the box): its walk does not fit the 3-2-1, so it holds at its start through Go and every hit — no restart, no movement while the run is live');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

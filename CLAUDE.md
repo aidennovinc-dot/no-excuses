@@ -58,7 +58,7 @@ having written nothing. Gate checks read bars and names from `config/`, never a 
 - **A running total says what it measures** — unit, meaning, spent and budget — ONCE per screen (B.1 / B.13 / B.3d).
 - **A round's own figure holds before it drains into the total** (`CFG.hold`). **Every live score ticks** (`hud.tick`, `TICK.ms` 90, G.7).
 - **The run's header is a column** (60.19), **under the ✕ row** (67.16): ONE goal line with its pips or bar (`goalHtml`), a Streak's labelled allowance bar (`hud.allowance`), game · mode and "Round N" (never "attempt"), the score, "best"; a Flash Set's top reads "AVG 413 ms" (67.17).
-- **A goal badge that does not fit scans, and freezes while a round is live** (60.20): `goalScan()` in `run/run.js`, `GOAL_SCAN`; moves only in the 3-2-1 and between rounds.
+- **A goal badge that fits never moves; one that does not scans ONCE and never restarts** (60.20 / 68.10): `goalScan()` in `run/run.js`, `GOAL_SCAN`; paused while a round is live.
 - **A verdict tier goes on the NUMBER, everywhere** — result, board row, each round's figure (`ROUND_AT`, `games/_shared/tier.js`); one sound set keyed by tier (`VERDICT_FX`); solo only (L4), presentation only (L10).
 - **A round that shows a tier names it and sounds it from one call** — `roundShow()` in `games/_shared/tier.js` plays `Snd.roundVerdict` (`ROUND_FX`, one note shorter than the result's); the tier's name replaces the old judgement word, direction beside it.
 - **A verdict is a tier, solo only**: four tiers in `config/verdicts.js`; the sound plays when the result is read and waits `Snd.endLeft()` (§B1); the four climb (Meh. < Good. < Great! < Amazing!). A verdict row is per mode where units differ (D.10); Quick Tap's two modes share one curve (D.9).

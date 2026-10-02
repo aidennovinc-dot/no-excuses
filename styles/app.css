@@ -1433,11 +1433,13 @@
      AND IT FREEZES AT ITS START WHILE A ROUND IS LIVE: 'animation:none' rather than 'paused', because paused would leave it
      stopped wherever it happened to be. 'tapon' is the held card between rounds, which is a moment the player is reading rather
      than watching the field, so the scan runs there and through the 3-2-1 — the two moments the item names. */
+  /* build 69 (68.10): ONCE, start to end, then it holds at its end (`both`); `go` is added by run/run.js only when there is time for it. A live round
+     PAUSES it where it stands — never `none`, which snapped it back to its start, the restart at Go Aiden saw */
   #goal>.scan{overflow:visible;text-align:left}
-  #goal.on>.scan{animation:goalscan var(--gscan,6000ms) linear infinite}
-  @keyframes goalscan{0%,20%{translate:0 0}50%,70%{translate:calc(-1 * var(--gover,0px)) 0}100%{translate:0 0}}
-  #game.live:not(.tapon) #goal>.scan{animation:none;translate:0 0}
-  @media (prefers-reduced-motion:reduce){#goal>.scan{animation:none;translate:0 0}}
+  #goal.on>.scan.go{animation:goalscan var(--gscan,6000ms) linear var(--gwait,0ms) 1 both}
+  @keyframes goalscan{from{translate:0 0}to{translate:calc(-1 * var(--gover,0px)) 0}}
+  #game.live:not(.tapon) #goal>.scan.go{animation-play-state:paused}
+  @media (prefers-reduced-motion:reduce){#goal>.scan,#goal.on>.scan.go{animation:none;translate:0 0}}
   #goal>u{color:var(--mute)}
   #goal.roll>i,#goal.roll>u{animation:goalroll 9s ease-in-out infinite}
   @keyframes goalroll{0%,40%{translate:0 0}50%,90%{translate:0 -22px}100%{translate:0 0}}

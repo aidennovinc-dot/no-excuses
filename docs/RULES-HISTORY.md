@@ -2023,3 +2023,14 @@ anything Aiden settles goes on the list in the build that implements it.
   well, let's try our first run!" moves onto a box that rings GO; the run starts from the player's own tap on it. The one `through()` left is
   the Dots lock popup's own close, which the player's tap on Quick Tap dismisses. Gate: `locked decisions` section C's walk (Progress fixture on
   another tab) and the journey (41) count every `click()` made from `ui/tutorial.js` and fail any but `#lock-no`.
+- **The goal's progress is a line on the goal box's top edge (68.9).** Aiden: the bar "overlaps the words itself … maybe above it as a line that
+  increases … to the whole length of the achievement name." The bar (`.gbar`) and a round goal's pips (`.gpips`, as segments) are a 2px line along the
+  box's top edge, its full width, filling from the left; the words have the box to themselves. Gate: `the runs` (15b), "68.9".
+- **60.20 amended — a goal badge scans ONCE and never restarts (68.10).** Aiden: the goal text "keeps scrolling through the 3-2-1 and into the run;
+  Go must not restart it. A goal that fits sits still." A line that fits never gets the class. A line that does not is measured once (`scan`) and
+  walks to its end once at `GOAL_SCAN.pxPerSec`, then holds there: in the 3-2-1 only when the whole walk fits inside it (3 × `CFG.countStep`),
+  otherwise it holds at its start; on a held card between rounds (`tapon`) after `GOAL_SCAN.hold`. A live round PAUSES it where it stands (it was
+  `animation:none`, which snapped it to its start: the restart at Go). A live update rewrites the progress line only and keeps the text node unless
+  its words changed (`goalPut`), so no update starts it over. The row as it stood at build 68: "A goal badge that does not fit scans, and freezes
+  while a round is live (60.20): `goalScan()` in `run/run.js`, `GOAL_SCAN`; moves only in the 3-2-1 and between rounds." Gate: `the runs` (15b),
+  "68.10", and 60.20's check amended (the 3-2-1 clause).

@@ -363,12 +363,16 @@ export async function run() {
     const anyScan = r => r && r.rows.some(x => x.scan);
     const moving = r => r && r.rows.filter(x => x.scan).every(x => x.anim === 'goalscan');
     const frozen = r => r && r.rows.filter(x => x.scan).every(x => x.anim === 'none');
+    /* AMENDED at build 69 (68.10): the 3-2-1 walks the line only when its whole walk fits inside the 3-2-1; otherwise it holds still at its start
+       (Aiden: it scrolled "through the 3-2-1 and into the run"). The other three facts stand as they were */
+    const CS10 = await page.evaluate(async () => (await import('./config/games.js')).CFG.countStep);
+    const overC = Math.max(0, ...gs60.countdown.rows.filter(x => x.scan).map(x => x.over)), fitsCount = overC / gs60.CFG.pxPerSec * 1000 <= 3 * CS10;
     (gs60.CFG.hold === 1000 && gs60.CFG.pxPerSec > 0
-      && anyScan(gs60.countdown) && moving(gs60.countdown)
+      && anyScan(gs60.countdown) && (fitsCount ? moving : frozen)(gs60.countdown)
       && anyScan(gs60.live) && frozen(gs60.live) && gs60.live.live && !gs60.live.tapon
       && anyScan(gs60.between) && moving(gs60.between) && gs60.between.tapon
       && !anyScan(gs60.short))
-      ? ok(`60.20 a goal badge that does not fit scans and freezes while the round is live — the overflowing line ("${(gs60.live.rows.find(r => r.scan) || {}).text}…", ${(gs60.live.rows.find(r => r.scan) || {}).over}px over) walks during the 3-2-1 (${(gs60.countdown.rows.find(r => r.scan) || {}).dur}, ${gs60.CFG.pxPerSec}px/s with a ${gs60.CFG.hold}ms pause at each end), freezes at its start the moment the round goes live, and walks again on the held card between rounds; a badge that FITS is never given the class`)
+      ? ok(`60.20 a goal badge that does not fit scans and freezes while the round is live — the overflowing line ("${(gs60.live.rows.find(r => r.scan) || {}).text}…", ${(gs60.live.rows.find(r => r.scan) || {}).over}px over) ${fitsCount ? 'walks during the 3-2-1' : 'holds at its start through the 3-2-1, its walk longer than the count'} (${gs60.CFG.pxPerSec}px/s, a ${gs60.CFG.hold}ms pause first on a held card), freezes at its start the moment the round goes live, and walks again on the held card between rounds; a badge that FITS is never given the class`)
       : bad('60.20 the goal badge scan', JSON.stringify(gs60)); }
 
   /* ---- v31 (60.19, build 60): THE RUN'S HEADER IS A COLUMN, AND NOTHING SHARES A LINE WITH THE SCORE ----
@@ -441,5 +445,61 @@ export async function run() {
     (good(qt) && qt.kind === 'gbar' && qt.fill > 0 && qt.fill < 100 && qt.fromLeft && good(tm) && tm.kind === 'gpips' && tm.segs >= 2)
       ? ok(`68.9 the goal's progress is a line on the box's top edge, clear of the words — Quick Tap Dash three hits in: a ${qt.bar[3]}px line at the box's top (${qt.bar[1]} vs ${qt.box[1]}), ${qt.bar[2]} of ${qt.box[2]}px wide, ${qt.fill}% filled from the left, the text's glyphs ${qt.text[0]}–${qt.text[1]}; a Stopwatch Streak's ${tm.segs} round pips are segments of the same top line`)
       : bad('68.9 the goal progress line on the top edge', JSON.stringify({ qt, tm }));
+  }
+
+  /* build 69 (68.10): THE GOAL TEXT NEVER RESTARTS. Aiden: it "keeps scrolling through the 3-2-1 and into the run; Go must not restart it … A goal that
+     fits sits still." A sampler in the page reads the goal's text line every 40ms from the moment the run is built: the node, its translate and every
+     animation on it (one id per animation object, its currentTime). (a) A goal that FITS — a short aim — never carries an animation or moves in the first
+     2s of a run. (b) A goal that does NOT fit, on a Quick Tap Dash run with hits landing (a live update every hit): the text node is the same node from the
+     3-2-1 to the end, no animation object is ever replaced and none runs backwards, and its translate never changes while a round is live. (c) The same
+     long line on a Reaction Flash Streak (a held card between rounds): it walks on the card, holds wherever it is while the next round is live, and the
+     next card carries on from there — it never jumps back to its start. */
+  {
+    const SAMPLE = () => { const w = window.__g10 = { rows: [], ids: new WeakMap(), n: 0, nodes: new WeakMap(), nn: 0 };
+      const tx = e => { const m = /(-?[\d.]+)px/.exec(getComputedStyle(e).translate || ''); return m ? +m[1] : 0; };
+      w.timer = setInterval(() => { const gl = document.getElementById('goal'), gm = document.getElementById('game'), t = gl && gl.querySelector(':scope > i');
+        if (!t) return; if (!w.nodes.has(t)) w.nodes.set(t, ++w.nn);
+        const an = t.getAnimations().map(a => { if (!w.ids.has(a)) w.ids.set(a, ++w.n); return { id: w.ids.get(a), ct: Math.round(+a.currentTime || 0), ps: a.playState }; });
+        w.rows.push({ node: w.nodes.get(t), live: gm.classList.contains('live'), tapon: gm.classList.contains('tapon'), x: Math.round(tx(t) * 10) / 10, an, scan: t.classList.contains('scan'), over: t.scrollWidth - t.clientWidth }); }, 40); };
+    const STOP = () => { const w = window.__g10; clearInterval(w.timer); return w.rows; };
+    const startRun = (g, d, s, aim) => page.evaluate(async ([g, d, s, aim]) => { const S = await import('./core/state.js'), RN = await import('./run/run.js'), P = await import('./progress.js');
+      if (aim) P.setPendingAim(aim); Object.assign(S.sel, { game: g, diff: d, secs: s, vs: 0, practice: 0 }); RN.start(); }, [g, d, s, aim]);
+    const judge = rows => { const bad10 = [];
+      for (let i = 1; i < rows.length; i++) { const a = rows[i - 1], b = rows[i];
+        if (b.node !== a.node) bad10.push('node rebuilt at ' + i);
+        for (const x of b.an) { const was = a.an.find(y => y.id === x.id); if (was && x.ct + 2 < was.ct) bad10.push('ran backwards at ' + i); }
+        if (a.an.length && b.an.length && !b.an.some(x => a.an.some(y => y.id === x.id))) bad10.push('animation replaced at ' + i);
+        // a CSS pause lands on the next animation frame, so the read straight after the card goes may carry that one frame's step
+        const settled = i >= 2 && !rows[i - 2].tapon;
+        if (settled && a.live && !a.tapon && b.live && !b.tapon && Math.abs(b.x - a.x) > .5) bad10.push('moved while live at ' + i + ' (' + a.x + '→' + b.x + ')');
+        if (Math.abs(b.x) + .5 < Math.abs(a.x) && b.node === a.node) bad10.push('jumped back toward its start at ' + i + ' (' + a.x + '→' + b.x + ')'); }
+      return [...new Set(bad10)].slice(0, 6); };
+    await boot({ tuts: { next: 'done' } }, { unlock: { 'quick-tap:two:15': 1 }, runs: [{ g: 'quick-tap', d: 'two', s: 5, t: Date.now() - 6e4, hits: 9, misses: 0, row: 9, v: 4 }] });
+    // (a) a goal that fits
+    await page.evaluate(SAMPLE); await startRun('quick-tap', 'two', 15, '30 hits'); await sleep(2000);
+    const fit = await page.evaluate(STOP); await page.evaluate(async () => (await import('./run/run.js')).abort(true)); await sleep(300);
+    const fitOk = fit.length > 20 && fit.every(r => !r.an.length && !r.scan && r.x === 0 && r.over <= 2);
+    // (b) a long goal through the 3-2-1, Go and a dozen live updates
+    await page.evaluate(SAMPLE); await startRun('quick-tap', 'two', 15);
+    for (let i = 0; i < 100 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) await sleep(40);
+    for (let k = 0; k < 12; k++) { await poke('quick-tap'); await sleep(160); }
+    const qt = await page.evaluate(STOP); await page.evaluate(async () => (await import('./run/run.js')).abort(true)); await sleep(300);
+    const qtBad = judge(qt), qtLong = qt.some(r => r.over > 2) && qt.some(r => r.live) && qt.some(r => !r.live);
+    // (c) a long line across held cards: two rounds of Reaction Flash
+    await page.evaluate(async () => { const SS = await import('./core/store.js'); SS.store.intro['reaction'] = SS.store.intro['reaction:flash'] = Date.now(); SS.save(); });
+    await page.evaluate(SAMPLE); await startRun('reaction', 'flash', -1, 'reach round 24 in Reaction · Flash · Streak without a single early tap');
+    for (let round = 0; round < 3; round++) {
+      await page.evaluate(async () => { const RX = (await import('./games/reaction/index.js')).default, w = ms => new Promise(r => setTimeout(r, ms));
+        for (let i = 0; i < 600 && !(RX.st === 'go' && RX.armed); i++) await w(20); await w(200);
+        const g = document.getElementById('gen'), r = g.getBoundingClientRect(); g.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1 }));
+        for (let i = 0; i < 200 && !document.getElementById('game').classList.contains('tapon'); i++) await w(20); });
+      await sleep(2600);
+      await page.evaluate(() => { const g = document.getElementById('gen'), r = g.getBoundingClientRect(); g.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1 })); });
+      await sleep(300); }
+    const rx = await page.evaluate(STOP); await page.evaluate(async () => (await import('./run/run.js')).abort(true)); await sleep(300);
+    const rxBad = judge(rx), rxWalked = rx.some(r => r.tapon && r.x < -1);
+    (fitOk && qtLong && !qtBad.length && !rxBad.length && rxWalked)
+      ? ok(`68.10 the goal text never restarts — a goal that fits carried no animation and never moved in ${fit.length} reads over 2s; a long Quick Tap goal (${Math.max(...qt.map(r => r.over))}px over) kept one text node, never moved while live and never went back to its start through the 3-2-1, Go and 12 live updates (${qt.length} reads); a long line on Reaction Flash walked on the held card (to ${Math.min(...rx.map(r => r.x))}px), held still through each live round and carried on from there (${rx.length} reads)`)
+      : bad('68.10 the goal text restarts or moves', JSON.stringify({ fitOk, fit: fit.slice(0, 3), qtLong, qtBad, rxBad, rxWalked, rxEnd: rx.slice(-3) }));
   }
 }

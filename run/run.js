@@ -12,7 +12,7 @@ import { Music, Snd } from "../audio.js";
 import { FLOW_AT, FLOW_FALL, FLOW_RISE } from "../config/audio.js";
 import { RUN_SCHEMA } from "../config/build.js";
 import { HUD, INTRO, INTRO_READY, TOAST } from "../config/copy.js";
-import { GOAL_SCAN, MODE_NAME, PASS_LEN, PASS_TURNS, RATE_MAX, STREAK } from "../config/games.js";
+import { CFG, GOAL_SCAN, MODE_NAME, PASS_LEN, PASS_TURNS, RATE_MAX, STREAK } from "../config/games.js";
 import { P1C, P2C } from "../config/theme.js";
 import { $, T, pWho } from "../core.js";
 import { emit, on } from "../core/events.js";
@@ -56,14 +56,27 @@ const active=()=>R.on;
 // v14 (3.3): every requirement names its game (3.2), which is noise once you are inside that game — the in-run goal line takes
 // the name back out, so "30 hits in any Quick Tap run" reads "30 hits in any run" while you are playing Quick Tap. The line
 // scrolls between the requirement and what it unlocks (the CSS) rather than trying to fit both at once
-/* v31 (60.20, build 60): and each of those two lines SCANS SIDEWAYS if it does not fit. One read per line, off the drawn text. */
-function goalScan(){ const gl=$('#goal'); if(!gl) return;
-  for(const el of gl.children){ const over=Math.max(0,el.scrollWidth-el.clientWidth);
-    el.classList.toggle('scan',over>2);
-    if(over>2){ el.style.setProperty('--gover',over+'px');
-      // the walk is paced, not timed: GOAL_SCAN.pxPerSec across, GOAL_SCAN.hold at each end, so a long line is not a blur
-      el.style.setProperty('--gscan',(2*(over/GOAL_SCAN.pxPerSec*1000+GOAL_SCAN.hold))+'ms'); }
-    else { el.style.removeProperty('--gover'); el.style.removeProperty('--gscan'); } } }
+/* v31 (60.20, build 60): and each of those two lines SCANS SIDEWAYS if it does not fit. One read per line, off the drawn text.
+   build 69 (68.10): IT SCANS ONCE AND NEVER RESTARTS. Aiden saw it "scrolling through the 3-2-1 and into the run" and Go restarting it. A line that fits
+   never gets the class. A line that does not is measured ONCE (`scan`) and walks to its end ONCE (`go`, GOAL_SCAN.pxPerSec): in the 3-2-1 only if the
+   walk fits inside it, otherwise it holds at its start; on a held card between rounds (`tapon`, below) after GOAL_SCAN.hold. It then holds at its end.
+   A live round pauses it where it stands (the stylesheet); a live update keeps the same text node (goalPut), so nothing can start it over */
+function goalScan(){ const gl=$('#goal'); if(!gl) return; const gm=$('#game'), live=gm.classList.contains('live'), card=gm.classList.contains('tapon');
+  for(const el of gl.children){ if(el.matches('.gbar,.gpips')) continue;
+    const over=Math.max(0,el.scrollWidth-el.clientWidth);
+    if(over<=2){ el.classList.remove('scan','go'); for(const p of ['--gover','--gscan','--gwait']) el.style.removeProperty(p); continue; }
+    if(el.classList.contains('scan')) continue;
+    const walk=over/GOAL_SCAN.pxPerSec*1000;
+    el.style.setProperty('--gover',over+'px'); el.style.setProperty('--gscan',walk+'ms'); el.classList.add('scan');
+    if(card) goalGo(el); else if(!live&&walk<=3*CFG.countStep) el.classList.add('go'); } }
+function goalGo(el){ el.style.setProperty('--gwait',GOAL_SCAN.hold+'ms'); el.classList.add('go'); }
+// a held card between rounds: a line still at its start walks once now
+new MutationObserver(()=>{ if(!$('#game').classList.contains('tapon')) return; for(const el of document.querySelectorAll('#goal>.scan:not(.go)')) goalGo(el); }).observe($('#game'),{ attributes:true, attributeFilter:['class'] });
+// a live update rewrites only what changed: the progress line every time, the text only when its words did (68.10)
+function goalPut(gl,html){ const t=document.createElement('template'); t.innerHTML=html; const now=[...gl.children], next=[...t.content.children];
+  const same=now.length===next.length&&now.every((e,i)=>e.tagName===next[i].tagName&&(e.matches('.gbar,.gpips')||e.innerHTML===next[i].innerHTML));
+  if(!same){ gl.innerHTML=html; return true; }
+  now.forEach((e,i)=>{ if(e.matches('.gbar,.gpips')) e.replaceWith(next[i]); }); return false; }
 const here=need=>{ const n=GAMES[sel.game].name; return String(need).split(n+' · ').join('').split(n+' ').join(''); };
 /* build 68 (67.16): THE GOAL LINE, ONE LINE WITH ITS PROGRESS. A round goal reads "Round 5 of 6 → unlocks Reaction · Flash" with a pip for each round, filling
    as the run goes; any other goal says what it asks and fills a short bar, both read off the same best-run tables the next-unlock card uses
@@ -115,7 +128,7 @@ function makeCtx(){ const id=R.id; const timers=makeTimers(()=>R.on&&R.id===id);
        80% — and the music reads it. A timed run needs nothing here: the clock already tells audio.js. MUSIC ONLY (A.1). */
     emit(name,data){ if(R.id!==id) return; if(name==='finish') finish(data); else if(name==='live'){ if(eng&&eng.fin) R.fin=Math.max(0,Math.min(1,eng.fin()||0)); liveCheck(data);
       // build 68 (67.16): the goal line's pips and bar follow the run
-      if(R.goal&&!R.goalHit&&data){ const gl=$('#goal'); gl.innerHTML=goalHtml(data); requestAnimationFrame(()=>goalScan()); } } } }; }
+      if(R.goal&&!R.goalHit&&data){ if(goalPut($('#goal'),goalHtml(data))) requestAnimationFrame(()=>goalScan()); } } } }; }
 function start(){
   const g=GAMES[sel.game]; let c=GC(sel.game,sel.diff,sel.secs); $('#game').dataset.g=sel.game; $('#game').dataset.d=sel.diff;
   // two players (v10): pass & play (sel.vs 1) takes turns at a fixed length; versus (sel.vs 2) is one run at both ends. v11: Sequence and Count run both players on one screen inside their own engine; Reaction and Sequence handle versus themselves
