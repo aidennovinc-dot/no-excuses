@@ -5,11 +5,13 @@
    stays visible around the picture and is DIMMED, which is item 9's first line.
 
    ITEM 9 — WHAT IT LOOKS LIKE
-     · the clip is 16:9 and the phone stays UPRIGHT. Nothing rotates, nothing goes full screen, and `playsinline` keeps iOS out of its own player
-     · the picture is inset `PLAYER.inset`% from every screen edge (config/messages.js) — NEVER EDGE TO EDGE
+     · the frame takes the CLIP'S shape (L26, 68.11) — a portrait clip a tall frame, a landscape one a wide frame, never letterboxed — and the phone
+       stays UPRIGHT. Nothing rotates, and `playsinline` keeps iOS out of its own player
+     · the picture is inset `PLAYER.inset`% of the screen's narrower side from its edges (config/messages.js) — NEVER EDGE TO EDGE
      · the frame is a thin white rounded outline at the same 1px weight as the map's tiles and the chests, and it GLOWS while the clip is playing
        in the colour of the chest that unlocked the slot (`msgCol()` in ui/chest.js) — dim when paused or ended
-     · title above in the game's spaced capitals; captions below; "tap outside to close" in dim grey at the foot of the screen
+     · title above in the game's spaced capitals; captions below; "tap outside to close" in dim grey directly under them (68.11), never at the foot
+       of the screen over the page behind
      · NOTHING IS DRAWN OVER THE PICTURE. No knobs, no antenna, no scanlines — and no native control bar either, which is why there is no
        `controls` attribute: a tap on the PICTURE pauses and plays, a tap anywhere else closes. Two targets, both `data-act`, so ui/actions.js
        routes them like every other control in the app.
@@ -31,7 +33,7 @@ import { $, T, esc } from "../core.js";
 import { emit } from "../core/events.js";
 import { prefs, save } from "../core/store.js";
 import { define } from "./actions.js";
-import { msgCol, msgThorn } from "./chest.js";
+import { msgCol, msgRatio, msgThorn } from "./chest.js";
 import { msgTitle } from "../progress/key.js";
 
 let host = null, vid = null, closing = 0, ids = [], onSeen = null;
@@ -49,9 +51,10 @@ function build() { if (host) return host;
   host.innerHTML = '<div class="vback"></div>'
     + '<div class="vwrap"><div class="vtitle"></div>'
     + '<div class="vframe" data-act="vtap"><div class="vpic"></div><i class="vline"></i></div>'
-    + `<div class="vcc"></div></div><div class="vfoot">${esc(MSG.close)}</div>`;
+    + `<div class="vcc"></div><div class="vfoot">${esc(MSG.close)}</div></div>`;
   document.body.appendChild(host);
-  host.style.setProperty('--vinset', PLAYER.inset + '%');
+  // build 69 (68.11): the inset is a share of the screen's NARROWER side, and the foot line sits `footGap` under what is above it
+  host.style.setProperty('--vinset', `calc(min(100vw, 100svh) * ${PLAYER.inset / 100})`); host.style.setProperty('--vfootgap', PLAYER.footGap + 'px');
   for (const k of ['on', 'off']) for (const s of PLAYER[k].steps) { host.style.setProperty(`--v-${s.name}-at`, s.at + 'ms'); host.style.setProperty(`--v-${s.name}-ms`, s.ms + 'ms'); }
   host.style.setProperty('--von-ms', PLAYER.on.ms + 'ms'); host.style.setProperty('--voff-ms', PLAYER.off.ms + 'ms');
   // 59.10: ONE resize listener for the life of the player, not one per clip — the open path sets `_reshape` and this calls it
@@ -95,7 +98,7 @@ function playVideo(m, o = {}) { if (!m || !m.file) return false;
   host.style.setProperty('--vg', msgCol(m) || '#FFFFFF'); host.classList.toggle('vthorn', msgThorn(m));
   // build 68 (67.6): the player's title is the same two lines as the Welcome's card — the eyebrow, then the name in quotes
   host.querySelector('.vtitle').innerHTML = `<small class="weye">${esc(WELCOME.from)}</small><b class="wname">${esc(T(WELCOME.name, { title: msgTitle(m) }))}</b>`;
-  host.querySelector('.vcc').textContent = '';
+  host.querySelector('.vcc').textContent = ''; host.classList.toggle('vnocc', !m.cc);
   const pic = host.querySelector('.vpic');
   pic.innerHTML = `<video playsinline preload="metadata"${m.cc ? ' crossorigin="anonymous"' : ''}><source src="${esc(m.file)}" type="video/mp4">`
     + (m.cc ? `<track kind="captions" srclang="en" label="English" src="${esc(m.cc)}" default>` : '') + '</video>';
@@ -109,16 +112,17 @@ function playVideo(m, o = {}) { if (!m || !m.file) return false;
      because its width cap binds first. Recomputed on metadata and on resize, because the room changes with the phone. */
   /* the row's own `ratio` first, so the frame is already the right shape before a byte of the clip has loaded — and so a 16:9
      clip opened after a portrait one does not wear the portrait one's shape for the moment before its metadata arrives. */
-  // build 68 (67.6b): THE FRAME IS 16:9 WHATEVER THE CLIP — landscape, the phone upright; a clip of another shape is letterboxed inside it (contain)
-  host.style.setProperty('--v-arw', '16'); host.style.setProperty('--v-arh', '9');
+  /* build 69 (68.11, L26, superseding 67.6b's "every frame is 16:9"): THE FRAME TAKES THE SHAPE OF THE CLIP. The row's `ratio` is the guess
+     before a byte has loaded (16:9 for a row without one); the clip's own videoWidth / videoHeight replace it the moment its metadata is in,
+     so a portrait clip plays in a tall frame and a landscape one in a wide frame, never letterboxed, whatever the row says. `--v-maxh` is the
+     height left once everything else in the column (title, captions, foot line, their gaps) is placed, so a tall clip gives up width rather
+     than pushing them off the screen; a full-screen first viewing has no title or foot and gets the whole height */
+  const guess = msgRatio(m); host.style.setProperty('--v-arw', String(guess[0])); host.style.setProperty('--v-arh', String(guess[1]));
   const shape = () => { if (!host || !vid) return;
-    const wrap = host.querySelector('.vwrap'), title = host.querySelector('.vtitle'),
-      cc = host.querySelector('.vcc'), foot = host.querySelector('.vfoot');
-    const cs = getComputedStyle(host), gap = parseFloat(getComputedStyle(wrap).rowGap) || 0;
-    const room = host.clientHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0)
-      - (title ? title.offsetHeight : 0) - (cc ? cc.offsetHeight : 0) - (foot ? foot.offsetHeight : 0) - gap * 2 - PLAYER.footGap;
+    const wrap = host.querySelector('.vwrap'), fr = host.querySelector('.vframe'), cs = getComputedStyle(host);
+    const room = host.clientHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0) - (wrap.offsetHeight - fr.offsetHeight);
     host.style.setProperty('--v-maxh', Math.max(120, Math.round(room)) + 'px'); };
-  vid.addEventListener('loadedmetadata', shape);
+  vid.addEventListener('loadedmetadata', () => { if (vid && vid.videoWidth && vid.videoHeight) { host.style.setProperty('--v-arw', String(vid.videoWidth)); host.style.setProperty('--v-arh', String(vid.videoHeight)); } shape(); });
   host._reshape = shape; shape();
   vid.addEventListener('play', () => glow(true));
   vid.addEventListener('pause', () => glow(false));

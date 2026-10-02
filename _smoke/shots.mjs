@@ -2336,6 +2336,28 @@ scene('68.8', async (page, browser) => {
   await frame(page, browser, '68.8-abandoned', 'Exit mid-run: one word, “Abandoned”, mid grey and between the old eyebrow and the old line in size; no dash, no “Run abandoned · nothing saved”; Retry, then Game select (L21)');
 });
 
+/* 68.11 (L26): the frame takes the clip's shape — the Welcome clip (portrait) played from About, the Skill chest's clip on its first (full screen)
+   viewing, and Gauntlet Mini's 16:9 test card from About; each held once its metadata is in and the power-on has finished */
+const clipUp = async page => { await page.evaluate(async () => { const w = ms => new Promise(r => setTimeout(r, ms));
+  for (let i = 0; i < 120; i++) { const v = document.querySelector('#vplay video'); if (v && v.videoWidth) return; await w(50); } }); await sleep(1100);
+  return page.evaluate(() => { const h = document.getElementById('vplay'), v = h.querySelector('video'), r = h.querySelector('.vframe').getBoundingClientRect(), f = h.querySelector('.vfoot').getBoundingClientRect();
+    return { clip: v ? [v.videoWidth, v.videoHeight] : null, frame: [Math.round(r.width), Math.round(r.height)], top: Math.round(r.top), bottom: Math.round(r.bottom), footTop: Math.round(f.top) }; }); };
+scene('68.11', async (page, browser) => {
+  await load(page, { ...PLAIN, ...ALL68, gauntSeen: { g1: 1, g2: 1 } }); await show(page, 's-about'); await sleep(700);
+  await tap68(page, '#msglist .msgrow[data-msg="intro"]'); say('player', await clipUp(page));
+  await frame(page, browser, '68.11-portrait-inset', 'About playing the Welcome clip (portrait 540×960): a tall frame inset 8% a side, no side bars, “tap outside to close” 14px under it (v0.68: a wide 16:9 frame, black bars, the line over Game Select)');
+  await page.evaluate(async () => (await import('./ui/video.js')).closeVideo()); await sleep(900);
+  await show(page, 's-pick'); await sleep(700);
+  await page.evaluate(async () => { const V = await import('./ui/video.js'), M = await import('./config/messages.js'); V.playVideo(M.MESSAGES.find(m => m.by && m.by.chest === 'key'), { full: true }); });
+  say('player', await clipUp(page));
+  await frame(page, browser, '68.11-portrait-full', 'The Skill chest’s clip on its first viewing, full screen: the portrait picture as wide as the phone and as tall as its shape, no side bars (v0.68: a portrait picture in a landscape frame)');
+  await page.evaluate(async () => (await import('./ui/video.js')).closeVideo()); await sleep(900);
+  await show(page, 's-about'); await sleep(700);
+  await tap68(page, '#msglist .msgrow[data-msg="g1"]'); say('player', await clipUp(page));
+  await frame(page, browser, '68.11-landscape-inset', 'About playing Gauntlet Mini’s 16:9 test card: a wide frame inset 8% a side, captions under it, “tap outside to close” under them');
+  await page.evaluate(async () => (await import('./ui/video.js')).closeVideo()); await sleep(900);
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

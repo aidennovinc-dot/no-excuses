@@ -34,7 +34,7 @@
 
    `file` is a path under `video/` and `cc` a WebVTT track beside it. CAPTIONS ON EVERY CLIP: many people play on silent and Apple
    checks for it (item 23), so a clip with no `cc` is a clip that is not finished. A slot plays in the SHARED PLAYER (ui/video.js, items
-   9 / 10) — a 16:9 picture in a drawn frame over the dimmed game, tap outside to close — and never full screen, never autoplaying.
+   9 / 10) — a picture in a drawn frame of the clip's own shape over the dimmed game, tap outside to close — never autoplaying.
    Keep a clip 30–60s, 720p, roughly 5–10 MB: GitHub Pages caps one file at 100 MB and the site at about 1 GB.
    v27 (item 11, build 52): EVERY SLOT POINTS AT THE TEST CARD until a real clip exists, so Aiden can judge the player's SIZE on his phone
    rather than on eight "video coming soon" frames. `video/test-card.mp4` is 1280×720, 16:9, 8s, and it shows its own dimensions, a
@@ -51,16 +51,18 @@ export const MESSAGES = [
      draws a powered-OFF frame with no video element in it, so there is nothing there to measure. A row without `ratio` is 16:9,
      which is what the test card is; a new clip that is not 16:9 sets this. (The build session's call, per 59.10.) */
   // build 64 (62.12): Welcome waits for DOTS to unlock now, not the first Quick Tap · Sprint — the walkthrough owns that first run and its result
-  /* build 68 (67.6b, Cowork): THE FRAME IS LANDSCAPE. Aiden set on 2026-09-18 that the videos are horizontal, watched without turning the phone, and
-     59.10's per-clip `ratio` had left every frame in the shape of the portrait test clip. The rows carry no ratio now: every frame is 16:9 and a
-     clip of any other shape is letterboxed inside it (contain, never crop) */
-  { id: 'intro', title: 'Welcome', by: { game: 'dots' }, file: 'video/welcome-test.mp4' },
+  /* build 69 (68.11, L26 — supersedes 67.6b's "every frame is 16:9"): THE FRAME FOLLOWS THE CLIP. A portrait clip plays in a tall frame, a landscape
+     clip in a wide one, never letterboxed inside the other shape — on first viewing and from About — and the thumbnails follow it too. The player
+     reads the file's own size; `ratio` ([width, height] of the clip, any units) is what the powered-off thumbnails draw from, and a row without
+     one is 16:9. Nothing here assumes portrait or landscape: whichever way the real messages are filmed (#462), a clip's row carries its own
+     shape, and the gate reads every file and fails a row whose `ratio` disagrees with it */
+  { id: 'intro', title: 'Welcome', by: { game: 'dots' }, file: 'video/welcome-test.mp4', ratio: [540, 960] },
   /* build 66 (65.18): EVERY CHEST'S VIDEO IS THE WELCOME CLIP FOR NOW — Aiden: "Just put the same video that we have for the first one in all of these
      for now, and then I can add them later." Each chest still names its own file here, so his clips go in one row at a time */
-  { id: 'games', title: "You've seen them all!", by: { chest: 'games' }, file: 'video/welcome-test.mp4' },
-  { id: 'skill', title: 'The skill chest is open', by: { chest: 'key' }, file: 'video/welcome-test.mp4' },
-  { id: 'pro', title: 'Have you gone pro?', by: { chest: 'pro' }, file: 'video/welcome-test.mp4' },
-  { id: 'author', title: 'Much better than me', by: { chest: 'thorns' }, file: 'video/welcome-test.mp4' },
+  { id: 'games', title: "You've seen them all!", by: { chest: 'games' }, file: 'video/welcome-test.mp4', ratio: [540, 960] },
+  { id: 'skill', title: 'The skill chest is open', by: { chest: 'key' }, file: 'video/welcome-test.mp4', ratio: [540, 960] },
+  { id: 'pro', title: 'Have you gone pro?', by: { chest: 'pro' }, file: 'video/welcome-test.mp4', ratio: [540, 960] },
+  { id: 'author', title: 'Much better than me', by: { chest: 'thorns' }, file: 'video/welcome-test.mp4', ratio: [540, 960] },
   { id: 'g1', gaunt: 'g1', by: { gauntlet: 'g1' }, file: 'video/test-card.mp4', cc: 'video/test-card.vtt' },
   { id: 'g2', gaunt: 'g2', by: { gauntlet: 'g2' }, file: 'video/test-card.mp4', cc: 'video/test-card.vtt' },
   { id: 'thanks', title: 'Massive thank you', by: { support: 1 }, file: 'video/test-card.mp4', cc: 'video/test-card.vtt' },
@@ -70,12 +72,13 @@ export const MESSAGES = [
    ONE player for all eight slots (ui/video.js), not a player per row: the frame, the power-on and the power-off are the player's, so a clip
    arriving still changes nothing but a file name — item 10's whole point ("built into the player, not the files").
 
-   THE FRAME (item 9). The clip is 16:9 and the phone STAYS UPRIGHT — nothing rotates and nothing goes full screen. `inset` is how much of each
-   screen edge the picture keeps clear, as a percentage, so it is NEVER EDGE TO EDGE and the dimmed game is still visible round it: 8% a side
-   gives a picture 84% of the screen's width, and the same 8% caps its height on a wide screen. The outline is a thin white rounded rectangle at
+   THE FRAME (item 9). The frame is the clip's own shape (L26, 68.11) and the phone STAYS UPRIGHT — nothing rotates. `inset` is how much of each
+   screen edge the picture keeps clear, as a percentage of the screen's narrower side, so it is NEVER EDGE TO EDGE and the dimmed game is still
+   visible round it: 8% a side gives a picture 84% of a phone's width, and a tall clip is fitted to the height left between the title above and
+   the captions and "tap outside to close" below. The outline is a thin white rounded rectangle at
    the SAME 1px the map's tiles and the chests are drawn in, and it GLOWS while the clip is playing in the colour of the chest that unlocked that
    slot (`msgCol()` in ui/chest.js reads it off the slot's own `by`), dim when paused or ended. Title above in the game's spaced capitals,
-   captions below, "tap outside to close" (MSG.close) in dim grey at the foot. Nothing is drawn over the picture — no knobs, no antenna, no
+   captions below, "tap outside to close" (MSG.close) in dim grey `footGap` under them. Nothing is drawn over the picture — no knobs, no antenna, no
    scanlines, and no native control bar either, which is why a tap ON the picture is what pauses and plays it.
 
    POWER ON AND POWER OFF (item 10), a television switching on. Named steps with their own times, the CEREMONY / KEY_EARN shape, so ui/video.js
@@ -84,9 +87,9 @@ export const MESSAGES = [
      off  close    the picture collapses back to the line             ·  dot   the line shrinks to a dot and goes out  ·  fade  the outline fades last
    Item 10 caps the power-on at 750ms and asks for about 600; the gate fails a total over 750. The soft thunk is VIDEO_FX in config/audio.js,
    fired on `open` going out and on `dot` coming back. Identical for all eight clips, and it happens INSIDE the frame only. */
-/* v30 (59.10, build 59): `footGap` is the clearance the frame leaves above "tap outside to close". The foot line is absolutely
-   positioned at the bottom of the player, so it is not in the flex flow the frame shrinks inside — ui/video.js subtracts its
-   height and this gap when it works out how tall the frame may be. Without it a portrait clip sits on top of the line. (guess) */
+/* v30 (59.10, build 59): `footGap` is the clearance between the frame (or its captions) and "tap outside to close". Build 69 (68.11) moved the
+   line into the column directly under the frame — it was pinned to the screen's foot and printed over Game Select — so this is now the exact
+   gap from the picture to the line. (guess) */
 export const PLAYER = { footGap: 14,
   inset: 8,
   on: { ms: 600, steps: [{ name: 'outline', at: 0, ms: 220 }, { name: 'line', at: 200, ms: 130 }, { name: 'open', at: 320, ms: 280 }] },

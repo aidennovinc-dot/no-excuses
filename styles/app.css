@@ -2328,10 +2328,10 @@
   .msgtitle{margin-top:20px}
   #msg-lede{margin-bottom:2px}
   .msglist{display:flex;flex-direction:column;gap:2px;width:100%;max-width:420px}
-  .msgrow{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:12px;width:100%;padding:9px 2px;background:none;border:0;border-bottom:1px solid var(--line);border-radius:0;text-align:left;cursor:pointer}
+  .msgrow{display:grid;grid-template-columns:74px 1fr;justify-items:start;align-items:center;gap:12px;width:100%;padding:9px 2px;background:none;border:0;border-bottom:1px solid var(--line);border-radius:0;text-align:left;cursor:pointer}
   /* v28 (item 12, build 53): the row's picture is the player powered off, the same frame the card shows — a thin white rounded border at the
      player's own 1px weight, glowing in the colour of the chest that unlocked it, with a play mark in it once the slot has a clip */
-  .msgframe{position:relative;width:74px;aspect-ratio:16/9;border:1px solid #FFFFFF;border-radius:5px;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;
+  .msgframe{position:relative;height:42px;width:auto;aspect-ratio:var(--mp-arw,16)/var(--mp-arh,9);border:1px solid #FFFFFF;border-radius:5px;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;
     box-shadow:0 0 12px -4px color-mix(in srgb,var(--vg,#FFFFFF) 55%,transparent)}
   .msgrow.has .msgframe .mpplay{width:0;height:0;border-style:solid;border-width:7px 0 7px 12px;border-color:transparent transparent transparent #FFFFFF;opacity:.9;margin-left:2px}
   .msgframe i{font-style:normal;font-family:var(--mono);font-size:7px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);text-align:center;line-height:1.3;padding:0 3px}
@@ -2385,7 +2385,7 @@
   #vplay[hidden]{display:none}
   /* the dimmed game, still visible round the picture (item 9), and the whole of "outside" — so tapping outside needs no geometry */
   .vback{position:absolute;inset:0;background:color-mix(in srgb,var(--ground) 82%,transparent);border:0;padding:0}
-  .vwrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:10px;width:100%}
+  .vwrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:var(--vgap,10px);width:100%}
   .vtitle{font-family:var(--title);font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--ink);text-align:center;max-width:84vw;line-height:1.5}
   /* inset from every edge — the width is what is left after `--vinset` a side (item 9: never edge to edge).
      v30 (59.10, build 59): THE FRAME TAKES THE CLIP'S OWN SHAPE. It was fixed at 16:9 with the video `object-fit:contain`, so a
@@ -2416,7 +2416,11 @@
   #vplay.vthorn .vframe,.vthorn .mpframe,.msgframe.vthorn{border:2px solid transparent;border-image:repeating-linear-gradient(45deg,#FFFFFF 0 3px,#000000 3px 6px) 2}
   #vplay.vfull{padding:0}
   #vplay.vfull .vback{background:#000}
-  #vplay.vfull .vframe{width:100vw;border-radius:0;border-left:0;border-right:0;border-width:2px 0}
+  /* build 69 (68.11, L26): full screen is the LARGEST frame of the clip's own shape — a landscape clip the phone's width, a portrait one its height
+     (or its width, where the phone is wider than the clip); no side bars, no letterbox */
+  #vplay.vfull .vframe{width:min(100vw,calc(var(--v-maxh,100svh) * var(--v-arw,16) / var(--v-arh,9)));border-radius:0;border-width:2px}
+  /* a clip with no captions has no caption strip, so the foot line sits straight under the frame; a clip that fails still says so there */
+  #vplay.vnocc:not(.vfail) .vcc{display:none}
   #vplay.vfull .vtitle,#vplay.vfull .vfoot{display:none}
   .vpic{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#000}
   .vpic video{width:100%;height:100%;object-fit:contain;background:#000;display:block}
@@ -2428,7 +2432,8 @@
   .vcc{font-size:13px;line-height:1.5;color:var(--ink);text-align:center;min-height:2.6em;max-width:calc(100vw - var(--vinset,8%) * 2);padding:0 2px}
   /* v29 (item 10, build 55): a clip that would not load - the caption strip carries the line and the frame does not light */
   #vplay.vfail .vcc{color:var(--mute)}
-  .vfoot{position:absolute;left:0;right:0;bottom:max(18px,calc(env(safe-area-inset-bottom) + 12px));font-family:var(--mono);font-size:10px;
+  /* build 69 (68.11): "tap outside to close" sits `footGap` under the frame (or its captions), in the column — never at the screen's foot over the page */
+  .vfoot{position:static;margin-top:calc(var(--vfootgap,14px) - var(--vgap,10px));font-family:var(--mono);font-size:10px;
     letter-spacing:.2em;text-transform:uppercase;color:var(--mute);text-align:center;pointer-events:none}
   /* POWER ON (item 10) — the outline draws out of the centre line, a white line snaps across it, and the line opens to the picture */
   #vplay.von .vframe{animation:vonframe var(--v-outline-ms,220ms) cubic-bezier(.2,.8,.25,1) var(--v-outline-at,0ms) both}

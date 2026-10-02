@@ -612,22 +612,48 @@ export async function run() {
       ? ok(`v27 items 9 / 10 / 11 one shared video player: the clip is 16:9 (${play.box.ratio}) and inset ${play.box.l}px a side of a 390px screen - ${P52.inset}% each edge, never edge to edge - in a drawn frame that glows the unlocking chest's colour (${play.want}) while it plays and dims the moment it is paused; the title is above it, the captions below it from a HIDDEN track so nothing paints over the picture, "tap outside to close" at the foot, and there is no native control bar - a tap on the picture pauses, a tap outside closes. The power-on is ${P52.on.ms}ms (item 10 caps it at 750) and the power-off ${P52.off.ms}ms, both built into the player from named steps (${P52.on.steps.map(x => x.name).join(' > ')} / ${P52.off.steps.map(x => x.name).join(' > ')}), so every clip gets them; all eight slots point at the test card (item 11) and it is not build 46's planted video/test.mp4`)
       : bad('v27 items 9 / 10 / 11 the video player', JSON.stringify({ timing, card, shown, framed, power, play }));
   }
-  /* ---- build 69 (68.11): L26 THE VIDEO FRAME TAKES THE SHAPE OF THE CLIP. A PLACEHOLDER written at the locked-list commit: the player's frame is
-     measured against the clip's own videoWidth / videoHeight once its metadata is in, on Gauntlet Mini's slot (the 16:9 test card), so today it
-     passes trivially. 68.11's build (package P5) makes it real with a portrait clip. ---- */
+  /* ---- build 69 (68.11): L26 THE VIDEO FRAME TAKES THE SHAPE OF THE CLIP. The real player is driven on two clips the gate owns — the planted portrait
+     `video/test-portrait.mp4` (180×320, so the check holds whichever way Aiden's real clips are filmed, #462) and the 16:9 test card — inset as About
+     plays it and full screen as a first viewing plays it. Each frame's ratio is measured against the clip's own videoWidth / videoHeight (2%); the
+     picture the browser draws (`contain` inside the <video>'s box) must fill that box, so nothing is letterboxed; "tap outside to close" sits within
+     PLAYER.footGap + 4px under whatever is directly above it (the frame, or the caption strip when the clip has captions); and every About row's
+     thumbnail is the shape of its OWN clip, read off the file ---- */
   {
     const l26 = await page.evaluate(async () => { const wait = ms => new Promise(r => setTimeout(r, ms));
-      const R = await import('./ui/router.js'), MS = await import('./config/messages.js'); R.show('s-about'); await wait(300);
-      document.querySelector('#msglist .msgrow[data-msg="g1"]').click();
-      const h = document.getElementById('vplay'), v = h.querySelector('video');
-      for (let i = 0; i < 200 && v && !v.videoWidth; i++) await wait(25);
-      await wait(MS.PLAYER.on.ms + 250);
-      const r = h.querySelector('.vframe').getBoundingClientRect();
-      const out = { vw: v ? v.videoWidth : 0, vh: v ? v.videoHeight : 0, w: Math.round(r.width), h: Math.round(r.height) };
-      h.querySelector('.vback').click(); await wait(MS.PLAYER.off.ms + 250); return out; });
-    (l26.vw > 0 && l26.h > 0 && Math.abs(l26.w / l26.h - l26.vw / l26.vh) < .05)
-      ? ok(`L26 / 68.11 the video frame takes the shape of its clip: the frame is ${l26.w}×${l26.h} for a ${l26.vw}×${l26.vh} clip (placeholder on the 16:9 test card until 68.11 is built)`)
-      : bad('L26 / 68.11 the frame takes the clip\'s shape', JSON.stringify(l26));
+      const R = await import('./ui/router.js'), MS = await import('./config/messages.js'), V = await import('./ui/video.js'); R.show('s-about'); await wait(300);
+      const one = async (file, full) => { V.playVideo({ id: 'g1', gaunt: 'g1', by: { gauntlet: 'g1' }, file }, { full });
+        const h = document.getElementById('vplay'), v = h.querySelector('video');
+        for (let i = 0; i < 200 && v && !v.videoWidth; i++) await wait(25);
+        await wait(MS.PLAYER.on.ms + 250);
+        const fr = h.querySelector('.vframe'), r = fr.getBoundingClientRect(), vb = v.getBoundingClientRect(), cc = h.querySelector('.vcc'), ft = h.querySelector('.vfoot');
+        const ar = v.videoWidth / v.videoHeight, pw = Math.min(vb.width, vb.height * ar), ph = Math.min(vb.height, vb.width / ar);
+        const above = cc.offsetHeight ? cc.getBoundingClientRect().bottom : r.bottom, fb = ft.offsetHeight ? ft.getBoundingClientRect() : null;
+        const out = { file, full, vw: v.videoWidth, vh: v.videoHeight, clip: +ar.toFixed(3), frame: +(r.width / r.height).toFixed(3), w: Math.round(r.width), h: Math.round(r.height),
+          l: Math.round(r.left), t: Math.round(r.top), b: Math.round(r.bottom), iw: innerWidth, ih: innerHeight,
+          inner: [fr.clientWidth, fr.clientHeight], box: [Math.round(vb.width), Math.round(vb.height)], drawn: [Math.round(pw), Math.round(ph)],
+          gap: fb ? Math.round(fb.top - above) : null, footOn: !!fb && fb.bottom <= innerHeight };
+        V.closeVideo(); await wait(MS.PLAYER.off.ms + 250); return out; };
+      const runs = [await one('video/test-portrait.mp4', false), await one('video/test-card.mp4', false), await one('video/test-portrait.mp4', true), await one('video/test-card.mp4', true)];
+      // every About row with a clip: the thumbnail's shape against the clip's own, read off the file
+      R.show('s-menu'); await wait(100); R.show('s-about'); await wait(300);
+      const dims = {}; for (const m of MS.MESSAGES) if (m.file && !dims[m.file]) { const v = document.createElement('video'); v.preload = 'metadata'; v.muted = true; v.src = m.file;
+        for (let i = 0; i < 200 && !v.videoWidth; i++) await wait(25); dims[m.file] = [v.videoWidth, v.videoHeight]; v.removeAttribute('src'); v.load(); }
+      const thumbs = [...document.querySelectorAll('#msglist .msgrow[data-msg]')].map(row => { const m = MS.MESSAGES.find(x => x.id === row.dataset.msg), f = row.querySelector('.msgframe'), r = f.getBoundingClientRect(), d = m.file ? dims[m.file] : [16, 9];
+        return { id: m.id, clip: +(d[0] / d[1]).toFixed(3), thumb: +(r.width / r.height).toFixed(3), tall: r.height > r.width }; });
+      return { runs, thumbs, inset: MS.PLAYER.inset, footGap: MS.PLAYER.footGap }; });
+    const near = (a, b, tol) => Math.abs(a - b) <= b * tol;
+    const fails = [];
+    for (const x of l26.runs) {
+      if (!(x.vw > 0 && near(x.frame, x.clip, .02))) fails.push(`${x.file}${x.full ? ' full' : ''}: frame ${x.frame} for a ${x.clip} clip`);
+      if (!(near(x.drawn[0], x.box[0], .02) && near(x.drawn[1], x.box[1], .02) && Math.abs(x.box[0] - x.inner[0]) <= 2 && Math.abs(x.box[1] - x.inner[1]) <= 2)) fails.push(`${x.file}${x.full ? ' full' : ''}: letterboxed, picture ${x.drawn} in a ${x.box} box`);
+      if (!x.full && !(x.l >= x.iw * l26.inset / 100 - 2 && x.t >= 0 && x.b <= x.ih)) fails.push(`${x.file}: not inset ${l26.inset}% / off the screen (left ${x.l}, top ${x.t}, bottom ${x.b})`);
+      if (!x.full && !(x.footOn && x.gap !== null && x.gap >= 0 && x.gap <= l26.footGap + 4)) fails.push(`${x.file}: "tap outside to close" ${x.gap}px under what is above it, not ${l26.footGap}`);
+      if (x.full && !(Math.max(x.w / x.iw, x.h / x.ih) > .98)) fails.push(`${x.file} full: ${x.w}×${x.h} fills neither the width nor the height`);
+    }
+    for (const t of l26.thumbs) if (!(near(t.thumb, t.clip, .05) && t.tall === (t.clip < 1))) fails.push(`About "${t.id}": thumbnail ${t.thumb} for a ${t.clip} clip`);
+    (!fails.length && l26.thumbs.some(t => t.tall) && l26.thumbs.some(t => !t.tall))
+      ? ok(`L26 / 68.11 the video frame takes the shape of its clip: ${l26.runs.map(x => `${x.vw}×${x.vh}${x.full ? ' full screen' : ' inset'} → ${x.w}×${x.h} (${x.frame} against ${x.clip}, picture ${x.drawn.join('×')} in ${x.box.join('×')})`).join('; ')}; "tap outside to close" ${l26.runs.filter(x => !x.full).map(x => x.gap + 'px').join(' / ')} under the frame or captions; every About thumbnail is its clip's shape (${l26.thumbs.map(t => t.id + ' ' + t.thumb).join(', ')})`)
+      : bad('L26 / 68.11 the frame takes the clip\'s shape', JSON.stringify({ fails, l26 }));
   }
   /* ---- build 69 (68.21): L25 A LOCKED KEY CARD'S "TO UNLOCK" LINE IS NOT GREEN. The Pro and Author cards printed "To unlock: open the Skill chest" /
      "open the Pro chest" in --ok, which on this screen means a key that is whole. Read off the computed colour against a probe wearing var(--ok) ---- */

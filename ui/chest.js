@@ -112,10 +112,13 @@ function burstHtml(id) { const n = SPILL.particles;
 /* build 68 (67.8): EVERY VIDEO HAS A THUMBNAIL — a dimmed still from the clip (`thumb` on its row) with the play arrow over it, or, until the real clip
    exists, a placeholder card in the game's style carrying the video's name. Never a blank black box. The same in About's list */
 const thumbHtml = m => m && m.thumb ? `<img class="mthumb" src="${esc(m.thumb)}" alt="">` : `<span class="mcard"><b>${esc(quoted(msgTitle(m)))}</b></span>`;
+/* build 69 (68.11, L26): A THUMBNAIL IS THE SHAPE OF ITS CLIP — the row's `ratio` ([w, h], the clip's own pixel size; the gate reads every file and
+   fails a row whose ratio disagrees with it); a slot with no clip yet is 16:9 until one exists. The player reads the file itself */
+const msgRatio = m => m && m.file && Array.isArray(m.ratio) && m.ratio[0] > 0 && m.ratio[1] > 0 ? m.ratio : [16, 9];
+const ratioVars = m => { const [w, h] = msgRatio(m); return `--mp-arw:${w};--mp-arh:${h};`; };
 function msgPreview(m, o = {}) { if (!m) return '';
   const col = msgCol(m) || '', has = !!m.file && !o.soon;
-  // build 68 (67.6b): every frame is 16:9 — the row's own shape is no longer read
-  return `<span class="mprev${o.big ? ' big' : ''}${has ? ' has' : ''}${msgThorn(m) ? ' vthorn' : ''}" style="${col ? `--vg:${col};` : ''}">`
+  return `<span class="mprev${o.big ? ' big' : ''}${has ? ' has' : ''}${msgThorn(m) ? ' vthorn' : ''}" style="${col ? `--vg:${col};` : ''}${ratioVars(m)}">`
     + `<span class="mpframe"><span class="mppic">${thumbHtml(m)}${has ? '<i class="mpplay"></i>' : `<i class="mpsoon">${esc(o.soon || MSG.soon)}</i>`}</span></span>`
     + (o.title === false ? '' : `<b class="mptitle">${esc(quoted(msgTitle(m)))}</b>`) + '</span>'; }
 
@@ -132,4 +135,4 @@ function meterLook(el, v, vars) { if (!el) return; const { i, k } = meterBand(v)
   el.style.setProperty('--shp', String(B.shake && B.shake[1] ? (k < .5 ? B.shake[0] : B.shake[1]) : 0)); }
 
 export { kindOf };
-export { burstHtml, chestSvg, giftsOf, meterLook, msgCol, msgOfChest, msgPreview, msgThorn, spillVars, symSvg, thumbHtml, wordsHtml };
+export { burstHtml, chestSvg, giftsOf, meterLook, msgCol, msgOfChest, msgPreview, msgRatio, msgThorn, ratioVars, spillVars, symSvg, thumbHtml, wordsHtml };
