@@ -1978,6 +1978,21 @@ scene('68.27', async (page, browser) => {
   await phoneStrip(page, false);
 });
 
+/* 68.29 (L24): the first painted frame on arriving at a key whose creation intro is due — every animation frozen at its start in the same task as
+   the screen is shown, so the frame is the one the phone paints first; then the same visit 600ms in */
+scene('68.29', async (page, browser) => {
+  for (const [t, name] of [[0, 'skill'], [1, 'pro'], [2, 'author']]) {
+    await load(page, { ...PLAIN, ...ALL68, keySeen: 0, keyIntro: {} });
+    say('frame one', await page.evaluate(async t => { const R = await import('./ui/router.js'); R.show('s-key', { tier: t });
+      for (const a of document.getAnimations()) { try { a.pause(); a.currentTime = 0; } catch (e) {} }
+      const h = document.getElementById('key-cere'); return { host: !h.hidden && h.dataset.rev, stage: !!h.querySelector('.kistage') }; }, t));
+    await frame(page, browser, t ? `68.29-intro-frame-one-${name}` : '68.29-intro-frame-one', `The ${name} key's creation intro, frame one: the intro's own dark stage, nothing of the finished key screen (v0.68: the finished screen, then the intro)`);
+    await page.evaluate(() => { for (const a of document.getAnimations()) { try { a.currentTime = 600; } catch (e) {} } });
+    await frame(page, browser, `68.29-intro-600ms-${name}`, `The ${name} key's creation intro 600ms in: the pieces gathering`);
+    await page.evaluate(async () => (await import('./ui/reveal.js')).stopReveal());
+  }
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

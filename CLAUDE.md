@@ -204,6 +204,7 @@ list, with its check, in the build that implements it (67.37b, build 68).**
 | L21 | **No Restart in a run** (67.5): ✕ → the Abandoned screen → Retry, in every mode, Pass & play and Versus included; the run's top row is ✕ alone (67.16). |
 | L22 | **Tap sound is ONE game-wide choice** (67.35): one row in Customise above the game tabs, beside Music (Off its last choice, 67.34) and Background. |
 | L23 | **The background runs to the physical bottom edge** on every screen, every theme and under every overlay: the bottom safe-area strip is the colour of whatever is drawn directly above it; buttons and text stay above the home bar (68.27, 2026-10-02; first logged 2026-09-20). |
+| L24 | **Every intro and ceremony draws its first animation frame before anything else of that screen**: the finished screen is never on frame one (68.29, 2026-10-02; the same fault as 2026-09-20). |
 
 **Code decisions A1–A10 in `ARCHITECTURE.md` — same quote-the-ID rule.** A feedback line changes one only when it names the ID.
 

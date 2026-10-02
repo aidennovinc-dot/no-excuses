@@ -765,10 +765,13 @@ register('s-key', { onShow({ advance: a, from, auto: to, tier, whole, arrive, ce
        has — and played "on the next plain visit", which is how Aiden met it late or not at all. The arrival plays first and the intro straight after
        it, on the same visit; a first visit that is a chest opening or the key's earn has a moment of its own, so the intro is spent there and never
        comes back. The run's interlude is not a visit (the player did not come here), and Testing's replays store nothing */
+    /* build 69 (68.29, L24): AND IT IS THE FIRST FRAME. It started EARN_AT after the screen drew — 2.6s more on a first visit, after the arrival — so
+       the finished key (its cards, the wheel, the labels) was what Aiden saw first and the intro "played after I've already seen the key". It starts
+       here, in the same task as the screen, so the intro's own opaque host is on the first frame painted; the arrival runs underneath it and is done
+       by the time the intro settles the key into its hub */
     const introDue = open0 && !t0.shell && !demo && !auto && !(prefs.keyIntro || {})[t0.id];
     if (introDue && (oc || a || earnDue)) { prefs.keyIntro = Object.assign({}, prefs.keyIntro, { [t0.id]: 1 }); save(); }
-    else if (introDue) { clearTimeout(introT); $('#s-key').classList.add('kintro');
-      introT = setTimeout(() => { $('#s-key').classList.remove('kintro'); if ($('#s-key').classList.contains('on') && !revealOn()) keyIntro(t0.id); }, EARN_AT + (arrivalDue ? ARRIVE_MS : 0)); }
+    else if (introDue) keyIntro(t0.id);
     /* B.3: a key animation not yet seen is never cut off — it plays IN FULL, nothing tappable meanwhile, and then the chest opens */
     /* B.3 → AMENDED at build 46 (v25 item 11): a key's first-open REVEAL ends on a tap, not on a length, so a chest waiting behind one cannot be
        opened by a timer. `pendingOpen` hands it to the reveal, which opens it at its Continue; the arrival (5.4) still has a length and still uses
@@ -776,14 +779,15 @@ register('s-key', { onShow({ advance: a, from, auto: to, tier, whole, arrive, ce
     if (oc) { if (earnPlan) { pendingOpen = oc.id; lock(true); return; }
       const wait = (arrived ? ARRIVE_MS : 0) + OPEN_GAP;
       lock(true); openT = setTimeout(() => { openT = 0; lock(false); if ($('#s-key').classList.contains('on')) openNow(oc.id); }, wait); return; }
-    if (whole) { clearTimeout(earnT); earnT = setTimeout(() => keyReveal(tierId(), { demo: 1 }), 300); }
+    // build 69 (68.29, L24): Testing's three replays start on the screen's first frame too — each waited 300ms on the finished screen
+    if (whole) { clearTimeout(earnT); keyReveal(tierId(), { demo: 1 }); }
     // 57.6: Testing's replay of the creation intro — the same moment, nothing stored
-    if (intro) { clearTimeout(introT); introT = setTimeout(() => { if ($('#s-key').classList.contains('on')) keyIntro(tierId(), { demo: 1 }); }, 300); }
+    if (intro) { clearTimeout(introT); keyIntro(tierId(), { demo: 1 }); }
     /* B.26 → v23 (L.6, build 41): Testing replays a chest's CEREMONY here with nothing stored — the meter holds where it is, and the tap
        goes to the map, where the spill replays the same way (ui/screens/pick.js spillDemo) */
-    if (cer) setTimeout(() => { if (!$('#s-key').classList.contains('on')) return; const m = meter();
+    if (cer) { const m = meter();
       playReveal($('#key-cere'), { kind: 'chest', id: cer, col: chestCol(cer), stage: chestStage(cer, { was: m, now: m }), gifts: giftsOf(cer), card: chestCard(cer, m),
-        onDone: () => show('s-pick', { spillDemo: cer }) }); }, 300);
+        onDone: () => show('s-pick', { spillDemo: cer }) }); }
     if (pending) { const p = pending; pending = null; if (auto) setTimeout(() => interlude(p, auto), 320); else setTimeout(() => advance(p), 260); }
     // C.1 (build 43): a chest that is ready as this screen opens is NOT opened here — the key is tapped, it asks, then it opens
   },
@@ -803,8 +807,8 @@ define({
   'key-tier'(el) { const i = +el.dataset.kt; if (!tierOpen(keyTiers()[i].id)) { el.classList.remove('kshake'); void el.offsetWidth; el.classList.add('kshake'); setTimeout(() => el.classList.remove('kshake'), 900); return 'pick'; }
     openKey = i; openGame = null; render(); Music.menu(themeOf(keyTiers()[openKey]));
     // build 68 (67.22): a key first seen from its tab gets its intro then, not on some later visit
-    { const t = keyTiers()[i]; if (t && !t.shell && !(prefs.keyIntro || {})[t.id] && !auto) { clearTimeout(introT); $('#s-key').classList.add('kintro');
-      introT = setTimeout(() => { $('#s-key').classList.remove('kintro'); if ($('#s-key').classList.contains('on') && !revealOn()) keyIntro(t.id); }, 300); } }
+    // build 69 (68.29, L24): in the same task as the redraw, so the finished key is never the frame before its intro
+    { const t = keyTiers()[i]; if (t && !t.shell && !(prefs.keyIntro || {})[t.id] && !auto && !revealOn()) { clearTimeout(introT); keyIntro(t.id); } }
     return 'pick'; },
   // v23 (L.7b, build 42): this key's theme becomes every run's music. Once it is, a second tap changes nothing (guess)
   // v29 (item 4, build 54): SET THIS MUSIC writes the menu's track beside `everywhere`, exactly as Customise's Music row does — one rule, two surfaces

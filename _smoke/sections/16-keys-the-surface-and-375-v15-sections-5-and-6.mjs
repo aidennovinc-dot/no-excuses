@@ -1026,6 +1026,54 @@ export async function run() {
       ? ok(`61.22 with a 47px top and 34px bottom inset, Lantern, Circuit and Thorn fill Customise, the Skill key screen and the Games chest tab from above the top inset to below the bottom one, scrolled to the end, with no art behind any of ${res.out.reduce((n, x) => n + x.n, 0)} controls and labels`)
       : bad('61.22 the background covers the page and sits behind everything', JSON.stringify({ insets, top: res.top, bottom: res.bottom, off }));
   }
+  /* build 69 (68.29, L24): EVERY INTRO AND CEREMONY DRAWS ITS FIRST ANIMATION FRAME FIRST. Aiden on v0.68: the Skill key's creation intro "plays
+     after I've already seen the key" — the finished screen (the three key cards, the wheel, its labels) was painted for EARN_AT, plus the 2.6s
+     arrival on a first visit, before the intro began. The FIRST PAINTED FRAME is read here: the route is taken and, in the same task, a
+     requestAnimationFrame callback reads what that frame will show — no sleep in between. On frame one of an intro the finished screen is
+     hidden (each piece either not drawn or under the intro's opaque host) and the intro's own stage is up; on frame one of an earn the wheel is
+     not drawn; on frame one of a chest's ceremony its host covers the screen and neither its card nor its rewards show. All three keys, by every
+     route in: the screen opened on that key (the map's key tile and the menu's Keys item both land here), the key's own tab, Testing's replay */
+  {
+    const frame1 = (route, tier) => page.evaluate(async ([route, tier]) => {
+      const R = await import('./ui/router.js'), host = document.getElementById('key-cere');
+      const shown = el => { for (let n = el; n && n.nodeType === 1; n = n.parentElement) { const c = getComputedStyle(n); if (c.display === 'none' || c.visibility === 'hidden' || +c.opacity === 0) return false; } return true; };
+      // under the host when the host is up, opaque and on top at that point
+      const covered = el => { const r = el.getBoundingClientRect(), t = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); if (!t || host.hidden || !host.contains(t)) return false;
+        const hc = getComputedStyle(host), a = hc.backgroundColor.match(/[\d.]+/g) || []; return +hc.opacity === 1 && a.length >= 3 && (a.length < 4 || +a[3] === 1); };
+      const seen = sel => [...document.querySelectorAll(sel)].filter(e => { const r = e.getBoundingClientRect(); return r.width && r.height && shown(e) && !covered(e); }).length;
+      return new Promise(res => {
+        if (route === 'screen') R.show('s-key', { tier });
+        else if (route === 'tab') document.querySelector(`#key-keys .kkey[data-kt="${tier}"]`).click();
+        else if (route === 'testing') R.show('s-key', { intro: 1, tier, from: 's-testing' });
+        else if (route === 'earn') R.show('s-key', { whole: 1, tier, from: 's-testing' });
+        else if (route === 'chest') R.show('s-key', { open: 'games' });
+        requestAnimationFrame(() => res({ route, tier, cards: seen('#key-keys .kkey'), wheel: seen('#s-key .kr, #s-key .knode, #s-key .kring'), labels: seen('#s-key .klabels text'),
+          intro: !host.hidden && !!host.querySelector('.kistage'), host: !host.hidden && host.dataset.rev, card: seen('#key-cere .rcard'), gifts: seen('#key-cere .rgift') }));
+      }); }, [route, tier]);
+    const out = [];
+    for (const t of [0, 1, 2]) {
+      // a first visit to the Keys screen, this key's intro due (the arrival due as well — the longest wait v0.68 had)
+      await boot({ ...OPEN_PREFS, keySeen: 0, chests: { games: 1, key: 1, pro: 1, thorns: 1 }, keyIntro: {} }); out.push(await frame1('screen', t));
+      await page.evaluate(async () => (await import('./ui/reveal.js')).stopReveal());
+      // the key's own tab, from a screen already showing another key
+      if (t) { const ki = { clear: 1, pro: 1, author: 1 }; delete ki[['clear', 'pro', 'author'][t]];
+        await boot({ ...OPEN_PREFS, chests: { games: 1, key: 1, pro: 1, thorns: 1 }, keyIntro: ki }); await page.evaluate(async () => (await import('./ui/router.js')).show('s-key', { tier: 0 })); await sleep(700);
+        out.push(await frame1('tab', t)); await page.evaluate(async () => (await import('./ui/reveal.js')).stopReveal()); }
+      // Testing's replay, and the key being earned
+      await boot({ ...OPEN_PREFS, chests: { games: 1, key: 1, pro: 1, thorns: 1 } }); await page.evaluate(async () => (await import('./ui/router.js')).show('s-testing')); await sleep(300);
+      out.push(await frame1('testing', t)); await page.evaluate(async () => (await import('./ui/reveal.js')).stopReveal());
+      await page.evaluate(async () => (await import('./ui/router.js')).show('s-testing')); await sleep(300);
+      out.push(await frame1('earn', t)); await page.evaluate(async () => (await import('./ui/reveal.js')).stopReveal()); }
+    // a chest's ceremony from the map: the Games chest ready, tapped
+    const ALL13 = Object.fromEntries(['quick-tap:two', 'quick-tap:four', 'dots:blind', 'dots:lead', 'hold:grow', 'hold:cut', 'sequence:solo', 'timing:stopwatch', 'timing:hidden', 'reaction:flash', 'reaction:nogo', 'spot:count', 'spot:find'].map(k => [k, NOW]));
+    await boot({ ...OPEN_PREFS, allOpen: 0, chests: {} }, { unlock: ALL13 }); const ready = await page.evaluate(async () => (await import('./progress/key.js')).chestState('games'));
+    out.push({ ...(await frame1('chest', 0)), ready });
+    await revealDone();
+    const off = out.filter(x => x.route === 'earn' ? x.wheel || x.labels : x.route === 'chest' ? x.ready !== 'ready' || !x.host || x.cards || x.wheel || x.card || x.gifts : x.cards || x.wheel || x.labels || !x.intro);
+    (!off.length && out.length === 12)
+      ? ok(`L24 / 68.29 every intro and ceremony is the first thing painted: on frame one of each key's creation intro (Skill, Pro, Author — the screen opened on it, its tab, Testing's replay) the intro's stage is up and none of the key cards, the wheel or its labels show; an earn's frame one draws no wheel; a chest's ceremony covers the screen with neither its card nor its rewards`)
+      : bad('L24 / 68.29 the finished screen is painted before its intro or ceremony', JSON.stringify(off));
+  }
   /* build 62 (61.6): AN ACHIEVEMENT TOAST THAT HAS GONE CATCHES NOTHING. It kept pointer-events after it faded, invisible over the top of every
      screen, so a tap on the Keys screen's Pro tile opened Achievements. Reproduced: a tappable toast shows and fades, then the Keys screen */
   {

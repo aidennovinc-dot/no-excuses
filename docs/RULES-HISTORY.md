@@ -1827,3 +1827,12 @@ anything Aiden settles goes on the list in the build that implements it.
   Gate: `the keys` section, "L23 / 68.27", reads a screenshot with insets 47 / 34 on every screen and overlay under stars, Lantern, Snow and
   Orbs: the inset row against the row just above it, html's computed colour against the colour just above the inset, and no button or text
   of ours inside the inset.
+- **L24 — every intro and ceremony draws its first animation frame first (68.29; the same fault as 2026-09-20, the finished key flashing
+  before its earn).** Aiden on v0.68: the Skill key's creation intro "plays after I've already seen the key. So this animation should play
+  before I see the menu at all." The cause, named: the intro was started on a timer — `EARN_AT` (260ms) after the key screen drew, plus the
+  2.6s arrival on a first visit, and 300ms after a key's tab or Testing's replay — so the finished screen (three key cards, the wheel, its
+  labels) was painted first. It now starts in the same task as the screen (`keyIntro()` from `onShow` and from the tab), so its opaque host is
+  on the first painted frame; the arrival runs underneath it. Testing's three replays (the creation intro, the earn, a chest's ceremony) lost
+  their 300ms wait the same way. A chest's ceremony from the map already opened on the screen's first frame (B.2); it is now asserted.
+  Gate: `the keys` section, "L24 / 68.29", reads the first painted frame (a requestAnimationFrame in the same task as the route, no sleep) for
+  all three keys by every route in.
