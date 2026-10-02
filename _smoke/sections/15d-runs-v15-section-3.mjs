@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { own, sleep, part, ok, bad, read, at, page, until, click, up, verdict, clearReady, openSheet } from '../lib/gate.mjs';
+import { own, sleep, part, ok, bad, read, at, page, until, click, up, verdict, clearReady, openSheet, boot } from '../lib/gate.mjs';
 
 export const SECTION = ["the runs (v15 section 3)"];
 
@@ -128,4 +128,48 @@ export async function run() {
   /* build 50 (v26 §B2, ARCHITECTURE.md A9): THE SHAPE DIFFICULTY STANDARD and the round formats it deals. The data and the deal are
      driven off config/shapes.js and the dealer over 300 runs, each engine's own dealing function is called for real, and one live round
      of Go / No-go, Find and a Hidden Streak is played on the page. Nothing here reads how a source file is spelled */
+
+  /* build 69 (68.16): THE RUN TIMER IS A RING ROUND THE SCORE, OR A BAR WHERE A RING DOES NOT FIT. Aiden: "The timer countdown is really boring … they
+     should be able to see it out of the corner of their eye … Don't make it intrusive" — then "Run timer B … Where it isn't appropriate, the bar is best."
+     Every timed mode (GAMES with `timed`, each of its modes), solo and pass & play, is played on the page at its shortest length: exactly one timer element
+     on screen and it is the one `TIMER` in config/games.js names (`.tring` / `.tbar`); the thin line at the bottom of the screen (#bar) is gone; the
+     ring's dashoffset or the bar's scale moves with the clock (two reads a second apart); with three seconds or less left it is TIMER_HOT's amber; a ring
+     is centred on the big score and clear of it, a field bar sits on the bottom edge of the play area, inside it. */
+  {
+    const T16 = await page.evaluate(async () => { const G = await import('./config/games.js'), TH = await import('./config/theme.js');
+      const modes = []; for (const [g, c] of Object.entries(G.GAMES)) if (c.timed) for (const d of c.modes) modes.push({ g, d, s: c.lens[0] });
+      return { modes, TIMER: G.TIMER || null, hot: TH.TIMER_HOT ? TH.TIMER_HOT.v : null }; });
+    const rgb = h => h ? 'rgb(' + [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)).join(', ') + ')' : 'none';
+    const look16 = () => page.evaluate(() => { const vis = e => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden' && +getComputedStyle(e).opacity > 0;
+      const gm = document.getElementById('game'), rings = [...gm.querySelectorAll('.tring')].filter(vis), bars = [...gm.querySelectorAll('.tbar')].filter(vis);
+      const fg = rings[0] && rings[0].querySelector('.tf'), fill = bars[0] && bars[0].querySelector('i'), box = e => e && e.getBoundingClientRect();
+      const out = { rings: rings.length, bars: bars.length, old: !!document.getElementById('bar'), left: +document.getElementById('hud-time').textContent,
+        off: fg ? Math.round(parseFloat(getComputedStyle(fg).strokeDashoffset) * 10) / 10 : null, scale: fill ? Math.round(new DOMMatrix(getComputedStyle(fill).transform).a * 1000) / 1000 : null,
+        col: fg ? getComputedStyle(fg).stroke : fill ? getComputedStyle(fill).backgroundColor : null };
+      if (fg) { const R = box(rings[0]), big = document.getElementById('bigcount'), B = box(big), rg = document.createRange(); rg.selectNodeContents(big); const X = rg.getBoundingClientRect();
+        const cx = R.left + R.width / 2, cy = R.top + R.height / 2, r = +fg.getAttribute('r') * R.width / +rings[0].querySelector('svg').viewBox.baseVal.width;
+        out.centreOff = Math.round(Math.hypot(cx - (B.left + B.width / 2), cy - (B.top + B.height / 2)));
+        out.clear = Math.round(r - Math.max(...[[X.left, X.top], [X.right, X.top], [X.left, X.bottom], [X.right, X.bottom]].map(([x, y]) => Math.hypot(x - cx, y - cy)))); }
+      if (fill) { const P = box(bars[0]), host = bars[0].parentElement, H = box(host); out.host = host.id; out.inField = P.left >= H.left - .5 && P.right <= H.right + .5 && P.bottom <= H.bottom + .5 && P.top >= H.top - .5; out.onBottom = Math.abs(P.bottom - H.bottom) <= 2; out.h = Math.round(P.height); }
+      return out; });
+    const rows16 = [];
+    if (T16.TIMER) {
+      await boot({ tuts: { next: 'done' } });
+      for (const m of T16.modes) for (const vs of [0, 1]) {
+        await page.evaluate(async ([g, d, s, vs]) => { const S = await import('./core/state.js'), RN = await import('./run/run.js'); Object.assign(S.sel, { game: g, diff: d, secs: s, vs, practice: 0 }); RN.start(); }, [m.g, m.d, m.s, vs]);
+        for (let i = 0; i < 100 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) await sleep(40);
+        await sleep(150); const a = await look16(); await sleep(1000); const b = await look16();
+        for (let i = 0; i < 200 && (await page.evaluate(() => +document.getElementById('hud-time').textContent)) > T16.TIMER.hotAt - .8; i++) await sleep(40);
+        const c = await look16();
+        await page.evaluate(async () => (await import('./run/run.js')).abort(true)); await sleep(300);
+        const want = (T16.TIMER.modes[m.g + ':' + m.d] || T16.TIMER.other), ring = want.look === 'ring';
+        const okRow = !a.old && (ring ? a.rings === 1 && a.bars === 0 : a.bars === 1 && a.rings === 0)
+          && (ring ? b.off > a.off : b.scale < a.scale) && c.col === rgb(T16.hot) && a.col !== c.col
+          && (ring ? a.centreOff <= 3 && a.clear >= 4 : want.where !== 'field' || (a.host === 'field' && a.inField && a.onBottom && a.h === T16.TIMER.bar));
+        rows16.push({ k: m.g + ':' + m.d + (vs ? ' pass & play' : ''), want: want.look + (want.where ? '/' + want.where : ''), ok: okRow, a, b, c }); }
+    }
+    (T16.TIMER && rows16.length === T16.modes.length * 2 && rows16.every(r => r.ok))
+      ? ok(`68.16 the run timer: ${rows16.map(r => r.k + ' ' + r.want).join(', ')} — one timer each, the bottom line gone, the ring's dashoffset / the bar's scale moving with the clock (e.g. ${rows16[0].a.off}→${rows16[0].b.off}), ${T16.hot} for the last ${T16.TIMER.hotAt}s; the ring centred on the score (within ${Math.max(...rows16.filter(r => r.a.centreOff !== undefined).map(r => r.a.centreOff))}px) and ${Math.min(...rows16.filter(r => r.a.clear !== undefined).map(r => r.a.clear))}px clear of its digits; Dots' bar ${T16.TIMER.bar}px on the play area's bottom edge`)
+      : bad('68.16 the run timer', JSON.stringify({ TIMER: T16.TIMER, bad: rows16.filter(r => !r.ok).slice(0, 3), n: rows16.length }));
+  }
 }

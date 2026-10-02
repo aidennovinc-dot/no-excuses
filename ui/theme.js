@@ -1,6 +1,6 @@
 /* No Excuses — the look (build 18, refactor stage 4): the game's colours and the ground tint as CSS variables on the root.
    Was applyPrefs / colOf in menu.js. Re-applied for the selected game whenever a screen shows. */
-import { DESIGNS, KEYFILL, PRESS } from "../config/theme.js";
+import { DESIGNS, KEYFILL, PRESS, TIMER_HOT } from "../config/theme.js";
 import { on } from "../core/events.js";
 import { sel } from "../core/state.js";
 import { look, lookCol, prefs, save } from "../core/store.js";
@@ -18,7 +18,9 @@ function applyPrefs(g){ const r=document.documentElement.style; const c=colOf(g|
   r.setProperty('--press',PRESS.v);
   // v18 (B.18, build 32): the key-progress outline on game select, named in config/theme.js (lilac)
   // build 55 (in passing): applyPrefs runs on EVERY screen change and nothing in it changes the store, so the save() wrote the whole record to localStorage on every navigation
-  r.setProperty('--keyfill',KEYFILL.v); }
+  r.setProperty('--keyfill',KEYFILL.v);
+  // build 69 (68.16): the run timer's last seconds
+  r.setProperty('--amber',TIMER_HOT.v); }
 applyPrefs(prefs.lastGame);
 on('screen:change',({id})=>{ if(id!=='game') applyPrefs(sel.game); });
 

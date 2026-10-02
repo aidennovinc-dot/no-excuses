@@ -1359,7 +1359,22 @@
   #count.on{display:grid}
   #count span{animation:cpop .3s ease-out}
   @keyframes cpop{0%{scale:1.25;opacity:.4}100%{scale:1;opacity:1}}
-  #bar{position:absolute;left:0;bottom:0;height:3px;background:var(--ink);width:100%;transform-origin:left;pointer-events:none}
+  /* build 69 (68.16): THE RUN TIMER (games/_shared/hud.js timer / clock, TIMER in config/games.js). The thin #bar along the bottom of the screen is gone.
+     A ring round the big score (Quick Tap) or a bar draining from both ends (Dots, on the play area's bottom edge); both come up as the run goes live,
+     white, then --amber with a pulse for the last seconds */
+  #game .tring{position:absolute;z-index:1;pointer-events:none;opacity:0}
+  #game.live .tring{opacity:1}
+  #game .tring svg{display:block;width:100%;height:100%;overflow:visible}
+  #game .tring circle{fill:none}
+  #game .tring .tt{stroke:var(--line)}
+  #game .tring .tf{stroke:var(--ink);stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%}
+  #game .tring.hot .tf{stroke:var(--amber)}
+  #game .tbar{position:relative;border-radius:3px;background:var(--line);pointer-events:none;visibility:hidden}
+  #game.live .tbar{visibility:visible}
+  #game .tbar i{position:absolute;inset:0;border-radius:3px;background:var(--ink);transform-origin:50% 50%}
+  #game .tbar.hot i{background:var(--amber)}
+  #field>.tbar{position:absolute;left:6%;right:6%;bottom:0}
+  #top>.tbar{width:min(70vw,260px)}
   /* rate meter (v6): a thin bar down the right edge, fills with hits per second between the mode's floor and ceiling */
   #rate{position:absolute;right:6px;top:calc(22% + env(safe-area-inset-top));bottom:calc(30% + env(safe-area-inset-bottom));width:4px;background:var(--line);pointer-events:none;display:none;z-index:4}
   #game.timed #rate{display:block}
@@ -1521,7 +1536,7 @@
   /* landing ring: starts pushed along the line of travel and settles onto the dot as it fades (v5) */
   #dring{border:2px solid var(--sq-live);opacity:0;pointer-events:none}
   #dring.go{animation:none;transition:transform .3s ease-out,opacity .3s ease-out}
-  #game.versus #qt,#game.versus #field,#game.versus .hud,#game.versus #rate,#game.versus #goal,#game.versus #bar{display:none}
+  #game.versus #qt,#game.versus #field,#game.versus .hud,#game.versus #rate,#game.versus #goal{display:none}
 
 /* ==================================================================
    estimate — games/estimate/

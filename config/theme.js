@@ -10,6 +10,8 @@ export const PRESS = { name:'amber', v:'#FFB020' };
    unplayed tile), and not the pressed amber above — LILAC, the #F3D9FF already in the target palette, so the grid gains no
    new colour. ui/theme.js publishes it as --keyfill; the filled outline and the complete tile's wash both spend it. */
 export const KEYFILL = { name:'lilac', v:'#F3D9FF' };
+// build 69 (68.16): the run timer's last three seconds — the picks page's amber (the same hex as PRESS, a different job). ui/theme.js publishes it as --amber
+export const TIMER_HOT = { name:'amber', v:'#FFB020' };
 // the seven backgrounds and the ground each one sits on
 /* v24 (C.6, build 43): three more, one per key — Lantern, Circuit, Thorn. Each WAS the stock stars with that key's own layer drawn over them.
    v29 SECTION A (57.11a, build 57): STARS BELONG TO THE DEFAULT BACKGROUND ONLY. Aiden: every other background is a whole scene, not a layer over

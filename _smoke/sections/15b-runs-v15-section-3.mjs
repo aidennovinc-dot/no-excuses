@@ -469,8 +469,8 @@ export async function run() {
         if (b.node !== a.node) bad10.push('node rebuilt at ' + i);
         for (const x of b.an) { const was = a.an.find(y => y.id === x.id); if (was && x.ct + 2 < was.ct) bad10.push('ran backwards at ' + i); }
         if (a.an.length && b.an.length && !b.an.some(x => a.an.some(y => y.id === x.id))) bad10.push('animation replaced at ' + i);
-        // a CSS pause lands on the next animation frame, so the read straight after the card goes may carry that one frame's step
-        const settled = i >= 2 && !rows[i - 2].tapon;
+        // a CSS pause lands on the next animation frame, so the reads straight after the card goes (several a frame on the test clock) may carry that frame's step
+        const settled = i >= 4 && ![2, 3, 4].some(k => rows[i - k].tapon);
         if (settled && a.live && !a.tapon && b.live && !b.tapon && Math.abs(b.x - a.x) > .5) bad10.push('moved while live at ' + i + ' (' + a.x + '→' + b.x + ')');
         if (Math.abs(b.x) + .5 < Math.abs(a.x) && b.node === a.node) bad10.push('jumped back toward its start at ' + i + ' (' + a.x + '→' + b.x + ')'); }
       return [...new Set(bad10)].slice(0, 6); };

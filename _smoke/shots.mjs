@@ -2246,6 +2246,28 @@ scene('68.10', async (page, browser) => {
   await frame(page, browser, '68.10-long-held', 'The same run with the long goal ("15 hits in a row …", too long for the box): its walk does not fit the 3-2-1, so it holds at its start through Go and every hit — no restart, no movement while the run is live');
 });
 
+/* 68.16: every timed mode with its timer, ~2s left (amber). Quick Tap Two · Dash is Aiden's own case; the rest at Sprint, pass & play at its fixed length */
+const pokeDot = page => page.evaluate(() => { const d = document.getElementById('dot'), f = document.getElementById('field'); if (!d.classList.contains('on')) return; const r = d.getBoundingClientRect(); f.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1 })); });
+scene('68.16', async (page, browser) => {
+  const shots = [['quick-tap', 'two', 15, 0, '68.16-quick-tap-ring', 'Quick Tap Two · Dash, 2s left: the ring round the score drains clockwise from 12 o’clock, amber and pulsing for the last 3s; the small clock stays; no line along the bottom of the screen'],
+    ['quick-tap', 'four', 5, 0, '68.16-quick-tap-four-ring', 'Quick Tap Four · Sprint, 2s left: the same ring round the score, clear of the upper pads'],
+    ['quick-tap', 'two', 5, 1, '68.16-quick-tap-pass-ring', 'Quick Tap pass & play (Player 1’s turn), 2s left: the ring round the score'],
+    ['quick-tap', 'four', 5, 1, '68.16-quick-tap-four-pass-ring', 'Quick Tap Four pass & play, 2s left: the ring'],
+    ['dots', 'blind', 5, 0, '68.16-dots-bar', 'Dots Blind · Sprint, 2s left: the bar along the bottom edge of the play area, draining from both ends to the middle, amber'],
+    ['dots', 'lead', 5, 0, '68.16-dots-lead-bar', 'Dots Lead · Sprint, 2s left: the same bar on the play area’s bottom edge'],
+    ['dots', 'blind', 5, 1, '68.16-dots-pass-bar', 'Dots pass & play (Blind), 2s left: the bar'],
+    ['dots', 'lead', 5, 1, '68.16-dots-lead-pass-bar', 'Dots Lead pass & play, 2s left: the bar']];
+  for (const [g, d, s, vs, name, note] of shots) {
+    await load(page, RUN69, QT69);
+    await page.evaluate(async ([g, d, s, vs]) => { const S = await import('./core/state.js'), RN = await import('./run/run.js'); Object.assign(S.sel, { game: g, diff: d, secs: s, vs, practice: 0 }); RN.start(); }, [g, d, s, vs]);
+    for (let i = 0; i < 80 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) await sleep(50);
+    for (let i = 0; i < 400 && (await page.evaluate(() => +document.getElementById('hud-time').textContent)) > 2.05; i++) { await (g === 'dots' ? pokeDot(page) : pressLit(page)); await sleep(240); }
+    say('timer', await page.evaluate(() => { const t = document.getElementById('timer'); if (!t) return null; const p = t.querySelector('.tf,i'), r = t.getBoundingClientRect(); return { cls: t.className, host: t.parentElement.id, left: document.getElementById('hud-time').textContent, col: getComputedStyle(p).stroke !== 'none' && t.classList.contains('tring') ? getComputedStyle(p).stroke : getComputedStyle(p).backgroundColor, box: [r.left, r.top, r.width, r.height].map(Math.round), oldBar: !!document.getElementById('bar') }; }));
+    await frame(page, browser, name, note);
+    await page.evaluate(async () => (await import('./run/run.js')).abort(true)); await sleep(500);
+  }
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

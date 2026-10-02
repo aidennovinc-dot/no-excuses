@@ -1,7 +1,7 @@
 /* No Excuses — the run's shared HUD (build 17, refactor stage 3): the countdown, the rate bar, the score and clock
    slots, the shake and flash on a miss, and the ghost finger the first-play demos move about. The engines write to the
    shell's HUD only through here; the goal line and the PB marker stay in run/run.js because they read progress. */
-import { CFG, RATE_MAX, RATE_RUN_FLOOR, TICK } from "../../config/games.js";
+import { CFG, RATE_MAX, RATE_RUN_FLOOR, TICK, TIMER } from "../../config/games.js";
 import { P1C, P2C } from "../../config/theme.js";
 import { $ } from "../../core.js";
 import { countUp as baseCountUp } from "../../core/count.js";
@@ -28,6 +28,33 @@ const score=t=>{ const s=$('#score'); if(driving) s.textContent=t; else tick(s,t
 const scoreVisible=v=>{ $('#score').style.visibility=v?'':'hidden'; };
 const scorePop=()=>{ const s=$('#score'); s.classList.remove('pop'); void s.offsetWidth; s.classList.add('pop'); };
 const time=t=>{ $('#hud-time').textContent=t; };
+/* ---------- build 69 (68.16): THE RUN TIMER, ONE FOR EVERY TIMED MODE ----------
+   `timer(key)` puts up the one `TIMER` names for 'game:mode' (null takes it down); `clock(left, total)` is the run's frame: the small number, then the
+   ring's dashoffset or the bar's scale, amber with a pulse a second for the last `hotAt` seconds. A ring is measured on its first live frame, round the
+   big score's own box: `air` px clear of the widest score ("000"), centred on it. A bar is a 6px line that drains from both ends to the middle */
+let tmr=null;
+const calm=()=>!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+function timer(key){ const old=$('#timer'); if(old) old.remove(); tmr=null; if(!key) return;
+  const L=TIMER.modes[key]||TIMER.other, el=document.createElement('div'); el.id='timer';
+  if(L.look==='ring'){ el.className='tring'; $('#game').appendChild(el); tmr={ el, ring:true, fg:null, C:0 }; return; }
+  el.className='tbar'; el.style.height=TIMER.bar+'px'; el.innerHTML='<i></i>';
+  if(L.where==='field') $('#field').appendChild(el); else $('#pbghost').after(el);
+  tmr={ el, ring:false, fill:el.firstChild }; }
+// the ring's size and place, off the big score's box once it is drawn: the run is live by then, so nothing moves under the player's eye
+function ringPlace(){ const big=$('#bigcount'), B=big.getBoundingClientRect(); if(!B.height) return false;
+  const cs=getComputedStyle(big), m=document.createElement('span'); m.style.cssText='position:absolute;visibility:hidden;white-space:nowrap';
+  for(const p of ['fontFamily','fontSize','fontWeight','fontVariantNumeric','letterSpacing']) m.style[p]=cs[p];
+  m.textContent='000'; $('#game').appendChild(m);
+  const w=m.getBoundingClientRect().width, F=parseFloat(getComputedStyle(big).fontSize)||B.height; m.remove();
+  const r=Math.hypot(w/2,F*.36)+TIMER.air, s=TIMER.stroke, z=2*(r+s), G=$('#game').getBoundingClientRect(), c=z/2;
+  Object.assign(tmr.el.style,{ left:(B.left-G.left+B.width/2-c)+'px', top:(B.top-G.top+B.height/2-c)+'px', width:z+'px', height:z+'px' });
+  tmr.el.innerHTML=`<svg viewBox="0 0 ${z} ${z}"><circle class="tt" cx="${c}" cy="${c}" r="${r}" stroke-width="${s}"/><circle class="tf" cx="${c}" cy="${c}" r="${r}" stroke-width="${s}"/></svg>`;
+  tmr.fg=tmr.el.querySelector('.tf'); tmr.C=2*Math.PI*r; tmr.fg.style.strokeDasharray=tmr.C; return true; }
+function clock(left,total){ time((left/1000).toFixed(2)); if(!tmr) return; if(tmr.ring&&!tmr.fg&&!ringPlace()) return;
+  const f=Math.max(0,Math.min(1,left/total)), hot=left>0&&left<=TIMER.hotAt*1000, part=tmr.ring?tmr.fg:tmr.fill;
+  if(tmr.ring) part.style.strokeDashoffset=tmr.C*(1-f); else part.style.transform=`scaleX(${f})`;
+  tmr.el.classList.toggle('hot',hot);
+  part.style.opacity=hot&&!calm()?(TIMER.pulseLo+(1-TIMER.pulseLo)*Math.abs(Math.cos(Math.PI*left/1000))).toFixed(3):''; }
 const timeHtml=h=>{ $('#hud-time').innerHTML=h; };
 const you=on=>{ $('#hud-time').classList.toggle('you',!!on); };
 const mode=t=>{ $('#hud-mode').textContent=t; };
@@ -125,4 +152,4 @@ function makeGhost(audio,timers){ const ghost=$('#ghost');
     hold(on){ ghost.classList.toggle('hold',!!on); } }; }
 
 export { allowance };
-export { addUp, allowBar, allowHtml, bigcount, countUp, countdown, cue, flash, hold, makeGhost, mode, pturn, pulse, rate, reset, scorePop, score, scoreVisible, shake, tick, time, timeHtml, you };
+export { addUp, allowBar, allowHtml, bigcount, clock, countUp, countdown, cue, flash, hold, makeGhost, mode, pturn, pulse, rate, reset, scorePop, score, scoreVisible, shake, tick, time, timeHtml, timer, you };

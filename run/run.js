@@ -171,9 +171,10 @@ function start(){
      A badge that fits never gets the class and never moves. Measured after a frame, because the text has only just been written. */
   $('#game').classList.toggle('goalon',gl.classList.contains('on'));
   requestAnimationFrame(()=>goalScan());
-  $('#bar').style.display=g.timed?'':'none'; $('#bar').style.transform='scaleX(1)';
   $('#hud-time').textContent=g.timed?sel.secs.toFixed(2):'';
   hud.reset(); applyPrefs(sel.game); $('#game').classList.toggle('timed',!!g.timed&&!versus);
+  // build 69 (68.16): the run timer this mode wears (config/games.js TIMER) — a ring round the score or a bar; a run with no clock has none
+  hud.timer(g.timed&&!vx?sel.game+':'+sel.diff:null);
   if(ctx) ctx.timers.clearT();
   $('#game').classList.toggle('gaunt',!!pendingGaunt); R.id++; Object.assign(R,{on:true,live:false,gaunt:pendingGaunt,timed:!!g.timed&&!vx,t0:0,end:0,goalHit:false,fresh:[],lenNext:null,lenDone:false,demo:false,tension:0,fin:0,vsP:[0,0],flow:0,flowT:0,
     flowOn:!VS.on&&!sel.vs&&(sel.game==='quick-tap'||sel.game==='dots')});
@@ -294,7 +295,7 @@ function clearResume(){ if(store.resume){ delete store.resume; save(); } }
 function tick(now){
   if(!R.on) return;
   if(R.flowOn) flowTick(now);
-  if(R.timed){ const left=Math.max(0,R.end-now); $('#hud-time').textContent=(left/1000).toFixed(2); $('#bar').style.transform=`scaleX(${left/(ctx.len*1000)})`; if(now>=R.end) return finish(eng.result(ctx)); }
+  if(R.timed){ const left=Math.max(0,R.end-now); hud.clock(left,ctx.len*1000); if(now>=R.end) return finish(eng.result(ctx)); }
   if(eng.tick) eng.tick(ctx,now);
   R.raf=requestAnimationFrame(tick);
 }

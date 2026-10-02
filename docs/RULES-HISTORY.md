@@ -2034,3 +2034,13 @@ anything Aiden settles goes on the list in the build that implements it.
   its words changed (`goalPut`), so no update starts it over. The row as it stood at build 68: "A goal badge that does not fit scans, and freezes
   while a round is live (60.20): `goalScan()` in `run/run.js`, `GOAL_SCAN`; moves only in the 3-2-1 and between rounds." Gate: `the runs` (15b),
   "68.10", and 60.20's check amended (the 3-2-1 clause).
+- **The run timer is a ring round the score, or a bar where a ring does not fit (68.16, PICKED).** Aiden: "The timer countdown is really boring …
+  they should be able to see it out of the corner of their eye … Don't make it intrusive", then "Run timer B … Where it isn't appropriate, the bar is
+  best." One mechanism, `timer()` / `clock()` in `games/_shared/hud.js`, the choice per mode in `TIMER` (`config/games.js`): `ring` (option B on the
+  picks page) where the screen has one big centred score with clear space round it, Quick Tap solo and pass & play: a 3px circle `TIMER.air` (14px)
+  clear of the widest score ("000"), centred on the big score, draining clockwise from 12 o'clock; `bar` (option A) everywhere else, a 6px line that
+  drains from both ends to the middle, `where` `field` (Dots: the bottom edge of the play area, inside it, where no ring could sit because targets land
+  there) or `hud` (under the score; any timed mode not named). White, then `TIMER_HOT` amber (`--amber`, #FFB020) for the last `hotAt` (3) seconds with a
+  pulse a second, opacity `pulseLo` (.55) to 1; Reduce Motion, no pulse. The small clock number stays. The thin line along the bottom of the screen
+  (`#bar`) is gone. The board's Run timers section (`timersRef()` in `_review/scripts/catalogue.ref.mjs`) lists every timed mode. Gate: `the runs`
+  (15d), "68.16": every timed mode solo and pass & play, one timer of the configured kind, no `#bar`, moving with the clock, amber at ≤ 3s.

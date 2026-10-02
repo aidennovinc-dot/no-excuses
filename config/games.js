@@ -96,6 +96,15 @@ export const ADS = { everyN: 5, streak: false, graceMs: 10 * 60 * 1000 };
    is Aiden's number. run/run.js measures the overflow and turns the two into one duration; the stylesheet does the rest.
    It never runs while a round is live: movement in peripheral vision provokes false starts in Flash, Dots and Hidden. */
 export const GOAL_SCAN = { pxPerSec: 26, hold: 1000 };
+/* build 69 (68.16): THE RUN TIMER, PER MODE. Aiden: "The timer countdown is really boring … they should be able to see it out of the corner of their eye …
+   Don't make it intrusive" — then "Run timer B … Where it isn't appropriate, the bar is best." `ring` (option B on the picks page): a thin circle round the
+   big centred score, draining clockwise from 12 o'clock — the modes with one big centred score and clear space round it. `bar` (option A): a line that
+   drains from both ends to the middle; `where` is `field` (the bottom edge of the play area, inside it — Dots, whose targets land where a ring would sit)
+   or `hud` (just under the score). `other` is any timed mode not named. `stroke` px, `air` px of clear space between the widest score ("000") and the
+   ring, `bar` px tall, the last `hotAt` seconds in TIMER_HOT's amber with a pulse a second whose dimmest is `pulseLo` (reduced motion: no pulse).
+   games/_shared/hud.js is the one reader. The thin line along the bottom of the screen is gone. */
+export const TIMER = { modes: { 'quick-tap:two': { look: 'ring' }, 'quick-tap:four': { look: 'ring' }, 'dots:blind': { look: 'bar', where: 'field' }, 'dots:lead': { look: 'bar', where: 'field' } },
+  other: { look: 'bar', where: 'hud' }, stroke: 3, air: 14, bar: 6, hotAt: 3, pulseLo: 0.55 };
 // v11: a Streak length scores rounds survived — higher wins — whatever the mode's Set scores. `streak` on a game is that override
 export const STREAK_CFG = { lower:false, suffix:'', scoreWord:'rounds' };
 /* v31 (60.22, build 60): HOW LONG A MODE LINE MAY BE. Aiden: "one short line, about 40 characters maximum" — three of them had
