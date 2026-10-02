@@ -44,6 +44,11 @@ function nextToast(){ const t=$('#toast'); clearTimeout(gateT);
   toastT=setTimeout(()=>{ t.classList.remove('on'); t.dataset.ach=''; t.dataset.goto=''; toastT=setTimeout(nextToast,TOAST_MS.gap); },holdOf(it)); }
 function toast(msg,ach,cls,html,go,quiet,key){ Q.push({msg,ach,cls,html,go,quiet,key}); if(!showing) nextToast(); }
 let cur=null;
+/* build 69 (68.19, L14): A TOAST UP WHEN A FIRST-TIME BOX ARRIVES STEPS BACK FOR IT — one shown on the result and carried to the map by Game Select
+   sat over the new game's ring. It goes back to the front of the queue, silent (its sound has played), and shows in full once the boxes are done */
+function toastYield(){ const t=$('#toast'); if(!showing||!cur||!t||!t.classList.contains('on')) return;
+  clearTimeout(toastT); t.classList.remove('on'); t.dataset.ach=''; t.dataset.goto=''; Q.unshift(Object.assign({},cur,{quiet:true})); showing=false; cur=null;
+  gateT=setTimeout(nextToast,TOAST_MS.gap); }
 // build 65 (A1 / 64.3): a toast is up or waiting its turn — the first-time tutorials wait for the queue to empty before they speak
 const toastBusy=()=>showing||Q.length>0;
 /* build 65 (64.3): EVERY UNLOCK A RUN MAKES TOASTS ON ITS RESULT, in the order it was earned. One made mid-run still toasts the moment it happens;
@@ -64,4 +69,4 @@ define({ toast(t){ const id=t.dataset.ach, go=t.dataset.goto;
   Snd.click(); toastClear();
   show(id?'s-prog':'s-pick',id?{ach:id}:unlockWhere(go)); } });
 
-export { setToastGate, toast, toastBusy, toastClear, toastTake };
+export { setToastGate, toast, toastBusy, toastClear, toastTake, toastYield };

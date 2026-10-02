@@ -1899,3 +1899,29 @@ anything Aiden settles goes on the list in the build that implements it.
   partition except for those nine rows (`chestFor()` beside `tabFor()` in `ui/screens/progress.js`). Gate: `side screens`, "68.40 / 68.41" — on
   each key chest's tab every game lists its bars from `config/key-bars.js` once each, and "N of M" M is the bars + the games + 1; `build 39`'s
   partition check (L.4c / 58.3) now asserts the overlap is exactly those nine rows, each on its own chest's tab and Customise unlocks.
+- **The A1 bullet as it stood at build 68, moved here at build 69 (P3) to keep `CLAUDE.md` under 40KB.** "**ONE first-time system; every
+  tutorial is data for it** (A1, build 65, `ui/tutorial.js`): armed when its thing opens; **L14 (build 68): a tour runs on its ROOM's first visit
+  by any route (`room` / `door` steps), leaving spends the room (`prefs.rooms`) and drops the rest; a reload resumes it**; never over a ceremony,
+  reveal, key intro or the player (`busy()`); owns every tap while its box is up (must-tap boxes let only their target through), none when not;
+  numbers from config; step stored (`prefs.tuts`; the walkthrough keeps `prefs.tut` / `prefs.tutRun`, 62.10); Testing has Replay and Reset all.
+  **L15 (build 68): the box takes the free spot nearest its target, clear of EVERYTHING that takes a tap (`taps()`), above a pick sheet with its
+  tail down, gliding between spots; it never scrolls — an off-screen target gets an arrow and the step waits (`far`); the game's UI never moves for
+  it (67.1); a tutorial never changes screen — the box before rings the way and is must-tap (65.9); copy carries `[green]` / `[yellow]` / `[red]`
+  marks (`marks()`, 65.19); the gate walks every tutorial with real taps and fails a soft lock.**" Its L15 half is superseded by the amended L15
+  (68.4, above); the rest stands, shortened.
+- **The rule everything in the tutorials hangs off (68.19).** Aiden on v0.68, unlocking Estimate: it "immediately opened it for me and started
+  playing the tutorial instead of letting me click the game estimate first. That's just bad user design." The rule: the game may bring the player
+  to the screen where a new thing lives and ring it; the tap that opens it is always the player's; a tutorial sits on the game's real screens and
+  never builds, alters or auto-opens one. The cause, named: a new game's unlock toast on the result screen ("Unlock game: Estimate") is a link
+  (B.12, v18) — a tap on it, or a tap meant for the screen landing on it where it sits low on the result, opened Estimate's pick sheet at its Mode
+  row, and Estimate's Set / Streak tour (`est`) fired on a sheet the player never asked for. Now every new GAME is a small tour of its own,
+  `unl-<key>` in `ui/tutorial.js` (the unlock key with `-` for `:`, so a frame file can carry the id), armed by the run that unlocks it (`run:finish`, its key among `fresh`): on that run's result one box,
+  "Great job, you unlocked Estimate!" (the walkthrough's `got` wording, the name from config), so its toast is dropped (`tutTells`, L14), and a
+  toast already up when any box arrives steps back to the front of the queue, silent, until the boxes are done (`toastYield()`); the
+  result's Game Select then lands on the bare map (`tutMapDue()`; it used to reopen the run's own game's sheet) — the one way the game brings the
+  player to where the new thing lives; there the new game's tile is ringed by a must-tap box, "Estimate is new! Tap it to take a look"
+  (Claude's, `TUTORIAL.newGame`), and only that tile answers; the player's tap opens the sheet, and only then can the `est` tour run on it. A
+  result box the player leaves unread (Try Again) is dropped with the result (L14); the map ring waits for the next map. The walkthrough's
+  first result says its own unlocks, so a game opened by the first run starts at the map ring. Gate: `locked decisions` section C, "68.19":
+  a driven Dots run that opens Estimate; Game Select lands on `s-pick` with no sheet up, the Estimate tile ringed by a must-tap box that lets
+  no other tile through, no `est` box until a real tap on the tile.

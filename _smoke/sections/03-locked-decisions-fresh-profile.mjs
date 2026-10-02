@@ -277,8 +277,12 @@ export async function run() {
       const P0 = await page.evaluate(async () => { const C = (await import('./config/copy.js')).TUTORIAL.prog[0], R = await import('./games/registry.js'); return C.replace('{game}', R.GAMES.hold.name); }), est = {};
       const W7 = um(await page.evaluate(async () => { const C = (await import('./config/copy.js')).TUTORIAL, U = (await import('./config/unlocks.js')).MENU_UNLOCK;
         return { got: Object.fromEntries(['about', 'prog', 'board'].map(k => [k, C.got.replace('{name}', U[k].name)])), look: Object.fromEntries(['about', 'board'].map(k => [k, C.look.replace('{name}', U[k].name)])) }; }));
+      /* build 69 (68.19 / 68.6): a game or mode the same run opened says so first, in its own box ("Great job, you unlocked Spot!") — read with a tap,
+         as a player would, on the way to the menu item's box */
+      const gotPre = C.over.got.split('{names}')[0];
+      const pastUnl = async (want, n) => { for (let i = 0; i < n; i++) { const b = await box(); if (b && b.text === want) return b; if (b && b.text.startsWith(gotPre)) { await anywhere(); await sleep(250); continue; } await later(); await sleep(100); } return await box(); };
       const runOf = async (g, k) => { await page.evaluate(async g => (await import('./run/run.js')).goWhere({ g }), g); await driveToResult(g, '64.7 a first ' + g + ' run'); const n0 = (await toasts()).length;
-        const b = await waitText(W7.got[k], 200); est[k] = { got: b && b.text, on: (await state()).screen, first: (await toasts()).slice(n0) };
+        const b = await pastUnl(W7.got[k], 200); est[k] = { got: b && b.text, on: (await state()).screen, first: (await toasts()).slice(n0) };
         await anywhere(); if (k === 'prog') { const b2 = await waitText(um(P0), 60); est[k].p0 = b2 && b2.text; await anywhere(); }
         await sleep(9000); await page.evaluate(async () => (await import('./ui/router.js')).show('s-menu')); await sleep(400); return dims(); };
       const afterEst = await runOf('hold', 'prog'), afterRx = await runOf('reaction', 'board');
@@ -424,6 +428,38 @@ export async function run() {
         && !/\{|\[/.test(W8.join('')) && e8End.done === 'done' && !e8End.box && e8End.sheet)
         ? ok(`65.8 Estimate's modes, the first time its sheet shows the Mode row: "${W8[1]}" with Set ringed, "${W8[2]}" with Streak ringed, then "${W8[3]}" — done once, the sheet left up`)
         : bad('65.8 the Estimate modes tutorial', JSON.stringify({ e8: e8.map(b => b && { t: b.text, drawn: b.drawn, ring: b.ring, covers: b.covers }), W8, wd, e8End }));
+    }
+    /* build 69 (68.19): A NEW GAME IS RINGED ON THE MAP, AND THE TAP THAT OPENS IT IS THE PLAYER'S. Aiden on v0.68: unlocking Estimate "immediately opened
+       it for me and started playing the tutorial instead of letting me click the game estimate first". A driven Dots run that presses nothing opens
+       Estimate; its result's boxes are read with a tap anywhere; Game Select lands on the games menu with NO sheet up and the Estimate tile ringed by a
+       must-tap box — a tap on another tile does nothing — and Estimate's own tour (`est`) shows nothing until a real tap on the tile has opened its sheet */
+    {
+      await page.evaluate(si => { localStorage.setItem('ne', JSON.stringify({ v: 7, prefs: { story: 1, gridSeen: 1, menuSeen: 1, snd: 'off', played: 1, tut: 2, welcomeSeen: 1, menuUnl: { about: 1, prog: 1, board: 1 }, tuts: { next: 'done', about: 'done', prog: 'done', board: 'done' } }, runs: [], ach: {}, unlock: { 'dots:blind': 1 }, intro: si, seen: {}, bars: {} })); }, SEEN_INTRO);
+      await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+      await page.evaluate(async () => { window.__t19 = []; const t = document.getElementById('toast'); new MutationObserver(() => { if (t.classList.contains('on')) window.__t19.push({ t: t.textContent, s: document.querySelector('.screen.on')?.id }); }).observe(t, { attributes: true, attributeFilter: ['class'] });
+        (await import('./run/run.js')).goWhere({ g: 'dots' }); });
+      await driveToResult('dots', '68.19 a Dots run that opens Estimate', 60000, true);
+      const R19 = { unl: await page.evaluate(() => !!JSON.parse(localStorage.getItem('ne')).unlock['hold:grow']), res: [] };
+      // the result's boxes, each read with a tap anywhere (a must-tap one there would be a fault: nothing on the result is Estimate's)
+      for (let i = 0; i < 12; i++) { let b = null; for (let k = 0; k < 30 && !(b = await box()); k++) await sleep(100); if (!b) break; const st = await page.evaluate(async () => (await import('./ui/tutorial.js')).tutNow()); R19.res.push({ t: b.text, tap: st && st.tap }); if (st && st.tap) break; await anywhere(); await sleep(250); }
+      await sleep(400); await click('#over-back');
+      let b19 = null; for (let k = 0; k < 40 && !(b19 = await box()); k++) await sleep(100);
+      const tile = await page.evaluate(() => { const r = document.querySelector('#grid .tile[data-game="hold"]').getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; });
+      await sleep(600);
+      Object.assign(R19, { map: await state(), st: await page.evaluate(async () => (await import('./ui/tutorial.js')).tutNow()), box: b19 && { t: b19.text, drawn: b19.drawn, ring: b19.ring }, tile, est: await page.evaluate(() => (JSON.parse(localStorage.getItem('ne')).prefs.tuts || {}).est),
+        toastUp: await page.evaluate(() => document.getElementById('toast').classList.contains('on')) });
+      await page.evaluate(() => document.querySelector('#grid .tile[data-game="dots"]').click()); await sleep(400); R19.other = await state();
+      const aim = await page.evaluate(async () => (await import('./ui/tutorial.js')).tutAim()); if (aim) await page.mouse.click(aim[0], aim[1]); await sleep(600);
+      R19.after = { ...(await state()), game: await page.evaluate(async () => (await import('./core/state.js')).sel.game) };
+      if (!(await page.evaluate(() => document.getElementById('sheet').classList.contains('len')))) { await click('#diff-row .choice[data-diff="grow"]'); await sleep(400); }
+      let e1 = null; for (let k = 0; k < 40 && !((e1 = await box()) && e1.text === um(await page.evaluate(async () => (await import('./config/copy.js')).TUTORIAL.est[0]))); k++) await sleep(100);
+      R19.est1 = e1 && e1.text; R19.toasts = await page.evaluate(() => window.__t19);
+      const name = await page.evaluate(async () => (await import('./games/registry.js')).GAMES.hold.name);
+      (R19.unl && R19.res.length && R19.res.every(r => !r.tap) && R19.res.some(r => r.t.includes(name)) && R19.map.screen === 's-pick' && !R19.map.sheet && R19.st && R19.st.shown && R19.st.tap && R19.box && R19.box.drawn
+        && Math.abs(R19.box.ring[0] - tile[0] - 12) <= 2 && R19.box.t.includes(name) && !R19.toastUp && R19.est === undefined && !R19.other.sheet && R19.after.sheet && R19.after.game === 'hold' && R19.est1
+        && !R19.toasts.some(x => x.s === 's-over' && x.t.includes(name)))
+        ? ok(`68.19 a new game is the player's to open: a Dots run opens ${name}; its result says so ("${R19.res.map(r => r.t).join('" / "')}") with no toast; Game Select lands on the games menu with no sheet up and ${name}'s tile ringed by a must-tap box ("${R19.box.t}") that lets no other tile through; ${name}'s own tour shows nothing until a real tap on the tile has opened its sheet`)
+        : bad('68.19 a new game opened for the player, or not ringed on the map', JSON.stringify(R19));
     }
     /* build 66 (65.16): A GAUNTLET'S TUTORIAL, when the chest before it opens — Mini with the Skill chest, Mega with the Pro chest. On the map the
        reveal hands back to, its tile ringed and tapped; then three lines on its screen, every fact from config ("finish", never "beat") */

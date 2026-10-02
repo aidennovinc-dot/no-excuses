@@ -42,7 +42,7 @@ import { UNLOCKS } from "../config/unlocks.js";
 import { Snd } from "../audio.js";
 import { define } from "./actions.js";
 import { show } from "./router.js";
-import { setToastGate, toast } from "./toast.js";
+import { setToastGate, toast, toastYield } from "./toast.js";
 import { videoDue } from "./video.js";
 
 /* ---------- where things are ---------- */
@@ -187,8 +187,12 @@ let inRoom='';
    the menu's last position before the screen had laid out, then glided across the Background and Tap sound rows to its spot; the gate, mid-glide,
    saw it over both. `scrAt` holds the box back until the screen has settled, and place() never glides from one screen to another */
 let scrAt=0;
-on('screen:change',()=>{ const was=inRoom; inRoom=''; scrAt=performance.now();
+let prevScr='';
+on('screen:change',({id})=>{ const was=inRoom; inRoom=''; scrAt=performance.now();
   if(was&&!spent(was)){ prefs.rooms=Object.assign({},prefs.rooms,{[was]:1}); save(); }
+  // build 69 (68.19): a box that belongs to a run's result is dropped once the player has left that result (the key's interlude is not leaving)
+  if(prevScr==='s-over'&&id!=='s-over'&&id!=='s-key') for(const k of ORDER){ const d=DEFS[k]; for(let n=0;n<9&&d&&d.live()&&(stepsOf(d)[d.step()]||{}).res;n++) advance(k); }
+  prevScr=id;
   for(const id of ORDER) drop(id); setTimeout(tick,0); });
 
 /* ---------- the tutorials the menu's own unlocks arm (64.8 / 64.9 / 64.12) ---------- */
@@ -198,6 +202,20 @@ const item=go=>()=>$(`#s-menu .item[data-go="${go}"]`);
    of its toasts (or on the menu, for one opened there); then the item ringed on the menu, must-tap; then the tour inside. Been in already, by any
    route? The tour is dropped (67.22). The menu box's line, "Tap … to take a look", is Claude's, worded as Progress's own; it replaces "You've unlocked …" */
 const res=()=>oOn()||menuOn(), MU=k=>(MENU_UNLOCK[k]||{}).name||'';
+/* build 69 (68.19): A NEW GAME IS THE PLAYER'S TO OPEN. Aiden on v0.68: unlocking Estimate "immediately opened it for me and started playing the
+   tutorial instead of letting me click the game estimate first". The cause: the result screen's "Unlock game: Estimate" toast is a link to that
+   game's sheet (B.12), and a tap on it (or one meant for the screen landing on it) opened the sheet and Estimate's own tour with it. Now a game the
+   chain opens is a small tour of its own, armed by the run that opens it: one box on that run's result says it ("Great job, you unlocked Estimate!",
+   so its toast is dropped, L14), and the next time the player is on the map the new tile is ringed and must be tapped — the player's own tap opens
+   the sheet. The result's Game Select lands on the bare map while one is due (`tutMapDue()`): the game brings the player to where the new thing is
+   and rings it; it never opens it. A step marked `res` lives on that run's result and is dropped with it (L14) */
+const unlId=k=>'unl-'+String(k).replace(/:/g,'-');
+const GAME_KEYS=Object.keys(GAMES).filter(g=>g!==QT).map(g=>(UNLOCKS.find(u=>u.key.split(':')[0]===g)||{}).key).filter(Boolean);
+for(const k of GAME_KEYS){ const g=k.split(':')[0], nm=()=>GAMES[g].name;
+  tutorial(unlId(k),[
+    { on:oOn, res:1, text:()=>say(O.got,{names:nm()}) },
+    { on:map, mapStep:1, el:()=>$(`#grid .tile[data-game="${g}"]`), tap:1, done:()=>sheetUp()&&sel.game===g, text:()=>T(TUTORIAL.newGame,{name:nm()}) },
+  ]); }
 const got1=k=>()=>T(TUTORIAL.got,{name:MU(k)}), look=k=>()=>T(TUTORIAL.look,{name:MU(k)});
 /* 64.8: ABOUT, after the Welcome clip. The menu with About ringed and the only thing that answers; then inside it, on rails — the videos, the
    feedback line, the support button, and away */
@@ -442,7 +460,7 @@ function tick(){
   // build 66.1: a must-tap box never shows on something that cannot take the tap (a crossed-out menu item, one mid-animation) — it waits
   if(s.tap&&getComputedStyle(first).pointerEvents==='none') return hide();
   if(performance.now()-scrAt<150) return hide();
-  cur={ id, i, s };
+  cur={ id, i, s }; toastYield();
   cur.far=place(el,typeof s.text==='function'?s.text():s.text,{ id, i, tap:s.tap, noRing:s.ring===0||!!s.arrow, arrow:s.arrow, tag:s.tag, glow:s.glow, keep:s.keep }).far; }
 function run(){ if(!timer) timer=setInterval(tick,200); }
 // the next step, or the end: the last tap on a tutorial is what finishes it
@@ -471,6 +489,8 @@ setToastGate(holds);
    says it, 67.15), and every unlock of the first run when the walkthrough's result names them ("Great job, you unlocked Dash and Four!") */
 function tutTells(run){ const out=new Set();
   for(const k of Object.keys(MENU_UNLOCK)) if((prefs.tuts||{})[k]===0) out.add('menu:'+k);
+  // build 69 (68.19): an unlock whose own tour says it on this result
+  for(const k of GAME_KEYS) if((prefs.tuts||{})[unlId(k)]===0) out.add(k);
   if(results()&&run&&prefs.tutRun.t===run.t&&dashOpen()) for(const k of gotKeys()) out.add(k);
   return out; }
 function lets(t){ if(!shown()||!cur.s.tap) return false; if(cur.s.hit) return !!cur.s.hit(t); return [].concat(cur.s.el()||[]).some(el=>el.contains(t)); }
@@ -510,6 +530,11 @@ on('store:reset',()=>{ firstAt=0; overAt=0; overList=null; });
    player is taken straight to the main menu, where its tutorial waits (64.8). Put off with Later, About still opens, because the clip is waiting
    there, and its tutorial shows the next time the player is on the menu (Cowork's call: a Welcome put off must not lock About for good). */
 on('run:finish',({fresh,two})=>{ if(two) return; for(const u of fresh||[]) if(u.menu) arm(u.menu); });
+/* build 69 (68.19): a run that opens a GAME arms that game's tour. The walkthrough's first result names its own unlocks, so a game the first run
+   opened starts at its map ring */
+on('run:finish',({run:r,fresh,two})=>{ if(two||!r||r.demo||r.practice||r.chal||r.gaunt) return;
+  for(const u of fresh||[]){ if(!GAME_KEYS.includes(u.key)) continue; const id=unlId(u.key); if((prefs.tuts||{})[id]!==undefined) continue; arm(id);
+    if(results()&&prefs.tutRun&&prefs.tutRun.t===r.t&&armed(id)) DEFS[id].setStep(1); } });
 /* build 68 (67.15): no toast — About's first box says it — and the player is not taken anywhere (65.9): the box is on the screen the Welcome played over */
 function openAbout(){ if(!bankMenu('about')) return; arm('about'); }
 on('video:closed',({id})=>{ if(id===MENU_UNLOCK.about.video) openAbout(); });
@@ -533,6 +558,8 @@ setTimeout(resumeOver,0);
 
 /* build 66: where the tutorials are, for Testing and the gate — the one that has the floor, its step, how many it has, and whether its box is up
    and waiting for a tap on its ring */
+// build 69 (68.19): a new game's ring is the next thing on the map — the result's Game Select lands there with no sheet up
+function tutMapDue(){ for(const id of ORDER){ const d=DEFS[id]; if(!d||!d.live()) continue; const s=stepsOf(d)[d.step()]; if(s&&s.mapStep) return true; } return false; }
 function tutNow(){ const id=active(); if(!id) return null; const d=DEFS[id]; return { id, i:d.step(), n:stepsOf(d).length, shown:shown()&&cur.id===id, tap:shown()&&!!cur.s.tap, far:shown()&&cur.far||0 }; }
 /* build 66 (65.4): EVERY TUTORIAL AS THE REVIEW CATALOGUE PRINTS IT — the Tutorials section (_review/scripts/catalogue.ref.mjs tutorialsRef) is built
    from this, so it cannot drift from the game: each tutorial's trigger, starting screen and purpose (`meta`, beside its definition), then each box —
@@ -553,6 +580,12 @@ function tutMap(){ const out=[], text=t=>{ try{ return typeof t==='function'?t()
     if(id==='over') out.push({ id:'welcome', name:'Welcome moment', trigger:'Dots unlocks — on that result as soon as it opens, ahead of its toasts (the main menu only after a reload or crash mid-way)',
       start:'Result screen', why:'The first thing the game gives you: Aiden\'s welcome clip, and watching it opens About', steps:1, at:1,
       boxes:[{ key:'welcome-01', screen:'The result that opens Dots', ring:'', tap:1, text:WELCOME.from+' · '+T(WELCOME.name,{ title:WELCOME.fallback }) }] }); }
+  // build 69 (68.19): every new game's two boxes, Estimate's as the example
+  { const g=(GAME_KEYS.find(k=>k.startsWith('hold:'))||GAME_KEYS[0]).split(':')[0], nm=GAMES[g].name;
+    out.push({ id:'unl-game', name:'A new game', trigger:'A run opens a game (each game, the first time)', start:'That run\'s result, then the games menu',
+      why:'Says the game is open, and leaves the tap that opens it to the player', steps:2, at:2,
+      boxes:[ { key:'unl-game-01', screen:'The result of the run that opened '+nm, ring:'', tap:0, text:say(O.got,{names:nm}) },
+        { key:'unl-game-02', screen:'Games menu (Game Select lands there)', ring:nm+' tile', tap:1, text:T(TUTORIAL.newGame,{name:nm}) } ] }); }
   return out; }
 
 /* build 66 (65.11): WHERE A REAL TAP ON A MUST-TAP BOX'S RING LANDS AND IS ANSWERED — a point on the screen, inside the ring, whose top element the box
@@ -561,4 +594,4 @@ function tutAim(){ if(!shown()||!cur.s.tap||cur.far) return null; const r=union(
   for(const fy of [.5,.3,.7,.15,.85]) for(const fx of [.5,.3,.7,.15,.85]){ const x=r.left+r.width*fx, y=r.top+r.height*fy; if(x<0||y<0||x>=innerWidth||y>=innerHeight) continue;
     const t=document.elementFromPoint(x,y); if(t&&lets(t)) return [Math.round(x),Math.round(y)]; } return null; }
 
-export { arm, busy as tutBusy, tutAim, tutDone, tutMap, tutNow, tutTells, tutorial };
+export { arm, busy as tutBusy, tutAim, tutDone, tutMap, tutMapDue, tutNow, tutTells, tutorial };

@@ -343,6 +343,8 @@ export const TUTORIAL = {
   /* build 68 (67.15): every menu item's tour starts on the screen that opens it with Aiden's "Congratulations, you unlocked Scores!" (`got`), then the
      item ringed on the menu (`look`, Claude's, worded as Progress's own). "You've unlocked About" / "You've unlocked Scores" (Claude's) are gone */
   got:'[green]Congratulations[/green], you unlocked [yellow]{name}[/yellow]!', look:'Tap [yellow]{name}[/yellow] to take a look',
+  // build 69 (68.19): a new game's tile, ringed on the map the first time the player is there after the run that opened it — Claude's wording
+  newGame:'[yellow]{name}[/yellow] is [green]new![/green] Tap it to take a look',
   // build 68 (67.40): the next-unlock card's one box, the first time the main menu shows it — the words agreed with Aiden
   nextBox:'[yellow]Your next goal.[/yellow] Tap it to go straight there.',
   about:[ 'Welcome to the [yellow]About[/yellow] section', "Here you'll find all the [green]unlocked[/green] [green]videos[/green]",

@@ -6,7 +6,7 @@ import { RESULT, SHARE, SHEET, TOAST, VERDICT } from "../../config/copy.js";
 import { playersHtml } from "../players.js";
 import { welcomeCheck } from "../welcome.js";
 import { excuseFx, excuseLine } from "../excuse.js";
-import { tutTells } from "../tutorial.js";
+import { tutMapDue, tutTells } from "../tutorial.js";
 import { MAP_ON_UNLOCK_MS } from "../../config/audio.js";
 import { PUB_URL } from "../../config/build.js";
 import { MODE_NAME, PASS_LEN } from "../../config/games.js";
@@ -179,7 +179,8 @@ on('screen:change',({id})=>{ tT.forEach(clearTimeout); tT=[]; if(id!=='s-over'&&
 let pendingRest=null;
 on('key:done',()=>{ lock(false); $('#s-over').classList.remove('fadeout'); const f=pendingRest; pendingRest=null; if(f) setTimeout(f,320); });
 define({
-  'over-back'(){ show('s-pick',{g:sel.game,d:GAMES[sel.game].modes.length>1?sel.diff:undefined}); return 'click'; },
+  // build 69 (68.19): with a new game's ring due, Game Select lands on the bare map, where that game is — the player opens it
+  'over-back'(){ show('s-pick',tutMapDue()?{}:{g:sel.game,d:GAMES[sel.game].modes.length>1?sel.diff:undefined}); return 'click'; },
   share(){ shareRun(); return 'click'; },
   again(){ VS.reset(); if(sel.game!=='sequence') sel.practice=0; start(); return 'click'; },
   'to-games'(){ VS.reset(); show('s-pick'); return 'click'; },

@@ -2087,6 +2087,35 @@ scene('68.40', async (page, browser) => {
   await frame(page, browser, '68.41-pro-tab-count', 'The Pro chest’s tab under Quick Tap: “of 38”, all six Quick Tap bars with Four · Dash, then Quick Tap · Pro (v0.68: five, “of 34”)');
 });
 
+/* ---------- build 69 (package P3, the tutorials) ---------- */
+// the tutorial box, once it has stopped moving: its line, and whether it is waiting for a tap on its ring
+const pBox = async (page, want, ms = 8000) => { const t0 = Date.now(); let b = null;
+  while (Date.now() - t0 < ms) { b = await page.evaluate(async () => { const t = document.getElementById('tut'); if (!t || t.hidden) return null; const s = (await import('./ui/tutorial.js')).tutNow();
+      return { text: t.querySelector('.tbox p').textContent, top: Math.round(t.querySelector('.tbox').getBoundingClientRect().top), tap: !!(s && s.tap) }; });
+    if (b && (!want || b.text.includes(want))) { await sleep(450); return b; } await sleep(120); }
+  return b; };
+const tutTap = page => page.evaluate(() => document.elementFromPoint(12, innerHeight - 12).click());
+const tutAimTap = async page => { const a = await page.evaluate(async () => (await import('./ui/tutorial.js')).tutAim()); if (a) await page.mouse.click(a[0], a[1]); return a; };
+// a run started from the map that presses nothing, to its result
+async function idleRun(page, g) { await page.evaluate(async g => (await import('./run/run.js')).goWhere({ g }), g);
+  for (let i = 0; i < 600 && !(await page.evaluate(() => document.getElementById('s-over').classList.contains('on'))); i++) {
+    await page.evaluate(() => { const a = document.getElementById('adbreak'), b = document.getElementById('adskip'); if (a.classList.contains('on') && !b.disabled) b.click(); }); await sleep(100); } await sleep(900); }
+
+/* 68.19: a Dots run that opens Estimate, its result's box read, Game Select — the map with Estimate ringed and no sheet; then the player's tap on the
+   tile and Grow, and Estimate's own first box on the sheet */
+scene('68.19', async (page, browser) => {
+  await load(page, { ...PLAIN, welcomeSeen: 1, menuUnl: { about: 1, prog: 1, board: 1 }, tuts: { next: 'done' } }, { unlock: { 'dots:blind': Date.now() } });
+  await idleRun(page, 'dots');
+  for (let i = 0; i < 6; i++) { const b = await pBox(page, '', 2500); if (!b || b.tap) break; say('result box', b.text); await tutTap(page); await sleep(300); }
+  await page.evaluate(() => document.getElementById('over-back').click());
+  say('box', await pBox(page, 'new'));
+  await frame(page, browser, '68.19-map-ringed', 'Game Select after the Dots run that opened Estimate: the games menu, no sheet up, Estimate ringed by a must-tap box (v0.68: Estimate’s sheet opened by itself)');
+  say('tap', await tutAimTap(page)); await sleep(700);
+  await page.evaluate(() => document.querySelector('#diff-row .choice[data-diff="grow"]')?.click()); await sleep(600);
+  say('box', await pBox(page, 'modes'));
+  await frame(page, browser, '68.19-sheet-after-tap', 'After the player’s own tap on Estimate (then Grow): the sheet, and only now Estimate’s first box');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }
