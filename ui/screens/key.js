@@ -77,7 +77,7 @@ import { EARN_NEXT, EARN_SKIP_AT, KEY_ART, KEY_EARN, KEY_FINISH, KEY_INTRO } fro
 import { MESSAGES } from "../../config/messages.js";
 import { playVideo } from "../video.js";
 import { MODE_NAME } from "../../config/games.js";
-import { $, T, esc } from "../../core.js";
+import { $, T, esc, fitLabels } from "../../core.js";
 import { emit, on } from "../../core/events.js";
 import { everywhere, prefs, save } from "../../core/store.js";
 import { GAMES, lenFull, lenName } from "../../games/registry.js";
@@ -253,6 +253,9 @@ function ring() { const tier = keyTiers()[openKey]; const st = keyState(tier.id)
     + (kc ? `<circle class="khubhit" data-act="key-chest" data-chest="${kc.id}"${kc.gaunt ? ` data-gaunt="${kc.gaunt}"` : ''} cx="${CX}" cy="${CY}" r="${R_HUB}"></circle>` : '');
   $('#key-ring').innerHTML = groundOf(style) + outer + `<circle class="khub" cx="${CX}" cy="${CY}" r="${R_HUB}"></circle>` + hub + parts + labelsHtml(st);
   $('#key-ring').classList.toggle('whole', st.whole); placeLabels();
+  /* build 69 (68.3): the ring's box takes in every label, so none is drawn outside it (Quick Tap's sat above it). The pad is 13 units because the
+     first visit's arrival (`keyin`) slides the labels in from 10 above where they rest */
+  fitLabels($('#key-ring'), [0, 0, 300, 300], '.klbl', false, 13);
   /* v17 (§A.6.7) / v18 (B.15): "19 of 30 · 74%" stays HERE — the cleared count is what a player acts on and this is the
      screen they act on it from. v23 (L.8a, build 40): the percentage is THE METER now — "19 of 30 · 142%" — the one figure every
      surface reads; the count is still this key's own */

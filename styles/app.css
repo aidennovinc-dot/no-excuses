@@ -547,7 +547,8 @@
   /* profile (v9): the name and a radar of your best across the games sit on top of the scores */
   .prof{display:flex;flex-direction:column;align-items:center;gap:6px;flex:none}
   /* build 68 (67.18): THE WEB IS BIGGER — the screen's full width, its game labels larger */
-  #radar{width:min(100%,520px);height:auto;aspect-ratio:260/252;overflow:visible;display:block}
+  /* build 69 (68.3): nothing of the web paints outside its own box — board.js widens the viewBox to its labels and sets the aspect to match */
+  #radar{width:min(100%,520px);height:auto;aspect-ratio:260/252;overflow:hidden;display:block}
   .prof{width:100%}
   #radar polygon.web{fill:none;stroke:var(--line)}
   /* build 65 (64.13): the three rings in their keys' styles, the web growing in and breathing, the overall figure under the chart */

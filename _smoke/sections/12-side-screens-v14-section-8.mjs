@@ -463,4 +463,29 @@ export async function run() {
       ? ok(`L25 / 68.21 on Progress green means done and nothing else: no text inside a locked row is --ok (${his.okc}) — ${his.out[0].locked} locked rows on the Games chest tab under Quick Tap, Quick Tap · Four locked, and ${all25.reduce((n, x) => n + x.locked, 0)} locked rows across every tab; ${all25.reduce((n, x) => n + x.done, 0)} earned rows on screen, every one green`)
       : bad('L25 / 68.21 green on a locked row', JSON.stringify(all25));
   }
+  /* build 69 (68.3): EVERY WEB LABEL IS DRAWN ONCE, AND INSIDE ITS OWN PICTURE. Aiden's phone drew a second "Spot 0" beside Overall, a second
+     "Reaction 0" over the detail card and the top of a second "Quick Tap 192" on Scores, and a stray "Spot 4/4" on the Skill Key. The DOM holds one
+     label per game; what WebKit repainted at an offset is label text drawn OUTSIDE its SVG's own box (`overflow:visible`), the one part of the picture
+     its layer does not own and so never cleans. Read on Scores (#radar) and the Skill Key (#key-ring), on two opens in a row and after a tap on a game
+     (which re-renders): exactly one label per game on the screen, and every label's box inside its SVG's box */
+  {
+    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS, chests: { games: 1, key: 1 }, spill: { games: 1, key: 1 } }, runs: [{ t: Date.now(), g: 'quick-tap', d: 'two', s: 5, hits: 30, misses: 0, row: 30, v: 4 }, { t: Date.now(), g: 'spot', d: 'count', s: 5, hits: 3, misses: 0, v: 4 }], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+    const l3 = await page.evaluate(async () => { const R = await import('./ui/router.js'), ids = Object.keys((await import('./games/registry.js')).GAMES), w = ms => new Promise(r => setTimeout(r, ms));
+      const read = (scr, svg, sel, attr) => { const n = {}; for (const e of document.querySelectorAll(`#${scr} ${sel}`)) n[e.getAttribute(attr)] = (n[e.getAttribute(attr)] || 0) + 1;
+        const s = document.querySelector(svg).getBoundingClientRect();
+        const out = [...document.querySelectorAll(`${svg} ${sel}`)].filter(t => { const r = t.getBoundingClientRect(); return r.left < s.left - .5 || r.right > s.right + .5 || r.top < s.top - .5 || r.bottom > s.bottom + .5; })
+          .map(t => { const r = t.getBoundingClientRect(); return `${t.textContent} [${Math.round(r.left)},${Math.round(r.top)}–${Math.round(r.right)},${Math.round(r.bottom)} in ${Math.round(s.left)},${Math.round(s.top)}–${Math.round(s.right)},${Math.round(s.bottom)}]`; });
+        return { n: ids.map(g => n[g] || 0), out }; };
+      const o = { board: [], key: [] };
+      for (let i = 0; i < 2; i++) { R.show('s-menu'); await w(100); R.show('s-board'); await w(1200); o.board.push(read('s-board', '#radar', 'text[data-g]', 'data-g')); }
+      document.querySelector('#radar text[data-g="spot"]').dispatchEvent(new MouseEvent('click', { bubbles: true })); await w(400); o.board.push(read('s-board', '#radar', 'text[data-g]', 'data-g'));
+      for (let i = 0; i < 2; i++) { R.show('s-menu'); await w(100); R.show('s-key', { tier: 0 }); await w(1200); o.key.push(read('s-key', '#key-ring', '.klbl[data-kg]', 'data-kg')); }
+      document.querySelector('#key-ring .klbl[data-kg="spot"]').dispatchEvent(new MouseEvent('click', { bubbles: true })); await w(500); o.key.push(read('s-key', '#key-ring', '.klbl[data-kg]', 'data-kg'));
+      R.show('s-menu'); return o; });
+    const all3 = l3.board.concat(l3.key);
+    (all3.every(x => x.n.every(c => c === 1) && !x.out.length))
+      ? ok(`68.3 every web label is drawn once and inside its own picture: one label per game on Scores and on the Skill Key, on two opens in a row and after a tap on Spot re-rendered them, and none of the ${l3.board[0].n.length} on either screen reaches outside its SVG's box`)
+      : bad('68.3 the web labels', JSON.stringify(l3));
+  }
 }

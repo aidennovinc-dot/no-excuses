@@ -4,7 +4,7 @@
 import { BOARD, RADAR_TXT, RESULT, TOAST } from "../../config/copy.js";
 import { KEYS, RADAR } from "../../config/keys.js";
 import { MODE_NAME } from "../../config/games.js";
-import { $, T, esc } from "../../core.js";
+import { $, T, esc, fitLabels } from "../../core.js";
 import { on } from "../../core/events.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, lenName } from "../../games/registry.js";
@@ -37,6 +37,7 @@ function rows(g,d,s,list){ const cfg=GC(g,d,s), c=colsOf(g,d,s); return list.len
    (progress/key.js radarOf), 100 at its Skill bars, 200 Pro, 300 Author, the edge at RADAR.max. The three rings sit at 100 / 200 / 300 in their
    keys' own styles — Lantern's glow, Circuit's traces and nodes, Thorns' spikes (config/keys.js tints). The web grows in from the centre and then
    breathes, gently. Under it the overall figure (the games' average); past a ring it takes that key's style and word (RADAR_TXT, placeholders). */
+const RADAR_BOX=[-30,-26,260,252];
 function renderRadar(){ const ids=Object.keys(GAMES), n=ids.length, C=100, R=88, M=RADAR.max;
   const vals=ids.map(g=>Math.max(0,radarOf(g).v)), f=v=>Math.min(M,v)/M;
   const pt=(i,k)=>{ const a=-Math.PI/2+i/n*2*Math.PI; return [C+Math.cos(a)*R*k,C+Math.sin(a)*R*k]; };
@@ -53,6 +54,8 @@ function renderRadar(){ const ids=Object.keys(GAMES), n=ids.length, C=100, R=88,
     +ids.map((g,i)=>{ const [x,y]=pt(i,Math.max(.02,f(vals[i]))); return `<circle class="${past(vals[i])?'past':''}" data-g="${g}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.5"/>`; }).join('')+'</g>'
     +ids.map((g,i)=>{ const [x,y]=pt(i,1.19); return `<text class="${past(vals[i])?'past':''}" data-g="${g}" x="${x.toFixed(1)}" y="${(y+3).toFixed(1)}" text-anchor="middle">${GAMES[g].name} ${Math.round(vals[i])}</text>`; }).join('');
   $('#radar').classList.add('tiers');
+  // build 69 (68.3): the box takes in every label, so none is drawn outside it (Reaction and Estimate reached 10px past either side)
+  fitLabels($('#radar'),RADAR_BOX,'text',true);
   const all=radarAll(), tier=past(all), el=$('#radar-all');
   if(el){ el.className='radar-all'+(tier?' t'+tier:''); el.innerHTML=`<span>${esc(RADAR_TXT.all)}</span> <b>${Math.round(all)}</b>${tier?` <em>${esc(RADAR_TXT.words[tier-1]||'')}</em>`:''}`; } }
 function renderBoard(){ $('#pstar').textContent=prefs.supporter?'★':''; const g=F.g; if(!GAMES[g].modes.includes(F.d)) F.d=GAMES[g].modes[0]; const lens=lensOf(g,F.d); if(!lens.includes(F.s)) F.s=lens[0];

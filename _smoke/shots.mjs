@@ -2034,6 +2034,20 @@ scene('68.21', async (page, browser) => {
   await frame(page, browser, '68.21-key-cards', 'The Skill Key screen: the locked Pro and Author cards say “To unlock: open the … chest” in plain white (v0.68: green)');
 });
 
+/* 68.3: every web label drawn once and inside its own picture — Scores with Spot's detail open (his frame: a second "Spot 0" beside Overall, a second
+   "Reaction 0" over the card), and the whole Skill Key (his frame: a stray "Spot 4/4" above Timing). Headless Chrome never drew the ghost; these show
+   the labels inside the picture's own box, which is what the phone's ghost needed to be drawn */
+scene('68.3', async (page, browser) => {
+  await load(page, { ...OPEN, welcomeSeen: 1 }, { runs: [{ g: 'quick-tap', d: 'two', s: 5, t: Date.now() - 6e4, hits: 30, misses: 0, row: 30, v: 4 }, { g: 'sequence', d: 'solo', s: 3, t: Date.now() - 5e4, hits: 4, misses: 1, v: 4 }] });
+  await show(page, 's-board'); await sleep(1200);
+  await page.evaluate(() => document.querySelector('#radar text[data-g="sequence"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))); await sleep(500);
+  say('labels', await page.evaluate(() => { const s = document.getElementById('radar').getBoundingClientRect(); return { viewBox: document.getElementById('radar').getAttribute('viewBox'), n: document.querySelectorAll('#s-board text[data-g]').length, outside: [...document.querySelectorAll('#radar text')].filter(t => { const r = t.getBoundingClientRect(); return r.left < s.left || r.right > s.right || r.top < s.top || r.bottom > s.bottom; }).length }; }));
+  await frame(page, browser, '68.3-scores', 'Scores with Sequence’s detail open: seven labels, each once, all inside the web’s own box — nothing beside Overall or over the card');
+  await load(page, { ...PLAIN, ...ALL68 }); await show(page, 's-key', { tier: 0 }); await sleep(2600);
+  say('labels', await page.evaluate(() => { const s = document.getElementById('key-ring').getBoundingClientRect(); return { viewBox: document.getElementById('key-ring').getAttribute('viewBox'), n: document.querySelectorAll('#s-key .klbl').length, outside: [...document.querySelectorAll('#key-ring .klbl')].filter(t => { const r = t.getBoundingClientRect(); return r.left < s.left || r.right > s.right || r.top < s.top || r.bottom > s.bottom; }).length }; }));
+  await frame(page, browser, '68.3-key-labels', 'The whole Skill Key: seven labels, each once, all inside the ring’s own box — no stray “Spot” above Timing');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

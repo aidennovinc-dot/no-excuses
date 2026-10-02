@@ -28,5 +28,12 @@ const sum=a=>a.reduce((x,y)=>x+y,0);
 // build 17 (refactor stage 3): the two lines every engine had its own copy of. winner: 0 / 1 / -1 for a draw. minMax: [best, worst] of a list, [0, 0] when empty
 const winner=(a,b)=>a>b?0:b>a?1:-1;
 const minMax=a=>a.length?[Math.min(...a),Math.max(...a)]:[0,0];
+/* build 69 (68.3): AN SVG'S LABELS STAY INSIDE ITS OWN BOX. iPhone WebKit drew a second copy of the Scores and Skill Key labels hundreds of pixels
+   below the first: text painted outside an SVG's box (`overflow:visible`) is outside the layer that owns the picture, and is never cleaned when the
+   screen moves. The viewBox is the base box widened to every label in `sel`, so no label reaches outside; `ratio` sets the box's aspect to match, `pad` is room round each label in the SVG's units */
+function fitLabels(svg,base,sel,ratio,pad=3){ if(!svg) return; let [x0,y0,w,h]=base, x1=x0+w, y1=y0+h;
+  for(const t of svg.querySelectorAll(sel)){ let b; try{ b=t.getBBox(); }catch(e){ continue; } if(!b||!b.width) continue;
+    x0=Math.min(x0,b.x-pad); y0=Math.min(y0,b.y-pad); x1=Math.max(x1,b.x+b.width+pad); y1=Math.max(y1,b.y+b.height+pad); }
+  const vb=[x0,y0,x1-x0,y1-y0].map(v=>+v.toFixed(1)); svg.setAttribute('viewBox',vb.join(' ')); if(ratio) svg.style.aspectRatio=vb[2]+'/'+vb[3]; }
 
-export { $, $$, T, esc, f2, marks, mean, minMax, pWho, seqStep, sum, unmark, vmin, winner };
+export { $, $$, T, esc, f2, fitLabels, marks, mean, minMax, pWho, seqStep, sum, unmark, vmin, winner };
