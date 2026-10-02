@@ -2375,6 +2375,20 @@ scene('68.17', async (page, browser) => {
   await page.evaluate(async () => (await import('./ui/video.js')).closeVideo()); await sleep(900);
 });
 
+/* 68.38: About as the picks page mocked it — four of eight open (Welcome, the Games, Skill and Pro chests' clips), the Pro one unwatched; then scrolled
+   to its foot if it does not fit */
+scene('68.38', async (page, browser) => {
+  await load(page, { ...PLAIN, welcomeSeen: 1, menuUnl: { about: 1, prog: 1, board: 1 }, tuts: { next: 'done', about: 'done' }, chests: { games: 1, key: 1, pro: 1 }, spill: { games: 1, key: 1, pro: 1 },
+    readySeen: { games: 1, key: 1, pro: 1 }, msgSeen: { intro: 1, games: 1, skill: 1 } }, { unlock: { 'dots:blind': 1, 'dots:lead': 1 } });
+  await show(page, 's-about'); await sleep(900);
+  const fit = await page.evaluate(() => { const s = document.getElementById('s-about'); return { scrollH: s.scrollHeight, h: s.clientHeight, label: document.getElementById('msg-lede').textContent,
+    rows: [...document.querySelectorAll('#msglist .msgrow')].map(r => r.dataset.msg + (r.classList.contains('locked') ? ' (locked)' : r.classList.contains('unwatched') ? ' (unwatched)' : '')) }; });
+  say('about', fit);
+  await frame(page, browser, '68.38-about', 'About rebuilt as mocked: NO EXCUSES and its one line, “Messages · 4 of 8”, compact rows (tall frames for the portrait clips, a clean play mark, the Pro clip pulsing, locked titles struck through in red with how they open), ONE support box, the version line; no perk rows, no “No ads, ever.”, no Send feedback');
+  if (fit.scrollH > fit.h + 4) { await page.evaluate(() => { const s = document.getElementById('s-about'); s.scrollTop = s.scrollHeight; }); await sleep(500);
+    await frame(page, browser, '68.38-about-foot', 'About scrolled to its foot: the support box and the version line'); }
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

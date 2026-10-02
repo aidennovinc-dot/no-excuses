@@ -546,4 +546,40 @@ export async function run() {
       ? ok(`68.23 Testing's Estimate switch is a real unlock: ON leaves the store as a real Dots run that opens Estimate does once its result is read (unlocked, its tour at the map's ring, step ${on.tut}); OFF takes the unlock, the tour and its first play away`)
       : bad('68.23 a Testing unlock switch that is not a real unlock', JSON.stringify({ sw, played, on, off }));
   }
+  /* ---- build 69 (68.38): ABOUT IS REBUILT, as the picks page mocked it ("Well done on the about screen"). Four of eight open (Welcome, the Games, Skill
+     and Pro chests' clips), the Pro one unwatched. Top to bottom: the wordmark, the one line, "Messages · N of 8", the rows, ONE support box, the version
+     line; Send feedback absent while ABOUT.fbUrl is empty; no "watched" anywhere, no text inside a thumbnail, no "No ads" on the screen or in ABOUT; the
+     support box's label and line are ABOUT's; labels in the mono face, sentences in the sentence face, the blocks centred. Words read from config ---- */
+  {
+    const CP38 = await import(pathToFileURL(path.join(root, 'config', 'copy.js')).href);
+    const dotsOpen = { 'dots:blind': 1, 'dots:lead': 1 };
+    await setStorage({ ne: { v: 7, prefs: { story: 1, gridSeen: 1, menuSeen: 1, snd: 'off', played: 1, tut: 2, welcomeSeen: 1, menuUnl: { about: 1, prog: 1, board: 1 }, tuts: { next: 'done', about: 'done' },
+      chests: { games: 1, key: 1, pro: 1 }, spill: { games: 1, key: 1, pro: 1 }, readySeen: { games: 1, key: 1, pro: 1 }, msgSeen: { intro: 1, games: 1, skill: 1 } }, runs: [], ach: {}, unlock: dotsOpen, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await page.evaluate(async () => (await import('./ui/router.js')).show('s-about')); await sleep(700);
+    const a38 = await page.evaluate(async () => { const M = (await import('./config/messages.js')).MESSAGES, K = await import('./progress/key.js'), C = await import('./config/copy.js'), core = await import('./core.js');
+      const s = document.getElementById('s-about'), q = sel => s.querySelector(sel), shown = el => !!el && !el.hidden && el.getClientRects().length > 0;
+      const top = el => shown(el) ? Math.round(el.getBoundingClientRect().top) : null;
+      const blocks = [['wordmark', q('.wordmark')], ['line', q('#about-line')], ['label', q('#msg-lede')], ['list', q('#msglist')], ['support', q('#support')], ['version', [...s.querySelectorAll('.hint')].pop()]];
+      const probe = v => { const p = document.createElement('i'); p.style.fontFamily = v; s.appendChild(p); const f = getComputedStyle(p).fontFamily; p.remove(); return f; };
+      const MONO = probe('var(--mono)'), SENT = probe('var(--display)'), face = el => el ? getComputedStyle(el).fontFamily : '';
+      const centred = el => { if (!shown(el)) return false; const r = el.getBoundingClientRect(); return Math.abs(r.left - (innerWidth - r.right)) <= 3; };
+      const labels = [q('#msg-lede'), q('#support-title'), [...s.querySelectorAll('.hint')].pop(), ...[...s.querySelectorAll('.msgtxt small')].filter(e => e.textContent.trim())];
+      const sentences = [q('#about-line'), q('#support-text'), ...s.querySelectorAll('.msgtxt b')];
+      const open = M.filter(K.msgOpen).length;
+      return { order: blocks.map(([k, el]) => [k, top(el)]), text: s.innerText, fb: shown(q('#feedback')), fbUrl: C.ABOUT.fbUrl,
+        thumbText: [...s.querySelectorAll('.msgframe')].map(f => f.innerText.trim()).filter(Boolean), supports: s.querySelectorAll('.support,#tierbox,.tierbox').length,
+        supTitle: q('#support-title')?.textContent, supText: q('#support-text')?.textContent, wantTitle: C.ABOUT.supTitleOff, wantText: C.ABOUT.supTextOff,
+        label: q('#msg-lede')?.textContent, wantLabel: core.T(C.MSG.label || '', { done: open, total: M.length }), open,
+        badLabel: labels.filter(e => !e || face(e) !== MONO).map(e => e ? e.id || e.className || e.tagName : 'missing'),
+        badSent: sentences.filter(e => !e || face(e) !== SENT).map(e => e ? e.id || e.className || e.tagName : 'missing'),
+        centred: ['.wordmark', '#about-line', '#msg-lede', '#support'].filter(sel => !centred(q(sel))),
+        unwatched: [...s.querySelectorAll('.msgrow.unwatched')].map(r => r.dataset.msg) }; });
+    const tops = a38.order.map(([, t]) => t), inOrder = tops.every(t => t !== null) && tops.every((t, i) => !i || t > tops[i - 1]);
+    const noAds = !/no ads/i.test(a38.text) && !/no ads/i.test(JSON.stringify(CP38.ABOUT));
+    (inOrder && !/watched/i.test(a38.text) && !a38.thumbText.length && noAds && !a38.fbUrl && !a38.fb && a38.supports === 1 && a38.supTitle === a38.wantTitle && a38.supText === a38.wantText
+      && a38.wantLabel && a38.label === a38.wantLabel && a38.open === 4 && !a38.badLabel.length && !a38.badSent.length && !a38.centred.length && a38.unwatched.join() === 'pro')
+      ? ok(`68.38 About as mocked: ${a38.order.map(([k]) => k).join(' > ')} top to bottom; "${a38.label}"; one support box "${a38.supTitle}" / "${a38.supText}"; Send feedback absent while the form has no link; no "watched", no text in a thumbnail, no "No ads" anywhere; labels mono, sentences in the sentence face, centred; the unwatched Pro clip still pulses`)
+      : bad('68.38 the About screen', JSON.stringify({ inOrder, noAds, ...a38, text: a38.text.slice(0, 400) }));
+  }
 }

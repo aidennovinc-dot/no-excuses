@@ -1017,15 +1017,19 @@
   .support{border:1px solid var(--ink);padding:14px 22px;display:flex;flex-direction:column;gap:6px;align-items:center;max-width:32ch}
   .support b{font-family:var(--mono);font-weight:700;font-size:12px;letter-spacing:.22em;text-transform:uppercase}
   .support small{color:var(--mute);font-size:13px;line-height:1.45;text-align:center}
-  .tierbox{display:flex;flex-direction:column;gap:6px;width:min(92vw,380px);font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--mute);line-height:1.6}
-  .tierbox div{display:grid;grid-template-columns:1fr 1fr;gap:10px;border-top:1px solid var(--line);padding:6px 0}
-  .tierbox div:first-child{border:0;color:var(--ink);letter-spacing:.2em;text-transform:uppercase}
-  .tierbox b{color:var(--ink);font-weight:500}
-  .tierbox .y{color:var(--ok)}
   #s-about{overflow-y:auto;justify-content:flex-start;padding-top:max(18px,env(safe-area-inset-top))}
-  /* 13.1: the supporter block is a thank-you line and three lines of what it includes — no comparison table */
-  .tierbox div{grid-template-columns:1fr}
-  .tierbox div:first-child{border-top:1px solid var(--line);color:var(--mute);letter-spacing:.1em;text-transform:none}
+  /* build 69 (68.38): ABOUT AS MOCKED — the wide face for the wordmark alone; every label in the mono face, every sentence in the sentence face;
+     the blocks centred in one column. The three perk rows (13.1's tier box) are gone */
+  #s-about{gap:12px;padding-inline:max(18px,env(safe-area-inset-left)) max(18px,env(safe-area-inset-right))}
+  #s-about>.back{margin-bottom:0}
+  .abmark{font-size:18px;margin-top:4px}
+  .abline{font-family:var(--display);font-size:14px;line-height:1.5;color:var(--mute);text-align:center;max-width:34ch}
+  .ablabel{font-family:var(--mono);font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--mute);text-align:center;margin-top:10px}
+  #s-about .msglist{width:min(100%,420px)}
+  #s-about .support{width:min(100%,420px);max-width:none;padding:13px 14px;margin-top:6px}
+  #s-about .support b{font-weight:500;font-size:11px;letter-spacing:.2em}
+  #s-about .support small{font-family:var(--display);font-size:13px}
+  #s-about>.hint{margin-top:4px}
 
 /* ==================================================================
    pass — ui/screens/pass.js
@@ -2336,17 +2340,20 @@
      Eight rows, in unlock order. A locked row is CROSSED OUT with what opens it under it — the locked-mode pattern this app uses everywhere
      — and says nothing about what is in it. An open row with no clip shows the "video coming soon" frame; an open row with a clip plays it
      in place, `playsinline`, captions on, never full screen. */
-  .msgtitle{margin-top:20px}
-  #msg-lede{margin-bottom:2px}
-  .msglist{display:flex;flex-direction:column;gap:2px;width:100%;max-width:420px}
-  .msgrow{display:grid;grid-template-columns:74px 1fr;justify-items:start;align-items:center;gap:12px;width:100%;padding:9px 2px;background:none;border:0;border-bottom:1px solid var(--line);border-radius:0;text-align:left;cursor:pointer}
+  .msglist{display:flex;flex-direction:column;gap:0;width:100%;max-width:420px}
+  .msgrow{display:grid;grid-template-columns:40px 1fr;justify-items:start;align-items:center;gap:12px;width:100%;padding:7px 2px;background:none;border:0;border-bottom:1px solid var(--line);border-radius:0;text-align:left;cursor:pointer}
   /* v28 (item 12, build 53): the row's picture is the player powered off, the same frame the card shows — a thin white rounded border at the
      player's own 1px weight, glowing in the colour of the chest that unlocked it, with a play mark in it once the slot has a clip */
-  .msgframe{position:relative;height:42px;width:auto;aspect-ratio:var(--mp-arw,16)/var(--mp-arh,9);border:1px solid #FFFFFF;border-radius:5px;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;
+  /* build 69 (68.38 / L26): the thumbnail is its clip's shape inside a 40px square — a portrait clip 40 high, a landscape one 40 wide — centred in its column */
+  .msgframe{position:relative;justify-self:center;width:calc(40px * min(1, var(--mp-arw,16) / var(--mp-arh,9)));aspect-ratio:var(--mp-arw,16)/var(--mp-arh,9);border:1px solid #FFFFFF;border-radius:5px;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;
     box-shadow:0 0 12px -4px color-mix(in srgb,var(--vg,#FFFFFF) 55%,transparent)}
-  .msgrow.has .msgframe .mpplay{width:0;height:0;border-style:solid;border-width:7px 0 7px 12px;border-color:transparent transparent transparent #FFFFFF;opacity:.9;margin-left:2px}
+  .msgframe .mpplay{width:0;height:0;border-style:solid;border-width:6px 0 6px 9px;border-color:transparent transparent transparent #FFFFFF;opacity:.9;margin-left:2px}
   .msgframe i{font-style:normal;font-family:var(--mono);font-size:7px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);text-align:center;line-height:1.3;padding:0 3px}
-  .msgrow.locked .msgframe{filter:blur(2px);opacity:.5}
+  /* build 69 (68.38): a locked row's frame and play mark are dimmed, not blurred; its title wears the game's own cross-out (`.x::after`, the lock red)
+     across the title alone, how it opens under it */
+  .msgrow.locked .msgframe{opacity:.35}
+  .msgrow.locked .msgtxt b{position:relative;display:inline-block;color:var(--mute)}
+  .msgtxt small:empty{display:none}
   .msgtxt b{display:block;font-weight:500;font-size:13px;letter-spacing:.04em;color:var(--ink)}
   .msgtxt small{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-top:3px}
   .msgrow.has .msgtxt small{color:var(--ink)}
@@ -2722,8 +2729,7 @@
     #tapon.on{animation:none}
     #hicon line,#hicon circle.fg{animation:none}
   }
-  /* build 66 (#489): the feedback button before its form exists says so, dim */
-  #feedback.soon .fbsoon{color:var(--mute)}
+
   /* build 68 (67.38): THE EXCUSES — the tab's rows, the shrug that pops in a corner, the map's tiny exit */
   .exrow{display:grid;grid-template-columns:auto 1fr auto;gap:2px 10px;align-items:baseline;padding:10px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;text-align:left}
   .exrow b{font-family:var(--mono);font-size:11px;color:var(--mute);font-weight:400}

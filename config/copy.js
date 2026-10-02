@@ -410,8 +410,10 @@ export const BOARD = { rank:'rank', score:'score', date:'date', lowerMark:' ▼'
 export const SHARE = { text:'{name} scored {score}{rate} on No Excuses · {where}. Beat it: {url}', someone:'Someone' };
 
 // About, Customise, Achievements
-export const ABOUT = { tier:['No ads, ever.','Every colour, background and sound pack open from day one, plus the colour wheel.','A star on your profile.'],
-  supTitleOn:'Supporter · thank you', supTitleOff:'Support · A$1.99 · once', supTextOn:'Thank you — it keeps this going.', supTextOff:'A one-off, if you want to back it.',
+/* build 69 (68.38): About says support ONCE — one box, one line ("Removes ads" is the one mention of ads anywhere, 60.28); the three perk rows (`tier`)
+   are gone, and "No ads, ever." with them. After support the box is the thank-you */
+export const ABOUT = {
+  supTitleOn:'Supporter · thank you', supTitleOff:'Support the game · A$1.99, once', supTextOn:'Thank you — it keeps this going.', supTextOff:'Removes ads, opens every colour, background and sound, and adds a star to your profile.',
   devOpen:'open everything is ON · every mode and cosmetic available', devProg:'progression ON · {u} of {nu} modes earned · {a} of {na} achievements',
   devRuns:' · {r} runs on record · ', devSup:'supporter ON', devFree:'free tier · ads on',
   // v18 (B.26, build 32): a button per animation, dev only (S5). Each plays the real animation with nothing stored
@@ -430,8 +432,8 @@ export const ABOUT = { tier:['No ads, ever.','Every colour, background and sound
      the build, the device and the last run filled in, because those are the three things a bug report is useless
      without and the three a tester will not think to include. The body is pre-filled; what they write is their own. */
   /* build 66 (carried from FEEDBACK-v34, #489): NOT the Something Strange address. Feedback goes to a Tally form, the build and the device as hidden
-     fields (`fbUrl` + `fbQuery`); until the form's link exists `fbUrl` is empty, the button says so (`fbSoon`) and opens nothing */
-  fb:'Send feedback', fbUrl:'', fbQuery:'?version={build}&device={device}', fbSoon:'form coming soon', fbSubject:'No Excuses {build} — feedback',
+     fields (`fbUrl` + `fbQuery`); until the form's link exists `fbUrl` is empty and the button is not on About at all (68.38, build 69) */
+  fb:'Send feedback', fbUrl:'', fbQuery:'?version={build}&device={device}', fbSubject:'No Excuses {build} — feedback',
   fbBody:'What happened:\n\n\nWhat you expected:\n\n\n---\nBuild {build} · {when}\n{device}\nLast run: {run}',
   fbNoRun:'none yet' };
 // v14 (8.9): the `customise · {game} · colours are per game` line at the top is gone — the game chips and the group labels
@@ -622,7 +624,8 @@ export const CARD = {
    Eight slots, in unlock order (config/messages.js). An unlocked slot with a file plays inside the screen on a tap, captions on; an unlocked
    slot with no file yet shows the "video coming soon" frame; a locked one shows what opens it and nothing about what is in it (A.1's shape).
    Aiden records the clips and they drop in by filling a file name in — no code change (his decision, 2026-09-16). */
-export const MSG = { title:'messages', lede:'Short messages from Aiden, as you go.',
+// build 69 (68.38): `label` is About's one heading over the rows, "Messages · 4 of 8" (`title` and `lede` are no longer drawn there)
+export const MSG = { title:'messages', lede:'Short messages from Aiden, as you go.', label:'Messages · {done} of {total}',
   locked:'opens with {need}', soon:'video coming soon', play:'play', watched:'watched', count:'{done} of {total}',
   /* v27 (item 4, build 51): what a locked row says, composed from the slot's own `by` rather than written out per row. No chest, Gauntlet or game
      name is spelled twice — a chest fills `locked` with GRID.chestNeed × GRID.chest, and the three below take their own names the same way.

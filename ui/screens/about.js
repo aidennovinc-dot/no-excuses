@@ -13,12 +13,11 @@ import { Scores } from "../../progress.js";
 import { define } from "../actions.js";
 import { register } from "../router.js";
 import { toast } from "../toast.js";
-import { msgCol, msgThorn, ratioVars, thumbHtml } from "../chest.js";
+import { msgCol, msgThorn, ratioVars } from "../chest.js";
 import { onVideoSeen, playVideo } from "../video.js";
 
-// what supporting gets (v13, 13.1): no comparison table — a thank-you line and three lines of what is included. Pro lengths are gone (0.3)
-function renderTier(){ $('#tierbox').innerHTML=ABOUT.tier.map(t=>`<div><span>${t}</span></div>`).join('');
-  $('#support-title').textContent=prefs.supporter?ABOUT.supTitleOn:ABOUT.supTitleOff; $('#support-text').textContent=prefs.supporter?ABOUT.supTextOn:ABOUT.supTextOff; }
+// build 69 (68.38): ONE support box, one label and one line — the three perk rows went (v13's tier box); after support it is the thank-you
+function renderTier(){ $('#support-title').textContent=prefs.supporter?ABOUT.supTitleOn:ABOUT.supTitleOff; $('#support-text').textContent=prefs.supporter?ABOUT.supTextOn:ABOUT.supTextOff; }
 
 /* build 33 — SEND FEEDBACK (the beta paragraph, item 1). GitHub Pages is already the beta channel; what was missing was
    the way back from a tester. It is a mailto, built when the screen opens: no form, no endpoint, no third party, and
@@ -35,8 +34,9 @@ function renderFeedback(){ const a=$('#feedback'); if(!a) return; const build='v
   const q=s=>encodeURIComponent(s);
   /* build 66 (#489): the Tally form, with the build and the device filled in as hidden fields — or, until its link exists, a placeholder that says
      the form is coming and opens nothing (no mailto to the Something Strange address any more) */
-  if(ABOUT.fbUrl){ a.textContent=ABOUT.fb; a.href=ABOUT.fbUrl+T(ABOUT.fbQuery,{build:q(build),device:q(device())}); a.target='_blank'; a.rel='noopener'; a.classList.remove('soon'); return; }
-  a.innerHTML=`${esc(ABOUT.fb)}<small class="cusneed fbsoon">${esc(ABOUT.fbSoon)}</small>`; a.removeAttribute('href'); a.classList.add('soon'); }
+  // build 69 (68.38): until the form's link exists the button is not there at all — no "form coming soon"
+  if(ABOUT.fbUrl){ a.hidden=false; a.textContent=ABOUT.fb; a.href=ABOUT.fbUrl+T(ABOUT.fbQuery,{build:q(build),device:q(device())}); a.target='_blank'; a.rel='noopener'; return; }
+  a.hidden=true; a.removeAttribute('href'); }
 
 
 /* ---------- v25 (item 23, build 46): THE MESSAGES ----------
@@ -63,8 +63,9 @@ function renderFeedback(){ const a=$('#feedback'); if(!a) return; const build='v
    The row still repaints itself the moment its clip is watched — `onVideoSeen` — rather than rebuilding the list, because the list must not
    move under a player that is already up. */
 function playMsg(id){ const m=MESSAGES.find(x=>x.id===id); if(!m||!msgOpen(m)||!m.file) return false; return playVideo(m); }
+// build 69 (68.38): a watched row says nothing — it simply stops pulsing
 onVideoSeen(id=>{ const row=$(`#msglist .msgrow[data-msg="${id}"]`); if(!row) return;
-  row.classList.add('seen'); row.classList.remove('unwatched'); const t=row.querySelector('.msgtxt small'); if(t) t.textContent=MSG.watched; });
+  row.classList.add('seen'); row.classList.remove('unwatched'); });
 
 /* v27 (items 4 / 8, build 51-52): WHAT A LOCKED SLOT SAYS, composed rather than written out. Each row used to carry its own `need` string, which
    meant every chest and key name was spelled a second time here. The line is built from the slot's own `by`, one branch per kind of lock, and
@@ -80,15 +81,18 @@ const needOf=m=>{ const b=(m&&m.by)||null; if(!b) return '';
 /* R1 (item 8): the list draws only the slots that are SHOWN — a Gauntlet's row is not there at all until its Gauntlet has come out of its chest,
    no row and no gap — but the COUNTER COUNTS ALL EIGHT, both ends, so it always reads "N of 8" and a player knows two secrets exist without
    knowing what they are. msgShown() in progress/key.js is that test; MESSAGES.length is the total, so the two cannot drift apart. */
+/* build 69 (68.38): COMPACT ROWS, as the picks page mocked them. The heading is ONE label, "Messages · 4 of 8". A row is a small frame in its clip's own
+   shape (L26) with a clean play mark — no title printed inside it — and the title in the sentence face; nothing under an open row ("play" / "watched"
+   went: an unwatched clip still pulses, v26 item 4); a LOCKED row's title is struck through in the lock red with how it opens under it in small mono
+   capitals (needOf); an open slot with no clip yet says "video coming soon" there */
 function renderMessages(){ const box=$('#msglist'); if(!box) return; const seen=prefs.msgSeen||{};
   const open=MESSAGES.filter(msgOpen).length;
-  $('#msg-lede').textContent=MSG.lede+' · '+T(MSG.count,{done:open,total:MESSAGES.length});
+  $('#msg-lede').textContent=T(MSG.label,{done:open,total:MESSAGES.length});
   box.innerHTML=MESSAGES.filter(msgShown).map(m=>{ const o=msgOpen(m), has=o&&!!m.file, w=!!seen[m.id];
-    const state=!o?needOf(m):has?(w?MSG.watched:MSG.play):MSG.soon;
+    const state=!o?needOf(m):has?'':MSG.soon;
     return `<button class="msgrow${o?'':' locked'}${has?' has':''}${w?' seen':''}${has&&!w?' unwatched':''}" data-act="msg" data-msg="${esc(m.id)}">`
-      // v28 (item 12, build 53): the row's picture carries the play mark and the chest's glow — the same powered-off player the congratulations card shows
-      // build 68 (67.27): the row's frame in its chest's colour (the Author chest's in black-and-white teeth)
-      +`<span class="msgframe${msgThorn(m)?' vthorn':''}" style="${msgCol(m)?`--vg:${msgCol(m)};`:''}${ratioVars(m)}">${thumbHtml(m)}${has?'<i class="mpplay"></i>':`<i>${esc(o?MSG.soon:'')}</i>`}</span>`
+      // build 68 (67.27): the row's frame in its chest's colour (the Author chest's in black-and-white teeth); a still, if the row has one, under the play mark
+      +`<span class="msgframe${msgThorn(m)?' vthorn':''}" style="${msgCol(m)?`--vg:${msgCol(m)};`:''}${ratioVars(m)}">${m.thumb?`<img class="mthumb" src="${esc(m.thumb)}" alt="">`:''}${m.file?'<i class="mpplay"></i>':''}</span>`
       +`<span class="msgtxt"><b class="${o?'':'x'}">${esc(msgTitle(m))}</b><small class="${o?'':'need'}">${esc(state)}</small></span></button>`; }).join(''); }
 
 /* `msg` is the congratulations card's "A message from Aiden" button arriving here (item 22 × item 23): the screen opens with that row

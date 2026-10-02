@@ -174,13 +174,14 @@ export async function run() {
     await click('.back'); await sleep(300); await click('[data-go="s-about"]'); await sleep(500);
     const fb = await page.evaluate(() => { const a = document.getElementById('feedback'); if (!a) return null;
       return { tag: a.tagName, text: a.textContent, href: a.getAttribute('href'), act: a.dataset.act,
-        blue: getComputedStyle(a).textDecorationLine }; });
+        blue: getComputedStyle(a).textDecorationLine, gone: a.hidden && !a.getClientRects().length }; });
     /* AMENDED at build 66 (#489): NOT the Something Strange mailbox. Feedback is a Tally form with the build and the device as hidden fields; until
-       its link exists (`ABOUT.fbUrl` empty) the button says the form is coming and opens nothing. Both states are read off config */
+       its link exists (`ABOUT.fbUrl` empty) the button says the form is coming and opens nothing. Both states are read off config.
+       AMENDED at build 69 (68.38, "feedback hidden until the form exists"): with no link the button is not on the screen at all, rather than "form coming soon" */
     const CP33 = await import(pathToFileURL(path.join(root, 'config', 'copy.js')).href);
     (fb && fb.tag === 'A' && fb.act === 'none' && !/mailto:|somethingstrange/i.test(fb.href || '') && fb.blue === 'none'
-      && (CP33.ABOUT.fbUrl ? fb.href.startsWith(CP33.ABOUT.fbUrl) && fb.href.includes(`v0.${B33.BUILD}`) : !fb.href && fb.text.includes(CP33.ABOUT.fbSoon)))
-      ? ok(`beta 1 / #489 — Send feedback no longer mails the Something Strange address: ${CP33.ABOUT.fbUrl ? 'it opens the Tally form carrying v0.' + B33.BUILD + ' and the device' : 'until the Tally link exists it says "' + CP33.ABOUT.fbSoon + '" and opens nothing'}`)
+      && (CP33.ABOUT.fbUrl ? fb.href.startsWith(CP33.ABOUT.fbUrl) && fb.href.includes(`v0.${B33.BUILD}`) && !fb.gone : !fb.href && fb.gone))
+      ? ok(`beta 1 / #489 — Send feedback no longer mails the Something Strange address: ${CP33.ABOUT.fbUrl ? 'it opens the Tally form carrying v0.' + B33.BUILD + ' and the device' : 'until the Tally link exists it is not on About at all and opens nothing'}`)
       : bad('beta 1 the feedback link', JSON.stringify({ ...fb, href: (fb && fb.href || '').slice(0, 90) }));
     /* beta 2 — the tester's name on a run. REPORT WHAT YOU FOUND EVEN IF NOTHING IS WRONG: it was already built.
        `run/run.js` stamps `n: prefs.name` on every record, the result screen's rank line names the player and the

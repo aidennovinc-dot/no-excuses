@@ -265,21 +265,18 @@
 
 <section class="screen" id="s-about" data-back="s-menu">
   <button data-act="back" class="back">&larr; BACK</button>
-  <div class="wordmark" style="font-size:18px">No Excuses</div>
-  <div class="explain">A passion project of simple games of pure skill and minimal frills.<br><br>If you'd like to remove ads, add customisation, and show your support, tap below.</div>
-  <button data-act="support" class="support" id="support"><b id="support-title">Support · A$1.99 · once</b><small id="support-text">No ads, ever. Every colour, background and sound pack open from day one, plus the colour wheel. A pro 60-second length in Quick Tap and Dots, with its own boards. A star on your profile.</small></button>
-  <div class="tierbox" id="tierbox"></div>
-  <!-- build 33 (the beta paragraph, item 1): the way back from a tester. A mailto built in ui/screens/about.js with the
-       build, the device and the last run filled in. An <a>, so the link does its own work; data-act="none" is only the
-       click sound — nothing here knows what a mail client is, and nothing is sent without the tester's own send button -->
-  <a class="item sub" id="feedback" data-act="none" href="#">Send feedback</a>
+  <!-- build 69 (68.38): ABOUT IS REBUILT, as the picks page mocked it. Top to bottom: the wordmark and ONE line; "Messages · N of 8" and the rows;
+       ONE support box; Send feedback only once its form exists; the version line. Two faces — the mono for labels, the sentence face for sentences -->
+  <div class="wordmark abmark">No Excuses</div>
+  <p class="abline" id="about-line">A passion project of simple games of pure skill and minimal frills.</p>
   <!-- v25 (item 23, build 46): SHORT MESSAGES FROM AIDEN, unlocked one by one with progress. Eight slots, in unlock order, as DATA in
-       config/messages.js - a clip drops in by filling a file name in, with no code change. An unlocked slot plays INSIDE this screen
-       (tap-to-play, captions on, never full screen); one with no clip yet shows the "video coming soon" frame; a locked one says what
-       opens it and nothing about what is in it. ui/screens/about.js draws every row -->
-  <div class="eyebrow msgtitle" id="msg-title">messages</div>
-  <div class="hint" id="msg-lede"></div>
+       config/messages.js - a clip drops in by filling a file name in, with no code change. ui/screens/about.js draws every row -->
+  <div class="ablabel" id="msg-lede"></div>
   <div class="msglist" id="msglist"></div>
+  <button data-act="support" class="support" id="support"><b id="support-title">Support the game · A$1.99, once</b><small id="support-text">Removes ads, opens every colour, background and sound, and adds a star to your profile.</small></button>
+  <!-- build 33 (the beta paragraph, item 1): the way back from a tester, built in ui/screens/about.js. Build 69 (68.38): hidden entirely until
+       ABOUT.fbUrl (the form's link) exists -->
+  <a class="item sub" id="feedback" data-act="none" href="#" hidden>Send feedback</a>
   <div class="hint">v0.68 · feel and fixes · 2 oct 2026</div>
 </section>
 

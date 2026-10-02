@@ -247,7 +247,8 @@ tutorial('about',[
   { on:menuOn, el:item('s-about'), tap:1, door:'s-about', text:look('about') },
   { on:ab, room:'s-about', text:A[0] },
   { on:ab, room:'s-about', el:()=>$('#msglist'), text:A[1] },
-  { on:ab, room:'s-about', el:()=>$('#feedback'), text:A[2] },
+  // build 69 (68.38): Send feedback is not on About until its form exists, so its box waits for it
+  { on:ab, room:'s-about', el:()=>$('#feedback'), skip:()=>!$('#feedback')||$('#feedback').hidden, text:A[2] },
   { on:ab, room:'s-about', el:()=>$('#support'), text:A[3] },
   { on:ab, room:'s-about', text:A[4] },
 ],{ opened:()=>menuOpen('s-about'),

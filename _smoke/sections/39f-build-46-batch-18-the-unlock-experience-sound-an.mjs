@@ -162,16 +162,18 @@ export async function run() {
       : bad('67.27 the chest video colours', JSON.stringify({ want, v: (globalThis.__v28 || []).map(o => [o.chest, o.edge, o.thorn]), rows }));
   }
   /* build 68 (67.8): EVERY VIDEO HAS A THUMBNAIL — never a blank black box: About's every row, the Welcome card and a chest card's message row each show the
-     clip's still or, until the clip exists, the placeholder card carrying its name, with the play arrow over it */
+     clip's still or, until the clip exists, the placeholder card carrying its name, with the play arrow over it.
+     AMENDED at build 69 (68.38, "clean play button … no text inside the thumbnail"): About's rows are compact — each frame carries the play mark (or the
+     clip's still) and NO name inside it, so it is still never a blank black box; the Welcome card's and a chest card's preview keep the named card */
   {
     await boot({ allOpen: true });
     const th = await page.evaluate(async () => { (await import('./ui/router.js')).show('s-about'); await new Promise(r => setTimeout(r, 500));
       const C = await import('./ui/chest.js'), M = (await import('./config/messages.js')).MESSAGES;
-      const rows = [...document.querySelectorAll('#msglist .msgrow .msgframe')].map(f => ({ card: !!f.querySelector('.mcard, .mthumb'), name: (f.querySelector('.mcard b') || {}).textContent || '' }));
-      const d = document.createElement('div'); d.innerHTML = C.msgPreview(M[0], { title: false }); const prev = { card: !!d.querySelector('.mcard, .mthumb'), play: !!d.querySelector('.mpplay') };
+      const rows = [...document.querySelectorAll('#msglist .msgrow .msgframe')].map(f => ({ mark: !!f.querySelector('.mpplay, .mthumb'), text: f.innerText.trim() }));
+      const d = document.createElement('div'); d.innerHTML = C.msgPreview(M[0], { title: false }); const prev = { card: !!d.querySelector('.mcard, .mthumb'), play: !!d.querySelector('.mpplay'), name: (d.querySelector('.mcard b') || {}).textContent || '' };
       return { rows, prev }; });
-    (th.rows.length >= 5 && th.rows.every(r => r.card) && th.rows.filter(r => r.name).length >= 5 && th.prev.card && th.prev.play)
-      ? ok(`67.8 every video has a thumbnail — all ${th.rows.length} rows on About and the player's preview card show the placeholder card with the clip's name ("${th.rows[0].name}"…) under the play arrow; no blank black box`)
+    (th.rows.length >= 5 && th.rows.every(r => r.mark && !r.text) && th.prev.card && th.prev.play && th.prev.name)
+      ? ok(`67.8 / 68.38 every video has a thumbnail — all ${th.rows.length} rows on About show a clean play mark in the clip's frame with no text inside it, and the player's preview card shows the placeholder card with the clip's name (${th.prev.name}) under the play arrow; no blank black box`)
       : bad('67.8 the video thumbnails', JSON.stringify(th));
   }
   /* build 68 (67.14): A VIDEO THAT STOPS SWITCHES OFF LIKE AN OLD TV — about half a second of static ("chhh", Snd.staticFx) while the picture collapses to its
