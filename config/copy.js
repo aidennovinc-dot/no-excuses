@@ -303,7 +303,7 @@ export const VS_LINE = { sequence:'{n} lives each · the pattern grows a note a 
 /* build 68 (67.16): THE GOAL IS ONE LINE — "Round 5 of 6 → unlocks Reaction · Flash" — with its progress beside it (pips for a round goal, a bar for the
    rest); the two stacked lines that rolled over each other into Restart are gone. `allow` is a Streak's allowance, labelled, in the header */
 export const HUD = { goal:'<i><b>{need}</b> → unlocks {name}</i>', aim:'<i>goal · <b>{aim}</b></i>', keyGoal:'<i><b>{need}</b> → {name} · {key}</i>', roundOf:'Round {n} of {s}',
-  allow:'allowance {left} / {bud}{unit}', goalHit:'✓ ', best:'best {score}', versus:'versus', pass:'pass & play',
+  allow:'{left}{unit}', round:'Round {n}', goalHit:'✓ ', best:'best {score}', versus:'versus', pass:'pass & play',
   vsLead:'first to {t} · or lead by {n}', vsQt:'tap your white square', vsDots:'squares vs circles · wrong shape gives them the point', level:'level', lead:'{who} +{n}',
   draw:'draw', wins:'Player {n} wins', byLead:'by {n}', onClock:'on the clock', skipIn:'skip in {n}', skip:'skip' };
 // v14 (4.7 / 4.9): the game name sits in its usual place at the top, whose turn it is is the biggest thing on the screen, and

@@ -1,7 +1,7 @@
 /* No Excuses — Estimate — Grow and Cut
    Split out of index.html at build 12. Build 17 (refactor stage 3): the engine contract. Behaviour is identical to build 11. */
 
-import { ALLOWANCE, ESTIMATE as CP } from "../../config/copy.js";
+import { ALLOWANCE, ESTIMATE as CP, HUD } from "../../config/copy.js";
 import { CFG, ESTIMATE as EST, HOLD_LAYOUT as HL, STREAK } from "../../config/games.js";
 import { $, $$, T, f2, mean, minMax, vmin } from "../../core.js";
 import { haptic } from "../../core/platform.js";
@@ -125,6 +125,8 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
     if(none){ delete r.x; delete r.y; } if(this.maxed) r.mx=1; return r; },
   // v13 (6.2): "Round 2 of 7" in a Set; a Streak says "Round n" with the running total beside it
   hud(){ if(this.two.on) return hud.timeHtml(this.two.hudLine());
+    // build 69 (68.24): a Grow Streak (the Streak with an allowance) wears the header's allowance bar with what is left at its end, and its line is "Round N"
+    if(this.streak()&&!this.cut()){ const bud=EST.STREAK_BUD, left=Math.max(0,bud-this.total); hud.time(T(HUD.round,{n:this.round})); return hud.allowance(left,bud,'%',T(HUD.allow,{left:f2(left),unit:'%'})); }
     hud.time(this.streak()?T(CP.hudStreak,{n:this.round,tot:f2(this.total)}):T(CP.hudSet,{n:this.round,s:this.ctx.len})+(this.ctx.mode==='grow'?(this.est()?CP.diff:CP.same):'')); },
   /* v16 (1.5): the Streak budget is 100% (L5), so the ramp starts at 80 spent; a Set ramps over its last round. Music
      only (A.1). Estimate is the one engine that is NOT built on roundEngine — it owns its own wait() and its own round
@@ -231,9 +233,10 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
      the same frames that move the total, so the figure draining and the bar filling are one animation (60.18). */
   spendOf(err){ return this.cut()?err:Math.max(0,err-EST.GROW_FREE); },
   addUp(err,walk,raw){ const free=raw!==undefined&&!this.cut(), bud=EST.STREAK_BUD, spent=this.total;
-    if(free){ const c=$('#hcalc'); if(c) c.insertAdjacentHTML('beforeend',hud.allowHtml({ id:'hallow', add:f2(err), unit:'%', spent, budget:bud, free:EST.GROW_FREE, freeText:ALLOWANCE.freeEach })); }
-    hud.addUp({ audio:this.ctx.audio, from:this.total, err, ms:900, el:free?$('#hallow-add'):null, walk, fmt:v=>'+'+f2(v)+'%', alive:()=>this.st==='reveal',
-      onFrame:tot=>{ this.total=tot; if(free) hud.allowBar('hallow',spent,tot-spent,bud); hud.time(T(CP.hudStreak,{n:this.round,tot:f2(this.total)}));
+    // build 69 (68.24): the round's block is `hgallow` — `hallow` is the header's allowance bar, and two elements shared the id
+    if(free){ const c=$('#hcalc'); if(c) c.insertAdjacentHTML('beforeend',hud.allowHtml({ id:'hgallow', add:f2(err), unit:'%', spent, budget:bud, free:EST.GROW_FREE, freeText:ALLOWANCE.freeEach })); }
+    hud.addUp({ audio:this.ctx.audio, from:this.total, err, ms:900, el:free?$('#hgallow-add'):null, walk, fmt:v=>'+'+f2(v)+'%', alive:()=>this.st==='reveal',
+      onFrame:tot=>{ this.total=tot; if(free) hud.allowBar('hgallow',spent,tot-spent,bud); this.hud();
         const tv=$('#htotv'); if(tv) tv.textContent=T(CP.totalStreak,{v:f2(tot)+'%',bud}); },
       done:tot=>{ this.total=tot; this.hud(); this.ctx.emit('live',this.result()); this.wait(()=>this.next()); } }); },
   /* Cut (v11) — REDEALT at v26 §B2 (build 50). The shape comes from the dealer (config/shapes.js DEALS 'hold:cut'): each two-round band deals

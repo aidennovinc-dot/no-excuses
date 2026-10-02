@@ -85,9 +85,10 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
      Hidden's line keeps the whole sentence - it is the one that states its budget (B.13). */
   hud(){ if(this.two.on) return hud.timeHtml(this.two.hudLine());
     if(!this.streak()) return hud.time(T(CP.hudSet,{n:this.round,s:this.ctx.len}));
-    hud.time(this.hid()?T(CP.hudStreak,{n:this.round,tot:this.totTxt(),bud:this.budTxt()}):T(CP.hudAttempt,{n:this.round}));
-    // build 68 (67.16): the Stopwatch Streak's allowance is a labelled bar in the header, not the big number
-    if(!this.hid()){ const bud=this.budget(), left=Math.max(0,bud-this.tot); hud.allowance(left,bud,'s',T(HUD.allow,{left:left.toFixed(2),bud:bud.toFixed(2),unit:'s'})); } },
+    // build 68 (67.16) / 69 (68.24): a Streak's allowance is the header's bar with what is left at its end, Hidden's too, and the line is "Round N"
+    hud.time(T(CP.hudAttempt,{n:this.round}));
+    const hid=this.hid(), bud=this.budget(), left=Math.max(0,bud-this.tot), unit=hid?CP.msU:'s';
+    hud.allowance(left,bud,unit,T(HUD.allow,{left:hid?Math.round(left):left.toFixed(2),unit})); },
   /* v18 (B.3d): what the big white number reads in a Stopwatch Streak - "2.3 / 5.0s", the time spent out of the budget.
      It was the count of attempts completed, which "attempt N" underneath already said. Hidden keeps the count. */
   // v31 (60.14, build 60): TWO DECIMALS. "0.2 / 5.0s" becomes "0.16 / 5.00s" — a Stopwatch attempt is scored to a hundredth
@@ -295,7 +296,9 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
   addUp(err,hid,raw){ this.later(()=>{ if(this.st!=='show') return; this.drainUp(err,hid,raw); },CFG.hold); },
   drainUp(err,hid,raw){ const free=hid&&raw!==undefined, bud=this.budget(), spent=this.tot;
     if(free){ const g=$('#tmres'); if(g) g.insertAdjacentHTML('beforeend',hud.allowHtml({ id:'tmallow', add:Math.round(err), unit:CP.msU, spent, budget:bud, free:HIDDEN.free, freeText:ALLOWANCE.freeEach })); }
-    hud.addUp({ audio:this.ctx.audio, from:this.tot, err, ms:800, el:free?$('#tmallow-add'):$('#tmerr'), fmt:v=>free?'+'+Math.round(v)+CP.msU:(hid?Math.round(v)+CP.msU:f2(v)+'s'), alive:()=>this.st==='show',
+    /* build 69 (68.24): the round's own figure under the clock STAYS — Aiden saw "0.00s Great!" once a Stopwatch round had drained into the total. What
+       drains is the header's allowance bar (onFrame → hud()); Hidden's in-round "+Xms" still drains as 60.12 drew it */
+    hud.addUp({ audio:this.ctx.audio, from:this.tot, err, ms:800, el:free?$('#tmallow-add'):null, fmt:v=>'+'+Math.round(v)+CP.msU, alive:()=>this.st==='show',
       onFrame:tot=>{ this.tot=tot; if(free) hud.allowBar('tmallow',spent,tot-spent,bud); hud.score(this.streakScore()); this.hud(); },
       done:tot=>{ this.tot=tot; if(this.tot>=this.budget()) this.out=true; hud.score(this.streakScore()); this.hud();
         if(this.out){ const r=$('#tmres'); if(r) r.insertAdjacentHTML('beforeend',`<br>${T(CP.over,{bud:this.budTxt()})}`); }

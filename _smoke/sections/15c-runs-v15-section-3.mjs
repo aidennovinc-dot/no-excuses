@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { own, CLOCK, sleep, names, part, check, ok, bad, read, at, page, until, down, up, verdict } from '../lib/gate.mjs';
+import { own, CLOCK, sleep, names, part, check, ok, bad, read, at, page, until, down, up, verdict, boot } from '../lib/gate.mjs';
 
 export const SECTION = ["the runs (v15 section 3)"];
 
@@ -68,7 +68,9 @@ export async function run() {
       RX.onDown({ type: 'down', t: RX.t0 + 420 });
       await wait(120);
       const card = document.querySelector('.rxmsg');
-      const out = { headerBeforeDrain: document.getElementById('hud-time').textContent.trim(),
+      // AMENDED at build 69 (68.24): the header's budget is the allowance bar with what is left at its end, beside "Round N"
+      const head = () => document.getElementById('hud-time').textContent.trim() + ' | ' + ((document.getElementById('hallow').hidden ? '' : document.querySelector('#hallow span').textContent) || '');
+      const out = { headerBeforeDrain: head(),
         blocks: card ? [...card.children].map(e => e.className || e.tagName.toLowerCase()) : null,
         hasBaselineLine: !!card && /baseline/i.test(card.textContent),
         hasTotalLine: !!document.getElementById('rxtot') };
@@ -77,11 +79,11 @@ export async function run() {
       out.block = a ? { add: a.querySelector('.aadd').textContent, free: a.querySelector('.afree').textContent,
         barW: Math.round(a.querySelector('.abar').getBoundingClientRect().width),
         litW: Math.round(a.querySelector('.anew').getBoundingClientRect().width) } : null;
-      out.headerDuringDrain = document.getElementById('hud-time').textContent.trim();
+      out.headerDuringDrain = head();
       await wait(900);
-      out.headerAfter = document.getElementById('hud-time').textContent.trim();
+      out.headerAfter = head();
       RUN.abort(); await wait(300); return out; });
-    const ok60 = s => /of [0-9]+ms$/.test(s);
+    const ok60 = s => /^Round [0-9]+ \| [0-9]+ms$/.test(s);
     (fl60.block && fl60.blocks && fl60.blocks.includes('allow') && !fl60.hasBaselineLine && !fl60.hasTotalLine
       && /free each round/.test(fl60.block.free) && fl60.block.barW > 100 && fl60.block.litW > 0 && fl60.block.litW < fl60.block.barW
       && ok60(fl60.headerBeforeDrain) && ok60(fl60.headerDuringDrain) && ok60(fl60.headerAfter))
@@ -235,9 +237,10 @@ export async function run() {
       const shots = [0, 0.04, 0.16, 1.234, 5].map(v => { TM.tot = v; TM.hud(); return { tot: v, line: line() }; });
       TM.round = 11; TM.tot = 0.16; TM.hud(); const past10 = line();
       return { shots, past10 }; });
-    const two = dp60.shots.every(r => /^allowance [0-9]+\.[0-9]{2} \/ [0-9]+\.[0-9]{2}s$/i.test(r.line));
+    // AMENDED at build 69 (68.24): the label line is gone — the bar's right end reads what is left, still to two decimals ("4.84s")
+    const two = dp60.shots.every(r => /^[0-9]+\.[0-9]{2}s$/.test(r.line));
     const moves = dp60.shots.find(r => r.tot === 0.04).line !== dp60.shots.find(r => r.tot === 0).line;
-    (two && moves && /4\.84 \/ 5\.00s$/.test(dp60.shots.find(r => r.tot === 0.16).line) && /7\.34 \/ 7\.50s$/.test(dp60.past10))
+    (two && moves && /^4\.84s$/.test(dp60.shots.find(r => r.tot === 0.16).line) && /^7\.34s$/.test(dp60.past10))
       ? ok(`60.14 the Stopwatch Streak's running counter reads to two decimals — ${dp60.shots.map(r => '"' + r.line + '"').join(', ')}, and "${dp60.past10}" past round 10 — so a 0.04s round moves it where a single decimal did not`)
       : bad('60.14 the Stopwatch Streak counter', JSON.stringify(dp60)); }
 
@@ -315,4 +318,46 @@ export async function run() {
      not from when the round is drawn, so the check reads `t0` off the engine and taps against that rather than against a sleep.
      Three things: a tap inside the window scores NOTHING and leaves the attempt running, a tap after it scores normally, and
      HIDDEN IS NOT LOCKED — its ball can be behind the wall for 0.6s, so a second there would eat real answers. */
+
+  /* build 69 (68.24): A STREAK'S TOP, TIDIED. Aiden on Timing · Stopwatch · Streak: "I really like the idea of this allowance bar … it's just the top looks
+     quite a bit messy." Top to bottom: the goal box; the allowance bar with what is LEFT printed small at its right end (the "ALLOWANCE … / 5.00S" label
+     line gone); ONE line, game mode · Streak · Round N (the big duplicate number under it gone); then TARGET and its figure. Same top on Hidden. And his two
+     bugs: the goal read "Round 3 of 6" while the game read "Round 2" — the goal's round is the game's round in play, read every 40ms across a round's
+     landing and the next one starting; and "0.00s Great!" — the round's own figure drained to zero under the clock. The verdict area is empty while the
+     clock runs, and once the tap lands it holds that round's own figure and tier, never 0.00s. */
+  {
+    const U24 = await page.evaluate(async () => (await import('./config/unlocks.js')).UNLOCKS.map(u => u.key).filter(k => !/^reaction:(flash|nogo)$|^spot:/.test(k)));
+    await boot({ tuts: { next: 'done' } }, { unlock: Object.fromEntries(U24.map(k => [k, 1])) });
+    const top24 = () => page.evaluate(() => { const q = id => document.getElementById(id), r = e => e.getBoundingClientRect(), v = e => !!e && getComputedStyle(e).display !== 'none' && getComputedStyle(e).visibility !== 'hidden' && e.getClientRects().length > 0;
+      const al = q('hallow'), bar = al && al.querySelector('i'), lab = al && al.querySelector('span'), tg = document.querySelector('.tmtarget');
+      return { allowOn: v(al), allow: al ? al.textContent.trim() : '', leftAtEnd: !!(bar && lab && v(lab) && r(lab).left >= r(bar).right - 1 && Math.abs((r(lab).top + r(lab).bottom) / 2 - (r(bar).top + r(bar).bottom) / 2) < 8),
+        goalAbove: r(q('goal')).bottom <= r(al).top + 1, oneLine: Math.abs(r(q('hud-mode')).top - r(q('hud-time')).top) < 3 && r(q('hud-time')).left > r(q('hud-mode')).right - 1,
+        mode: q('hud-mode').textContent.trim(), round: q('hud-time').textContent.trim(), score: v(q('score')), lineAbove: !tg || r(q('hud-time')).bottom <= r(tg).top + 1 }; });
+    const shape = (t, mode) => t.allowOn && t.leftAtEnd && !/allowance|\//i.test(t.allow) && /^\d+(\.\d\d)?(s|ms)$/.test(t.allow) && t.goalAbove !== false && t.oneLine && t.mode === mode && /^Round \d+$/.test(t.round) && !t.score && t.lineAbove;
+    // Stopwatch: round 1 tapped near its target, the round's landing sampled, then round 2 mid-attempt
+    await page.evaluate(async () => { const S = await import('./core/state.js'), RN = await import('./run/run.js'); Object.assign(S.sel, { game: 'timing', diff: 'stopwatch', secs: -1, vs: 0, practice: 0 }); RN.start(); });
+    const sw = await page.evaluate(async () => { const TM = (await import('./games/timing/index.js')).default, w = ms => new Promise(r => setTimeout(r, ms)), q = id => document.getElementById(id);
+      const verdict = () => (q('tmres') || {}).textContent || '';
+      for (let i = 0; i < 2000 && !(TM.st === 'run' && performance.now() - TM.t0 > 1500); i++) await w(10);
+      const running = verdict();
+      for (let i = 0; i < 2000 && !(TM.st === 'run' && performance.now() - TM.t0 > TM.target * 1000 - 250); i++) await w(10);
+      const g = q('gen'), r = g.getBoundingClientRect(); g.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: r.left + 20, clientY: r.top + 20, pointerId: 1 }));
+      await w(60); const own = TM.errs[TM.errs.length - 1], tapped = verdict(), seen = [], pairs = [];
+      for (let i = 0; i < 120 && TM.round < 2; i++) { const gm = /Round (\d+) of/.exec(q('goal').textContent), hr = /Round (\d+)/.exec(q('hud-time').textContent); if (gm && hr) pairs.push(gm[1] + '/' + hr[1]); if (q('tmres')) seen.push(verdict()); await w(40); }
+      for (let i = 0; i < 10; i++) { const gm = /Round (\d+) of/.exec(q('goal').textContent), hr = /Round (\d+)/.exec(q('hud-time').textContent); if (gm && hr) pairs.push(gm[1] + '/' + hr[1]); await w(40); }
+      return { running, tapped, own, seen: [...new Set(seen)], pairs: [...new Set(pairs)] }; });
+    for (let i = 0; i < 100 && !(await page.evaluate(async () => { const TM = (await import('./games/timing/index.js')).default; return TM.st === 'run' && performance.now() - TM.t0 > 1500; })); i++) await sleep(60);
+    const swTop = await top24();
+    await page.evaluate(async () => (await import('./run/run.js')).abort(true)); await sleep(300);
+    await page.evaluate(async () => { const S = await import('./core/state.js'), RN = await import('./run/run.js'); Object.assign(S.sel, { game: 'timing', diff: 'hidden', secs: -1, vs: 0, practice: 0 }); RN.start(); });
+    for (let i = 0; i < 100 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) await sleep(60);
+    await sleep(300); const hdTop = await top24();
+    await page.evaluate(async () => (await import('./run/run.js')).abort(true)); await sleep(300);
+    const ownTxt = sw.own !== undefined ? sw.own.toFixed(2) + 's' : '?';
+    const agree = sw.pairs.length && sw.pairs.every(p => p.split('/')[0] === p.split('/')[1]);
+    const verdictOk = sw.running === '' && sw.tapped.startsWith(ownTxt) && sw.seen.length && sw.seen.every(t => t.startsWith(ownTxt));
+    (shape(swTop, 'Stopwatch · Streak') && shape(hdTop, 'Hidden · Streak') && agree && verdictOk)
+      ? ok(`68.24 a Streak's top, tidied: goal, then the allowance bar with "${swTop.allow}" at its right end (no label line), then one line "${swTop.mode} · ${swTop.round}", the big duplicate number gone, then TARGET — Hidden the same ("${hdTop.allow}", "${hdTop.mode} · ${hdTop.round}"); the goal and the game on the same round at every read across a round's landing (${sw.pairs.join(', ')}); the verdict empty while the clock runs and "${sw.seen.join('" / "')}" after the tap — the round's own ${ownTxt}, never 0.00s`)
+      : bad('68.24 the Streak top', JSON.stringify({ swTop, hdTop, sw }));
+  }
 }

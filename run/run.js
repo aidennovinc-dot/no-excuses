@@ -72,6 +72,8 @@ function goalScan(){ const gl=$('#goal'); if(!gl) return; const gm=$('#game'), l
 function goalGo(el){ el.style.setProperty('--gwait',GOAL_SCAN.hold+'ms'); el.classList.add('go'); }
 // a held card between rounds: a line still at its start walks once now
 new MutationObserver(()=>{ if(!$('#game').classList.contains('tapon')) return; for(const el of document.querySelectorAll('#goal>.scan:not(.go)')) goalGo(el); }).observe($('#game'),{ attributes:true, attributeFilter:['class'] });
+// the game's round line moved: a round goal follows it (68.24)
+new MutationObserver(()=>{ if(R.on&&R.goal&&!R.goalHit&&eng){ const B=goalBest(R.goal); if(B&&B.rounds&&goalPut($('#goal'),goalHtml(R.goalRes))) requestAnimationFrame(()=>goalScan()); } }).observe($('#hud-time'),{ childList:true, characterData:true, subtree:true });
 // a live update rewrites only what changed: the progress line every time, the text only when its words did (68.10)
 function goalPut(gl,html){ const t=document.createElement('template'); t.innerHTML=html; const now=[...gl.children], next=[...t.content.children];
   const same=now.length===next.length&&now.every((e,i)=>e.tagName===next[i].tagName&&(e.matches('.gbar,.gpips')||e.innerHTML===next[i].innerHTML));
@@ -82,9 +84,12 @@ const here=need=>{ const n=GAMES[sel.game].name; return String(need).split(n+' �
    as the run goes; any other goal says what it asks and fills a short bar, both read off the same best-run tables the next-unlock card uses
    (progress/rules.js), so the line and the card cannot measure two different things */
 function goalBest(G){ if(!G) return null; if(G.len){ const L=G.len, i=GC(L.g,L.d).lens.indexOf(L.s); return (LEN_BEST[L.g+':'+L.d]||[])[i]||null; } return UNLOCK_BEST[G.key]||null; }
+/* build 69 (68.24): a round goal's "Round N of 6" is the GAME's round in play (the engine's `round`, which its own "Round N" line prints), so the two always
+   agree; it read the round after the one that had just landed (done + 1) for the second before the game moved on — "Round 3 of 6" over "Round 2". The pips
+   still light the moment a round lands. Rewritten when the game's line changes (the observer below), not only on a live update */
 function goalHtml(res){ const G=R.goal, B=goalBest(G), v=B&&res?B.v(res):null, n=Number.isFinite(+v)&&v!==null?+v:null;
-  if(B&&B.rounds){ const done=Math.max(0,Math.min(B.at,n||0));
-    return T(HUD.goal,{need:T(HUD.roundOf,{n:Math.min(B.at,done+1),s:B.at}),name:unlockName(G.key)})+`<span class="gpips">${Array.from({length:B.at},(_,i)=>`<i class="${i<done?'on':''}"></i>`).join('')}</span>`; }
+  if(B&&B.rounds){ const done=Math.max(0,Math.min(B.at,n||0)), inPlay=R.live&&eng&&eng.round>0?eng.round:done+1;
+    return T(HUD.goal,{need:T(HUD.roundOf,{n:Math.min(B.at,inPlay),s:B.at}),name:unlockName(G.key)})+`<span class="gpips">${Array.from({length:B.at},(_,i)=>`<i class="${i<done?'on':''}"></i>`).join('')}</span>`; }
   const f=n===null||!B?0:B.lower?Math.min(1,B.at/Math.max(n,1e-9)):Math.min(1,Math.max(0,n)/B.at);
   return (G.kt?T(HUD.keyGoal,{need:G.need,name:G.name,key:G.keyName}):T(HUD.goal,{need:here(G.need),name:unlockName(G.key)}))+(B?`<span class="gbar"><u style="width:${Math.round(f*100)}%"></u></span>`:''); }
 
@@ -128,7 +133,7 @@ function makeCtx(){ const id=R.id; const timers=makeTimers(()=>R.on&&R.id===id);
        80% — and the music reads it. A timed run needs nothing here: the clock already tells audio.js. MUSIC ONLY (A.1). */
     emit(name,data){ if(R.id!==id) return; if(name==='finish') finish(data); else if(name==='live'){ if(eng&&eng.fin) R.fin=Math.max(0,Math.min(1,eng.fin()||0)); liveCheck(data);
       // build 68 (67.16): the goal line's pips and bar follow the run
-      if(R.goal&&!R.goalHit&&data){ if(goalPut($('#goal'),goalHtml(data))) requestAnimationFrame(()=>goalScan()); } } } }; }
+      if(R.goal&&!R.goalHit&&data){ R.goalRes=data; if(goalPut($('#goal'),goalHtml(data))) requestAnimationFrame(()=>goalScan()); } } } }; }
 function start(){
   const g=GAMES[sel.game]; let c=GC(sel.game,sel.diff,sel.secs); $('#game').dataset.g=sel.game; $('#game').dataset.d=sel.diff;
   // two players (v10): pass & play (sel.vs 1) takes turns at a fixed length; versus (sel.vs 2) is one run at both ends. v11: Sequence and Count run both players on one screen inside their own engine; Reaction and Sequence handle versus themselves
@@ -176,7 +181,7 @@ function start(){
   // build 69 (68.16): the run timer this mode wears (config/games.js TIMER) — a ring round the score or a bar; a run with no clock has none
   hud.timer(g.timed&&!vx?sel.game+':'+sel.diff:null);
   if(ctx) ctx.timers.clearT();
-  $('#game').classList.toggle('gaunt',!!pendingGaunt); R.id++; Object.assign(R,{on:true,live:false,gaunt:pendingGaunt,timed:!!g.timed&&!vx,t0:0,end:0,goalHit:false,fresh:[],lenNext:null,lenDone:false,demo:false,tension:0,fin:0,vsP:[0,0],flow:0,flowT:0,
+  $('#game').classList.toggle('gaunt',!!pendingGaunt); R.id++; Object.assign(R,{on:true,live:false,gaunt:pendingGaunt,timed:!!g.timed&&!vx,t0:0,end:0,goalHit:false,goalRes:null,fresh:[],lenNext:null,lenDone:false,demo:false,tension:0,fin:0,vsP:[0,0],flow:0,flowT:0,
     flowOn:!VS.on&&!sel.vs&&(sel.game==='quick-tap'||sel.game==='dots')});
   $('#game').classList.remove('flowon'); $('#game').style.setProperty('--flow','0');
   /* v17 (B.5, L6): the next length this run could open, and the test that says so. It is computed ONCE per run because a

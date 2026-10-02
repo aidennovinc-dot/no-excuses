@@ -2044,3 +2044,13 @@ anything Aiden settles goes on the list in the build that implements it.
   pulse a second, opacity `pulseLo` (.55) to 1; Reduce Motion, no pulse. The small clock number stays. The thin line along the bottom of the screen
   (`#bar`) is gone. The board's Run timers section (`timersRef()` in `_review/scripts/catalogue.ref.mjs`) lists every timed mode. Gate: `the runs`
   (15d), "68.16": every timed mode solo and pass & play, one timer of the configured kind, no `#bar`, moving with the clock, amber at ≤ 3s.
+- **A Streak's top, tidied (68.24).** Aiden on Timing · Stopwatch · Streak: "I really like the idea of this allowance bar … it's just the top looks quite
+  a bit messy." Top to bottom: the goal box; the allowance bar with what is LEFT printed small at its right end ("4.59s", `HUD.allow`), the "ALLOWANCE …
+  / 5.00S" label line gone; ONE line "Stopwatch · Streak · Round 2" (`#top.allow` lays the mode and the round on one line and hides the big number, which
+  was the rounds again); then TARGET and its figure. Every Streak with an allowance wears it: Stopwatch, Hidden, Grow, Flash, Go / No-go (their "Round
+  N · X of Y" lines are the bar now). Two bugs with it: the goal read "Round 3 of 6" while the game read "Round 2" — a round goal's "Round N of 6" is the
+  game's round IN PLAY now (the engine's `round`, rewritten when the game's line changes), the pips still lighting as each round lands, because the
+  requirement is to REACH round 6 and the game counts the round being played; and "0.00s Great!" under the clock — a Stopwatch round's own figure drained
+  into the total and read zero. It stays now (the round's own figure holds, 67.17); the header bar is what drains. Estimate's in-round allowance block is
+  `hgallow` (it shared the id `hallow` with the header's bar). Gate: `the runs` (15c), "68.24"; 67.16 (15b), 60.14 and 60.18 (15c) amended to the
+  bar's new reading.

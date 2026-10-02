@@ -408,7 +408,8 @@ export async function run() {
       return { kids, tot: !!document.getElementById('rxtot'), score: document.getElementById('score').textContent.trim(), text: m ? m.textContent : '' }; });
     await page.evaluate(async () => (await import('./run/run.js')).abort(true)); await sleep(300);
     const C17 = await page.evaluate(async () => (await import('./config/copy.js')).REACTION);
-    const okSw = sw.goal.startsWith(sw.want) && /→ unlocks Reaction · Flash/.test(sw.goal) && sw.lines === 1 && sw.pips === 6 && sw.below && /^allowance \d+\.\d\d \/ 5\.00s$/i.test(sw.allow || '') && /^\d+$/.test(sw.score)
+    // AMENDED at build 69 (68.24): the allowance's label line is gone — what is LEFT sits at the bar's right end ("4.59s")
+    const okSw = sw.goal.startsWith(sw.want) && /→ unlocks Reaction · Flash/.test(sw.goal) && sw.lines === 1 && sw.pips === 6 && sw.below && /^\d+\.\d\ds$/.test(sw.allow || '') && /^\d+$/.test(sw.score)
       && sw.round === 'Round 1' && !sw.restart && !sw.top.length && sw.modeUnder && !sw.att;
     const okRx = rx0.score === C17.avgTop.replace('{n}', '—') && rx0.round === C17.hudSet.replace('{n}', 1).replace('{s}', 5) && rx1.kids[0] && rx1.kids[0].startsWith('B') && rx1.kids.some(k => /rxword/.test(k)) && !rx1.tot && /^AVG \d+ ms$/.test(rx1.score);
     (okSw && okRx)

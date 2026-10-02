@@ -1430,9 +1430,14 @@
   #goal .gpips i.on{background:var(--ink)}
   #goal .gbar{position:absolute;left:0;right:0;top:0;height:2px;pointer-events:none}
   #goal .gbar u{position:absolute;left:0;top:0;bottom:0;background:var(--ink)}
-  #hallow{width:min(70vw,260px);display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
+  /* build 69 (68.24): the bar, then what is left small at its right end; one header line (mode · Round N) and no big number while it is up */
+  #hallow{width:min(70vw,260px);display:flex;flex-direction:row;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--mute);font-variant-numeric:tabular-nums}
   #hallow[hidden]{display:none}
-  #hallow i{display:block;width:100%;height:4px;background:var(--line);position:relative}
+  #hallow i{display:block;flex:1;min-width:0;height:4px;background:var(--line);position:relative}
+  #hallow span{flex:none}
+  #top.allow .hud{flex-direction:row;justify-content:center;align-items:baseline;gap:0}
+  #top.allow .hud>#hud-time::before{content:"\00a0·\00a0"}
+  #top.allow #score{display:none}
   #hallow u{position:absolute;left:0;top:0;bottom:0;background:var(--ink);transition:width .25s ease-out}
   #goal b{color:var(--ink);font-weight:500}
   #goal.hit{border-color:var(--ok);color:var(--ok);animation:pop .3s ease-out}

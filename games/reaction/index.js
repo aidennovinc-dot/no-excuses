@@ -1,7 +1,7 @@
 /* No Excuses — Reaction — Flash and Go/No-go
    Split out of index.html at build 12. Build 17 (refactor stage 3): the engine contract, on the round base. Behaviour is identical to build 11. */
 
-import { ALLOWANCE, REACTION as CP } from "../../config/copy.js";
+import { ALLOWANCE, HUD, REACTION as CP } from "../../config/copy.js";
 import { CFG, NOGO_COUNTER } from "../../config/games.js";
 import { DEALS, NOGO_TURNS, SHAPES } from "../../config/shapes.js";
 import { $, $$, T, mean, minMax, pWho, vmin, winner } from "../../core.js";
@@ -114,7 +114,9 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
     /* v31 (60.18, build 60): THE BUDGET WAS MISSING. `hudStreak` is 'attempt {n} · {over} of {bud}ms' and this call passed no
        `bud`, so between rounds the Flash Streak header read "attempt 1 · 398 of ms". The DRAIN's own call passed it and this one did
        not, which is why only the line between rounds was broken. Go / No-go's line has always passed both. */
-    hud.time(this.streak()?T(CP.hudStreak,{n:this.round,over:Math.round(this.over),bud:this.nogo()?this.NOGO_BUD:this.FLASH_BUD}):T(CP.hudSet,{n:this.round,s:this.ctx.len})); },
+    /* build 69 (68.24): a Streak's budget is the header's allowance bar with what is left at its end, and the line is "Round N" — the same top as Timing's */
+    if(this.streak()){ const bud=this.nogo()?this.NOGO_BUD:this.FLASH_BUD, left=Math.max(0,bud-this.over); hud.time(T(HUD.round,{n:this.round})); return hud.allowance(left,bud,'ms',T(HUD.allow,{left:Math.round(left),unit:'ms'})); }
+    hud.time(T(CP.hudSet,{n:this.round,s:this.ctx.len})); },
   next(){ this.clearT(); this.round++;
     // v15 (4.4): the run is over when both players have had their turns; every turn opens with the hand-over card
     if(this.two.on){ if(this.two.over()) return this.ctx.emit('finish',this.two.record()); return this.two.gate(this,()=>this.turnStart()); }
@@ -177,7 +179,7 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
     // the block writes '+177ms' with no space, so the drain that replaces its text has to match it (CP.ms carries a leading space
     // for the big figure above, where it belongs)
     hud.addUp({ audio:this.ctx.audio, from:this.over, err:add, ms:900, el:$('#rxallow-add'), fmt:v=>'+'+Math.round(v)+CP.ms.trim(), alive:()=>this.st==='show',
-      onFrame:tot=>{ this.over=tot; hud.allowBar('rxallow',spent,tot-spent,bud); hud.time(T(CP.hudStreak,{n:this.round,over:Math.round(this.over),bud})); },
+      onFrame:tot=>{ this.over=tot; hud.allowBar('rxallow',spent,tot-spent,bud); this.hud(); },
       done:tot=>{ this.over=tot; if(this.over>=this.FLASH_BUD){ this.out=true; const m=$('#rxallow'); if(m) m.insertAdjacentHTML('afterend',`<span class="sub">${T(CP.reached,{bud:this.FLASH_BUD})}</span>`); }
         this.hud(); this.ctx.emit('live',this.result()); this.wait(()=>this.next()); } }); },
   /* v31 (60.27, build 60): a Flash waiting to light, or a Go / No-go block mid-beat, is replayed from the top of the round.

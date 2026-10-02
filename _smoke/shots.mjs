@@ -2268,6 +2268,30 @@ scene('68.16', async (page, browser) => {
   }
 });
 
+/* 68.24: a Stopwatch Streak, round 1 tapped near its target, then round 2 mid-attempt (and the same top on Hidden) */
+const UNL69 = async page => Object.fromEntries((await page.evaluate(async () => (await import('./config/unlocks.js')).UNLOCKS.map(u => u.key).filter(k => !/^reaction:(flash|nogo)$|^spot:/.test(k)))).map(k => [k, Date.now()]));
+const tmTap = (page, early = .25) => page.evaluate(async e => { const TM = (await import('./games/timing/index.js')).default, w = ms => new Promise(r => setTimeout(r, ms));
+  for (let i = 0; i < 2000 && !(TM.st === 'run' && performance.now() - TM.t0 > TM.target * 1000 - e * 1000); i++) await w(10);
+  const g = document.getElementById('gen'), r = g.getBoundingClientRect(); g.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: r.left + 20, clientY: r.top + 20, pointerId: 1 })); }, early);
+const topRead = page => page.evaluate(() => { const q = id => document.getElementById(id), v = e => !!e && getComputedStyle(e).display !== 'none' && getComputedStyle(e).visibility !== 'hidden' && e.getClientRects().length > 0;
+  return { goal: q('goal').textContent, allow: q('hallow').hidden ? null : q('hallow').textContent, line: q('hud-mode').textContent + ' | ' + q('hud-time').textContent, score: v(q('score')) ? q('score').textContent : '(hidden)', gen: q('gen').textContent.replace(/\s+/g, ' ').trim() }; });
+scene('68.24', async (page, browser) => {
+  await load(page, RUN69, { unlock: await UNL69(page) }); await start69(page, 'timing', 'stopwatch', -1);
+  await tmTap(page); await sleep(3300);
+  await page.evaluate(async () => { const TM = (await import('./games/timing/index.js')).default, w = ms => new Promise(r => setTimeout(r, ms)); for (let i = 0; i < 600 && !(TM.st === 'run' && performance.now() - TM.t0 > 2000); i++) await w(10); });
+  say('top', await topRead(page));
+  await frame(page, browser, '68.24-timing-top', 'Timing · Stopwatch · Streak, round 2 mid-attempt: the goal box; the allowance bar with what is left at its right end; one line “Stopwatch · Streak · Round 2”; TARGET and its figure; nothing under the clock until the tap');
+  await page.evaluate(async () => (await import('./run/run.js')).abort(true)); await sleep(400);
+  await load(page, RUN69, { unlock: await UNL69(page) }); await start69(page, 'timing', 'stopwatch', -1);
+  await tmTap(page); await sleep(3300); await tmTap(page, .2); await sleep(2000);
+  say('afterTap', await topRead(page));
+  await frame(page, browser, '68.24-timing-tapped', 'The same run after round 2’s tap: the round’s own figure and tier under the clock (never 0.00s), the goal and the game on the same round');
+  await page.evaluate(async () => (await import('./run/run.js')).abort(true)); await sleep(400);
+  await load(page, RUN69, { unlock: await UNL69(page) }); await start69(page, 'timing', 'hidden', -1);
+  await sleep(2500); say('hidden', await topRead(page));
+  await frame(page, browser, '68.24-hidden-top', 'Timing · Hidden · Streak: the same top — goal, allowance bar with what is left at its end, one line “Hidden · Streak · Round 1”');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

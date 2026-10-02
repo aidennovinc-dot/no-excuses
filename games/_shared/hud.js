@@ -136,9 +136,12 @@ function allowBar(id,spent,landed,budget){ const el=$('#'+id+'-new'), s=$('#'+id
   const pc=v=>Math.max(0,Math.min(100,v/budget*100));
   s.style.width=pc(spent)+'%'; el.style.width=pc(landed)+'%'; }
 
-/* build 68 (67.16): A STREAK'S ALLOWANCE, LABELLED, IN THE HEADER — a draining bar under the goal line, "allowance 1.77 / 5.00s". On a Stopwatch Streak
-   it was the biggest number on the screen with no word on it, so it read as the score. `left` null hides it */
-function allowance(left,bud,unit,txt){ const el=$('#hallow'); if(!el) return; if(left===null||left===undefined){ el.hidden=true; return; }
+/* build 68 (67.16): A STREAK'S ALLOWANCE, LABELLED, IN THE HEADER — a draining bar under the goal line. `left` null hides it.
+   build 69 (68.24): "I really like the idea of this allowance bar … it's just the top looks quite a bit messy." What is LEFT sits small at the bar's right
+   end ("4.59s") and the label line is gone; while it is up the header is one line, game mode · Streak · Round N, and the big number under it (the rounds
+   again) goes (`#top.allow`, the stylesheet). Every Streak with an allowance: Stopwatch, Hidden, Grow, Flash, Go / No-go */
+function allowance(left,bud,unit,txt){ const el=$('#hallow'); if(!el) return; const on=!(left===null||left===undefined); $('#top').classList.toggle('allow',on);
+  if(!on){ el.hidden=true; return; }
   el.hidden=false; el.querySelector('span').textContent=txt; el.querySelector('u').style.width=Math.max(0,Math.min(100,left/bud*100))+'%'; }
 function reset(){ allowance(null); $('#bigcount').textContent='0'; $('#score').style.visibility=''; $('#gen').innerHTML=''; $('#rxbar').innerHTML=''; $('#hud-time').classList.remove('you'); $('#seq').classList.remove('watch','input'); $('#turn').classList.remove('on','stay','p1','p2'); $('#rate i').style.height='0'; $('#rate b').textContent='0.0/s'; $('#edge').style.opacity=0; hold(false); }
 // the ghost finger (v6): the first-play demo moves it, taps with it, holds with it. `later` is the demo's own timer set
