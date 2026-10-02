@@ -1068,7 +1068,9 @@
   #s-over.on .stats span:nth-child(2){animation-delay:.25s}
   /* build 62 (61.1): an abandoned run puts Retry straight under its line; everything else follows it */
   #s-over.abandoned>.change,#s-over.abandoned>#over-back,#s-over.abandoned>.row,#s-over.abandoned>#over-top,#s-over.abandoned>#egg,#s-over.abandoned>#to-games{order:1}
-  #s-over.abandoned #over-eyebrow{color:var(--mute)}
+  /* build 69 (68.8): the one word, between the old eyebrow and the old bold line in size and weight; no dash, no line under it */
+  #s-over.abandoned #over-eyebrow{color:var(--mute);font-size:18px;font-weight:500;letter-spacing:.2em}
+  #s-over.abandoned #over-score,#s-over.abandoned #verdict{display:none}
   #s-over.on .stats span:nth-child(3){animation-delay:.5s}
   #s-over.on .stats span:nth-child(4){animation-delay:.75s}
   #to-games{margin-top:22px;font-size:20px;padding:16px 44px}

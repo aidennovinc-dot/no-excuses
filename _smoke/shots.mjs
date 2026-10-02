@@ -2319,6 +2319,14 @@ scene('68.20', async (page, browser) => {
   await page.evaluate(async () => (await import('./run/run.js')).abort(true)); await sleep(400);
 });
 
+// 68.8: ✕ mid-run on Quick Tap — the Abandoned screen
+scene('68.8', async (page, browser) => {
+  await load(page, RUN69, QT69); await runOf(page, 'quick-tap'); await sleep(600);
+  await page.evaluate(() => document.getElementById('quit').click()); await sleep(3400);
+  say('lines', await page.evaluate(() => [...document.querySelectorAll('#s-over > *')].filter(e => e.getClientRects().length && getComputedStyle(e).display !== 'none').map(e => e.id + ': ' + e.textContent.trim().slice(0, 30))));
+  await frame(page, browser, '68.8-abandoned', 'Exit mid-run: one word, “Abandoned”, mid grey and between the old eyebrow and the old line in size; no dash, no “Run abandoned · nothing saved”; Retry, then Game select (L21)');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

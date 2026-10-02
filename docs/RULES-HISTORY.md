@@ -2066,3 +2066,7 @@ anything Aiden settles goes on the list in the build that implements it.
   figure stays its own line (65.7). Every ladder shape has an axis of symmetry, so v13 6.4 means Cut never asks 50% now. Pass & play still counts
   each player's own turns. Gate: `the runs` (15e), "68.20"; v26 §B2's Grow and Cut checks amended (the odd / even clause, the pool's spiral / heart /
   cat, Cut's "50% was asked").
+- **The abandoned screen says "Abandoned" once (68.8).** Aiden: "One word, sized and weighted between the two there now, mid grey. 'Run abandoned ·
+  nothing saved' goes." The eyebrow is the one word (`RESULT.abandoned`, 18px, weight 500, `--mute`); the "Run abandoned · nothing saved" line
+  (`RESULT.abandonedLine`, removed from `config/copy.js`) and the white dash where the score sits are not drawn on it. Retry stays (L21), Game select
+  stays. Gate: `the runs` (15f), "68.8".

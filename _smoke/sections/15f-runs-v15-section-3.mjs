@@ -144,6 +144,18 @@ export async function run() {
     (ab.on && ab.ab && ab.eyebrow === ab.want && ab.again === ab.retry && ab.aTop < ab.cTop && after === before)
       ? ok(`61.1 Exit mid-run lands on the result screen marked "${ab.eyebrow}", "${ab.again}" above the chips, and no run is recorded (${before} → ${after})`)
       : bad('61.1 Exit mid-run', JSON.stringify({ ...ab, before, after }));
+    /* build 69 (68.8): THE ABANDONED SCREEN SAYS "ABANDONED" ONCE. Aiden: "One word, sized and weighted between the two there now, mid grey. 'Run
+       abandoned · nothing saved' goes" — and the white dash with it. Read off the screen as drawn: every visible text node on it, the one that says
+       abandoned (exactly one), no "nothing saved", no dash where the score sits, its size between the old eyebrow's and the old line's, mid grey */
+    const ab8 = await page.evaluate(async () => { const C = await import('./config/copy.js'), s = document.getElementById('s-over');
+      const vis = e => { for (let n = e; n && n !== document.body; n = n.parentElement) { const cs = getComputedStyle(n); if (cs.display === 'none' || cs.visibility === 'hidden' || n.hidden) return false; } return e.getClientRects().length > 0; };
+      const texts = []; const tw = document.createTreeWalker(s, NodeFilter.SHOW_TEXT); for (let n = tw.nextNode(); n; n = tw.nextNode()) { const t = n.textContent.trim(); if (t && vis(n.parentElement)) texts.push({ t, id: n.parentElement.id || n.parentElement.className, fs: parseFloat(getComputedStyle(n.parentElement).fontSize), fw: getComputedStyle(n.parentElement).fontWeight, col: getComputedStyle(n.parentElement).color }); }
+      const probe = document.createElement('span'); probe.style.color = 'var(--mute)'; s.appendChild(probe); const mute = getComputedStyle(probe).color; probe.remove();
+      return { texts, dash: C.RESULT.dash, mute }; });
+    const abT = ab8.texts.filter(x => /abandon/i.test(x.t)), word = abT[0];
+    (abT.length === 1 && /^abandoned$/i.test(word.t) && !ab8.texts.some(x => /nothing saved/i.test(x.t)) && !ab8.texts.some(x => x.t === ab8.dash) && word.fs > 11 * 1.3 && word.fs < 24 && +word.fw >= 500 && word.col === ab8.mute)
+      ? ok(`68.8 the abandoned screen says "${word.t}" once — ${word.fs}px, weight ${word.fw}, mid grey (${word.col}); no "nothing saved" line and no dash; ${ab8.texts.length} visible lines in all, Retry among them`)
+      : bad('68.8 the abandoned screen', JSON.stringify({ abT, texts: ab8.texts.slice(0, 8), mute: ab8.mute }));
     await click('#again'); await sleep(400);
     (await page.evaluate(() => document.getElementById('game').classList.contains('on'))) ? ok('61.1 Retry on an abandoned run starts the same run again') : bad('61.1 Retry starts a run');
     /* build 68 (67.5): NO RESTART (61.2's hold and 64.6's pill retired). ✕ → the Abandoned screen → Retry does the job: every game's first mode solo,

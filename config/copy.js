@@ -405,7 +405,7 @@ export const RESULT = { streakUnit:'<span class="unit">{word} reached</span>',
   practice:'practice', fail:'run over', best:'new best', pass:'pass & play', versus:'versus', dash:'—', lowerMark:'<span class="dn">▼</span>',
   rank:'rank <b>{n}</b> of 10 · {name}', outside:'outside the top 10 · {name}', you:'you', practiceNote:'practice · nothing recorded', twoNote:'two players · nothing recorded',
   top:'top 10 · {where}', closestFirst:' · closest first', noRuns:'No runs here yet.', peak:'peak', notes:'{n} notes',
-  abandoned:'abandoned', abandonedLine:'Run abandoned · nothing saved', retry:'Retry' };
+  abandoned:'Abandoned', retry:'Retry' };
 export const BOARD = { rank:'rank', score:'score', date:'date', lowerMark:' ▼' };
 export const SHARE = { text:'{name} scored {score}{rate} on No Excuses · {where}. Beat it: {url}', someone:'Someone' };
 

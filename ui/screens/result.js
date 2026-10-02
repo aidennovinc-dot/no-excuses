@@ -91,10 +91,12 @@ on('store:reset',()=>{ lastRun=null; played=null; lastTier=null; });
 /* build 62 (61.1): EXIT MID-RUN LANDS HERE, MARKED ABANDONED, with Retry front and centre. It used to drop the player on the games
    menu. Nothing about the run is recorded: run/run.js never reaches its finish, so there is no record, no best, no bar, no key and
    no unlock from it. An earn that already fired mid-run stays banked (v15 2.5), because that one was announced as it happened. */
+/* build 69 (68.8): AND IT SAYS "ABANDONED" ONCE. Aiden: "One word, sized and weighted between the two there now, mid grey. 'Run abandoned · nothing saved'
+   goes" — and the white dash where the score sits goes with it. The eyebrow is the one word (the stylesheet sizes it); Retry stays (L21) */
 function abandonRun(){ abandoned=true; quiet(true); played={g:sel.game,d:sel.diff,s:sel.secs,vs:sel.vs}; lastTier=null;
   $('#s-over').classList.add('abandoned'); $('#over-eyebrow').textContent=RESULT.abandoned;
-  const sc=$('#over-score'); sc.hidden=false; sc.innerHTML=RESULT.dash; sc.style.color=''; sc.classList.remove('sm');
-  const vd=$('#verdict'); vd.textContent=RESULT.abandonedLine; vd.className='verdict'; vd.style.color='';
+  const sc=$('#over-score'); sc.hidden=false; sc.innerHTML=''; sc.style.color=''; sc.classList.remove('sm');
+  const vd=$('#verdict'); vd.textContent=''; vd.className='verdict'; vd.style.color='';
   $('#vsbox').classList.remove('on'); $('#over-stats').innerHTML=''; $('#over-rank').innerHTML=''; $('#share').hidden=true;
   renderOverChips(); renderOverTop(); show('s-over'); }
 on('run:abort',({quiet,gaunt,again}={})=>{ if(!quiet&&!gaunt&&!again) abandonRun(); });
