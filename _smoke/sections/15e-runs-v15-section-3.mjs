@@ -54,13 +54,14 @@ export async function run() {
     const grow50 = pools50['hold:grow'].at(-1), nogo50 = pools50['reaction:nogo'].at(-1), count50 = pools50['spot:count'], find50 = pools50['spot:find'];
     const dia = d50.drawn.diamond, RXT = CS50.NOGO_TURNS;
     const notes50 = {
-      grow: ['spiral', 'heart', 'cat'].every(s => grow50.includes(s)) && !grow50.includes('line') && !grow50.includes('rects'),
+      // AMENDED at build 69 (68.20): Grow deals the ladder now — every band names its own pool, and its last step is the long thin shapes
+      grow: CS50.DEALS['hold:grow'].bands.every(b => Array.isArray(b.pool) && b.pool.length >= 2) && ['bar', 'wedge'].every(s => grow50.includes(s)) && !grow50.includes('line') && !grow50.includes('rects'),
       cut: CS50.DEALS['hold:cut'].tiers.easy.includes(50) && Object.values(CS50.DEALS['hold:cut'].tiers).flat().every(v => v % 5 === 0),
       nogo: ['spiral', 'crescent', 'plus', 'bar', 'ring'].every(s => nogo50.includes(s)) && !nogo50.includes('hex') && !RXT.square && dia.h > dia.w * 1.4,
       count: count50[0].length === 3 && ['bar', 'plus', 'star'].every(s => count50[1].includes(s)),
       find: find50.every((p, i) => !i || p.length > find50[i - 1].length) };
     Object.values(notes50).every(Boolean)
-      ? ok(`v26 §B2 the round formats as data: Grow adds spiral, heart and cat and drops line and rects; Cut can ask 50%; Go / No-go deals ${nogo50.length} shapes with no hexagon and no turned square, the diamond ${dia.w}×${dia.h}; Count adds bar, plus and star from round 3; Find's pool grows every band (${find50.map(p => p.length).join(' → ')})`)
+      ? ok(`v26 §B2 the round formats as data: Grow deals the ladder (68.20), each step its own pool, the last the long thin shapes, no line or rects; Cut can ask 50%; Go / No-go deals ${nogo50.length} shapes with no hexagon and no turned square, the diamond ${dia.w}×${dia.h}; Count adds bar, plus and star from round 3; Find's pool grows every band (${find50.map(p => p.length).join(' → ')})`)
       : bad('v26 §B2 the round formats', JSON.stringify(notes50));
     // each engine's own dealing code, called for real on the page: the setting it plays is the tier the dealer paired
     const e50 = await page.evaluate(async () => {
@@ -81,10 +82,17 @@ export async function run() {
         for (let k = 1; k <= 7; k++) { HD.round = k; HD.shape = HD.pickTarget(); const S = HD.spec, t = HD.growTarget(), E = G.ESTIMATE;
           const lo = Math.max(E.TMIN, Math.min(E.TMAX, Math.sqrt(E.MIN_AREA / HD.shape.coef))), f = (t - lo) / (E.TMAX - lo), r = CS.DEALS['hold:grow'].tiers[S.set];
           if (f < r[0] - 1e-9 || f > r[1] + 1e-9) out.grow.off++;
-          const mine = HD.pickMine(); if ((k % 2 === 1) !== (mine.name === HD.shape.name)) out.grow.sameOff++; out.grow.n++; } }
-      // pass & play: Player 2's first turn grows the same shape, Player 1's second a different one — each counts their own turns
-      HD.dealer = DL.makeDealer('hold:grow'); HD.round = 2; HD.two = { on: true, p: 1, taken: [1, 0] }; out.grow.p2same = !HD.est();
-      HD.round = 3; HD.two = { on: true, p: 0, taken: [1, 1] }; out.grow.p1diff = HD.est();
+          /* AMENDED at build 69 (68.20): v26 §B2's odd / even rule (the same shape on odd rounds, a different one on even) is withdrawn — every
+             round grows the target's own shape, at the target's turn. play() sets both, so the check asks the engine's own play() */
+          out.grow.n++; } }
+      { const keepP = { hud: HD.hud, icon: HD.icon, set: HD.set }; HD.set = () => {}; HD.raf = 0;
+        for (let k = 1; k <= 7; k++) { HD.dealer = DL.makeDealer('hold:grow'); HD.round = k; HD.ctx = { mode: 'grow', len: 7, timers: { alive: () => false, later: () => {}, clearT: () => {} } };
+          try { HD.play(); } catch (e) { out.grow.sameOff++; } cancelAnimationFrame(HD.raf); if (!HD.mine || HD.mine.name !== HD.shape.name || HD.rot !== (HD.spec.turn || 0)) out.grow.sameOff++; }
+        Object.assign(HD, keepP); HD.ctx = { mode: 'grow', len: 7 }; document.getElementById('hfield').classList.remove('show'); }
+      // pass & play: each player counts their own turns — Player 2's first turn is dealt exactly Player 1's first
+      HD.dealer = DL.makeDealer('hold:grow'); HD.round = 1; HD.two = { on: false }; const t1 = HD.dealer.at(HD.turn());
+      HD.round = 2; HD.two = { on: true, p: 1, taken: [1, 0] }; out.grow.p2same = HD.dealer.at(HD.turn()) === t1;
+      HD.round = 3; HD.two = { on: true, p: 0, taken: [1, 1] }; out.grow.p1diff = HD.turn() === 2;
       Object.assign(HD, keep);
       // Go / No-go: the dwell is inside its setting's third, and both players' turn 1 is the same go shape
       RX.ctx = { mode: 'nogo', len: 5 }; RX.two = { on: false };
@@ -111,11 +119,13 @@ export async function run() {
       for (let k = 1; k <= 11; k++) for (const set of ['easy', 'medium', 'hard']) { const base = SP.findSpec(k).n, n = SP.findSpec(k, { set }).n;
         if (n !== Math.round(base * CS.DEALS['spot:find'].tiers[set])) out.find.off++; }
       return out; });
-    (!e50.cut.off && !e50.cut.fiftySym && e50.cut.fifty > 0)
+    /* AMENDED at build 69 (68.20): Cut plays the ladder, whose shapes all have an axis of symmetry (square, circle, rectangle, triangle, bar, wedge), so
+       v13 6.4 means 50% is never asked now; the rule that matters — never of a symmetric shape — is unchanged and still asserted */
+    (!e50.cut.off && !e50.cut.fiftySym && (e50.cut.fifty > 0 || CS50.DEALS['hold:cut'].pool.every(s => CS50.SHAPES[s].sym)))
       ? ok(`v26 §B2 Estimate · Cut's own cutRound(), ${e50.cut.n} rounds: every share is from its setting's tier, 50% was asked ${e50.cut.fifty} times and never of a shape with an axis of symmetry`)
       : bad('v26 §B2 Cut deals its shares by the standard', JSON.stringify(e50.cut));
     (!e50.grow.off && !e50.grow.sameOff && e50.grow.p2same && e50.grow.p1diff)
-      ? ok(`v26 §B2 Estimate · Grow's own pickTarget / growTarget / pickMine, ${e50.grow.n} rounds: every target's size is in its setting's third, rounds 1, 3, 5, 7 grow the same shape and 2, 4, 6 a different one — and in pass & play each player counts their own turns`)
+      ? ok(`v26 §B2 / 68.20 Estimate · Grow's own pickTarget / growTarget / play, ${e50.grow.n} rounds: every target's size is in its setting's third, every round grows the target's own shape at its turn — and in pass & play each player counts their own turns`)
       : bad('v26 §B2 Grow deals by the standard', JSON.stringify(e50.grow));
     (!e50.nogo.off && e50.nogo.sameTurn)
       ? ok(`v26 §B2 Go / No-go's own nextTarget / dwellMs, ${e50.nogo.n} rounds: every dwell is inside its setting's third of ± spread, and both players' turn 1 is the same go shape`)
@@ -263,4 +273,46 @@ export async function run() {
   }
   /* ---- v29 (items 2 / 3 / 4 / 9 / 14, build 55): the quit path, the stale state, the sleeping phone ----
      Four of the build-54 review's findings meet on the same few lines of run/run.js, so they are driven together. */
+
+  /* build 69 (68.20): ESTIMATE ROUNDS ARE PLANNED, NOT REPEATED. Aiden: round 5 of a Grow Set "is the same shape. Like, it's not even rotated". A fixed
+     ladder (DEALS 'hold:grow' / 'hold:cut' in config/shapes.js, each band its own pool and tilt), random within each step. A real Grow Set is driven
+     to its end on the page: every round's shape is from its step's pool and turned inside its step's tilt, the grown shape is the target's own at the
+     same turn, no shape twice running, at least four shapes, no "same shape" / "different shape" on the round line, and the big number is labelled
+     as the average. Cut deals the same ladder, read off its own cutRound() over 60 runs of ten rounds (rounds past the ladder repeat its last step). */
+  {
+    const L20 = await page.evaluate(async () => { const CS = await import('./config/shapes.js'), C = await import('./config/copy.js');
+      return { grow: CS.DEALS['hold:grow'].bands, cut: CS.DEALS['hold:cut'].bands, avg: C.ESTIMATE.avgTop || null }; });
+    const stepOf = (bands, k) => bands.find(b => k <= b.to) || bands[bands.length - 1];
+    const inTilt = (b, r) => Array.isArray(b.tilt) && Math.abs(r) >= b.tilt[0] - .01 && Math.abs(r) <= b.tilt[1] + .01;
+    await page.evaluate(async () => { const SS = await import('./core/store.js'); SS.store.intro['hold'] = SS.store.intro['hold:grow'] = Date.now(); if (SS.prefs.tuts) SS.prefs.tuts.est = 'done'; SS.save(); });
+    const set20 = await page.evaluate(async () => { const w = ms => new Promise(r => setTimeout(r, ms));
+      const S = await import('./core/state.js'), RN = await import('./run/run.js'), HD = (await import('./games/estimate/index.js')).default, G = await import('./config/games.js');
+      const hf = () => document.getElementById('hfield'), at = type => { const r = hf().getBoundingClientRect(); hf().dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1 })); };
+      Object.assign(S.sel, { game: 'hold', diff: 'grow', secs: 7, vs: 0, practice: 0 }); RN.start();
+      const rounds = [], lines = new Set(), scores = new Set();
+      for (let i = 0; i < 3000 && (document.querySelector('.screen.on') || {}).id !== 's-over'; i++) { const gm = document.getElementById('game');
+        lines.add(document.getElementById('hud-time').textContent); scores.add(document.getElementById('score').textContent);
+        if (gm.classList.contains('tapon')) { at('pointerdown'); await w(60); continue; }
+        if (HD.st === 'wait' && rounds.length < HD.round) { rounds.push({ k: HD.round, shape: HD.shape.name, mine: HD.mine.name, rot: Math.round((HD.rot || 0) * 10) / 10, mineRot: Math.round((HD.mineRot ?? HD.rot ?? 0) * 10) / 10 });
+          at('pointerdown'); await w(1.05 * HD.target / (G.CFG.holdRate * Math.min(innerWidth, innerHeight) / 100) * 1000); at('pointerup'); await w(60); continue; }
+        await w(40); }
+      return { rounds, lines: [...lines], scores: [...scores].filter(Boolean) }; });
+    const cut20 = await page.evaluate(async () => { const DL = await import('./games/_shared/deal.js'), HD = (await import('./games/estimate/index.js')).default;
+      const keep = { ctx: HD.ctx, two: HD.two, hud: HD.hud, hint: HD.hint, icon: HD.icon, later: HD.later, bg: HD.bg, shareUp: HD.shareUp };
+      HD.hud = HD.hint = HD.icon = HD.later = HD.bg = HD.shareUp = () => {}; HD.ctx = { mode: 'cut', len: 10 }; HD.two = { on: false };
+      const out = []; for (let run = 0; run < 60; run++) { HD.dealer = DL.makeDealer('hold:cut'); for (let k = 1; k <= 10; k++) { HD.round = k; HD.cutRound(); out.push({ k, shape: HD.spec.shape, rot: HD.rot || 0 }); } }
+      Object.assign(HD, keep); return out; });
+    const R = set20.rounds, bad20 = [];
+    if (R.length !== 7) bad20.push('drove ' + R.length + ' of 7 rounds');
+    R.forEach((r, i) => { const b = stepOf(L20.grow, r.k); if (!b.pool || !b.pool.includes(r.shape)) bad20.push(`round ${r.k} ${r.shape} not in its step`); if (!inTilt(b, r.rot)) bad20.push(`round ${r.k} turned ${r.rot}°`);
+      if (r.mine !== r.shape || Math.abs(r.mineRot - r.rot) > .1) bad20.push(`round ${r.k} grows ${r.mine}@${r.mineRot}`); if (i && R[i - 1].shape === r.shape) bad20.push(`round ${r.k} repeats ${r.shape}`); });
+    const distinct = new Set(R.map(r => r.shape)).size; if (distinct < 4) bad20.push(distinct + ' shapes');
+    if (set20.lines.some(l => /same shape|different shape/i.test(l))) bad20.push('round line: ' + set20.lines.find(l => /shape/i.test(l)));
+    const avgPre = L20.avg ? L20.avg.split('{')[0] : '\u0000', labelled = set20.scores.filter(s => /\d/.test(s));
+    if (!L20.avg || !labelled.length || !labelled.every(s => s.startsWith(avgPre))) bad20.push('big number ' + JSON.stringify(set20.scores.slice(-3)));
+    const cutBad = cut20.filter((r, i) => { const b = stepOf(L20.cut, r.k); return !b.pool || !b.pool.includes(r.shape) || !inTilt(b, r.rot) || (r.k > 1 && cut20[i - 1].shape === r.shape); });
+    (!bad20.length && !cutBad.length)
+      ? ok(`68.20 Estimate deals a ladder, not repeats — a driven Grow Set: ${R.map(r => r.k + ' ' + r.shape + (r.rot ? ' ' + r.rot + '°' : '')).join(', ')} — each from its step and inside its tilt, the grown shape the target's own at the same turn, none twice running, ${distinct} shapes; the round line "${set20.lines.filter(l => /Round/.test(l)).slice(-1)[0]}" with no same / different shape; the big number "${labelled.slice(-1)[0]}"; Cut's ${cut20.length} rounds the same ladder`)
+      : bad('68.20 the Estimate ladder', JSON.stringify({ bad20: bad20.slice(0, 8), cutBad: cutBad.slice(0, 4), R }));
+  }
 }

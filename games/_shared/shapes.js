@@ -42,6 +42,8 @@ const Shapes=(()=>{
   function cat(){ const ears=[-Math.PI/2-.62,-Math.PI/2+.62], w=.36, h=.3;
     return ring(96,a=>{ let r=.42; for(const c of ears){ let d=Math.abs(Math.atan2(Math.sin(a-c),Math.cos(a-c))); if(d<w) r+=h*(1-d/w); } return [r*Math.cos(a),r*Math.sin(a)*.94]; }); }
   const GEN={
+    // build 69 (68.20): Estimate's ladder — an upright rectangle (3 : 5) and a long thin wedge (about 1 : 3.5)
+    rect:()=>[[[-.5,-.3],[.5,-.3],[.5,.3],[-.5,.3]]], wedge:()=>[[[-.5,-.14],[.5,0],[-.5,.14]]],
     square:()=>[[[-.5,-.5],[.5,-.5],[.5,.5],[-.5,.5]]], circle:()=>[circ(.5)], triangle:()=>[[[0,-.5],[.5,.5],[-.5,.5]]], bar:()=>[[[-.5,-.11],[.5,-.11],[.5,.11],[-.5,.11]]],
     // v26 §B2 (#444): 60% as wide as it is tall — pointy at the top and bottom, obtuse at the sides
     diamond:()=>[[[0,-.5],[.3,0],[0,.5],[-.3,0]]],

@@ -2292,6 +2292,33 @@ scene('68.24', async (page, browser) => {
   await frame(page, browser, '68.24-hidden-top', 'Timing · Hidden · Streak: the same top — goal, allowance bar with what is left at its end, one line “Hidden · Streak · Round 1”');
 });
 
+/* 68.20: one driven Grow Set — the frame is taken mid-hold (the player's shape growing inside the dashed target) on the first triangle of rounds 3–5 and on
+   round 6's long thin shape. Every round is played at a fixed skill (released at the target's size × 1.05) */
+const growTo = (page, want) => page.evaluate(async want => { const w = ms => new Promise(r => setTimeout(r, ms));
+  const HD = (await import('./games/estimate/index.js')).default, G = await import('./config/games.js'), hf = () => document.getElementById('hfield');
+  const at = type => { const r = hf().getBoundingClientRect(); hf().dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1 })); };
+  const full = () => 1.05 * HD.target / (G.CFG.holdRate * Math.min(innerWidth, innerHeight) / 100) * 1000;
+  for (let i = 0; i < 4000; i++) { const gm = document.getElementById('game'); if (!gm.classList.contains('on')) return null;
+    if (gm.classList.contains('tapon')) { at('pointerdown'); await w(200); continue; }
+    if (HD.st === 'wait') { const hit = HD.round >= want.from && HD.round <= want.to && want.shapes.includes(HD.shape.name);
+      at('pointerdown'); if (hit) { await w(full() * .72); return { round: HD.round, shape: HD.shape.name, rot: HD.rot, line: document.getElementById('hud-time').textContent, score: document.getElementById('score').textContent }; }
+      await w(full()); at('pointerup'); await w(200); continue; }
+    await w(50); } return null; }, want);
+const release = page => page.evaluate(() => { const hf = document.getElementById('hfield'), r = hf.getBoundingClientRect(); hf.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1 })); });
+scene('68.20', async (page, browser) => {
+  await load(page, RUN69, { unlock: await UNL69(page) }); await start69(page, 'hold', 'grow', 7);
+  const a = await growTo(page, { from: 3, to: 5, shapes: ['triangle'] }); say('round', a);
+  await frame(page, browser, '68.20-round-3-tilt', `Estimate · Grow · Set, round ${a && a.round} (step 2 of the ladder): a ${a && a.shape} turned ${a && a.rot}°, the shape you grow wearing the same turn inside the dashed target; the round line “${a && a.line}” with no “same shape”; the big number “${a && a.score}”`);
+  await release(page); await sleep(600);
+  await page.evaluate(async () => (await import('./run/run.js')).abort(true)); await sleep(400);
+  // a fresh Set for the second frame: a frame hides the page, and the run pauses and replays its round when it comes back
+  await load(page, RUN69, { unlock: await UNL69(page) }); await start69(page, 'hold', 'grow', 7);
+  const b = await growTo(page, { from: 6, to: 7, shapes: ['bar', 'wedge'] }); say('round', b);
+  await frame(page, browser, '68.20-round-6-thin', `A second driven Set, round ${b && b.round} (the last step): a long thin ${b && b.shape} at a steep ${b && b.rot}°`);
+  await release(page); await sleep(400);
+  await page.evaluate(async () => (await import('./run/run.js')).abort(true)); await sleep(400);
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

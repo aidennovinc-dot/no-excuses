@@ -16,6 +16,9 @@ export const SHAPES = {
   circle:   { word:'circle',   tier:'easy',   sym:1 },
   square:   { word:'square',   tier:'easy',   sym:1 },
   triangle: { word:'triangle', tier:'easy',   sym:1 },
+  // build 69 (68.20): Estimate's ladder — an upright RECTANGLE (3 : 5) for its easy rounds and a long thin WEDGE for its last
+  rect:     { word:'rectangle', tier:'easy',  sym:1 },
+  wedge:    { word:'wedge',    tier:'medium', sym:1 },
   // v26 §B2 (#444): pointier top and bottom, more obtuse at the sides — a tall rhombus, so it can never be read as a square
   diamond:  { word:'diamond',  tier:'medium', sym:1 },
   bar:      { word:'bar',      tier:'medium', sym:1 },
@@ -81,19 +84,23 @@ export const TIER = { easy:1, medium:2, hard:3 };
    its own rule and deals the floor. v26 §B2: bar, plus and star arrive from round 3. The decoys are the rest of the pool. */
 /* Spot · Find — the setting is the CROWD, SPOT_FIND's shape count for that round × the tier's factor. v26 §B2: more shapes as
    the game goes — two more every two rounds. The crowd is the rest of the pool. Find versus keeps its own three shapes. */
+/* build 69 (68.20): ESTIMATE IS A LADDER, THE SAME FOR EVERYONE, RANDOM ONLY WITHIN A STEP. Aiden: round 5 of a Grow Set "is the same shape. Like, it's
+   not even rotated … just have a think about how the round should be set up." A band may name its OWN `pool` (the dealer deals from it alone) and a
+   `tilt` [least, most] in degrees, dealt either way round and read by the target and by the shape the player grows: rounds 1–2 easy upright shapes,
+   3–5 triangles and rectangles at a random tilt, 6–7 long thin shapes at steep tilts. The dealer never deals a shape twice running, so a Set meets at
+   least four shapes; the size (Grow) or share (Cut) is the band's setting, random inside its third. A Streak past round 7 keeps the last step, and Cut
+   plays the same ladder over its ten rounds. The odd / even "same shape" rule (v26 §B2) is gone: every round grows the target's own shape. */
 export const DEALS = {
   'hold:grow': { set:'size', tiers:{ easy:[0.67,1], medium:[0.33,0.67], hard:[0,0.33] },
-    pool:['circle','square','triangle','bar','plus','ring','star','crescent','heart','cat','spiral','blob','tetris','stairs'],
-    bands:[ { to:2, mix:{ easy:1, medium:1 }, load:3 },
-            { to:4, mix:{ medium:1, hard:1 }, load:4 },
-            { to:7, mix:{ easy:1, medium:1, hard:1 }, load:4 } ] },
+    pool:['square','circle','rect','triangle','bar','wedge'],
+    bands:[ { to:2, pool:['square','circle','rect'], mix:{ easy:2 }, load:2, tilt:[0,0] },
+            { to:5, pool:['triangle','rect'], mix:{ easy:3 }, load:3, tilt:[15,40] },
+            { to:7, pool:['bar','wedge'], mix:{ medium:2 }, load:4, tilt:[50,80] } ] },
   'hold:cut': { set:'share', tiers:{ easy:[50,45,40], medium:[35,30,25], hard:[20,15,10] },
-    pool:['circle','square','triangle','bar','plus','ring','star','crescent','heart','cat','spiral','blob','tetris','stairs'],
-    bands:[ { to:2, mix:{ easy:1, hard:1 }, load:3 },
-            { to:4, mix:{ easy:1, medium:1 }, load:4 },
-            { to:6, mix:{ medium:1, hard:1 }, load:4 },
-            { to:8, mix:{ easy:1, hard:1 }, load:5 },
-            { to:10, mix:{ medium:1, hard:1 }, load:5 } ] },
+    pool:['square','circle','rect','triangle','bar','wedge'],
+    bands:[ { to:2, pool:['square','circle','rect'], mix:{ easy:2 }, load:2, tilt:[0,0] },
+            { to:5, pool:['triangle','rect'], mix:{ easy:3 }, load:3, tilt:[15,40] },
+            { to:7, pool:['bar','wedge'], mix:{ medium:2 }, load:5, tilt:[50,80] } ] },
   'reaction:nogo': { set:'dwell', tiers:{ easy:[0.33,1], medium:[-0.33,0.33], hard:[-1,-0.33] },
     pool:['circle','square','triangle','diamond','bar','plus','ring','crescent','spiral'],
     bands:[ { to:2, mix:{ easy:1, medium:1 }, load:3 },

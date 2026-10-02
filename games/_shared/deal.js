@@ -17,14 +17,17 @@ const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.r
 const bandAt = (deal, k) => deal.bands.find(b => k <= b.to) || deal.bands[deal.bands.length - 1];
 // the band's first round
 const bandFrom = (deal, band) => { const i = deal.bands.indexOf(band); return i ? deal.bands[i - 1].to + 1 : 1; };
-// what round k may deal from: the game's pool and every band's `add` up to and including k's band
-function poolAt(deal, k) { const out = deal.pool.slice();
+// what round k may deal from: the game's pool and every band's `add` up to and including k's band — or k's band's OWN pool when it names one (68.20)
+function poolAt(deal, k) { const own = bandAt(deal, k).pool; if (own) return own.slice();
+  const out = deal.pool.slice();
   for (const b of deal.bands) { (b.add || []).forEach(s => { if (!out.includes(s)) out.push(s); }); if (k <= b.to) break; }
   return out; }
 // the setting's tier for a shape of `tier` in `band`
 const setTier = (band, tier) => ORDER[Math.max(1, Math.min(3, band.load - TIER[tier])) - 1];
 // a number inside a tier's [from, to], `u` of the way along
 const within = (range, u) => range[0] + u * (range[1] - range[0]);
+// build 69 (68.20): a band's `tilt` [least, most] in degrees, dealt either way round; a band with none is upright
+const turnOf = band => { const t = band.tilt; if (!t) return 0; const a = Math.round(t[0] + Math.random() * (t[1] - t[0])); return a && Math.random() < .5 ? -a : a; };
 
 function makeDealer(key) {
   const deal = DEALS[key]; const cache = new Map(); let deck = [], deckBand = null, prev = ''; const used = new Set();
@@ -40,7 +43,7 @@ function makeDealer(key) {
       if (!can.length) { of.forEach(s => used.delete(s)); can = of.filter(s => s !== prev); }
       if (!can.length) can = of.length ? of : pool;
       const shape = can[Math.random() * can.length | 0]; used.add(shape); prev = shape;
-      const spec = { k, band, from: bandFrom(deal, band), tier, set: setTier(band, tier), shape, pool, u: Math.random() };
+      const spec = { k, band, from: bandFrom(deal, band), tier, set: setTier(band, tier), shape, pool, u: Math.random(), turn: turnOf(band) };
       cache.set(k, spec); return spec; } };
 }
 

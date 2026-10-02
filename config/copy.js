@@ -542,7 +542,7 @@ export const SEQ = { copy:'copy the notes', yourTurn:'your turn', whoTurn:'{who}
 export const ESTIMATE = { hold:'tap and hold',
   money:'on the money', close:'close', closeCut:'close!', much:'too much', little:'too little', target:'target', yours:'yours', piece:'piece', px:'px²', targetPx:'target {n} px²', targetShare:'target {n}%', off:' off',
   missed:'the line missed the shape · <b>{share}%</b> again', drag:'tap and drag a line to cut the shape', draw:'tap and draw a line', shareTarget:'<small>target</small>',
-  hudStreak:'Round {n} · {tot}% of 100%', hudSet:'Round {n} of {s}', diff:' · different shape', same:' · same shape',
+  hudStreak:'Round {n} · {tot}% of 100%', hudSet:'Round {n} of {s}', avgTop:'AVG {v}', avgNone:'—',
   /* build 66 (65.7): the running figure on its OWN labelled line under the round's — "Total" — so the big % beside the bars is always this round's.
      A Set's total is the average % off so far; a Streak's is the budget spent */
   total:'Total', totalSet:'{v} average off', totalStreak:'{v} of {bud}%' };

@@ -11,15 +11,13 @@ import { Shapes } from "../_shared/shapes.js";
 import { bandPick, gauntBand, gauntDealt, makeDealer, within } from "../_shared/deal.js";
 import { makeTwo } from "../_shared/two.js";
 import { DEALS, SHAPES } from "../../config/shapes.js";
-/* ---------- Estimate (v9, was Hold). Grow: a shape grows with a wobble and vanishes; tap and hold to grow yours to the same area — the same shape on odd rounds, a different one on even. Cut: a shape appears; drag a line through it that splits off the share asked for. Score is % off, lower is better. Five rounds ---------- */
+/* ---------- Estimate (v9, was Hold). Grow: a shape grows with a wobble and vanishes; tap and hold to grow yours to the same area. Cut: a shape appears; drag a line through it that splits off the share asked for. Score is % off, lower is better ---------- */
+/* build 69 (68.20): EVERY ROUND IS A STEP OF THE LADDER (config/shapes.js DEALS 'hold:grow' / 'hold:cut'): its shape from the step's pool, turned by
+   the step's tilt (`spec.turn`), and the player grows the target's OWN shape at the same turn. v26 §B2's odd / even rule — the same shape on odd
+   rounds, a different one on even — and its "same shape" / "different shape" words are gone; so is the TURNS list, which the tilt replaces */
 const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, rot:0, shape:null, mine:null, t0:0, raf:0, p0:null, p1:null, share:50, pending:null, maxed:false, two:{on:false},
-  // v25 (item 21, build 45): the angles a Grow target may be turned by — the list play() drew inline, named so the review catalogue can print it. Unmoved
-  TURNS:[35,60,90,120,145,180,225,270],
-  /* v26 §B2 (build 50): "the same shape only 3 times in the first 6 rounds — rounds 1, 3, 5". A solo run always did that: odd rounds grow
-     the same shape, even rounds a different one. PASS & PLAY DID NOT — it read the shared round counter, so Player 1 grew the same shape
-     every turn and Player 2 a different one every turn. Both now count their OWN turns, which is also what the dealer is keyed by */
+  /* v26 §B2 (build 50): pass & play counts each player's OWN turns, which is what the dealer is keyed by, so both players' turn N is the same deal */
   turn(){ return this.two&&this.two.on?this.two.taken[this.two.p]+1:this.round; },
-  est(){ return this.ctx.mode==='grow'&&this.turn()%2===0; },
   // the hold's ceiling, in one place — down() and up() used to carry the same expression twice and could drift apart
   capOf(){ return Math.min(this.target*2.8,96*vmin()); },
   // v15 (3.1): the target's AREA is what has a floor, so the linear size it needs depends on the shape. A shape whose
@@ -78,6 +76,8 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
   mount(ctx){ this.ctx=ctx; this.pending=null; hud.hold(false);
     // v31 (60.21, build 60): the split is written onto the panel here, so config/games.js is the one place it lives (A2)
     const c=$('#hcalc'); if(c) c.style.setProperty('--hsplit',(HL.split*100)+'%');
+    // build 69 (68.20): a Set's big number says it is the average from the 3-2-1 on
+    if(ctx.len!==STREAK&&!ctx.players) hud.score(T(CP.avgTop,{v:CP.avgNone}));
     this.reset(); },
   start(){ this.begin(); },
   stop(){ this.st='idle'; this.clearT(); this.pending=null; hud.hold(false); },
@@ -103,14 +103,10 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
     const poll=()=>{ if(this.st==='wait'){ const p=c(); g.at(p.x,p.y+40); g.show(); g.later(()=>{ g.hold(true); this.down({type:'down',x:0,y:0}); const dur=this.target/(CFG.holdRate*vmin())*1000; g.later(()=>{ this.up(); g.hold(false); shown(); },dur); },400); } else if(t++<60) g.later(poll,100); };
     g.later(poll,200); return 0; },
   // v15 (4.1 / 4.2): pass & play is turn by turn — a round each, the phone over, lowest average % off wins
-  begin(){ this.round=0; this.total=0; this.errs=[]; this.maxed=false; this.two=makeTwo(this.ctx,{lower:true,fmt:v=>f2(v)+'%'}); this.dealer=makeDealer(this.cut()?'hold:cut':'hold:grow'); hud.score(this.streak()?'0':'0.00%'); this.next(); },
-  /* v26 §B2 (build 50): an even round's own shape is a different one of similar fill AND of the target's tier where the pool has one, so the
-     deal's difficulty is the difficulty played. The last fallback could hand back the target's own shape on a "different shape" round;
-     it cannot now */
-  pickMine(){ if(!this.est()) return this.shape; const c=this.shape.coef, pool=this.spec.pool.filter(n=>n!==this.shape.name);
-    const fill=list=>list.map(n=>Shapes.make(n)).filter(s=>s.coef/c>=.4&&s.coef/c<=2.5);
-    const ok=fill(pool.filter(n=>SHAPES[n].tier===this.spec.tier)), any=ok.length?ok:fill(pool);
-    return any.length?any[Math.random()*any.length|0]:Shapes.random(pool); },
+  // build 69 (68.20): a Set's big number is the running AVERAGE and says so ("AVG 10.75%", ESTIMATE.avgTop) — a round's own figure is its own line
+  begin(){ this.round=0; this.total=0; this.errs=[]; this.maxed=false; this.two=makeTwo(this.ctx,{lower:true,fmt:v=>f2(v)+'%'}); this.dealer=makeDealer(this.cut()?'hold:cut':'hold:grow'); hud.score(this.streak()?'0':this.two.on?'0.00%':T(CP.avgTop,{v:CP.avgNone})); this.next(); },
+  // build 69 (68.20): a shape's outline turned about its own centre — Cut's line is cut through the turned outline, so the turn is the geometry's
+  turned(sh,deg){ if(!deg) return sh; const a=deg*Math.PI/180, c=Math.cos(a), s=Math.sin(a); return Object.assign({},sh,{ loops:sh.loops.map(L=>L.map(([x,y])=>[x*c-y*s,x*s+y*c])) }); },
   // v11: Set = 7 rounds, score the average % off (lower wins). Streak = the % differences add up; the run ends when the total reaches 100, score rounds
   // v15 (answer 2, build 24): `mx` says a hold ran all the way to its ceiling. It is what the Greedy achievement asks for
   // in words, and unlike a % threshold it is true at EVERY target size — see the note on capOf and FEATURES.md
@@ -127,7 +123,7 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
   hud(){ if(this.two.on) return hud.timeHtml(this.two.hudLine());
     // build 69 (68.24): a Grow Streak (the Streak with an allowance) wears the header's allowance bar with what is left at its end, and its line is "Round N"
     if(this.streak()&&!this.cut()){ const bud=EST.STREAK_BUD, left=Math.max(0,bud-this.total); hud.time(T(HUD.round,{n:this.round})); return hud.allowance(left,bud,'%',T(HUD.allow,{left:f2(left),unit:'%'})); }
-    hud.time(this.streak()?T(CP.hudStreak,{n:this.round,tot:f2(this.total)}):T(CP.hudSet,{n:this.round,s:this.ctx.len})+(this.ctx.mode==='grow'?(this.est()?CP.diff:CP.same):'')); },
+    hud.time(this.streak()?T(CP.hudStreak,{n:this.round,tot:f2(this.total)}):T(CP.hudSet,{n:this.round,s:this.ctx.len})); },
   /* v16 (1.5): the Streak budget is 100% (L5), so the ramp starts at 80 spent; a Set ramps over its last round. Music
      only (A.1). Estimate is the one engine that is NOT built on roundEngine — it owns its own wait() and its own round
      loop — so it cannot borrow finBud / finSet from there and spells both out. */
@@ -138,9 +134,9 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
     if(this.two.on){ if(this.two.over()) return this.ctx.emit('finish',this.two.record()); this.reset(); return this.two.gate(this,()=>this.play()); }
     if(!this.streak()&&this.round>this.ctx.len) return this.ctx.emit('finish',this.result()); if(this.streak()&&this.total>=100) return this.ctx.emit('finish',this.result()); this.reset(); this.play(); },
   play(){ if(this.cut()) return this.cutRound();
-    this.hud(); const v=vmin(); this.shape=this.pickTarget(); this.target=this.growTarget()*v; this.mine=this.pickMine();
-    // v14 (6.13): rotating a circle does nothing and rotating a square barely more — a shape with an obvious axis of symmetry is never turned
-    this.rot=(this.est()||SHAPES[this.shape.name].sym)?0:this.TURNS[Math.random()*this.TURNS.length|0];
+    this.hud(); const v=vmin(); this.shape=this.pickTarget(); this.target=this.growTarget()*v; this.mine=this.shape;
+    // build 69 (68.20): the step's tilt, on the target and on the shape the player grows (v14 6.13's "a symmetric shape is never turned" is the ladder's now)
+    this.rot=this.spec.turn||0;
     // v14 (6.11): the shape you are about to grow is always drawn, centre-top, whether or not it is the target's shape
     // v17 (B.3): no footer line. #hbg carries the one instruction that matters and the HUD carries the round
     this.icon(this.mine); $('#hfield').classList.add('show');
@@ -152,12 +148,14 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
      the footer on every single round of a game that is ten rounds long, saying something the dashed outline already says. */
   ready(){ this.set('ht',null,0); $('#hfield').classList.remove('show'); this.set('hg',this.shape,this.target,{a:this.rot,x:0,y:0}); this.st='wait'; $('#hlbl').innerHTML=''; this.bg(CP.hold); this.ctx.audio.click(); },
   down(ev){ if(this.cut()) return this.cutDown(ev); if(this.st!=='wait') return; this.st='hold'; this.t0=performance.now(); $('#hlbl').innerHTML=''; this.bg(''); const rate=CFG.holdRate*vmin(), cap=this.capOf();
-    const grow=now=>{ if(this.st!=='hold') return; const el=now-this.t0; this.set('hm',this.mine,Math.min(cap,el/1000*rate)); this.raf=requestAnimationFrame(grow); }; this.raf=requestAnimationFrame(grow); },
+    const grow=now=>{ if(this.st!=='hold') return; const el=now-this.t0; this.set('hm',this.mine,Math.min(cap,el/1000*rate),this.turn0()); this.raf=requestAnimationFrame(grow); }; this.raf=requestAnimationFrame(grow); },
+  // build 69 (68.20): the grown shape wears the target's turn
+  turn0(){ return this.rot?{a:this.rot,x:0,y:0}:null; },
   // the reveal (v11): the target fills bottom-up while its px² counts, then yours does the same, then the difference and the %. The two fills and the two numbers are the sum, drawn
   up(){ if(this.cut()) return this.cutUp(); if(this.st!=='hold') return; this.st='reveal'; cancelAnimationFrame(this.raf); const cap=this.capOf(); const size=Math.min(cap,(performance.now()-this.t0)/1000*CFG.holdRate*vmin());
     // the hold ran to its ceiling — what Greedy actually asks for, and true at every target size
     if(size>=cap-.5) this.maxed=true;
-    this.set('hm',this.mine,size); const mine=Shapes.area(this.mine.loops)*size*size, tgt=this.shape.coef*this.target*this.target; const pct=mine/tgt*100, err=Math.abs(pct-100);
+    this.set('hm',this.mine,size,this.turn0()); const mine=Shapes.area(this.mine.loops)*size*size, tgt=this.shape.coef*this.target*this.target; const pct=mine/tgt*100, err=Math.abs(pct-100);
     // build 68 (67.38): the lowest and highest Grow % of the run, for the Excuses (progress/rules.js EXCUSE_TEST)
     { const xs=this.ctx.xs; if(xs&&!this.two.on){ xs.pmin=Math.min(xs.pmin??Infinity,pct); xs.pmax=Math.max(xs.pmax??0,pct); } }
     /* v30 (59.4, build 59): NO DIRECTION WORD AFTER A ROUND, in this game as in every other. Aiden: "we don't need late or early after a
@@ -172,7 +170,7 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
     /* v31 (60.21, build 60): the panel is at the foot of the field and the two shapes are drawn at `k` so neither can reach it.
        `tgt` and `mine` are the AREAS and were worked out above, from the real sizes — this is the drawing, not the estimate. */
     const k=this.revK(this.target,size), tD=this.target*k, mD=size*k;
-    this.set('hg',this.shape,tD,{a:this.rot,x:0,y:0}); this.set('ht',this.shape,tD,{a:this.rot,x:0,y:0}); this.set('hm',this.mine,mD); $('#hfield').classList.add('show','rev'); this.clipTo('tclipr',0,tD); this.clipTo('hclipr',0,mD);
+    this.set('hg',this.shape,tD,{a:this.rot,x:0,y:0}); this.set('ht',this.shape,tD,{a:this.rot,x:0,y:0}); this.set('hm',this.mine,mD,this.turn0()); $('#hfield').classList.add('show','rev'); this.clipTo('tclipr',0,tD); this.clipTo('hclipr',0,mD);
     this.calc([[CP.target,tgt,'',0,'',k2=>this.clipTo('tclipr',k2,tD)],[CP.yours,mine,'m',0,'',k2=>this.clipTo('hclipr',k2,mD)]],Math.max(tgt,mine)*1.15,()=>{ const diff=Math.round(mine-tgt); return `<b class="${err<=2?'g':err>8?'r':''}" style="font-size:22px">${diff>0?'+':'−'}${Math.abs(diff).toLocaleString()} ${CP.px}</b>`; },
       ()=>{ const t=this.tierOf('hold:grow',err); return `<b class="${err<=2?'g':err>8?'r':''}" id="hpct"${t?` style="color:${t.col}"`:''}>${f2(pct)}%</b>${t?tierWord(t):word}`; }, err, {from:pct,to:100}); },
   /* v18 (B.10): the tier's colour on the round's own figure, as a ready-made style attribute. The class beside it stays:
@@ -219,7 +217,7 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
         if(this.streak()){ hud.score(String(this.errs.length)); hud.scorePop(); return this.addUp(this.spendOf(err),null,err); }
         // v14 (6.1 / 6.16): the Set figure is the running average % difference — the line the sheet promises — and it WALKS to its
         // new value instead of jumping, the same as a Streak's total. Then the reveal waits for a tap (6.3)
-        hud.countUp({ audio:this.ctx.audio, from:was, to:mean(this.errs), ms:700, fmt:v=>f2(v)+'%', set:t=>{ hud.score(t); totSet(t); }, alive:()=>this.st==='reveal',
+        hud.countUp({ audio:this.ctx.audio, from:was, to:mean(this.errs), ms:700, fmt:v=>f2(v)+'%', set:t=>{ hud.score(T(CP.avgTop,{v:t})); totSet(t); }, alive:()=>this.st==='reveal',
           done:()=>{ hud.scorePop(); this.total+=err; this.hud(); this.ctx.emit('live',this.result()); this.wait(()=>this.next()); } }); }); },
   // v15 (4.1 / 4.2): the round belongs to whoever is holding the phone, so THEIR average walks — there is no shared total
   // in a pass & play run, and nothing about it is recorded (L10 / A.3)
@@ -243,7 +241,8 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
      its mix of easy, medium and hard shapes, and the SHARE is the setting it pairs with — about a half easy, a third to a quarter medium, a
      sliver hard — so "an easy % can take a harder shape", in Aiden's words. A Streak past round 10 keeps dealing the last band.
      v13 (6.4) stands: a shape with an axis of symmetry never asks for 50% — halving one of those is a ruler job, not an estimate */
-  cutRound(){ const S=this.spec=this.dealer.at(this.turn()); this.shape=Shapes.make(S.shape);
+  // build 69 (68.20): the step's tilt turns the outline itself, so the line is drawn and measured through the turned shape
+  cutRound(){ const S=this.spec=this.dealer.at(this.turn()); this.rot=S.turn||0; this.shape=this.turned(Shapes.make(S.shape),this.rot);
     let shares=DEALS['hold:cut'].tiers[S.set]; if(SHAPES[S.shape].sym) shares=shares.filter(v=>v!==50);
     /* v29 Section A (58.1, build 58): inside a Gauntlet the share is drawn from the band and snapped to the nearest 5 —
        every share this game has ever asked for is a multiple of 5, and a 33% ask would read as a different game. The band

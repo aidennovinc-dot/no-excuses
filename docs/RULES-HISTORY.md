@@ -2054,3 +2054,15 @@ anything Aiden settles goes on the list in the build that implements it.
   into the total and read zero. It stays now (the round's own figure holds, 67.17); the header bar is what drains. Estimate's in-round allowance block is
   `hgallow` (it shared the id `hallow` with the header's bar). Gate: `the runs` (15c), "68.24"; 67.16 (15b), 60.14 and 60.18 (15c) amended to the
   bar's new reading.
+- **Estimate's rounds are a ladder, not repeats (68.20).** Aiden on round 5 of a Grow Set: "is the same shape. Like, it's not even rotated … just have
+  a think about how the round should be set up." `DEALS 'hold:grow'` and `'hold:cut'` (`config/shapes.js`) are a fixed ladder, the same for every
+  player and random only within a step: rounds 1–2 easy upright shapes (square, circle, a 3 : 5 rectangle), 3–5 triangles and rectangles turned 15–40°
+  either way, 6–7 long thin shapes (bar, wedge) turned 50–80°. A band may now name its own `pool` and a `tilt`, which the one dealer reads
+  (`poolAt`, `spec.turn`, A9 unchanged otherwise); the turn is on the target and on the shape the player grows (Cut turns the outline it is cut
+  through). The dealer never deals a shape twice running, so a Set meets at least four shapes (five as built); the size (Grow) or share (Cut) is the
+  band's setting, random in its third. A Streak past round 7 keeps the last step; Cut plays the same ladder over its ten rounds. v26 §B2's odd / even
+  rule (the same shape on odd rounds, a different one on even) and its "same shape" / "different shape" words are withdrawn, and so is the TURNS list
+  (v14 6.13's "a symmetric shape is never turned" is the ladder's call now). A Set's big number reads "AVG 10.75%" (`ESTIMATE.avgTop`); a round's own
+  figure stays its own line (65.7). Every ladder shape has an axis of symmetry, so v13 6.4 means Cut never asks 50% now. Pass & play still counts
+  each player's own turns. Gate: `the runs` (15e), "68.20"; v26 §B2's Grow and Cut checks amended (the odd / even clause, the pool's spiral / heart /
+  cat, Cut's "50% was asked").
