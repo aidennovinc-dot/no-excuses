@@ -8,7 +8,8 @@ export const SECTION = ["new-player journey"];
 /* ONE SCRIPTED RUN FROM A WIPED PROFILE, the way a new player meets the game: the walkthrough → Dash → Four → Dots and the Welcome → the About tour →
    Estimate and the Progress tour → Reaction and the Scores tour → (the rest of the chain, played forward) → the Games chest and its tours → Customise
    → the Keys screen. At every box: it fires ONCE (no box key twice), FIRST (no toast is up as a tutorial starts) and, for a tour that lives in a room,
-   on that room's FIRST visit (L14); it covers nothing that takes a tap (L15 / 67.2); nothing is cut out of the background behind it (67.30); and over the
+   on that room's FIRST visit (L14); it never covers its own target, the thing it is about or the thing to tap (L15 as amended by 68.4 — it may sit over
+   other tiles, which are dimmed and take no tap); nothing is cut out of the background behind it (67.30); and over the
    whole journey the tutorials never scroll the screen (67.9). Every box is saved as a 390-wide frame with both insets for the review board's
    Tutorials section (67.10b): _review/_shots/journey/<id>-NN.jpg. This is the check that stops the repeats — the per-tutorial walks in the locked
    decisions section set each tutorial up on its own fixture; this one lets each fire only because the play before it earned it. */
@@ -47,7 +48,7 @@ export async function run() {
       if (!st || !st.shown) { await welcomePlay(); if (!n && waited < first) { waited += 160; await sleep(160); continue; } idle += 160; if (idle >= quiet) return; await sleep(160); continue; }
       idle = 0; let b = await boxAt(); for (let j = 0; j < 12; j++) { await sleep(200); const b2 = await boxAt(); if (b2 && b && b2.join() === b.join()) break; b = b2; }
       const key = st.id + '-' + String(st.i + 1).padStart(2, '0');
-      const m = await page.evaluate(async (lift, room, first) => { const AT = await import('./ui/atmosphere.js'); const t = document.getElementById('tut'), bx = t.querySelector('.tbox').getBoundingClientRect(), hit = [];
+      const m = await page.evaluate(async (lift, room, first, tg) => { const AT = await import('./ui/atmosphere.js'); const t = document.getElementById('tut'), bx = t.querySelector('.tbox').getBoundingClientRect(), hit = [];
         const toast = document.getElementById('toast'), scr = (document.querySelector('.screen.on') || {}).id;
         document.querySelectorAll(lift).forEach(e => { e.style.visibility = 'hidden'; });
         for (const el of document.querySelectorAll('button,a[href],input,select,textarea,[data-act],[data-go],.tile,.chip,.chest,.cw')) { if (t.contains(el)) continue; const r = el.getBoundingClientRect();
@@ -56,13 +57,15 @@ export async function run() {
           if (!e || !(e === el || el.contains(e))) continue;
           if (r.left < bx.right && r.right > bx.left && r.top < bx.bottom && r.bottom > bx.top) hit.push((el.id ? '#' + el.id : String(el.className).split(' ')[0] || el.tagName) + (el.dataset.v ? '[' + el.dataset.v + ']' : '')); }
         document.querySelectorAll(lift).forEach(e => { e.style.visibility = ''; });
-        return { scr, hit: t.classList.contains('far') ? [] : hit, toast: toast && toast.classList.contains('on') && first && window.__tOn > ((window.__scrAt || {})[scr] || 0) ? toast.textContent.trim().slice(0, 60) : '', holes: AT.holesNow ? AT.holesNow() : 0, visit: room && scr === room ? (window.__vis || {})[room] || 0 : null, text: t.querySelector('.tbox p')?.textContent || '' }; }, lift, ROOMS[st.id] || '', st.i === 0);
+        // build 69 (68.4): what the box may never cover is its own target (the thing to tap, on a must-tap box) — other tiles under it are dimmed and take no tap
+        const own = !!tg && bx.left < tg[2] && bx.right > tg[0] && bx.top < tg[3] && bx.bottom > tg[1];
+        return { scr, hit, own: !t.classList.contains('far') && own, toast: toast && toast.classList.contains('on') && first && window.__tOn > ((window.__scrAt || {})[scr] || 0) ? toast.textContent.trim().slice(0, 60) : '', holes: AT.holesNow ? AT.holesNow() : 0, visit: room && scr === room ? (window.__vis || {})[room] || 0 : null, text: t.querySelector('.tbox p')?.textContent || '' }; }, lift, ROOMS[st.id] || '', st.i === 0, st.whole ? null : st.tgt);
       /* the same box still up after a tap: it is not a second firing. A tap can land while a box is still settling and be taken as nothing, as a
          player's would; the walker taps again after 1.5s, and a box that needs more than three taps is a soft lock */
       let rec;
       if (key === lastKey) { if (Date.now() - lastTap < 1500) { await sleep(160); continue; } if (++retries > 3) { seen.get(key).lock = 'four taps did not move it on'; return; } rec = seen.get(key); rec.taps = retries + 1; }
       else { retries = 0; rec = { step, key, scr: m.scr, text: m.text.slice(0, 40) }; if (seen.has(key)) rec.twice = 1; seen.set(key, rec); lastKey = key; steps.push(rec); }
-      if (!rec.taps) { if (m.hit.length) rec.covers = m.hit.join(','); if (m.toast) rec.late = 'a toast was up as it started: ' + m.toast; if (m.holes) rec.holes = m.holes; }
+      if (!rec.taps) { if (m.own) rec.covers = 'its own target ' + JSON.stringify(st.tgt); if (m.toast) rec.late = 'a toast was up as it started: ' + m.toast; if (m.holes) rec.holes = m.holes; }
       // a tour that lives in a room meets the player on that room's FIRST visit
       if (m.visit !== null && !roomsMet.has(st.id)) { roomsMet.add(st.id); if (m.visit !== 1) rec.notFirst = 'its room on visit ' + m.visit; }
       if (!fs.existsSync(path.join(FRAMES, key + '.jpg'))) await page.screenshot({ path: path.join(FRAMES, key + '.jpg'), type: 'jpeg', quality: 62 });
@@ -141,6 +144,6 @@ export async function run() {
   const missing = want.filter(id => !ids.includes(id));
   fs.writeFileSync(path.join(FRAMES, 'journey.json'), JSON.stringify({ steps, trail, scrolled }, null, 1));
   (!badSteps.length && !missing.length && !scrolled)
-    ? ok(`67.41 / L14 / L15 the new-player journey from a wiped profile: ${steps.length} boxes across ${ids.join(', ')} — each fired once, first and (a room's tour) on its first visit; none covered anything that takes a tap; nothing cut out of the background; the tutorials never scrolled the screen. ${fs.readdirSync(FRAMES).filter(f => f.endsWith('.jpg')).length} frames for the review board`)
+    ? ok(`67.41 / L14 / L15 the new-player journey from a wiped profile: ${steps.length} boxes across ${ids.join(', ')} — each fired once, first and (a room's tour) on its first visit; none covered its own target; nothing cut out of the background; the tutorials never scrolled the screen. ${fs.readdirSync(FRAMES).filter(f => f.endsWith('.jpg')).length} frames for the review board`)
     : bad('67.41 the new-player journey', JSON.stringify({ missing, scrolled, bad: badSteps, ids, trail }).slice(0, 2500));
 }

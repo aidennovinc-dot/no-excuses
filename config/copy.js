@@ -325,6 +325,9 @@ export const TWO = { ready:'hand the phone over<br>tap when ready', hud:'{who} �
 /* build 66 (section C): AIDEN'S TUTORIAL MAP EDITS, exactly as he marked them — [green] the goal, [yellow] the thing named, [red] how you fail (core.js
    marks(), 65.19). Every number and name in them is still a placeholder filled from config: {count} "35 hits" and {qt} "Quick Tap" are the Dots rule,
    {v1} / {v2} Quick Tap's variants, {first} / {second} / {long} and {s1} / {s2} / {s3} its lengths and their seconds, {rowN} the "7" of Dash's rule */
+/* build 69 (68.4, L15 amended): where a tutorial box sits. It holds a home spot in the middle of the safe area and moves only to clear its own target;
+   each new box on the same screen shifts by `nudge` px from the last (down, then up, then back), so the player sees it is a new box */
+export const TUT_BOX = { nudge:18 };
 export const TUTORIAL = {
   steps:[ 'Welcome to [green]No Excuses[/green]', "Here you'll be able to play all the games on offer", "But you'll notice most are [red]locked…[/red]",
     '[yellow]Tap a game[/yellow] to see how it can be [green]unlocked[/green]', "[green]Wow![/green] [yellow]{count}[/yellow] in a [yellow]{qt}[/yellow] run, that's a lot", "Let's see if we can!",

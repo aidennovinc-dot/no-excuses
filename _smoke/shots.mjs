@@ -2125,6 +2125,21 @@ scene('68.18', async (page, browser) => {
   await frame(page, browser, '68.18-menu-ringed-prog', 'The tap on “Congratulations, you unlocked Progress!” on the result: the main menu, Progress ringed by a must-tap box, the only thing that answers (v0.68: left on the result)');
 });
 
+/* 68.4 (L15 amended): the walkthrough on a new profile — its second box, about the whole map, at the home spot in the middle of the safe area (v0.68:
+   pinned to the bottom edge over the Skill chest); then box 5, the Dots rule, moved off home only as far as it takes to clear the lock popup it is about */
+scene('68.4', async (page, browser) => {
+  await load(page, { story: 1, gridSeen: 1, snd: 'off', tut: 0, played: 0 }); await show(page, 's-pick'); await sleep(1200);
+  say('box 1', await pBox(page, 'Welcome')); await tutTap(page); await sleep(300);
+  const b2 = await pBox(page, 'play all'); say('box 2', b2);
+  say('home', await page.evaluate(() => { const b = document.querySelector('#tut .tbox').getBoundingClientRect(); return { top: Math.round(b.top), offMiddle: Math.round((b.top + b.bottom) / 2 - (47 + (innerHeight - 34)) / 2) }; }));
+  await frame(page, browser, '68.4-map-box-home', 'The walkthrough’s second box, about the whole map: at the home spot in the middle of the safe area, the map dimmed under it (v0.68: pinned to the bottom edge over the Skill chest)');
+  await tutTap(page); await sleep(300); say('box 3', await pBox(page, 'locked')); await tutTap(page); await sleep(300);
+  say('box 4', await pBox(page, 'Tap a game')); await tutAimTap(page); await sleep(500);
+  say('box 5', await pBox(page, 'Wow'));
+  say('beside', await page.evaluate(() => { const b = document.querySelector('#tut .tbox').getBoundingClientRect(), l = document.getElementById('lockbox').getBoundingClientRect(); return { box: [Math.round(b.top), Math.round(b.bottom)], lock: [Math.round(l.top), Math.round(l.bottom)] }; }));
+  await frame(page, browser, '68.4-box-beside-target', 'Box 5, the Dots rule: its target is the lock popup in the middle, so the box leaves home just far enough to sit beside it, tail pointing at it; the popup is where it always sits (67.1)');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

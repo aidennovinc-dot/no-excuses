@@ -445,8 +445,9 @@ export async function run() {
       await sleep(400); await click('#over-back');
       let b19 = null; for (let k = 0; k < 40 && !(b19 = await box()); k++) await sleep(100);
       // the ring round the tile, read in the same moment as the tile (a new tile breathes, so a size read apart from the ring's would not match)
-      const tile = await page.evaluate(() => { const q = document.querySelector('#tut .tring').getBoundingClientRect(), t = document.querySelector('#grid .tile[data-game="hold"]').getBoundingClientRect();
-        return { dx: Math.round(q.left + q.width / 2 - t.left - t.width / 2), dy: Math.round(q.top + q.height / 2 - t.top - t.height / 2), dw: Math.round(q.width - t.width) }; });
+      // (the new tile lands on the map with its own animation, and the ring follows it each turn of the loop — so it is read once it has landed)
+      let tile = null; for (let k = 0; k < 30; k++) { tile = await page.evaluate(() => { const q = document.querySelector('#tut .tring').getBoundingClientRect(), t = document.querySelector('#grid .tile[data-game="hold"]').getBoundingClientRect();
+        return { dx: Math.round(q.left + q.width / 2 - t.left - t.width / 2), dy: Math.round(q.top + q.height / 2 - t.top - t.height / 2), dw: Math.round(q.width - t.width) }; }); if (Math.abs(tile.dx) <= 6 && Math.abs(tile.dy) <= 6) break; await sleep(100); }
       await sleep(600);
       Object.assign(R19, { map: await state(), st: await page.evaluate(async () => (await import('./ui/tutorial.js')).tutNow()), box: b19 && { t: b19.text, drawn: b19.drawn, ring: b19.ring }, tile, est: await page.evaluate(() => (JSON.parse(localStorage.getItem('ne')).prefs.tuts || {}).est),
         toastUp: await page.evaluate(() => document.getElementById('toast').classList.contains('on')) });
@@ -546,7 +547,7 @@ export async function run() {
       await page.evaluateOnNewDocument(() => { window.__tscroll = 0; const mine = () => /ui\/tutorial\.js/.test(new Error().stack || '');
         for (const [o, k] of [[Element.prototype, 'scrollTo'], [Element.prototype, 'scrollBy'], [Element.prototype, 'scrollIntoView'], [window, 'scrollTo'], [window, 'scrollBy']]) { const f = o[k]; o[k] = function (...a) { if (mine()) window.__tscroll++; return f.apply(this, a); }; }
         const d = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollTop'); Object.defineProperty(Element.prototype, 'scrollTop', { configurable: true, get: d.get, set(v) { if (mine()) window.__tscroll++; d.set.call(this, v); } }); });
-      const cdp = await page.createCDPSession(), out = [];
+      const cdp = await page.createCDPSession(), out = [], NUDGE = await page.evaluate(async () => (await import('./config/copy.js')).TUT_BOX.nudge);
       for (const [w, h, top, bottom] of [[390, 844, 47, 34], [375, 667, 20, 0]]) {
         await page.setViewport({ width: w, height: h, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
         try { await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top, bottom, left: 0, right: 0 } }); } catch (e) {}
@@ -555,7 +556,7 @@ export async function run() {
           await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
           if (T.go) await page.evaluate(async g => (await import('./ui/router.js')).show(g), T.go);
           if (T.open) { await sleep(900); await click(`.tile[data-game="${T.open}"]`); await sleep(400); if (!(await page.evaluate(() => document.getElementById('sheet').classList.contains('len')))) { await click('#diff-row .choice'); await sleep(400); } }
-          const boxes = []; let idle = 0, why = '';
+          const boxes = []; let idle = 0, why = '', lastPl = null;
           for (let n = 0; n < 200 && boxes.length < 16; n++) {
             const st = await page.evaluate(async () => (await import('./ui/tutorial.js')).tutNow());
             if (!st || st.id !== T.id) break;
@@ -579,7 +580,20 @@ export async function run() {
                 if (r.left < b.right && r.right > b.left && r.top < b.bottom && r.bottom > b.top) hit.push((el.id ? '#' + el.id : String(el.className).split(' ')[0] || el.tagName) + (el.dataset.v ? '[' + el.dataset.v + ']' : el.dataset.act ? '[' + el.dataset.act + ']' : '')); }
               document.querySelectorAll(lift).forEach(e => { e.style.visibility = ''; }); const sh = document.getElementById('sheet'), up = !!sh && !sh.hidden && sh.classList.contains('up');
               return { hit, over, sheetBad: up && (b.bottom > sh.getBoundingClientRect().top + 1 || !tl0 || !tlUp) }; }, lift);
-            if (cov.hit.length) { rec.covers = true; rec.over = cov.hit.join(','); } if (cov.sheetBad) rec.sheetBad = 1; if (cov.over) rec.dimmed = 1;
+            /* build 69 (68.4, L15 amended, replacing 67.2's "covers nothing that takes a tap", which pushed the map's box to the bottom edge): a box may sit
+               over other tiles (they stay dimmed and take no tap); it never covers its OWN target — the thing it is about, which on a must-tap box is the
+               thing the player must tap; a box about the whole screen holds the home spot, the middle of the safe area (±40px); each new box on a screen
+               moves at least the nudge from the last (`TUT_BOX.nudge`); and no box sits within 24px of the bottom inset unless its target is there */
+            const st2 = (await page.evaluate(async () => (await import('./ui/tutorial.js')).tutNow())) || {};
+            const pl = await page.evaluate(tg => { const p = document.createElement('div'); p.style.cssText = 'position:fixed;top:env(safe-area-inset-top);bottom:env(safe-area-inset-bottom);width:1px'; document.body.appendChild(p); const r = p.getBoundingClientRect(); p.remove();
+              const b = document.querySelector('#tut .tbox').getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom), mid: Math.round((b.top + b.bottom) / 2 - (r.top + r.bottom) / 2), sb: Math.round(r.bottom),
+                own: !!tg && b.left < tg[2] && b.right > tg[0] && b.top < tg[3] && b.bottom > tg[1] }; }, st2.whole ? null : st2.tgt);
+            if (pl.own) { rec.covers = true; rec.over = 'its own target ' + JSON.stringify(st2.tgt); }
+            if ((st2.whole || !st2.tgt) && Math.abs(pl.mid) > 40) rec.home = pl.mid;
+            if (lastPl && lastPl.scr === m.scr && Math.abs(pl.top - lastPl.top) < NUDGE) rec.nudge = pl.top - lastPl.top;
+            if (pl.bottom > pl.sb - 24 && !(st2.tgt && !st2.whole && Math.abs(pl.top - st2.tgt[3]) <= 60)) rec.pinned = pl.sb - pl.bottom;
+            lastPl = { scr: m.scr, top: pl.top };
+            if (cov.sheetBad) rec.sheetBad = 1; if (cov.over) rec.dimmed = 1;
             // the state is read again once the box has come to rest: a sheet still sliding up carries its target in from off the screen
             Object.assign(st, (await page.evaluate(async () => (await import('./ui/tutorial.js')).tutNow())) || {});
             /* 67.9: a target off the screen — the box waits with an arrow toward it and no ring; the walker brings it in with the wheel, as a thumb would */
@@ -602,7 +616,7 @@ export async function run() {
           const done = await page.evaluate(id => { const v = (JSON.parse(localStorage.getItem('ne')).prefs.tuts || {})[id]; return v; }, T.id);
           const scrolled = await page.evaluate(() => window.__tscroll || 0);
           out.push({ at: w + 'x' + h, id: T.id, n: boxes.length, why: why || (scrolled ? `ui/tutorial.js scrolled the screen ${scrolled} time(s)` : ''), done: T.id === 'first' || T.id === 'over' ? 'n/a' : done,
-            far: boxes.filter(b => b.far).length, dimmed: boxes.filter(b => b.dimmed).length, bad: boxes.filter(b => b.covers || !b.safe || b.marks || b.lock || !b.moved || b.nav || b.sheetBad) });
+            far: boxes.filter(b => b.far).length, dimmed: boxes.filter(b => b.dimmed).length, bad: boxes.filter(b => b.covers || !b.safe || b.marks || b.lock || !b.moved || b.nav || b.sheetBad || b.home !== undefined || b.nudge !== undefined || b.pinned !== undefined) });
         }
       }
       try { await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0, bottom: 0, left: 0, right: 0 } }); } catch (e) {}
@@ -610,7 +624,7 @@ export async function run() {
       const fails = out.filter(o => o.bad.length || o.why || !o.n || (o.done !== 'n/a' && o.done !== 'done'));
       const taps = out.reduce((n, o) => n + o.n, 0);
       (!fails.length)
-        ? ok(`L15 / 67.2 / 67.9 / 67.10 / 65.11 / 65.9 every tutorial walked with real taps at 390×844 (47/34 insets) and on an SE: ${taps} boxes (${out.filter(o => o.at === '390x844').map(o => o.id + ' ' + o.n).join(', ')}) — no box over ANYTHING that takes a tap (${out.reduce((n, o) => n + o.dimmed, 0)} with no free spot sat on dimmed ground that takes none), on a pick sheet every box above it with its tail down, ${out.reduce((n, o) => n + o.far, 0)} off-screen target(s) waited for with an arrow and the screen never scrolled by the tutorial, every must-tap ring answers a real tap, all inside the safe areas, no "[" left, no screen change after a text box`)
+        ? ok(`L15 / 68.4 / 67.10 / 65.11 / 65.9 every tutorial walked with real taps at 390×844 (47/34 insets) and on an SE: ${taps} boxes (${out.filter(o => o.at === '390x844').map(o => o.id + ' ' + o.n).join(', ')}) — no box over its own target or the thing to tap (${out.reduce((n, o) => n + o.dimmed, 0)} sat over other controls, dimmed and taking no tap), every box about the whole screen at the home spot (±40px), each new box on a screen ${NUDGE}px or more from the last, none pinned at the bottom inset, on a pick sheet every box above it with its tail down, ${out.reduce((n, o) => n + o.far, 0)} off-screen target(s) waited for with an arrow and the screen never scrolled by the tutorial, every must-tap ring answers a real tap, all inside the safe areas, no "[" left, no screen change after a text box`)
         : bad('L15 a tutorial covers something tappable, scrolls, soft-locks or misplaces a box', JSON.stringify(fails));
     }
     /* build 66.1: THE WELCOME ON THE MAIN MENU OPENS ABOUT, DRAWN OPEN AT ONCE. AMENDED at build 68 (67.7, L20): there is no Later any more — the

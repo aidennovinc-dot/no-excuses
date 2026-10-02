@@ -1936,3 +1936,13 @@ anything Aiden settles goes on the list in the build that implements it.
   ring. A new game's or mode's own box on the same result comes first, since the hand-over leaves the result. Gate: `locked decisions` section
   C, "68.18": the first Estimate run, the Welcome clip's close and the first Reaction run, each congratulations box tapped — `s-menu`, the item
   ringed and must-tap, Games does not answer, a real tap on the ring opens the item and its tour's first box is inside.
+- **L15's home spot, as built (68.4, P3).** `place()` in `ui/tutorial.js`: the home spot is the middle of the safe area; the box stays there
+  unless that would cover its own target (the step's `el`, plus `keep`, with the tail's gap), and then takes the nearer of "just under" and "just
+  over" the target that is clear; with neither clear (a target nearly the screen's height) the spot that covers least of it. Each new box on the
+  same screen is offset from home by `TUT_BOX.nudge` (18px, `config/copy.js`: 0, +18, −18 in turn) and lands at least that far from the box
+  before it. A box over other controls dims them and takes their taps (`blocks()`, the ground build 68 kept for "no free spot"); 67.2's `spot()`
+  search for a spot clear of every control is gone. On a pick sheet the box sits above the sheet, tail down, nudged upward in turn. `tutNow()`
+  reports the box's target (`tgt`) and whether it is the whole screen (`whole`), for the gate. Gate: `locked decisions` section C's walk of every
+  tutorial (390×844 with insets, and an SE) and the journey (41) — no box over its own target; a whole-screen box within 40px of home; each new
+  box on a screen at least the nudge from the last; none within 24px of the bottom inset unless its target is there. 67.2's "covers nothing that
+  takes a tap" is withdrawn from both (Aiden's amendment).
