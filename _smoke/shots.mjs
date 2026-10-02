@@ -2358,6 +2358,23 @@ scene('68.11', async (page, browser) => {
   await page.evaluate(async () => (await import('./ui/video.js')).closeVideo()); await sleep(900);
 });
 
+/* 68.17: a first (owed) viewing of the Games chest's clip, full screen over the map, a finger held on the picture and the ring by "Skip" stopped at
+   half of PLAYER.skipHold */
+scene('68.17', async (page, browser) => {
+  await load(page, { ...PLAIN, welcomeSeen: 1, chests: { games: 1 }, spill: { games: 1 }, readySeen: { games: 1 }, mustWatch: 'games', msgSeen: {} });
+  await show(page, 's-pick'); await sleep(900);
+  await page.evaluate(async () => { const V = await import('./ui/video.js'), M = await import('./config/messages.js'); V.playVideo(M.MESSAGES.find(m => m.id === 'games'), { full: true }); });
+  await clipUp(page);
+  const half = (await import('../config/messages.js')).PLAYER.skipHold / 2;
+  await page.mouse.move(195, 420); await page.mouse.down(); await sleep(60);
+  say('ring', await page.evaluate(ms => { const c = document.querySelector('#vplay .vrfill'); for (const a of c.getAnimations()) { a.pause(); a.currentTime = ms; }
+    const s = document.querySelector('#vplay .vskip').getBoundingClientRect(), f = document.querySelector('#vplay .vframe').getBoundingClientRect();
+    return { fill: +(1 - parseFloat(getComputedStyle(c).strokeDashoffset)).toFixed(2), skipTop: Math.round(s.top), frameBottom: Math.round(f.bottom), ih: innerHeight }; }, half));
+  await frame(page, browser, '68.17-skip-ring-half', 'The Games chest’s clip on its first viewing, full screen: a finger held on the picture, the ring by “Skip” half full (it empties if the finger lifts, and a tap does nothing)');
+  await page.mouse.up(); await sleep(1200);
+  await page.evaluate(async () => (await import('./ui/video.js')).closeVideo()); await sleep(900);
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

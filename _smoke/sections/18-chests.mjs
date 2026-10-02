@@ -1224,4 +1224,38 @@ export async function run() {
     pin === PIN17 ? ok(`L17 the Pro chest's opening is as approved on 2026-09-18 — its ceremony, look, cover, gifts, confetti, cheer and sound rows fingerprint ${pin}`)
       : bad('L17 the Pro chest opening changed (quote L17 and re-pin, or put it back)', `${pin} ≠ ${PIN17}`);
   }
+  /* build 69 (68.17): FIRST WATCH — HOLD TO SKIP. The Games chest's clip is owed and plays full screen as its Continue plays it. A plain tap does nothing;
+     a finger held for half of PLAYER.skipHold fills the ring by "Skip" about half way and letting go empties it with the clip still up; a finger held
+     past skipHold closes it by its normal power-off, the clip counted as seen and nothing owed, and the release that follows lands on nothing behind
+     (About is under it, a message row under the finger). A second viewing closes at a tap outside, as before. Real pointer input throughout */
+  {
+    const MS17 = await import(pathToFileURL(path.join(root, 'config', 'messages.js')).href), P17 = MS17.PLAYER;
+    await boot({ chests: { games: 1 }, spill: { games: 1 }, readySeen: { games: 1 }, welcomeSeen: 1, mustWatch: 'games', msgSeen: {} });
+    await go('s-about'); await sleep(500);
+    const at17 = await page.evaluate(() => { const r = document.querySelector('#msglist .msgrow').getBoundingClientRect(); return [Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2)]; });
+    const ring = () => page.evaluate(() => { const h = document.getElementById('vplay'), c = h && h.querySelector('.vring .vrfill'), s = h && h.querySelector('.vskip'), f = h && h.querySelector('.vfoot');
+      return { up: !!h && !h.hidden, off: !!h && h.classList.contains('voff'), fill: c ? +(1 - parseFloat(getComputedStyle(c).strokeDashoffset)).toFixed(2) : null,
+        skip: s && s.getClientRects().length ? s.textContent.trim() : '', foot: f && f.getClientRects().length ? f.innerText.trim() : '' }; });
+    await page.evaluate(async () => { const V = await import('./ui/video.js'), M = (await import('./config/messages.js')).MESSAGES; V.playVideo(M.find(m => m.id === 'games'), { full: true }); });
+    await page.evaluate(async () => { const w = ms => new Promise(r => setTimeout(r, ms)); for (let i = 0; i < 200; i++) { const v = document.querySelector('#vplay video'); if (v && v.videoWidth) return; await w(25); } });
+    await sleep(P17.on.ms + 200);
+    const o17 = { start: await ring() };
+    await page.mouse.click(at17[0], at17[1]); await sleep(400); o17.tap = await ring();
+    await page.mouse.move(at17[0], at17[1]); await page.mouse.down(); await sleep(P17.skipHold / 2); o17.half = await ring();
+    await page.mouse.up(); await sleep((P17.skipBack || 200) + 250); o17.let = await ring();
+    await page.mouse.down(); await sleep(P17.skipHold + 250); o17.held = await ring();
+    await sleep(P17.off.ms + 250); await page.mouse.up(); await sleep(400);
+    Object.assign(o17, await page.evaluate(() => { const n = JSON.parse(localStorage.getItem('ne')).prefs, h = document.getElementById('vplay');
+      return { gone: !h || h.hidden, seen: !!(n.msgSeen || {}).games, owed: n.mustWatch || '', screen: document.querySelector('.screen.on')?.id }; }));
+    // a second viewing: tap outside closes, as now
+    await page.evaluate(async () => { const V = await import('./ui/video.js'), M = (await import('./config/messages.js')).MESSAGES; V.playVideo(M.find(m => m.id === 'games')); });
+    await sleep(P17.on.ms + 300); o17.again = await ring();
+    await page.mouse.click(195, 30); await sleep(P17.off.ms + 300); o17.againGone = await page.evaluate(() => document.getElementById('vplay').hidden);
+    const half = o17.half.fill !== null && o17.half.fill > .2 && o17.half.fill < .8;
+    (o17.start.up && o17.start.skip && !/tap outside/i.test(o17.start.foot) && o17.start.fill <= .05 && o17.tap.up && !o17.tap.off && half && o17.half.up && !o17.half.off
+      && o17.let.up && !o17.let.off && o17.let.fill <= .05 && (o17.held.off || !o17.held.up) && o17.gone && o17.seen && !o17.owed && o17.screen === 's-about'
+      && o17.again.up && !o17.again.skip && /tap outside to close/i.test(o17.again.foot) && o17.againGone)
+      ? ok(`68.17 first watch is hold to skip: "${o17.start.skip}" by an empty ring under the clip; a tap does nothing; held ${P17.skipHold / 2}ms the ring is ${Math.round(o17.half.fill * 100)}% full and letting go empties it (${o17.let.fill}) with the clip still up; held past ${P17.skipHold}ms it powers off, counted seen and no longer owed, and the release lands on nothing (still ${o17.screen}); a second viewing says "tap outside to close" and a tap outside closes it`)
+      : bad('68.17 hold to skip', JSON.stringify(o17));
+  }
 }

@@ -51,7 +51,8 @@ function build() { if (host) return host;
   host.innerHTML = '<div class="vback"></div>'
     + '<div class="vwrap"><div class="vtitle"></div>'
     + '<div class="vframe" data-act="vtap"><div class="vpic"></div><i class="vline"></i></div>'
-    + `<div class="vcc"></div><div class="vfoot">${esc(MSG.close)}</div></div>`;
+    + `<div class="vcc"></div><div class="vfoot"><span class="vclose">${esc(MSG.close)}</span>`
+    + `<span class="vskip"><svg class="vring" viewBox="0 0 20 20" aria-hidden="true"><circle class="vrbg" cx="10" cy="10" r="8"/><circle class="vrfill" cx="10" cy="10" r="8" pathLength="1"/></svg>${esc(MSG.skip)}</span></div></div>`;
   document.body.appendChild(host);
   // build 69 (68.11): the inset is a share of the screen's NARROWER side, and the foot line sits `footGap` under what is above it
   host.style.setProperty('--vinset', `calc(min(100vw, 100svh) * ${PLAYER.inset / 100})`); host.style.setProperty('--vfootgap', PLAYER.footGap + 'px');
@@ -59,6 +60,10 @@ function build() { if (host) return host;
   host.style.setProperty('--von-ms', PLAYER.on.ms + 'ms'); host.style.setProperty('--voff-ms', PLAYER.off.ms + 'ms');
   // 59.10: ONE resize listener for the life of the player, not one per clip — the open path sets `_reshape` and this calls it
   addEventListener('resize', () => { if (host && !host.hidden && host._reshape) host._reshape(); });
+  // build 69 (68.17): hold to skip a first viewing — a finger down ANYWHERE on the player fills the ring, a finger up anywhere empties it
+  host.style.setProperty('--vskip-ms', PLAYER.skipHold + 'ms'); host.style.setProperty('--vskipback-ms', PLAYER.skipBack + 'ms');
+  host.addEventListener('pointerdown', holdOn);
+  for (const ev of ['pointerup', 'pointercancel', 'blur']) addEventListener(ev, holdOff, true);
   return host; }
 
 /* the captions strip. The track is HIDDEN, never showing: a showing track paints its cues over the picture and item 9 says nothing overlays it.
@@ -79,6 +84,27 @@ const glow = on => { if (host) host.classList.toggle('vlit', !!on); };
    closed, so a missing file never traps anyone. Watched once, it is an ordinary message: a replay from About closes at a tap. The first-time
    tutorials wait for it the way they wait for the Welcome (ui/tutorial.js busy()) */
 let must = false;
+/* build 69 (68.17): FIRST WATCH — HOLD TO SKIP. Aiden: "it just says skip and then a little thing fills up around it if they hold their finger instead
+   of accidentally tapping." On a first (owed) viewing the foot line is a small "Skip" (MSG.skip) beside a thin ring. A finger held anywhere on the player
+   fills the ring over PLAYER.skipHold (a CSS transition whose duration is that value, written as --vskip-ms); letting go first empties it over
+   PLAYER.skipBack and nothing happens; held to the end, the clip closes by its normal power-off, already counted as seen and no longer owed. A plain tap
+   does nothing, on the picture too (no pause). The finger is usually still down when the player goes, so the click its release makes is eaten rather
+   than landing on the screen behind. A clip that stalls — no `timeupdate` for PLAYER.stallMs, or an error — releases the lock: the foot says "tap
+   outside to close" and a tap closes. Later viewings keep tap-to-pause and tap outside to close, unchanged */
+let holdT = 0, stallT = 0;
+function holdOn() { if (!host || host.hidden || !must || closing || holdT) return;
+  host.classList.add('vhold'); holdT = setTimeout(skipNow, PLAYER.skipHold); }
+function holdOff() { if (!holdT) return; clearTimeout(holdT); holdT = 0; if (host) host.classList.remove('vhold'); }
+const eat = e => { e.stopImmediatePropagation(); e.preventDefault(); };
+function skipNow() { holdT = 0; if (!host || !must) return;
+  document.addEventListener('click', eat, { capture: true, once: true });
+  addEventListener('pointerup', () => setTimeout(() => document.removeEventListener('click', eat, true), 60), { capture: true, once: true });
+  release(); closeVideo(); }
+// the lock lets go: a stall, an error, a skip. The foot goes back to "tap outside to close"
+function release() { must = false; clearTimeout(stallT); stallT = 0; if (host) host.classList.remove('vmust', 'vhold'); }
+// re-armed by every timeupdate; a page that is hidden is not a stall (the phone pauses a clip in the background), so the watch waits for it
+function stallArm() { clearTimeout(stallT); stallT = 0; if (!must) return;
+  stallT = setTimeout(() => { stallT = 0; if (!must) return; if (document.hidden) stallArm(); else release(); }, PLAYER.stallMs); }
 const videoDue = () => { const id = prefs.mustWatch; return id && !(prefs.msgSeen || {})[id] ? id : ''; };
 function mustWatch(id) { if (!id || (prefs.msgSeen || {})[id] || !MESSAGES.some(m => m.id === id && m.file)) return; prefs.mustWatch = id; save(); }
 const dueClear = () => { if (prefs.mustWatch) { prefs.mustWatch = ''; save(); } };
@@ -94,7 +120,8 @@ function playVideo(m, o = {}) { if (!m || !m.file) return false;
   // build 68 (67.14): the music steps back while a clip plays, and fades in again after its switch-off
   Music.hush(true);
   must = videoDue() === m.id; if (must) dueClear();
-  host.hidden = false; host.classList.remove('voff', 'vlit'); host.classList.toggle('vmust', must); host.dataset.msg = m.id;
+  holdOff(); clearTimeout(stallT); stallT = 0;
+  host.hidden = false; host.classList.remove('voff', 'vlit'); host.classList.toggle('vmust', must); host.classList.toggle('vowed', must); host.dataset.msg = m.id;
   host.style.setProperty('--vg', msgCol(m) || '#FFFFFF'); host.classList.toggle('vthorn', msgThorn(m));
   // build 68 (67.6): the player's title is the same two lines as the Welcome's card — the eyebrow, then the name in quotes
   host.querySelector('.vtitle').innerHTML = `<small class="weye">${esc(WELCOME.from)}</small><b class="wname">${esc(T(WELCOME.name, { title: msgTitle(m) }))}</b>`;
@@ -133,7 +160,8 @@ function playVideo(m, o = {}) { if (!m || !m.file) return false;
      THE CHEST CARD'S BUTTON IS NOT A SECOND CASE. The item allows for "inline videos on a Congratulations card can't close, so
      they go back to their play button" — there are none: `reveal-msg` takes the player to About and plays it in this same shared
      player (item 23), so a clip opened from a card closes the way every other one does. Named in the outcome. */
-  vid.addEventListener('ended', () => { glow(false); must = false; closeVideo(); });
+  vid.addEventListener('ended', () => { glow(false); release(); closeVideo(); });
+  vid.addEventListener('timeupdate', stallArm); stallArm();
   /* v29 (item 10, build 55): A CLIP THAT WILL NOT PLAY SAYS SO, AND play() IS CALLED IN THE TAP'S OWN TASK.
      Nothing listened for `error` and the play() rejection was swallowed by a bare catch, so a missing file, a 404 or an iOS
      NotAllowedError all showed the same thing: a silent black rectangle inside a glowing frame that never lit, with "tap outside to
@@ -141,7 +169,7 @@ function playVideo(m, o = {}) { if (!m || !m.file) return false;
      un-muted playback through a transient-activation window that current iOS is generous with and iOS <= 16.3 and some WKWebView
      configurations are not. It is called synchronously now; the frame is still clipped shut for those 320ms, so the picture still
      OPENS, and the power-on sound still lands on its own beat. */
-  const failed = () => { if (!host || host.dataset.msg !== m.id) return; glow(false); host.classList.add('vfail'); must = false; host.classList.remove('vmust');
+  const failed = () => { if (!host || host.dataset.msg !== m.id) return; glow(false); host.classList.add('vfail'); holdOff(); release();
     const box = host.querySelector('.vcc'); if (box) box.textContent = MSG.unavailable; };
   vid.addEventListener('error', failed);
   const src = pic.querySelector('source'); if (src) src.addEventListener('error', failed);
@@ -158,7 +186,7 @@ function playVideo(m, o = {}) { if (!m || !m.file) return false;
 /* CLOSE. The reverse, and the clip stops on the first beat of it so nothing is heard playing behind a picture that is collapsing. The element is
    emptied at the end rather than removed: one player, built once (item 10). A second close while one is running is ignored. */
 function closeVideo() { if (!host || host.hidden || closing || must) return false;
-  closing = 1; clearAt();
+  closing = 1; clearAt(); holdOff(); clearTimeout(stallT); stallT = 0;
   if (vid) { try { vid.pause(); } catch (e) { } }
   glow(false); host.classList.remove('von'); void host.offsetWidth; host.classList.add('voff');
   for (const s of PLAYER.off.steps) { if (s.name === 'dot') at(s.at, () => Snd.videoFx('off')); if (s.name === 'static') at(s.at, () => Snd.staticFx()); }

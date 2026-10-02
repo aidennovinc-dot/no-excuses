@@ -90,7 +90,10 @@ export const MESSAGES = [
 /* v30 (59.10, build 59): `footGap` is the clearance between the frame (or its captions) and "tap outside to close". Build 69 (68.11) moved the
    line into the column directly under the frame — it was pinned to the screen's foot and printed over Game Select — so this is now the exact
    gap from the picture to the line. (guess) */
-export const PLAYER = { footGap: 14,
+/* build 69 (68.17): a first viewing is skipped by HOLDING — `skipHold` ms of a finger held anywhere fills the ring by "Skip", letting go empties it over
+   `skipBack` ms; a clip with no `timeupdate` for `stallMs` (or an error) releases the lock so a stuck clip never traps anyone. (guesses, Aiden's
+   "about a second") */
+export const PLAYER = { footGap: 14, skipHold: 1000, skipBack: 200, stallMs: 3000,
   inset: 8,
   on: { ms: 600, steps: [{ name: 'outline', at: 0, ms: 220 }, { name: 'line', at: 200, ms: 130 }, { name: 'open', at: 320, ms: 280 }] },
   /* build 68 (67.14): AN OLD TV SWITCHING OFF — about half a second of static ("chhh") while the picture collapses to a line, then a dot. It plays on a

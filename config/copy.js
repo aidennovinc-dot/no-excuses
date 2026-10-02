@@ -633,6 +633,8 @@ export const MSG = { title:'messages', lede:'Short messages from Aiden, as you g
   /* v27 (items 9 / 10, build 52): THE SHARED VIDEO PLAYER (ui/video.js). `close` is the line in dim grey at the foot of the screen — the whole of how
      the player is dismissed, because item 9 wants nothing over the picture and no knobs; a tap on the picture itself pauses and plays. */
   close:'tap outside to close',
+  // build 69 (68.17): a first viewing's foot line — a finger held anywhere fills the ring beside it, and a full ring skips the clip
+  skip:'Skip',
   // v29 (item 10, build 55): a clip that will not load says so. It used to be a silent black rectangle with an empty caption strip and an
   // outline that never lit - a missing file, a 404 or an iOS NotAllowedError all looked identical, and identical to a clip with no sound.
   unavailable:'Video unavailable — tap outside to close',

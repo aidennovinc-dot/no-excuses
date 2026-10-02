@@ -2019,8 +2019,19 @@
      config/chests.js METER_BANDS. 0–100 --mute with no effects, 100–200 --ink, 200–300 gold with an outer glow that strengthens across the
      band, 300–400 white on black with a spiked edge, a cold glow and a continuous shake. The shake steps between whole pixels, so the
      number never blurs. Green is never used (B.22). Presentation only (L10). */
-  /* build 66 (65.18): a chest's video on its first viewing plays to the end — no "tap outside to close" under it */
-  #vplay.vmust .vfoot{visibility:hidden}
+  /* build 66 (65.18): a chest's video on its first viewing plays to the end — no "tap outside to close" under it.
+     build 69 (68.17): in its place a small "Skip" with a thin ring; a finger held anywhere fills the ring over --vskip-ms, letting go empties it over
+     --vskipback-ms (a transition, so it empties from wherever it got to). A first viewing that stalls drops `vmust` and the foot says "tap outside to close" */
+  .vskip{display:none;align-items:center;gap:7px}
+  #vplay.vmust .vclose{display:none}
+  #vplay.vmust .vskip{display:inline-flex}
+  #vplay.vmust{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none}
+  .vring{width:16px;height:16px;transform:rotate(-90deg);overflow:visible}
+  .vring circle{fill:none;stroke-width:2}
+  .vring .vrbg{stroke:color-mix(in srgb,var(--mute) 45%,transparent)}
+  .vring .vrfill{stroke:var(--ink);stroke-dasharray:1;stroke-dashoffset:1;transition:stroke-dashoffset var(--vskipback-ms,200ms) ease-out}
+  #vplay.vhold .vring .vrfill{stroke-dashoffset:0;transition:stroke-dashoffset var(--vskip-ms,1000ms) linear}
+  #vplay.vhold .vskip{color:var(--ink)}
   .meterv{font-weight:inherit;color:var(--mcol,var(--ink));display:inline-block;position:relative}
   /* build 66 (65.14): the Skill chest's 100% — a flash and a swell, then it stays gold: the moment the game is finished */
   .meterv.whole{color:#E8B84A;text-shadow:0 0 14px rgba(232,184,74,.75),0 0 30px rgba(232,184,74,.4);animation:mwhole .9s cubic-bezier(.2,1.4,.4,1) both}
@@ -2421,7 +2432,10 @@
   #vplay.vfull .vframe{width:min(100vw,calc(var(--v-maxh,100svh) * var(--v-arw,16) / var(--v-arh,9)));border-radius:0;border-width:2px}
   /* a clip with no captions has no caption strip, so the foot line sits straight under the frame; a clip that fails still says so there */
   #vplay.vnocc:not(.vfail) .vcc{display:none}
-  #vplay.vfull .vtitle,#vplay.vfull .vfoot{display:none}
+  #vplay.vfull .vtitle,#vplay.vfull:not(.vowed) .vfoot{display:none}
+  /* build 69 (68.17): a full-screen first viewing keeps its foot ("Skip", or "tap outside to close" once a stall has released it), so the frame
+     leaves the home bar and the clock clear */
+  #vplay.vfull.vowed{padding-block:env(safe-area-inset-top) env(safe-area-inset-bottom)}
   .vpic{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#000}
   .vpic video{width:100%;height:100%;object-fit:contain;background:#000;display:block}
   .vline{position:absolute;left:0;right:0;top:50%;height:2px;margin-top:-1px;background:#FFFFFF;opacity:0;transform:scaleX(0);pointer-events:none}
