@@ -231,3 +231,11 @@ picks them for an open-ended run. The Customise Music row and its on / off moved
   apart from the cheers, the unlock and the click. **`_smoke/loudness.mjs` renders effects now** (noise included, loudest 250ms window): confetti
   −40.7 dBFS, between a reward's pop (−43.3) and its landing (−37.2), and 5 dB under the quietest cheer (Games −36.0; Skill −34.6, Pro −33.1,
   Author −31.3; unlock −28.9). Not heard on a phone (UNVERIFIED.md).
+
+## Build 69 (FEEDBACK-v37 68.14, 2026-10-02): silence when the app is hidden
+
+- **ALL SOUND STOPS THE MOMENT THE APP IS HIDDEN.** Aiden: "The sound was playing while the app was closed." On `visibilitychange` hidden and on
+  `pagehide` `audio.js` suspends the AudioContext (`goAway()`), so music, stems, the earn music and a sound in flight stop together and the
+  music's clock stops on its bar; `away` keeps AC(), the statechange handler, revive() and live() from waking it. On return (`comeBack()`, visible
+  or `pageshow`) every resume still goes through revive() (F.2 / J.1), and the loop carries on where it stopped. A tap that comes before any
+  visibility event rebuilds the suspended context inside the gesture. Gate: `music`, "68.14". Not heard on a phone (UNVERIFIED.md).

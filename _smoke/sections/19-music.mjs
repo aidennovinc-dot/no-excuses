@@ -286,6 +286,33 @@ export async function run() {
       ? ok(`item 12 AC() no longer resumes by itself — twelve sounds through a ${ac55.st0} context asked for ${ac55.n} resume${ac55.n === 1 ? '' : 's'}; every one goes through revive()'s single-flight ladder (F.2)`)
       : bad('item 12 AC() still resumes on every call', JSON.stringify(ac55));
   }
+  /* build 69 (68.14): ALL SOUND STOPS THE MOMENT THE APP IS HIDDEN, AND THE MUSIC COMES BACK ON RETURN. Aiden: "The sound was playing while the app was
+     closed." F.2 / J.1 only marked the context suspect on the way out, so a loop kept playing for as long as iOS gave a home-screen app audio time.
+     The menu track is started, the page is hidden (document.hidden stubbed true and `visibilitychange` fired), and within 100ms the context is
+     suspended and its clock stands still, and a sound asked for meanwhile does not wake it; shown again, the same track is playing on a context that
+     is running and whose clock moves. Then the same through `pagehide` / `pageshow` with the page still visible (a page put away whole), where the
+     context's own statechange must not bring the sound straight back. A desktop proves the mechanism; only the phone proves the silence */
+  {
+    await boot({ chests: { games: 1 } }, {}, {});
+    const h14 = await page.evaluate(async () => { const A = await import('./audio.js'), M = A.Music, S = await import('./core/store.js'), w = ms => new Promise(r => setTimeout(r, ms));
+      const hide = v => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => v }); Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => v ? 'hidden' : 'visible' }); document.dispatchEvent(new Event('visibilitychange')); };
+      const look = () => ({ state: A.ac ? A.ac.state : 'none', track: M.probe().track, playing: M.probe().playing });
+      const moving = async () => { const t0 = A.ac.currentTime; await w(300); return A.ac.currentTime > t0; };
+      S.prefs.musicG.menu = true; M.stop(); M.menu('menu'); await w(1500);
+      const o = { before: look() }; o.before.moving = await moving();
+      hide(true); await w(100); o.hidden = look(); A.Snd.click(); o.hidden.still = !(await moving()); o.hidden.after = look().state;
+      hide(false); await w(700); o.back = look(); o.back.moving = await moving();
+      dispatchEvent(new Event('pagehide')); await w(100); o.pagehide = look(); o.pagehide.still = !(await moving()); o.pagehide.after = look().state;
+      dispatchEvent(new Event('pageshow')); await w(700); o.shown = look(); o.shown.moving = await moving();
+      delete document.hidden; delete document.visibilityState; M.stop(); return o; });
+    const want14 = h14.before.track;
+    (h14.before.playing && h14.before.moving && h14.hidden.state === 'suspended' && h14.hidden.still && h14.hidden.after === 'suspended'
+      && h14.back.state === 'running' && h14.back.track === want14 && h14.back.playing && h14.back.moving
+      && h14.pagehide.state === 'suspended' && h14.pagehide.still && h14.pagehide.after === 'suspended'
+      && h14.shown.state === 'running' && h14.shown.track === want14 && h14.shown.moving)
+      ? ok(`68.14 all sound stops when the app is hidden: the menu track ("${want14}") was playing; 100ms after the page went hidden the audio context was suspended, its clock stood still and a click asked for meanwhile did not wake it; shown again, "${want14}" was playing on a running context whose clock moved — and the same through pagehide / pageshow, with nothing waking it in between (the silence itself is the phone's to prove)`)
+      : bad('68.14 the sound on hide', JSON.stringify(h14));
+  }
   /* build 62 (61.19): THE MUSIC CARRIES ON THROUGH A RUN. The menu's track keeps playing into the run (same track, the bar count never goes back
      to 0) at RUN_MUSIC.vol; Pause keeps its place; the end of the run puts it back to full without starting it again; Music off stays off;
      and a real Timing run drops it out while the count is running */

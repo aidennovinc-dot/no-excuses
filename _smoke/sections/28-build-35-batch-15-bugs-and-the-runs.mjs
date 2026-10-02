@@ -26,7 +26,7 @@ export async function run() {
       rebuild: /function rebuild\(why\)/.test(audio35) && /for\(const f of rebinds\)/.test(audio35),
       // AMENDED at build 36 (v22 §J.1): the state gate these two asserted WAS the bug - iOS reads 'running' on a stopped clock.
       // Foreground now always reaches revive(); the tap reaches it for a context that is not running OR is marked suspect
-      foreground: /visibilitychange',\(\)=>\{ if\(!ac\) return; if\(document\.hidden\)\{[^}]*\} revive\('foreground'\)/.test(audio35),
+      // DELETED at build 69 (68.14): the source text of the foreground handler (it suspends on hide now); its behaviour is driven in §J.1 (build 36) and 68.14 (music)
       pageshow: /addEventListener\('pageshow'/.test(audio35),
       tap: /pointerdown',\(\)=>\{ if\(ac&&\(ac\.state!=='running'\|\|ac\._suspect\)\) revive\('tap',true\)/.test(audio35),
       music: /rebinds\.push\(c=>\{ mg=null; sg=\[null,null\]; fg=null;[^}]*next=c\.currentTime/.test(audio35),

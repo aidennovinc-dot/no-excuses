@@ -42,6 +42,9 @@ const REVIVE_MS=400;
    No timer is ever started from a tap. */
 const LIVE_MS=150;
 let ac=null, acGen=0, acWhy='', acLast='', acChecks=0, acClock=null, reviving=null, pvT=0;
+/* build 69 (68.14): `away` — the app is hidden or put away whole (pagehide). The context is SUSPENDED for as long as it holds, and nothing may
+   resume it — not AC(), not the context's own statechange, not a clock check that finds the suspended clock standing still */
+let away=false;
 const rebinds=[];
 const newCtx=()=>{ try{ return new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; } };
 /* S5: what Testing reads out — the state, how many times the context has been rebuilt, the last REBUILD and the last thing
@@ -58,7 +61,7 @@ const stuck=c=>c._p!==undefined&&performance.now()-c._p>=LIVE_MS&&c.currentTime<
 const moved=c=>c._p!==undefined&&c.currentTime>c._t;
 function adopt(c,suspect){ if(!c) return null; if(c.state==='running') c._ran=1; mark(c); if(suspect) c._suspect=1;
   if(c.addEventListener) c.addEventListener('statechange',()=>{ if(c!==ac) return; if(c.state==='running'){ c._ran=1; mark(c); } told('statechange · '+c.state);
-    if(c.state!=='running'&&c.state!=='closed'&&!document.hidden) revive('statechange'); });
+    if(c.state!=='running'&&c.state!=='closed'&&!document.hidden&&!away) revive('statechange'); });
   return c; }
 /* v29 (item 12, build 55): AC() NO LONGER RESUMES BY ITSELF. F.2's rule is that every resume goes through revive() - one
    single-flighted ladder that rebuilds a context which will not come back - and this line was the exact path F.2 said it
@@ -66,7 +69,7 @@ function adopt(c,suspect){ if(!c) return null; if(c.state==='running') c._ran=1;
    resume() fired ~12 times a second, each returning an unobserved promise that rejected with InvalidStateError, and every
    one of them bypassed the `reviving` guard. It asks revive() instead, which is a no-op while one is already in flight
    and does nothing at all while the page is hidden. */
-const AC=()=>{ if(!ac){ ac=adopt(newCtx()); if(ac) told('created'); } if(ac&&ac.state!=='running'&&ac.state!=='closed'&&!reviving&&!document.hidden) revive('AC'); return ac; };
+const AC=()=>{ if(!ac){ ac=adopt(newCtx()); if(ac) told('created'); } if(ac&&ac.state!=='running'&&ac.state!=='closed'&&!reviving&&!document.hidden&&!away) revive('AC'); return ac; };
 // (c): a new context, the old one closed, and everything that held a node or a time on the old one told to let go.
 // v22 (§J.1): the replacement is suspect until its clock has been seen moving, so the first tap on it checks it
 function rebuild(why){ const old=ac, c=newCtx(); if(!c) return false; ac=adopt(c,true); acGen++;
@@ -79,7 +82,7 @@ function rebuild(why){ const old=ac, c=newCtx(); if(!c) return false; ac=adopt(c
 function live(c,why){ if(c._checking) return c._checking;
   acChecks++; c._suspect=1; mark(c); const t0=c._t, p0=c._p;
   return c._checking=new Promise(done=>setTimeout(()=>{ c._checking=null;
-    if(ac!==c||c.state==='closed'||document.hidden) return done(!!ac&&ac.state==='running');
+    if(ac!==c||c.state==='closed'||document.hidden||away) return done(!!ac&&ac.state==='running');
     const dt=c.currentTime-t0; acClock={ dt:+dt.toFixed(3), ms:Math.round(performance.now()-p0), why };
     if(dt<=0){ rebuild(why+' · clock stopped'); return done(!!ac&&ac.state==='running'); }
     c._suspect=0; told('clock moving · '+why); done(true); },LIVE_MS)); }
@@ -89,7 +92,10 @@ function live(c,why){ if(c._checking) return c._checking;
    rebuilds it on the spot, inside the gesture. Never while the page is hidden: a backgrounded context is meant to stop.
    v22 (§J.1): a context reading `running` is no longer waved through — off a tap it goes to live(), on a tap it is read
    against its last sample with no wait. */
-function revive(why,tap){ const c=ac; if(!c||c.state==='closed'||document.hidden) return Promise.resolve(!!c&&c.state==='running');
+function revive(why,tap){ const c=ac; if(!c||c.state==='closed'||document.hidden||away) return Promise.resolve(!!c&&c.state==='running');
+  /* build 69 (68.14): a context suspended on the way out and first touched by a TAP (the page came back without saying so) has a clock that has
+     not moved since it was sampled going out — it is rebuilt inside the gesture, the J.1 rule for a stuck clock, so the sound is certain to start */
+  if(tap&&c._away){ c._away=0; if(stuck(c)){ rebuild(why+' · clock stopped'); return Promise.resolve(!!ac&&ac.state==='running'); } }
   if(c.state==='running'){ if(!tap) return live(c,why);
     if(stuck(c)){ rebuild(why+' · clock stopped'); return Promise.resolve(!!ac&&ac.state==='running'); }
     if(moved(c)) c._suspect=0;
@@ -643,10 +649,20 @@ on('screen:change',({id})=>{ clearTimeout(menuT); if(id==='game'||id==='s-key') 
    suspect and samples its clock, so a tap after returning is checked even if no foreground event arrives. The TAP keeps a
    gate, because it runs on every tap of every game: only a context that is not running, or one marked suspect, is looked
    at, and revive() never waits on a tap. */
+// build 69 (68.14): a tap only ever comes from a page that is in front, so it ends `away` before the tap's own check below reads it
+document.addEventListener('pointerdown',()=>{ away=false; },{capture:true,passive:true});
 document.addEventListener('pointerdown',()=>{ if(ac&&(ac.state!=='running'||ac._suspect)) revive('tap',true); },{capture:true,passive:true});
-document.addEventListener('visibilitychange',()=>{ if(!ac) return; if(document.hidden){ ac._suspect=1; mark(ac); return; } revive('foreground'); });
-addEventListener('pagehide',()=>{ if(ac){ ac._suspect=1; mark(ac); } });
-addEventListener('pageshow',()=>{ if(ac) revive('pageshow'); });
+/* build 69 (68.14): ALL SOUND STOPS THE MOMENT THE APP IS HIDDEN. Aiden: "The sound was playing while the app was closed." Going hidden used to
+   only mark the context suspect, so a loop played on for as long as iOS gave a home-screen app audio time. It is SUSPENDED now — music, stems, the
+   earn music and a sound in flight stop together, and the music's clock stops where it is — and `away` keeps every resume path shut. On return it
+   goes through revive() as F.2 says (never a bare resume, `running` never trusted), and the loop carries on from the bar it stopped on. A run is
+   paused by 60.27 on the same event and its music comes back with it */
+const goAway=()=>{ away=true; if(!ac) return; ac._suspect=1; ac._away=1; mark(ac);
+  try{ const p=ac.suspend(); if(p&&p.catch) p.catch(()=>{}); }catch(e){} told('away · suspended'); };
+const comeBack=why=>{ away=false; if(ac){ ac._away=0; revive(why); } };
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) goAway(); else comeBack('foreground'); });
+addEventListener('pagehide',goAway);
+addEventListener('pageshow',()=>comeBack('pageshow'));
 // build 55 (in passing): keyboard-only desktop never unlocked, and older iOS counted touchend rather than pointerdown as the gesture
 for(const ev of ['pointerdown','touchend','keydown']) document.addEventListener(ev,()=>Snd.unlock(),{once:true});
 

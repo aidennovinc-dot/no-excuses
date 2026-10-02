@@ -15,8 +15,7 @@ export async function run() {
   {
     const tapBranch = (audio36.split("if(c.state==='running'){ if(!tap) return live(c,why);")[1] || '').split('return Promise.resolve(true); }')[0];
     const has = {
-      fg: audio36.includes("document.addEventListener('visibilitychange',()=>{ if(!ac) return; if(document.hidden){ ac._suspect=1; mark(ac); return; } revive('foreground'); });"),
-      ps: audio36.includes("addEventListener('pageshow',()=>{ if(ac) revive('pageshow'); });"),
+      // DELETED at build 69 (68.14): fg / ps, the source text of the foreground and pageshow handlers; both are driven below and in 68.14 (music)
       tap: audio36.includes("document.addEventListener('pointerdown',()=>{ if(ac&&(ac.state!=='running'||ac._suspect)) revive('tap',true); },{capture:true,passive:true});"),
       reviveGate: !audio36.includes("if(!c||c.state==='running'||"),
       live: audio36.includes('const LIVE_MS=150;') && /function live\(c,why\)\{[\s\S]*?\},LIVE_MS\)\); \}/.test(audio36),
