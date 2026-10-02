@@ -2241,9 +2241,13 @@ scene('68.10', async (page, browser) => {
   await page.evaluate(async () => (await import('./run/run.js')).abort(true)); await sleep(400);
   await load(page, RUN69, QT69); await start69(page, 'quick-tap', 'two', 15);
   for (let i = 0; i < 80 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) await sleep(50);
-  await sleep(1500); for (let k = 0; k < 4; k++) { await pressLit(page); await sleep(220); }
+  for (let k = 0; k < 4; k++) { await pressLit(page); await sleep(220); }
+  say('gover', await page.evaluate(() => { const t = document.querySelector('#goal > i'); return t && { cls: t.className, gover: t.style.getPropertyValue('--gover'), sw: t.scrollWidth, cw: t.clientWidth }; }));
+  // the one walk: wait for it to reach its end (the translate is its whole overflow, --gover); no more hits, so the goal is not met and its words stay
+  for (let i = 0; i < 120 && !(await page.evaluate(() => { const t = document.querySelector('#goal > i'), m = t && /(-?[\d.]+)px/.exec(getComputedStyle(t).translate || ''); return !t || (m && Math.abs(Math.abs(+m[1]) - parseFloat(t.style.getPropertyValue('--gover') || '0')) <= .3); })); i++) await sleep(150);
+  await sleep(500);
   say('goal', await goalRead(page));
-  await frame(page, browser, '68.10-long-held', 'The same run with the long goal ("15 hits in a row …", too long for the box): its walk does not fit the 3-2-1, so it holds at its start through Go and every hit — no restart, no movement while the run is live');
+  await frame(page, browser, '68.10-long-held', 'A Quick Tap Dash run with a goal still too long for the full-width box: it walked once from the 3-2-1 and now HOLDS AT ITS END, “… → unlocks Quick Tap · Four” readable, through Go and every hit — no restart, no movement while the run is live');
 });
 
 /* 68.16: every timed mode with its timer, ~2s left (amber). Quick Tap Two · Dash is Aiden's own case; the rest at Sprint, pass & play at its fixed length */
@@ -2283,7 +2287,12 @@ scene('68.24', async (page, browser) => {
   await frame(page, browser, '68.24-timing-top', 'Timing · Stopwatch · Streak, round 2 mid-attempt: the goal box; the allowance bar with what is left at its right end; one line “Stopwatch · Streak · Round 2”; TARGET and its figure; nothing under the clock until the tap');
   await page.evaluate(async () => (await import('./run/run.js')).abort(true)); await sleep(400);
   await load(page, RUN69, { unlock: await UNL69(page) }); await start69(page, 'timing', 'stopwatch', -1);
-  await tmTap(page); await sleep(3300); await tmTap(page, .2); await sleep(2000);
+  await tmTap(page); await sleep(3300);
+  // 68.24 review: the live clock while an attempt runs — it is drawn at full strength for its first 1.5s, then fades (the Stopwatch's own rule)
+  await page.evaluate(async () => { const TM = (await import('./games/timing/index.js')).default, w = ms => new Promise(r => setTimeout(r, ms)); for (let i = 0; i < 600 && !(TM.st === 'run' && performance.now() - TM.t0 > 800); i++) await w(10); });
+  say('clock', await page.evaluate(() => { const c = document.getElementById('tmclock'); return c && { text: c.textContent, opacity: getComputedStyle(c).opacity, size: getComputedStyle(c).fontSize }; }));
+  await frame(page, browser, '68.24-timing-clock', 'The same Stopwatch Streak, round 2, 0.8s into the attempt: the live clock running large between TARGET and “tap to stop the timer” (it fades from 1.5s, the Stopwatch’s own rule, unchanged)');
+  await tmTap(page, .2); await sleep(2000);
   say('afterTap', await topRead(page));
   await frame(page, browser, '68.24-timing-tapped', 'The same run after round 2’s tap: the round’s own figure and tier under the clock (never 0.00s), the goal and the game on the same round');
   await page.evaluate(async () => (await import('./run/run.js')).abort(true)); await sleep(400);

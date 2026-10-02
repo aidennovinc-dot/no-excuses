@@ -2034,6 +2034,16 @@ anything Aiden settles goes on the list in the build that implements it.
   its words changed (`goalPut`), so no update starts it over. The row as it stood at build 68: "A goal badge that does not fit scans, and freezes
   while a round is live (60.20): `goalScan()` in `run/run.js`, `GOAL_SCAN`; moves only in the 3-2-1 and between rounds." Gate: `the runs` (15b),
   "68.10", and 60.20's check amended (the 3-2-1 clause).
+- **68.10 follow-up — a long goal walks once to its end, then holds (build 69 review).** The first build of 68.10 held a long goal at its start
+  whenever its walk did not fit the 0.9s 3-2-1, so in Quick Tap, Dots and Timing a first-time player never saw what it unlocks. Now: `#goal`'s width
+  reserve for the Restart pill is gone (67.16 removed Restart; the box is `min(92vw, 100%)`), so most goals fit and never move. One that still
+  overflows walks ONCE from its start to its end at `GOAL_SCAN.pxPerSec`, starting in the 3-2-1 and carrying on into the run when the count is too
+  short, then holds at its end for the rest of the run; Go, a live update and a round landing never restart it, and a line whose words change after
+  the walk (a round goal's "Round N") is put straight at its end. Reduce Motion: it sits at its end. The pause while a round is live is withdrawn
+  (the review's call: the complaint was text that keeps scrolling and restarts, not one walk). Gate: `the runs` (15b), "68.10" (the end reached within
+  overflow / pxPerSec + the 3-2-1 + 1s, then no change through Go and 18 live updates) and 60.20's check re-amended in words. In passing: the Streak
+  top's class was `#top.allow`, which also matched the in-round allowance block's `.allow` rule and narrowed the whole header to 300px — it is
+  `#top.streaktop` now.
 - **The run timer is a ring round the score, or a bar where a ring does not fit (68.16, PICKED).** Aiden: "The timer countdown is really boring …
   they should be able to see it out of the corner of their eye … Don't make it intrusive", then "Run timer B … Where it isn't appropriate, the bar is
   best." One mechanism, `timer()` / `clock()` in `games/_shared/hud.js`, the choice per mode in `TIMER` (`config/games.js`): `ring` (option B on the
@@ -2046,7 +2056,7 @@ anything Aiden settles goes on the list in the build that implements it.
   (15d), "68.16": every timed mode solo and pass & play, one timer of the configured kind, no `#bar`, moving with the clock, amber at ≤ 3s.
 - **A Streak's top, tidied (68.24).** Aiden on Timing · Stopwatch · Streak: "I really like the idea of this allowance bar … it's just the top looks quite
   a bit messy." Top to bottom: the goal box; the allowance bar with what is LEFT printed small at its right end ("4.59s", `HUD.allow`), the "ALLOWANCE …
-  / 5.00S" label line gone; ONE line "Stopwatch · Streak · Round 2" (`#top.allow` lays the mode and the round on one line and hides the big number, which
+  / 5.00S" label line gone; ONE line "Stopwatch · Streak · Round 2" (`#top.streaktop` lays the mode and the round on one line and hides the big number, which
   was the rounds again); then TARGET and its figure. Every Streak with an allowance wears it: Stopwatch, Hidden, Grow, Flash, Go / No-go (their "Round
   N · X of Y" lines are the bar now). Two bugs with it: the goal read "Round 3 of 6" while the game read "Round 2" — a round goal's "Round N of 6" is the
   game's round IN PLAY now (the engine's `round`, rewritten when the game's line changes), the pips still lighting as each round lands, because the

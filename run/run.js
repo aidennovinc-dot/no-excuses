@@ -12,7 +12,7 @@ import { Music, Snd } from "../audio.js";
 import { FLOW_AT, FLOW_FALL, FLOW_RISE } from "../config/audio.js";
 import { RUN_SCHEMA } from "../config/build.js";
 import { HUD, INTRO, INTRO_READY, TOAST } from "../config/copy.js";
-import { CFG, GOAL_SCAN, MODE_NAME, PASS_LEN, PASS_TURNS, RATE_MAX, STREAK } from "../config/games.js";
+import { GOAL_SCAN, MODE_NAME, PASS_LEN, PASS_TURNS, RATE_MAX, STREAK } from "../config/games.js";
 import { P1C, P2C } from "../config/theme.js";
 import { $, T, pWho } from "../core.js";
 import { emit, on } from "../core/events.js";
@@ -57,21 +57,19 @@ const active=()=>R.on;
 // the name back out, so "30 hits in any Quick Tap run" reads "30 hits in any run" while you are playing Quick Tap. The line
 // scrolls between the requirement and what it unlocks (the CSS) rather than trying to fit both at once
 /* v31 (60.20, build 60): and each of those two lines SCANS SIDEWAYS if it does not fit. One read per line, off the drawn text.
-   build 69 (68.10): IT SCANS ONCE AND NEVER RESTARTS. Aiden saw it "scrolling through the 3-2-1 and into the run" and Go restarting it. A line that fits
-   never gets the class. A line that does not is measured ONCE (`scan`) and walks to its end ONCE (`go`, GOAL_SCAN.pxPerSec): in the 3-2-1 only if the
-   walk fits inside it, otherwise it holds at its start; on a held card between rounds (`tapon`, below) after GOAL_SCAN.hold. It then holds at its end.
-   A live round pauses it where it stands (the stylesheet); a live update keeps the same text node (goalPut), so nothing can start it over */
-function goalScan(){ const gl=$('#goal'); if(!gl) return; const gm=$('#game'), live=gm.classList.contains('live'), card=gm.classList.contains('tapon');
+   build 69 (68.10 and its follow-up): IT WALKS ONCE TO ITS END, THEN HOLDS. Aiden saw it "scrolling through the 3-2-1 and into the run" and Go restarting
+   it; and a first-time player must still be able to read what it unlocks. A line that fits never gets the class (and the box is as wide as the phone
+   allows now, so most fit). A line that does not is measured ONCE (`scan`) and walks ONCE, from its start to its end at GOAL_SCAN.pxPerSec (`go`),
+   starting in the 3-2-1 and carrying on into the run when the count is too short, then holds at its end for the rest of the run. Nothing starts it
+   over: a live update keeps the same text node (goalPut), and a line whose words change once the walk has been made (a round goal's "Round N") is
+   put straight at its end (`end`) — a held card may show it from the end, still */
+function goalScan(){ const gl=$('#goal'); if(!gl) return;
   for(const el of gl.children){ if(el.matches('.gbar,.gpips')) continue;
     const over=Math.max(0,el.scrollWidth-el.clientWidth);
-    if(over<=2){ el.classList.remove('scan','go'); for(const p of ['--gover','--gscan','--gwait']) el.style.removeProperty(p); continue; }
+    if(over<=2){ el.classList.remove('scan','go','end'); for(const p of ['--gover','--gscan']) el.style.removeProperty(p); continue; }
     if(el.classList.contains('scan')) continue;
-    const walk=over/GOAL_SCAN.pxPerSec*1000;
-    el.style.setProperty('--gover',over+'px'); el.style.setProperty('--gscan',walk+'ms'); el.classList.add('scan');
-    if(card) goalGo(el); else if(!live&&walk<=3*CFG.countStep) el.classList.add('go'); } }
-function goalGo(el){ el.style.setProperty('--gwait',GOAL_SCAN.hold+'ms'); el.classList.add('go'); }
-// a held card between rounds: a line still at its start walks once now
-new MutationObserver(()=>{ if(!$('#game').classList.contains('tapon')) return; for(const el of document.querySelectorAll('#goal>.scan:not(.go)')) goalGo(el); }).observe($('#game'),{ attributes:true, attributeFilter:['class'] });
+    el.style.setProperty('--gover',over+'px'); el.style.setProperty('--gscan',(over/GOAL_SCAN.pxPerSec*1000)+'ms');
+    el.classList.add('scan',R.goalWalked?'end':'go'); R.goalWalked=true; } }
 // the game's round line moved: a round goal follows it (68.24)
 new MutationObserver(()=>{ if(R.on&&R.goal&&!R.goalHit&&eng){ const B=goalBest(R.goal); if(B&&B.rounds&&goalPut($('#goal'),goalHtml(R.goalRes))) requestAnimationFrame(()=>goalScan()); } }).observe($('#hud-time'),{ childList:true, characterData:true, subtree:true });
 // a live update rewrites only what changed: the progress line every time, the text only when its words did (68.10)
@@ -181,7 +179,7 @@ function start(){
   // build 69 (68.16): the run timer this mode wears (config/games.js TIMER) — a ring round the score or a bar; a run with no clock has none
   hud.timer(g.timed&&!vx?sel.game+':'+sel.diff:null);
   if(ctx) ctx.timers.clearT();
-  $('#game').classList.toggle('gaunt',!!pendingGaunt); R.id++; Object.assign(R,{on:true,live:false,gaunt:pendingGaunt,timed:!!g.timed&&!vx,t0:0,end:0,goalHit:false,goalRes:null,fresh:[],lenNext:null,lenDone:false,demo:false,tension:0,fin:0,vsP:[0,0],flow:0,flowT:0,
+  $('#game').classList.toggle('gaunt',!!pendingGaunt); R.id++; Object.assign(R,{on:true,live:false,gaunt:pendingGaunt,timed:!!g.timed&&!vx,t0:0,end:0,goalHit:false,goalRes:null,goalWalked:false,fresh:[],lenNext:null,lenDone:false,demo:false,tension:0,fin:0,vsP:[0,0],flow:0,flowT:0,
     flowOn:!VS.on&&!sel.vs&&(sel.game==='quick-tap'||sel.game==='dots')});
   $('#game').classList.remove('flowon'); $('#game').style.setProperty('--flow','0');
   /* v17 (B.5, L6): the next length this run could open, and the test that says so. It is computed ONCE per run because a
