@@ -112,12 +112,14 @@ const FIRST=[
   { on:map, el:()=>$(`#grid .tile[data-game="${QT}"]`), tap:1, done:()=>sheetUp()&&!lenStage(), tag:TUTORIAL.start, text:L[5],
     enter(){ if(lockUp()) through(()=>$('#lock-no').click()); } },
   { on:()=>sheetUp()&&!lenStage(), el:()=>$('#diff-row'), ring:0, text:()=>say(L[6]) },
+  /* build 69 (68.5): "With a friend" lives on the sheet's VARIANT step — the Solo / With a friend row every player sees there, hidden on the length step.
+     Build 66 kept Aiden's order and showed the row on the length step for this box (`#vs-wrap` forced on), a sheet no player ever sees: "it should
+     only show the two player in the screen that actually can be clicked, otherwise it confuses them." The box now comes here, while the real chips are
+     on screen, before "Let's start with …" takes the sheet to its length step; the walkthrough never alters the sheet */
+  { on:()=>sheetUp()&&!lenStage(), el:()=>$('#vs-wrap [data-p="f"]'), text:L[10] },
   { on:()=>sheetUp()&&!lenStage(), el:()=>$(`#diff-row .choice[data-diff="${QM()}"]`), tap:1, done:lenStage, text:()=>say(L[7]) },
   { on:lenStage, el:()=>$('#time-row'), ring:0, text:()=>say(L[8]) },
   { on:lenStage, el:()=>$('#time-row'), ring:0, text:()=>say(L[9]) },
-  /* step 11: "With a friend" lives on the variant step of the sheet, and by now the sheet is on its length step — so for this box and the
-     next the player row is shown on the length step too (Cowork's call: Aiden's order kept, the thing it points at put where it can be seen) */
-  { on:lenStage, el:()=>$('#vs-wrap [data-p="f"]'), text:L[10], enter(){ $('#vs-wrap').style.display=''; } },
   // step 12: Sprint picked, the run starts — there is no box for Go (the second capture below presses it)
   { on:lenStage, el:()=>$(`#time-row .tbtn[data-time="${GC(QT,QM()).lens[0]}"]`), tap:1, done:()=>false, text:L[11] },
 ];
@@ -149,7 +151,7 @@ const DEFS={
     meta:{ name:'First-run walkthrough', trigger:'A profile that has never played reaches the games menu (or Testing → Replay tutorial)', start:'Games menu, once the map has drawn in',
       why:'A new player learns what is locked, how a game unlocks, variants and modes, then plays the first run, which cannot be quit',
       at:[['Games menu',''],['Games menu',''],['Games menu',''],['Games menu','Dots tile'],['Games menu · Dots lock box',''],['Games menu','Quick Tap tile, labelled "Start here"'],
-        ['Pick sheet · variants',''],['Pick sheet · variants','Two'],['Pick sheet · Mode row',''],['Pick sheet · Mode row',''],['Pick sheet · Mode row','With a friend'],['Pick sheet · Mode row','Sprint (starts the first run)']] } },
+        ['Pick sheet · variants',''],['Pick sheet · variants','With a friend'],['Pick sheet · variants','Two'],['Pick sheet · Mode row',''],['Pick sheet · Mode row',''],['Pick sheet · Mode row','Sprint (starts the first run)']] } },
   over:{ live:results, steps:()=>overList||(overList=overSteps()), step:()=>overAt, setStep:n=>{ overAt=n; }, finish:tutEnd,
     meta:{ name:'First result', trigger:'The first run finishes', start:'That run\'s result screen, once its unlock toasts have played',
       why:'The reward for the first run, what to try next, and the way back — then the walkthrough ends and Off the Rails is banked' } },

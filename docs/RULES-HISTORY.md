@@ -1956,3 +1956,9 @@ anything Aiden settles goes on the list in the build that implements it.
   counts as the whole screen (90% of it, was 55%), so a long list on a small phone gets its box beside it, not over it. Applies to every tour —
   About, Progress, Scores, Customise (Snow), the Gauntlets' tiles below the fold. Gate: `locked decisions` section C's walk and the journey (41)
   fail a box whose target is under 90% inside the safe area as it shows, or any `far` box; the tutorial may scroll at most once a box.
+- **The friend box is on the real sheet (68.5).** Aiden on v0.68: "it should only show the two player in the screen that actually can be
+  clicked, otherwise it confuses them." Which it was: the walkthrough's sheet differed from the normal one. The Solo / With a friend row lives on
+  the sheet's VARIANT step (`setStage()` in `ui/screens/pick.js` hides `#vs-wrap` on the length step), and build 66 kept Aiden's order by forcing
+  the row onto the length step for box 11 (`enter(){ $('#vs-wrap').style.display=''; }`). The box now comes right after the variants box, on the
+  variant step, ringing the real chip, ahead of "Let's start with Quick Tap · Two" — the least reorder; the override is gone, so the walkthrough
+  never alters the sheet (68.19). Gate: `locked decisions` section C, "68.5".

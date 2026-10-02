@@ -23,7 +23,11 @@ export async function run() {
   const soloSub = await page.evaluate(() => { const sub = document.querySelector('#vs-wrap .prow.sub');
     return { there: !!sub, hidden: !!sub && sub.hidden, shown: !!sub && getComputedStyle(sub).display !== 'none' }; });
   (soloSub.there && soloSub.hidden && !soloSub.shown) ? ok('L3 Solo shows no Pass & play / Versus') : bad('L3 Solo shows no Pass & play / Versus', JSON.stringify(soloSub));
+  // build 69 (68.5): where the player row lives on the sheet a player with no walkthrough sees — on its variant step, and not on its length step
+  const vsAt = () => page.evaluate(() => ({ len: document.getElementById('sheet').classList.contains('len'), shown: getComputedStyle(document.getElementById('vs-wrap')).display !== 'none' }));
+  const plainVs = await vsAt();
   await page.evaluate(() => document.querySelector('#diff-row').children[0].click()); await sleep(420);
+  const plainVsLen = await vsAt();
   const lens = await page.evaluate(() => [...document.querySelectorAll('#time-row .tbtn b')].map(b => b.childNodes[0].textContent.trim()));
   (lens.length === 3 && lens[0] === 'Sprint' && lens[1] === 'Dash' && lens[2] === 'Marathon') ? ok('L2 Quick Tap lengths are Sprint / Dash / Marathon') : bad('L2 Quick Tap lengths are Sprint / Dash / Marathon', JSON.stringify(lens));
   const lenTitle = await page.evaluate(() => document.querySelector('#len-title').textContent.trim());
@@ -102,19 +106,31 @@ export async function run() {
     await anywhere(); seen.push(await waitText(want[5]));
     const closed = await state();
     await click('.tile[data-game="quick-tap"]'); seen.push(await waitText(want[6]));
-    await anywhere(); seen.push(await waitText(want[7]));
-    await page.evaluate(() => document.getElementById('grid').click()); await sleep(200); const twoHeld = (await box() || {}).text;
-    await click(`#diff-row .choice[data-diff="${X.m}"]`); seen.push(await waitText(want[8]));
-    await anywhere(); seen.push(await waitText(want[9]));
-    await anywhere(); seen.push(await waitText(want[10]));
-    // box 11 rings With a friend, which cannot be picked: a tap on it moves the box on and leaves Solo chosen
-    await click('#vs-wrap [data-p="f"]'); seen.push(await waitText(want[11]));
+    /* AMENDED at build 69 (68.5): from the variants box on, the boxes are read in the order they come, each answered as a player would — the friend box
+       (a line: a tap on its chip moves it on and leaves Solo chosen), "Let's start with Quick Tap · Two" (a tap on the map does nothing; Two moves it on),
+       a tap anywhere for the rest — until the box that asks for Sprint */
+    let twoHeld = null, friend = null;
+    for (let k = 0; k < 8; k++) { const cb = seen[seen.length - 1]; if (!cb || cb.text === want[11]) break;
+      if (cb.text === want[7]) { await page.evaluate(() => document.getElementById('grid').click()); await sleep(200); twoHeld = (await box() || {}).text; await click(`#diff-row .choice[data-diff="${X.m}"]`); }
+      else if (cb.text === want[10]) { friend = await page.evaluate(() => { const c = document.querySelector('#vs-wrap [data-p="f"]'), r = c.getBoundingClientRect(), e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2), q = document.querySelector('#tut .tring').getBoundingClientRect(), w = document.getElementById('vs-wrap');
+          return { len: document.getElementById('sheet').classList.contains('len'), shown: getComputedStyle(w).display !== 'none', inline: w.getAttribute('style') || '', top: !!e && (e === c || c.contains(e)), ringOn: q.width > 0 && q.left <= r.left + 1 && q.right >= r.right - 1 && q.top <= r.top + 1 && q.bottom >= r.bottom - 1 }; });
+        await click('#vs-wrap [data-p="f"]'); }
+      else await anywhere();
+      let nb = null; for (let j = 0; j < 80; j++) { nb = await box(); if (nb && nb.text !== cb.text) break; await later(); await sleep(100); } seen.push(nb); }
     const solo = await page.evaluate(async () => (await import('./core/state.js')).sel.vs);
-    (seen.length === 12 && seen.every((b, i) => b && b.text === want[i]) && !/\{/.test(want.join('')) && rule.lock && rule.text.includes(X.need) && !closed.lock && twoHeld === want[7] && solo === 0)
-      ? ok(`62.9 the twelve boxes in Aiden's order; box 5 is the Dots rule from config ("${want[4]}") and box 10 its count and Sprint's seconds; Dots opens its lock box, which closes on the next tap; the friend option rings and cannot be picked`)
-      : bad('62.9 the twelve boxes', JSON.stringify({ seen: seen.map(b => b && b.text), want, rule, closed, twoHeld, solo }));
+    /* build 69 (68.5): THE FRIEND BOX IS ON THE REAL SHEET. Aiden on v0.68: "it should only show the two player in the screen that actually can be clicked,
+       otherwise it confuses them." The walkthrough had forced the player row onto the length step; the box now comes on the variant step, where a player
+       with no walkthrough sees that row, and rings the real chip, on the screen and the top thing there */
+    (friend && !friend.len && friend.shown && friend.len === plainVs.len && plainVs.shown && !plainVsLen.shown && friend.top && friend.ringOn)
+      ? ok('68.5 the walkthrough\'s "play with a friend" box comes on the sheet\'s variant step — where the Solo / With a friend row lives for every player (and is hidden on the length step) — and rings the real With a friend chip, on screen and tappable; the walkthrough no longer forces the row onto the length step')
+      : bad('68.5 the friend box is on a sheet the walkthrough altered', JSON.stringify({ friend, plainVs, plainVsLen }));
+    // AMENDED at build 69 (68.5): the friend box comes before "Let's start with …" now, on the variant step
+    const ORDW = [0, 1, 2, 3, 4, 5, 6, 10, 7, 8, 9, 11], byW = i => seen.find(b => b && b.text === want[i]);
+    (seen.length === 12 && seen.every((b, i) => b && b.text === want[ORDW[i]]) && !/\{/.test(want.join('')) && rule.lock && rule.text.includes(X.need) && !closed.lock && twoHeld === want[7] && solo === 0)
+      ? ok(`62.9 / 68.5 the twelve boxes in Aiden's order, the friend box moved onto the variant step; box 5 is the Dots rule from config ("${want[4]}") and box 10 its count and Sprint's seconds; Dots opens its lock box, which closes on the next tap; the friend option rings and cannot be picked`)
+      : bad('62.9 the twelve boxes', JSON.stringify({ seen: seen.map(b => b && b.text), want: ORDW.map(i => want[i]), rule, closed, twoHeld, solo }));
     // 62.6: no ring on the three about the whole list, a ring on every box that asks for a tap, "Start here" on Quick Tap's
-    (!seen[0].drawn && !seen[1].drawn && !seen[2].drawn && [3, 5, 7, 11].every(i => seen[i].drawn && seen[i].ring[0] > 0 && seen[i].ring[0] < 380) && seen[5].tag === C.start && seen[10].drawn)
+    (!byW(0).drawn && !byW(1).drawn && !byW(2).drawn && [3, 5, 7, 11].every(i => byW(i).drawn && byW(i).ring[0] > 0 && byW(i).ring[0] < 380) && byW(5).tag === C.start && byW(10).drawn)
       ? ok(`62.6 no outline on the boxes about the whole list; one round each thing to tap (and With a friend), Quick Tap's labelled "${C.start}"`)
       : bad('62.6 the outlines', JSON.stringify(seen.map(b => b && { t: b.text.slice(0, 20), drawn: b.drawn, ring: b.ring, tag: b.tag })));
     /* AMENDED at build 66 (65.5, superseding 62.7's one centred spot): every box is on the phone, centred across it, never over what it rings, and a

@@ -2150,6 +2150,15 @@ scene('68.12', async (page, browser) => {
   await frame(page, browser, '68.12-about-videos', 'About, opened at the top: the game has scrolled the videos into view as the box came up — the list ringed, no arrow, a tap anywhere moves on (v0.68: an arrow at the list off screen, the step waiting for a scroll)');
 });
 
+/* 68.5: the walkthrough's "play with a friend" box on the sheet's variant step, ringing the real Solo / With a friend row (v0.68: the row forced onto the
+   length step, above Sprint / Dash / Marathon, where no player ever sees it) */
+scene('68.5', async (page, browser) => {
+  await load(page, { story: 1, gridSeen: 1, snd: 'off', tut: 0, played: 0 }); await show(page, 's-pick'); await sleep(1200);
+  for (let i = 0; i < 9; i++) { const b = await pBox(page, '', 6000); if (!b) break; if (/friend/.test(b.text)) { say('box', b); break; } if (b.tap) await tutAimTap(page); else await tutTap(page); await sleep(500); }
+  say('sheet', await page.evaluate(() => ({ stage: document.getElementById('sheet').classList.contains('len') ? 'length' : 'variant', row: getComputedStyle(document.getElementById('vs-wrap')).display })));
+  await frame(page, browser, '68.5-friend-box', 'The walkthrough’s friend box on the sheet’s variant step, ringing the real With a friend chip — the row every player sees there (v0.68: forced onto the length step)');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }
