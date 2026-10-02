@@ -28,22 +28,31 @@ function size(){ dpr=Math.min(2,devicePixelRatio||1);
   W=cv.width=Math.round(bw*dpr); H=cv.height=Math.round(bh*dpr); geo=null;
   pts=Array.from({length:70},()=>({x:Math.random()*W,y:Math.random()*H,r:(Math.random()*1.4+.4)*dpr,s:(Math.random()*.15+.05)*dpr,a:Math.random()*.5+.15,ph:Math.random()*6.28,l:(30+Math.random()*60)*dpr,v:(.6+Math.random()*1.2)*dpr,R:(120+Math.random()*160)*dpr})); }
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+/* build 69 (68.39 follow-up): OVERLAPPING ART NEVER ADDS PAST ITS CAP. A flake drawn at .4 over another at .4 read as .64 — two flakes over a word as
+   bright as the word — so every particle, line and glow is drawn OPAQUE in its colour already mixed onto the ground (`pm`, the strength it was
+   drawn at), with `lighten` (draw() sets it round the art): where two overlap the brighter shows, never the sum. One flake looks as it did; the caps
+   in config (SNOW, KEY_LAYER, BG_LAYER.peak) hold wherever they overlap. `G0` is the ground they are mixed onto, set each frame */
+let G0=[5,5,6];
+// a part drawn ON another part of the same flake, lantern, trace or branch is mixed onto THAT part's colour (`b`), so one particle looks as it did
+const mixA=(c,a,b)=>{ const k=Math.max(0,Math.min(1,a)), v=c[0]==='#'?[1,3,5].map(i=>parseInt(c.slice(i,i+2),16)):String(c).split(',').map(Number), g=b||G0;
+  return v.map((x,i)=>Math.round(g[i]+(x-g[i])*k)); };
+const pm=(c,a,b)=>`rgb(${mixA(c,a,b).join(',')})`;
 const DRAW={
   /* build 65 (64.15): SNOW, the Games chest's background — soft flakes falling slowly, each swaying on its own phase; quiet like the other four.
      Build 66 (65.12): it read as the starfield — the same small white dots on the same near-black. Now it is its own night (config/theme.js
      DESIGNS.snow, a cold blue) and its flakes are SNOW: three depths, a soft halo round each, the near ones bigger, faster and swaying wider */
   snow(t){ for(const [i,p] of pts.slice(0,60).entries()){ const d=i%7===0?2.6:i%3===0?1.7:1, r=p.r*1.3*d;
       if(!reduce){ p.y+=p.s*1.4*d; if(p.y>H+r*4) p.y=-r*4; } const x=p.x+(reduce?0:Math.sin(t/(2200+400*d)+p.ph)*7*d*dpr);
-      cx.globalAlpha=Math.min(SNOW.glow,p.a*.5*d); cx.fillStyle=`rgb(${SNOW.halo})`; cx.beginPath(); cx.arc(x,p.y,r*2.4,0,6.28); cx.fill();
-      cx.globalAlpha=Math.min(SNOW.core,(p.a*1.3+.2)*SNOW.core); cx.fillStyle=`rgb(${SNOW.flake})`; cx.beginPath(); cx.arc(x,p.y,r,0,6.28); cx.fill(); } },
-  stars(t){ for(const p of pts){ if(!reduce){ p.y-=p.s; if(p.y<-4) p.y=H+4; } cx.globalAlpha=p.a*(.6+.4*Math.sin(t/1400+p.ph)); cx.fillStyle='#E8E6E1'; cx.beginPath(); cx.arc(p.x,p.y,p.r,0,6.28); cx.fill(); } },
+      const ha=mixA(SNOW.halo,Math.min(SNOW.glow,p.a*.5*d)); cx.fillStyle=`rgb(${ha.join(',')})`; cx.beginPath(); cx.arc(x,p.y,r*2.4,0,6.28); cx.fill();
+      cx.fillStyle=pm(SNOW.flake,Math.min(SNOW.core,(p.a*1.3+.2)*SNOW.core),ha); cx.beginPath(); cx.arc(x,p.y,r,0,6.28); cx.fill(); } },
+  stars(t){ for(const p of pts){ if(!reduce){ p.y-=p.s; if(p.y<-4) p.y=H+4; } cx.fillStyle=pm('#E8E6E1',p.a*(.6+.4*Math.sin(t/1400+p.ph))); cx.beginPath(); cx.arc(p.x,p.y,p.r,0,6.28); cx.fill(); } },
   /* grid (v8): the spacing breathes — lines drift apart and back together around the centre, and being evenly spaced they can never cross.
      v29 Section A (57.11c, build 57): IN BLUE. It was the app's off-white at 7%, on a blue-black ground, which read as grey on grey; the ground is a
      real navy now (config/theme.js DESIGNS.grid) and the lines are a blue you can see, with the nodes on them brighter again. */
-  grid(t){ const g=56*dpr*(1+(reduce?0:.22*Math.sin(t/2800))); const ox=(W/2)%g, oy=(H/2)%g; cx.globalAlpha=.3; cx.strokeStyle='#5B8CFF'; cx.lineWidth=dpr; cx.beginPath(); for(let x=ox-g;x<W+g;x+=g){ cx.moveTo(x,0); cx.lineTo(x,H); } for(let y=oy-g;y<H+g;y+=g){ cx.moveTo(0,y); cx.lineTo(W,y); } cx.stroke();
-    cx.globalAlpha=.7; for(let i=0;i<12;i++){ const p=pts[i]; const gx=Math.round((p.x-ox)/g)*g+ox, gy=Math.round((p.y-oy)/g)*g+oy; cx.fillStyle='#8FB4FF'; cx.fillRect(gx-1.5*dpr,gy-1.5*dpr,3*dpr,3*dpr); } },
-  rain(t){ cx.strokeStyle='#E8E6E1'; cx.lineWidth=dpr; for(const p of pts.slice(0,40)){ if(!reduce){ p.y+=p.v; if(p.y>H+p.l) p.y=-p.l; } cx.globalAlpha=p.a*.28; cx.beginPath(); cx.moveTo(p.x,p.y-p.l); cx.lineTo(p.x,p.y); cx.stroke(); } },
-  orbs(t){ for(const p of pts.slice(0,6)){ const x=p.x+(reduce?0:Math.sin(t/4000+p.ph)*40*dpr), y=p.y+(reduce?0:Math.cos(t/5200+p.ph)*30*dpr); const gr=cx.createRadialGradient(x,y,0,x,y,p.R); gr.addColorStop(0,'rgba(232,230,225,.09)'); gr.addColorStop(1,'rgba(232,230,225,0)'); cx.globalAlpha=1; cx.fillStyle=gr; cx.beginPath(); cx.arc(x,y,p.R,0,6.28); cx.fill(); } },
+  grid(t){ const g=56*dpr*(1+(reduce?0:.22*Math.sin(t/2800))); const ox=(W/2)%g, oy=(H/2)%g; cx.strokeStyle=pm('#5B8CFF',.3); cx.lineWidth=dpr; cx.beginPath(); for(let x=ox-g;x<W+g;x+=g){ cx.moveTo(x,0); cx.lineTo(x,H); } for(let y=oy-g;y<H+g;y+=g){ cx.moveTo(0,y); cx.lineTo(W,y); } cx.stroke();
+    cx.fillStyle=pm('#8FB4FF',.7,mixA('#5B8CFF',.3)); for(let i=0;i<12;i++){ const p=pts[i]; const gx=Math.round((p.x-ox)/g)*g+ox, gy=Math.round((p.y-oy)/g)*g+oy; cx.fillRect(gx-1.5*dpr,gy-1.5*dpr,3*dpr,3*dpr); } },
+  rain(t){ cx.lineWidth=dpr; for(const p of pts.slice(0,40)){ if(!reduce){ p.y+=p.v; if(p.y>H+p.l) p.y=-p.l; } cx.strokeStyle=pm('#E8E6E1',p.a*.28); cx.beginPath(); cx.moveTo(p.x,p.y-p.l); cx.lineTo(p.x,p.y); cx.stroke(); } },
+  orbs(t){ for(const p of pts.slice(0,6)){ const x=p.x+(reduce?0:Math.sin(t/4000+p.ph)*40*dpr), y=p.y+(reduce?0:Math.cos(t/5200+p.ph)*30*dpr); const gr=cx.createRadialGradient(x,y,0,x,y,p.R); gr.addColorStop(0,pm('232,230,225',.09)); gr.addColorStop(1,pm('232,230,225',0)); cx.fillStyle=gr; cx.beginPath(); cx.arc(x,y,p.R,0,6.28); cx.fill(); } },
 };
 
 /* ---------- v24 (C.6): the key layers ---------- */
@@ -96,13 +105,14 @@ const LAYER={
   lantern(t){ const P=KEY_LAYER.lantern, bar=beatMs('lantern')*4, T=reduce?0:t;
     /* v30 (59.7, build 59): the ground is the app's own near-black, laid down opaque, and the dusk survives only as a TINT over
        it. It was an indigo-to-amber wash and every dim line in the bottom third sat on orange. Two numbers, both in config: */
-    cx.globalAlpha=1; cx.fillStyle=`rgb(${P.sky})`; cx.fillRect(0,0,W,H);
+    cx.globalCompositeOperation='source-over'; cx.globalAlpha=1; cx.fillStyle=`rgb(${P.sky})`; cx.fillRect(0,0,W,H);
     const sky=cx.createLinearGradient(0,0,0,H);
     sky.addColorStop(0,`rgba(${P.glow},0)`); sky.addColorStop(.6,`rgba(${P.glow},0)`); sky.addColorStop(1,`rgba(${P.glow},${P.warm})`);
     cx.fillStyle=sky; cx.fillRect(0,0,W,H);
     // the horizon's own glow, so the warmth reads as light rather than as a band of colour
     const hz=cx.createRadialGradient(W/2,H*1.02,0,W/2,H*1.02,Math.max(W,H)*.75);
     hz.addColorStop(0,`rgba(${P.glow},${P.hz})`); hz.addColorStop(1,`rgba(${P.glow},0)`); cx.fillStyle=hz; cx.fillRect(0,0,W,H);
+    cx.globalCompositeOperation='lighten';
     for(let i=0;i<P.lanterns;i++){
       const dep=rnd(i,2), sc=(P.far+(P.near-P.far)*dep)*dpr;                    // how near this one is, and its size with it
       const span=bar*P.rise*(1.4-dep*.5), u=((T/span)+rnd(i,3))%1;              // how far up it is, nearer ones climbing faster
@@ -111,42 +121,42 @@ const LAYER={
       const fl=1-P.flick*(.5+.5*Math.sin(T/(bar*.55)+rnd(i,6)*6.28))*(.4+.6*rnd(i,7));
       const a=P.alpha*(.35+.65*dep)*fl;
       const g=cx.createRadialGradient(x,y,0,x,y,r*5);
-      g.addColorStop(0,`rgba(${P.glow},${(a*.5).toFixed(3)})`); g.addColorStop(1,`rgba(${P.glow},0)`);
-      cx.globalAlpha=1; cx.fillStyle=g; cx.beginPath(); cx.arc(x,y,r*5,0,6.28); cx.fill();
+      const hc=mixA(P.glow,a*.5), pc=mixA(P.col,a,hc); g.addColorStop(0,`rgb(${hc.join(',')})`); g.addColorStop(1,pm(P.glow,0));
+      cx.fillStyle=g; cx.beginPath(); cx.arc(x,y,r*5,0,6.28); cx.fill();
       // the paper: a rounded body with the top drawn in to the ring it hangs from
-      cx.globalAlpha=Math.min(1,a); cx.fillStyle=`rgb(${P.col})`;
+      cx.fillStyle=`rgb(${pc.join(',')})`;
       cx.beginPath(); cx.moveTo(x-r*.62,y-r*.5); cx.quadraticCurveTo(x-r,y+r*.35,x-r*.34,y+r); cx.lineTo(x+r*.34,y+r);
       cx.quadraticCurveTo(x+r,y+r*.35,x+r*.62,y-r*.5); cx.quadraticCurveTo(x,y-r*.86,x-r*.62,y-r*.5); cx.closePath(); cx.fill();
-      cx.globalAlpha=Math.min(1,a*1.5); cx.fillStyle=`rgb(${P.glow})`;
+      cx.fillStyle=pm(P.glow,a*1.5,pc);
       cx.beginPath(); cx.arc(x,y+r*.34,r*.3,0,6.28); cx.fill(); } },
   // Circuit: sharper, cooler, geometric — right-angled traces with a pulse moving along each at `pulse` cells a beat, the corners blinking as it passes
   // v29 Section A (57.11e, build 57): unchanged in look, drawn over no starfield and on geometry that now leaves the screen on all four sides
   circuit(t){ const P=KEY_LAYER.circuit, G=geo.circuit, beat=beatMs('circuit'), T=reduce?0:t, tail=G.cell*1.6;
-    cx.strokeStyle=`rgb(${P.col})`; cx.fillStyle=`rgb(${P.col})`; cx.lineWidth=dpr; cx.lineCap='square';
-    for(const tr of G.traces){ cx.globalAlpha=P.alpha*.45; cx.beginPath(); tr.p.forEach((q,j)=>j?cx.lineTo(q[0],q[1]):cx.moveTo(q[0],q[1])); cx.stroke();
+    cx.lineWidth=dpr; cx.lineCap='square';
+    for(const tr of G.traces){ cx.strokeStyle=pm(P.col,P.alpha*.45); cx.beginPath(); tr.p.forEach((q,j)=>j?cx.lineTo(q[0],q[1]):cx.moveTo(q[0],q[1])); cx.stroke();
       const loop=tr.len+tail*2, head=((T/beat)*P.pulse*G.cell+tr.off*loop)%loop;
-      cx.globalAlpha=P.head; cx.lineWidth=1.6*dpr; cx.beginPath();
+      cx.strokeStyle=pm(P.col,P.head,mixA(P.col,P.alpha*.45)); cx.lineWidth=1.6*dpr; cx.beginPath();
       for(let s=0;s<=6;s++){ const d=Math.max(0,Math.min(tr.len,head-tail*s/6)); const q=pointAt(tr.p,d); s?cx.lineTo(q[0],q[1]):cx.moveTo(q[0],q[1]); }
       cx.stroke(); cx.lineWidth=dpr;
       let d=0; for(let j=1;j<tr.p.length;j++){ d+=Math.hypot(tr.p[j][0]-tr.p[j-1][0],tr.p[j][1]-tr.p[j-1][1]); const near=Math.abs(head-d)<G.cell*.5;
-        cx.globalAlpha=near?P.head:P.alpha; const s=(near?4:2.6)*dpr; cx.fillRect(tr.p[j-1][0]-s/2,tr.p[j-1][1]-s/2,s,s); } } },
+        cx.fillStyle=pm(P.col,near?P.head:P.alpha,mixA(P.col,P.alpha*.45)); const s=(near?4:2.6)*dpr; cx.fillRect(tr.p[j-1][0]-s/2,tr.p[j-1][1]-s/2,s,s); } } },
   /* THORN — v29 Section A (57.11f, build 57): IT GROWS NOW. Every branch shared one cosine, which is why Aiden saw it "go back and forth". Each
      branch has its own growth length, reach, bow, stem thickness, thorn size and side branches (geo, from the spans in KEY_LAYER.thorn), and each
      runs from nothing to fully grown, holds, fades and starts again out of phase — so the screen fills and nothing ever plays in reverse. The dark
      edges and the thorn shape are build 43's, unchanged. */
   thorn(t){ const P=KEY_LAYER.thorn, G=geo.thorn, bar=beatMs('thorn')*4, T=reduce?0:t;
-    for(const [x0,y0,x1,y1] of [[0,0,W*.2,0],[W,0,W*.8,0],[0,0,0,H*.14],[0,H,0,H*.86]]){ const g=cx.createLinearGradient(x0,y0,x1,y1); g.addColorStop(0,`rgba(0,0,0,${P.edge})`); g.addColorStop(1,'rgba(0,0,0,0)'); cx.globalAlpha=1; cx.fillStyle=g; cx.fillRect(0,0,W,H); }
-    cx.strokeStyle=`rgb(${P.col})`; cx.fillStyle=`rgb(${P.col})`; cx.lineCap='round';
+    for(const [x0,y0,x1,y1] of [[0,0,W*.2,0],[W,0,W*.8,0],[0,0,0,H*.14],[0,H,0,H*.86]]){ const g=cx.createLinearGradient(x0,y0,x1,y1); g.addColorStop(0,`rgba(0,0,0,${P.edge})`); g.addColorStop(1,'rgba(0,0,0,0)'); cx.globalCompositeOperation='source-over'; cx.globalAlpha=1; cx.fillStyle=g; cx.fillRect(0,0,W,H); }
+    cx.globalCompositeOperation='lighten'; cx.lineCap='round';
     // one branch's own clock: 0 → 1 is it growing, then it holds and fades over the last fifth and begins again
     const stem=(br,n,pts2,w)=>{ cx.lineWidth=w; cx.beginPath(); for(let k=0;k<n;k++) k?cx.lineTo(pts2[k][0],pts2[k][1]):cx.moveTo(pts2[k][0],pts2[k][1]); cx.stroke(); };
     for(const br of G.branches){ const span=bar*br.grow, u=reduce?.8:((T/span)+br.ph)%1;
       const grow=Math.min(1,u/.8), fade=u>.86?(1-u)/.14:1, n=Math.max(2,Math.round(br.p.length*grow));
-      cx.globalAlpha=P.alpha*.8*fade; stem(br,n,br.p,br.wide*dpr);
+      cx.strokeStyle=pm(P.col,P.alpha*.8*fade); stem(br,n,br.p,br.wide*dpr);
       // its side branches, each growing behind the stem that carries it
       for(const kid of (br.kids||[])){ if(n<=kid.at+2) continue;
         const kg=Math.min(1,(grow-kid.at/24)/.45); if(kg<=0) continue;
-        cx.globalAlpha=P.alpha*.6*fade; stem(br,Math.max(2,Math.round(kid.p.length*kg)),kid.p,br.wide*.6*dpr); }
-      cx.globalAlpha=P.alpha*fade;
+        cx.strokeStyle=pm(P.col,P.alpha*.6*fade); stem(br,Math.max(2,Math.round(kid.p.length*kg)),kid.p,br.wide*.6*dpr); }
+      cx.fillStyle=pm(P.col,P.alpha*fade,mixA(P.col,P.alpha*.8*fade));
       for(let j=1;j<=P.thorns;j++){ const k=Math.round(j/(P.thorns+1)*(br.p.length-2)); if(k>=n-1) break;
         const a=br.p[k], b=br.p[k+1], dx=b[0]-a[0], dy=b[1]-a[1], l=Math.hypot(dx,dy)||1, ux=dx/l, uy=dy/l, side=j%2?1:-1, len=br.spike*dpr*(j%3===1?1:.7);
         cx.beginPath(); cx.moveTo(a[0]-ux*2*dpr,a[1]-uy*2*dpr); cx.lineTo(a[0]+ux*2*dpr,a[1]+uy*2*dpr); cx.lineTo(a[0]+ux*4*dpr-uy*side*len,a[1]+uy*4*dpr+ux*side*len); cx.closePath(); cx.fill(); } } },
@@ -205,8 +215,11 @@ function draw(t){ if(paused){ running=false; return; }
   cx.clearRect(0,0,W,H);
   const col=look('tint'); if(col){ cx.globalAlpha=1; cx.fillStyle=col; cx.fillRect(0,0,W,H); }
   const bg=look('bg'), own=LAYER[bg]?bg:null, ly=over||own;
+  G0=ly==='lantern'?KEY_LAYER.lantern.sky.split(',').map(Number):hexRgb(look('tint')||(DESIGNS[look('bg')]||DESIGNS.stars).tint);
+  cx.save(); cx.globalAlpha=1; cx.globalCompositeOperation='lighten';
   if(!ly) (DRAW[bg]||DRAW.stars)(t);
   if(ly){ if(!geo) geo=build(); LAYER[ly](t); }
+  cx.restore();
   cx.globalAlpha=1;
   if(inRun){ cx.fillStyle=`rgba(0,0,0,${BG_LAYER.dim})`; cx.fillRect(0,0,W,H); } else punch(ly);
   floorStrip(ly); underlay(ly,t);
