@@ -389,7 +389,9 @@ export const TUTORIAL = {
     got:'Great job, you [green]unlocked[/green] [yellow]{names}[/yellow]!', next:"Let's see if you can get [yellow]{count}[/yellow] in a [yellow]{second}[/yellow] to [green]unlock {dots}[/green]. If not, [red]unlock {long}[/red] and try there!",
     miss:'Get [yellow]{row}[/yellow] without missing to [green]unlock {second}[/green]',
     back:'Or return to the [yellow]games menu[/yellow]',
-    end:[ "Well, that's all for the tutorial", 'There\'s [red]PLENTY[/red] more for you to see and [green]unlock[/green]…', "But [green]you're smart[/green], you'll figure it out", '[green]Good luck![/green]' ] } };
+    /* build 69 (68.7): the four closing lines ("Well, that's all for the tutorial" … "Good luck!") are gone — "The tutorial continues throughout the whole
+       game." The first result's boxes end on the last thing they have to say */
+  } };
 export const RESULT = { streakUnit:'<span class="unit">{word} reached</span>',
   practice:'practice', fail:'run over', best:'new best', pass:'pass & play', versus:'versus', dash:'—', lowerMark:'<span class="dn">▼</span>',
   rank:'rank <b>{n}</b> of 10 · {name}', outside:'outside the top 10 · {name}', you:'you', practiceNote:'practice · nothing recorded', twoNote:'two players · nothing recorded',

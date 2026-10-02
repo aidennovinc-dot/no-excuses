@@ -1982,3 +1982,13 @@ anything Aiden settles goes on the list in the build that implements it.
   return to the games menu" → "Great job, you unlocked Dash!" → the Dots line → any other unlock of that run. Gate: `locked decisions`
   section C, "68.15". The chests section's 67.13 check (the Welcome on the Dots result) was amended in the same commit to read past the new
   unlock boxes and to follow the result's toasts to the main menu (68.18).
+- **No line says the tutorial is over (68.7).** Aiden: "The tutorial continues throughout the whole game." The walkthrough's four closing lines
+  on the first result ("Well, that's all for the tutorial", "There's PLENTY more for you to see and unlock…", "But you're smart, you'll figure it
+  out", "Good luck!", `TUTORIAL.over.end`) are deleted. The first result's boxes end on the last thing they say — the run's own unlock boxes
+  (68.6 / 68.15), or Game Select when the run opened nothing — and the tap on that last box ends the walkthrough and banks Off the Rails
+  (`tutEnd()`): with unlock boxes still to come, the walkthrough's `finish` holds its end (`endDue`) until they are read. Gate: `locked
+  decisions` section C, "68.7".
+- **Two placement fixes to 68.4, found by the journey at the test clock (P3).** A box beside its target keeps the side it took while that side
+  still fits — a new tile breathes and a menu item pulses, and with both sides nearly as near home the box swung from one to the other every
+  turn of the loop, gliding through its own target. And a box does not glide after a target that is itself moving (a tile flying in): it keeps
+  up with it, and glides only from one box's spot to the next.

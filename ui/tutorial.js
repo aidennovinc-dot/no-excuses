@@ -130,16 +130,15 @@ const O=TUTORIAL.over, oOn=()=>onScreen('s-over');
 const dashOpen=()=>{ const m=QM(), s=GC(QT,m).lens[1]; return s!==undefined&&lenOpen(QT,m,s); };
 function overSteps(){ const again={ on:oOn, el:()=>$('#again'), text:O.again };
   const body=dashOpen()?[again]:[again,{ on:oOn, el:()=>$('#again'), text:()=>say(O.miss) }];
-  /* build 69 (68.15): the run's own unlock boxes come after Game Select ("It should come up after saying that you can exit") — the closing lines wait
-     for them (`unlFirst()`) */
-  return [ { on:oOn, text:O.hi }, ...body, { on:oOn, el:()=>$('#over-back'), arrow:1, text:O.back },
-    ...O.end.map(t=>({ on:()=>oOn()&&!unlFirst(), text:t })) ]; }
+  /* build 69 (68.15): the run's own unlock boxes come after Game Select ("It should come up after saying that you can exit"). Build 69 (68.7): and
+     nothing after them — the four closing lines ("Well, that's all for the tutorial" …) are gone: "The tutorial continues throughout the whole game" */
+  return [ { on:oOn, text:O.hi }, ...body, { on:oOn, el:()=>$('#over-back'), arrow:1, text:O.back } ]; }
 // an unlock's own box still to come on this result
 function unlFirst(){ return UNL_KEYS.some(k=>{ const d=DEFS[unlId(k)]; if(!d||!d.live()) return false; const s=stepsOf(d)[d.step()]; return !!s&&!!s.res&&!gone(s); }); }
 
 /* every tutorial. `steps` is a list or a function that builds one; `step` / `setStep` / `finish` are where its state lives. The walkthrough's two
    halves keep build 64's fields (above); the rest share `prefs.tuts`. Order is priority: when two are armed, the first one listed goes first. */
-let firstAt=0, overAt=0, overList=null;
+let firstAt=0, overAt=0, overList=null, endDue=false;
 const armed=id=>{ const v=(prefs.tuts||{})[id]; return Number.isInteger(v)&&v>=0; };
 const live=id=>!!DEFS[id]&&DEFS[id].live();
 const DEFS={
@@ -148,7 +147,9 @@ const DEFS={
       why:'A new player learns what is locked, how a game unlocks, variants and modes, then plays the first run, which cannot be quit',
       at:[['Games menu',''],['Games menu',''],['Games menu',''],['Games menu','Dots tile'],['Games menu · Dots lock box',''],['Games menu','Quick Tap tile, labelled "Start here"'],
         ['Pick sheet · variants',''],['Pick sheet · variants','With a friend'],['Pick sheet · variants','Two'],['Pick sheet · Mode row',''],['Pick sheet · Mode row',''],['Pick sheet · Mode row','Sprint (starts the first run)']] } },
-  over:{ live:results, steps:()=>overList||(overList=overSteps()), step:()=>overAt, setStep:n=>{ overAt=n; }, finish:tutEnd,
+  /* build 69 (68.7): the walkthrough's last tap is the last box on its first result — the run's own unlock boxes after Game Select included — so a first
+     result with unlock boxes still to come holds its end (`endDue`) until they are read, and only that last tap banks Off the Rails */
+  over:{ live:()=>results()&&!endDue, steps:()=>overList||(overList=overSteps()), step:()=>overAt, setStep:n=>{ overAt=n; }, finish(){ if(unlFirst()) endDue=true; else tutEnd(); },
     meta:{ name:'First result', trigger:'The first run finishes', start:'That run\'s result screen, once its unlock toasts have played',
       why:'The reward for the first run, what to try next, and the way back — then the walkthrough ends and Off the Rails is banked' } },
 };
@@ -418,9 +419,11 @@ let seq=0, prevTop=null;
 function place(el,text,o={}){ const h=build(), pad=6, ring=h.querySelector('.tring'), box=h.querySelector('.tbox'), arrow=h.querySelector('.tarrow'), tail=h.querySelector('.ttail');
   const scr=($('.screen.on')||{}).id||'game', same=!!last&&last.scr===scr, key=o.id+':'+o.i, fresh=!last||last.key!==key;
   if(fresh){ seq=same?seq+1:0; prevTop=same?last.top:null; }
-  const was=!h.hidden; h.hidden=false; h.classList.toggle('glide',was&&!REDUCE&&same);
-  h.querySelector('p').innerHTML=marks(text); h.classList.toggle('text',!o.tap);
   const els=(Array.isArray(el)?el:el?[el]:[]).filter(vis), keep=o.keep?[o.keep()].filter(e=>e&&vis(e)):[];
+  // (68.4) a box glides from one box's spot to the next; it never glides after a target that is itself moving (a tile flying in) — it keeps up with it
+  const R0=union(els), cx=R0?R0.left+R0.width/2:0, cy=R0?R0.top+R0.height/2:0, moving=!fresh&&!!R0&&last.cx!==undefined&&(Math.abs(last.cx-cx)>2||Math.abs(last.cy-cy)>2);
+  const was=!h.hidden; h.hidden=false; h.classList.toggle('glide',was&&!REDUCE&&same&&!moving);
+  h.querySelector('p').innerHTML=marks(text); h.classList.toggle('text',!o.tap);
   const s=insets(), lo=s.top+8, hi=innerHeight-s.bottom-8, bw=Math.min(320,innerWidth-32), left=Math.round((innerWidth-bw)/2);
   box.style.width=bw+'px'; const bh=box.offsetHeight||92, gap=pad+(o.arrow?48:16);
   // a target as tall as the safe area (the map) is the whole screen: its box stays home; anything shorter is cleared if there is room beside it
@@ -436,14 +439,17 @@ function place(el,text,o={}){ const h=build(), pad=6, ring=h.querySelector('.tri
   const least=()=>{ const cost=y=>{ let c=0; if(av){ const w=Math.min(av.right,left+bw)-Math.max(av.left,left), hh=Math.min(av.bottom,y+bh)-Math.max(av.top,y); if(w>0&&hh>0) c+=w*hh; }
       if(sheet&&y+bh>sheet.top) c+=(y+bh-sheet.top)*bw; return c; };
     let b=lo; for(let y=lo;y<=hi-bh;y+=2){ const c=cost(y), cb=cost(b); if(c<cb||(c===cb&&Math.abs(y-want)<Math.abs(b-want))) b=y; } return b; };
-  let top;
+  let top, sideNow=0;
   if(onSheet) top=Math.round(sheet.top-gap-bh-(seq%2?N:0));
   else if(ok(want)) top=want;
-  else { const side=av?[Math.round(av.bottom),Math.round(av.top-bh)].filter(ok).sort((a,b)=>Math.abs(a-want)-Math.abs(b-want)):[]; top=side.length?side[0]:least(); }
+  /* beside the target: under or over it, whichever is nearer home — and once a box has taken a side it keeps it while it still fits there, so a
+     target that breathes (a new tile, a menu item's pulse) cannot swing the box from one side to the other every turn of the loop */
+  else { const c=av?[[1,Math.round(av.bottom)],[-1,Math.round(av.top-bh)]].filter(x=>ok(x[1])).sort((a,b)=>Math.abs(a[1]-want)-Math.abs(b[1]-want)):[];
+    const kept=!fresh&&last&&last.side?c.find(x=>x[0]===last.side):null, pick=kept||c[0]; top=pick?pick[1]:least(); sideNow=pick?pick[0]:0; }
   // a new box on the same screen lands at least the nudge from the last one, by the least move that keeps it clear
   if(prevTop!==null&&Math.abs(top-prevTop)<N){ const fit=y=>onSheet?y>=lo&&y+bh<=sheet.top-4:ok(y);
     const c=[1,-1,2,-2,3,-3,4,-4].map(k=>prevTop+k*N).filter(fit).sort((a,b)=>Math.abs(a-top)-Math.abs(b-top)); if(c.length) top=c[0]; }
-  top=Math.round(top); last={ key, top, scr };
+  top=Math.round(top); last={ key, top, scr, side:sideNow, cx, cy };
   // what the box sits over is dimmed and takes no tap — measured with the box and last turn's blocks out of the way
   const lift=[box,...h.querySelectorAll('.tblk')]; lift.forEach(e=>{ e.style.pointerEvents='none'; });
   const under=taps(whole?keep:els.concat(keep)).some(r=>r.left<left+bw&&r.right>left&&r.top<top+bh&&r.bottom>top); lift.forEach(e=>{ e.style.pointerEvents=''; });
@@ -470,6 +476,7 @@ function through(fn){ passing=true; try{ fn(); } finally{ passing=false; } }
 function active(){ let first=null; for(const id of ORDER){ const d=DEFS[id]; if(!d||!d.live()) continue; if(!first) first=id; const s=stepsOf(d)[d.step()]; if(s&&s.on()) return id; } return first; }
 function tick(){
   if(estFirst()) arm('est');
+  if(endDue&&!unlFirst()){ endDue=false; tutEnd(); }
   { const r=roomNow(); if(r) inRoom=r; }
   for(const k of ORDER) drop(k);
   /* 67.29: a Gauntlet's own Enter button is out of sight while its tour talks on its screen, and arrives as the last box closes — it was under the box */
@@ -560,7 +567,7 @@ on('run:abort',()=>{ firstRun=false; });
 on('run:finish',({run:r,two,fresh})=>{ if(!firstRun||two||r.demo||r.practice||r.chal||r.gaunt) return; firstRun=false;
   prefs.tut=1; prefs.tutRun=Object.assign({},r,{ got:(fresh||[]).map(u=>u.key).filter(Boolean) }); save(); overAt=0; overList=null; run(); });
 // build 68 (67.36): a Fresh game forgets the walkthrough with everything else, so it plays again and banks Rails at its end like any first time
-on('store:reset',()=>{ firstAt=0; overAt=0; overList=null; });
+on('store:reset',()=>{ firstAt=0; overAt=0; overList=null; endDue=false; });
 /* build 65 (64.7): THE MENU'S OWN UNLOCKS ARM THEIR TUTORIALS. Progress and Scores open with a run (run/run.js, progress/menu.js) and come down on
    its result's list with the rest of what it opened; About opens when the Welcome clip finishes — ended or closed, the same moment — and the
    player is taken straight to the main menu, where its tutorial waits (64.8). Put off with Later, About still opens, because the clip is waiting
@@ -580,7 +587,7 @@ function resumeOver(){ const r=prefs.tutRun; if(!results()||!r||!GAMES[r.g]) ret
 /* Testing (build 64, 62.5): REPLAY TUTORIAL — the walkthrough goes back to its start and the games menu opens, so it begins at step one whatever
    the profile has played. A1: RESET ALL FIRST-TIME TUTORIALS — the same, and every other tutorial forgotten; one whose thing is already open is
    armed again at its first step, so it shows the next time the player is where it lives. */
-function replay(){ prefs.tut=-1; delete prefs.tutRun; save(); firstAt=0; overAt=0; overList=null; run(); }
+function replay(){ prefs.tut=-1; delete prefs.tutRun; save(); firstAt=0; overAt=0; overList=null; endDue=false; run(); }
 function resetAll(){ prefs.tuts={}; prefs.rooms={}; replay(); for(const id of ORDER){ const d=DEFS[id]; if(d.opened&&d.opened()) prefs.tuts[id]=0; } save(); }
 
 define({
@@ -607,8 +614,7 @@ function tutMap(){ const out=[], text=t=>{ try{ return typeof t==='function'?t()
     let boxes;
     if(id==='over'){ const R='Result', n=nums();
       boxes=[ { screen:R, ring:'', tap:0, text:O.hi }, { screen:R, ring:'Try again', tap:0, text:O.again },
-        { screen:R+' · if '+n.second+' is still shut', ring:'Try again', tap:0, text:say(O.miss) }, { screen:R, ring:'Back (an arrow at it)', tap:0, text:O.back },
-        ...O.end.map(t=>({ screen:R, ring:'', tap:0, text:t })) ]; }
+        { screen:R+' · if '+n.second+' is still shut', ring:'Try again', tap:0, text:say(O.miss) }, { screen:R, ring:'Back (an arrow at it)', tap:0, text:O.back } ]; }
     else boxes=stepsOf(d).map((s,i)=>({ screen:(m.at[i]||[])[0]||'', ring:(m.at[i]||[])[1]||'', tap:s.tap?1:0, text:text(s.text) }));
     out.push({ id, name:m.name, trigger:m.trigger, start:m.start, why:m.why, steps:stepsOf(d).length, at:id==='over'?boxes.length:m.at.length,
       boxes:boxes.map((b,i)=>Object.assign({ key:id+'-'+String(i+1).padStart(2,'0') },b)) });

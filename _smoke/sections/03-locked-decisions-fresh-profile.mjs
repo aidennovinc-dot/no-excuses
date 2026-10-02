@@ -167,7 +167,7 @@ export async function run() {
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
     const back = await waitText(OV[0], 200), backOn = (await state()).screen;
     (first.game && first.exit === 'none' && first.tut !== 1 && rec.tut === 1 && rec.run === 'quick-tap' && r1 && back && back.text === OV[0] && backOn === 's-over')
-      ? ok('62.10 the first run has no Exit and no Restart; once it is on record, an app reopened before "Good luck!" lands on its result and starts the eight boxes again')
+      ? ok('62.10 the first run has no Exit and no Restart; once it is on record, an app reopened before its last box lands on its result and starts the eight boxes again')
       : bad('62.10 the first run and the resume', JSON.stringify({ first, rec, r1: r1 && r1.text, back: back && back.text, backOn }));
     /* 62.11 / 64.2: the boxes, each moved on by any tap — a tap on TRY AGAIN (ringed) or BACK (arrowed) does neither thing. AMENDED at build 69 (68.6):
        "Great job, you unlocked Dash!" and the Dots line are the Dash unlock's own boxes, armed by the run that opened it, and Four has its own ("Great job,
@@ -175,7 +175,8 @@ export async function run() {
     const G2 = await page.evaluate(async () => { const R = await import('./games/registry.js'), G = await import('./config/games.js'); return { dash: R.lenName('quick-tap', R.GC('quick-tap', 'two').lens[1], 'two'), four: G.MODE_NAME.four }; });
     const gotD = C.over.got.replace('{names}', G2.dash), gotF = C.over.got.replace('{names}', G2.four);
     // AMENDED at build 69 (68.15): the run's unlock boxes come straight after Game Select, ahead of the walkthrough's closing lines
-    const OW = [C.over.hi, C.over.again, C.over.back, gotD, fillO(C.over.next), gotF, ...C.over.end];
+    // AMENDED at build 69 (68.7): and nothing after them — the four closing lines are gone
+    const OW = [C.over.hi, C.over.again, C.over.back, gotD, fillO(C.over.next), gotF];
     const over = [back];
     for (let i = 1; i < OW.length; i++) { await click(i < 3 ? '#again' : '#over-back'); over.push(await waitText(OW[i])); }
     const at = t => over.find(b => b && b.text === t) || {};
@@ -197,9 +198,15 @@ export async function run() {
         ? ok(`68.15 a first result that opens ${G2.dash}: "${C.over.again}" → "${C.over.back}" → "${gotD}" with ${G2.dash} ringed → the Dots line, in that order, and only then anything else on that result — the unlock comes after the way out`)
         : bad('68.15 the order of the first result\'s boxes', JSON.stringify({ seq, endAt, got: over.map(b => b && b.text) }));
     }
+    const railsBefore = await page.evaluate(() => !!JSON.parse(localStorage.getItem('ne')).ach.rails);
     // 62.14: "Good luck!" is answered — Off the Rails banked, the walkthrough gone, the result screen live again (and the second run can be quit)
     await anywhere(); await sleep(300);
     const done = await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('ne')); return { tut: s.prefs.tut, tutRun: !!s.prefs.tutRun, rails: !!s.ach.rails, hidden: document.getElementById('tut').hidden }; });
+    /* build 69 (68.7): NO LINE SAYS THE TUTORIAL IS OVER — "The tutorial continues throughout the whole game." No box on the first result says "tutorial"; the
+       last box there is the run's own unlock, and the tap on it — not one before it — still banks Off the Rails */
+    (over.length && !over.some(b => b && /tutorial/i.test(b.text)) && !railsBefore && done.rails && done.hidden)
+      ? ok(`68.7 no box on the first result says the tutorial is over (${over.length} boxes, the last "${over[over.length - 1].text}"); the tap on that last box banks Off the Rails, and nothing before it does`)
+      : bad('68.7 a box says the tutorial is over, or Off the Rails banks off the last tap', JSON.stringify({ said: over.map(b => b && b.text).filter(t => /tutorial/i.test(t || '')), railsBefore, done }));
     await click('#again'); for (let i = 0; i < 60 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) await sleep(100);
     const second = await page.evaluate(() => ({ game: document.getElementById('game').classList.contains('on'), exit: getComputedStyle(document.getElementById('quit')).display, restart: document.getElementById('restart') ? 'there' : 'none' }));
     await click('#quit'); await sleep(400);
