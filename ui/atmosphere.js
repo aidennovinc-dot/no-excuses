@@ -209,7 +209,7 @@ function draw(t){ if(paused){ running=false; return; }
   if(ly){ if(!geo) geo=build(); LAYER[ly](t); }
   cx.globalAlpha=1;
   if(inRun){ cx.fillStyle=`rgba(0,0,0,${BG_LAYER.dim})`; cx.fillRect(0,0,W,H); } else punch(ly);
-  floorStrip(ly); underlay(ly);
+  floorStrip(ly); underlay(ly,t);
   requestAnimationFrame(draw); }
 /* build 64 (62.15): THE PAGE UNDER THE LAYER WEARS THE LAYER'S OWN BOTTOM COLOUR. On an installed iPhone app a flat band of --ground (Lantern's
    purple) still showed under the last row of a long screen after 61.22 stretched the canvas past both insets — so something on the phone stops
@@ -266,8 +266,19 @@ function stripOf(floor){ let c=floor.slice(); const X=innerWidth/2, Y=innerHeigh
     const st=getComputedStyle(e), b=rgbaOf(st.backgroundColor); if(!b||!b[3]||st.visibility==='hidden') continue;
     const a=b[3]*opacityOf(e); if(a<=0) continue; c=c.map((v,j)=>v*(1-a)+b[j]*a); }
   return c.map(Math.round); }
-function underlay(ly){ const s=document.documentElement.style, u=baseOf(ly).map(Math.round).join(','), t=stripOf(floorOf(ly)).join(',');
+/* build 69 (68.27 follow-up): THE STRIP IS READ ON A CADENCE, NOT EVERY FRAME. `stripOf` hit-tests and reads computed styles, so it runs only when
+   something that can change it has happened — a screen change, an element shown or hidden or re-classed anywhere in the page (a MutationObserver on
+   `hidden` / `class`, which only raises a flag), a transition or animation ending — and otherwise every STRIP_MS, the same cadence measure() keeps,
+   so a fade in progress converges inside half a second. A page that re-classes something every frame (a run's live score) cannot drive it faster than
+   once per STRIP_GAP; a screen change reads it at once. `--underlay` is arithmetic and stays per frame */
+const STRIP_MS=400, STRIP_GAP=100; let stripT=-1e9, stripDue=true, stripNow=true;
+const stripMark=()=>{ stripDue=true; };
+new MutationObserver(stripMark).observe(document.body,{ subtree:true, attributes:true, attributeFilter:['hidden','class'] });
+addEventListener('transitionend',stripMark,true); addEventListener('animationend',stripMark,true);
+function underlay(ly,now){ const s=document.documentElement.style, u=baseOf(ly).map(Math.round).join(',');
   if(u!==ulWas){ ulWas=u; s.setProperty('--underlay',`rgb(${u})`); }
+  if(!stripNow&&(stripDue?now-stripT<STRIP_GAP:now-stripT<STRIP_MS)) return; stripDue=stripNow=false; stripT=now;
+  const t=stripOf(floorOf(ly)).join(',');
   if(t!==stWas){ stWas=t; s.setProperty('--strip',`rgb(${t})`); } }
 function resume(){ if(running) return; running=true; requestAnimationFrame(draw); }
 // build 62 (61.22): the canvas is sized from its own box, so a change to that box (an inset arriving) re-sizes it as a resize would
@@ -275,7 +286,7 @@ function startAtmosphere(){ addEventListener('resize',size); if(window.ResizeObs
 // C.6: the key screen's own layer, or null to give the chosen background back
 function setKeyLayer(style){ over=LAYER[style]?style:null; }
 // build 62 (61.20): a game keeps the background, dimmed — it used to hide the canvas and stop drawing for the whole run
-on('screen:change',({id})=>{ inRun=id==='game'; holes=[]; holesT=0; resume(); });
+on('screen:change',({id})=>{ inRun=id==='game'; holes=[]; holesT=0; stripNow=true; resume(); });
 addEventListener('scroll',()=>{ holesT=0; },true);
 
 export { DRAW, LAYER, holesNow, setKeyLayer, startAtmosphere };
