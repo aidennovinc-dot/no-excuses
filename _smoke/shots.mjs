@@ -2216,6 +2216,19 @@ scene('68.23', async (page, browser) => {
   await frame(page, browser, '68.23-testing-tours', 'Testing, further down: the menu items’ switches (About on) and the “play this tour” list — About, Progress, Scores, Customise, Skill Key intro, Welcome video');
 });
 
+/* =======================================================================================================
+   BUILD 69 (FEEDBACK-v37), package P4 — the in-play screens. 390 wide, both safe-area insets.
+   ======================================================================================================= */
+const RUN69 = { ...PLAIN, welcomeSeen: 1, menuUnl: { about: 1, prog: 1, board: 1 }, tuts: { next: 'done', about: 'done', prog: 'done', board: 'done', games: 'done', est: 'done', mini: 'done', mega: 'done' } };
+const QT69 = { unlock: { 'quick-tap:two:15': Date.now() }, runs: [{ g: 'quick-tap', d: 'two', s: 5, t: Date.now() - 6e4, hits: 9, misses: 0, row: 9, v: 4 }] };
+const pressLit = page => page.evaluate(() => { for (let i = 0; i < 4; i++) if (document.getElementById('sq' + i)?.style.getPropertyValue('--v').trim() === '1') { const t = document.querySelector('.pad[data-side="' + i + '"]'), r = t.getBoundingClientRect(); t.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1 })); return true; } return false; });
+scene('68.9', async (page, browser) => {
+  await load(page, RUN69, QT69); await runOf(page, 'quick-tap', 0, 1);
+  for (let k = 0; k < 5; k++) { await pressLit(page); await sleep(260); }
+  say('goal', await page.evaluate(() => { const g = document.getElementById('goal'), b = g.getBoundingClientRect(), p = g.querySelector('.gbar,.gpips'), r = p && p.getBoundingClientRect(); return { text: g.textContent, box: [b.top, b.width].map(Math.round), line: r && [r.top, r.height, r.width].map(Math.round), fill: p && p.querySelector('u')?.style.width }; }));
+  await frame(page, browser, '68.9-goal-line', 'Quick Tap Two · Dash, five hits in: the goal’s progress is a thin line along the TOP edge of the goal box, filling from the left; the words have the box to themselves (v0.68: a short bar beside the words, scanned over by them)');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

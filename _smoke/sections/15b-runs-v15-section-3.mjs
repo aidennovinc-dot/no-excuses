@@ -411,4 +411,35 @@ export async function run() {
       ? ok(`67.16 / 67.17 the top of a run: ✕ alone on its row; under it one goal line "${sw.goal}" with ${sw.pips} pips; "${sw.allow}" a labelled bar; the big number the score (${sw.score}); "${sw.round}" — and a Flash Set reads "${rx0.score}" then "${rx1.score}", "${rx0.round}", the verdict under each tap's number, no average line under it`)
       : bad('67.16 / 67.17 the run header', JSON.stringify({ sw, rx0, rx1 }));
   }
+
+  /* build 69 (68.9): THE GOAL'S PROGRESS IS A LINE ON THE BOX'S TOP EDGE, NEVER IN THE TEXT. Aiden's Quick Tap Dash: the short bar sat beside the words and a
+     long goal scanned straight over it ("TW—RUN"). Read off a real run part-filled (three hits of a "15 in a row" goal) and a real round goal (a Stopwatch
+     Streak's pips): the progress element's box sits on the goal box's top edge (within 1px), is at most 3px tall and no wider than the box, its fill grows
+     from the left, and it does not meet the TEXT's own rect (a Range over the line's glyphs, not the line box). */
+  {
+    await boot({ tuts: { next: 'done' } }, { unlock: { 'quick-tap:two:15': 1 }, runs: [{ g: 'quick-tap', d: 'two', s: 5, t: Date.now() - 6e4, hits: 9, misses: 0, row: 9, v: 4 }] });
+    const startRun = (g, d, s) => page.evaluate(async ([g, d, s]) => { const S = await import('./core/state.js'), RN = await import('./run/run.js'); Object.assign(S.sel, { game: g, diff: d, secs: s, vs: 0, practice: 0 }); RN.start(); }, [g, d, s]);
+    const geo = () => page.evaluate(() => { const gl = document.getElementById('goal'), B = gl.getBoundingClientRect(), p = gl.querySelector('.gbar, .gpips'), t = gl.querySelector(':scope > i');
+      if (!p || !t) return { none: true, html: gl.innerHTML };
+      const P = p.getBoundingClientRect(), rg = document.createRange(); rg.selectNodeContents(t); const X = rg.getBoundingClientRect(), u = p.querySelector('u'), U = u ? u.getBoundingClientRect() : null;
+      const meet = !(P.bottom <= X.top || P.top >= X.bottom || P.right <= X.left || P.left >= X.right);
+      return { kind: p.className, box: [B.left, B.top, B.width].map(Math.round), bar: [P.left, P.top, P.width, P.height].map(v => Math.round(v * 10) / 10), text: [X.top, X.bottom].map(Math.round),
+        onTop: Math.abs(P.top - B.top) <= 1, thin: P.height <= 3 && P.height > 0, fits: P.width <= B.width + .5 && P.left >= B.left - .5, meet,
+        fill: U ? Math.round(U.width / Math.max(1, P.width) * 100) : null, fromLeft: U ? Math.abs(U.left - P.left) <= 1 : null, segs: p.querySelectorAll('i').length }; });
+    await startRun('quick-tap', 'two', 15);
+    for (let i = 0; i < 100 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) await sleep(60);
+    for (let k = 0; k < 3; k++) { await poke('quick-tap'); await sleep(140); }
+    const qt = await geo();
+    await page.evaluate(async () => (await import('./run/run.js')).abort(true)); await sleep(300);
+    const U9 = await page.evaluate(async () => (await import('./config/unlocks.js')).UNLOCKS.map(u => u.key).filter(k => !/^reaction:(flash|nogo)$|^spot:/.test(k)));
+    await boot({ tuts: { next: 'done' } }, { unlock: Object.fromEntries(U9.map(k => [k, 1])), intro: { timing: 1, 'timing:stopwatch': 1 } });
+    await startRun('timing', 'stopwatch', -1);
+    for (let i = 0; i < 100 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) await sleep(60);
+    const tm = await geo();
+    await page.evaluate(async () => (await import('./run/run.js')).abort(true)); await sleep(300);
+    const good = r => r && !r.none && r.onTop && r.thin && r.fits && !r.meet;
+    (good(qt) && qt.kind === 'gbar' && qt.fill > 0 && qt.fill < 100 && qt.fromLeft && good(tm) && tm.kind === 'gpips' && tm.segs >= 2)
+      ? ok(`68.9 the goal's progress is a line on the box's top edge, clear of the words — Quick Tap Dash three hits in: a ${qt.bar[3]}px line at the box's top (${qt.bar[1]} vs ${qt.box[1]}), ${qt.bar[2]} of ${qt.box[2]}px wide, ${qt.fill}% filled from the left, the text's glyphs ${qt.text[0]}–${qt.text[1]}; a Stopwatch Streak's ${tm.segs} round pips are segments of the same top line`)
+      : bad('68.9 the goal progress line on the top edge', JSON.stringify({ qt, tm }));
+  }
 }

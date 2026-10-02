@@ -1405,12 +1405,15 @@
      HUD under it could overlap and why `goalon` had to push the HUD down by a hand-written 44px. */
   #goal{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);border:1px solid var(--line);padding:5px 10px;white-space:nowrap;pointer-events:none;display:none;z-index:4;max-width:min(92vw,calc(100vw - 180px));overflow:hidden;text-overflow:ellipsis}
   #goal.on{display:flex;align-items:center;justify-content:center;gap:8px}
-  /* build 68 (67.16): one line, its progress beside it — pips for a round goal, a short bar for the rest */
+  /* build 68 (67.16): one line with its progress — pips for a round goal, a bar for the rest.
+     build 69 (68.9): the progress is a 2px line along the box's TOP EDGE, the whole width, filling from the left; a round goal's pips are its segments.
+     Beside the words it sat under a long line's scan ("TW—RUN"); the text has the box's full width now */
+  #goal{position:relative}
   #goal>i{flex:0 1 auto;min-width:0;overflow:hidden}
-  #goal .gpips{display:inline-flex;gap:3px;flex:none}
-  #goal .gpips i{width:6px;height:6px;border-radius:50%;border:1px solid var(--mute);box-sizing:border-box}
-  #goal .gpips i.on{background:var(--ink);border-color:var(--ink)}
-  #goal .gbar{flex:none;width:36px;height:3px;background:var(--line);position:relative}
+  #goal .gpips{position:absolute;left:0;right:0;top:0;height:2px;display:flex;gap:2px;pointer-events:none}
+  #goal .gpips i{flex:1;height:2px;background:color-mix(in srgb,var(--mute) 45%,transparent)}
+  #goal .gpips i.on{background:var(--ink)}
+  #goal .gbar{position:absolute;left:0;right:0;top:0;height:2px;pointer-events:none}
   #goal .gbar u{position:absolute;left:0;top:0;bottom:0;background:var(--ink)}
   #hallow{width:min(70vw,260px);display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
   #hallow[hidden]{display:none}
