@@ -1992,3 +1992,8 @@ anything Aiden settles goes on the list in the build that implements it.
   still fits — a new tile breathes and a menu item pulses, and with both sides nearly as near home the box swung from one to the other every
   turn of the loop, gliding through its own target. And a box does not glide after a target that is itself moving (a tile flying in): it keeps
   up with it, and glides only from one box's spot to the next.
+- **The Skill Key tour explains the list before Back (68.30).** Aiden's v0.68 frame: Quick Tap's list open under the wheel, BACK ringed, "Open the
+  Skill Chest and you'll have 100%'d the game!" — nothing had said what the rows were. The `gkey` tour is now: the card, the spokes, "Let's click
+  one to see what to aim for!" (Quick Tap's node, must-tap), a box ringing the opened list (`#key-list`) — "Each row is one target. Green means
+  cleared. Clear every row in every game to earn the key" (Cowork's, `TUTORIAL.games[5]`, the array kept in reading order, so the Customise
+  lines moved up one) — then the Skill Chest line with BACK ringed, must-tap. Gate: `locked decisions` section C, "68.30".

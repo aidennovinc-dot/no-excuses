@@ -423,18 +423,20 @@ export async function run() {
       await click('#grid .chestwords .cw[data-to="key:0"]'); await clearIntro(); gg.push(await waitText(UG[2], 150));
       await anywhere(); gg.push(await waitText(UG[3])); await anywhere(); gg.push(await waitText(UG[4]));
       await click('#s-menu .item[data-go="s-about"]'); await sleep(200); const heldK = (await state()).screen;
+      // AMENDED at build 69 (68.30): after Quick Tap's node, a box rings its opened list (read with a tap) before the Skill Chest line with BACK
       await page.evaluate(() => document.querySelector('#s-key .knode[data-kg="quick-tap"]').dispatchEvent(new MouseEvent('click', { bubbles: true }))); gg.push(await waitText(UG[5]));
+      await anywhere(); gg.push(await waitText(UG[6]));
       await anywhere(); await sleep(200); const stillK = (await state()).screen;
-      await click('#s-key > .back'); gg.push(await waitText(UG[6])); const onMenu = (await state()).screen;
-      await click('#s-menu .item[data-go="s-custom"]'); gg.push(await waitText(UG[7])); await anywhere(); gg.push(await waitText(UG[8]));
+      await click('#s-key > .back'); gg.push(await waitText(UG[7])); const onMenu = (await state()).screen;
+      await click('#s-menu .item[data-go="s-custom"]'); gg.push(await waitText(UG[8])); await anywhere(); gg.push(await waitText(UG[9]));
       await click('#c-bg button[data-v="grid"]'); await sleep(200); const heldC = (await box() || {}).text;
-      await click('#c-bg button[data-v="snow"]'); gg.push(await waitText(UG[9])); await anywhere(); await sleep(400);
+      await click('#c-bg button[data-v="snow"]'); gg.push(await waitText(UG[10])); await anywhere(); await sleep(400);
       // AMENDED at build 68 (67.22): three tours now — the map's, the Skill Key's and Customise's — each done
       const gEnd = await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('ne')).prefs; return { done: [p.tuts.games, p.tuts.gkey, p.tuts.gcust].every(v => v === 'done') ? 'done' : JSON.stringify(p.tuts), bg: p.bg, box: !document.getElementById('tut').hidden, nav: window.__nav }; });
       const navBad = gEnd.nav.filter(n => !n.ring || n.dt === null || n.dt > 1000);
-      (gg.map(b => b && b.text).join('|') === UG.join('|') && onMap === 's-pick' && heldW.s === 's-pick' && heldW.t === UG[1] && heldK === 's-key' && stillK === 's-key' && onMenu === 's-menu' && heldC === UG[8]
-        && gg[1].drawn && gg[1].tail && gg[3].glow === Object.keys(await page.evaluate(async () => (await import("./games/registry.js")).GAMES)).length && !gg[3].covers && gg[4].drawn && gg[5].drawn && gg[6].drawn && gg[8].drawn && gg.every(b => b.inside && !b.covers) && gEnd.done === 'done' && gEnd.bg === 'snow' && !gEnd.box)
-        ? ok('64.14 / 65.9 the Games chest tutorial: map → the SKILL KEY word ringed and tapped → the key with every spoke lit → Quick Tap tapped → BACK ringed and tapped → Customise → Snow picked — ten boxes in order, done once')
+      (gg.map(b => b && b.text).join('|') === UG.join('|') && onMap === 's-pick' && heldW.s === 's-pick' && heldW.t === UG[1] && heldK === 's-key' && stillK === 's-key' && onMenu === 's-menu' && heldC === UG[9]
+        && gg[1].drawn && gg[1].tail && gg[3].glow === Object.keys(await page.evaluate(async () => (await import("./games/registry.js")).GAMES)).length && !gg[3].covers && gg[4].drawn && gg[5].drawn && gg[6].drawn && gg[7].drawn && gg[9].drawn && gg.every(b => b.inside && !b.covers) && gEnd.done === 'done' && gEnd.bg === 'snow' && !gEnd.box)
+        ? ok('64.14 / 65.9 / 68.30 the Games chest tutorial: map → the SKILL KEY word ringed and tapped → the key with every spoke lit → Quick Tap tapped → its list ringed and explained → BACK ringed and tapped → Customise → Snow picked — eleven boxes in order, done once')
         : bad('64.14 / 65.9 the Games chest tutorial', JSON.stringify({ gg: gg.map(b => b && { t: b.text, drawn: b.drawn, glow: b.glow, covers: b.covers, inside: b.inside }), onMap, heldW, heldK, stillK, onMenu, heldC, gEnd }));
       (gEnd.nav.length >= 3 && !navBad.length)
         ? ok(`65.9 the tutorial never moves the player: all ${gEnd.nav.length} screen changes (${gEnd.nav.map(n => n.id).join(' → ')}) came straight after a tap on a ringed thing, none after a tap on a text box`)
@@ -525,6 +527,26 @@ export async function run() {
       (['prog', 'about', 'board'].every(k => { const r = R18[k], go = { prog: 's-prog', about: 's-about', board: 's-board' }[k]; return r.got === C18.got[k] && r.on === 's-over' && r.menu === 's-menu' && r.ring && r.held === 's-menu' && r.inside === C18.inside[k] && r.room === go; }))
         ? ok(`68.18 a menu item's congratulations box walks the player to it: a tap on "${C18.got.prog}", "${C18.got.about}" or "${C18.got.board}" on the result lands on the main menu with that item ringed and the only thing that answers; the player's tap on it opens it and its tour's first box is inside`)
         : bad('68.18 a congratulations box left the player on the result, or the menu ring did not hold', JSON.stringify(R18));
+    }
+    /* build 69 (68.30): THE SKILL KEY TOUR EXPLAINS THE LIST BEFORE BACK. Aiden's v0.68 frame: Quick Tap's list open under the wheel (Two · Sprint CLEARED …),
+       BACK ringed and "Open the Skill Chest and you'll have 100%'d the game!" — nothing had said what the list is. The order is: the card, the spokes, "Let's
+       click one" (Quick Tap's node, must-tap), then a box ringing the opened list, a line of its own from the config, then the Skill Chest line with BACK
+       ringed (must-tap) */
+    {
+      await page.evaluate(si => { localStorage.setItem('ne', JSON.stringify({ v: 7, prefs: { story: 1, gridSeen: 1, menuSeen: 1, snd: 'off', played: 1, tut: 2, welcomeSeen: 1, keySeen: 1, keysSeen: 1, readySeen: {}, keyIntro: { clear: 1, pro: 1, author: 1 }, menuUnl: { about: 1, prog: 1, board: 1 }, tuts: { gkey: 0 }, chests: { games: 1 }, spill: { games: 1 } }, runs: [], ach: {}, unlock: {}, intro: si, seen: {}, bars: {} })); }, SEEN_INTRO);
+      await page.reload({ waitUntil: 'networkidle0' }); await sleep(300); await page.evaluate(async () => (await import('./ui/router.js')).show('s-key'));
+      const G30 = um(await page.evaluate(async () => (await import('./config/copy.js')).TUTORIAL.games)), K = [];
+      for (let i = 0; i < 8; i++) { let b = null, st = null; for (let k = 0; k < 60; k++) { st = await page.evaluate(async () => (await import('./ui/tutorial.js')).tutNow()); if (st && st.id === 'gkey' && st.shown) { b = await box(); if (b && (!K.length || b.text !== K[K.length - 1].t)) break; } else if (K.length && (!st || st.id !== 'gkey')) break; await sleep(100); }
+        if (!b || !st || st.id !== 'gkey') break;
+        const on = await page.evaluate(() => { const q = document.querySelector('#tut .tring'), d = getComputedStyle(q).display !== 'none' ? q.getBoundingClientRect() : null; if (!d || !d.width) return '';
+          for (const [sel, name] of [['#key-list', 'list'], ['#s-key > .back', 'back'], ['#s-key .knode[data-kg="quick-tap"]', 'node']]) { const e = document.querySelector(sel); if (!e) continue; const r = e.getBoundingClientRect();
+            if (r.width && Math.abs(r.left + r.width / 2 - d.left - d.width / 2) <= 8 && Math.abs(r.top + r.height / 2 - d.top - d.height / 2) <= 8) return name; } return 'other'; });
+        K.push({ t: b.text, tap: st.tap, on });
+        if (st.tap) { const a = await page.evaluate(async () => (await import('./ui/tutorial.js')).tutAim()); if (!a) break; await page.mouse.click(a[0], a[1]); } else await anywhere(); await sleep(300); }
+      const list = K.find(k => k.on === 'list'), iL = K.indexOf(list);
+      (K.length === 5 && K[0].t === G30[2] && K[1].t === G30[3] && K[2].t === G30[4] && K[2].tap && list && iL === 3 && !list.tap && G30.includes(list.t) && K[4].on === 'back' && K[4].tap && /Skill Chest/.test(K[4].t))
+        ? ok(`68.30 the Skill Key tour: "${K[2].t}" (Quick Tap's node, tapped), then "${list.t}" ringing the opened list, then "${K[4].t}" with BACK ringed — the list explained before the way out`)
+        : bad('68.30 the Skill Key tour does not explain the list before Back', JSON.stringify(K));
     }
     /* build 69 (68.6): THE DASH BOX FIRES ON THE RUN THAT OPENS DASH, WHICHEVER RUN THAT IS. Aiden on v0.68: his first run missed Dash, "the second unlocked
        it and no box came". A first result that did not open Dash says what opens it; Try Again, a run of 7 in a row: THAT result says "Great job, you

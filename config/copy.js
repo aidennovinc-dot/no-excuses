@@ -367,7 +367,10 @@ export const TUTORIAL = {
   /* build 66 (65.9): the second line is Aiden's — the must-tap box on the map that rings the SKILL KEY word, so he gets to the key himself */
   games:[ 'Wow, you unlocked the [yellow]Games Chest. [/yellow][green]Well done![/green]', 'Tap the [yellow]Skill Key[/yellow] to take a look',
     "You've unlocked access to the [yellow]Skill Key[/yellow], which opens the [red]Skill Chest[/red]", "To be able to use this key, you'll have to [yellow]fill all the bars[/yellow]",
-    'Let’s [yellow]click one[/yellow] to see what to aim for!', "Open the [yellow]Skill Chest[/yellow] and you'll have [green]100%'d [/green]the game!", "You've also unlocked [yellow]something fun[/yellow], let's see!",
+    'Let’s [yellow]click one[/yellow] to see what to aim for!',
+    // build 69 (68.30): the opened list, explained before Back — Cowork's wording
+    'Each row is one [yellow]target[/yellow]. [green]Green[/green] means cleared. Clear every row in every game to [green]earn the key[/green]',
+    "Open the [yellow]Skill Chest[/yellow] and you'll have [green]100%'d [/green]the game!", "You've also unlocked [yellow]something fun[/yellow], let's see!",
     'This is where you can [yellow]customise[/yellow] your game! See if you can [green]unlock them all.[/green]', "Why don't you try now",
     'Remember, you can always check the [yellow]Progress screen [/yellow]to see how to unlock everything!' ],
   /* build 66 (65.8): ESTIMATE'S TWO MODES, on its pick sheet the first time — Cowork's wording, for Aiden to reword on the map. {set} / {streak} are

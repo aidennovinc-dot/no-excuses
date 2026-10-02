@@ -302,15 +302,19 @@ tutorial('gkey',[
   { on:ks, room:'s-key', el:()=>$('#s-key .kkey[data-kt="0"]'), text:G14[2] },
   { on:ks, room:'s-key', el:()=>[...document.querySelectorAll('#key-ring .kr')], glow:1, keep:()=>$('#key-count'), text:G14[3] },
   { on:ks, room:'s-key', el:()=>$(`#s-key .knode[data-kg="${QT}"]`), tap:1, hit:t=>!!(t.closest&&t.closest(`#s-key [data-kg="${QT}"]`)), text:G14[4] },
-  { on:ks, room:'s-key', el:()=>$('#s-key > .back'), tap:1, text:G14[5] },
+  /* build 69 (68.30): THE LIST, EXPLAINED BEFORE BACK. Aiden's v0.68 frame: Quick Tap's list open under the wheel, BACK ringed and "Open the Skill Chest …"
+     — nothing had said what the rows were. A box rings the opened list (brought into view by the game if it is not, 68.12): one row a target, green
+     cleared, every row in every game for the key; then the Skill Chest line with Back */
+  { on:ks, room:'s-key', el:()=>$('#key-list'), text:G14[5] },
+  { on:ks, room:'s-key', el:()=>$('#s-key > .back'), tap:1, text:G14[6] },
 ],{ opened:()=>chestOpen('games'),
   meta:{ name:'Skill Key', trigger:'The Games chest opens; the first visit to the Skill Key, after its intro', start:'Skill Key',
-    why:'The Skill Key and its bars, and the last step to 100%', at:[['Skill Key','the Skill Key card'],['Skill Key','every spoke (lit)'],['Skill Key','Quick Tap\'s node'],['Skill Key','Back']] } });
+    why:'The Skill Key and its bars, what each row of a game\'s list means, and the last step to 100%', at:[['Skill Key','the Skill Key card'],['Skill Key','every spoke (lit)'],['Skill Key','Quick Tap\'s node'],['Skill Key','Quick Tap\'s list'],['Skill Key','Back']] } });
 tutorial('gcust',[
-  { on:()=>menuOn()&&!live('games')&&!live('gkey'), el:item('s-custom'), tap:1, door:'s-custom', text:G14[6] },
-  { on:cu, room:'s-custom', text:G14[7] },
-  { on:cu, room:'s-custom', el:()=>$('#c-bg button[data-v="snow"]'), tap:1, text:G14[8] },
-  { on:cu, room:'s-custom', text:G14[9] },
+  { on:()=>menuOn()&&!live('games')&&!live('gkey'), el:item('s-custom'), tap:1, door:'s-custom', text:G14[7] },
+  { on:cu, room:'s-custom', text:G14[8] },
+  { on:cu, room:'s-custom', el:()=>$('#c-bg button[data-v="snow"]'), tap:1, text:G14[9] },
+  { on:cu, room:'s-custom', text:G14[10] },
 ],{ opened:()=>chestOpen('games'),
   meta:{ name:'Customise', trigger:'The Games chest opens; the first visit to Customise', start:'Main menu, once the Skill Key\'s boxes are behind the player',
     why:'Customise, and the Games chest\'s background to pick', at:[['Main menu','Customise'],['Customise',''],['Customise','Snow background'],['Customise','']] } });

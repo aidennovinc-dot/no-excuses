@@ -2188,6 +2188,14 @@ scene('68.15', async (page, browser) => {
   await frame(page, browser, '68.15-order', 'A first result that opened Dash: box ' + seq.length + ' of the sequence — ' + seq.map((t, i) => (i + 1) + '. ' + t).join(' / ') + ' — the Dash box after “Or return to the games menu” (v0.68: before it)');
 });
 
+/* 68.30: the Skill Key tour after Quick Tap's node is tapped — the new box ringing the opened list (Two · Sprint …), before the Skill Chest line and Back */
+scene('68.30', async (page, browser) => {
+  await load(page, { ...PLAIN, welcomeSeen: 1, menuUnl: { about: 1, prog: 1, board: 1 }, tuts: { gkey: 0 }, chests: { games: 1 }, spill: { games: 1 } }, { runs: [{ g: 'quick-tap', d: 'two', s: 5, t: Date.now() - 6e4, hits: 30, misses: 0, row: 30, v: 4 }] });
+  await show(page, 's-key', { tier: 0 }); await sleep(1500);
+  for (let i = 0; i < 5; i++) { const b = await pBox(page, '', 5000); if (!b) break; say('box', b.text); if (/Each row/.test(b.text)) break; if (b.tap) await tutAimTap(page); else await tutTap(page); await sleep(600); }
+  await frame(page, browser, '68.30-list-box', 'The Skill Key tour after Quick Tap’s node: a box ringing the opened list — each row a target, green cleared — before “Open the Skill Chest …” with Back (v0.68: straight to Back, nothing said about the list)');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }
