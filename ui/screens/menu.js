@@ -177,7 +177,13 @@ function storyEnd(){ if(!storyOn) return; storyOn=false; titleStop(); const m=$(
   m.classList.add('storyend'); setTimeout(()=>{ m.classList.remove('story','run','storyend'); menuIn(); },320);
   // v13 (3.6): a challenge link waits for the title sequence, then opens its pick sheet
   if(CHAL) setTimeout(()=>emit('challenge',CHAL),570); }
-capture(()=>{ if(!storyOn) return false; storyEnd(); return true; });
+/* build 69 (68.13, L27): THE TITLE IGNORES EVERY TAP UNTIL "TAP TO BEGIN" HAS STARTED TO APPEAR, on every launch that plays it (a new profile, Fresh
+   game, Testing's replay). Aiden: "I shouldn't be able to do this, especially if it's the first time." A tap before then is swallowed and does
+   nothing; from the hint's first frame a tap goes through as before. Read off the hint's OWN animation (its delay is L1's 4.6s, in the stylesheet),
+   so a change to L1's timing moves the gate with it. No animation to read (Reduce Motion) means nothing to wait for */
+function hintBegun(){ const el=$('#storyhint'), a=el&&el.getAnimations?el.getAnimations()[0]:null; if(!a||!a.effect) return true;
+  const t=a.effect.getComputedTiming(); return typeof t.localTime==='number'&&t.localTime>=(t.delay||0); }
+capture(()=>{ if(!storyOn) return false; if(hintBegun()) storyEnd(); return true; });
 
 // a returning player boots straight onto the menu the markup already shows: the reveal plays once, and a challenge link opens its sheet
 function enterMenu(){ renderMenu(); menuIn(); if(CHAL) setTimeout(()=>emit('challenge',CHAL),300); }

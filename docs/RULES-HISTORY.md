@@ -1875,3 +1875,12 @@ anything Aiden settles goes on the list in the build that implements it.
   frame, a landscape clip in a wide one, never letterboxed inside the other shape, on first viewing and from About; thumbnails follow the clip.
   Built in package P5. Gate: `the keys`, "L26 / 68.11" — the player's frame ratio against the clip's own `videoWidth / videoHeight`; added at the
   locked-list commit as a placeholder on the 16:9 test card (it passes trivially there) and made real by 68.11's build.
+- **L27 — the title sequence ignores every tap until "Tap to begin" has appeared, on every launch (68.13).** Aiden on v0.68, with the three
+  lines on screen and the hint not yet shown: "I shouldn't be able to do this, especially if it's the first time." Every launch that plays the
+  title (a new profile, Fresh game, Testing's replay) swallows every tap until the fourth beat, "Tap to begin" (`#storyhint`, L1's 4.6s), has
+  begun; from its first frame a tap goes through to the menu as before. Cowork preferred letting returning players through once NO EXCUSES is on
+  screen; Aiden has not taken that up, so it is locked always. `hintBegun()` in `ui/screens/menu.js` reads the hint's own animation
+  (`getComputedTiming()`: local time past its delay), so a change to L1's timing moves the gate with it; with no animation to read (Reduce
+  Motion) there is nothing to wait for. L1's beats and their times are untouched. The gate's drivers wait for the same beat (`tapTitle()` in
+  `_smoke/lib/gate.mjs`). Gate: `cold start`, "L27 / 68.13" — from a new profile, taps 1s and 3s in on the hint's own clock leave the title up
+  with no menu item reachable; a tap after the hint has begun reaches the menu.

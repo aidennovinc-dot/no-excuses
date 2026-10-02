@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { BASE, GAMES, sleep, check, ok, bad, finished, root, read, at, page, until, click, setStorage, SEEN_INTRO, finish, driveToResult, openSheet, named, boot } from '../lib/gate.mjs';
+import { BASE, GAMES, sleep, check, ok, bad, finished, root, read, at, page, until, click, setStorage, SEEN_INTRO, finish, driveToResult, openSheet, named, boot, tapTitle } from '../lib/gate.mjs';
 
 export const SECTION = ["the chain and its screens (v15 sections 1 and 2)"];
 
@@ -136,8 +136,7 @@ export async function run() {
   (!V.oneRecord.length) ? ok('1.0d one record of the chain — every lock box and goal line reads the string lenNeed builds') : bad('1.0d a second copy of a requirement', V.oneRecord.join(', '));
 
   // 2.2: no Next card on a fresh profile's first menu open
-  { const nx = await page.evaluate(() => { const s = document.querySelector('#s-menu.story'); if (s) document.body.click(); return null; }); void nx; await sleep(900);
-    for (let i = 0; i < 8 && (await page.evaluate(() => !!document.querySelector('#s-menu.story'))); i++) { await page.evaluate(() => document.body.click()); await sleep(320); }
+  { await tapTitle(); await sleep(900);
     await sleep(400);
     // AMENDED at build 53 (v28 item 8): #menu-tag went with "unlock them all", so there is no subtitle left to be hidden
     const card = await page.evaluate(() => ({ hidden: document.getElementById('nextup').hidden, tag: !document.getElementById('menu-tag') }));

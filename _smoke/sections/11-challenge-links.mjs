@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { BASE, sleep, ok, bad, at, page, click, getJSON, driveToResult, resultLine } from '../lib/gate.mjs';
+import { BASE, sleep, ok, bad, at, page, click, getJSON, driveToResult, resultLine, tapTitle } from '../lib/gate.mjs';
 
 export const SECTION = ["challenge links"];
 
@@ -10,7 +10,7 @@ export async function run() {
   const openChallenge = async (qs) => {
     await page.goto(BASE + '/index.html', { waitUntil: 'networkidle0' }); await page.evaluate(() => localStorage.clear());
     await page.goto(BASE + '/index.html' + qs, { waitUntil: 'networkidle0' }); await sleep(400);
-    for (let i = 0; i < 8 && (await page.evaluate(() => !!document.querySelector('#s-menu.story'))); i++) { await page.evaluate(() => document.body.click()); await sleep(350); }
+    await tapTitle();
     await sleep(500);
     return page.evaluate(() => { const c = document.getElementById('chal'); return { screen: document.querySelector('.screen.on')?.id, shown: !c.hidden, img: !!c.querySelector('img'), html: c.innerHTML, text: c.textContent.trim() }; });
   };

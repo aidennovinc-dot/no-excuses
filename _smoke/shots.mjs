@@ -2048,6 +2048,21 @@ scene('68.3', async (page, browser) => {
   await frame(page, browser, '68.3-key-labels', 'The whole Skill Key: seven labels, each once, all inside the ring’s own box — no stray “Spot” above Timing');
 });
 
+/* 68.13 (L27): a new profile's title sequence 4.3s in, a tap having landed at 3s (on the hint's own clock) and nothing changed — the three lines up,
+   "Tap to begin" not yet shown, no menu */
+scene('68.13', async (page, browser) => {
+  await page.evaluate(() => localStorage.clear()); await page.reload({ waitUntil: 'domcontentloaded' });
+  for (let i = 0; i < 100 && !(await page.evaluate(() => !!document.querySelector('#s-menu.story.run'))); i++) await sleep(50);
+  say('tap', await page.evaluate(async () => { const a = document.getElementById('storyhint').getAnimations()[0];
+    while ((a.effect.getComputedTiming().localTime || 0) < 3000) await new Promise(r => requestAnimationFrame(r));
+    const at = Math.round(a.effect.getComputedTiming().localTime); (document.elementFromPoint(195, 520) || document.body).dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 195, clientY: 520 }));
+    while ((a.effect.getComputedTiming().localTime || 0) < 4300) await new Promise(r => requestAnimationFrame(r)); const t = a.effect.getComputedTiming();
+    return { tappedAt: at, nowAt: Math.round(t.localTime), hintAt: t.delay, story: !!document.querySelector('#s-menu.story') }; }));
+  await page.evaluate(() => { for (const a of document.getAnimations()) a.pause(); });
+  await frame(page, browser, '68.13-title-locked', 'The title 4.3s in, a tap having landed at 3s: still the title — the three lines up, “Tap to begin” not yet shown (it begins at 4.6s), no menu (v0.68: the tap went through)');
+  await page.evaluate(() => { for (const a of document.getAnimations()) a.play(); });
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

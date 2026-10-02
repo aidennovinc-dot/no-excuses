@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { own, BASE, GAMES, fail, CLOCK, sleep, names, close, part, section, check, ok, bad, finished, root, read, strip, PLAIN, boot, NOW, at, page, until, onScreen, click, setStorage, getJSON, OPEN_PREFS, SEEN_INTRO, down, up, revealDone, finish, driveToResult, openSheet, named } from '../lib/gate.mjs';
+import { own, BASE, GAMES, fail, CLOCK, sleep, names, close, part, section, check, ok, bad, finished, root, read, strip, PLAIN, boot, NOW, at, page, until, onScreen, click, setStorage, getJSON, OPEN_PREFS, SEEN_INTRO, down, up, revealDone, finish, driveToResult, openSheet, named, tapTitle } from '../lib/gate.mjs';
 
 export const SECTION = ["the keys, the surface and #375 (v15 sections 5 and 6)"];
 
@@ -427,7 +427,7 @@ export async function run() {
     const m5 = await menu48();
     await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-testing'); }); await sleep(300);
     await tap48('[data-act="dev-fresh"]'); await sleep(500);
-    for (let i = 0; i < 8 && (await page.evaluate(() => !!document.querySelector('#s-menu.story'))); i++) { await page.evaluate(() => document.body.click()); await sleep(350); }
+    await tapTitle();
     await sleep(600); const m6 = await menu48(); const fresh6 = (await getJSON('ne')).prefs.menuOpened;
     (m0['s-pick'] === 'green' && ['s-board', 's-prog', 's-about', 's-key', 's-custom'].every(k => m0[k] === 'shut') && run48 === 's-over'
       // AMENDED at build 65 (64.7): the walkthrough no longer opens Scores, Progress and About, and a Quick Tap run opens none of them — the Games chest does

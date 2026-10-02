@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { own, BASE, sleep, names, section, check, ok, bad, finished, root, read, at, page, until, click, setStorage, OPEN_PREFS, SEEN_INTRO, down, openSheet, driveToResult } from '../lib/gate.mjs';
+import { own, BASE, sleep, names, section, check, ok, bad, finished, root, read, at, page, until, click, setStorage, OPEN_PREFS, SEEN_INTRO, down, openSheet, driveToResult, tapTitle } from '../lib/gate.mjs';
 
 export const SECTION = ["side screens (v14 section 8)"];
 
@@ -12,7 +12,7 @@ export async function run() {
   // chest, so the new profile has that one chest open and nothing else
   await setStorage({ ne: { v: 5, prefs: { chests: { games: 1 } } } });
   await page.reload({ waitUntil: 'networkidle0' }); await sleep(500);
-  await page.evaluate(() => document.body.click()); await sleep(900);
+  await tapTitle(); await sleep(900);
   // AMENDED at build 39 (v23 L.4a): Customise is its own screen again (it was the middle tab of Progress, builds 33-38)
   await click('[data-go="s-custom"]'); await sleep(1400);   // past the .6s first-seen highlight
   // 8.7: the highlight used to end on `background-color:transparent` under animation-fill-mode:both, which held forever —

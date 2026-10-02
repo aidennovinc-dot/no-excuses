@@ -152,6 +152,12 @@ if (PARTIAL || PICK) await page.goto(BASE + '/index.html', { waitUntil: 'network
    window is a guess that only held because a real driver is slow; under the test clock it lands somewhere else. */
 export const until = (fn, arg, ms = 30000) => page.waitForFunction(fn, { polling: 'raf', timeout: ms }, arg);
 export const onScreen = () => page.$eval('.screen.on', s => s.id).catch(() => null);
+/* build 69 (68.13, L27): THE TITLE IGNORES EVERY TAP UNTIL "TAP TO BEGIN" HAS STARTED TO APPEAR. A driver that goes past the title waits for that
+   beat — the hint's own animation, read the way ui/screens/menu.js reads it — then taps until the title has gone */
+export const TITLE_HINT = () => { if (!document.querySelector('#s-menu.story')) return true; const e = document.getElementById('storyhint'), a = e && e.getAnimations()[0];
+  if (!a || !a.effect) return true; const t = a.effect.getComputedTiming(); return typeof t.localTime === 'number' && t.localTime >= (t.delay || 0); };
+export const tapTitle = async () => { await until(TITLE_HINT, null, 30000).catch(() => {});
+  for (let i = 0; i < 8 && (await page.evaluate(() => !!document.querySelector('#s-menu.story'))); i++) { await page.evaluate(() => document.body.click()); await sleep(350); } };
 export const inGame = () => page.$eval('#game', g => g.classList.contains('on')).catch(() => false);
 export const click = sel => page.evaluate(s => { const el = document.querySelector(s); if (!el) return false; el.click(); return true; }, sel);
 export const setStorage = obj => page.evaluate(o => { localStorage.clear(); for (const k in o) localStorage.setItem(k, typeof o[k] === 'string' ? o[k] : JSON.stringify(o[k])); }, obj);

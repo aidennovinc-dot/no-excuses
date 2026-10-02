@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { own, BASE, errors, sleep, close, section, ok, bad, at, page, onScreen, inGame, setStorage, getJSON, OPEN_PREFS, up, driveToResult, openSheet } from '../lib/gate.mjs';
+import { own, BASE, errors, sleep, close, section, ok, bad, at, page, onScreen, inGame, setStorage, getJSON, OPEN_PREFS, up, driveToResult, openSheet, tapTitle } from '../lib/gate.mjs';
 
 export const SECTION = ["button actions (every data-act at least once)"];
 
@@ -76,7 +76,7 @@ export async function run() {
   await tap('#dev-open', 'testing · progression on'); await tap('#dev-open', 'testing · everything open');
   await tap('#dev-story', 'testing · replay the intro'); await sleep(300);
   (await page.evaluate(() => !!document.querySelector('#s-menu.story'))) ? ok('replay the intro shows the title sequence') : bad('replay the intro', 'on ' + (await onScreen()));
-  await page.evaluate(() => document.body.click()); await sleep(400);
+  await tapTitle(); await sleep(400);
   // the full stop, three taps
   for (let i = 0; i < 3; i++) await tap('#egg', 'egg');
   const egg = (await getJSON('ne')).ach;

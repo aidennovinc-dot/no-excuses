@@ -207,6 +207,7 @@ list, with its check, in the build that implements it (67.37b, build 68).**
 | L24 | **Every intro and ceremony draws its first animation frame before anything else of that screen**: the finished screen is never on frame one (68.29, 2026-10-02; the same fault as 2026-09-20). |
 | L25 | **On Progress and the key cards, green means done and nothing else**: white for not yet earned, green once earned; a locked row's name, requirement and "To unlock" line are plain white (68.21, 2026-10-02; settled 2026-09-14). |
 | L26 | **The video frame takes the shape of the clip**: a portrait clip plays in a tall frame, a landscape clip in a wide one, never letterboxed inside the other shape, on first viewing and from About; thumbnails follow the clip (68.11, 2026-10-02, supersedes 67.6b). |
+| L27 | **The title sequence ignores every tap until "Tap to begin" has appeared**, on every launch (68.13, 2026-10-02). |
 
 **Code decisions A1–A10 in `ARCHITECTURE.md` — same quote-the-ID rule.** A feedback line changes one only when it names the ID.
 
