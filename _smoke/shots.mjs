@@ -2116,6 +2116,15 @@ scene('68.19', async (page, browser) => {
   await frame(page, browser, '68.19-sheet-after-tap', 'After the player’s own tap on Estimate (then Grow): the sheet, and only now Estimate’s first box');
 });
 
+/* 68.18: "Congratulations, you unlocked Progress!" on a result, tapped: the main menu, Progress ringed and the only thing that answers */
+scene('68.18', async (page, browser) => {
+  await load(page, { ...PLAIN, welcomeSeen: 1, menuUnl: { prog: 1 }, tuts: { next: 'done', prog: 0 } }, { unlock: { 'dots:blind': Date.now(), 'hold:grow': Date.now() } });
+  await show(page, 's-over'); say('result box', await pBox(page, 'Progress'));
+  await tutTap(page); await sleep(700); say('screen', await page.evaluate(() => document.querySelector('.screen.on')?.id));
+  for (let i = 0; i < 3; i++) { const b = await pBox(page, '', 3000); if (!b || b.tap) { say('box', b); break; } await tutTap(page); await sleep(400); }
+  await frame(page, browser, '68.18-menu-ringed-prog', 'The tap on “Congratulations, you unlocked Progress!” on the result: the main menu, Progress ringed by a must-tap box, the only thing that answers (v0.68: left on the result)');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

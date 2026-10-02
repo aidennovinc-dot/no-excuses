@@ -444,7 +444,9 @@ export async function run() {
       for (let i = 0; i < 12; i++) { let b = null; for (let k = 0; k < 30 && !(b = await box()); k++) await sleep(100); if (!b) break; const st = await page.evaluate(async () => (await import('./ui/tutorial.js')).tutNow()); R19.res.push({ t: b.text, tap: st && st.tap }); if (st && st.tap) break; await anywhere(); await sleep(250); }
       await sleep(400); await click('#over-back');
       let b19 = null; for (let k = 0; k < 40 && !(b19 = await box()); k++) await sleep(100);
-      const tile = await page.evaluate(() => { const r = document.querySelector('#grid .tile[data-game="hold"]').getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; });
+      // the ring round the tile, read in the same moment as the tile (a new tile breathes, so a size read apart from the ring's would not match)
+      const tile = await page.evaluate(() => { const q = document.querySelector('#tut .tring').getBoundingClientRect(), t = document.querySelector('#grid .tile[data-game="hold"]').getBoundingClientRect();
+        return { dx: Math.round(q.left + q.width / 2 - t.left - t.width / 2), dy: Math.round(q.top + q.height / 2 - t.top - t.height / 2), dw: Math.round(q.width - t.width) }; });
       await sleep(600);
       Object.assign(R19, { map: await state(), st: await page.evaluate(async () => (await import('./ui/tutorial.js')).tutNow()), box: b19 && { t: b19.text, drawn: b19.drawn, ring: b19.ring }, tile, est: await page.evaluate(() => (JSON.parse(localStorage.getItem('ne')).prefs.tuts || {}).est),
         toastUp: await page.evaluate(() => document.getElementById('toast').classList.contains('on')) });
@@ -456,10 +458,40 @@ export async function run() {
       R19.est1 = e1 && e1.text; R19.toasts = await page.evaluate(() => window.__t19);
       const name = await page.evaluate(async () => (await import('./games/registry.js')).GAMES.hold.name);
       (R19.unl && R19.res.length && R19.res.every(r => !r.tap) && R19.res.some(r => r.t.includes(name)) && R19.map.screen === 's-pick' && !R19.map.sheet && R19.st && R19.st.shown && R19.st.tap && R19.box && R19.box.drawn
-        && Math.abs(R19.box.ring[0] - tile[0] - 12) <= 2 && R19.box.t.includes(name) && !R19.toastUp && R19.est === undefined && !R19.other.sheet && R19.after.sheet && R19.after.game === 'hold' && R19.est1
+        && Math.abs(tile.dx) <= 6 && Math.abs(tile.dy) <= 6 && tile.dw > 0 && tile.dw < 30 && R19.box.t.includes(name) && !R19.toastUp && R19.est === undefined && !R19.other.sheet && R19.after.sheet && R19.after.game === 'hold' && R19.est1
         && !R19.toasts.some(x => x.s === 's-over' && x.t.includes(name)))
         ? ok(`68.19 a new game is the player's to open: a Dots run opens ${name}; its result says so ("${R19.res.map(r => r.t).join('" / "')}") with no toast; Game Select lands on the games menu with no sheet up and ${name}'s tile ringed by a must-tap box ("${R19.box.t}") that lets no other tile through; ${name}'s own tour shows nothing until a real tap on the tile has opened its sheet`)
         : bad('68.19 a new game opened for the player, or not ringed on the map', JSON.stringify(R19));
+    }
+    /* build 69 (68.18): A MENU ITEM'S CONGRATULATIONS BOX WALKS THE PLAYER TO IT. Aiden on v0.68: "It says congratulations you unlocked about but it didn't
+       take me to the about section … it just left me in the game's results menu". The tap on "Congratulations, you unlocked Progress!" (on the first
+       Estimate run's result), About (on the result the Welcome clip closed over) and Scores (on the first Reaction run's result) lands on the main menu,
+       where that item is ringed and the only thing that answers; the player's own tap on it opens it and the tour's first box inside is there */
+    {
+      const C18 = um(await page.evaluate(async () => { const C = (await import('./config/copy.js')).TUTORIAL, U = (await import('./config/unlocks.js')).MENU_UNLOCK;
+        return { got: Object.fromEntries(['about', 'prog', 'board'].map(k => [k, C.got.replace('{name}', U[k].name)])), inside: { prog: C.prog[2], about: C.about[0], board: C.board[0] }, pre: C.over.got.split('{names}')[0] }; }));
+      const R18 = {};
+      for (const [k, go, start] of [['prog', 's-prog', 'hold'], ['about', 's-about', ''], ['board', 's-board', 'reaction']]) {
+        await page.evaluate(si => { localStorage.setItem('ne', JSON.stringify({ v: 7, prefs: { story: 1, gridSeen: 1, menuSeen: 1, snd: 'off', played: 1, tut: 2, welcomeSeen: 1, menuUnl: {}, tuts: { next: 'done' } }, runs: [], ach: {}, unlock: { 'dots:blind': 1, 'hold:grow': 1, 'reaction:flash': 1 }, intro: si, seen: {}, bars: {} })); }, SEEN_INTRO);
+        await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+        if (start) { await page.evaluate(async g => (await import('./run/run.js')).goWhere({ g }), start); await driveToResult(start, '68.18 a first ' + start + ' run'); }
+        else await page.evaluate(async () => { const V = await import('./ui/video.js'), M = (await import('./config/messages.js')).MESSAGES; (await import('./ui/router.js')).show('s-over'); V.playVideo(M[0]); await new Promise(r => setTimeout(r, 600)); V.closeVideo(); });
+        const r = R18[k] = {};
+        let b = null; for (let i = 0; i < 200; i++) { b = await box(); if (b && b.text === C18.got[k]) break; if (b && b.text.startsWith(C18.pre)) { await anywhere(); await sleep(250); continue; } await later(); await sleep(100); }
+        r.got = b && b.text; r.on = (await state()).screen; await anywhere();
+        for (let i = 0; i < 30 && (await state()).screen !== 's-menu'; i++) await sleep(100);
+        r.menu = (await state()).screen;
+        let st = null; for (let i = 0; i < 60; i++) { st = await page.evaluate(async () => (await import('./ui/tutorial.js')).tutNow()); if (st && st.shown && st.tap) break; if (st && st.shown && !st.tap && (await state()).screen === 's-menu') { await anywhere(); await sleep(250); } else await sleep(100); }
+        const rb = await box(), iw = await page.evaluate(go => document.querySelector(`#s-menu .item[data-go="${go}"]`).getBoundingClientRect().width, go);
+        r.ring = !!(st && st.tap && rb && rb.drawn && Math.abs(rb.ring[0] - iw - 12) <= 2);
+        await page.evaluate(() => document.querySelector('#s-menu .item[data-go="s-pick"]').click()); await sleep(400); r.held = (await state()).screen;
+        const aim = await page.evaluate(async () => (await import('./ui/tutorial.js')).tutAim()); if (aim) await page.mouse.click(aim[0], aim[1]);
+        let ib = null; for (let i = 0; i < 60 && !((ib = await box()) && ib.text === C18.inside[k]); i++) await sleep(100);
+        r.inside = ib && ib.text; r.room = (await state()).screen;
+      }
+      (['prog', 'about', 'board'].every(k => { const r = R18[k], go = { prog: 's-prog', about: 's-about', board: 's-board' }[k]; return r.got === C18.got[k] && r.on === 's-over' && r.menu === 's-menu' && r.ring && r.held === 's-menu' && r.inside === C18.inside[k] && r.room === go; }))
+        ? ok(`68.18 a menu item's congratulations box walks the player to it: a tap on "${C18.got.prog}", "${C18.got.about}" or "${C18.got.board}" on the result lands on the main menu with that item ringed and the only thing that answers; the player's tap on it opens it and its tour's first box is inside`)
+        : bad('68.18 a congratulations box left the player on the result, or the menu ring did not hold', JSON.stringify(R18));
     }
     /* build 66 (65.16): A GAUNTLET'S TUTORIAL, when the chest before it opens — Mini with the Skill chest, Mega with the Pro chest. On the map the
        reveal hands back to, its tile ringed and tapped; then three lines on its screen, every fact from config ("finish", never "beat") */

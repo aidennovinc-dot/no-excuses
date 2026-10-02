@@ -154,7 +154,8 @@ on('run:finish',({run,isBest,two,fresh,ach,adv,excuse})=>{ const g=GC(run.g,run.
        tapped on never reached. ui/welcome.js owns every reason NOT to play it; this line says only WHEN */
     const rest=()=>{ const gap=lastTier?Snd.endLeft():0, d=(lastTier?600:0)+gap; if(lastTier){ const t=lastTier; if(gap) setTimeout(()=>Snd.verdict(t),gap); else Snd.verdict(t); }
       tT.push(setTimeout(()=>welcomeCheck(R.on),d));
-      msgs.forEach(([m,id,cls,html,go,g,x],i)=>tT.push(setTimeout(()=>{ toast(m,id,cls,!!id,go); if(x) excuseFx(x); if(g) tT.push(setTimeout(()=>Snd.mapFx(g),MAP_ON_UNLOCK_MS)); },d+60+i*((id||go)?3400:2600))));
+      msgs.forEach(([m,id,cls,html,go,g,x],i)=>{ const f=()=>{ tF.delete(f); toast(m,id,cls,!!id,go); if(x) excuseFx(x); if(g) tT.push(setTimeout(()=>Snd.mapFx(g),MAP_ON_UNLOCK_MS)); };
+        tF.add(f); tT.push(setTimeout(f,d+60+i*((id||go)?3400:2600))); });
       tT.push(setTimeout(()=>quiet(true),d+msgs.length*3400+900));
       renderOverChips(); };
     if(adv) keyBreak(adv,rest); else rest(); },run),250); });
@@ -174,8 +175,11 @@ function keyBreak(adv,then){ pendingRest=then; lock(true); $('#s-over').classLis
    over it. run/run.js aborts a live run on any screen change now, which is the belt; this is the braces, and the right fix: a message
    about the run that just ended has no business arriving during the next one. */
 let tT=[];
+// build 69 (68.18): the toasts still to come, so a congratulations box that hands the player to the main menu takes them along (queued, in order)
+const tF=new Set();
 const quiet=v=>{ if(v) $('#s-over').removeAttribute('data-busy'); else $('#s-over').setAttribute('data-busy',''); };
-on('screen:change',({id})=>{ tT.forEach(clearTimeout); tT=[]; if(id!=='s-over'&&id!=='s-key') quiet(true); });
+on('screen:change',({id})=>{ tT.forEach(clearTimeout); tT=[]; tF.clear(); if(id!=='s-over'&&id!=='s-key') quiet(true); });
+on('tut:handover',()=>{ for(const f of [...tF]) f(); });
 let pendingRest=null;
 on('key:done',()=>{ lock(false); $('#s-over').classList.remove('fadeout'); const f=pendingRest; pendingRest=null; if(f) setTimeout(f,320); });
 define({

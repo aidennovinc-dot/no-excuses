@@ -1925,3 +1925,14 @@ anything Aiden settles goes on the list in the build that implements it.
   first result says its own unlocks, so a game opened by the first run starts at the map ring. Gate: `locked decisions` section C, "68.19":
   a driven Dots run that opens Estimate; Game Select lands on `s-pick` with no sheet up, the Estimate tile ringed by a must-tap box that lets
   no other tile through, no `est` box until a real tap on the tile.
+- **A menu item's congratulations box walks the player to it — the rule's one exception (68.18).** Aiden on v0.68: "It says congratulations you
+  unlocked about but it didn't take me to the about section … it just left me in the game's results menu and then disappeared." Build 68 built
+  two halves (the result's "Congratulations, you unlocked …" and the item ringed on the menu "whenever they next get there") with nothing joining
+  them. Now the congratulations box for About, Progress or Scores (`go:'s-menu'` on its step) takes the player to the main menu with its tap —
+  the one navigation a tutorial makes, written beside 68.19's rule in the A1 bullet — where the item is ringed by a must-tap box and is the only
+  thing that answers; the player's own tap opens it and the tour runs inside. The box still comes before the result's toasts (L14); those
+  still to come go with the player (`tut:handover`: ui/screens/result.js queues them at once instead of letting the screen change cancel them),
+  and show once the boxes are done. Progress's second line ("You completed your first Estimate run …") now shows on the menu, ahead of the
+  ring. A new game's or mode's own box on the same result comes first, since the hand-over leaves the result. Gate: `locked decisions` section
+  C, "68.18": the first Estimate run, the Welcome clip's close and the first Reaction run, each congratulations box tapped — `s-menu`, the item
+  ringed and must-tap, Games does not answer, a real tap on the ring opens the item and its tour's first box is inside.

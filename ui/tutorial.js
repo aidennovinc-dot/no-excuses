@@ -220,8 +220,12 @@ const got1=k=>()=>T(TUTORIAL.got,{name:MU(k)}), look=k=>()=>T(TUTORIAL.look,{nam
 /* 64.8: ABOUT, after the Welcome clip. The menu with About ringed and the only thing that answers; then inside it, on rails — the videos, the
    feedback line, the support button, and away */
 const A=TUTORIAL.about, ab=()=>onScreen('s-about');
+/* build 69 (68.18): THE ONE NAVIGATION A TUTORIAL MAKES. Aiden on v0.68: "It says congratulations you unlocked about but it didn't take me to the about
+   section … it just left me in the game's results menu and then disappeared." A menu item's congratulations box (`go`) hands the player to the main
+   menu with its tap, where the item is ringed and is the only thing that answers; the player's own tap opens it. The result's toasts still to come go
+   with them (`tut:handover`, ui/screens/result.js) */
 tutorial('about',[
-  { on:res, door:'s-about', text:got1('about') },
+  { on:res, door:'s-about', go:'s-menu', text:got1('about') },
   { on:menuOn, el:item('s-about'), tap:1, door:'s-about', text:look('about') },
   { on:ab, room:'s-about', text:A[0] },
   { on:ab, room:'s-about', el:()=>$('#msglist'), text:A[1] },
@@ -238,7 +242,7 @@ tutorial('about',[
    the player goes on by themselves (65.9: nothing takes them) */
 const P9=TUTORIAL.prog, pr=()=>onScreen('s-prog'), gtab=()=>$('#prog-tabs [data-tab="c-games"]');
 tutorial('prog',[
-  { on:res, door:'s-prog', text:got1('prog') },
+  { on:res, door:'s-prog', go:'s-menu', text:got1('prog') },
   { on:res, door:'s-prog', text:()=>T(P9[0],{ game:(GAMES[MENU_UNLOCK.prog.game]||{}).name||'' }) },
   { on:menuOn, el:item('s-prog'), tap:1, door:'s-prog', text:P9[1] },
   { on:pr, room:'s-prog', text:P9[2] },
@@ -253,7 +257,7 @@ tutorial('prog',[
    check" is a tap), then the web chart ringed */
 const B12=TUTORIAL.board, bd=()=>onScreen('s-board');
 tutorial('board',[
-  { on:res, door:'s-board', text:got1('board') },
+  { on:res, door:'s-board', go:'s-menu', text:got1('board') },
   { on:menuOn, el:item('s-board'), tap:1, door:'s-board', text:look('board') },
   { on:bd, room:'s-board', text:B12[0] },
   { on:bd, room:'s-board', el:()=>$(`#bd-g .chip[data-v="${QT}"]`), tap:1, text:()=>T(B12[1],{game:GAMES[QT].name}) },
@@ -501,7 +505,7 @@ document.addEventListener('click',e=>{ if(passing) return;
   if(lets(e.target)){ const {id,i,s}=cur; if(!s.done) setTimeout(()=>{ if(active()===id&&DEFS[id].step()===i) advance(id); tick(); },0); return; }
   e.stopPropagation(); e.preventDefault();
   // 67.9: a box whose target is still off the screen waits for the player to bring it in; a tap does not move it on
-  if(!cur.s.tap&&!cur.far){ Snd.click(); advance(cur.id); tick(); } },true);
+  if(!cur.s.tap&&!cur.far){ Snd.click(); const s=cur.s; advance(cur.id); if(s.go&&!onScreen(s.go)){ emit('tut:handover',{}); show(s.go); } tick(); } },true);
 /* step 12: Sprint picked, the run starts — there is no box for Go. The tap selected the length (pick.js's own handler, bubbling after this
    capture); Go is pressed for it on the next turn of the loop */
 document.addEventListener('click',e=>{ if(passing||!shown()||cur.id!=='first'||cur.i!==FIRST.length-1) return;
