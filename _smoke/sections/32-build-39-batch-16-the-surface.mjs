@@ -96,7 +96,8 @@ export async function run() {
       const keys = K.keyAch();
       // AMENDED at build 44 (v24 D.2): nine key roster rows carry a reward now, so "every row with an unlocks field" reads both lists
       return { unl, unlRows, chest, cul, culHeads, ach, table: P.ACH.map(a => a.id).concat(keys.map(a => a.id)), withUnlocks: P.ACH.concat(keys).filter(a => a.unlocks).map(a => a.id),
-        pureCul: P.ACH.concat(keys).filter(a => P.achTab(a) === 'cul').map(a => a.id), keyPaid: keys.filter(a => a.unlocks).length }; });
+        pureCul: P.ACH.concat(keys).filter(a => P.achTab(a) === 'cul').map(a => a.id), keyPaid: keys.filter(a => a.unlocks).length, keyPaidIds: keys.filter(a => a.unlocks).map(a => a.id),
+        chestOf: Object.fromEntries(keys.map(a => [a.id, a.kt])) }; });
     const srt = a => a.slice().sort().join();
     const chestAll = [].concat(pt.chest['c-key'], pt.chest['c-pro'], pt.chest['c-thorns']);
     const everyTab = [pt.cul, pt.ach, pt.chest['c-key'], pt.chest['c-pro'], pt.chest['c-thorns']];
@@ -106,8 +107,13 @@ export async function run() {
     const total58 = pt.cul.length + pt.ach.length + chestAll.length;
     // 58.3: Achievements keeps only what fits nowhere else - no row on it may also be on a chest tab
     const strays = pt.ach.filter(id => chestAll.includes(id));
-    (!pt.unl.length && pt.unlRows > 0 && !both.length && !lost.length && !extra.length && !strays.length && total58 === pt.table.length)
-      ? ok(`L.4c / 58.3 the six tabs are a partition: the Games chest ${pt.unlRows} rows and no achievement (L6), the Skill chest ${pt.chest['c-key'].length}, the Pro chest ${pt.chest['c-pro'].length}, the Author chest ${pt.chest['c-thorns'].length}, Customise unlocks ${pt.cul.length}, Achievements ${pt.ach.length} - disjoint, and together exactly ACH + keyAch() (${pt.table.length})`)
+    /* AMENDED at build 69 (the count bugs, 68.40 / 68.41 frames): a chest's tab lists EVERY row of its key, so the key rows that pay out a cosmetic
+       (keyPaid) are on two tabs — their chest's and Customise unlocks — and no other row is. The overlap is asserted to be exactly those rows, each
+       on its own key's chest tab, and the total is the table plus them */
+    const tier58 = { 'c-key': 'clear', 'c-pro': 'pro', 'c-thorns': 'author' };
+    const paidOk = srt(both) === srt(pt.keyPaidIds) && pt.keyPaidIds.every(id => pt.cul.includes(id) && Object.keys(tier58).some(t => tier58[t] === pt.chestOf[id] && pt.chest[t].includes(id)));
+    (!pt.unl.length && pt.unlRows > 0 && paidOk && !lost.length && !extra.length && !strays.length && total58 === pt.table.length + pt.keyPaidIds.length)
+      ? ok(`L.4c / 58.3 / 68.40 the six tabs: the Games chest ${pt.unlRows} rows and no achievement (L6), the Skill chest ${pt.chest['c-key'].length}, the Pro chest ${pt.chest['c-pro'].length}, the Author chest ${pt.chest['c-thorns'].length}, Customise unlocks ${pt.cul.length}, Achievements ${pt.ach.length} - every row on exactly one tab except the ${pt.keyPaidIds.length} key rows that pay out a cosmetic, which are on their own chest's tab and Customise unlocks, and together exactly ACH + keyAch() (${pt.table.length})`)
       : bad('L.4c the partition', JSON.stringify({ unl: pt.unl, both, lost, extra, strays, n: [pt.cul.length, pt.ach.length, chestAll.length, pt.table.length] }));
     (srt(pt.cul) === srt(pt.withUnlocks) && srt(pt.pureCul) === srt(pt.cul) && pt.keyPaid === 9)
       ? ok(`L.4c Customise unlocks is every row with an unlocks field and nothing else, by achTab() - grouped ${pt.culHeads.join(' / ')}`)

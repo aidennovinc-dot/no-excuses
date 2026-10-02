@@ -507,4 +507,24 @@ export async function run() {
       ? ok(`68.41 / 68.43 a game filter shows that game's rows and nothing else: ${f41.length - allRows.length} game filters across the three key chests' tabs and Achievements, no row of another game and no general row under any of them; the general rows (${allRows.map(x => x.tab + ' ' + x.general.length).join(', ')}) show under ALL`)
       : bad('68.41 / 68.43 the filter leaks', JSON.stringify({ leaks: leaks.map(x => ({ tab: x.tab, g: x.g, wrong: x.wrong })), all: allRows.map(x => ({ tab: x.tab, general: x.general.length })) }));
   }
+  /* build 69 (the count bugs, from Aiden's 68.40 / 68.41 frames): EVERY CHEST TAB LISTS EVERY BAR. The Skill tab's Quick Tap group said 6/6 over five
+     bars (no Four · Sprint), the Pro tab's 1/6 over five (no Four · Dash), and the tabs counted 33 and 34 where the key has 30 bars: a key row that
+     also pays out a cosmetic lived on Customise unlocks alone. On each key chest's tab under ALL, for every game: the bar rows listed are that game's
+     rows in config/key-bars.js, each exactly once; and the tab's "N of M" M is the bars, plus one row per game, plus the key entire — all read from
+     config */
+  {
+    const c7 = await page.evaluate(async () => { const R = await import('./ui/router.js'), K = await import('./progress/key.js'), KB = (await import('./config/key-bars.js')).KEY_BARS, G = (await import('./games/registry.js')).GAMES, w = ms => new Promise(r => setTimeout(r, ms));
+      const ids = Object.keys(G), out = [];
+      for (const [tab, tier] of [['c-key', 'clear'], ['c-pro', 'pro'], ['c-thorns', 'author']]) { R.show('s-menu'); await w(80); R.show('s-prog', { tab }); await w(300);
+        document.querySelector('#chest-g [data-v="all"]').click(); await w(200);
+        const shown = [...document.querySelectorAll('#chest-list [data-ach]')].map(b => b.dataset.ach), bars = K.keyAch().filter(a => a.kt === tier && a.combo);
+        const per = ids.map(g => { const want = bars.filter(a => a.g === g).map(a => a.id), n = want.map(id => shown.filter(x => x === id).length);
+          return { g, cfg: Object.keys(KB).filter(k => k.split(':')[0] === g).length, listed: n.filter(x => x === 1).length, twice: n.filter(x => x > 1).length, missing: want.filter((id, i) => !n[i]) }; });
+        const m = (document.getElementById('chest-hint').textContent.match(/(\d+)\D+(\d+)/) || []).map(Number);
+        out.push({ tab, per, M: m[2], want: Object.keys(KB).length + ids.length + 1 }); }
+      R.show('s-menu'); return out; });
+    (c7.every(t => t.M === t.want && t.per.every(p => p.listed === p.cfg && !p.twice && !p.missing.length)))
+      ? ok(`68.40 / 68.41 every chest tab lists every bar: on the Skill, Pro and Author chests' tabs each game lists its ${c7[0].per.map(p => p.cfg).join(' / ')} bars from config/key-bars.js, each once, and each tab counts ${c7[0].want} (${c7[0].want - c7[0].per.length - 1} bars + ${c7[0].per.length} games + the key entire)`)
+      : bad('68.40 / 68.41 the chest tab counts', JSON.stringify(c7.map(t => ({ tab: t.tab, M: t.M, want: t.want, off: t.per.filter(p => p.listed !== p.cfg || p.twice || p.missing.length) }))));
+  }
 }

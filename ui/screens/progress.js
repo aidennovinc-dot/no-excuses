@@ -75,6 +75,8 @@ const tabLabel = t => { const c = chestOfTab(t); return c ? (GRID.chest[c.id] ||
    goes to the chest whose `needs` is its tier; everything else is on Achievements. */
 function tabFor(a){ if(!a) return 'ach'; if(achTab(a)==='cul') return 'cul';
   if(!a.kt) return 'ach'; const c=CHESTS.find(x=>x.needs===a.kt); return c?'c-'+c.id:'ach'; }
+// build 69: the key chest a row is listed under, cosmetic or not — a key row is on its chest's tab whatever tabFor() says is its home
+function chestFor(a){ if(!a||!a.kt) return null; const c=CHESTS.find(x=>x.needs===a.kt); return c?'c-'+c.id:null; }
 // the tier a chest's rows belong to — null for the Games chest, whose rows are the chain and not a key
 const tierOfChest = c => c && c.needs !== 'modes' ? c.needs : null;
 
@@ -202,7 +204,11 @@ function renderChest(tab){
   list.className='ach scroll';
   const key='key'+(KEYS.findIndex(k=>k.id===tier)+1);
   if(!groupShown(key)){ list.innerHTML=`<h4>${PROGRESS_SCREEN.shut}</h4>`; tabCount('chest',0,0); return; }
-  const rows=allAch().filter(a=>tabFor(a)===tab);
+  /* build 69 (the count bugs, from Aiden's 68.40 / 68.41 frames): A CHEST'S TAB LISTS EVERY ROW OF ITS KEY. A key row that also pays out a cosmetic
+     lived on Customise unlocks alone, so the Skill tab's Quick Tap said 6/6 over five bars (Four · Sprint pays a target colour) and the tabs counted
+     33 (Skill) and 34 (Pro) where the key has 30 bars. Those rows are on their chest's tab as well now — every tab is its 30 bars, a row per game
+     and the key entire — and still on Customise unlocks, which lists what pays out */
+  const rows=allAch().filter(a=>chestFor(a)===tab);
   const ctx={g,all,fsGame:gsel==='all'?sel.game:gsel,fresh};
   /* build 69 (68.41): A GAME FILTER SHOWS THAT GAME'S ROWS AND NOTHING ELSE. A whole-key row (`g:'all'`) passed every filter, so "The key entire"
      sat under Quick Tap on the Pro tab. It is a general row now, under ALL only — the group 68.40's headings will call General */

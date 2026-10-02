@@ -2075,6 +2075,18 @@ scene('68.41', async (page, browser) => {
   await frame(page, browser, '68.43-ach-dots', 'Achievements under Dots: the two Dots rows and nothing else — “Off the Rails” and “Grand tour” are under ALL only (v0.68: listed above them)');
 });
 
+/* the count bugs (Aiden's 68.40 / 68.41 frames): the Skill chest's tab under ALL, its Quick Tap group listing all six bars (v0.68: five, no
+   Four · Sprint, "33 of 33"); the Pro chest's tab under Quick Tap, all six (v0.68: five, no Four · Dash, "of 34") */
+scene('68.40', async (page, browser) => {
+  await load(page, { ...PLAIN, welcomeSeen: 1, chests: { games: 1, key: 1, pro: 1 }, spill: { games: 1, key: 1, pro: 1 }, gauntSeen: { g1: 1 } });
+  await show(page, 's-prog', { tab: 'c-key' }); await sleep(500); await tap68(page, '#chest-g [data-v="all"]'); await sleep(500);
+  say('count', await page.evaluate(() => ({ line: document.getElementById('chest-hint').textContent, qt: [...document.querySelectorAll('#chest-list h4')].map(h => h.textContent)[0] })));
+  await frame(page, browser, '68.40-skill-tab-count', 'The Skill chest’s tab: “of 38” (30 bars, 7 games, the key entire), and Quick Tap lists all six bars, Four · Sprint among them (v0.68: five, “33 of 33”)');
+  await show(page, 's-prog', { tab: 'c-pro' }); await sleep(500); await tap68(page, '#chest-g [data-v="quick-tap"]'); await sleep(500);
+  say('count', await page.evaluate(() => ({ line: document.getElementById('chest-hint').textContent, rows: [...document.querySelectorAll('#chest-list [data-ach]')].length })));
+  await frame(page, browser, '68.41-pro-tab-count', 'The Pro chest’s tab under Quick Tap: “of 38”, all six Quick Tap bars with Four · Dash, then Quick Tap · Pro (v0.68: five, “of 34”)');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

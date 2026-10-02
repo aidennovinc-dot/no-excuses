@@ -1889,3 +1889,13 @@ anything Aiden settles goes on the list in the build that implements it.
   every game filter (`a.g===gsel||a.g==='all'`), on the chest tabs and on Achievements. A general row (`g:'all'`: a key entire, a whole-game
   achievement) is listed under ALL only — the group 68.40's headings will call General. Gate: `side screens`, "68.41 / 68.43": every game filter
   on the three key chests' tabs and on Achievements lists no row of another game and no general row; under ALL the general rows are there.
+- **A chest's tab lists every row of its key (the count bugs, from Aiden's 68.40 / 68.41 frames).** "Skill tab: Quick Tap 6/6 lists five rows,
+  Four · Sprint missing. Pro tab: Quick Tap 1/6 lists five, Four · Dash missing. Skill tab total 33, Pro tab total 34, key gates on 30: explain or
+  fix." The cause: 58.3's partition (`tabFor()`) sent a key row that also pays out a cosmetic to Customise unlocks and nowhere else, so its chest's
+  tab lost it — five on the Skill chest (Four · Sprint `qt_clean5`, `dt_pin`, `hd_steady`, `hd_money`, `sq_7`), four on the Pro chest (Four · Dash
+  `qt_r5`, `dt_land`, `hd_est`, `sq_12`), none on the Author chest. Each tab is now its key's 30 bars, a row per game (7) and the key entire: 38 on
+  all three (was 33 / 34 / 38); a game's heading counts the rows under it (Quick Tap · 0/7: six bars and its game row). The key itself still
+  gates on its 30 bars, which is what the key screen counts. The cosmetic-paying rows stay on Customise unlocks too, so the six tabs are a
+  partition except for those nine rows (`chestFor()` beside `tabFor()` in `ui/screens/progress.js`). Gate: `side screens`, "68.40 / 68.41" — on
+  each key chest's tab every game lists its bars from `config/key-bars.js` once each, and "N of M" M is the bars + the games + 1; `build 39`'s
+  partition check (L.4c / 58.3) now asserts the overlap is exactly those nine rows, each on its own chest's tab and Customise unlocks.
