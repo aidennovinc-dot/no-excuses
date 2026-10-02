@@ -119,9 +119,11 @@ const FIRST=[
   { on:()=>sheetUp()&&!lenStage(), el:()=>$('#vs-wrap [data-p="f"]'), text:L[10] },
   { on:()=>sheetUp()&&!lenStage(), el:()=>$(`#diff-row .choice[data-diff="${QM()}"]`), tap:1, done:lenStage, text:()=>say(L[7]) },
   { on:lenStage, el:()=>$('#time-row'), ring:0, text:()=>say(L[8]) },
-  { on:lenStage, el:()=>$('#time-row'), ring:0, text:()=>say(L[9]) },
-  // step 12: Sprint picked, the run starts — there is no box for Go (the second capture below presses it)
-  { on:lenStage, el:()=>$(`#time-row .tbtn[data-time="${GC(QT,QM()).lens[0]}"]`), tap:1, done:()=>false, text:L[11] },
+  /* build 69 (68.19 follow-up): THE TUTORIAL NEVER TAPS FOR THE PLAYER. It used to press Go for them the moment Sprint was tapped (a second capture
+     clicked #go-btn). Now "So far, only Sprint is unlocked …" rings Sprint for the player's tap, then Aiden's "Oh well, let's try our first run!" rings
+     GO, and the run starts from the player's own tap on it */
+  { on:lenStage, el:()=>$(`#time-row .tbtn[data-time="${GC(QT,QM()).lens[0]}"]`), tap:1, text:()=>say(L[9]) },
+  { on:lenStage, el:()=>$('#go-btn'), tap:1, done:()=>false, text:L[11] },
 ];
 /* THE FIRST RESULT (62.11, 64.2). Every box moves on at a tap anywhere and nothing on the screen can be tapped until the last. A first run that left
    Dash shut says Dash's own rule, with TRY AGAIN ringed. Build 69 (68.6): "Great job, you unlocked Dash!" and the Dots line are no longer this
@@ -146,7 +148,7 @@ const DEFS={
     meta:{ name:'First-run walkthrough', trigger:'A profile that has never played reaches the games menu (or Testing → Replay tutorial)', start:'Games menu, once the map has drawn in',
       why:'A new player learns what is locked, how a game unlocks, variants and modes, then plays the first run, which cannot be quit',
       at:[['Games menu',''],['Games menu',''],['Games menu',''],['Games menu','Dots tile'],['Games menu · Dots lock box',''],['Games menu','Quick Tap tile, labelled "Start here"'],
-        ['Pick sheet · variants',''],['Pick sheet · variants','With a friend'],['Pick sheet · variants','Two'],['Pick sheet · Mode row',''],['Pick sheet · Mode row',''],['Pick sheet · Mode row','Sprint (starts the first run)']] } },
+        ['Pick sheet · variants',''],['Pick sheet · variants','With a friend'],['Pick sheet · variants','Two'],['Pick sheet · Mode row',''],['Pick sheet · Mode row','Sprint'],['Pick sheet','GO (the player\'s tap starts the first run)']] } },
   /* build 69 (68.7): the walkthrough's last tap is the last box on its first result — the run's own unlock boxes after Game Select included — so a first
      result with unlock boxes still to come holds its end (`endDue`) until they are read, and only that last tap banks Off the Rails */
   over:{ live:()=>results()&&!endDue, steps:()=>overList||(overList=overSteps()), step:()=>overAt, setStep:n=>{ overAt=n; }, finish(){ if(unlFirst()) endDue=true; else tutEnd(); },
@@ -256,19 +258,22 @@ tutorial('about',[
    Progress ringed on the menu; inside, two lines about the screen, the Games chest's tab ringed (the screen is put on that tab if it opened on another)
    for two lines, then a game filter the player must pick — any game but All. The result has no way straight to the menu, so its box is a line and
    the player goes on by themselves (65.9: nothing takes them) */
-const P9=TUTORIAL.prog, pr=()=>onScreen('s-prog'), gtab=()=>$('#prog-tabs [data-tab="c-games"]');
+const P9=TUTORIAL.prog, pr=()=>onScreen('s-prog'), gtab=()=>$('#prog-tabs [data-tab="c-games"]'), gsel=()=>!!gtab()&&gtab().classList.contains('sel');
 tutorial('prog',[
   { on:res, door:'s-prog', go:'s-menu', text:got1('prog') },
   { on:res, door:'s-prog', text:()=>T(P9[0],{ game:(GAMES[MENU_UNLOCK.prog.game]||{}).name||'' }) },
   { on:menuOn, el:item('s-prog'), tap:1, door:'s-prog', text:P9[1] },
   { on:pr, room:'s-prog', text:P9[2] },
   { on:pr, room:'s-prog', text:P9[3] },
-  { on:pr, room:'s-prog', el:gtab, text:P9[4], enter(){ const t=gtab(); if(t&&!t.classList.contains('sel')) through(()=>t.click()); } },
-  { on:pr, room:'s-prog', el:gtab, text:P9[5] },
+  /* build 69 (68.19 follow-up): the tour never switches the tab itself — it used to click the Games chest's tab for the player. Opened on another tab,
+     Progress rings that tab and the player taps it (`look`'s own words, the tab's name from GRID); already on it, that box is passed */
+  { on:pr, room:'s-prog', el:gtab, tap:1, skip:gsel, text:()=>T(TUTORIAL.look,{name:GRID.chest.games}) },
+  { on:()=>pr()&&gsel(), room:'s-prog', el:gtab, text:P9[4] },
+  { on:()=>pr()&&gsel(), room:'s-prog', el:gtab, text:P9[5] },
   { on:()=>pr()&&!!$('#prog-tabs [data-tab="c-games"].sel'), room:'s-prog', el:()=>$('#chest-g'), tap:1, hit:t=>{ const b=t.closest&&t.closest('#chest-g .chip'); return !!b&&b.dataset.v!=='all'; }, text:P9[6] },
 ],{ opened:()=>menuOpen('s-prog'),
   meta:{ name:'Progress', trigger:'The first Estimate run', start:'That run\'s result, ahead of its toasts (or the main menu, for a player who left it first)', why:'Progress is where every unlock lives, and how to earn it',
-    at:[['Result, or the main menu',''],['Result, or the main menu',''],['Main menu','Progress'],['Progress',''],['Progress',''],['Progress','Games chest tab'],['Progress','Games chest tab'],['Progress · Games chest','a game filter (not All)']] } });
+    at:[['Result, or the main menu',''],['Result, or the main menu',''],['Main menu','Progress'],['Progress',''],['Progress',''],['Progress','Games chest tab, to tap (only if another tab is up)'],['Progress','Games chest tab'],['Progress','Games chest tab'],['Progress · Games chest','a game filter (not All)']] } });
 /* 64.12: SCORES, after the first Reaction run. Scores ringed on the menu; inside, a welcome, then (build 69, 68.25 — "The Scores tour is built out")
    one box per ring of the web, each ringed with its value from RADAR — the Skill key's, Pro's, Author's — then past the edge (the web), one spoke, a
    game's point on the web to tap (the one must-tap box: it opens that game's detail) and Overall. Written against the web, not the chip row, which is
@@ -558,10 +563,10 @@ document.addEventListener('click',e=>{ if(passing) return;
   if(lets(e.target)){ const {id,i,s}=cur; if(!s.done) setTimeout(()=>{ if(active()===id&&DEFS[id].step()===i) advance(id); tick(); },0); return; }
   e.stopPropagation(); e.preventDefault();
   if(!cur.s.tap){ Snd.click(); const s=cur.s; advance(cur.id); if(s.go&&!onScreen(s.go)){ emit('tut:handover',{}); show(s.go); } tick(); } },true);
-/* step 12: Sprint picked, the run starts — there is no box for Go. The tap selected the length (pick.js's own handler, bubbling after this
-   capture); Go is pressed for it on the next turn of the loop */
+/* the last box: the player's own tap on GO (build 69, 68.19 follow-up — it was pressed for them after Sprint). The tap goes on to pick.js and starts
+   the run; this only marks that run as the walkthrough's first */
 document.addEventListener('click',e=>{ if(passing||!shown()||cur.id!=='first'||cur.i!==FIRST.length-1) return;
-  const el=cur.s.el(); if(!el||!el.contains(e.target)) return; hide(); setTimeout(()=>{ fromTut=true; through(()=>$('#go-btn').click()); },0); },true);
+  const el=cur.s.el(); if(!el||!el.contains(e.target)) return; fromTut=true; hide(); },true);
 
 /* 62.10: THE FIRST RUN. No Exit and no Restart on it (#game.tutrun). Once a run is on record the walkthrough is at 1 and holds the run, so an app
    closed before the last box opens on that run's result and carries on from its first box; closed before the run finished, nothing was recorded

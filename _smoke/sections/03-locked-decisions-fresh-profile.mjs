@@ -112,6 +112,8 @@ export async function run() {
     let twoHeld = null, friend = null;
     for (let k = 0; k < 8; k++) { const cb = seen[seen.length - 1]; if (!cb || cb.text === want[11]) break;
       if (cb.text === want[7]) { await page.evaluate(() => document.getElementById('grid').click()); await sleep(200); twoHeld = (await box() || {}).text; await click(`#diff-row .choice[data-diff="${X.m}"]`); }
+      // build 69 (68.19 follow-up): "So far, only Sprint is unlocked …" rings Sprint and waits for the player's tap on it
+      else if (cb.text === want[9]) await click(`#time-row .tbtn[data-time="${X.lens[0]}"]`);
       else if (cb.text === want[10]) { friend = await page.evaluate(() => { const c = document.querySelector('#vs-wrap [data-p="f"]'), r = c.getBoundingClientRect(), e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2), q = document.querySelector('#tut .tring').getBoundingClientRect(), w = document.getElementById('vs-wrap');
           return { len: document.getElementById('sheet').classList.contains('len'), shown: getComputedStyle(w).display !== 'none', inline: w.getAttribute('style') || '', top: !!e && (e === c || c.contains(e)), ringOn: q.width > 0 && q.left <= r.left + 1 && q.right >= r.right - 1 && q.top <= r.top + 1 && q.bottom >= r.bottom - 1 }; });
         await click('#vs-wrap [data-p="f"]'); }
@@ -143,8 +145,9 @@ export async function run() {
     await page.evaluate(() => { window.__toasts = []; window.__overlap = 0; const t = document.getElementById('toast'), tut = () => { const b = document.getElementById('tut'); return !!b && !b.hidden; };
       new MutationObserver(() => { if (t.classList.contains('on')) window.__toasts.push({ t: t.textContent, s: document.querySelector('.screen.on')?.id || 'game' }); }).observe(t, { attributes: true, attributeFilter: ['class'] });
       setInterval(() => { if (t.classList.contains('on') && tut()) window.__overlap++; }, 40); });
-    // box 12 → Sprint: the run starts with no box for Go — and with no Exit and no Restart (62.10)
-    await click(`#time-row .tbtn[data-time="${X.lens[0]}"]`);
+    /* AMENDED at build 69 (68.19 follow-up): the last box rings GO and the run starts from the player's own tap on it — the tutorial no longer presses
+       Go for them — and with no Exit and no Restart (62.10) */
+    await click('#go-btn');
     for (let i = 0; i < 60 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) await sleep(100);
     const first = await page.evaluate(() => ({ game: document.getElementById('game').classList.contains('on'), exit: getComputedStyle(document.getElementById('quit')).display, restart: document.getElementById('restart') ? 'there' : 'none', tut: JSON.parse(localStorage.getItem('ne')).prefs.tut }));
     // build 65 (64.2): twenty hits in a row — Dash (7) and Four (15) open, Dots (35) does not, which is the first result the third box branches on
@@ -640,7 +643,8 @@ export async function run() {
         { id: 'first', prefs: { story: 1, gridSeen: 1, snd: 'off' }, store: { intro: { 'quick-tap': 1, 'quick-tap:two': 1 } }, go: 's-pick', endOnGame: 1 },
         { id: 'over', prefs: { ...PL, tut: 1, played: 1, tutRun: { ...QR, got: ['quick-tap:two:15', 'quick-tap:four'] } }, store: { runs: [QR], unlock: { 'quick-tap:two:15': 1, 'quick-tap:four': 1 } } },
         { id: 'about', prefs: { ...PL, tuts: { about: 0 } }, go: 's-menu' },
-        { id: 'prog', prefs: { ...PL, tuts: { prog: 0 } }, store: { unlock: { 'hold:grow': 1 } }, go: 's-menu' },
+        // build 69 (68.19 follow-up): Progress last left on another tab, so its tour asks the player to tap the Games chest's tab
+        { id: 'prog', prefs: { ...PL, tuts: { prog: 0 }, progTab: 'ach' }, store: { unlock: { 'hold:grow': 1 } }, go: 's-menu' },
         { id: 'board', prefs: { ...PL, tuts: { board: 0 } }, store: { runs: [QR] }, go: 's-menu' },
         { id: 'games', prefs: { ...PL, tuts: { games: 0 }, chests: { games: 1 }, spill: { games: 1 } }, store: { unlock: Object.fromEntries((await page.evaluate(async () => (await import('./config/unlocks.js')).UNLOCKS.map(u => u.key))).map(k => [k, 1])) }, go: 's-pick' },
         // build 68 (67.22): the Games chest's tour is three — the key's and Customise's walked on their own
@@ -654,7 +658,10 @@ export async function run() {
          the game now scrolls an off-screen target in as its box comes up — once a box at most, never more */
       await page.evaluateOnNewDocument(() => { window.__tscroll = 0; const mine = () => /ui\/tutorial\.js/.test(new Error().stack || '');
         for (const [o, k] of [[Element.prototype, 'scrollTo'], [Element.prototype, 'scrollBy'], [Element.prototype, 'scrollIntoView'], [window, 'scrollTo'], [window, 'scrollBy']]) { const f = o[k]; o[k] = function (...a) { if (mine()) window.__tscroll++; return f.apply(this, a); }; }
-        const d = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollTop'); Object.defineProperty(Element.prototype, 'scrollTop', { configurable: true, get: d.get, set(v) { if (mine()) window.__tscroll++; d.set.call(this, v); } }); });
+        const d = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollTop'); Object.defineProperty(Element.prototype, 'scrollTop', { configurable: true, get: d.get, set(v) { if (mine()) window.__tscroll++; d.set.call(this, v); } });
+        /* build 69 (68.19 follow-up): AND THE TUTORIAL NEVER TAPS FOR THE PLAYER — every click() made from the tutorial module is counted by what it
+           clicked; the one allowed is the Dots lock popup's own close, which the player's tap on Quick Tap dismisses */
+        window.__tclick = []; const ck = HTMLElement.prototype.click; HTMLElement.prototype.click = function () { if (mine()) window.__tclick.push(this.id || String(this.className).split(' ')[0] || this.tagName); return ck.apply(this); }; });
       const cdp = await page.createCDPSession(), out = [], NUDGE = await page.evaluate(async () => (await import('./config/copy.js')).TUT_BOX.nudge);
       for (const [w, h, top, bottom] of [[390, 844, 47, 34], [375, 667, 20, 0]]) {
         await page.setViewport({ width: w, height: h, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
@@ -721,8 +728,8 @@ export async function run() {
             if (T.endOnGame && after.game) { await page.evaluate(async () => (await import('./run/run.js')).abort(true)); break; }
           }
           const done = await page.evaluate(id => { const v = (JSON.parse(localStorage.getItem('ne')).prefs.tuts || {})[id]; return v; }, T.id);
-          const scrolled = await page.evaluate(() => window.__tscroll || 0);
-          out.push({ at: w + 'x' + h, id: T.id, n: boxes.length, why: why || (scrolled > boxes.length ? `ui/tutorial.js scrolled the screen ${scrolled} time(s) for ${boxes.length} boxes` : ''), done: T.id === 'first' || T.id === 'over' ? 'n/a' : done,
+          const scrolled = await page.evaluate(() => window.__tscroll || 0), tapped = (await page.evaluate(() => window.__tclick || [])).filter(c => c !== 'lock-no');
+          out.push({ at: w + 'x' + h, id: T.id, n: boxes.length, why: why || (scrolled > boxes.length ? `ui/tutorial.js scrolled the screen ${scrolled} time(s) for ${boxes.length} boxes` : '') || (tapped.length ? 'ui/tutorial.js tapped for the player: ' + tapped.join(', ') : ''), done: T.id === 'first' || T.id === 'over' ? 'n/a' : done,
             far: boxes.filter(b => b.far).length, dimmed: boxes.filter(b => b.dimmed).length, bad: boxes.filter(b => b.covers || !b.safe || b.marks || b.lock || !b.moved || b.nav || b.sheetBad || b.home !== undefined || b.nudge !== undefined || b.pinned !== undefined || b.unseen !== undefined) });
         }
       }
@@ -731,7 +738,7 @@ export async function run() {
       const fails = out.filter(o => o.bad.length || o.why || !o.n || (o.done !== 'n/a' && o.done !== 'done'));
       const taps = out.reduce((n, o) => n + o.n, 0);
       (!fails.length)
-        ? ok(`L15 / 68.4 / 67.10 / 65.11 / 65.9 every tutorial walked with real taps at 390×844 (47/34 insets) and on an SE: ${taps} boxes (${out.filter(o => o.at === '390x844').map(o => o.id + ' ' + o.n).join(', ')}) — no box over its own target or the thing to tap (${out.reduce((n, o) => n + o.dimmed, 0)} sat over other controls, dimmed and taking no tap), every box about the whole screen at the home spot (±40px), each new box on a screen ${NUDGE}px or more from the last, none pinned at the bottom inset, on a pick sheet every box above it with its tail down, every target at least 90% in view as its box showed (the game scrolls an off-screen one in, at most once a box) and no box ever waiting for the player to scroll, every must-tap ring answers a real tap, all inside the safe areas, no "[" left, no screen change after a text box`)
+        ? ok(`L15 / 68.4 / 67.10 / 65.11 / 65.9 every tutorial walked with real taps at 390×844 (47/34 insets) and on an SE: ${taps} boxes (${out.filter(o => o.at === '390x844').map(o => o.id + ' ' + o.n).join(', ')}) — no box over its own target or the thing to tap (${out.reduce((n, o) => n + o.dimmed, 0)} sat over other controls, dimmed and taking no tap), every box about the whole screen at the home spot (±40px), each new box on a screen ${NUDGE}px or more from the last, none pinned at the bottom inset, on a pick sheet every box above it with its tail down, every target at least 90% in view as its box showed (the game scrolls an off-screen one in, at most once a box) and no box ever waiting for the player to scroll, every must-tap ring answers a real tap, all inside the safe areas, no "[" left, no screen change after a text box, and the tutorial never taps anything for the player but the lock popup's own close (68.19)`)
         : bad('L15 a tutorial covers something tappable, scrolls, soft-locks or misplaces a box', JSON.stringify(fails));
     }
     /* build 66.1: THE WELCOME ON THE MAIN MENU OPENS ABOUT, DRAWN OPEN AT ONCE. AMENDED at build 68 (67.7, L20): there is no Later any more — the

@@ -18,7 +18,9 @@ export async function run() {
   fs.mkdirSync(FRAMES, { recursive: true }); for (const f of fs.readdirSync(FRAMES)) if (f.endsWith('.jpg')) fs.rmSync(path.join(FRAMES, f));
   await page.evaluateOnNewDocument(() => { window.__tscroll = 0; const mine = () => /ui\/tutorial\.js/.test(new Error().stack || '');
     for (const [o, k] of [[Element.prototype, 'scrollTo'], [Element.prototype, 'scrollBy'], [Element.prototype, 'scrollIntoView'], [window, 'scrollTo'], [window, 'scrollBy']]) { const f = o[k]; o[k] = function (...a) { if (mine()) window.__tscroll++; return f.apply(this, a); }; }
-    const d = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollTop'); Object.defineProperty(Element.prototype, 'scrollTop', { configurable: true, get: d.get, set(v) { if (mine()) window.__tscroll++; d.set.call(this, v); } }); });
+    const d = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollTop'); Object.defineProperty(Element.prototype, 'scrollTop', { configurable: true, get: d.get, set(v) { if (mine()) window.__tscroll++; d.set.call(this, v); } });
+    // build 69 (68.19 follow-up): every click() the tutorial module makes, by what it clicked — only the lock popup's own close is allowed
+    window.__tclick = []; const ck = HTMLElement.prototype.click; HTMLElement.prototype.click = function () { if (mine()) window.__tclick.push(this.id || String(this.className).split(' ')[0] || this.tagName); return ck.apply(this); }; });
   const vp = page.viewport(), cdp = await page.createCDPSession();
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
   await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 47, bottom: 34, left: 0, right: 0 } }).catch(() => {});
@@ -138,7 +140,7 @@ export async function run() {
   // 9. Customise, then the Keys screen
   await menu('s-custom', 'Customise');
   await menu('s-key', 'Keys');
-  const scrolled = await page.evaluate(() => window.__tscroll || 0);
+  const scrolled = await page.evaluate(() => window.__tscroll || 0), tapped = (await page.evaluate(() => window.__tclick || [])).filter(c => c !== 'lock-no');
   await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0, bottom: 0, left: 0, right: 0 } }).catch(() => {});
   await page.setViewport(vp);
 
@@ -147,7 +149,7 @@ export async function run() {
   const want = ['first', 'over', 'welcome', 'about', 'prog', 'board', 'games'];
   const missing = want.filter(id => !ids.includes(id));
   fs.writeFileSync(path.join(FRAMES, 'journey.json'), JSON.stringify({ steps, trail, scrolled }, null, 1));
-  (!badSteps.length && !missing.length && scrolled <= steps.length)
-    ? ok(`67.41 / L14 / L15 the new-player journey from a wiped profile: ${steps.length} boxes across ${ids.join(', ')} — each fired once, first and (a room's tour) on its first visit; none covered its own target; nothing cut out of the background; every target in view as its box showed (the game scrolled ${scrolled} time(s) to bring one in) and no step waited on a scroll. ${fs.readdirSync(FRAMES).filter(f => f.endsWith('.jpg')).length} frames for the review board`)
-    : bad('67.41 the new-player journey', JSON.stringify({ missing, scrolled, bad: badSteps, ids, trail }).slice(0, 2500));
+  (!badSteps.length && !missing.length && scrolled <= steps.length && !tapped.length)
+    ? ok(`67.41 / L14 / L15 the new-player journey from a wiped profile: ${steps.length} boxes across ${ids.join(', ')} — each fired once, first and (a room's tour) on its first visit; none covered its own target; nothing cut out of the background; every target in view as its box showed (the game scrolled ${scrolled} time(s) to bring one in) and no step waited on a scroll; the tutorial tapped nothing for the player. ${fs.readdirSync(FRAMES).filter(f => f.endsWith('.jpg')).length} frames for the review board`)
+    : bad('67.41 the new-player journey', JSON.stringify({ missing, scrolled, tapped, bad: badSteps, ids, trail }).slice(0, 2500));
 }

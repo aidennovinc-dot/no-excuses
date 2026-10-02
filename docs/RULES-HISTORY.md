@@ -2015,3 +2015,11 @@ anything Aiden settles goes on the list in the build that implements it.
   starts (`tutReplay()`): the main menu for the three menu items (their congratulations box shows there) and Customise, the Skill Key for its
   creation intro, the main menu with About shut again for the Welcome. Dev only (`[data-dev]`, S5). Gate: `side screens`, "68.23"; `button
   actions` drives `dev-unl`, `dev-menu`, `dev-tour`.
+- **68.19 follow-up — the tutorial never taps for the player.** Two steps broke 68.19's "the tap that opens it is always the player's": the
+  Progress tour clicked the Games chest's tab itself (`enter(){ … through(()=>t.click()) }`), and the walkthrough pressed Go for the player the
+  moment Sprint was tapped (a second capture clicked `#go-btn`). Now Progress, opened on another tab, rings the Games chest's tab as a must-tap
+  box ("Tap Games chest to take a look", `TUTORIAL.look` with `GRID.chest.games`) and the two chest lines follow once it is selected; already on
+  it, that box is passed (`skip`). The walkthrough's "So far, only Sprint is unlocked …" rings Sprint for the player's tap, and Aiden's "Oh
+  well, let's try our first run!" moves onto a box that rings GO; the run starts from the player's own tap on it. The one `through()` left is
+  the Dots lock popup's own close, which the player's tap on Quick Tap dismisses. Gate: `locked decisions` section C's walk (Progress fixture on
+  another tab) and the journey (41) count every `click()` made from `ui/tutorial.js` and fail any but `#lock-no`.
