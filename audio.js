@@ -7,7 +7,7 @@
    finish ramp that lands the last downbeat on the clock (B.28), an end cadence in the track's own key (B.30), a flow-state
    layer over the two tap games (B.27) and a duck for Sequence (B.30). Still no percussion. */
 
-import { CHEER_FX, CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, COVER_AT, COVER_FX, DUCK, DUCK_TAIL, FLOW_STEM, GIFT_FX, HUSH, KEY_EARN_CIRCUIT, KEY_EARN_FX, KEY_INTRO_FX, KEY_STEP_FX, KEY_THEMES, MAP_FX, MAP_INTRO_GAIN, MAP_LOCKED, POP_FX, ROUND_FX, ROUND_VERDICT, SCALES, SET_SECS, STEMS, STING_RING, TITLE_FX, TRACKS, MUSIC_LIST, MUSIC_PICK, VERDICT_FX, VIDEO_FX, WELCOME_FX, WHOOSH_VARIANTS } from "./config/audio.js";
+import { CHEER_FX, CONFETTI_FX, CHEST_FX, CHEST_NOISE, CHEST_READY_FX, CHEST_STING, COVER_AT, COVER_FX, DUCK, DUCK_TAIL, FLOW_STEM, GIFT_FX, HUSH, KEY_EARN_CIRCUIT, KEY_EARN_FX, KEY_INTRO_FX, KEY_STEP_FX, KEY_THEMES, MAP_FX, MAP_INTRO_GAIN, MAP_LOCKED, POP_FX, ROUND_FX, ROUND_VERDICT, SCALES, SET_SECS, STEMS, STING_RING, TITLE_FX, TRACKS, MUSIC_LIST, MUSIC_PICK, VERDICT_FX, VIDEO_FX, WELCOME_FX, WHOOSH_VARIANTS } from "./config/audio.js";
 import { KEY_EARN } from "./config/keys.js";
 import { STREAK } from "./config/games.js";
 import { RESTART_FX, RUN_MUSIC } from "./config/audio.js";
@@ -312,6 +312,11 @@ const Snd = (()=>{
     /* v28 (item 17, build 53): the celebration on the congratulations screen, one per chest, escalating Games → Skill → Pro → Author. Built out of
        the tick, the pop and the gift landing that are already in the app (config/audio.js CHEER_FX). Fires once, with the card's title. */
     cheerPlan(id){ return (CHEER_FX[id]||CHEER_FX.games).map(e=>e.slice()); },
+    /* build 69 (68.37): the confetti's own sound — config/audio.js CONFETTI_FX, played by ui/reveal.js throwConfetti() as it throws, wherever that is.
+       Tones through tone(), the air and the scatter through noise(); `confettiPlan()` is the same events flat, for the catalogue and the gate */
+    confettiPlan(){ return CONFETTI_FX.map(e=>e.slice()); },
+    confetti(){ const a=AC(); if(!a) return; const t=a.currentTime;
+      for(const [at,f0,f1,ms,w,g,am,lp] of this.confettiPlan()){ if(w==='noise') this.noise(t+at,ms,g,lp); else tone(f0,f1,ms,w,g,t+at,am,false,undefined,lp?{lp}:undefined); } },
     cheer(id){ this.fx(this.cheerPlan(id)); },
     /* v25 (items 1 / 2 / 6 / 11, build 46): THE FOUR NEW FAMILIES. Each is an event list in config/audio.js played through the one tone(), so
        each follows the tap-sound switch like every other effect and each is recorded by plan() for the review catalogue's sound list (item 20).

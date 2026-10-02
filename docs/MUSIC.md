@@ -219,3 +219,15 @@ seconds landing on the clock, the flow hum on solo Quick Tap and Dots, the versu
 in every game's Streak and must hold three minutes before it repeats (B.29); Held and Waltz, written for timed runs, loop in seconds if a player
 picks them for an open-ended run. The Customise Music row and its on / off moved above the game tabs.
 
+
+
+## Build 69 (FEEDBACK-v37 68.37, 2026-10-02): the confetti's own sound
+
+- **CONFETTI SOUNDS WHEREVER IT IS THROWN.** Aiden: "Let's just have a sound effect for the confetti coming out and do that for everything."
+  `ui/reveal.js` `throwConfetti()` is the one place confetti is thrown — every chest's congratulations card, and the Skill chest's count reaching
+  100% (67.26) — and it plays `Snd.confetti()` as it throws, once a throw; a chest's cheer is untouched and still plays under its card. The sound is
+  `CONFETTI_FX` in `config/audio.js`: a party popper, the pop (a short burst of high-passed noise over a low thump rising) and then the paper
+  scattering (a soft high hiss and six tiny high ticks, quieter and further apart). An effect: it follows the tap-sound switch, and the gate holds it
+  apart from the cheers, the unlock and the click. **`_smoke/loudness.mjs` renders effects now** (noise included, loudest 250ms window): confetti
+  −40.7 dBFS, between a reward's pop (−43.3) and its landing (−37.2), and 5 dB under the quietest cheer (Games −36.0; Skill −34.6, Pro −33.1,
+  Author −31.3; unlock −28.9). Not heard on a phone (UNVERIFIED.md).

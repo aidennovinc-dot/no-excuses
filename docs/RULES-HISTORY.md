@@ -1852,3 +1852,7 @@ anything Aiden settles goes on the list in the build that implements it.
   among them), laid over the page, is at most `BG_LAYER.peak` (.6) × `--ink`'s luminance. Thorn's white crossing points were .75; its
   `KEY_LAYER.thorn.alpha` went .5 → .4. Measured at build 69: stars .34, grid .35, rain .04, orbs .04, snow .45, lantern .48, circuit .32,
   thorn .55. Gate: `the keys` section, "68.39".
+- **Confetti has its own sound, everywhere (68.37).** One routine throws confetti (`throwConfetti()` in `ui/reveal.js`) and plays `Snd.confetti()`
+  (`CONFETTI_FX`) with it: the four chests' congratulations cards and the Skill chest's 100%. In addition to a chest's cheer. Level and shape in
+  `docs/MUSIC.md` → Build 69. The Pro chest's card sounds it too: L17 pins the Pro chest's own rows (unchanged, the pin holds), and this is a
+  game-wide sound Aiden asked for "for everything" — flagged for him. Gate: `chests`, "68.37".

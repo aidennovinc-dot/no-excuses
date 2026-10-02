@@ -258,7 +258,7 @@ function tap(out) { if (!cur) return false;
     h.setProperty('--cw-drop', L.drop + 'ms'); h.setProperty('--cw-bounce', String(L.bounce)); h.setProperty('--cw-shine', L.shine + 'ms');
     h.setProperty('--cw-shineat', L.shineAt + 'ms'); h.setProperty('--cw-pulse', L.pulse + 'ms'); h.setProperty('--cw-size', String(L.size));
     h.setProperty('--cw-last', String(Math.max(0, n - 1)));
-    if (c.card.chest) c.host.insertAdjacentHTML('beforeend', confettiHtml(c.card.chest)); }
+    if (c.card.chest) throwConfetti(c.host, c.card.chest, { silent: c.silent }); }
   if (!c.silent && c.card.chest) c.timers.push(setTimeout(() => { if (cur === c) Snd.cheer(c.card.chest); }, REVEAL.cardAt));
   // item 22: Continue is dead for about a second, so a tap left over from the animation cannot close the card unseen. Item 12 puts it last of the
   // staged blocks, so its own wait now starts after the blocks have landed
@@ -273,5 +273,12 @@ const on = () => !!cur;
 // which message the card is offering, if any — ui/screens/key.js hands it to the About screen
 const msgOf = () => (cur && cur.card && cur.card.msg) || '';
 
-export { confettiHtml };
+/* build 69 (68.37): THE ONE PLACE CONFETTI IS THROWN. It lays the pieces on `host` and plays the confetti's own sound with them (Snd.confetti,
+   config/audio.js CONFETTI_FX) — so wherever confetti falls, it is heard, once a throw, and no caller can throw it silently by mistake. `silent`
+   is the reveal's own (Testing's replays and the gate's), `cls` a second class for the pieces (the Skill chest's 100% moment) */
+function throwConfetti(host, chest, o = {}) { if (!host || !CONFETTI[chest]) return false;
+  const html = confettiHtml(chest); host.insertAdjacentHTML('beforeend', o.cls ? html.replace('class="rconf"', `class="rconf ${o.cls}"`) : html);
+  if (!o.silent) Snd.confetti();
+  return true; }
+export { confettiHtml, throwConfetti };
 export { msgOf, on as revealOn, play as playReveal, go as revealGo, stop as stopReveal, tap as revealTap };

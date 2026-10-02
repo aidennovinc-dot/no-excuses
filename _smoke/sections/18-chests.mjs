@@ -878,6 +878,33 @@ export async function run() {
       ? ok(`67.26 the Skill chest's opening throws ${c26.at.n} pieces of gold confetti on the beat its count reaches 100%, and none before it`)
       : bad('67.26 the Skill chest confetti', JSON.stringify(c26));
   }
+  /* build 69 (68.37): CONFETTI HAS A SOUND, EVERYWHERE IT IS THROWN. Aiden: "Let's just have a sound effect for the confetti coming out and do that for
+     everything." Every route that throws it, by play's own path — each of the four chests opened from the map (B.2) to its congratulations card, and
+     the Skill chest's count reaching 100% (67.26) — with the confetti's NAMED sound (Snd.confetti, config/audio.js CONFETTI_FX) counted as it is
+     called and the pieces counted as they land: one sound per throw, on every throw. And it is its own sound: not a cheer, the unlock, the click */
+  {
+    const r37 = [];
+    for (const chest of ['games', 'key', 'pro', 'thorns']) {
+      await boot({}, { gaunt: GAUNT_ALL() });
+      await page.evaluate(async chest => { const K = await import('./progress/key.js'), P = await import('./progress.js'), S = await import('./core/store.js'), A = await import('./audio.js'), R = await import('./ui/router.js');
+        S.prefs.allOpen = false; S.prefs.chests = {}; S.store.bars = {}; S.save(); K.devReach(chest, P.devModesAll);
+        // the key's own earn has played (its moment is not what this is about), so the map's tap opens the chest itself
+        S.prefs.revealed = { 'key:clear': 1, 'key:pro': 1, 'key:author': 1 }; S.prefs.keyWhole = { clear: 1, pro: 1, author: 1 }; S.save();
+        const w = window.__cf = { snd: 0, thrown: 0 }, f = A.Snd.confetti; A.Snd.confetti = function () { w.snd++; return f.apply(this, arguments); };
+        new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1 && n.classList.contains('rconf')) w.thrown++; }).observe(document.body, { childList: true, subtree: true });
+        R.show('s-key', { open: chest }); }, chest);
+      await revealReady(); await click('#key-cere'); await sleep(900);
+      r37.push({ chest, ...(await page.evaluate(() => Object.assign({}, window.__cf, { card: !!document.querySelector('#key-cere .rcard') }))) });
+      await revealDone(); }
+    const sig37 = await page.evaluate(async () => { const A = await import('./audio.js'), sig = ev => ev.map(e => [e[1], e[3], e[4]].join(':')).join('|');
+      const plan = A.Snd.confettiPlan ? A.Snd.confettiPlan() : [], me = sig(plan), others = [...['games', 'key', 'pro', 'thorns'].map(id => sig(A.Snd.cheerPlan(id))), sig(A.Snd.plan(() => A.Snd.unlockFx())), sig(A.Snd.plan(() => A.Snd.click()))];
+      return { n: plan.length, own: !!plan.length && !others.includes(me), rec: A.Snd.confetti ? A.Snd.plan(() => A.Snd.confetti()).length : 0 }; });
+    // the Skill chest throws twice — on its 100% and on its card — and every other chest once, on its card
+    const want37 = { games: 1, key: 2, pro: 1, thorns: 1 };
+    (r37.every(x => x.card && x.thrown === want37[x.chest] && x.snd === x.thrown) && sig37.n >= 3 && sig37.own && sig37.rec === sig37.n)
+      ? ok(`68.37 confetti has its own sound wherever it is thrown: ${r37.map(x => x.chest + ' ' + x.thrown + ' throw' + (x.thrown > 1 ? 's' : '') + ' / ' + x.snd + ' sound' + (x.snd > 1 ? 's' : '')).join(', ')} (the Skill chest's 100% and its card) — Snd.confetti, ${sig37.n} events of CONFETTI_FX, not a cheer, the unlock or the click`)
+      : bad('68.37 the confetti sound', JSON.stringify({ r37, sig37 }));
+  }
   /* build 68 (67.32): OPENING A KEY'S CHEST SETS THE GAME'S MUSIC TO THAT KEY'S THEME, and says so in its "You found" list — Skill → Lantern, Pro → Circuit,
      Author → Thorns; the Games chest leaves the music alone; the background never switches */
   {

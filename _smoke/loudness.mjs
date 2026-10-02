@@ -20,11 +20,17 @@ const rows = await page.evaluate(async () => {
   const M = await import('./audio.js'); const A = await import('./config/audio.js');
   const SR = 24000, WIN = 4;
   // one plan rendered offline, exactly the way audio.js schedules it: attack, optional hold, exponential release, optional lowpass
-  async function render(plan, secs) {
+  // build 69 (68.37): `win` — an effect is measured over its loudest quarter-second, a track over 4s; a 'noise' event is white noise high-passed
+  // at its own frequency (index 7), exactly as audio.js Snd.noise plays it
+  async function render(plan, secs, win = WIN) {
     const ctx = new OfflineAudioContext(1, Math.ceil(SR * secs), SR);
     const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 220; hp.Q.value = .7; hp.connect(ctx.destination);
     for (const [at, f0, f1, ms, w, g, am, lp, q, hold] of plan) {
       if (at > secs) continue;
+      if (w === 'noise') { const dur = Math.max(.02, ms / 1000), n = Math.ceil(SR * dur), buf = ctx.createBuffer(1, n, SR), d = buf.getChannelData(0);
+        for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+        const src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), gn = ctx.createGain(); src.buffer = buf; f.type = 'highpass'; f.frequency.value = lp || 800;
+        gn.gain.setValueAtTime(g, at); gn.gain.exponentialRampToValueAtTime(.0001, at + dur); src.connect(f).connect(gn).connect(hp); src.start(at); src.stop(at + dur + .02); continue; }
       const dur = Math.min(ms / 1000, secs - at), o = ctx.createOscillator(), gn = ctx.createGain();
       if (dur <= .02) continue;
       o.type = w; o.frequency.setValueAtTime(f0, at); o.frequency.exponentialRampToValueAtTime(Math.max(1, f1), at + dur);
@@ -37,7 +43,7 @@ const rows = await page.evaluate(async () => {
     }
     const buf = await ctx.startRendering(), d = buf.getChannelData(0);
     // loudest WIN seconds, stepped a tenth of a second at a time
-    const w = Math.min(d.length, SR * WIN); let best = 0;
+    const w = Math.min(d.length, SR * win); let best = 0;
     for (let s = 0; s + w <= d.length; s += SR / 10) { let sum = 0; for (let i = s; i < s + w; i++) sum += d[i] * d[i];
       best = Math.max(best, Math.sqrt(sum / w)); }
     if (!best) { let sum = 0; for (let i = 0; i < d.length; i++) sum += d[i] * d[i]; best = Math.sqrt(sum / Math.max(1, d.length)); }
@@ -48,6 +54,12 @@ const rows = await page.evaluate(async () => {
     out.push({ id, name: q.name, kind: 'track', db: +(await render(q.plan, Math.min(30, q.loopSec))).toFixed(1), sec: q.loopSec }); }
   for (const g of ['quick-tap', 'dots']) { const q = M.Music.plan(g, { flow: 1 }); if (!q) continue;
     out.push({ id: 'flow over ' + g, name: q.name, kind: 'flow', db: +(await render(q.plan, Math.min(30, q.loopSec))).toFixed(1), sec: q.loopSec }); }
+  /* build 69 (68.37): THE EFFECTS BESIDE THE CONFETTI, over their loudest 250ms — the confetti's own sound and the ones it sounds with or near: each
+     chest's cheer (the confetti lands on the card the cheer plays under), the unlock, a reward's pop and its landing, the chest-ready rise */
+  const fx = { confetti: M.Snd.confettiPlan ? M.Snd.confettiPlan() : null, 'cheer games': M.Snd.cheerPlan('games'), 'cheer key': M.Snd.cheerPlan('key'),
+    'cheer pro': M.Snd.cheerPlan('pro'), 'cheer thorns': M.Snd.cheerPlan('thorns'), unlockFx: M.Snd.plan(() => M.Snd.unlockFx()), pop: M.Snd.popPlan(0), gift: M.Snd.giftPlan(0) };
+  for (const [id, plan] of Object.entries(fx)) { if (!plan || !plan.length) continue; const secs = Math.max(...plan.map(e => e[0] + e[3] / 1000)) + .1;
+    out.push({ id, kind: 'fx', db: +(await render(plan, secs, Math.min(.25, secs))).toFixed(1), sec: +secs.toFixed(2) }); }
   return out;
 });
 
@@ -62,5 +74,7 @@ for (const g of ['quick-tap', 'dots']) {
   console.log(' ', g.padEnd(10), 'flow', String(f.db).padStart(7), 'dB vs', pick.id, String(pick.db).padStart(7), 'dB  →', (d > 0 ? '+' : '') + d, 'dB',
     ' (' + Math.round(Math.pow(10, d / 20) * 100) + '% of the track; 40% = -8.0 dB)');
 }
+console.log('\neffects, loudest 250ms window, 220Hz high-passed, dBFS:\n');
+for (const r of rows.filter(r => r.kind === 'fx')) console.log(' ', r.id.padEnd(20), String(r.db).padStart(7), 'dB', ' (' + r.sec + 's)');
 console.log('');
 await browser.close(); srv.close();

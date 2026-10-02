@@ -400,6 +400,17 @@ export const CHEER_FX = {
     [.66, 329.6, 329.6, 1950, 'triangle', .017, 140], [.66, 493.9, 493.9, 2000, 'sine', .014, 170], [.66, 659.3, 659.3, 2000, 'sine', .011, 200],
     [.86, 987.8, 987.8, 2000, 'sine', .01, 260], [1.05, 164.8, 1318.5, 1800, 'sawtooth', .016, 380, 2800], [1.3, 82.4, 82.4, 1600, 'sine', .05, 140]],
 };
+/* build 69 (68.37): THE CONFETTI'S OWN SOUND. Aiden: "Let's just have a sound effect for the confetti coming out and do that for everything." ONE
+   sound, tied to the confetti itself: ui/reveal.js throwConfetti() is the one place confetti is thrown (every chest's congratulations card, and the
+   Skill chest's count reaching 100%), and it plays this as it throws, on top of whatever that moment already sounds (a chest's cheer is untouched).
+   A party popper: the pop (a short burst of air over a quick low thump rising), then the paper scattering (a soft high hiss and a few tiny high
+   ticks, quieter and further apart as they fall). Same shape as every effect — [at s, f0, f1, ms, wave, gain, attackMs, lowpass Hz | for 'noise'
+   the high-pass] — through tone() and noise(), so it follows the tap-sound switch. Level: measured by _smoke/loudness.mjs (now rendering effects too) — −40.7 dBFS over
+   its loudest 250ms, between a reward's pop (−43) and its landing (−37) and 5 dB under the quietest cheer (Games, −36). Not heard (UNVERIFIED.md) */
+export const CONFETTI_FX = [[0, 0, 0, 90, 'noise', .068, 0, 1400], [0, 150, 420, 80, 'sine', .06, 2], [.012, 900, 1500, 40, 'triangle', .016, 1, 3200],
+  [.05, 0, 0, 460, 'noise', .016, 0, 5200],
+  [.07, 2637, 2489, 55, 'triangle', .014, 1], [.13, 3136, 2960, 45, 'triangle', .011, 1], [.2, 2349, 2217, 55, 'triangle', .011, 1],
+  [.28, 3520, 3322, 40, 'triangle', .008, 1], [.37, 2794, 2637, 50, 'triangle', .007, 1], [.48, 3136, 2960, 40, 'triangle', .005, 1]];
 /* ---------- v29 Section A (57.6, build 57): THE KEY BEING CREATED — one sound per tier ----------
    config/keys.js KEY_INTRO is four named steps: `gather` the material arriving, `draw` the key's own paths drawing on, `forge` the strike that
    makes it a key, `settle` it taking its finished light. This is the BED under all four, cut from that key's own theme the way its earn sound is —
