@@ -257,22 +257,31 @@ export async function run() {
       ? ok(`67.18 the web is ${w18.w}px wide on a ${w18.iw}px phone (it was 230 at most), its labels ${w18.label}px tall`)
       : bad('67.18 the bigger web', JSON.stringify(w18));
   }
-  /* build 68 (67.21): A TAP ON THE WEB NEVER GOES BACK TO THE MENU. A real tap on a game's name opens its panel — score, bars per key, best per mode, the next
-     bar — and the screen stays Scores; a tap on the panel closes it; a tap in the web's middle stays on Scores too */
+  /* build 69 (68.1 / 68.2, SUPERSEDING 67.21's panel): THE WEB IS THE ONLY GAME PICKER. No row of game chips (#bd-g), no detail card (#radar-detail), no
+     "scores · local top 10" eyebrow. The screen opens on the game played last — the newest run, Dots here, though prefs.lastGame says Quick Tap — with its
+     name and its figure from the web as the title and its point marked. A real tap on Quick Tap's name on the web PICKS it: the title is its name with the
+     figure the web shows, the variant chips (#bd-d) are its modes, its top 10 is in the table, and the screen stays Scores (67.21); a tap in the web's middle too */
   {
-    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS }, runs: [{ g: 'quick-tap', d: 'two', s: 5, t: Date.now() - 6e4, hits: 20, misses: 0, row: 20, v: 4 }], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    const t0 = Date.now();
+    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS, lastGame: 'quick-tap' }, runs: [{ g: 'quick-tap', d: 'two', s: 5, t: t0 - 6e5, hits: 20, misses: 0, row: 20, v: 4 }, { g: 'dots', d: 'lead', s: 15, t: t0 - 6e4, hits: 9, misses: 0, row: 9, v: 4 }], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
     await page.evaluate(async () => (await import('./ui/router.js')).show('s-board')); await sleep(500);
+    const read1 = () => page.evaluate(async () => { const G = (await import('./games/registry.js')).GAMES, sb = document.getElementById('s-board'), tt = document.getElementById('bd-title');
+      return { scr: document.querySelector('.screen.on')?.id, gRow: !!sb.querySelector('#bd-g, [data-chip="bd-g"]'), detail: !!document.getElementById('radar-detail'), eyebrow: /local top 10/i.test(sb.textContent),
+        title: tt ? tt.textContent.replace(/\s+/g, ' ').trim() : null, sel: [...new Set([...document.querySelectorAll('#radar .rsel[data-g]')].map(e => e.dataset.g))].join(),
+        labels: Object.fromEntries([...document.querySelectorAll('#radar text[data-g]')].map(t => [t.dataset.g, t.textContent.replace(/\s+/g, ' ').trim()])),
+        d: [...document.querySelectorAll('#bd-d [data-v]')].map(b => b.dataset.v).join(), dSel: (document.querySelector('#bd-d .sel') || {}).dataset?.v || '', s: document.querySelectorAll('#bd-s [data-v]').length,
+        top: [...document.querySelectorAll('#runs tr')].map(r => r.children.length > 2 ? r.children[2].textContent : r.textContent), modes: Object.fromEntries(Object.entries(G).map(([k, x]) => [k, x.modes.join()])) }; });
+    const a1 = await read1();
     const lab = await page.evaluate(() => { const t = document.querySelector('#radar text[data-g="quick-tap"]'), r = t.getBoundingClientRect(), c = document.getElementById('radar').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, cx: c.left + c.width / 2, cy: c.top + c.height / 2 }; });
     await page.mouse.click(lab.x, lab.y); await sleep(400);
-    const d21 = await page.evaluate(() => { const d = document.getElementById('radar-detail'); return { open: !d.hidden, txt: d.textContent, li: d.querySelectorAll('li').length, scr: document.querySelector('.screen.on')?.id }; });
-    await page.evaluate(() => document.getElementById('radar-detail').click()); await sleep(300);
-    const closed = await page.evaluate(() => ({ hidden: document.getElementById('radar-detail').hidden, scr: document.querySelector('.screen.on')?.id }));
+    const b1 = await read1();
     await page.mouse.click(lab.cx, lab.cy); await sleep(400);
     const mid = await page.evaluate(() => document.querySelector('.screen.on')?.id);
-    (d21.open && /Quick Tap/.test(d21.txt) && /bars/.test(d21.txt) && /next|every bar/.test(d21.txt) && d21.li >= 3 && d21.scr === 's-board' && closed.hidden && closed.scr === 's-board' && mid === 's-board')
-      ? ok(`67.21 a tap on the web opens the game's detail ("${d21.txt.slice(0, 60)}…", ${d21.li} lines) and never goes back to the menu; a tap on the panel closes it`)
-      : bad('67.21 the web\'s detail', JSON.stringify({ d21, closed, mid }));
+    (!a1.gRow && !a1.detail && !a1.eyebrow && a1.title && a1.title === a1.labels.dots && a1.sel === 'dots' && a1.d === a1.modes.dots && a1.dSel === 'lead'
+      && b1.scr === 's-board' && b1.title === b1.labels['quick-tap'] && b1.sel === 'quick-tap' && b1.d === b1.modes['quick-tap'] && b1.s > 1 && b1.top.length === 1 && b1.top[0] === '20' && mid === 's-board')
+      ? ok(`68.1 / 68.2 the web is the only game picker: no game chip row, no detail card; Scores opens on the game played last ("${a1.title}", its point marked, its modes ${a1.d}); a tap on Quick Tap's name on the web titles it "${b1.title}" as the web shows it, its chips ${b1.d} and ${b1.s} lengths, its top 10 below, and the screen stays Scores (67.21)`)
+      : bad('68.1 / 68.2 the web as the game picker', JSON.stringify({ a1, b1, mid }));
   }
   /* build 68 (67.38): EXCUSES. Each of the nine run excuses fires on its own trigger and not on the near miss beside it; none fires in the walkthrough,
      a profile's first ten minutes or a demo; one that comes with an unlock is a quiet tick. Then for real: a Quick Tap run of nothing but misses ends

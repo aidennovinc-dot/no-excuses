@@ -277,8 +277,8 @@ tutorial('prog',[
     at:[['Result, or the main menu',''],['Result, or the main menu',''],['Main menu','Progress'],['Progress',''],['Progress',''],['Progress','Games chest tab, to tap (only if another tab is up)'],['Progress','Games chest tab'],['Progress','Games chest tab'],['Progress · Games chest','a game filter (not All)']] } });
 /* 64.12: SCORES, after the first Reaction run. Scores ringed on the menu; inside, a welcome, then (build 69, 68.25 — "The Scores tour is built out")
    one box per ring of the web, each ringed with its value from RADAR — the Skill key's, Pro's, Author's — then past the edge (the web), one spoke, a
-   game's point on the web to tap (the one must-tap box: it opens that game's detail) and Overall. Written against the web, not the chip row, which is
-   going (68.1 / 68.2) */
+   game's point on the web to tap (the one must-tap box: it picks that game — its title, chips and top 10 under the web, 68.1 / 68.2) and Overall.
+   Written against the web; the game chip row is gone (68.1 / 68.2) */
 const B12=TUTORIAL.board, bd=()=>onScreen('s-board');
 const rv=()=>({ skill:RADAR.rings[0], pro:RADAR.rings[1], author:RADAR.rings[2] }), rring=j=>()=>$(`#radar .rring.r${j} .ring`);
 tutorial('board',[
@@ -293,7 +293,7 @@ tutorial('board',[
   { on:bd, room:'s-board', el:()=>$(`#radar text[data-g="${QT}"]`), tap:1, hit:t=>!!(t.closest&&t.closest(`#radar [data-g="${QT}"]`)), text:B12[6] },
   { on:bd, room:'s-board', el:()=>$('#radar-all'), text:B12[7] },
 ],{ opened:()=>menuOpen('s-board'),
-  meta:{ name:'Scores', trigger:'The first Reaction run', start:'That run\'s result, ahead of its toasts', why:'The web: what each ring means, a spoke per game, a game\'s detail, and Overall',
+  meta:{ name:'Scores', trigger:'The first Reaction run', start:'That run\'s result, ahead of its toasts', why:'The web: what each ring means, a spoke per game, picking a game, and Overall',
     at:[['Result, or the main menu',''],['Main menu','Scores'],['Scores',''],['Scores','the gold ring (Skill key)'],['Scores','the blue dashed ring (Pro)'],['Scores','the outer white ring (Author)'],
       ['Scores','the web'],['Scores','Quick Tap\'s spoke'],['Scores','Quick Tap\'s name on the web'],['Scores','Overall']] } });
 

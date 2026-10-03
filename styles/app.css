@@ -575,24 +575,18 @@
   #radar line{stroke:var(--line)}
   #radar polygon.me{fill:color-mix(in srgb,var(--sq-live) 22%,transparent);stroke:var(--sq-live);stroke-width:2;stroke-linejoin:round}
   #radar text{fill:var(--mute);font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase}
-  /* build 68 (67.21): the game a tap opened is lit; its panel sits under the web */
+  /* build 69 (68.1 / 68.2): the web is the game picker — the picked game's point and name are lit (the rules after .past), its title sits under Overall */
   #radar{cursor:pointer}
-  #radar text.rsel{fill:var(--ink)}
   #radar circle.rsel{r:4}
-  .rdetail{width:min(92vw,360px);margin:8px auto 0;padding:12px 14px;border:1px solid var(--line);border-radius:10px;text-align:left;font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--mute);cursor:pointer}
-  .rdetail[hidden]{display:none}
-  .rdetail b{display:block;font-family:var(--title);font-size:15px;letter-spacing:.06em;color:var(--ink);margin-bottom:6px}
-  .rdetail b u{text-decoration:none;color:var(--gold)}
-  .rdetail ul{list-style:none;margin:0 0 6px;padding:0;display:flex;flex-direction:column;gap:3px}
-  .rdetail .rbars li.done{color:var(--ok)}
-  .rdetail .rmodes i{font-style:normal;color:var(--ink)}
-  .rdetail .rbest,.rdetail .rclose{display:block;font-size:9px;letter-spacing:.2em;text-transform:uppercase;margin:4px 0 3px}
-  .rdetail .rnext{margin:4px 0;color:var(--ink)}
+  .bdtitle{font-family:var(--title);font-size:18px;letter-spacing:.06em;color:var(--ink);text-align:center;margin:12px 0 2px;flex:none}
+  .bdtitle u{text-decoration:none;color:var(--gold);font-variant-numeric:tabular-nums}
+  .bdtitle u.past{color:var(--ok)}
   #radar circle{fill:var(--sq-live)}
   /* v14 (8.6): past the Author's number is past the outer ring, and it is marked — the shape and the axis that did it go green */
   #radar polygon.me.past{stroke:var(--ok)}
   #radar circle.past{fill:var(--ok)}
   #radar text.past{fill:var(--ok)}
+  #radar text.rsel{fill:var(--ink);font-weight:700;text-decoration:underline}
   /* v18 (B.24, build 32): after chest 1 the web is the three rungs — key 1, Pro, Author — and a shell tier's rung is
      dashed at no value (A.2). A vertex past the Author rung wears a little flame. */
   #radar polygon.rung{stroke:var(--line)}

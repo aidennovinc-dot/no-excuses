@@ -1807,7 +1807,7 @@ scene('64.9', async (page, browser) => {
 });
 scene('64.12', async (page, browser) => {
   await load(page, { ...MENU_NEW, menuUnl: { prog: 1, board: 1 }, tuts: { prog: 'done', board: 0 } }, { unlock: { 'dots:blind': 1, 'reaction:flash': 1 } }); await show(page, 's-menu'); await sleep(600);
-  await tutFrames(page, browser, '64.12', 4, { 0: '#s-menu .item[data-go="s-board"]', 2: '#bd-g .chip[data-v="quick-tap"]' }, 'Scores tutorial, after the first Reaction run — ');
+  await tutFrames(page, browser, '64.12', 4, { 0: '#s-menu .item[data-go="s-board"]', 2: '#radar text[data-g="quick-tap"]' }, 'Scores tutorial, after the first Reaction run — ');
 });
 
 // 64.13: runs placed exactly on the bars, read from config/key-bars.js, so each spoke's number is known — `at` maps a combination to a tier
@@ -2387,6 +2387,24 @@ scene('68.38', async (page, browser) => {
   await frame(page, browser, '68.38-about', 'About rebuilt as mocked: NO EXCUSES and its one line, “Messages · 4 of 8”, compact rows (tall frames for the portrait clips, a clean play mark, the Pro clip pulsing, locked titles struck through in red with how they open), ONE support box, the version line; no perk rows, no “No ads, ever.”, no Send feedback');
   if (fit.scrollH > fit.h + 4) { await page.evaluate(() => { const s = document.getElementById('s-about'); s.scrollTop = s.scrollHeight; }); await sleep(500);
     await frame(page, browser, '68.38-about-foot', 'About scrolled to its foot: the support box and the version line'); }
+});
+
+// 68.1 / 68.2: the web is the only game picker — Scores opens on the game played last (Quick Tap), its title, its mode and length chips and its top 10
+// under the web; then a tap on Dots' name on the web picks Dots
+scene('68.1', async (page, browser) => {
+  const now = Date.now(), qt = [13, 11, 9, 12, 7].map((h, i) => ({ t: now - (i + 1) * 3600000, g: 'quick-tap', d: 'two', s: 5, hits: h, misses: 2, v: 4 }));
+  await load(page, { ...OPEN, welcomeSeen: 1, name: 'AIDEN' }, { runs: [...qt, { t: now - 9 * 3600000, g: 'dots', d: 'blind', s: 5, hits: 6, misses: 0, v: 4 }] });
+  await show(page, 's-board'); await sleep(1600);
+  const read = () => page.evaluate(() => { const s = document.getElementById('s-board'); return { title: document.getElementById('bd-title').textContent, d: document.getElementById('bd-d').textContent, s: document.getElementById('bd-s').textContent,
+    rows: document.querySelectorAll('#runs tr').length, gRow: !!document.getElementById('bd-g'), detail: !!document.getElementById('radar-detail'), scrollH: s.scrollHeight, h: s.clientHeight }; });
+  const a = await read(); say('scores', a);
+  await frame(page, browser, '68.1-scores', `Scores opens on the game played last: Quick Tap picked on the web (its point and name lit), "${a.title.trim()}" as the title under Overall, its TWO / FOUR and SPRINT / DASH / MARATHON chips, then its top 10 — no game chip row, no detail card`);
+  if (a.scrollH > a.h + 4) { await page.evaluate(() => { const s = document.getElementById('s-board'); s.scrollTop = s.scrollHeight; }); await sleep(500);
+    await frame(page, browser, '68.1-scores-foot', 'Scores scrolled to its foot: the top 10 table'); await page.evaluate(() => { document.getElementById('s-board').scrollTop = 0; }); await sleep(300); }
+  const p = await page.evaluate(() => { const t = document.querySelector('#radar text[data-g="dots"]'), r = t.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
+  await page.mouse.click(p[0], p[1]); await sleep(700);
+  const b = await read(); say('picked', b);
+  await frame(page, browser, '68.1-scores-dots', `A tap on Dots' name on the web picks it: "${b.title.trim()}" as the title, its Blind / Lead chips and its top 10`);
 });
 
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));

@@ -37,8 +37,13 @@ export async function run() {
   // build 33 (B.30): the locked line is under its own group now, not one line under the preview
   await tap('#lk-sq', 'customise · lock line');
   await sleep(400); await tap('#s-custom .back', 'customise · back');
-  // scores: game, mode, length chips
-  await tap('[data-go="s-board"]'); await tap('#bd-g [data-v="dots"]', 'board · game chip'); await tap('#bd-d [data-v="lead"]', 'board · mode chip'); await tap('#bd-s [data-v="15"]', 'board · length chip');
+  // scores: AMENDED at build 69 (68.1 / 68.2) — the game is picked on the web (`radar`: a tap on a game's name), then the mode and length chips
+  await tap('[data-go="s-board"]'); await sleep(300);
+  const web = await page.evaluate(() => { const t = document.querySelector('#radar text[data-g="dots"]'); if (!t) return null; const r = t.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
+  if (web) { const before = errors.length; await page.mouse.click(web[0], web[1]); await sleep(300);
+    if (await page.evaluate(() => !!document.querySelector('#bd-d [data-v="lead"]') && !!document.querySelector('#radar .rsel[data-g="dots"]'))) seen.add('radar'); else bad('board · a game picked on the web', 'Dots not picked');
+    if (errors.length > before) bad('board · web [radar]', errors.slice(before).join(' | ')); } else bad('board · the web', 'no Dots label');
+  await tap('#bd-d [data-v="lead"]', 'board · mode chip'); await tap('#bd-s [data-v="15"]', 'board · length chip');
   await sleep(400); await tap('#s-board .back', 'board · back');
   // unlocks (build 23, v15 2.4): its own menu item now, above Achievements. The key row is the one that leads somewhere
   // with a single Back, which is why it is the row this taps
@@ -107,7 +112,7 @@ export async function run() {
   (await onScreen()) === 's-pick' ? ok('result back opens the pick sheet') : bad('result back opens the pick sheet', 'on ' + (await onScreen()));
   await tap('#time-row .tbtn:nth-child(2)', 'sheet · length'); await tap('#vs-wrap [data-p="f"]', 'sheet · with a friend'); await tap('#vs-wrap [data-p2="1"]', 'sheet · pass & play'); await tap('#vs-wrap [data-p="0"]', 'sheet · solo');
   // build 18: the chips are one act per screen, and the overlays (lock box, Next card, the full stop) are acts too
-  const expected = ['go', 'back', 'game', 'diff', 'time', 'vs', 'vs2', 'lvl-back', 'go-btn', 'quit', 'over-back', 'share', 'chip-bd', 'chip-pv', 'chip-ach', 'chip-over', 'item', 'pvlock', 'ach', 'unl', 'chip-chest', 'prac', 'dev-open', 'dev-sup', 'dev-story', 'dev-unl', 'dev-menu', 'dev-tour', 'support', 'wheel-done', 'lock-no', 'lock-go', 'nextup', 'egg', 'ptab', 'chest', 'msg'];
+  const expected = ['go', 'back', 'game', 'diff', 'time', 'vs', 'vs2', 'lvl-back', 'go-btn', 'quit', 'over-back', 'share', 'chip-bd', 'radar', 'chip-pv', 'chip-ach', 'chip-over', 'item', 'pvlock', 'ach', 'unl', 'chip-chest', 'prac', 'dev-open', 'dev-sup', 'dev-story', 'dev-unl', 'dev-menu', 'dev-tour', 'support', 'wheel-done', 'lock-no', 'lock-go', 'nextup', 'egg', 'ptab', 'chest', 'msg'];
   const missing = expected.filter(a => !seen.has(a));
   missing.length ? bad('every data-act driven once', 'not driven: ' + missing.join(', ')) : ok(`every data-act driven once (${expected.length}) — not covered: again, pass-go, to-games, seqdone, praclock, dev-fresh, adskip, toast, cere-tap, reveal-go, reveal-msg (the reveal's three are driven in the build 46 section)`);
 }

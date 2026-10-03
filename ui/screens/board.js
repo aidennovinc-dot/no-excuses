@@ -1,15 +1,17 @@
 /* No Excuses — the scores screen (build 18, refactor stage 4; was renderBoard / renderRadar / rows in menu.js, and the
    name field from boot.js). The profile name and the radar on top, the local top 10 under three rows of chips. The
-   filter follows the run just finished (run:finish), and the run just played is marked in its row. */
-import { BOARD, RADAR_TXT, RESULT, TOAST } from "../../config/copy.js";
+   filter follows the run just finished (run:finish), and the run just played is marked in its row.
+   BUILD 69 (68.1 / 68.2): the web picks the game; under it the game's title, its mode and length chips and its top 10. The screen opens on the game
+   played last — the newest run on record, its mode and length too (aim()) */
+import { BOARD, RADAR_TXT, RESULT } from "../../config/copy.js";
 import { KEYS, RADAR } from "../../config/keys.js";
 import { MODE_NAME } from "../../config/games.js";
-import { $, T, esc, fitLabels } from "../../core.js";
+import { $, esc, fitLabels } from "../../core.js";
 import { on } from "../../core/events.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, GC, lenName } from "../../games/registry.js";
 import { ACH, Scores, achToast, got, lensOf, tierOf, unlockHtml } from "../../progress.js";
-import { COMBOS, TIERS, barOf, gameKey, isCleared, isShell, radarAll, radarOf, tierOpen, wantOf } from "../../progress/key.js";
+import { radarAll, radarOf } from "../../progress/key.js";
 import { define } from "../actions.js";
 import { chips } from "../chips.js";
 import { colsOf, fmtScore } from "../format.js";
@@ -17,6 +19,9 @@ import { register } from "../router.js";
 import { toast } from "../toast.js";
 
 const F={ g:prefs.lastGame, d:GAMES[prefs.lastGame].modes[0], s:5 };
+// build 69 (68.1 / 68.2): the newest run on record (of game g, when given) sets the game, mode and length; with none, g's first mode and length
+function aim(g){ let r=null; for(const x of Scores.runs()) if((!g||x.g===g)&&GAMES[x.g]&&(!r||x.t>r.t)) r=x;
+  if(r){ F.g=r.g; F.d=r.d; F.s=r.s; } else if(g){ F.g=g; F.d=GAMES[g].modes[0]; F.s=GC(g,F.d).lens[0]; } }
 let curT=null;   // the run just played, marked in its row
 // v18 (B.10): the run just played wears its tier colour on its score here too, so the number Aiden watched turn blue on
 // the result screen is the same colour on the board he lands on next. Solo only by construction — L10 keeps every
@@ -60,41 +65,27 @@ function renderRadar(){ const ids=Object.keys(GAMES), n=ids.length, C=100, R=88,
   const all=radarAll(), tier=past(all), el=$('#radar-all');
   if(el){ el.className='radar-all'+(tier?' t'+tier:''); el.innerHTML=`<span>${esc(RADAR_TXT.all)}</span> <b>${Math.round(all)}</b>${tier?` <em>${esc(RADAR_TXT.words[tier-1]||'')}</em>`:''}`; } }
 function renderBoard(){ $('#pstar').textContent=prefs.supporter?'★':''; const g=F.g; if(!GAMES[g].modes.includes(F.d)) F.d=GAMES[g].modes[0]; const lens=lensOf(g,F.d); if(!lens.includes(F.s)) F.s=lens[0];
-  $('#bd-g').innerHTML=Object.entries(GAMES).map(([id,x])=>`<button class="chip" data-act="chip-bd" data-chip="bd-g" data-v="${id}">${x.name}</button>`).join('');
+  const v=Math.round(Math.max(0,radarOf(g).v)); $('#bd-title').innerHTML=`<b>${esc(GAMES[g].name)}</b> <u class="${v>RADAR.rings[0]?'past':''}">${v}</u>`;
+  for(const t of document.querySelectorAll('#radar [data-g]')) t.classList.toggle('rsel',t.dataset.g===g);
   $('#bd-d').innerHTML=GAMES[g].modes.length>1?GAMES[g].modes.map(d=>`<button class="chip" data-act="chip-bd" data-chip="bd-d" data-v="${d}">${MODE_NAME[d]}</button>`).join(''):'';
   $('#bd-s').innerHTML=lens.length>1?lens.map(s=>`<button class="chip" data-act="chip-bd" data-chip="bd-s" data-v="${s}">${lenName(g,s,F.d)}</button>`).join(''):'';
-  chips('bd','g',g); chips('bd','d',F.d); chips('bd','s',F.s);
+  chips('bd','d',F.d); chips('bd','s',F.s);
   const cfg=GC(g,F.d,F.s), c=colsOf(g,F.d,F.s); $('#runs-h').innerHTML=`<tr><th>${BOARD.rank}</th><th></th><th>${cfg.scoreWord||BOARD.score}${cfg.lower?BOARD.lowerMark:''}</th><th>${c[0][0]}</th><th>${c[1][0]}</th><th>${BOARD.date}</th></tr>`;
   $('#runs').innerHTML=rows(g,F.d,F.s,Scores.of(g,F.d,F.s).slice(0,10)); }
 
-/* build 68 (67.21): A TAP ON THE WEB OPENS A GAME'S DETAIL — it used to fall through to the bare ground and go Back to the menu. A tap on a game's point
-   or name (or nearest to one) opens a panel: its score, which Skill / Pro / Author bars are cleared, its best run per mode, and the next bar to chase
-   (the nearest to clearing, on the lowest open key). A tap anywhere else — the panel, the web's middle, the screen around — closes it */
-let detailG=null;
+/* build 68 (67.21): a tap on the web never falls through to the bare ground and goes Back to the menu. BUILD 69 (68.1 / 68.2 — "You have two sections
+   that show the same thing … we can just have the title of the game and then the variants and then the score"): THE WEB IS THE ONLY GAME PICKER. The row
+   of game chips and the detail card (bars per key, best, next, tap to close) are gone. A tap on a game's point or name (or nearest to one) PICKS it: its
+   point and name are marked (`rsel`), its name and figure are the title, its mode and length chips and its top 10 are under it */
 function nearG(e){ if(!e||typeof e.clientX!=='number') return null; let best=null, bd=1e9;
   for(const t of document.querySelectorAll('#radar text[data-g], #radar circle[data-g]')){ const r=t.getBoundingClientRect(), d=Math.hypot(r.left+r.width/2-e.clientX,r.top+r.height/2-e.clientY); if(d<bd){ bd=d; best=t.dataset.g; } }
   return bd<=40?best:null; }
-function detailHtml(g){ const v=Math.round(radarOf(g).v), tiers=TIERS.filter(t=>tierOpen(t)&&!isShell(t));
-  const bars=tiers.map(t=>{ const k=gameKey(g,t), K=KEYS.find(x=>x.id===t)||{}; return `<li class="${k.total&&k.done===k.total?'done':''}">${esc(T(RADAR_TXT.bars,{key:K.name||t,done:k.done,total:k.total}))}</li>`; }).join('');
-  const best=GAMES[g].modes.map(d=>{ const ls=GC(g,d).lens.map(s=>{ const b=Scores.best(g,d,s); return `${lenName(g,s,d)} ${b===null?RADAR_TXT.none:fmtScore(g,b,d,s)}`; }).join(' · ');
-    return `<li><i>${esc(MODE_NAME[d]||GAMES[g].name)}</i> ${esc(ls)}</li>`; }).join('');
-  let next=null; for(const t of tiers){ let top=null; for(const c of COMBOS){ if(c.g!==g) continue; const bar=barOf(c,t); if(bar===null||isCleared(c.key,t)) continue;
-      const b=Scores.best(c.g,c.d,c.s), f=b===null?0:c.bar.dir==='lower'?Math.min(1,bar/Math.max(b,1e-9)):Math.min(1,b/bar); if(!top||f>top.f) top={c,t,f}; }
-    if(top){ next=top; break; } }
-  const nx=next?T(RADAR_TXT.next,{name:[MODE_NAME[next.c.d],lenName(g,next.c.s,next.c.d)].filter(Boolean).join(' · '),need:wantOf(next.c,next.t)}):RADAR_TXT.cleared;
-  return `<b>${esc(GAMES[g].name)} <u>${v}</u></b><ul class="rbars">${bars}</ul><small class="rbest">${esc(RADAR_TXT.best)}</small><ul class="rmodes">${best}</ul><p class="rnext">${esc(nx)}</p><small class="rclose">${esc(RADAR_TXT.close)}</small>`; }
-function openDetail(g){ const el=$('#radar-detail'); if(!el||!GAMES[g]) return; detailG=g; el.innerHTML=detailHtml(g); el.hidden=false;
-  for(const t of document.querySelectorAll('#radar [data-g]')) t.classList.toggle('rsel',t.dataset.g===g); }
-function closeDetail(){ const el=$('#radar-detail'); if(!el||el.hidden) return false; el.hidden=true; detailG=null; for(const t of document.querySelectorAll('#radar .rsel')) t.classList.remove('rsel'); return true; }
-register('s-board',{ onShow(){ closeDetail(); renderBoard(); renderRadar(); },
-  // a tap on the screen around the web closes an open panel rather than going Back (67.21)
-  onBack(){ return closeDetail(); } });
-define({ radar(el,e){ const t=e&&e.target, hit=t&&t.closest?t.closest('[data-g]'):null, g=hit?hit.dataset.g:nearG(e); if(g&&g!==detailG) openDetail(g); else closeDetail(); return 'pick'; },
-  'radar-close'(){ closeDetail(); return 'pick'; } });
+register('s-board',{ onShow(){ aim(); renderRadar(); renderBoard(); } });
+define({ radar(el,e){ const t=e&&e.target, hit=t&&t.closest?t.closest('[data-g]'):null, g=hit?hit.dataset.g:nearG(e); if(!g||!GAMES[g]) return null;
+  if(g!==F.g){ aim(g); renderBoard(); } return 'pick'; } });
 define({ 'chip-bd'(b){ const key=b.dataset.chip.split('-')[1]; const v=isNaN(b.dataset.v)?b.dataset.v:+b.dataset.v; F[key]=v;
-  if(key==='g'){ F.d=GAMES[v].modes[0]; F.s=GC(v,F.d).lens[0]; } if(key==='d'){ F.s=GC(F.g,v).lens[0]; } renderBoard(); return 'pick'; } });
+  if(key==='d'){ F.s=GC(F.g,v).lens[0]; } renderBoard(); return 'pick'; } });
 on('run:record',({run})=>{ curT=run.t; });
-on('run:finish',({run})=>{ F.g=run.g; F.d=run.d; F.s=run.s; });
 on('store:reset',()=>{ curT=null; });
 // the name: typed on the board, kept upper-case, ten characters. Signed in is earned the moment a name goes in (v8)
 $('#pname').value=prefs.name;

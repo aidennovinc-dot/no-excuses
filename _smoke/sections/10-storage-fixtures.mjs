@@ -146,7 +146,9 @@ export async function run() {
     const esc55 = await page.evaluate(async () => { const R = await import('./ui/router.js'); const wait = t => new Promise(r => setTimeout(r, t));
       R.show('s-board'); await wait(350);
       const pick = (k, v) => { const el = [...document.querySelectorAll(`#s-board [data-chip="bd-${k}"]`)].find(x => x.dataset.v === String(v)); if (el) el.click(); return !!el; };
-      const picked = [pick('g', 'spot'), pick('d', 'count'), pick('s', -1)]; await wait(350);
+      // AMENDED at build 69 (68.1 / 68.2): the game chip row is gone — the game is picked on the web
+      const web = g => { const t = document.querySelector(`#radar text[data-g="${g}"]`); if (t) t.dispatchEvent(new MouseEvent('click', { bubbles: true })); return !!document.querySelector(`#radar .rsel[data-g="${g}"]`); };
+      const picked = [web('spot'), pick('d', 'count'), pick('s', -1)]; await wait(350);
       const tb = document.querySelector('#s-board table');
       return { picked, el: !!document.getElementById('xss55'), txt: (tb ? tb.textContent : '').includes('<b id='), rows: tb ? tb.querySelectorAll('tbody tr, tr').length : 0 }; });
     (!esc55.el && esc55.txt && esc55.picked.every(Boolean))

@@ -138,9 +138,8 @@ export const MENU = { playNeed:'play {game}', watchNeed:'watch the {title} clip'
 /* build 65 (64.10): an OPEN row keeps its requirement, ticked and green, and says what the player did and when where the run was recorded */
 /* build 65 (64.13): the Scores chart's overall figure, and the word it wears past each key's ring — placeholder words (Cowork's call), for Aiden to
    rename on the board. `words[i]` is past rings[i]: Lantern past 100, Circuit past 200, Thorns past 300 */
-/* build 68 (67.21): the panel a tap on a game's point or name opens — its score, its bars cleared per open key, its best per mode, the next bar to chase */
-export const RADAR_TXT = { all:'overall', words:['Lit', 'Wired', 'Thorned'],
-  bars:'{key} · {done} of {total} bars', best:'best', next:'next · {name} — {need}', none:'—', cleared:'every bar cleared', close:'tap to close' };
+/* build 69 (68.1 / 68.2): build 68's detail panel (67.21) is gone with its words — bars, best, next, none, cleared, close — the web picks the game instead */
+export const RADAR_TXT = { all:'overall', words:['Lit', 'Wired', 'Thorned'] };
 export const UNLOCKS_SCREEN = { title:'unlocks', did:'✓ {need}', you:' · you: {score}, {when}',
   games:'Games and modes', lens:'Lengths', keys:'Skill key', done:'open', locked:'locked',
   // v17 (B.9): the number is a placeholder now. The count moved when Sequence lost 5 keys and it will move again the next
