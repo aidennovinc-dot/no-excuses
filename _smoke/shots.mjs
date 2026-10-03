@@ -2459,6 +2459,20 @@ scene('68.31', async (page, browser) => {
   await frame(page, browser, '68.31-locked-swatches', 'Customise, Reaction: every locked target colour and background keeps its dark diagonal with a thin red line over it; the locked key tracks and tap sounds struck through in the same red');
 });
 
+// 68.32 / 68.33: the Music row swiped to its start and the locked Lantern tapped — the row stays where the finger left it (Lantern in view, not thrown
+// back to HUM / the selection), nothing plays, and "Locked · Earn the Skill key" sits in the slot under the row with the Background label where it was
+scene('68.32', async (page, browser) => {
+  await load(page, { ...PLAIN, welcomeSeen: 1, chests: { games: 1 } }); await show(page, 's-custom'); await sleep(900);
+  const before = await page.evaluate(async () => { const w = ms => new Promise(r => setTimeout(r, ms)), row = document.getElementById('c-track'), lab = () => Math.round(document.getElementById('c-bg').closest('.cgroup').querySelector('.clabel').getBoundingClientRect().top);
+    row.scrollLeft = 0; await w(200); return { scrollLeft: row.scrollLeft, bgLabel: lab() }; });
+  const p = await page.evaluate(() => { const r = document.querySelector('#c-track [data-v="key:key"]').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
+  await page.mouse.click(p[0], p[1]); await sleep(600);
+  const after = await page.evaluate(() => ({ scrollLeft: document.getElementById('c-track').scrollLeft, bgLabel: Math.round(document.getElementById('c-bg').closest('.cgroup').querySelector('.clabel').getBoundingClientRect().top),
+    line: document.getElementById('lk-track').textContent, slot: Math.round(document.getElementById('lk-track').getBoundingClientRect().height) }));
+  say('before', before); say('after', after);
+  await frame(page, browser, '68.32-locked-track', `Customise after a real tap on the locked LANTERN with the Music row at its start: the row stays put (scrollLeft ${before.scrollLeft} → ${after.scrollLeft}), nothing plays, "${after.line}" in red in its ${after.slot}px slot under the row, the Background label unmoved (${before.bgLabel} → ${after.bgLabel}px)`);
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

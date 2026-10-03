@@ -723,4 +723,49 @@ export async function run() {
       ? ok(`68.31 every locked choice in Customise wears the lock red (${l31.lock}): ${l31.sw.length} locked swatches keep their dark diagonal with a thin red line over it at full strength, ${l31.chips.length} locked word choices (${l31.chips.map(c => c.v).join(', ')}) struck through in the same red`)
       : bad('68.31 the lock red on locked Customise choices', JSON.stringify({ lock: l31.lock, rgb: l31.rgb, swBad, chBad, sw: l31.sw.slice(0, 2), chips: l31.chips.slice(0, 3) }));
   }
+  /* build 69 (68.32 / 68.33): A LOCKED CHOICE IS SILENT AND STILL. Aiden on tapping the locked Lantern: the row scrolled back to the selection, and
+     "We shouldn't even be able to hear it." Tapping any locked item in Customise leaves its row where the finger left it (the selection is brought into
+     view only when the screen opens or the selection changes), plays nothing at all — no track preview, no tap sound, no click (v28 item 2's "a locked key
+     track previews" is reversed) — a locked colour still shows itself on the preview, silently; and the red "Locked · …" line has a slot of its own under
+     every row that can show one, two lines tall, so nothing below a row moves when the line comes or goes, for every locked item on every game */
+  {
+    // the menu loop is switched off in this profile, so its own upkeep (Music.menu / Music.stop, which then play nothing) is the only call that is not the tap's
+    await setStorage({ ne: { v: 7, prefs: { tut: 2, welcomeSeen: 1, story: 1, gridSeen: 1, played: 1, menuSeen: 1, snd: 'space', musicG: { menu: false }, keyIntro: { clear: 1, pro: 1, author: 1 }, chests: { games: 1 } }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+    const l32 = await page.evaluate(async () => { const R = await import('./ui/router.js'), A = await import('./audio.js'), w = ms => new Promise(r => setTimeout(r, ms));
+      R.show('s-custom'); await w(500);
+      const calls = [];
+      for (const [nm, obj] of [['Snd', A.Snd], ['Music', A.Music]]) for (const k of Object.keys(obj)) if (typeof obj[k] === 'function') { const f = obj[k]; obj[k] = function (...a) { if (!(nm === 'Music' && (k === 'menu' || k === 'stop'))) calls.push(nm + '.' + k); return f.apply(this, a); }; }
+      const top = el => Math.round(el.getBoundingClientRect().top), next = s => s.closest('.cgroup').nextElementSibling;
+      const row = document.getElementById('c-track'), bgLab = document.getElementById('c-bg').closest('.cgroup').querySelector('.clabel');
+      row.scrollLeft = 0; await w(100);
+      const lan = row.querySelector('[data-v="key:key"]'), o = { before: row.scrollLeft, bgTop: top(bgLab), lanLocked: lan.classList.contains('locked') };
+      lan.click(); await w(400);
+      o.after = row.scrollLeft; o.bgTopAfter = top(bgLab); o.line = document.getElementById('lk-track').textContent; o.trackCalls = calls.splice(0);
+      // every locked item on every game: no sound, its row unscrolled, the element under its group unmoved, its line inside the slot
+      o.moved = []; o.noisy = []; o.scrolled = []; o.over = []; o.n = 0;
+      for (const g of ['quick-tap', 'dots', 'hold', 'sequence', 'reaction']) {
+        document.querySelector(`#pv-g [data-v="${g}"]`).click(); await w(200); calls.splice(0);
+        for (const s of [...document.querySelectorAll('#s-custom [data-set]')].filter(x => x.offsetParent && x.closest('.cgroup').querySelector('.lockline'))) {
+          for (const b of [...s.querySelectorAll('button.locked')]) {
+            const nx = next(s), t0 = nx ? top(nx) : 0; s.scrollLeft = 0; await w(30); const sl = s.scrollLeft;
+            b.click(); await w(60); o.n++;
+            const ln = document.getElementById('lk-' + s.dataset.set), id = g + ' ' + s.dataset.set + ' ' + b.dataset.v;
+            if (nx && top(nx) !== t0) o.moved.push(id + ' ' + t0 + '→' + top(nx));
+            if (s.scrollLeft !== sl) o.scrolled.push(id);
+            if (calls.length) o.noisy.push(id + ' ' + calls.splice(0).join('/'));
+            if (!ln.textContent.trim() || ln.scrollHeight > ln.clientHeight + 1) o.over.push(id + ' ' + ln.scrollHeight + '/' + ln.clientHeight);
+          }
+        }
+      }
+      // a locked target colour still shows itself on the preview, without a sound
+      document.querySelector('#pv-g [data-v="quick-tap"]').click(); await w(200); calls.splice(0);
+      const sw = document.querySelector('#c-sq button.locked'); sw.click(); await w(100);
+      o.pv = { want: sw.dataset.v, got: document.getElementById('pv').style.getPropertyValue('--sq-live').trim(), calls: calls.splice(0) };
+      return o; });
+    (l32.lanLocked && l32.before === 0 && l32.after === 0 && l32.bgTop === l32.bgTopAfter && l32.line && !l32.trackCalls.length
+      && l32.n >= 20 && !l32.moved.length && !l32.noisy.length && !l32.scrolled.length && !l32.over.length && l32.pv.got.toUpperCase() === l32.pv.want.toUpperCase() && !l32.pv.calls.length)
+      ? ok(`68.32 / 68.33 a locked choice is silent and still: tapping the locked Lantern leaves the Music row where it was (scrollLeft ${l32.before} → ${l32.after}), plays nothing, and "${l32.line}" lands in its own slot with the Background label unmoved (${l32.bgTop}px); all ${l32.n} locked items across five games the same — no sound, no scroll, nothing below moves, each line inside its two-line slot — and a locked colour still shows itself on the preview, silently`)
+      : bad('68.32 / 68.33 a locked choice in Customise', JSON.stringify({ ...l32, moved: l32.moved.slice(0, 4), noisy: l32.noisy.slice(0, 4), scrolled: l32.scrolled.slice(0, 4), over: l32.over.slice(0, 4) }));
+  }
 }

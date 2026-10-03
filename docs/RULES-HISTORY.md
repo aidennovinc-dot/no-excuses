@@ -2146,3 +2146,22 @@ anything Aiden settles goes on the list in the build that implements it.
   next make", read so the date is never wrong). Gate: `side screens`, "68.45" (written first, FAIL on the unfixed code) — #1 made three times with
   its first time on record, #7 made before dates were kept, #9 made in the check: each made row carries its `how`, tick and count, the dated ones
   their date and #7 none; an unmade row its hint and not its `how`; to-do above made; the line from config.
+- **A locked choice in Customise wears the lock red (68.31).** Aiden: "Put the red line over the current black line … because it's hard to see when
+  it's dark." `LOCK` in `config/theme.js` (#C8322A, the default lead red), published by `ui/theme.js` as `--lock` — named on its own so a player's lead
+  colour (`--cue`) can never turn a lock white or green. A locked swatch (`.sw button.locked::after`) keeps its dark diagonal and carries a 2px `--lock`
+  line down the middle of it; the swatch is dimmed by a wash of the ground (an inset shadow) rather than `opacity`, so the line is at full strength. A
+  locked word choice (`#s-custom .opt.locked`: the key tracks, the tap sounds) is struck through in `--lock`, 2px, the words dimmed and never the line;
+  the "Locked · …" line is `--lock`. Gate: `side screens`, "68.31".
+- **A locked choice in Customise is silent and still (68.32 / 68.33).** Aiden, tapping the locked Lantern: the row scrolled back to the selection, and
+  "We shouldn't even be able to hear it." (1) A sideways row (`.crow`) is brought to its selection only when the screen opens or that selection changes
+  (`rowAt` in `ui/screens/customise.js`, cleared by `onShow`); a locked tap re-renders the row and leaves it where the finger left it. (2) **No locked item
+  makes any sound** — no track preview, no tap sound, no click (the handler returns no sound); a locked colour or background still shows itself on the
+  preview, which is seeing, not hearing. **This REVERSES v28 item 2 / B.28's "a locked key track previews — hearing what you have is not the reward"**:
+  a locked key track is never heard before its key is earned. (3) **The "Locked · …" line (`.lockline`, B.30) has a slot of its own**, a fixed two lines
+  tall (`height:3em`), under every row that can show one, empty and untappable until a locked item is tapped, `min(92vw,360px)` wide so the longest
+  requirement fits two lines, tucked 4px into its group's gap so Customise still fits the phone (67.35). It used to take no height until it spoke, so a
+  locked tap pushed everything under it down (~45px under Music). Gate: `side screens`, "68.32 / 68.33" — the locked Lantern tapped with the row at its
+  start: `scrollLeft` unchanged, no `Snd.*` / `Music.*` call, the line shown, the Background label unmoved; then every locked item on five games: no
+  sound, no scroll, the element under its group unmoved, its line inside the slot; a locked colour still painted on the preview. CLAUDE.md's "Customise's
+  music is ONE row" line was cited "(v28 items 2 / 3, v29 item 4, 64.20 — above the game tabs)" and "plays on the MENU too (`prefs.menuTrack`,
+  `prefs.everywhere`, `menuTrack()`) and carries on through every run at `RUN_MUSIC.vol` (61.19)"; it is shortened to pay for "never heard before".

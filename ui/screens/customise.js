@@ -47,6 +47,9 @@ const lockedBy=it=> it.key ? (keyFinished(it.key)?null:keyRow(it.key)) : it.by &
 const lockById=id=>achById(id)||keyAch().find(a=>a.id===id)||null;
 const pvTry={};   // a locked item being previewed: {set, v, by}
 const pvSeen={};  // the last unlocked item tapped, so what earned it shows on touch (v5)
+/* build 69 (68.32): which choice each sideways row last brought into view. A row is scrolled to its selection only when that selection CHANGES or the
+   screen opens (onShow clears this) — a locked tap re-renders the row and used to throw it back to the selection, out from under the finger */
+const rowAt={};
 /* v18 (B.30) — WHERE THE LOCKED LINE GOES. It used to be one line under the preview plus a toast, and the toast is an
    overlay pinned to the top of the screen: tap a locked target colour and the word "locked" landed across the preview
    and the rows above, unreadable, while the line that explained it sat somewhere else entirely. A requirement belongs
@@ -109,7 +112,8 @@ function renderCustom(){
   const tiny=excuseCount()>=TINY_AIDEN.at; $('#g-tiny').hidden=!tiny;
   if(tiny){ $('#tiny-lab').textContent=CUSTOM.tiny; $('#c-tiny').innerHTML=[['1',CUSTOM.tinyOn],['0',CUSTOM.tinyOff]].map(([v,l])=>`<button data-act="item" data-v="${v}" class="opt ${String(prefs.tinyAiden===0?0:1)===v?'sel':''}">${esc(l)}</button>`).join(''); }
   // 67.35: a row that runs past the screen's edge scrolls sideways, and the picked choice is brought into view
-  for(const r of $$('#s-custom .crow')){ const s=r.querySelector('.sel'); if(s&&r.scrollWidth>r.clientWidth) r.scrollLeft=Math.max(0,s.offsetLeft-r.clientWidth/2+s.offsetWidth/2); }
+  // 68.32: only when the row's selection is new to it
+  for(const r of $$('#s-custom .crow')){ const s=r.querySelector('.sel'), v=s?s.dataset.v:null; if(s&&rowAt[r.id]!==v&&r.scrollWidth>r.clientWidth) r.scrollLeft=Math.max(0,s.offsetLeft-r.clientWidth/2+s.offsetWidth/2); rowAt[r.id]=v; }
   $('#pv-g').innerHTML=Object.entries(GAMES).map(([id,x])=>`<button class="chip" data-act="chip-pv" data-chip="pv-g" data-v="${id}">${x.name}</button>`).join(''); chips('pv','g',F.g);
   $('#pv').dataset.g=F.g; $('#g-lead').style.display=shows(F.g,'lead')?'':'none';
   $('#g-cut').style.display=shows(F.g,'cut')?'':'none'; $('#g-scale').style.display=shows(F.g,'scale')?'':'none';
@@ -187,7 +191,7 @@ on('screen:change',({id})=>{ if(id==='game') $('#wheelwrap').classList.remove('o
 register('s-custom',{ onShow(o){ const k=o.unlocks?o.unlocks[0]:null; if(chestOpen('games')&&!prefs.cusSeen){ prefs.cusSeen=1; save(); }
   F.g=o.g&&GAMES[o.g]?o.g:sel.game;
   if(k&&!shows(F.g,k)) F.g=Object.keys(GAMES).find(g=>shows(g,k))||F.g;
-  pvTry.set=null; pvSeen.by=null; renderCustom();
+  pvTry.set=null; pvSeen.by=null; for(const r in rowAt) delete rowAt[r]; renderCustom();
   if(k){ const v=k==='wheel'?'wheel':o.unlocks[1]; const grp=$('#c-'+(k==='wheel'?'sq':k));
     if(grp){ grp.closest('.cgroup').scrollIntoView({block:'center',behavior:'smooth'}); const sw=grp.querySelector(`[data-v="${v}"]`); if(sw){ sw.classList.add('pvw'); setTimeout(()=>sw.classList.remove('pvw'),1800); } } } } });
 define({
@@ -195,22 +199,23 @@ define({
      so light blue tried on Quick Tap was drawn on Dots' preview, and on every game after it, until something else cleared it. */
   'chip-pv'(b){ F.g=b.dataset.v; pvTry.set=null; pvSeen.by=null; renderCustom(); return 'pick'; },
   // B.30: the locked line is the control now — a tap on it goes to the achievement that opens the item, on Progress (build 39)
-  pvlock(b){ if(b.dataset.ach) show('s-prog',{ach:b.dataset.ach}); return 'click'; },
+  pvlock(b){ if(b.dataset.ach){ show('s-prog',{ach:b.dataset.ach}); return 'click'; } return undefined; },
   'wheel-done'(){ Wheel.close(); return 'click'; },
   /* build 68 (67.35): the picked background's small wheel opens its colour — or, while the wheel is locked, says what opens it under the
      Background row; the wheel's own "No colour" puts the background's own ground back */
   bgwheel(){ const w=ITEMS.bgcol.find(i=>i.v==='wheel'), L=w&&lockedBy(w);
-    if(L){ Object.assign(pvTry,{set:'bg',v:prefs.bg,by:L.id}); renderCustom(); lockLine('bg',L); return 'pick'; } Wheel.open('bgcol'); return 'pick'; },
+    // 68.32: a locked thing tapped makes no sound
+    if(L){ Object.assign(pvTry,{set:'bg',v:prefs.bg,by:L.id}); renderCustom(); lockLine('bg',L); return undefined; } Wheel.open('bgcol'); return 'pick'; },
   'wheel-none'(){ prefs.tint=''; save(); applyPrefs(F.g); Wheel.close(); return 'click'; },
   // a Customise item: colour, background, sound pack, scale, the track, the menu loop — the group is the closest [data-set]
   item(b){ const set=b.closest('[data-set]'); if(!set) return 'pick'; const k=set.dataset.set;
     /* B.30: a locked item previews itself and says what opens it UNDER ITS OWN ROW. The toast that used to carry this is
        gone from here — it is an overlay, and an overlay is the one place a requirement about a row must not be drawn */
-    /* v28 (item 2, build 53): a locked KEY TRACK behaves like every other locked item — it previews (hearing it is not the reward, B.28)
-       and says what opens it under its row. It has no achievement id, so it takes this path on its own. */
-    if(b.classList.contains('locked')&&k==='track'){ Object.assign(pvTry,{set:'track',v:b.dataset.v,by:null}); renderCustom();
-      const t=b.dataset.v.slice(4); Music.preview(F.g,4200,KEY_THEMES[t]); return 'pick'; }
-    if(b.classList.contains('locked')){ const L=lockById(b.dataset.lock); if(!L) return 'pick'; Object.assign(pvTry,{set:k,v:b.dataset.v,by:L.id}); renderCustom(); return 'pick'; }
+    /* v28 (item 2, build 53): a locked KEY TRACK says what opens it under its row. It has no achievement id, so it takes this path on its own.
+       REVERSED AT BUILD 69 (68.32): it no longer previews — Aiden: "We shouldn't even be able to hear it." No locked item in Customise makes any sound
+       (no preview, no tap sound, no click); a locked colour or background still shows itself on the preview, which is seeing, not hearing */
+    if(b.classList.contains('locked')&&k==='track'){ Object.assign(pvTry,{set:'track',v:b.dataset.v,by:null}); renderCustom(); return undefined; }
+    if(b.classList.contains('locked')){ const L=lockById(b.dataset.lock); if(!L) return undefined; Object.assign(pvTry,{set:k,v:b.dataset.v,by:L.id}); renderCustom(); return undefined; }
     pvTry.set=null; const it=(itemsOf(k)||[]).find(i=>String(i.v)===b.dataset.v); pvSeen.set=k; pvSeen.by=it&&it.by||null; if(b.dataset.v==='wheel'){ Wheel.open(k); return 'pick'; }
     // 57.11b: a pattern no longer clears the colour — the colour survives a change of pattern, which is the whole point of splitting them
     if(k==='bg'){ prefs.bg=b.dataset.v; }
