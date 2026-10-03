@@ -932,7 +932,11 @@ export async function run() {
     await boot({ menuUnl: {}, tuts: {}, welcomeSeen: 0 }, { unlock: { 'quick-tap:two:15': 1, 'quick-tap:two:30': 1 } });
     await page.evaluate(async () => (await import('./run/run.js')).goWhere({ g: 'quick-tap', d: 'two', s: 30 }));
     await driveToResult('quick-tap', '65.2 a Quick Tap Marathon that opens Dots');
-    const left = await page.evaluate(() => { const on = document.querySelector('.screen.on')?.id; document.getElementById('over-back').click(); return on; });
+    /* build 69 (68.19): the run that opens Dots now says so in a box on its result ("Great job, you unlocked Dots!"), and a box takes the first tap
+       (L14) — so leaving "at once" is two taps on Back inside the same moment: the first answers the box, the second leaves. Still well inside the
+       Welcome's first second, so the screen change still clears its timer */
+    const left = await page.evaluate(() => { const on = document.querySelector('.screen.on')?.id;
+      for (let i = 0; i < 3 && document.getElementById('s-over').classList.contains('on'); i++) document.getElementById('over-back').click(); return on; });
     await sleep(7000);
     const away = await page.evaluate(async () => { const S = await import('./core/store.js'), w = document.getElementById('welcome');
       return { dots: !!S.store.unlock['dots:blind'], seen: !!S.prefs.welcomeSeen, up: !!w && !w.hidden, on: document.querySelector('.screen.on')?.id }; });
