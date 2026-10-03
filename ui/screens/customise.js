@@ -17,7 +17,7 @@ import { Music, Snd } from "../../audio.js";
 import { KEY_THEMES, MUSIC_LIST, MUSIC_PICK, SCALES, TRACKS } from "../../config/audio.js";
 import { KEYS } from "../../config/keys.js";
 import { CUSTOM, GRID, ITEM_WORD } from "../../config/copy.js";
-import { DESIGNS, ITEMS, ORIGIN_LOOK } from "../../config/theme.js";
+import { DEMO_LOOP, DESIGNS, ITEMS, ORIGIN_LOOK } from "../../config/theme.js";
 import { TINY_AIDEN } from "../../config/excuses.js";
 import { excuseCount } from "../../progress/excuses.js";
 import { $, $$, T, esc } from "../../core.js";
@@ -131,37 +131,69 @@ function renderCustom(){
   else if(pvSeen.by&&!got()[pvSeen.by]&&!prefs.allOpen&&!prefs.supporter) lockLine(pvSeen.set,lockById(pvSeen.by));
   markSeen(fresh);
 }
-/* previews (v9): every game's preview is played by the same finger as the pre-game demo — it shows the tap and what comes of it, on a loop */
-const PV={k:0,n:1,last:''};
+/* previews (v9): every game's preview is played by the same finger as the pre-game demo — it shows the tap and what comes of it, on a loop.
+   build 69 (68.34): EACH IS A SHORT LOOP OF ITS GAME'S KEY MOMENT, ON THE CLOCK. Aiden: "A lot of the time is just spent waiting for the animation to play
+   through." It was a 520ms step counter, so Reaction sat on "wait for it" for 1.5s of every 3.1s and Timing never showed the target colour at all. Now the
+   loop's length and its beats come from DEMO_LOOP (config/theme.js); pvStep fires each beat as the clock passes it, and a colour tapped while its target is
+   not on screen jumps the loop to where it is (pvJump), so the new colour is on a target that frame. */
+const PV={n:1,last:'',t0:0,loop:-1,fired:-1};
 const pvG=(x,y)=>{ const g=$('#pvg'); g.style.left=x+'%'; g.style.top=y+'%'; g.classList.add('on'); };
 const pvTap=()=>{ const g=$('#pvg'); g.classList.remove('tap'); void g.offsetWidth; g.classList.add('tap'); };
 const pvPop=el=>{ el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); };
+/* 68.34: the beats of each game's loop, by the names DEMO_LOOP gives them. Each sets the preview to that moment outright, so a beat fired late or out of a
+   jump lands the same picture */
+const seqLight=(ks,i)=>{ ks.forEach(x=>x.classList.remove('lit')); ks[i].classList.add('lit'); };
+const BEAT={
+  // a pad lit (the other one each loop), the finger on it, the tap
+  'quick-tap':{ lit(){ PV.n=1-PV.n; [0,1].forEach(i=>$('#pv'+i).style.setProperty('--v',PV.n===i?1:0)); pvG(PV.n?75:25,80); }, tap(){ pvTap(); pvPop($('#pv'+PV.n)); } },
+  // the dot where the lead ring was, the next lead ring, the finger on the dot, the tap
+  dots:{ dot(){ const d=$('#pvdot'), l=$('#pvlead'); PV.pos=PV.next||{x:.4,y:.3}; PV.next={x:Math.random()*.76,y:Math.random()*.62}; d.style.left=PV.pos.x*100+'%'; d.style.top=PV.pos.y*100+'%'; l.style.left=PV.next.x*100+'%'; l.style.top=PV.next.y*100+'%'; d.classList.add('on'); l.classList.add('on'); pvG(PV.pos.x*100+11,PV.pos.y*100+17); },
+    tap(){ pvTap(); } },
+  /* v14 (8.8): Estimate is two modes and the screen offers a swatch for each, so the preview plays both — Grow (the target outline in the target colour, the
+     fill growing under a held finger), then Cut, where the finger draws a line and the two pieces land in the Cut pieces colour */
+  hold:{ grow(){ const m=$('.pvhold .m'); $('.pvhold').classList.remove('cut'); m.style.transition='none'; m.setAttribute('r',0); $('#pvhtxt').innerHTML='tap and hold'; $('#pvg').classList.remove('hold'); pvG(50,86); },
+    hold(L){ const m=$('.pvhold .m'); $('#pvg').classList.add('hold'); $('#pvhtxt').innerHTML=''; void m.getBoundingClientRect(); m.style.transition=`r ${L.at.let-L.at.hold}ms linear`; m.setAttribute('r',26+Math.random()*9); },
+    let(){ $('#pvg').classList.remove('hold'); const r=+$('.pvhold .m').getAttribute('r'), pct=r*r/900*100, err=Math.abs(pct-100); $('#pvhtxt').innerHTML=`<b class="${err<=8?'g':'r'}">${pct.toFixed(1)}%</b>${err<=8?'close':pct>100?'too much':'too little'}`; },
+    cut(){ $('.pvhold').classList.add('cut'); PV.cut=30+Math.random()*40; for(const p of ['.pa','.pb']) $('#pvhcut '+p).setAttribute('d','M50 22h60v60H50z'); const ln=$('#pvhline'); ln.setAttribute('x1',50); ln.setAttribute('x2',50); $('#pvhtxt').innerHTML='draw a line'; $('#pvg').classList.remove('hold'); pvG(34,52); },
+    aim(){ pvTap(); pvG(34+PV.cut*.6,52); },
+    line(){ const x=(50+PV.cut*.6).toFixed(0), ln=$('#pvhline'); ln.setAttribute('x1',x); ln.setAttribute('x2',x); $('#pvhcut .pa').setAttribute('d',`M50 22H${x}v60H50z`); $('#pvhcut .pb').setAttribute('d',`M${x} 22h${(110-x).toFixed(0)}v60H${x}z`); $('#pvhtxt').innerHTML=''; },
+    read(){ $('#pvhtxt').innerHTML=`<b class="g">${Math.round(PV.cut)}%</b>cut off`; } },
+  // two keys lit in turn, then the finger plays them back
+  sequence:{ a(){ const ks=$$('.pvseq i'); PV.a=Math.random()*5|0; PV.b=(PV.a+1+(Math.random()*3|0))%5; $('#pvg').classList.remove('on'); seqLight(ks,PV.a); },
+    b(){ seqLight($$('.pvseq i'),PV.b); },
+    tapA(){ seqLight($$('.pvseq i'),PV.a); pvG(10+PV.a*20,60); pvTap(); },
+    tapB(){ seqLight($$('.pvseq i'),PV.b); pvG(10+PV.b*20,60); pvTap(); } },
+  // the Hidden mode's moment: the ball rolls onto the dashed mark and the tap lands as it arrives
+  timing:{ roll(L){ const b=$('#pvball'); $('#pvmark').style.left=L.mark+'%'; b.style.transition='none'; b.style.left=L.from+'%'; void b.getBoundingClientRect(); b.style.transition=`left ${L.at.tap}ms linear`; b.style.left=L.mark+'%'; $('#pvtmres').innerHTML=''; pvG(50,84); },
+    tap(){ pvTap(); const e=(Math.random()*.08-.04); $('#pvtmres').innerHTML=`<b class="g">${Math.abs(e).toFixed(2)}s</b>${e>0?'late':'early'}`; } },
+  // the pane flashes early in the loop and stays lit through the tap and its reading
+  reaction:{ wait(){ const p=$('#pvrx'); p.classList.remove('lit'); p.textContent='wait for it'; pvG(50,86); },
+    lit(){ const p=$('#pvrx'); p.classList.add('lit'); p.textContent='tap'; },
+    tap(){ pvTap(); $('#pvrx').innerHTML=`<b>${180+(Math.random()*90|0)} ms</b>`; } },
+  // the field, the finger on the odd shape, the tap that rings it
+  spot:{ field(){ $$('#pvsp i').forEach(x=>x.classList.remove('odd','dim')); $('#pvg').classList.remove('on'); },
+    aim(){ const o=$$('#pvsp i')[9]; if(!o) return; const r=o.getBoundingClientRect(), b=$('#pv').getBoundingClientRect(); pvG((r.left+r.width/2-b.left)/b.width*100,(r.top+r.height/2-b.top)/b.height*100); },
+    tap(){ const ks=$$('#pvsp i'); if(!ks.length) return; pvTap(); ks[9].classList.add('odd'); ks.forEach((x,i)=>{ if(i!==9) x.classList.add('dim'); }); } },
+};
 function pvStep(){
   // build 39: the preview runs while THIS screen is up (it was "while the Customise tab is up" from build 33 to 38)
   if(!$('#s-custom').classList.contains('on')) return;
-  const g=F.g; if(g!==PV.last){ PV.last=g; PV.k=0; $('#pvg').classList.remove('on','hold'); } const k=PV.k++;
-  if(g==='quick-tap'){ const ph=k%3; if(ph===0){ PV.n=Math.random()<.5?0:1; [0,1].forEach(i=>$('#pv'+i).style.setProperty('--v',PV.n===i?1:0)); pvG(PV.n?75:25,80); } else if(ph===1){ pvTap(); pvPop($('#pv'+PV.n)); } }
-  else if(g==='dots'){ const ph=k%3; const d=$('#pvdot'), l=$('#pvlead'); if(ph===0){ PV.pos=PV.next||{x:.4,y:.3}; PV.next={x:Math.random()*.76,y:Math.random()*.62}; d.style.left=PV.pos.x*100+'%'; d.style.top=PV.pos.y*100+'%'; l.style.left=PV.next.x*100+'%'; l.style.top=PV.next.y*100+'%'; d.classList.add('on'); l.classList.add('on'); pvG(PV.pos.x*100+11,PV.pos.y*100+17); } else if(ph===1) pvTap(); }
-  // v14 (8.8): Estimate is two modes and the screen offers a swatch for each, so the preview plays both — seven beats of Grow,
-  // then seven of Cut, where the finger draws a line and the two pieces land in the Cut pieces colour
-  else if(g==='hold'){ const ph=k%14, box=$('.pvhold'), t=$('#pvhtxt'), f=$('#pvg');
-    if(ph<7){ box.classList.remove('cut'); const m=$('.pvhold .m'); const q=ph;
-      if(q===0){ m.setAttribute('r',0); t.innerHTML='tap and hold'; f.classList.remove('hold'); pvG(50,86); }
-      else if(q===1){ f.classList.add('hold'); t.innerHTML=''; m.setAttribute('r',26+Math.random()*9); }
-      else if(q===3){ f.classList.remove('hold'); const r=+m.getAttribute('r'), pct=r*r/900*100, err=Math.abs(pct-100); t.innerHTML=`<b class="${err<=8?'g':'r'}">${pct.toFixed(1)}%</b>${err<=8?'close':pct>100?'too much':'too little'}`; } }
-    else { box.classList.add('cut'); const q=ph-7, a=$('#pvhcut .pa'), b=$('#pvhcut .pb'), ln=$('#pvhline');
-      if(q===0){ PV.cut=30+Math.random()*40; a.setAttribute('d','M50 22h60v60H50z'); b.setAttribute('d','M50 22h60v60H50z'); ln.setAttribute('x1',50); ln.setAttribute('x2',50); t.innerHTML='draw a line'; f.classList.remove('hold'); pvG(34,52); }
-      else if(q===1){ pvTap(); pvG(34+PV.cut*.6,52); }
-      else if(q===2){ const x=(50+PV.cut*.6).toFixed(0); ln.setAttribute('x1',x); ln.setAttribute('x2',x); a.setAttribute('d',`M50 22H${x}v60H50z`); b.setAttribute('d',`M${x} 22h${(110-x).toFixed(0)}v60H${x}z`); t.innerHTML=''; }
-      else if(q===4){ t.innerHTML=`<b class="g">${Math.round(PV.cut)}%</b>cut off`; } } }
-  else if(g==='sequence'){ const ks=$$('.pvseq i'), ph=k%6; if(ph===0){ PV.a=Math.random()*5|0; PV.b=(PV.a+1+(Math.random()*3|0))%5; ks.forEach(x=>x.classList.remove('lit')); $('#pvg').classList.remove('on'); ks[PV.a].classList.add('lit'); } else if(ph===1){ ks.forEach(x=>x.classList.remove('lit')); ks[PV.b].classList.add('lit'); } else if(ph===2){ ks.forEach(x=>x.classList.remove('lit')); pvG(10+PV.a*20,60); } else if(ph===3){ pvTap(); ks[PV.a].classList.add('lit'); pvG(10+PV.b*20,60); } else if(ph===4){ pvTap(); ks[PV.a].classList.remove('lit'); ks[PV.b].classList.add('lit'); } else ks.forEach(x=>x.classList.remove('lit')); }
-  else if(g==='timing'){ const ph=k%9, c=$('#pvclk'), r=$('#pvtmres'); if(ph===0){ c.textContent='0.00'; c.style.opacity=1; r.innerHTML=''; pvG(50,84); } else if(ph<6){ const e=ph*1.35; c.textContent=e.toFixed(2); c.style.opacity=e<1.5?1:Math.max(0,1-(e-1.5)/1.2); } else if(ph===6){ pvTap(); const e=6.75+Math.random()*.6; c.textContent=e.toFixed(2); c.style.opacity=1; const err=Math.abs(e-7); r.innerHTML=`<b class="${err<=.1?'g':err<=.3?'':'r'}">${err.toFixed(2)}s</b>${e>7?'late':'early'}`; } }
-  else if(g==='reaction'){ const p=$('#pvrx'), ph=k%6; if(ph===0){ p.classList.remove('lit'); p.textContent='wait for it'; pvG(50,86); } else if(ph===3){ p.classList.add('lit'); p.textContent='tap'; } else if(ph===4){ pvTap(); p.classList.remove('lit'); p.innerHTML=`<b>${180+(Math.random()*90|0)} ms</b>`; } }
-  else if(g==='spot'){ const ks=$$('#pvsp i'), ph=k%5; if(!ks.length) return; if(ph===0){ ks.forEach(x=>x.classList.remove('odd','dim')); $('#pvg').classList.remove('on'); } else if(ph===2){ const o=ks[9], r=o.getBoundingClientRect(), b=$('#pv').getBoundingClientRect(); pvG((r.left+r.width/2-b.left)/b.width*100,(r.top+r.height/2-b.top)/b.height*100); } else if(ph===3){ pvTap(); ks[9].classList.add('odd'); ks.forEach((x,i)=>{ if(i!==9) x.classList.add('dim'); }); } }
+  const g=F.g, L=DEMO_LOOP[g], B=BEAT[g]; if(!L||!B) return; const now=performance.now();
+  if(g!==PV.last){ PV.last=g; PV.t0=now; PV.loop=-1; $('#pvg').classList.remove('on','hold'); }
+  const el=now-PV.t0, loop=Math.floor(el/L.ms), ph=el-loop*L.ms;
+  if(loop!==PV.loop){ PV.loop=loop; PV.fired=-1; }
+  const beats=Object.entries(L.at).sort((a,b)=>a[1]-b[1]);
+  for(let i=PV.fired+1;i<beats.length&&beats[i][1]<=ph;i++){ PV.fired=i; if(B[beats[i][0]]) B[beats[i][0]](L); }
 }
+/* 68.34: a colour tapped while its target is off screen (Reaction's "wait for it", Estimate's other half) jumps the loop to the moment its target shows, so
+   the new colour is on a target THAT frame; while the target is up the loop runs on undisturbed */
+function pvJump(set){ const L=DEMO_LOOP[F.g]; if(!L||PV.last!==F.g) return; const cutSide=F.g==='hold'&&set==='cut';
+  const from=cutSide?L.cutShow:L.show, to=F.g==='hold'&&!cutSide?L.cutShow:L.ms, ph=(performance.now()-PV.t0)%L.ms;
+  if(ph>=from&&ph<to) return; PV.t0=performance.now()-from; PV.loop=-1; pvStep(); }
 // build 55 (in passing): the preview interval used to run for the whole session, mid-run included, with a class check as its only guard
+// 68.34: a 40ms tick reads the loop's clock; the loop starts over each time the screen opens, its first beat on the first frame
 let pvT=0;
-on('screen:change',({id})=>{ clearInterval(pvT); pvT=0; if(id==='s-custom') pvT=setInterval(pvStep,520); });
+on('screen:change',({id})=>{ clearInterval(pvT); pvT=0; if(id==='s-custom'){ PV.last=''; pvT=setInterval(pvStep,40); setTimeout(pvStep,0); } });
 
 /* colour wheel: hue around, saturation outward. Writes straight into prefs[set] (bg → tint) */
 const Wheel=(()=>{ const cv=$('#wheel'), cx=cv.getContext('2d'); let set='sq', drawn=false, col='#ffffff';
@@ -176,7 +208,7 @@ const Wheel=(()=>{ const cv=$('#wheel'), cx=cv.getContext('2d'); let set='sq', d
   function draw(){ const R=240; const img=cx.createImageData(480,480); const d=img.data; for(let y=0;y<480;y++) for(let x=0;x<480;x++){ const dx=x-R, dy=y-R, r=Math.hypot(dx,dy); const i=(y*480+x)*4; if(r>R){ d[i+3]=0; continue; } const h=(Math.atan2(dy,dx)*180/Math.PI+360)%360, s=r/R, [rr,gg,bb]=hsl(h,s,set==='bgcol'?.08:.6); d[i]=rr; d[i+1]=gg; d[i+2]=bb; d[i+3]=255; } cx.putImageData(img,0,0); drawn=true; }
   function hsl(h,s,l){ const c=(1-Math.abs(2*l-1))*s, x=c*(1-Math.abs((h/60)%2-1)), m=l-c/2; let r,g,b; if(h<60)[r,g,b]=[c,x,0]; else if(h<120)[r,g,b]=[x,c,0]; else if(h<180)[r,g,b]=[0,c,x]; else if(h<240)[r,g,b]=[0,x,c]; else if(h<300)[r,g,b]=[x,0,c]; else [r,g,b]=[c,0,x]; return [r,g,b].map(v=>Math.round((v+m)*255)); }
     // 57.11b: the background's colour comes off the `bgcol` row now. It is still a DARK colour (lightness .08) — it is a background, not a wash
-  function pick(e){ const b=cv.getBoundingClientRect(); const x=(e.clientX-b.left)/b.width*480, y=(e.clientY-b.top)/b.height*480; const dx=x-240, dy=y-240, r=Math.min(240,Math.hypot(dx,dy)); const h=(Math.atan2(dy,dx)*180/Math.PI+360)%360; const bgSet=set==='bgcol'; const [rr,gg,bb]=hsl(h,r/240,bgSet?.08:.6); col='#'+[rr,gg,bb].map(v=>v.toString(16).padStart(2,'0')).join(''); $('#wheelout').style.background=col; mark(h,r/240); if(bgSet) prefs.tint=col; else prefs.col[F.g][set]=col; applyPrefs(F.g); if(!bgSet) $('#pv').style.setProperty(set==='sq'?'--sq-live':set==='cut'?'--cutp':'--cue',col); }
+  function pick(e){ const b=cv.getBoundingClientRect(); const x=(e.clientX-b.left)/b.width*480, y=(e.clientY-b.top)/b.height*480; const dx=x-240, dy=y-240, r=Math.min(240,Math.hypot(dx,dy)); const h=(Math.atan2(dy,dx)*180/Math.PI+360)%360; const bgSet=set==='bgcol'; const [rr,gg,bb]=hsl(h,r/240,bgSet?.08:.6); col='#'+[rr,gg,bb].map(v=>v.toString(16).padStart(2,'0')).join(''); $('#wheelout').style.background=col; mark(h,r/240); if(bgSet) prefs.tint=col; else prefs.col[F.g][set]=col; applyPrefs(F.g); if(!bgSet){ $('#pv').style.setProperty(set==='sq'?'--sq-live':set==='cut'?'--cutp':'--cue',col); pvJump(set); } }
   cv.addEventListener('pointerdown',e=>{ e.preventDefault(); pick(e); cv.setPointerCapture(e.pointerId); }); cv.addEventListener('pointermove',e=>{ if(e.buttons) pick(e); });
   return { open(s){ set=s; draw(); const nb=$('#wheel-none'); if(nb){ nb.hidden=s!=='bgcol'; nb.textContent=CUSTOM.noColour; } $('#wheel-title').textContent=T(CUSTOM.wheel,{word:ITEM_WORD[s]||s,game:GAMES[F.g].name});
       const cur=s==='bgcol'?(prefs.tint||DESIGNS[prefs.bg].tint):colOf(F.g)[s]; $('#wheelout').style.background=cur;
@@ -199,7 +231,7 @@ register('s-custom',{ onShow(o){ const k=o.unlocks?o.unlocks[0]:null; if(chestOp
 define({
   /* v21 (F.4, build 35): a locked swatch being PREVIEWED belongs to the game it was tapped on. `pvTry` survived the game chip,
      so light blue tried on Quick Tap was drawn on Dots' preview, and on every game after it, until something else cleared it. */
-  'chip-pv'(b){ F.g=b.dataset.v; pvTry.set=null; pvSeen.by=null; renderCustom(); return 'pick'; },
+  'chip-pv'(b){ F.g=b.dataset.v; pvTry.set=null; pvSeen.by=null; renderCustom(); pvStep(); return 'pick'; },
   // B.30: the locked line is the control now — a tap on it goes to the achievement that opens the item, on Progress (build 39)
   pvlock(b){ if(b.dataset.ach){ show('s-prog',{ach:b.dataset.ach}); return 'click'; } return undefined; },
   'wheel-done'(){ Wheel.close(); return 'click'; },
@@ -217,7 +249,7 @@ define({
        REVERSED AT BUILD 69 (68.32): it no longer previews — Aiden: "We shouldn't even be able to hear it." No locked item in Customise makes any sound
        (no preview, no tap sound, no click); a locked colour or background still shows itself on the preview, which is seeing, not hearing */
     if(b.classList.contains('locked')&&k==='track'){ Object.assign(pvTry,{set:'track',v:b.dataset.v,by:null}); renderCustom(); return undefined; }
-    if(b.classList.contains('locked')){ const L=lockById(b.dataset.lock); if(!L) return undefined; Object.assign(pvTry,{set:k,v:b.dataset.v,by:L.id}); renderCustom(); return undefined; }
+    if(b.classList.contains('locked')){ const L=lockById(b.dataset.lock); if(!L) return undefined; Object.assign(pvTry,{set:k,v:b.dataset.v,by:L.id}); renderCustom(); pvJump(k); return undefined; }
     pvTry.set=null; const it=(itemsOf(k)||[]).find(i=>String(i.v)===b.dataset.v); pvSeen.set=k; pvSeen.by=it&&it.by||null; if(b.dataset.v==='wheel'){ Wheel.open(k); return 'pick'; }
     // 57.11b: a pattern no longer clears the colour — the colour survives a change of pattern, which is the whole point of splitting them
     if(k==='bg'){ prefs.bg=b.dataset.v; }
@@ -242,6 +274,8 @@ define({
        localStorage on every navigation. applyPrefs changes no store state, so the save belongs where the store actually changes:
        here, at the tap. (Found by the gate, not by the review, which had noted the dependency for the track row alone.) */
     save(); applyPrefs(F.g); renderCustom();
+    // 68.34: the colour just picked is on a target this frame
+    if(k==='sq'||k==='lead'||k==='cut') pvJump(k);
     if(k==='scale') Snd.scaleHear();
     /* v13 (12.2) → build 62 (61.18): the pack is demonstrated by ONE hit, exactly as a tap sounds in a game, and the button makes no click of
        its own. It was a select, a hit 150ms later and the dispatcher's own select on top — two or three clicks for one choice. OFF is silent. */

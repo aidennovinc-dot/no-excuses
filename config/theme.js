@@ -16,6 +16,20 @@ export const TIMER_HOT = { name:'amber', v:'#FFB020' };
    in Customise. Aiden: "Put the red line over the current black line … because it's hard to see when it's dark." It is the default lead red, named
    here so a player's own lead colour (which is what `--cue` carries) can never turn a lock white or green. ui/theme.js publishes it as --lock */
 export const LOCK = { name:'red', v:'#C8322A' };
+/* build 69 (68.34): CUSTOMISE'S PREVIEWS ARE SHORT LOOPS OF EACH GAME'S KEY MOMENT. Aiden: "A lot of the time is just spent waiting for the animation to
+   play through." `ms` is one loop; `at` is when each beat lands, in ms from the loop's start (ui/screens/customise.js names the same beats); `show` is the
+   moment from which the target is on screen — a colour tapped before it jumps the loop there, so the new colour is on a target that frame (Estimate's Cut
+   half has its own, `cutShow`). Reaction flashes 300ms in and holds; Estimate plays Grow then Cut, 1.4s each; Timing rolls the ball from `from`% onto the
+   mark at `mark`% (the Hidden mode), arriving on the tap */
+export const DEMO_LOOP = {
+  'quick-tap': { ms:1000, show:0, at:{ lit:0, tap:480 } },
+  dots:        { ms:1000, show:0, at:{ dot:0, tap:480 } },
+  hold:        { ms:2800, show:0, cutShow:1400, at:{ grow:0, hold:150, let:1000, cut:1400, aim:1450, line:1700, read:2000 } },
+  sequence:    { ms:1400, show:0, at:{ a:0, b:350, tapA:700, tapB:1050 } },
+  timing:      { ms:1200, show:0, at:{ roll:0, tap:650 }, from:10, mark:72 },
+  reaction:    { ms:1100, show:300, at:{ wait:0, lit:300, tap:650 } },
+  spot:        { ms:1200, show:0, at:{ field:0, aim:250, tap:650 } },
+};
 // the seven backgrounds and the ground each one sits on
 /* v24 (C.6, build 43): three more, one per key — Lantern, Circuit, Thorn. Each WAS the stock stars with that key's own layer drawn over them.
    v29 SECTION A (57.11a, build 57): STARS BELONG TO THE DEFAULT BACKGROUND ONLY. Aiden: every other background is a whole scene, not a layer over

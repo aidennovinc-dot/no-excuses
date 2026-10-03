@@ -941,14 +941,18 @@
   .pvtxt b.g{color:var(--ok)}
   .pvtxt b.r{color:var(--miss)}
   .pv>div{position:absolute;inset:0;display:none}
+  /* build 69 (68.34): the finger is a div of the preview too, and the rule above had hidden it since it was written — it shows the tap again */
+  .pv>#pvg{display:block;inset:auto}
   .pv[data-g="quick-tap"] .pvqt,.pv[data-g="dots"] .pvdots,.pv[data-g="hold"] .pvhold,.pv[data-g="sequence"] .pvseq{display:block}
   /* v8 previews drawn from the real games: a ball and wall, a flash pane, a field of shapes */
   .pvtm{display:none}
   .pv[data-g="timing"] .pvtm{display:block}
-  .pvrx{display:none;place-items:center;font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);transition:background .05s}
+  /* build 69 (68.34): no fade on the flash — a colour tapped is on the pane that frame (the run's flash is instant too) */
+  .pvrx{display:none;place-items:center;font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute)}
   .pv[data-g="reaction"] .pvrx{display:grid}
   .pvrx b{display:block;font-size:24px;color:var(--ink);letter-spacing:0;text-align:center}
   .pvrx.lit{background:var(--sq-live);color:var(--ground)}
+  .pvrx.lit b{color:var(--ground)}
   .pvsp{display:none;flex-wrap:wrap;gap:5% 7%;padding:8% 10%;align-content:center;justify-content:center}
   .pv[data-g="spot"] .pvsp{display:flex}
   .pvsp i{width:11%;aspect-ratio:1;background:var(--sq-live);transition:opacity .3s}
@@ -975,9 +979,11 @@
   .pvhold #pvhcut .pa{fill:var(--cutp,var(--sq-live))}
   .pvhold #pvhcut .pb{fill:color-mix(in srgb,var(--cutp,var(--sq-live)) 40%,var(--ground))}
   .pvhold #pvhcut line{stroke:var(--ink);stroke-width:1.5;opacity:.7}
-  .pvtm .clk{top:36%}
-  .pvtm .tgt{top:8%}
-  .pvtm .tgt b{font-size:14px}
+  /* build 69 (68.34): Timing's preview is the Hidden mode's moment — the ball (the target colour) rolls onto the dashed mark (the lead colour) and the tap lands
+     as it arrives; config/theme.js DEMO_LOOP.timing places both */
+  .pvtm #pvball,.pvtm #pvmark{position:absolute;top:22%;width:14%;aspect-ratio:1;margin-left:-7%;border-radius:50%;box-sizing:border-box}
+  .pvtm #pvball{background:var(--sq-live)}
+  .pvtm #pvmark{border:2px dashed var(--cue);z-index:2}
   .pvseq{display:none;gap:4px;padding:16% 6% 6%}
   .pv[data-g="sequence"] .pvseq{display:flex}
   .pvseq i{flex:1;background:var(--sq);border-radius:0 0 4px 4px}

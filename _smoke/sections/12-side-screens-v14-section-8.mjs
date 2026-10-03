@@ -768,4 +768,40 @@ export async function run() {
       ? ok(`68.32 / 68.33 a locked choice is silent and still: tapping the locked Lantern leaves the Music row where it was (scrollLeft ${l32.before} → ${l32.after}), plays nothing, and "${l32.line}" lands in its own slot with the Background label unmoved (${l32.bgTop}px); all ${l32.n} locked items across five games the same — no sound, no scroll, nothing below moves, each line inside its two-line slot — and a locked colour still shows itself on the preview, silently`)
       : bad('68.32 / 68.33 a locked choice in Customise', JSON.stringify({ ...l32, moved: l32.moved.slice(0, 4), noisy: l32.noisy.slice(0, 4), scrolled: l32.scrolled.slice(0, 4), over: l32.over.slice(0, 4) }));
   }
+  /* build 69 (68.34): CUSTOMISE PREVIEWS SHOW THE COLOUR AT ONCE. Aiden: "A lot of the time is just spent waiting for the animation to play through."
+     Each game's preview is a short loop of its key moment (`DEMO_LOOP` in config/theme.js) with a target in the live colour on screen for MOST of the loop,
+     and a colour tapped at any moment of the loop is on a target in the very next frame. Measured by the paint itself: an element of the preview (the finger
+     aside) counts when it is visible and its background, fill or stroke IS the preview's live target or Cut colour, sampled every 20ms over one loop */
+  {
+    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS, menuSeen: 1, musicG: { menu: false } }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+    const p34 = await page.evaluate(async () => { const R = await import('./ui/router.js'), T = await import('./config/theme.js'), G = await import('./games/registry.js'), w = ms => new Promise(r => setTimeout(r, ms));
+      const frame = () => new Promise(r => requestAnimationFrame(() => r()));
+      R.show('s-custom'); await w(500);
+      const pv = document.getElementById('pv');
+      // a colour as the screen paints it — through a canvas, so rgb() and color(srgb …) (what color-mix computes to) compare alike
+      const cx = document.createElement('canvas').getContext('2d', { willReadFrequently: true }), memo = {};
+      const rgb = c => memo[c] || (memo[c] = (cx.clearRect(0, 0, 1, 1), cx.fillStyle = '#000', cx.fillStyle = c, cx.fillRect(0, 0, 1, 1), [...cx.getImageData(0, 0, 1, 1).data].slice(0, 3).join()));
+      const vis = el => { if (!el.getClientRects().length) return false; const r = el.getBoundingClientRect(); if (r.width * r.height < 60) return false;
+        for (let e = el; e && e !== pv; e = e.parentElement) { const s = getComputedStyle(e); if (s.display === 'none' || s.visibility === 'hidden' || +s.opacity < .5) return false; } return true; };
+      const lit = () => { const live = [pv.style.getPropertyValue('--sq-live'), pv.style.getPropertyValue('--cutp')].filter(Boolean).map(rgb);
+        return [...pv.querySelectorAll('*')].some(el => el.id !== 'pvg' && vis(el) && (s => [s.backgroundColor, s.fill, s.stroke].some(c => c && c !== 'none' && !/rgba\(0, 0, 0, 0\)/.test(c) && live.includes(rgb(c))))(getComputedStyle(el))); };
+      const sw = ITEMSV => document.querySelector(`#c-sq button[data-v="${ITEMSV}"]`);
+      const A = T.ITEMS.sq[3].v, B = T.ITEMS.sq[2].v, out = [];
+      for (const g of Object.keys(G.GAMES)) {
+        sw(A).click(); await w(50);
+        document.querySelector(`#pv-g [data-v="${g}"]`).click();
+        const ms = (T.DEMO_LOOP && T.DEMO_LOOP[g] && T.DEMO_LOOP[g].ms) || 3200, t0 = performance.now(); let n = 0, on = 0;
+        while (performance.now() - t0 < ms) { n++; if (lit()) on++; await w(20); }
+        // the immediate repaint: a colour tapped early in the loop and late in it is on a target in the next frame
+        const now = [];
+        for (const [at, c] of [[.05, B], [.6, A], [.9, B]]) { document.querySelector(`#pv-g [data-v="${g}"]`).click(); await w(ms * at); sw(c).click(); await frame(); now.push(lit() && rgb(pv.style.getPropertyValue('--sq-live')) === rgb(c)); }
+        out.push({ g, ms, on: Math.round(on / n * ms), share: Math.round(on / n * 100) / 100, now });
+      }
+      return out; });
+    const weak34 = p34.filter(r => !(r.share > .5) || r.now.some(x => !x));
+    (p34.length === 7 && !weak34.length)
+      ? ok(`68.34 every Customise preview is a short loop with the target colour on screen most of it, and a colour tapped at any moment is on the target the next frame: ${p34.map(r => `${r.g} ${r.ms}ms loop, colour on ${r.on}ms (${Math.round(r.share * 100)}%)`).join('; ')}`)
+      : bad('68.34 the Customise previews', JSON.stringify(p34));
+  }
 }

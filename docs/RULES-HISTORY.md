@@ -2163,6 +2163,23 @@ anything Aiden settles goes on the list in the build that implements it.
   requirement fits two lines, tucked 4px into its group's gap so Customise still fits the phone (67.35). It used to take no height until it spoke, so a
   locked tap pushed everything under it down (~45px under Music). Gate: `side screens`, "68.32 / 68.33" — the locked Lantern tapped with the row at its
   start: `scrollLeft` unchanged, no `Snd.*` / `Music.*` call, the line shown, the Background label unmoved; then every locked item on five games: no
-  sound, no scroll, the element under its group unmoved, its line inside the slot; a locked colour still painted on the preview. CLAUDE.md's "Customise's
+  sound, no scroll, the element under its group unmoved, its line inside the slot; a locked colour still painted on the preview. (Follow-up: the slot is
+  kept only under a row that holds a locked item.) CLAUDE.md's "Customise's
   music is ONE row" line was cited "(v28 items 2 / 3, v29 item 4, 64.20 — above the game tabs)" and "plays on the MENU too (`prefs.menuTrack`,
   `prefs.everywhere`, `menuTrack()`) and carries on through every run at `RUN_MUSIC.vol` (61.19)"; it is shortened to pay for "never heard before".
+- **Customise's previews show the colour at once (68.34).** Aiden: "A lot of the time is just spent waiting for the animation to play through." Each
+  game's preview is a SHORT LOOP of its key moment, on the clock: `DEMO_LOOP` in `config/theme.js` gives each game its loop (`ms`), its beats (`at`, ms from
+  the loop's start, named the same in `BEAT` in `ui/screens/customise.js`) and `show`, the moment from which its target is on screen; `pvStep` (a 40ms
+  tick) fires each beat as the clock passes it, and the loop restarts each time the screen opens. A colour tapped (swatch, locked swatch or wheel) while
+  its target is off screen jumps the loop to `show` (`pvJump`; Estimate's Cut half has `cutShow`), so the new colour is on a target THAT frame; while the
+  target is up the loop runs on. The loops: Quick Tap 1.0s (a pad lit — the other one each loop — the tap); Dots 1.0s (the dot, the next lead ring, the
+  tap); Estimate 2.8s — Grow 1.4s (the target outline, the fill growing under a held finger, the reading) then Cut 1.4s (the line, the pieces in the Cut
+  colour, the reading); Sequence 1.4s (two keys lit in turn, played back); Timing 1.2s — now the Hidden mode's moment, the ball (target colour) rolling
+  from `from`% onto the dashed mark (lead colour) at `mark`% and the tap landing as it arrives (it was a stopwatch whose numbers never wore the target
+  colour); Reaction 1.1s (the flash 300ms in, held through the tap and its reading; the pane no longer fades); Spot 1.2s (the field, the finger on the odd
+  shape, the tap). The preview's finger (`#pvg`) had been hidden by `.pv>div{display:none}` since that rule was written; it shows again. The engines'
+  own `demo()` (the first-play intro in a run) is not the Customise preview and is unchanged. Audit (the gate's own count, every 20ms over one loop, an
+  element counting when visible and its background / fill / stroke is the live target or Cut colour): Quick Tap 100%, Dots 100%, Estimate 100%, Sequence
+  100%, Timing 100%, Reaction ~70%, Spot 100% (v0.68: Reaction 25%, Timing 0%, Quick Tap's target never measured as lit off a colour tap). Gate:
+  `side screens`, "68.34" — share > 50% per game, and a colour tapped 5% / 60% / 90% into the loop is on a target the next frame. Frames: shots scene
+  `68.34`, one per game plus Estimate's Cut.

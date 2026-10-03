@@ -2473,6 +2473,27 @@ scene('68.32', async (page, browser) => {
   await frame(page, browser, '68.32-locked-track', `Customise after a real tap on the locked LANTERN with the Music row at its start: the row stays put (scrollLeft ${before.scrollLeft} → ${after.scrollLeft}), nothing plays, "${after.line}" in red in its ${after.slot}px slot under the row, the Background label unmoved (${before.bgLabel} → ${after.bgLabel}px)`);
 });
 
+/* 68.34: every game's Customise preview a moment after a colour is tapped — the pink target colour (ITEMS.sq slot 4) on the target at once. Reaction's
+   colour is tapped during "wait for it", which jumps its loop to the flash; Estimate is shown twice, Grow (target colour) and Cut (the Cut pieces colour) */
+scene('68.34', async (page, browser) => {
+  await load(page, { ...OPEN, welcomeSeen: 1, snd: 'off', musicG: { menu: false } }); await show(page, 's-custom'); await sleep(900);
+  const games = await page.evaluate(async () => Object.keys((await import('./games/registry.js')).GAMES));
+  const loops = await page.evaluate(async () => (await import('./config/theme.js')).DEMO_LOOP);
+  const pink = await page.evaluate(async () => (await import('./config/theme.js')).ITEMS.sq[3].v);
+  for (const g of games) {
+    await page.evaluate(g => { document.querySelector('#c-sq button[data-v="#FFFFFF"]').click(); document.querySelector(`#pv-g [data-v="${g}"]`).click(); }, g);
+    await sleep(Math.min(120, loops[g].show ? 60 : 200));
+    await page.evaluate(v => document.querySelector(`#c-sq button[data-v="${v}"]`).click(), pink); await sleep(300);
+    say(g, await page.evaluate(() => ({ live: document.getElementById('pv').style.getPropertyValue('--sq-live'), rx: document.getElementById('pvrx').className })));
+    await frame(page, browser, '68.34-' + g, `Customise, ${g}: the pink target colour (${pink}) tapped — on the preview's target within a frame; the loop is ${loops[g].ms}ms`);
+    if (g === 'hold') {
+      const cut = await page.evaluate(async () => (await import('./config/theme.js')).ITEMS.cut[2].v);
+      await page.evaluate(v => document.querySelector(`#c-cut button[data-v="${v}"]`).click(), cut); await sleep(450);
+      await frame(page, browser, '68.34-hold-cut', `Customise, Estimate: a Cut pieces colour (${cut}) tapped during Grow — the loop jumps to Cut and the pieces are in it at once`);
+    }
+  }
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }
