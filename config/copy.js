@@ -436,6 +436,8 @@ export const ABOUT = {
   devTour:'play this tour', devTourKey:'Skill Key intro', devTourWelcome:'Welcome video',
   // build 69 (68.28): the hint over the Gauntlet · Versus button
   devDuel:'duels against the computer · test only',
+  // build 69 (68.44): Excuse rewards (mock) — the hint, the master switch's name, and each switch's state
+  devRw:'excuse rewards (mock) · the master switch, then one per reward · test only, nothing earns them yet', devRwMaster:'Excuse rewards (mock)', devRwOn:'on', devRwOff:'off',
   devAnim:'animations · nothing is stored', devKeyIn:'key arrival', devSeg:'segment advance', devWhole:'key complete', devChest:'chest {n} opening',
   // v23 (L.8f, build 40): the meter as the app reads it right now, and whether Testing's override is what it is reading
   // v28 (item 9, build 53): Testing is the one screen that works in the RAW meter (three bands of 100); everywhere a player looks it is meterPct(), 0–100

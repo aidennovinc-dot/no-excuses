@@ -39,6 +39,7 @@ import { CHEER_LOOK, CONFETTI, CONFETTI_VARY, GIFT_LOOK, REVEAL } from "../confi
 import { CARD, KEY } from "../config/copy.js";
 import { Music, Snd } from "../audio.js";
 import { esc } from "../core.js";
+import { emit } from "../core/events.js";
 import { chestSvg, msgPreview, symSvg } from "./chest.js";
 import { mustWatch } from "./video.js";
 
@@ -279,6 +280,8 @@ const msgOf = () => (cur && cur.card && cur.card.msg) || '';
 function throwConfetti(host, chest, o = {}) { if (!host || !CONFETTI[chest]) return false;
   const html = confettiHtml(chest); host.insertAdjacentHTML('beforeend', o.cls ? html.replace('class="rconf"', `class="rconf ${o.cls}"`) : html);
   if (!o.silent) Snd.confetti();
+  // build 69 (68.44): wherever confetti falls, what comes after it can follow it (ui/rewards.js's sweeper, a Testing mock)
+  emit('confetti:thrown', { host, chest });
   return true; }
 export { confettiHtml, throwConfetti };
 export { msgOf, on as revealOn, play as playReveal, go as revealGo, stop as stopReveal, tap as revealTap };

@@ -2827,3 +2827,31 @@
   .tiny{position:fixed;z-index:95;pointer-events:none;background-repeat:no-repeat;animation:tinyrun var(--tms) steps(var(--tf)) infinite,tinypop .3s ease both}
   @keyframes tinyrun{to{background-position:calc(-1 * var(--tw)) 0}}
   @keyframes tinypop{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
+  /* build 69 (68.44): THE EXCUSE REWARDS, MOCKED (ui/rewards.js, config/excuses.js REWARDS). A `.rw` is a reward's box — never a tap target, below
+     everything else on its screen, and clipped, so a figure that peeks from behind a button or rises from behind a chest shows only the part of it
+     past the edge. A `.rwfig` is one sprite sheet stepped a frame at a time, like Tiny Aiden; its numbers are REWARD_FIG's */
+  .rw{position:absolute;z-index:0;pointer-events:none;overflow:hidden}
+  /* a box is placed where it was cleared and never slides: no screen's entrance animation for its children (the result's `#s-over.on>*` rise) moves it */
+  .screen>.rw,#s-over.on>.rw{animation:none}
+  .rwfig{position:absolute;left:0;bottom:0;display:block;background-repeat:no-repeat;animation:rwstep var(--tms) steps(var(--tf)) var(--tdl) infinite}
+  @keyframes rwstep{from{background-position:0 0}to{background-position:calc(-1 * var(--tw)) 0}}
+  #s-menu.rwtitle .titlewrap{margin-top:var(--rwt)}
+  .rwrow{display:flex;justify-content:space-evenly;align-items:flex-end}
+  .rwrow .rwfig{position:relative}
+  #grid.dim ~ .rw{visibility:hidden}
+  .rwpeek .rwfig{bottom:auto;top:0;animation:rwstep var(--tms) steps(var(--tf)) var(--tdl) infinite,rwpeek var(--pms) ease-in-out var(--pdl) infinite}
+  @keyframes rwpeek{0%,14%,86%,100%{transform:translateX(var(--pk))}32%,68%{transform:translateX(0)}}
+  .rwrise .rwfig{bottom:auto;animation:rwstep var(--tms) steps(var(--tf)) var(--tdl) infinite,rwrise .55s cubic-bezier(.2,1.5,.4,1) var(--rdl) both}
+  @keyframes rwrise{from{transform:translateY(var(--rise))}}
+  .rwpop .rwfig{animation:rwstep var(--tms) steps(var(--tf)) var(--tdl) infinite,rwpopin .4s cubic-bezier(.2,1.4,.4,1) both}
+  @keyframes rwpopin{from{transform:translateY(40%) scale(.4);opacity:0}}
+  .rw .rwcard{background:none;transform-origin:50% 90%;animation:rwcardup .6s cubic-bezier(.2,1.5,.4,1) both,rwcardwob 2.4s ease-in-out .6s infinite}
+  .rwcard svg{display:block}
+  @keyframes rwcardup{from{transform:translateY(60%) rotate(-25deg);opacity:0}}
+  @keyframes rwcardwob{50%{transform:rotate(4deg) translateY(-2px)}}
+  .rwsweep b{position:absolute;bottom:2px;width:6px;height:3px;border-radius:1px;animation:rwswept .45s ease-in var(--bdl) forwards}
+  @keyframes rwswept{to{transform:translateX(var(--bx)) rotate(220deg);opacity:0}}
+  .rwsweep .rwfig{transform:translateX(-100%);animation:rwstep var(--tms) steps(var(--tf)) var(--tdl) infinite,rwwalk var(--sms) linear both}
+  @keyframes rwwalk{from{transform:translateX(-100%)}to{transform:translateX(var(--sx))}}
+  .rconf.rwswept{transition:opacity .6s;opacity:0}
+  .chip.dim{opacity:.45}

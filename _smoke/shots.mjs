@@ -2548,6 +2548,61 @@ scene('68.28', async (page, browser) => {
   await frame(page, browser, '68.28-lost-at-3', 'The run over at duel 3: "You got to duel 3 of 7 · lost to Estimate · Grow", the two won duels ticked, Retry and Back, and the board row (2 of 7)');
 });
 
+/* 68.44: THE EXCUSE REWARDS, MOCKED — Testing's "Excuse rewards (mock)" master switch on (prefs.rewardMock), every reward on. Each frame waits for the
+   reward's own box to be placed (ui/rewards.js places a screen's rewards once its entrance animations have landed) and reports its rect and whether it
+   touches any button or text rect — the same test the page makes before placing it, made again here off the live page */
+const RW44 = { ...RUN69, rewardMock: { on: 1 } };
+const rwWait = (page, id, ms = 8000) => page.waitForFunction(id => !!document.querySelector(`.rw[data-rw="${id}"]`), { timeout: ms }, id).catch(() => null);
+const rwRead = (page, id) => page.evaluate(id => { const shown = el => !el.checkVisibility || el.checkVisibility({ opacityProperty: true, visibilityProperty: true });
+  const B = [], rg = document.createRange();
+  for (const sc of [document.querySelector('.screen.on'), ...[...document.body.children].filter(e => !e.classList.contains('screen'))].filter(e => e && shown(e))) {
+    for (const b of sc.querySelectorAll('button,a[href],input')) if (!b.closest('.rw') && shown(b)) B.push(Object.assign(b.getBoundingClientRect().toJSON(), { what: b.id || b.className }));
+    const w = document.createTreeWalker(sc, NodeFilter.SHOW_TEXT); let n;
+    while ((n = w.nextNode())) { if (!n.nodeValue.trim() || !n.parentElement || n.parentElement.closest('.rw,script,style') || !shown(n.parentElement)) continue; rg.selectNodeContents(n); for (const r of rg.getClientRects()) if (r.width) B.push(Object.assign(r.toJSON(), { what: JSON.stringify(n.nodeValue.trim().slice(0, 24)) })); } }
+  return [...document.querySelectorAll(`.rw[data-rw="${id}"]`)].map(e => { const r = e.getBoundingClientRect();
+    return { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height), touches: B.filter(b => r.left < b.right - .5 && r.right > b.left + .5 && r.top < b.bottom - .5 && r.bottom > b.top + .5).map(b => b.what + " @" + Math.round(b.top) + "-" + Math.round(b.bottom)) }; }); }, id);
+scene('68.44', async (page, browser) => {
+  // the main menu: the row along the top of NO EXCUSES, and the peekers beside the buttons, caught as they lean out
+  await load(page, RW44); await show(page, 's-menu'); await rwWait(page, 'dancers-menu'); await sleep(1200);
+  await page.evaluate(() => { for (const a of document.getAnimations()) if (a.animationName === 'rwpeek') { a.pause(); a.currentTime = a.effect.getComputedTiming().duration * .5 + a.effect.getTiming().delay; } });
+  say('title', await rwRead(page, 'dancers-title')); say('peekers', await rwRead(page, 'dancers-menu'));
+  await frame(page, browser, '68.44-menu-dancers', 'Main menu, Excuse rewards (mock) on: a row of dancers standing along the top of NO EXCUSES (room made above it), and dancers leaning out from behind Play, Progress and Customise — each box clear of every button and line of text');
+  // the game select map, scrolled to its foot: the row across the bottom, below the last row and above the home bar
+  await load(page, { ...RW44, allOpen: 1, spill: { games: 1, key: 1, pro: 1, thorns: 1 } }); await show(page, 's-pick'); await rwWait(page, 'dancers-map');
+  await page.evaluate(() => { const s = document.getElementById('s-pick'); s.scrollTop = s.scrollHeight; }); await sleep(900);
+  say('map', await rwRead(page, 'dancers-map'));
+  say('foot', await page.evaluate(() => { const r = document.querySelector('.rw[data-rw="dancers-map"]').getBoundingClientRect(), last = Math.max(...[...document.querySelectorAll('#grid > :not(.gridlines):not([hidden])')].map(e => e.getBoundingClientRect().bottom));
+    return { rowTop: Math.round(r.top), rowBottom: Math.round(r.bottom), lastRowBottom: Math.round(last), homeBarTop: innerHeight - 34 }; }));
+  await frame(page, browser, '68.44-map-dancers', 'Game select map scrolled to its foot: a row of six dancers across the bottom, below the last row of chests and above the home bar');
+  // a chest spilling: Testing's replay of the Skill chest's spill on the map — the dancers pop up from behind its top edge once its words are out
+  await page.evaluate(() => { const s = document.getElementById('s-pick'); s.scrollTop = 0; });
+  await show(page, 's-pick', { spillDemo: 'key' }); await rwWait(page, 'dancers-chest', 12000); await sleep(700);
+  say('chest', await rwRead(page, 'dancers-chest'));
+  await frame(page, browser, '68.44-chest-dancers', 'The Skill chest’s spill on the map (Testing’s replay): once its words are out, dancers rise from behind the chest’s top edge — beside its words, never over them');
+  // a bad result: a Quick Tap Sprint with no taps (the lowest tier) — the slow clapper beside the number, the judge's card on the other side
+  await load(page, RW44); await runOf(page, 'quick-tap');
+  for (let i = 0; i < 200 && !(await page.evaluate(() => document.querySelector('.screen.on')?.id === 's-over')); i++) await sleep(100);
+  await rwWait(page, 'clapper', 10000); await sleep(900);
+  say('clapper', await rwRead(page, 'clapper')); say('verdict', await page.evaluate(() => document.getElementById('verdict').className + ' · ' + document.getElementById('over-score').textContent));
+  await frame(page, browser, '68.44-clapper-result', 'A bad result (Quick Tap Sprint, no taps, the lowest tier "Meh."): a slow clapper standing beside the number, the judge’s scorecard held up on its other side');
+  // a better result: the same run with 30 hits — the scorecard alone, its number and tier word from the verdict; no clapper (not the lowest tier)
+  await page.evaluate(async () => { const E = await import('./core/events.js'); E.emit('run:finish', { run: { t: Date.now(), g: 'quick-tap', d: 'two', s: 5, hits: 34, misses: 0, v: 4 }, isBest: false, two: false, fresh: [], ach: [], adv: null, excuse: null }); });
+  await sleep(600); await show(page, 's-over'); await rwWait(page, 'scorecard', 10000); await sleep(900);
+  say('scorecard', await rwRead(page, 'scorecard')); say('clapperGone', await page.evaluate(() => !document.querySelector('.rw[data-rw="clapper"]')));
+  say('verdict', await page.evaluate(() => document.getElementById('verdict').className + ' · ' + document.getElementById('over-score').textContent));
+  await frame(page, browser, '68.44-scorecard', 'A better result: the judge’s scorecard held up beside the number — the card’s number and word are the verdict’s tier (presentation only); no clapper, since this is not the lowest tier');
+  // the sweeper: the Games chest's congratulations card, its confetti fallen; the sweeper crossing the bottom, pushing the settled pieces off
+  await load(page, RW44); await toCard(page, 'games');
+  await rwWait(page, 'sweeper', 15000); await sleep(1500);
+  say('sweeper', await rwRead(page, 'sweeper'));
+  await frame(page, browser, '68.44-sweeper', 'The Games chest’s card after its confetti has settled: a sweeper crossing the bottom of the screen above the home bar, pushing the fallen pieces off the edge — clear of Continue and every line');
+  // the Testing screen's switches
+  await load(page, RW44); await show(page, 's-testing'); await sleep(600);
+  await page.evaluate(() => { const s = document.getElementById('s-testing'), r = document.getElementById('dev-rw').getBoundingClientRect(); s.scrollTop += r.top - innerHeight * .45; }); await sleep(400);
+  say('switches', await page.evaluate(() => [...document.querySelectorAll('#dev-rw button')].map(b => b.textContent + (b.classList.contains('sel') ? ' [sel]' : ''))));
+  await frame(page, browser, '68.44-testing-switches', 'Testing: "Excuse rewards (mock)" — the master switch, then one switch per reward from config/excuses.js REWARDS, each on / off');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

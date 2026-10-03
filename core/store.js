@@ -17,6 +17,7 @@
 import { KEY_THEMES, SCALES } from "../config/audio.js";
 import { BUILD_FLAGS, RUN_SCHEMA } from "../config/build.js";
 import { CHESTS, GAUNTLETS } from "../config/chests.js";
+import { REWARDS } from "../config/excuses.js";
 import { MESSAGES } from "../config/messages.js";
 import { DESIGNS, ITEMS, SQ_WAS } from "../config/theme.js";
 import { GAMES, GC } from "../games/registry.js";
@@ -54,6 +55,10 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
   const o={ bg:has(DESIGNS,p.bg)?p.bg:'stars', tint:hex(p.tint,''), snd:SND.includes(p.snd)?p.snd:'space', musicG:{}, lastGame:has(GAMES,p.lastGame)?p.lastGame:'quick-tap',
     name:typeof p.name==='string'?p.name.trim().toUpperCase().slice(0,10):'', scale:has(SCALES,p.scale)?p.scale:'penta',
     allOpen:dev&&!!p.allOpen, supporter:dev&&!!p.supporter, adRuns:Number.isInteger(p.adRuns)&&p.adRuns>=0?p.adRuns:0,
+    /* build 69 (68.44): `rewardMock`, Testing's "Excuse rewards (mock)" — `on` the master switch, then one per REWARDS id, 1 on / 0 off (absent is on).
+       A DEV flag like the two above (S5): read only while BUILD_FLAGS.dev, so a planted one is nothing in a release build. A preference: Fresh game
+       keeps it. No ladder step: absent is "master off". */
+    rewardMock:dev&&isObj(p.rewardMock)?Object.fromEntries(Object.entries(p.rewardMock).filter(([k,v])=>(k==='on'||REWARDS.some(r=>r.id===k))&&(v===0||v===1))):{},
     /* v31 (60.28, build 60): `firstRun` is when this profile finished its first run ever — the clock a new player's ad-free ten
        minutes runs from (ADS.graceMs). Written once by ui/ads.js and never again; a preference, so Fresh game keeps it, and no
        ladder step, because an absent one means "has not finished a run yet", which is what a profile without it already means. */

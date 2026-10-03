@@ -317,6 +317,11 @@
        Dev only (S5): the button is the only way to it, and the native build strips it with every [data-dev] node -->
   <div class="hint" id="dev-duel-hint"></div>
   <div class="chips" id="dev-duel"><button data-act="gaunt-versus" class="chip" id="dev-gversus" data-dev></button></div>
+  <!-- build 69 (68.44): Excuse rewards (mock) — a master switch and one switch per reward, generated from config/excuses.js REWARDS by
+       ui/screens/testing.js and drawn by ui/rewards.js. Dev only (S5): inside this [data-dev] screen, and the store refuses prefs.rewardMock outside
+       BUILD_FLAGS.dev -->
+  <div class="hint" id="dev-rw-hint"></div>
+  <div class="chips" id="dev-rw"></div>
   <div class="chips" id="dev-anim"><button data-act="dev-keyin" class="chip">key arrival</button><button data-act="dev-seg" class="chip">segment advance</button><button data-act="dev-whole" data-tier="0" class="chip">key 1 earned</button><button data-act="dev-whole" data-tier="1" class="chip">pro key earned</button><button data-act="dev-whole" data-tier="2" class="chip">author key earned</button><button data-act="dev-keyintro" data-tier="0" class="chip">key 1 created</button><button data-act="dev-keyintro" data-tier="1" class="chip">pro key created</button><button data-act="dev-keyintro" data-tier="2" class="chip">author key created</button><button data-act="dev-chest" data-chest="games" class="chip">replay games chest opening</button><button data-act="dev-chest" data-chest="key" class="chip">replay key chest opening</button><button data-act="dev-chest" data-chest="pro" class="chip">replay pro chest opening</button><button data-act="dev-chest" data-chest="thorns" class="chip">replay thorns chest opening</button></div>
 </section>
 

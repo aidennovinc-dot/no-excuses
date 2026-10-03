@@ -94,6 +94,21 @@ export async function run() {
   (gv.on === 's-gauntlet' && gv.g === 'g3' && gv.rows === 7 && still === 's-gauntlet' && back === 's-testing')
     ? ok('68.28 Testing → Gauntlet · Versus opens its seven-duel screen; Next duel with no run in flight starts nothing; Back returns to Testing')
     : bad('68.28 the Gauntlet · Versus buttons', JSON.stringify({ gv, still, back }));
+  /* build 69 (68.44): Excuse rewards (mock) — the master switch on, one reward's own switch off, then both back; each flip stored in prefs.rewardMock
+     and the switch's own label saying which it is now. One switch per REWARDS row, read from config */
+  {
+    const EX = await import(pathToFileURL(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'config', 'excuses.js')).href + '?b69rw');
+    const one = EX.REWARDS[EX.REWARDS.length - 1].id;
+    const chip = k => page.evaluate(k => { const b = document.querySelector(`#dev-rw [data-rw="${k}"]`); return b ? { sel: b.classList.contains('sel'), dim: b.classList.contains('dim'), txt: b.textContent } : null; }, k);
+    const count = await page.evaluate(() => document.querySelectorAll('#dev-rw [data-act="dev-rw"]').length);
+    await tap('#dev-rw [data-rw="on"]', 'testing · excuse rewards (mock) on'); await tap(`#dev-rw [data-rw="${one}"]`, 'testing · one reward off');
+    const a = { m: (await getJSON('ne')).prefs.rewardMock, master: await chip('on'), one: await chip(one) };
+    await tap(`#dev-rw [data-rw="${one}"]`, 'testing · one reward on'); await tap('#dev-rw [data-rw="on"]', 'testing · excuse rewards (mock) off');
+    const b = { m: (await getJSON('ne')).prefs.rewardMock, master: await chip('on'), one: await chip(one) };
+    (count === EX.REWARDS.length + 1 && a.m.on === 1 && a.m[one] === 0 && a.master.sel && !a.one.sel && !a.one.dim && b.m.on === 0 && b.m[one] === 1 && !b.master.sel && b.one.sel && b.one.dim)
+      ? ok(`68.44 Testing's Excuse rewards (mock): a master switch and ${EX.REWARDS.length} reward switches; each flip is stored in prefs.rewardMock and the switch says on / off (a reward's switch dimmed while the master is off)`)
+      : bad('68.44 the Excuse rewards (mock) switches', JSON.stringify({ count, a, b }));
+  }
   await tap('#dev-story', 'testing · replay the intro'); await sleep(300);
   (await page.evaluate(() => !!document.querySelector('#s-menu.story'))) ? ok('replay the intro shows the title sequence') : bad('replay the intro', 'on ' + (await onScreen()));
   await tapTitle(); await sleep(400);
@@ -123,7 +138,7 @@ export async function run() {
   (await onScreen()) === 's-pick' ? ok('result back opens the pick sheet') : bad('result back opens the pick sheet', 'on ' + (await onScreen()));
   await tap('#time-row .tbtn:nth-child(2)', 'sheet · length'); await tap('#vs-wrap [data-p="f"]', 'sheet · with a friend'); await tap('#vs-wrap [data-p2="1"]', 'sheet · pass & play'); await tap('#vs-wrap [data-p="0"]', 'sheet · solo');
   // build 18: the chips are one act per screen, and the overlays (lock box, Next card, the full stop) are acts too
-  const expected = ['go', 'back', 'game', 'diff', 'time', 'vs', 'vs2', 'lvl-back', 'go-btn', 'quit', 'over-back', 'share', 'chip-bd', 'radar', 'chip-pv', 'pfold', 'chip-over', 'item', 'pvlock', 'ach', 'unl', 'prac', 'dev-open', 'dev-sup', 'dev-story', 'dev-unl', 'dev-menu', 'dev-tour', 'gaunt-versus', 'gaunt-next', 'support', 'wheel-done', 'lock-no', 'lock-go', 'nextup', 'egg', 'ptab', 'chest', 'msg'];
+  const expected = ['go', 'back', 'game', 'diff', 'time', 'vs', 'vs2', 'lvl-back', 'go-btn', 'quit', 'over-back', 'share', 'chip-bd', 'radar', 'chip-pv', 'pfold', 'chip-over', 'item', 'pvlock', 'ach', 'unl', 'prac', 'dev-open', 'dev-sup', 'dev-story', 'dev-unl', 'dev-menu', 'dev-tour', 'dev-rw', 'gaunt-versus', 'gaunt-next', 'support', 'wheel-done', 'lock-no', 'lock-go', 'nextup', 'egg', 'ptab', 'chest', 'msg'];
   const missing = expected.filter(a => !seen.has(a));
   missing.length ? bad('every data-act driven once', 'not driven: ' + missing.join(', ')) : ok(`every data-act driven once (${expected.length}) — not covered: again, pass-go, to-games, seqdone, praclock, dev-fresh, adskip, toast, cere-tap, reveal-go, reveal-msg (the reveal's three are driven in the build 46 section)`);
 }

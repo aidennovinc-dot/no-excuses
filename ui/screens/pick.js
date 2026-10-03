@@ -269,7 +269,7 @@ function renderChests(){ const m=modeCount(), rang=[];
     const old=pic.querySelector('.pburst'); if(old) old.remove(); if(spill) pic.insertAdjacentHTML('beforeend',burstHtml(id));
     el.classList.toggle('spill',spill);
     const w=$(`#grid .chestwords[data-for="${id}"]`); if(w){ w.hidden=st!=='open'; w.innerHTML=st==='open'?wordsHtml(id):''; setVars(w,spillVars()); w.classList.toggle('spill',spill); }
-    if(spill){ prefs.spill=Object.assign({},prefs.spill,{[id]:1}); save(); } });
+    if(spill){ prefs.spill=Object.assign({},prefs.spill,{[id]:1}); save(); emit('chest:spill',{id}); } });
   // L.9c: one quiet sound the first time the map paints a chest READY — once, however many became ready together (guess)
   if(rang.length){ prefs.readySeen=Object.assign({},prefs.readySeen,Object.fromEntries(rang.map(id=>[id,1]))); save(); Snd.chestReady(); }
   /* v29 Section A (57.2, build 57): NOTHING CRACKS ON THE MAP ANY MORE. Item 13's arrival — a crack drawing itself on with its own tick as each
@@ -388,7 +388,7 @@ const SPILL_DEMO_MS=3600;
 function spillDemo(id){ const b=$(`#grid .chest[data-chest="${id}"]`), w=$(`#grid .chestwords[data-for="${id}"]`); if(!b||!w) return;
   b.hidden=false; b.classList.remove('locked','ready','metered'); b.classList.add('open','spill');
   const pic=b.querySelector('.pic'); pic.dataset.need=GRID.chestOpened; const old=pic.querySelector('.pburst'); if(old) old.remove(); pic.insertAdjacentHTML('beforeend',burstHtml(id));
-  w.hidden=false; w.innerHTML=wordsHtml(id); setVars(w,spillVars()); w.classList.add('spill'); layoutGrid(); chestInView(id);
+  w.hidden=false; w.innerHTML=wordsHtml(id); setVars(w,spillVars()); w.classList.add('spill'); layoutGrid(); chestInView(id); emit('chest:spill',{id});
   setTimeout(()=>{ b.classList.remove('spill'); w.classList.remove('spill'); renderChests(); layoutGrid(); drawLines(false); },SPILL_DEMO_MS); }
 on('challenge',c=>{ show('s-pick',{g:c.g,d:c.d,s:c.s}); showChallenge(c); });
 on('run:abort',({quiet,gaunt,again}={})=>{ if(!again&&(quiet||gaunt)) show('s-pick'); });

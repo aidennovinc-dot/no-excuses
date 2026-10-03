@@ -837,4 +837,117 @@ export async function run() {
       ? ok(`68.35 the target colours are the bright set, slot for slot from config (${want35}), on the Target colour and Cut pieces rows; none is the lock red or the unlock green; every one reads on every background (lowest ratio ${Math.min(...seven.flatMap(c => Object.values(TH35.DESIGNS).map(x => ratio35(c, x.tint)))).toFixed(2)}); the six earned ones bright, not pastel; a profile holding a retired pastel reads as its slot's new colour (${c35.stored.qt}, ${c35.stored.holdCut})`)
       : bad('68.35 the target colours', JSON.stringify({ seven, sq: c35.sq.map(s => s.v), cut: c35.cut.map(s => s.v), painted, clash, low35, pastel35, stored: c35.stored, slot3, slot6 }));
   }
+  /* build 69 (68.44): THE EXCUSE REWARDS, MOCKED — Testing's "Excuse rewards (mock)" (prefs.rewardMock). With the master switch ON, each reward in
+     config/excuses.js REWARDS shows where its row says; no reward box touches any button or text rect on screen (read here by the gate's own walk of the
+     page, not the module's); none is on screen while #game is on; and with the master OFF no reward element exists anywhere. Rows, ids and numbers come
+     from config — nothing typed */
+  {
+    const EX = await import(pathToFileURL(path.join(root, 'config', 'excuses.js')).href + '?b69rw');
+    const VD = await import(pathToFileURL(path.join(root, 'config', 'verdicts.js')).href + '?b69rw');
+    const CH = await import(pathToFileURL(path.join(root, 'config', 'chests.js')).href + '?b69rw');
+    const RWID = Object.fromEntries(EX.REWARDS.map(r => [r.id, r])), LOW = VD.VERDICT_TIERS[VD.VERDICT_TIERS.length - 1].id;
+    const base44 = { ...OPEN_PREFS, menuSeen: 1, keySeen: 1, keysSeen: 1, menuUnl: { about: 1, prog: 1, board: 1 }, spill: { games: 1, key: 1, pro: 1, thorns: 1 }, readySeen: { games: 1, key: 1, pro: 1, thorns: 1 },
+      tuts: { next: 'done', about: 'done', prog: 'done', board: 'done', games: 'done', est: 'done', mini: 'done', mega: 'done' } };
+    const boot44 = async prefs => { await setStorage({ ne: { v: 7, prefs: { ...base44, ...prefs }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } }); await page.reload({ waitUntil: 'networkidle0' }); await sleep(450); };
+    const toScreen = id => page.evaluate(async id => (await import('./ui/router.js')).show(id), id);
+    // every reward box on screen, and every button / text rect it touches — the screen on show, or a full-screen layer (a ceremony) in its place
+    const rwState = () => page.evaluate(() => { const shown = el => !el.checkVisibility || el.checkVisibility({ opacityProperty: true, visibilityProperty: true });
+      const cere = [...document.querySelectorAll('.cere')].find(c => !c.hidden && shown(c)), top = cere || document.querySelector('.screen.on'), B = [], rg = document.createRange();
+      for (const sc of [top, ...[...document.body.children].filter(e => !e.classList.contains('screen'))].filter(e => e && shown(e))) {
+        for (const b of sc.querySelectorAll('button,a[href],input,select,textarea')) if (!b.closest('.rw') && shown(b)) { const r = b.getBoundingClientRect(); if (r.width && r.height) B.push({ r, what: b.id || b.className || b.tagName }); }
+        const w = document.createTreeWalker(sc, NodeFilter.SHOW_TEXT); let n;
+        while ((n = w.nextNode())) { const p = n.parentElement; if (!n.nodeValue.trim() || !p || p.closest('.rw,script,style') || !shown(p)) continue; rg.selectNodeContents(n); for (const r of rg.getClientRects()) if (r.width && r.height) B.push({ r, what: JSON.stringify(n.nodeValue.trim().slice(0, 20)) }); } }
+      return [...document.querySelectorAll('.rw')].map(e => { const r = e.getBoundingClientRect(), cs = getComputedStyle(e);
+        return { id: e.dataset.rw, l: r.left, t: r.top, r: r.right, b: r.bottom, pe: cs.pointerEvents, act: e.closest('[data-act]') ? e.closest('[data-act]').id : '', hit: B.filter(x => r.left < x.r.right - .5 && r.right > x.r.left + .5 && r.top < x.r.bottom - .5 && r.bottom > x.r.top + .5).map(x => x.what + ' @' + [x.r.left, x.r.top, x.r.right, x.r.bottom].map(Math.round).join(',') + ' vs ' + [r.left, r.top, r.right, r.bottom].map(Math.round).join(',')) }; }); });
+    const rwAll = () => page.evaluate(() => document.querySelectorAll('.rw').length);
+    const waitRw = (id, ms = 20000) => until(id => !!document.querySelector(`.rw[data-rw="${id}"]`), id, ms).then(() => true).catch(() => false);
+    const touching = st => st.filter(x => x.hit.length || x.pe !== 'none').map(x => `${x.id} → ${x.hit.join(' / ') || 'pointer-events ' + x.pe}`);
+    const runQT = async (taps) => { await toScreen('s-pick'); await sleep(400); await click('.tile[data-game="quick-tap"]'); await sleep(400);
+      await page.evaluate(() => document.querySelectorAll('#diff-row .choice')[0].click()); await sleep(420); await page.evaluate(() => document.querySelectorAll('#time-row .tbtn')[0].click()); await sleep(200);
+      await click('#go-btn'); await driveToResult('quick-tap', '68.44 a Quick Tap Sprint', 40000, !taps); };
+
+    // MASTER OFF (the default, and a profile whose reward switches are all on but the master is not): nothing on the menu, the map, a result
+    await boot44({ rewardMock: Object.fromEntries(EX.REWARDS.map(r => [r.id, 1])) });
+    const off = []; await toScreen('s-menu'); await sleep(3500); off.push(['menu', await rwAll()]);
+    await toScreen('s-pick'); await sleep(3500); off.push(['map', await rwAll()]);
+    await runQT(false); await sleep(5000); off.push(['bad result', await rwAll()]);
+    off.every(([, n]) => n === 0) ? ok(`68.44 with the master switch OFF no reward element exists (${off.map(([w, n]) => w + ' ' + n).join(', ')})`) : bad('68.44 master OFF leaves nothing on screen', JSON.stringify(off));
+
+    // MASTER ON — the main menu: the row on top of NO EXCUSES, the peekers beside the buttons
+    await boot44({ rewardMock: { on: 1 } }); await toScreen('s-menu');
+    const menuUp = (await waitRw('dancers-title')) && (await waitRw('dancers-menu')); await sleep(600);
+    const m44 = await page.evaluate(() => { const rg = document.createRange(); rg.selectNodeContents(document.getElementById('wordmark')); const t = rg.getBoundingClientRect();
+      const items = [...document.querySelectorAll('#s-menu .item')].filter(b => b.getBoundingClientRect().height).map(b => b.getBoundingClientRect());
+      const box = id => [...document.querySelectorAll(`.rw[data-rw="${id}"]`)].map(e => e.getBoundingClientRect());
+      return { title: box('dancers-title').map(r => ({ onTop: r.bottom <= t.top + .5, over: r.left >= t.left - 1 && r.right <= t.right + 1 })),
+        peek: box('dancers-menu').map(r => ({ beside: items.some(b => (Math.abs(r.left - b.right) <= 1 || Math.abs(r.right - b.left) <= 1) && r.top >= b.top - 1 && r.bottom <= b.bottom + 1), z: 0 })) }; });
+    const ms44 = await rwState();
+    (menuUp && m44.title.length === RWID['dancers-title'].n && m44.title.every(x => x.onTop && x.over) && m44.peek.length >= 1 && m44.peek.length <= RWID['dancers-menu'].n && m44.peek.every(x => x.beside) && !touching(ms44).length)
+      ? ok(`68.44 the main menu: ${m44.title.length} dancers standing on top of NO EXCUSES, ${m44.peek.length} peeking from behind a button's edge; no box touches a button or any text, none is a tap target`)
+      : bad('68.44 the main menu rewards', JSON.stringify({ menuUp, m44, touching: touching(ms44) }));
+
+    // the game select map: the row across the bottom, below the last row and above the home bar (scrolled to the foot)
+    await toScreen('s-pick'); const mapUp = await waitRw('dancers-map'); await page.evaluate(() => { const s = document.getElementById('s-pick'); s.scrollTop = s.scrollHeight; }); await sleep(600);
+    const g44 = await page.evaluate(() => { const r = document.querySelector('.rw[data-rw="dancers-map"]').getBoundingClientRect();
+      const last = Math.max(...[...document.querySelectorAll('#grid > :not(.gridlines)')].filter(e => e.getBoundingClientRect().height).map(e => e.getBoundingClientRect().bottom));
+      const d = document.createElement('div'); d.style.cssText = 'position:fixed;height:env(safe-area-inset-bottom)'; document.body.appendChild(d); const sab = d.getBoundingClientRect().height; d.remove();
+      return { top: Math.round(r.top), bottom: Math.round(r.bottom), last: Math.round(last), floor: innerHeight - sab }; });
+    const gs44 = await rwState();
+    (mapUp && g44.top >= g44.last && g44.bottom <= g44.floor && !touching(gs44).length)
+      ? ok(`68.44 the map: the dancers' row runs across the bottom (${g44.top}–${g44.bottom}px), below the last row (${g44.last}) and above the home bar (${g44.floor}); it touches no button or text`)
+      : bad('68.44 the map row', JSON.stringify({ mapUp, g44, touching: touching(gs44) }));
+
+    // a chest spilling (Testing's replay, the Skill chest): no dancer while its words are still coming out; then dancers out of the chest, clear of every word
+    await page.evaluate(() => { document.getElementById('s-pick').scrollTop = 0; });
+    await page.evaluate(async () => (await import('./ui/router.js')).show('s-pick', { spillDemo: 'key' }));
+    const early = await page.evaluate(async () => { const w = ms => new Promise(r => setTimeout(r, ms)), seen = [];
+      for (let i = 0; i < 400; i++) { const words = [...document.querySelectorAll('#grid .chestwords[data-for="key"] > *')], moving = words.some(x => x.getAnimations({ subtree: true }).some(a => a.playState === 'running' && a.effect.getComputedTiming().endTime !== Infinity));
+        const rw = !!document.querySelector('.rw[data-rw="dancers-chest"]'); if (rw) { seen.push(moving ? 'during' : 'after'); break; } if (document.querySelector('#grid .chestwords.spill[data-for="key"]') && moving) seen.push('spilling'); await w(25); }
+      return seen; });
+    const c44 = await page.evaluate(() => { const c = document.querySelector('#grid .chest[data-chest="key"]').getBoundingClientRect();
+      return [...document.querySelectorAll('.rw[data-rw="dancers-chest"]')].map(e => { const r = e.getBoundingClientRect(); return Math.abs(r.bottom - c.top) <= 1 && r.left >= c.left - 1 && r.right <= c.right + 1 ? 'from its top edge' : Math.abs(r.bottom - c.bottom) <= 1 ? 'beside it' : 'elsewhere ' + [r.left, r.top, r.right, r.bottom].map(Math.round); }); });
+    const cs44 = await rwState();
+    (early.includes('spilling') && early[early.length - 1] === 'after' && c44.length && c44.every(x => x === 'from its top edge' || x === 'beside it') && !touching(cs44).length)
+      ? ok(`68.44 a chest's spill: no dancer while its words come out, then ${c44.length} out of the chest (${[...new Set(c44)].join(', ')}), clear of every word and button`)
+      : bad('68.44 the chest dancers', JSON.stringify({ early: early.slice(-3), c44, touching: touching(cs44) }));
+    // and none of them sit on a run: a run started from the map takes every box with it, and none comes back while #game is on
+    await sleep(300);
+    const inRun44 = []; await toScreen('s-pick'); await sleep(300); await click('.tile[data-game="quick-tap"]'); await sleep(400);
+    await page.evaluate(() => document.querySelectorAll('#diff-row .choice')[0].click()); await sleep(420); await page.evaluate(() => document.querySelectorAll('#time-row .tbtn')[0].click()); await sleep(200); await click('#go-btn');
+    for (let i = 0; i < 12; i++) { await sleep(250); const st = await page.evaluate(() => ({ on: document.getElementById('game').classList.contains('on'), n: document.querySelectorAll('.rw').length })); if (st.on) inRun44.push(st.n); }
+
+    // a BAD result (the lowest tier, solo): the slow clapper beside the number, never over it; the judge's scorecard on its other side
+    await driveToResult('quick-tap', '68.44 a Quick Tap Sprint, no taps', 40000, true);
+    const badUp = (await waitRw('clapper')) && (await waitRw('scorecard')); await sleep(400);
+    const r44 = await page.evaluate(() => { const rg = document.createRange(); rg.selectNodeContents(document.getElementById('over-score')); const t = rg.getBoundingClientRect();
+      const side = id => { const e = document.querySelector(`.rw[data-rw="${id}"]`); if (!e) return null; const r = e.getBoundingClientRect();
+        return { beside: (r.right <= t.left + .5 || r.left >= t.right - .5) && r.top < t.bottom && r.bottom > t.top, text: e.textContent.trim() }; };
+      return { tier: (/\bv-(\w+)/.exec(document.getElementById('verdict').className) || [])[1], clapper: side('clapper'), card: side('scorecard'), num: [t.left, t.top, t.right, t.bottom].map(Math.round) }; });
+    const rs44 = await rwState();
+    const word = t => (VD.VERDICT_TIERS.find(v => v.id === t) || {}).name, num = t => String(RWID.scorecard.score[t]);
+    (badUp && r44.tier === LOW && r44.clapper && r44.clapper.beside && r44.card && r44.card.beside && r44.card.text.includes(word(LOW)) && r44.card.text.includes(num(LOW)) && !touching(rs44).length)
+      ? ok(`68.44 a bad result ("${word(LOW)}"): the slow clapper stands beside the number and the scorecard holds up "${num(LOW)} ${word(LOW)}" on its other side; neither touches the number, a button or a line`)
+      : bad('68.44 the bad result', JSON.stringify({ badUp, r44, touching: touching(rs44) }));
+    (inRun44.length && inRun44.every(n => n === 0))
+      ? ok(`68.44 no reward is on screen while #game is on (${inRun44.length} looks during the run, every one empty)`) : bad('68.44 nothing in a run', JSON.stringify(inRun44));
+    // a result that is not the lowest tier: the scorecard with the verdict's own number and word, and no clapper
+    await click('#again'); await driveToResult('quick-tap', '68.44 a Quick Tap Sprint, tapped', 40000);
+    await waitRw('scorecard'); await sleep(1500);
+    const s44 = await page.evaluate(() => ({ tier: (/\bv-(\w+)/.exec(document.getElementById('verdict').className) || [])[1], clapper: !!document.querySelector('.rw[data-rw="clapper"]'), card: (document.querySelector('.rw[data-rw="scorecard"]') || {}).textContent || '' }));
+    (s44.card.includes(word(s44.tier)) && s44.card.includes(num(s44.tier)) && s44.clapper === (s44.tier === LOW))
+      ? ok(`68.44 a "${word(s44.tier)}" result: the scorecard reads "${num(s44.tier)} ${word(s44.tier)}", and the clapper is ${s44.clapper ? 'there (lowest tier)' : 'not (not the lowest tier)'}`)
+      : bad('68.44 the scorecard follows the verdict', JSON.stringify(s44));
+
+    // the sweeper: a chest's congratulations card (Testing's replay of the Games chest), once its confetti settles — across the bottom, clear of Continue
+    await toScreen('s-testing'); await sleep(400); await click('[data-act="dev-chest"][data-chest="games"]');
+    await until(() => { const t = document.querySelector('.cere .ctap'); return !!t && getComputedStyle(t).opacity > .5; }, null, 30000).catch(() => {});
+    await page.evaluate(() => { const h = document.getElementById('key-cere'); h.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); h.click(); });
+    const thrown = await until(() => !!document.querySelector('.cere .rconf'), null, 15000).then(() => true).catch(() => false);
+    const swUp = await waitRw('sweeper', 20000);
+    const w44 = await page.evaluate(() => { const e = document.querySelector('.rw[data-rw="sweeper"]'); if (!e) return null; const r = e.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), width: Math.round(r.width), ih: innerHeight }; });
+    const ws44 = await rwState();
+    (thrown && swUp && w44 && w44.bottom >= w44.ih - RWID.sweeper.h && w44.width === Math.round(await page.evaluate(() => innerWidth)) && !touching(ws44).length)
+      ? ok(`68.44 after the confetti settles a sweeper crosses the bottom of the screen (${w44.top}–${w44.bottom}px of ${w44.ih}), touching no button or line`)
+      : bad('68.44 the sweeper', JSON.stringify({ thrown, swUp, w44, touching: touching(ws44), conf: CH.CONFETTI.games }));
+  }
 }

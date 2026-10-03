@@ -41,6 +41,8 @@ import { lenName } from "../../games/registry.js";
 import { bankMenu } from "../../progress/menu.js";
 import { arm, tutForget, tutName, tutReplay, tutUnlockKeys, tutUnlocked } from "../tutorial.js";
 import { barsFaked, chestState, devBack, devMeterTo, devReach, fillBars, keyAch, meter, meterMax, meterPct } from "../../progress/key.js";
+import { REWARDS } from "../../config/excuses.js";
+import { rwRefresh } from "../rewards.js";
 import { define } from "../actions.js";
 import { register, show } from "../router.js";
 import { toast } from "../toast.js";
@@ -86,7 +88,14 @@ function devUnl(){ const host=$('#dev-unl'); if(!host) return; const K=tutUnlock
   $('#dev-tour').innerHTML=TOURS().map(([t,n])=>`<button data-act="dev-tour" data-t="${t}" class="chip">${n}</button>`).join('');
   $('#dev-unl-hint').textContent=ABOUT.devUnl; $('#dev-menu-hint').textContent=ABOUT.devUnlMenu; $('#dev-tour-hint').textContent=ABOUT.devTour;
   // build 69 (68.28): the one way to Gauntlet · Versus
-  const gv=$('#dev-gversus'); if(gv){ gv.textContent=GAUNTLET.name[VERSUS_ID]; $('#dev-duel-hint').textContent=ABOUT.devDuel; } }
+  const gv=$('#dev-gversus'); if(gv){ gv.textContent=GAUNTLET.name[VERSUS_ID]; $('#dev-duel-hint').textContent=ABOUT.devDuel; }
+  devRw(); }
+/* build 69 (68.44): EXCUSE REWARDS (MOCK) — the master switch, then one switch per REWARDS row (config/excuses.js), each ON / OFF, stored in
+   prefs.rewardMock (dev only, core/store.js). A reward's switch is dimmed while the master is off, and still remembers its own state */
+function devRw(){ const host=$('#dev-rw'); if(!host) return; const m=prefs.rewardMock||{};
+  const chip=(k,name,on,dim)=>`<button data-act="dev-rw" data-rw="${k}" class="chip${on?' sel':''}${dim?' dim':''}">${name} · ${on?ABOUT.devRwOn:ABOUT.devRwOff}</button>`;
+  host.innerHTML=chip('on',ABOUT.devRwMaster,!!m.on,false)+REWARDS.map(r=>chip(r.id,r.name,m[r.id]!==0,!m.on)).join('');
+  $('#dev-rw-hint').textContent=ABOUT.devRw; }
 // OFF: the unlock goes, with the first-play intro of what it opened (its mode, and for a game the game's own) and its tours
 function devUnlOff(k){ const u=unlocked(), [g,d,s]=k.split(':'); delete u[k];
   if(s===undefined){ store.intro=Object.assign({},store.intro); delete store.intro[g+':'+d]; if(tutUnlockKeys().game.includes(k)) delete store.intro[g]; }
@@ -104,6 +113,9 @@ const firstKey=()=>{ const g=Object.keys(GAMES)[0]; const d=GAMES[g].modes[0]; r
 define({
   // build 69 (68.28): Gauntlet · Versus — its screen, test-only (it is refused outside BUILD_FLAGS.dev by run/gauntlet.js as well)
   'gaunt-versus'(){ if(!BUILD_FLAGS.dev) return 'pick'; show('s-gauntlet',{id:VERSUS_ID}); return 'click'; },
+  // build 69 (68.44): an Excuse rewards (mock) switch — the master (`on`) or one reward — flipped, stored, and the screen on show redrawn
+  'dev-rw'(b){ if(!BUILD_FLAGS.dev) return 'pick'; const k=b.dataset.rw, m=Object.assign({},prefs.rewardMock);
+    if(k==='on') m.on=m.on?0:1; else m[k]=m[k]===0?1:0; prefs.rewardMock=m; save(); devState(); rwRefresh(); return 'pick'; },
   // build 55 (in passing): S5 — the handlers shipped in the release bundle, so a planted button with Web Inspector attached was supporter for the session
   'dev-open'(){ prefs.allOpen=!prefs.allOpen; save(); devState(); toast(prefs.allOpen?TOAST.devOpenOn:TOAST.devOpenOff); return 'pick'; },
   'dev-sup'(){ prefs.supporter=!prefs.supporter; save(); devState(); toast(prefs.supporter?TOAST.supOn:TOAST.supOff); return 'pick'; },

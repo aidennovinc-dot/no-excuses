@@ -2196,3 +2196,28 @@ anything Aiden settles goes on the list in the build that implements it.
   v0.68: the pastels sat at .8–.9; the contrast part is a pin that passes on both sets), and a profile holding `#9BE8FF` / `#C6FF7A` loads as orange /
   turquoise. Four old checks typed the pastels and now read the slot from config (named in the commit): build 35 F.4, build 39 L.4d, build 40 L.11a,
   build 44 D.2.
+- **Funny excuse rewards, mocked behind a Testing switch (68.44).** Aiden: "get a whole bunch of 3D dancing sprites to pop up throughout the menus
+  and stuff in appropriate places just to see how it would look." `REWARDS` in `config/excuses.js`, one row per reward — id, `name`, `fig`,
+  `where`, its numbers, `unlock: null` (the real trigger is not built): `dancers-menu` (peeking out from behind three main-menu buttons, each box
+  clipped at the button's edge), `dancers-title` (a row standing on top of NO EXCUSES; the menu makes room above the wordmark while it is on, and
+  the feet clear the word's `float` drift at its highest), `dancers-map` (a row across the foot of the game select map, below the last row, above
+  the home bar), `dancers-chest` (dancers rising from behind a chest's top edge, and beside it where there is room, once every one of its spilled
+  words' animations has finished), `clapper` (a slow clapper beside the number on the lowest verdict tier, solo), `scorecard` (a judge's card
+  beside the number on any solo result with a tier — the number is `score[tier]` and the word the tier's name; presentation only, L10),
+  `sweeper` (once a throw of confetti settles — `throwConfetti()` emits `confetti:thrown` — a sweeper crosses the bottom of that layer pushing
+  settled pieces off; the strip above the home bar, else the very bottom edge, else as tall as fits under the lowest button or line). The figures
+  are `REWARD_FIG` sprite sheets — dancer 10 frames, clapper 8, sweeper 12, each 40 or 48 × 60 CSS px drawn at 2x — stepped by CSS like Tiny
+  Aiden, drawn as shaded 3D-looking capsule figures by `scripts/reward-sprites.mjs` (headless Chrome through `_smoke/chrome.mjs`, no new
+  dependency); the scorecard is an SVG. `ui/rewards.js` places them: never while `#game` is on (a MutationObserver takes every box off as a run
+  starts); never a tap target (pointer-events none, aria-hidden); and never over a button or any text — each box, rounded to whole pixels, is
+  tested against the rect of every button and every text line on screen (or on a full-screen layer such as a ceremony, in place of the screen it
+  covers) and is not shown if it touches one. A screen's rewards are placed once its entrance animations and fonts have landed, and re-placed
+  when its layout moves or a box comes to touch a line (`REWARD_WATCH`, and at once on a ResizeObserver); a screen's own child-entrance animation
+  never moves a box (`.screen>.rw{animation:none}`). **Store:** `prefs.rewardMock` (new, in `cleanPrefs`): `{on, <id>: 0|1}`, absent = master off,
+  a reward absent = on; a DEV flag read only while `BUILD_FLAGS.dev`, like `allOpen` (S5); a preference, so Fresh game keeps it; no ladder step.
+  **Testing:** "Excuse rewards (mock)" — the master switch, then one switch per row, generated from `REWARDS` (`dev-rw`), a reward's switch
+  dimmed while the master is off. Gate: `side screens`, "68.44" — master OFF: no `.rw` on the menu, the map or a bad result; master ON: the title
+  row on top of the word, the peekers flush with a button's edge, the map row below the last row and above the home bar, the chest's dancers only
+  after its words and flush with the chest, the clapper and the card beside the number on a bad result, the card's number and word following the
+  verdict and no clapper above the lowest tier, the sweeper across the bottom of a chest's card; none touching a button or text rect (the gate's
+  own walk of the page), none while `#game` is on. `button actions` drives the switches (`dev-rw`).
