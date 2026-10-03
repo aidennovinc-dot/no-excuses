@@ -703,4 +703,24 @@ export async function run() {
       ? ok(`68.38 About as mocked: ${a38.order.map(([k]) => k).join(' > ')} top to bottom; "${a38.label}"; one support box "${a38.supTitle}" / "${a38.supText}"; Send feedback absent while the form has no link; no "watched", no text in a thumbnail, no "No ads" anywhere; labels mono, sentences in the sentence face, centred; the unwatched Pro clip still pulses`)
       : bad('68.38 the About screen', JSON.stringify({ inOrder, noAds, ...a38, text: a38.text.slice(0, 400) }));
   }
+  /* build 69 (68.31): A LOCKED CHOICE IN CUSTOMISE WEARS THE LOCK RED. Aiden: "Put the red line over the current black line … because it's hard to see
+     when it's dark." Every locked swatch keeps its dark diagonal and carries a thin red line (`--lock`) over the middle of it, at full strength (the
+     swatch is dimmed under the line, never the line itself); every locked word choice (Music, Tap sound) is struck through in the same red */
+  {
+    await setStorage({ ne: { v: 7, prefs: { tut: 2, welcomeSeen: 1, story: 1, gridSeen: 1, played: 1, menuSeen: 1, snd: 'off', musicG: {}, keyIntro: { clear: 1, pro: 1, author: 1 }, chests: { games: 1 } }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+    const l31 = await page.evaluate(async () => { (await import('./ui/router.js')).show('s-custom'); await new Promise(r => setTimeout(r, 500));
+      const lock = getComputedStyle(document.documentElement).getPropertyValue('--lock').trim();
+      const p = document.createElement('i'); p.style.color = 'var(--lock)'; document.body.appendChild(p); const rgb = getComputedStyle(p).color; p.remove();
+      const sw = [...document.querySelectorAll('#s-custom .sw button.locked')].map(b => ({ v: b.dataset.v, img: getComputedStyle(b, '::after').backgroundImage, op: +getComputedStyle(b).opacity }));
+      const chips = [...document.querySelectorAll('#s-custom .opt.locked')].map(b => { const s = getComputedStyle(b); return { v: b.dataset.v, line: s.textDecorationLine, col: s.textDecorationColor, op: +s.opacity }; });
+      return { lock, rgb, sw, chips }; });
+    const red31 = (/rgb\((\d+), (\d+), (\d+)\)/.exec(l31.rgb) || []).slice(1).map(Number);
+    const isRed = red31.length === 3 && red31[0] > 150 && red31[1] < 90 && red31[2] < 90;
+    const swBad = l31.sw.filter(s => !s.img.includes(l31.rgb) || (s.img.match(/linear-gradient/g) || []).length < 2 || s.op < .99).map(s => s.v);
+    const chBad = l31.chips.filter(c => !/line-through/.test(c.line) || c.col !== l31.rgb || c.op < .99).map(c => c.v);
+    (l31.lock && isRed && l31.sw.length >= 7 && l31.chips.length >= 4 && !swBad.length && !chBad.length)
+      ? ok(`68.31 every locked choice in Customise wears the lock red (${l31.lock}): ${l31.sw.length} locked swatches keep their dark diagonal with a thin red line over it at full strength, ${l31.chips.length} locked word choices (${l31.chips.map(c => c.v).join(', ')}) struck through in the same red`)
+      : bad('68.31 the lock red on locked Customise choices', JSON.stringify({ lock: l31.lock, rgb: l31.rgb, swBad, chBad, sw: l31.sw.slice(0, 2), chips: l31.chips.slice(0, 3) }));
+  }
 }

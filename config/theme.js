@@ -12,6 +12,10 @@ export const PRESS = { name:'amber', v:'#FFB020' };
 export const KEYFILL = { name:'lilac', v:'#F3D9FF' };
 // build 69 (68.16): the run timer's last three seconds — the picks page's amber (the same hex as PRESS, a different job). ui/theme.js publishes it as --amber
 export const TIMER_HOT = { name:'amber', v:'#FFB020' };
+/* build 69 (68.31): THE LOCK RED — the thin line over a locked swatch's dark diagonal, the strike through a locked word choice and the "Locked · …" line
+   in Customise. Aiden: "Put the red line over the current black line … because it's hard to see when it's dark." It is the default lead red, named
+   here so a player's own lead colour (which is what `--cue` carries) can never turn a lock white or green. ui/theme.js publishes it as --lock */
+export const LOCK = { name:'red', v:'#C8322A' };
 // the seven backgrounds and the ground each one sits on
 /* v24 (C.6, build 43): three more, one per key — Lantern, Circuit, Thorn. Each WAS the stock stars with that key's own layer drawn over them.
    v29 SECTION A (57.11a, build 57): STARS BELONG TO THE DEFAULT BACKGROUND ONLY. Aiden: every other background is a whole scene, not a layer over

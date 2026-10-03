@@ -2449,6 +2449,16 @@ scene('68.26', async (page, browser) => {
   await frame(page, browser, '68.26-overall', `Scores with Quick Tap fully met (all ${keys.length} of its Skill bars) and nothing else played: "${r.title.trim()}" on its spoke, every other game 0, "${r.all.trim()}" (100 ÷ 7)`);
 });
 
+// 68.31: Customise with only the Games chest open — the Target colour row's locked swatches each carry a thin red line over their dark diagonal; the
+// locked Music and Tap sound choices are struck through in the same red. Reaction is previewed (its row of target colours is the one Aiden shot)
+scene('68.31', async (page, browser) => {
+  await load(page, { ...PLAIN, welcomeSeen: 1, chests: { games: 1 } }); await show(page, 's-custom', { g: 'reaction' }); await sleep(900);
+  await page.evaluate(() => { const s = document.getElementById('s-custom'), r = document.getElementById('c-sq').getBoundingClientRect(); s.scrollTop += r.top - innerHeight / 2; }); await sleep(500);
+  say('locked', await page.evaluate(() => ({ lock: getComputedStyle(document.documentElement).getPropertyValue('--lock').trim(), sq: [...document.querySelectorAll('#c-sq button.locked')].map(b => b.dataset.v),
+    words: [...document.querySelectorAll('#s-custom .opt.locked')].map(b => b.textContent + ' ' + getComputedStyle(b).textDecorationColor) })));
+  await frame(page, browser, '68.31-locked-swatches', 'Customise, Reaction: every locked target colour and background keeps its dark diagonal with a thin red line over it; the locked key tracks and tap sounds struck through in the same red');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }
