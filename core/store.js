@@ -88,6 +88,8 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
     nextSeen:p.nextSeen?1:0,
     // build 68 (67.38 / 67.39): the Excuses made, a count per id; Tiny Aiden on the menus unless switched off. Progress: Fresh game clears both
     excuses:isObj(p.excuses)?Object.fromEntries(Object.entries(p.excuses).filter(([k,v])=>/^\d+$/.test(k)&&Number.isInteger(v)&&v>0)):{},
+    // build 69 (68.45): when each excuse was first made, per id — absent for one made before this build, which then shows no date
+    excuT:isObj(p.excuT)?Object.fromEntries(Object.entries(p.excuT).filter(([k,v])=>/^\d+$/.test(k)&&Number.isFinite(v)&&v>0)):{},
     tinyAiden:p.tinyAiden===0?0:1,
     rooms:isObj(p.rooms)?Object.fromEntries(Object.keys(p.rooms).filter(k=>/^s-[a-z]+(:g[12])?$/.test(k)&&p.rooms[k]).map(k=>[k,1])):{},
     // v17 (build 28): `keySeen` was missing from this list since build 26 — reset() cleared a field load() never created,
@@ -414,6 +416,6 @@ const musicOn=g=>!opened('games')||prefs.musicG[g]!==false;
    purchase at the native build it will be restored from the store rather than from prefs, and this line stays correct. */
 /* build 68 (67.36): AND EVERY FIRST-TIME MOMENT — the walkthrough (tut, tutRun), every tour (tuts), the rooms whose first visit is spent, with the
    key intros, the Welcome and the next-unlock card's green already in the list. Testing's Replay tutorial stays the walkthrough's alone */
-function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; store.gaunt=[]; store.resume=null;   /* v31 (60.27): a Fresh game has nothing to come back to */ Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,keysSeen:0,chests:cleanChests(null),cusSeen:0,readySeen:cleanChests(null),spill:cleanChests(null),keyWhole:{},revealed:{},msgSeen:{},gauntSeen:{},paid:0,menuOpened:{},menuUnl:{},nextSeen:0,excuses:{},tinyAiden:1,tut:0,tuts:{},rooms:{},unlBy:{},keyIntro:{},welcomeSeen:0,retro:{},retroCol:{},devKeys:{}}); delete prefs.tutRun; delete prefs.mig11; delete prefs.mig31; delete prefs.mig32; delete prefs.mig35; delete prefs.meterSeen; delete prefs.devMeter; save(); emit('store:reset'); }
+function reset(){ store.runs=[]; store.ach={}; store.unlock={}; store.intro={}; store.seen=null; store.bars={}; store.gaunt=[]; store.resume=null;   /* v31 (60.27): a Fresh game has nothing to come back to */ Object.assign(prefs,{allOpen:false,supporter:false,story:0,adRuns:0,played:0,gridSeen:0,menuSeen:0,keySeen:0,keysSeen:0,chests:cleanChests(null),cusSeen:0,readySeen:cleanChests(null),spill:cleanChests(null),keyWhole:{},revealed:{},msgSeen:{},gauntSeen:{},paid:0,menuOpened:{},menuUnl:{},nextSeen:0,excuses:{},excuT:{},tinyAiden:1,tut:0,tuts:{},rooms:{},unlBy:{},keyIntro:{},welcomeSeen:0,retro:{},retroCol:{},devKeys:{}}); delete prefs.tutRun; delete prefs.mig11; delete prefs.mig31; delete prefs.mig32; delete prefs.mig35; delete prefs.meterSeen; delete prefs.devMeter; save(); emit('store:reset'); }
 
 export { RUNS_CAP, everywhere, look, lookCol, musicOn, opened, prefs, reset, save, setKeyDone, store, trimRuns };

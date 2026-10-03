@@ -609,7 +609,8 @@ export const SPOT = { count:['count','the'], find:['find','the'], howMany:'how m
    have just flown out of the chest), no "what's next" heading, no percentage. `{total}` is the number of game modes. Then item 5's video button and
    Continue. The chest names stay Games, Key, Pro and Thorns (GRID.chest). */
 /* build 68 (67.38 / 67.39): the Excuses. The ten names and hints are config/excuses.js — Aiden renames them on the review board */
-export const EXCUSE_TXT = { toast:'Excuse #{n}: {name}', total:'{n} made · repeats count', exit:'exit', tiny:'Tiny Aiden' };
+// build 69 (68.45): the Excuses tab's count line ("3 of 10 made"), a repeated excuse's count, and the date of the first time beside what earned it
+export const EXCUSE_TXT = { toast:'Excuse #{n}: {name}', total:'{n} made · repeats count', exit:'exit', tiny:'Tiny Aiden', count:'{n} of {total} made', times:'×{n}', first:' · first {when}' };
 export const CARD = {
   title:'Congratulations',
   you:{ games:'You unlocked all {total} game modes!', key:'You cleared every bar on the Skill key!', pro:'You cleared every bar on the Pro key!', thorns:'You cleared every bar on the Author key!' },

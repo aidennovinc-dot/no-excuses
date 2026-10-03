@@ -619,6 +619,30 @@ export async function run() {
       ? ok(`68.22 with the Pro chest shut the Author chest's tab is greyed (${at22.a.col}) and struck through in the lock red (${at22.a.strikeCol}), the Pro chest's is not; a real tap selects it and it shows "${on22.shut}" and its how-to-open link and nothing else — no "0 of 0", no count line, no bar`)
       : bad('68.22 the unrevealed chest tab', JSON.stringify({ at22, on22: { ...on22, text: on22.text.slice(0, 200) } }));
   }
+  /* build 69 (68.45): THE EXCUSES TAB SHOWS EACH EXCUSE EARNED AND WHAT EARNED IT. Aiden: "They don't really show it to me." A profile that has made #1
+     three times (its first time on record) and #7 once (before dates were kept), then makes #9 for real: on the Excuses tab an earned row carries a
+     tick, its count ("×3" when repeated) and its `how` from config/excuses.js — with the date of the first time where one is on record, and none where
+     it is not; an unearned row carries its hint and NOT its `how`; to-do above earned; the line at the top is "N of 10 made" from config */
+  {
+    const t45 = Date.now() - 3 * 86400e3;
+    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS, excuses: { 1: 3, 7: 1 }, excuT: { 1: t45 } }, runs: [{ g: 'quick-tap', d: 'two', s: 5, t: Date.now() - 3600e3, hits: 20, misses: 0, row: 20, v: 4 }], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+    const x45 = await page.evaluate(async t45 => { const R = await import('./ui/router.js'), X = await import('./progress/excuses.js'), S = await import('./core/store.js'), E = (await import('./config/excuses.js')).EXCUSES, C = (await import('./config/copy.js')).EXCUSE_TXT, w = ms => new Promise(r => setTimeout(r, ms));
+      X.makeExcuse(9); const stamped = (S.prefs.excuT || {})[9];
+      R.show('s-menu'); await w(80); R.show('s-prog', { tab: 'exc' }); await w(300);
+      const day = t => new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+      const row = id => { const r = document.getElementById('exc-' + id); return r ? { made: r.classList.contains('made'), text: r.textContent } : null; };
+      const order = [...document.querySelectorAll('#exc-list .exrow')].map(r => r.classList.contains('made')), i = order.indexOf(true);
+      return { stamped: Number.isFinite(stamped), r1: row(1), r7: row(7), r9: row(9), r2: row(2), how: Object.fromEntries(E.map(e => [e.id, e.how])), hint2: E.find(e => e.id === 2).hint,
+        d1: day(t45), d9: day(stamped || 0), hint: document.getElementById('exc-hint').textContent, want: (C.count || '').replace('{n}', 3).replace('{total}', E.length),
+        order: i >= 0 && order.slice(i).every(Boolean) && order.filter(Boolean).length === 3 }; }, t45);
+    const has = (r, s) => !!r && r.text.includes(s);
+    (x45.stamped && x45.r1 && x45.r1.made && has(x45.r1, '✓') && has(x45.r1, '×3') && has(x45.r1, x45.how[1]) && has(x45.r1, x45.d1)
+      && has(x45.r7, x45.how[7]) && has(x45.r7, '✓') && !has(x45.r7, '×1') && has(x45.r9, x45.how[9]) && has(x45.r9, x45.d9)
+      && x45.r2 && !x45.r2.made && !has(x45.r2, x45.how[2]) && has(x45.r2, x45.hint2) && !has(x45.r2, '✓') && x45.want && x45.hint === x45.want && x45.order)
+      ? ok(`68.45 the Excuses tab says what earned each one: #1 "${x45.r1.text}"; #7, made before dates were kept, its tick and how with no date; #9, made now, dated ${x45.d9}; an unearned one its hint and not its how; to-do above earned; "${x45.hint}"`)
+      : bad('68.45 the Excuses rows', JSON.stringify(x45));
+  }
   /* build 69 (68.23): TESTING'S UNLOCK SWITCHES ARE REAL UNLOCKS. Aiden: "The tutorial should allow me to unlock games individually so that I can test the
      tutorial." Estimate switched ON from Testing leaves the store as a real Dots run that opens Estimate does once its result has been read and left —
      the unlock banked, its own tour armed at the map's ring — and OFF takes the unlock, the tour and Estimate's first play away again */

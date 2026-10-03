@@ -299,10 +299,16 @@ function renderTabs(tab){
   into(); requestAnimationFrame(into);
 }
 /* build 68 (67.38): THE EXCUSES TAB — the total, then each excuse with its hint and how many times it has been made. Nothing is secret: every
-   name shows from the start, and the hint alludes. Build 69 (68.40): the count line and its bar like every tab, to-do above made */
-function renderExc(){ const c=prefs.excuses||{}, made=EXCUSES.filter(e=>c[e.id]).length;
-  countLine('exc',PROGRESS_SCREEN.exc,T(EXCUSE_TXT.total,{n:excuseCount()}),made,EXCUSES.length);
-  $('#exc-list').innerHTML=todoFirst(EXCUSES,e=>!!c[e.id]).map(e=>{ const k=c[e.id]||0; return `<div class="exrow${k?' made':''}" id="exc-${e.id}"><b>#${e.id}</b><span>${esc(e.name)}</span><em>×${k}</em><small>${esc(e.hint)}</small></div>`; }).join(''); }
+   name shows from the start, and the hint alludes. Build 69 (68.40): the count line and its bar like every tab, to-do above made.
+   68.45 — Aiden: "They don't really show it to me." AN EXCUSE MADE SAYS SO AND SAYS WHAT EARNED IT: a tick, its count when it is more than one ("×3"),
+   and its `how` in plain words with the date of the first time where that is on record. One not made yet shows its hint alone (the allusion — L18
+   is not touched, nothing here is a secret). The line at the top is how many of the ten are made */
+function renderExc(){ const c=prefs.excuses||{}, at=prefs.excuT||{}, made=EXCUSES.filter(e=>c[e.id]).length;
+  countLine('exc',PROGRESS_SCREEN.exc,T(EXCUSE_TXT.count,{n:made,total:EXCUSES.length}),made,EXCUSES.length);
+  const day=t=>new Date(t).toLocaleDateString(undefined,{day:'numeric',month:'short'});
+  $('#exc-list').innerHTML=todoFirst(EXCUSES,e=>!!c[e.id]).map(e=>{ const k=c[e.id]||0;
+    const how=k?`<small class="how">${esc(e.how)}${at[e.id]?`<span class="when">${esc(T(EXCUSE_TXT.first,{when:day(at[e.id])}))}</span>`:''}</small>`:'';
+    return `<div class="exrow${k?' made':''}" id="exc-${e.id}"><b>#${e.id}</b><span>${esc(e.name)}</span><em>${k?'✓'+(k>1?' '+esc(T(EXCUSE_TXT.times,{n:k})):''):''}</em><small>${esc(e.hint)}</small>${how}</div>`; }).join(''); }
 function setTab(t,opts){ const tab=tabOf(t); prefs.progTab=tab; save(); opts=opts||{};
   renderTabs(tab);
   $('#p-chest').hidden=!chestOfTab(tab); $('#p-cul').hidden=tab!=='cul'; $('#p-ach').hidden=tab!=='ach'; $('#p-exc').hidden=tab!=='exc';

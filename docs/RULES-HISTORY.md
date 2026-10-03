@@ -2136,3 +2136,13 @@ anything Aiden settles goes on the list in the build that implements it.
   a tap, and the tab then shows the "revealed when" line and its "How to open this chest →" link and nothing else: the count line and its bar are
   hidden, so no "0 of 0 unlocked". Gate: `side screens`, "68.22" (written first, FAIL on the unfixed code) — with the Pro chest shut the Author
   chip has the class, the strike and its colour read off probes, the Pro chip has none; a real tap selects it; no "0 of 0", no count line, no bar.
+- **The Excuses tab shows each excuse earned and what earned it (68.45).** Aiden: "They don't really show it to me." In the 68.40 layout: the
+  count line is "N of 10 made" (`EXCUSE_TXT.count`; Tiny Aiden still counts repeats), to-do above made. A made excuse shows its number and name,
+  a green ✓ and its count when repeated ("×3", `EXCUSE_TXT.times`), its hint, then WHAT EARNED IT — its `how` from `config/excuses.js` in plain
+  words — with the date of the first time (" · first 1 Oct", `EXCUSE_TXT.first`) where one is on record. One not made shows its hint alone (the
+  allusion; L18 is not touched, nothing here is a secret). **Store:** `prefs.excuT` (new, in `cleanPrefs`, cleared by Fresh game; no ladder step —
+  an absent field means "no date"): `{id: t}`, written by `makeExcuse()` in `progress/excuses.js` on an excuse's FIRST make only. An excuse made
+  before build 69 has no first time on record and a later make must not pretend to be it, so that row shows no date (the brief's "add one on the
+  next make", read so the date is never wrong). Gate: `side screens`, "68.45" (written first, FAIL on the unfixed code) — #1 made three times with
+  its first time on record, #7 made before dates were kept, #9 made in the check: each made row carries its `how`, tick and count, the dated ones
+  their date and #7 none; an unmade row its hint and not its `how`; to-do above made; the line from config.
