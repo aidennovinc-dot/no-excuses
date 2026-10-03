@@ -2407,6 +2407,16 @@ scene('68.1', async (page, browser) => {
   await frame(page, browser, '68.1-scores-dots', `A tap on Dots' name on the web picks it: "${b.title.trim()}" as the title, its Blind / Lead chips and its top 10`);
 });
 
+// 68.26: a game's score is the average over every mode and length in it, unplayed counting zero; Overall the average of all seven games — Quick Tap
+// with every Skill bar met (each combination on its bar, from config/key-bars.js) and nothing else played: Quick Tap 100, the rest 0, Overall 14
+scene('68.26', async (page, browser) => {
+  await load(page); const keys = await page.evaluate(async () => (await import('./progress/key.js')).COMBOS.filter(c => c.g === 'quick-tap').map(c => c.key));
+  const runs = await barRuns(page, Object.fromEntries(keys.map(k => [k, 'clear'])));
+  await load(page, { ...OPEN, welcomeSeen: 1, name: 'AIDEN' }, { runs }); await show(page, 's-board'); await sleep(1600);
+  const r = await page.evaluate(() => ({ labels: [...document.querySelectorAll('#radar text')].map(t => t.textContent), all: document.getElementById('radar-all').textContent, title: document.getElementById('bd-title').textContent })); say('chart', r);
+  await frame(page, browser, '68.26-overall', `Scores with Quick Tap fully met (all ${keys.length} of its Skill bars) and nothing else played: "${r.title.trim()}" on its spoke, every other game 0, "${r.all.trim()}" (100 ÷ 7)`);
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

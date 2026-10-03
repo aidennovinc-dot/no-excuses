@@ -470,13 +470,15 @@ function keyScale(c, b) { if (b === null || b === undefined || !c || !c.bar) ret
   if (!reached(k2)) return r1 + (r2 - r1) * (b - k1) / (k2 - k1);
   if (k3 === null || k3 === k2) return r2;
   return Math.max(r2, r2 + (r3 - r2) * (b - k2) / (k3 - k2)); }
-/* a game's spoke is the AVERAGE over the combinations the player has played at least once (Cowork's call) — so opening a new mode or length
-   never drags it down, and a game not yet played is 0. `n` is how many went into it. B.24's rungs (radarRungs) still answer which tiers are open */
-function radarOf(g) { const vals = (BY_GAME[g] || []).map(c => keyScale(c, bestOf(c))).filter(v => v !== null && Number.isFinite(v));
-  const v = vals.length ? vals.reduce((a, x) => a + x, 0) / vals.length : 0;
-  return { v, n: vals.length, rungs: radarRungs(), past: v > RADAR.rings[RADAR.rings.length - 1] }; }
-// the overall figure: the average of the games that have a spoke at all, on the same scale
-function radarAll() { const s = Object.keys(GAMES).map(radarOf).filter(a => a.n); return s.length ? s.reduce((a, x) => a + x.v, 0) / s.length : 0; }
+/* a game's spoke: build 65 averaged only the combinations played. BUILD 69 (68.26 — "If they only play one game and they do it exceptionally well but
+   they don't play the others then they shouldn't get a really good score"): THE AVERAGE OVER EVERY COMBINATION OF THE GAME in COMBOS (the keys' own
+   rows), an unplayed one — and so a locked one, which has no run — counting 0. A game reads 100 exactly when every one of its Skill bars is met.
+   `n` is how many have a run. B.24's rungs (radarRungs) still answer which tiers are open. Presentation only: nothing stored changes (L10) */
+function radarOf(g) { const list = BY_GAME[g] || [], vals = list.map(c => keyScale(c, bestOf(c))).map(v => v !== null && Number.isFinite(v) ? v : null);
+  const v = list.length ? vals.reduce((a, x) => a + (x || 0), 0) / list.length : 0;
+  return { v, n: vals.filter(x => x !== null).length, rungs: radarRungs(), past: v > RADAR.rings[RADAR.rings.length - 1] }; }
+// the overall figure (68.26): the average of ALL the games, an unplayed game 0 — never only the games that have a spoke
+function radarAll() { const s = Object.keys(GAMES).map(radarOf); return s.length ? s.reduce((a, x) => a + x.v, 0) / s.length : 0; }
 
 /* ---------- v21 (G.4, build 37): retroactive credit when a chest opens ----------
    A chest reveals tiers whose bars the player may already have beaten. Every newly revealed, non-shell bar is judged

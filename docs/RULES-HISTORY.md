@@ -2080,3 +2080,14 @@ anything Aiden settles goes on the list in the build that implements it.
   nothing saved' goes." The eyebrow is the one word (`RESULT.abandoned`, 18px, weight 500, `--mute`); the "Run abandoned · nothing saved" line
   (`RESULT.abandonedLine`, removed from `config/copy.js`) and the white dash where the score sits are not drawn on it. Retry stays (L21), Game select
   stays. Gate: `the runs` (15f), "68.8".
+- **64.13 amended — a game's score is the average over every mode and length in it; unplayed counts zero (68.26).** Aiden on v0.68: "If they only
+  play one game and they do it exceptionally well but they don't play the others then they shouldn't get a really good score because they should
+  have to play all the games." `radarOf(g)` in `progress/key.js` averages over EVERY combination of the game in `COMBOS` (the keys' 30 rows,
+  `BY_GAME[g]`), an unplayed combination — and a locked one, which has no run — scoring 0; build 65 averaged only the combinations played
+  (Cowork's call then, so opening a mode never dragged a spoke down). `radarAll()` averages ALL seven games, an unplayed game 0; it used to
+  average only the games with a spoke. `keyScale` is unchanged (100 at the Skill bar, 200 Pro, 300 Author, piecewise), so a game reads 100
+  exactly when every one of its Skill bars is met, and early figures are small by design: one game's Skill bars all met and nothing else is
+  that game 100 and Overall 14 (100 / 7). Presentation only: nothing stored changes (L10). The board's worked "Overall score" section
+  (`../_review/scripts/catalogue.ref.mjs` `overallRef`) follows it. The line as it stood: "a spoke is the average of the combinations played
+  (`radarOf`); … the overall figure (`radarAll`) wears a key's style past its ring". Gate: `build 32`, "64.13 the chart (amended by 68.26)"
+  and "68.26".

@@ -300,6 +300,9 @@ export async function run() {
     ((sc.q.join() === '100,200,300,150,400,50') && (sc.e.join() === '100,200,300,150,400') && sc.dirs.join() === 'higher,lower' && sc.rings.join() === '100,200,300')
       ? ok(`64.13 on the keys' scale — Quick Tap · Two · Sprint (higher): Skill ${sc.q[0]}, Pro ${sc.q[1]}, Author ${sc.q[2]}, half way ${sc.q[3]}, one step past Author ${sc.q[4]}; Estimate · Grow (lower): ${sc.e.join(' / ')}`)
       : bad('64.13 the key scale', JSON.stringify(sc));
+    /* AMENDED at build 69 (68.26): a spoke averages EVERY combination of its game (unplayed 0) and Overall averages all seven games, so this fixture's
+       figures are read from COMBOS and GAMES, never typed; the overall figure wearing a key's style past its ring is read off a second profile with every
+       combination on its Pro bar (every spoke 200, Overall 200: past the Lantern ring) */
     const runsAt = await page.evaluate(async () => { const KB = (await import('./config/key-bars.js')).KEY_BARS; return [['quick-tap:two:5', 'pro'], ['quick-tap:two:15', 'author'], ['dots:blind:5', 'bar']].map(([k, t], i) => { const [g, d, s] = k.split(':'); return { t: Date.now() - (i + 1) * 60000, g, d, s: +s, n: '', v: 4, hits: KB[k][t], misses: 0 }; }); });
     await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS }, runs: runsAt, ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
@@ -307,13 +310,41 @@ export async function run() {
     const r = await page.evaluate(async () => { const read = () => ({ labels: [...document.querySelectorAll('#radar text')].map(t => t.textContent), rings: [...document.querySelectorAll('#radar .rring')].map(g => g.dataset.rung + '@' + g.dataset.at),
         nodes: document.querySelectorAll('#radar .rring.r2 .rnode').length, spikes: document.querySelectorAll('#radar .rring.r3 .rspike').length, all: document.getElementById('radar-all').textContent, cls: document.getElementById('radar-all').className,
         grow: !!document.querySelector('#radar .meg') && getComputedStyle(document.querySelector('#radar .meg')).animationName });
-      const out = { a: read() }, KB = (await import('./config/key-bars.js')).KEY_BARS, R = await import('./ui/router.js'), keep = KB['quick-tap:two:5'].pro;
+      const K = await import('./progress/key.js'), G = (await import('./games/registry.js')).GAMES, n = g => K.COMBOS.filter(c => c.g === g).length;
+      const want = { qt: Math.round(500 / n('quick-tap')), dots: Math.round(100 / n('dots')), all: Math.round((500 / n('quick-tap') + 100 / n('dots')) / Object.keys(G).length) };
+      const out = { a: read(), want }, KB = (await import('./config/key-bars.js')).KEY_BARS, R = await import('./ui/router.js'), keep = KB['quick-tap:two:5'].pro;
       KB['quick-tap:two:5'].pro = keep * 2; R.show('s-menu'); await new Promise(r => setTimeout(r, 150)); R.show('s-board'); await new Promise(r => setTimeout(r, 300));
       out.b = read(); KB['quick-tap:two:5'].pro = keep; return out; });
-    (r.a.labels[0].endsWith(' 250') && r.a.labels[1].endsWith(' 100') && r.a.rings.join() === 'clear@100,pro@200,author@300' && r.a.nodes === 7 && r.a.spikes === 14 && /175/.test(r.a.all) && r.a.cls === 'radar-all t1' && /rgrow/.test(r.a.grow || '')
-      && r.b.labels[0] !== r.a.labels[0])
-      ? ok(`64.13 the chart: "${r.a.labels[0]}" is the average of a Pro run (200) and an Author run (300), "${r.a.labels[1]}" on its Skill bar; rings at 100 / 200 / 300 (Circuit's nodes, Thorns' spikes); "${r.a.all}" in the Lantern style; a Pro bar changed re-scales it ("${r.b.labels[0]}")`)
-      : bad('64.13 the web chart', JSON.stringify(r));
+    const runsPro = await page.evaluate(async () => { const K = await import('./progress/key.js'); return K.COMBOS.map((c, i) => ({ t: Date.now() - (i + 1) * 60000, g: c.g, d: c.d, s: c.s, n: '', v: 4, hits: c.bar.pro, misses: 0 })); });
+    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS }, runs: runsPro, ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+    await page.evaluate(async () => (await import('./ui/router.js')).show('s-board')); await sleep(500);
+    const p = await page.evaluate(() => ({ labels: [...document.querySelectorAll('#radar text')].map(t => t.textContent), all: document.getElementById('radar-all').textContent, cls: document.getElementById('radar-all').className }));
+    (r.a.labels[0].endsWith(' ' + r.want.qt) && r.a.labels[1].endsWith(' ' + r.want.dots) && r.a.rings.join() === 'clear@100,pro@200,author@300' && r.a.nodes === 7 && r.a.spikes === 14 && new RegExp('\\b' + r.want.all + '\\b').test(r.a.all) && r.a.cls === 'radar-all' && /rgrow/.test(r.a.grow || '')
+      && r.b.labels[0] !== r.a.labels[0] && p.labels.every(l => l.endsWith(' 200')) && /\b200\b/.test(p.all) && p.cls === 'radar-all t1')
+      ? ok(`64.13 the chart (amended by 68.26): "${r.a.labels[0]}" is a Pro run (200) and an Author run (300) over every Quick Tap combination, "${r.a.labels[1]}" one Skill bar over every Dots one, "${r.a.all}" over all seven games; rings at 100 / 200 / 300 (Circuit's nodes, Thorns' spikes); a Pro bar changed re-scales it ("${r.b.labels[0]}"); every combination on its Pro bar reads 200 on every spoke and "${p.all}" in the Lantern style`)
+      : bad('64.13 the web chart', JSON.stringify({ r, p }));
+  }
+  /* ---- build 69 (68.26): A GAME'S SCORE IS THE AVERAGE OVER EVERY MODE AND LENGTH IN IT, UNPLAYED COUNTS ZERO; OVERALL IS THE AVERAGE OF ALL SEVEN GAMES ----
+     Aiden: "If they only play one game and they do it exceptionally well but they don't play the others then they shouldn't get a really good score".
+     Three profiles, the combination counts read from COMBOS: Dots with every Skill bar met and nothing else (Dots 100, every other spoke 0, Overall
+     round(100 / 7) — on the page too); Quick Tap with half its combinations on their Skill bars and the rest unplayed (50); nothing played (0 everywhere) */
+  {
+    const r26 = await page.evaluate(async () => { const K = await import('./progress/key.js'), G = (await import('./games/registry.js')).GAMES, ids = Object.keys(G);
+      const of = g => K.COMBOS.filter(c => c.g === g), at = (list, i0) => list.map((c, i) => ({ t: Date.now() - (i0 + i + 1) * 60000, g: c.g, d: c.d, s: c.s, n: '', v: 4, hits: c.bar.bar, misses: 0 }));
+      const qt = of('quick-tap'); return { ids, nG: ids.length, dots: at(of('dots'), 0), half: at(qt.slice(0, qt.length / 2), 0), nQ: qt.length, nD: of('dots').length }; });
+    const read26 = async runs => { await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS }, runs, ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+      await page.reload({ waitUntil: 'networkidle0' }); await sleep(400);
+      return page.evaluate(async () => { const K = await import('./progress/key.js'), ids = Object.keys((await import('./games/registry.js')).GAMES); (await import('./ui/router.js')).show('s-board'); await new Promise(r => setTimeout(r, 500));
+        return { spokes: Object.fromEntries(ids.map(g => [g, Math.round(K.radarOf(g).v * 10) / 10])), all: Math.round(K.radarAll() * 10) / 10,
+          labels: Object.fromEntries([...document.querySelectorAll('#radar text[data-g]')].map(t => [t.dataset.g, t.textContent])), shown: document.querySelector('#radar-all b')?.textContent }; }); };
+    const one = await read26(r26.dots), half = await read26(r26.half), none = await read26([]);
+    const want1 = Math.round(100 / r26.nG);
+    (one.spokes.dots === 100 && r26.ids.filter(g => g !== 'dots').every(g => one.spokes[g] === 0) && Math.round(one.all) === want1 && one.shown === String(want1) && one.labels.dots.endsWith(' 100')
+      && half.spokes['quick-tap'] === 50 && r26.ids.filter(g => g !== 'quick-tap').every(g => half.spokes[g] === 0)
+      && r26.ids.every(g => none.spokes[g] === 0) && none.all === 0 && none.shown === '0')
+      ? ok(`68.26 a game's score is the average over every mode and length in it, unplayed counts zero: Dots with all ${r26.nD} Skill bars met and nothing else reads "${one.labels.dots}", every other spoke 0 and Overall ${one.shown} (100 / ${r26.nG}); Quick Tap with ${r26.half.length} of ${r26.nQ} on their Skill bars reads ${half.spokes['quick-tap']}; nothing played reads 0 everywhere, Overall ${none.shown}`)
+      : bad('68.26 the averaging over every combination and every game', JSON.stringify({ one, half, none, want1 }));
   }
   /* ---- B.25: the three achievement sets tied to the keys ---- */
   {
