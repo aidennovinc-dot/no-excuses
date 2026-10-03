@@ -129,10 +129,12 @@ export async function run() {
       ? ok(`F.4 a locked swatch tried on Quick Tap (${tried}) stays on Quick Tap - Dots' preview is its own white, with no locked line and no ring carried across`)
       : bad('F.4 the preview follows the game chip', JSON.stringify({ tried, onQt, onDots }));
     await page.evaluate(async () => { const S = await import('./core/store.js'); S.prefs.allOpen = true; S.save(); const R = await import('./ui/router.js'); R.show('s-menu'); await new Promise(r => setTimeout(r, 150)); R.show('s-custom'); await new Promise(r => setTimeout(r, 400)); });
-    await click('#pv-g [data-v="quick-tap"]'); await sleep(250); await click('#c-sq button[data-v="#9BE8FF"]'); await sleep(300);
+    // AMENDED at build 69 (68.35): the colour is slot 3's, read from config — it was the typed pastel #9BE8FF, which the bright set replaced
+    const SQ3 = (await import(pathToFileURL(path.join(root, 'config', 'theme.js')).href)).ITEMS.sq.find(i => i.by === 'qt_clean5').v.toUpperCase();
+    await click('#pv-g [data-v="quick-tap"]'); await sleep(250); await click(`#c-sq button[data-v="${SQ3}"]`); await sleep(300);
     await page.evaluate(async () => { const R = await import('./ui/router.js'); R.show('s-pick'); }); await sleep(500);
     const chose = await page.evaluate(() => { const t = g => document.querySelector(`.tile[data-game="${g}"]`).style.getPropertyValue('--sq-live').trim().toUpperCase(); return { qt: t('quick-tap'), dots: t('dots'), stored: JSON.parse(localStorage.getItem('ne')).prefs.col['quick-tap'].sq }; });
-    (chose.qt === '#9BE8FF' && chose.dots === '#FFFFFF' && String(chose.stored).toUpperCase() === '#9BE8FF')
+    (chose.qt === SQ3 && chose.dots === '#FFFFFF' && String(chose.stored).toUpperCase() === SQ3)
       ? ok('F.4 a colour chosen for Quick Tap is saved and shows on Quick Tap\'s tile only; Dots stays white')
       : bad('F.4 a saved choice', JSON.stringify(chose));
   }

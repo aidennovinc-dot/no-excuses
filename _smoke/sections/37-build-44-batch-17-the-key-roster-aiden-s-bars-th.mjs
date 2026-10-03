@@ -71,7 +71,9 @@ export async function run() {
     // its reward is still locked in Customise, and Customise unlocks lists the tier's rows only once the tier is revealed
     const cu = await page.evaluate(async () => { const R = await import('./ui/router.js'); const wait = ms => new Promise(r => setTimeout(r, ms));
       R.show('s-prog', { tab: 'cul' }); await wait(400); const k1 = !!document.getElementById('cul-qt_clean5'), pro = !!document.getElementById('cul-qt_r5');
-      R.show('s-custom'); await wait(500); const b = [...document.querySelectorAll('[data-v="#9BE8FF"]')]; return { k1, pro, found: b.length, locked: b.length > 0 && b.every(x => x.classList.contains('locked')) }; });
+      // AMENDED at build 69 (68.35): Warm hands' colour is read from config — it was the typed pastel #9BE8FF, which the bright set replaced
+      const TH = await import('./config/theme.js'), v44 = TH.ITEMS.sq.find(i => i.by === 'qt_clean5').v;
+      R.show('s-custom'); await wait(500); const b = [...document.querySelectorAll(`[data-v="${v44}"]`)]; return { k1, pro, found: b.length, locked: b.length > 0 && b.every(x => x.classList.contains('locked')) }; });
     (cu.k1 && !cu.pro && cu.locked)
       ? ok('D.2 Customise unlocks lists Warm hands with the Games chest open and not Quicker before the Skill chest; the colour Warm hands pays out is still locked in Customise (its `by` resolves to the roster row)')
       : bad('D.2 the roster rows on Customise unlocks and in Customise', JSON.stringify(cu));

@@ -2183,3 +2183,16 @@ anything Aiden settles goes on the list in the build that implements it.
   100%, Timing 100%, Reaction ~70%, Spot 100% (v0.68: Reaction 25%, Timing 0%, Quick Tap's target never measured as lit off a colour tap). Gate:
   `side screens`, "68.34" — share > 50% per game, and a colour tapped 5% / 60% / 90% into the loop is on a target the next frame. Frames: shots scene
   `68.34`, one per game plus Estimate's Cut.
+- **The target colours go from pastel to bright (68.35, PICKED — "Great target colours").** Aiden: "They should be less pastel and more bright." `ITEMS.sq`
+  and `ITEMS.cut` in `config/theme.js`: white `#FFFFFF` (open), yellow `#FFD60A` (`first`), orange `#FF8A1F` (`qt_clean5`), pink `#FF3D9A` (`dt_pin`),
+  violet `#A06BFF` (`hd_steady`), turquoise `#19E3C8` (`qt_clean30`), lime `#C8F02C` (`sq_12`), the wheel unchanged — SLOT FOR SLOT, the same achievement
+  opens the same slot and only the colour changed (the picks page's pairing was a placeholder); the six payouts in `config/achievements.js` changed with
+  them. No pure red (miss, trap, locked) and no unlock green; each reads on every background (lowest luminance ratio 4.89 against a `DESIGNS` ground).
+  **A stored retired pastel** (`prefs.col[g].sq` / `.cut`) reads as its slot's new colour: `SQ_WAS` in `config/theme.js` keys each old hex to the `by` of
+  the slot it filled, and `cleanPrefs` in `core/store.js` swaps it for that slot's `ITEMS` colour on every load — no ladder step, the record's shape is
+  unchanged and a profile restored later is caught the same way. **`KEYFILL` stays lilac `#F3D9FF`** (it was "already in the target palette"; it no longer
+  is, and the tile's key fill is a separate decision). Gate: `side screens`, "68.35" — the two rows render `ITEMS` in order (read from config), none is
+  `--lock` or `--ok`, every colour ≥ 3:1 on every ground, the six earned ones saturation ≥ .75 and lightness ≤ .75 (the one assertion that fails on
+  v0.68: the pastels sat at .8–.9; the contrast part is a pin that passes on both sets), and a profile holding `#9BE8FF` / `#C6FF7A` loads as orange /
+  turquoise. Four old checks typed the pastels and now read the slot from config (named in the commit): build 35 F.4, build 39 L.4d, build 40 L.11a,
+  build 44 D.2.

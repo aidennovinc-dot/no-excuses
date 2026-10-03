@@ -18,7 +18,7 @@ import { KEY_THEMES, SCALES } from "../config/audio.js";
 import { BUILD_FLAGS, RUN_SCHEMA } from "../config/build.js";
 import { CHESTS, GAUNTLETS } from "../config/chests.js";
 import { MESSAGES } from "../config/messages.js";
-import { DESIGNS, ITEMS } from "../config/theme.js";
+import { DESIGNS, ITEMS, SQ_WAS } from "../config/theme.js";
 import { GAMES, GC } from "../games/registry.js";
 import { emit } from "./events.js";
 
@@ -186,8 +186,11 @@ function cleanPrefs(raw){ const p=isObj(raw)?raw:{}; const dev=!!BUILD_FLAGS.dev
   if(isObj(p.musicG)) for(const g of Object.keys(GAMES).concat('menu')) if(typeof p.musicG[g]==='boolean') o.musicG[g]=p.musicG[g];
   // build 65 (64.20): `track`, the per-game choice, is retired — one game-wide track is `menuTrack`. The field stays, empty, for the store's shape
   // colours are per game (v6): { sq, lead, cut }, each #RRGGBB; cut defaults to the square colour (v13 6.5)
+  /* build 69 (68.35): a target or Cut colour that is one of the retired pastels (SQ_WAS) reads as its slot's bright colour now — the same achievement's slot,
+     looked up in ITEMS by `by`. No ladder step: the record's shape is unchanged, and this runs on every load, so it holds for a profile restored later too */
+  const was=(v,set)=>{ const by=typeof v==='string'&&SQ_WAS[v.toUpperCase()], it=by&&ITEMS[set].find(i=>i.by===by); return it?it.v:v; };
   const col=isObj(p.col)?p.col:{};
-  for(const g in GAMES){ const c=isObj(col[g])?col[g]:{}; const sq=hex(c.sq,SQ); o.col[g]={ sq, lead:hex(c.lead,LEAD), cut:hex(c.cut,sq) }; }
+  for(const g in GAMES){ const c=isObj(col[g])?col[g]:{}; const sq=hex(was(c.sq,'sq'),SQ); o.col[g]={ sq, lead:hex(c.lead,LEAD), cut:hex(was(c.cut,'cut'),sq) }; }
   if(Number.isInteger(p.mig11)&&p.mig11>0) o.mig11=p.mig11;
   // v18 (B.2 / B.4): how many Timing runs the unit change retired, so the app can say so once rather than silently
   if(Number.isInteger(p.mig31)&&p.mig31>0) o.mig31=p.mig31;

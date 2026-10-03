@@ -187,7 +187,9 @@ export async function run() {
 
   /* ---- 6. L.11a: Customise locked until the Games chest - crossed out, "open the Games chest", defaults applied, choices kept; green until first opened ---- */
   {
-    await boot({ col: { 'quick-tap': { sq: '#FFD1DC', lead: '#FFB020', cut: '#FFD1DC' } }, bg: 'grid', snd: 'wood', lastGame: 'quick-tap' }, { ach: { first: NOW40 } }, { v: 5, plain: PLAIN40 });
+    // AMENDED at build 69 (68.35): the stored colour is slot `dt_pin`'s, read from config — it was the typed pastel #FFD1DC, which the store now reads as its slot's new colour
+    const PINK40 = (await import(pathToFileURL(path.join(root, 'config', 'theme.js')).href)).ITEMS.sq.find(i => i.by === 'dt_pin').v.toUpperCase();
+    await boot({ col: { 'quick-tap': { sq: PINK40, lead: '#FFB020', cut: PINK40 } }, bg: 'grid', snd: 'wood', lastGame: 'quick-tap' }, { ach: { first: NOW40 } }, { v: 5, plain: PLAIN40 });
     const lk = await page.evaluate(async () => { const S = await import('./core/store.js'); const R = await import('./ui/router.js'); const T = await import('./ui/theme.js'); const wait = ms => new Promise(r => setTimeout(r, ms));
       const root = () => getComputedStyle(document.documentElement).getPropertyValue('--sq-live').trim().toUpperCase(), on = () => (document.querySelector('.screen.on') || {}).id;
       const item = () => document.querySelector('[data-go="s-custom"]'), need = () => document.getElementById('cus-need');
@@ -207,13 +209,13 @@ export async function run() {
     const L = lk.locked, O = lk.open;
     (/cuslock/.test(L.cls) && L.need === 'open the Games chest' && L.x !== 'none' && L.screen === 's-menu' && /Games chest/.test(L.toast))
       ? ok(`L.11a before the Games chest Customise is crossed out with "${L.need}" under it, and a tap says so and stays on the menu`) : bad('L.11a the locked Customise row', JSON.stringify(L));
-    (L.sq === '#FFFFFF' && L.snd === 'space' && L.bg === 'stars' && L.kept === '#FFD1DC grid wood')
+    (L.sq === '#FFFFFF' && L.snd === 'space' && L.bg === 'stars' && L.kept === PINK40 + ' grid wood')
       ? ok('L.11a meanwhile the defaults apply - white target, the stock background, the default tap sound - and every stored choice is kept, not applied') : bad('L.11a the defaults', JSON.stringify(L));
     /* AMENDED AT BUILD 53 (v28 item 4): the grey line on this tab is gone - it said "open the Games chest to use them" before the chest and "tap
        an earned one to use it" after, two lines saying what a tap does on a screen made of rows. Both are the tab's own count now, either way. */
     (/^\d+ of \d+ unlocked$/.test(lk.cul.hint.trim()) && lk.cul.earned && lk.cul.screen === 's-prog' && /^\d+ of \d+ unlocked$/.test(O.hint.trim()))
       ? ok(`L.11a / v28 item 4 the Customise unlocks tab is not gated: an achievement earned before the chest is there and green, the tab says how much of itself is done either side of the chest ("${lk.cul.hint}" then "${O.hint}"), and a tap on it does not open a locked screen`) : bad('L.11a the Customise unlocks tab', JSON.stringify({ cul: lk.cul, hint: O.hint }));
-    (!/cuslock/.test(O.cls) && /newthing/.test(O.cls) && O.need && O.sq === '#FFD1DC' && O.snd === 'wood' && O.bg === 'grid' && O.unx)
+    (!/cuslock/.test(O.cls) && /newthing/.test(O.cls) && O.need && O.sq === PINK40 && O.snd === 'wood' && O.bg === 'grid' && O.unx)
       ? ok('L.11a with the Games chest open the strike wipes off, the row is green until first opened (L8 / D.5), and the choices made before apply the moment it opens') : bad('L.11a Customise once the chest is open', JSON.stringify(O));
     (lk.opened.screen === 's-custom' && lk.opened.seen === 1 && !lk.opened.after && lk.opened.green)
       ? ok('L.11a opening Customise spends the green on the menu row, and a colour earned while it was locked is first-seen green there') : bad('L.11a the first open of Customise', JSON.stringify(lk.opened));

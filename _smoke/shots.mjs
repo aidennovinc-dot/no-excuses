@@ -2494,6 +2494,20 @@ scene('68.34', async (page, browser) => {
   }
 });
 
+/* 68.35 (PICKED): the bright target colours — the Target colour row on a profile with two earned (Showed up and Warm hands: yellow and orange open, the
+   rest locked with the red line), then a Quick Tap preview in orange on the Lantern background */
+scene('68.35', async (page, browser) => {
+  await load(page, { ...PLAIN, welcomeSeen: 1, chests: { games: 1 } }, { ach: { first: Date.now(), qt_clean5: Date.now() } });
+  await show(page, 's-custom', { g: 'quick-tap' }); await sleep(500); await show(page, 's-menu'); await sleep(200); await show(page, 's-custom', { g: 'quick-tap' }); await sleep(800);
+  say('row', await page.evaluate(() => [...document.querySelectorAll('#c-sq button')].map(b => b.dataset.v + (b.classList.contains('locked') ? ' (locked)' : ''))));
+  await frame(page, browser, '68.35-target-colours', 'Customise, Target colour: white, yellow, orange open (Showed up and Warm hands earned); pink, violet, turquoise, lime and the wheel locked, each with the red line');
+  const orange = await page.evaluate(async () => (await import('./config/theme.js')).ITEMS.sq.find(i => i.by === 'qt_clean5').v);
+  await load(page, { ...OPEN, welcomeSeen: 1, bg: 'lantern', snd: 'off', musicG: { menu: false }, col: { 'quick-tap': { sq: orange, lead: '#C8322A', cut: orange } } });
+  await show(page, 's-custom', { g: 'quick-tap' }); await sleep(400); await show(page, 's-menu'); await sleep(200); await show(page, 's-custom', { g: 'quick-tap' }); await sleep(700);
+  say('lantern', await page.evaluate(() => ({ bg: JSON.parse(localStorage.getItem('ne')).prefs.bg, live: document.getElementById('pv').style.getPropertyValue('--sq-live') })));
+  await frame(page, browser, '68.35-on-lantern', `Customise on the Lantern background: the Quick Tap preview's lit pad in orange (${orange})`);
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

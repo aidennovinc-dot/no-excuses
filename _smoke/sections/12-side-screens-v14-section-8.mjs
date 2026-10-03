@@ -804,4 +804,37 @@ export async function run() {
       ? ok(`68.34 every Customise preview is a short loop with the target colour on screen most of it, and a colour tapped at any moment is on the target the next frame: ${p34.map(r => `${r.g} ${r.ms}ms loop, colour on ${r.on}ms (${Math.round(r.share * 100)}%)`).join('; ')}`)
       : bad('68.34 the Customise previews', JSON.stringify(p34));
   }
+  /* build 69 (68.35, PICKED): TARGET COLOURS GO FROM PASTEL TO BRIGHT. Aiden: "They should be less pastel and more bright." The seven on the Target colour
+     and Cut pieces rows are config/theme.js ITEMS, slot for slot (which achievement opens which slot is unchanged); none is the lock red or the unlock green;
+     each reads on every background (luminance ratio at least 3 against every DESIGNS ground); the six earned ones are BRIGHT — fully or nearly saturated, not
+     washed toward white (HSL saturation ≥ .75, lightness ≤ .75; the old pastels sat at .8–.9); and a profile holding a retired pastel reads as its slot's new
+     colour */
+  {
+    const TH35 = await import(pathToFileURL(path.join(root, 'config', 'theme.js')).href + '?b69');
+    const hex35 = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
+    const lum35 = h => { const [r, g, b] = hex35(h).map(v => v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4)); return .2126 * r + .7152 * g + .0722 * b; };
+    const ratio35 = (a, b) => { const [x, y] = [lum35(a), lum35(b)].sort((p, q) => q - p); return (x + .05) / (y + .05); };
+    const hsl35 = h => { const [r, g, b] = hex35(h), mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn; return { s: d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1)), l }; };
+    const seven = TH35.ITEMS.sq.filter(i => i.v !== 'wheel').map(i => i.v.toUpperCase());
+    const low35 = [];
+    for (const c of seven) for (const [d, x] of Object.entries(TH35.DESIGNS)) { const r = ratio35(c, x.tint); if (r < 3) low35.push(`${c} on ${d} ${r.toFixed(2)}`); }
+    const pastel35 = seven.slice(1).filter(c => { const q = hsl35(c); return q.s < .75 || q.l > .75; });
+    // a profile from before this build, its Quick Tap target the old slot-3 pastel and its Estimate cut the old slot-6 one
+    const slot3 = TH35.ITEMS.sq.find(i => i.by === 'qt_clean5').v, slot6 = TH35.ITEMS.cut.find(i => i.by === 'qt_clean30').v;
+    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS, menuSeen: 1, musicG: { menu: false }, col: { 'quick-tap': { sq: '#9BE8FF', lead: '#C8322A', cut: '#9BE8FF' }, hold: { sq: '#FFFFFF', lead: '#C8322A', cut: '#C6FF7A' } } }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+    const c35 = await page.evaluate(async () => { const R = await import('./ui/router.js'), S = await import('./core/store.js'), w = ms => new Promise(r => setTimeout(r, ms));
+      // opened twice: the first visit wears L8's first-seen green on every swatch, which rightly paints over its own colour
+      R.show('s-custom', { g: 'hold' }); await w(400); R.show('s-menu'); await w(200); R.show('s-custom', { g: 'hold' }); await w(500);
+      const p = c => { const i = document.createElement('i'); i.style.color = c; document.body.appendChild(i); const v = getComputedStyle(i).color; i.remove(); return v; };
+      const row = id => [...document.querySelectorAll(`#${id} button:not(.wheel)`)].map(b => ({ v: b.dataset.v.toUpperCase(), bg: getComputedStyle(b).backgroundColor }));
+      return { sq: row('c-sq'), cut: row('c-cut'), lock: p('var(--lock)'), ok: p('var(--ok)'), rgb: Object.fromEntries([...document.querySelectorAll('#c-sq button:not(.wheel)')].map(b => [b.dataset.v.toUpperCase(), p(b.dataset.v)])),
+        stored: { qt: S.prefs.col['quick-tap'].sq, qtCut: S.prefs.col['quick-tap'].cut, holdCut: S.prefs.col.hold.cut } }; });
+    const want35 = seven.join(), cutWant = TH35.ITEMS.cut.filter(i => i.v !== 'wheel').map(i => i.v.toUpperCase()).join();
+    const painted = c35.sq.every(s => s.bg === c35.rgb[s.v]), clash = c35.sq.filter(s => s.bg === c35.lock || s.bg === c35.ok).map(s => s.v);
+    (c35.sq.map(s => s.v).join() === want35 && c35.cut.map(s => s.v).join() === cutWant && painted && !clash.length && !low35.length && !pastel35.length
+      && c35.stored.qt.toUpperCase() === slot3.toUpperCase() && c35.stored.qtCut.toUpperCase() === slot3.toUpperCase() && c35.stored.holdCut.toUpperCase() === slot6.toUpperCase())
+      ? ok(`68.35 the target colours are the bright set, slot for slot from config (${want35}), on the Target colour and Cut pieces rows; none is the lock red or the unlock green; every one reads on every background (lowest ratio ${Math.min(...seven.flatMap(c => Object.values(TH35.DESIGNS).map(x => ratio35(c, x.tint)))).toFixed(2)}); the six earned ones bright, not pastel; a profile holding a retired pastel reads as its slot's new colour (${c35.stored.qt}, ${c35.stored.holdCut})`)
+      : bad('68.35 the target colours', JSON.stringify({ seven, sq: c35.sq.map(s => s.v), cut: c35.cut.map(s => s.v), painted, clash, low35, pastel35, stored: c35.stored, slot3, slot6 }));
+  }
 }

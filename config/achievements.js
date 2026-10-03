@@ -22,7 +22,7 @@
    one-per-mode key row (Desk v5.2's "Customise only" group). Neither feeds a key. */
 export const ACH = [
   // everywhere
-  { id:'first',   g:'all', tier:'earned', name:'Showed up',   how:'Finish any run', unlocks:['sq','#FFE9C4'] },
+  { id:'first',   g:'all', tier:'earned', name:'Showed up',   how:'Finish any run', unlocks:['sq','#FFD60A'] },
   // v29 (item 11, build 55): `noRun` - earned off a screen, never by playing, so the Next card never offers it and Try never pins it
   { id:'named',   g:'all', tier:'earned', name:'Signed in',   how:'Put a name on your profile, top of the Scores screen', unlocks:['bg','grid'], noRun:1 },
   { id:'every',   g:'all', tier:'earned', name:'Every game',  how:'Finish a run in every game', unlocks:['lead','#FFB020'] },
@@ -40,7 +40,7 @@ export const ACH = [
   // quick tap — every one is Two or Four, never "any mode" (v6)
   { id:'qt_r4',      g:'quick-tap', tier:'earned', name:'Quick',                how:'Four · 3 hits a second, any length', unlocks:['snd','click'], at:{d:'four'}, live:1 },
   { id:'qt_clean15', g:'quick-tap', tier:'earned', name:'Clean · Dash',         how:'Four · Dash, no misses, at least 24 hits', unlocks:['bg','rain'], at:{d:'four',s:15} },
-  { id:'qt_clean30', g:'quick-tap', tier:'pro',    name:'Clean · Marathon',     how:'Four · Marathon, no misses, at least 50 hits', unlocks:['sq','#C6FF7A'], at:{d:'four',s:30} },
+  { id:'qt_clean30', g:'quick-tap', tier:'pro',    name:'Clean · Marathon',     how:'Four · Marathon, no misses, at least 50 hits', unlocks:['sq','#19E3C8'], at:{d:'four',s:30} },
   { id:'qt_eyes',    g:'quick-tap', tier:'pro',    name:'Eyes shut',            how:'Two · clean Marathon, at least 60 hits', unlocks:['lead','#FF4FD8'], at:{d:'two',s:30} },
   { id:'qt_sab',     g:'quick-tap', tier:'pro',    name:'Committed',            how:'Two · a run of nothing but misses, at least five', at:{d:'two'} },
   { id:'qt_s5',      g:'quick-tap', tier:'secret', name:'No excuses',           how:'Four · 5 hits a second on a Sprint', hint:"Four pads, the shortest length, and a rate no Pro row asks for.", at:{d:'four',s:5}, live:1 },
@@ -84,20 +84,20 @@ export const KEY_ROSTER = {
   'qt-two-5':       { clear:{ id:'qt_bclean5', name:'Two hands' },                                  pro:{ name:'Warm start' },                                    author:{ name:'Two flat out' } },
   'qt-two-15':      { clear:{ name:'Two steady' },                                                  pro:{ id:'qt_br4', name:'Two quick' },                        author:{ name:'Two better' } },
   'qt-two-30':      { clear:{ name:'Two long' },                                                    pro:{ name:'Two lasting' },                                   author:{ name:'Two unbeaten' } },
-  'qt-four-5':      { clear:{ id:'qt_clean5', name:'Warm hands', unlocks:['sq','#9BE8FF'] },        pro:{ name:'Off the mark' },                                  author:{ name:'Out of the gate' } },
+  'qt-four-5':      { clear:{ id:'qt_clean5', name:'Warm hands', unlocks:['sq','#FF8A1F'] },        pro:{ name:'Off the mark' },                                  author:{ name:'Out of the gate' } },
   'qt-four-15':     { clear:{ name:'Finding it' },                                                  pro:{ id:'qt_r5', name:'Quicker', unlocks:['lead','#4FD9FF'] }, author:{ name:'Out-tapped' } },
   'qt-four-30':     { clear:{ name:'Still going' },                                                 pro:{ name:'Relentless' },                                    author:{ name:'Unmatched' } },
   'dt-blind-5':     { clear:{ id:'dt_bpin', name:'Blind luck' },                                    pro:{ name:'Blind start' },                                   author:{ name:'Blind best' } },
   'dt-blind-15':    { clear:{ name:'Feeling it' },                                                  pro:{ id:'dt_blind', name:'Homing' },                         author:{ name:'Second sight' } },
   'dt-blind-30':    { clear:{ name:'Blind faith' },                                                 pro:{ name:'Dead reckoning' },                                author:{ name:'Sixth sense' } },
-  'dt-lead-5':      { clear:{ id:'dt_pin', name:'Pinpoint', unlocks:['sq','#FFD1DC'] },             pro:{ name:'Quick eye' },                                     author:{ name:'First strike' } },
+  'dt-lead-5':      { clear:{ id:'dt_pin', name:'Pinpoint', unlocks:['sq','#FF3D9A'] },             pro:{ name:'Quick eye' },                                     author:{ name:'First strike' } },
   'dt-lead-15':     { clear:{ name:'Tracking' },                                                    pro:{ name:'On the tail' },                                   author:{ name:'Locked on' } },
   'dt-lead-30':     { clear:{ name:'Long chase' },                                                  pro:{ id:'dt_land', name:'Landing', unlocks:['bg','orbs'] },  author:{ name:'Sharper' } },
-  'es-grow-set':    { clear:{ id:'hd_steady', name:'Steady hand', unlocks:['sq','#F3D9FF'] },       pro:{ name:'Green thumb' },                                   author:{ name:'Outgrown' } },
+  'es-grow-set':    { clear:{ id:'hd_steady', name:'Steady hand', unlocks:['sq','#A06BFF'] },       pro:{ name:'Green thumb' },                                   author:{ name:'Outgrown' } },
   'es-grow-streak': { clear:{ name:'Keeps growing' },                                               pro:{ name:'Runs on' },                                       author:{ name:'Never stops' } },
   'es-cut-set':     { clear:{ id:'hd_money', name:'On the money', unlocks:['snd','wood'] },         pro:{ id:'hd_est', name:'Good eye', unlocks:['lead','#FFFFFF'] }, author:{ name:'Cleaner cut' } },
   'es-cut-streak':  { clear:{ name:'Keeps cutting' },                                               pro:{ name:'Long division' },                                 author:{ name:'Endless edge' } },
-  'sq-3':           { clear:{ id:'sq_7', name:'Seven', unlocks:['bg','stars'] },                    pro:{ id:'sq_12', name:'Twelve', unlocks:['sq','#FFF3A0'] },  author:{ name:'Longer memory' } },
+  'sq-3':           { clear:{ id:'sq_7', name:'Seven', unlocks:['bg','stars'] },                    pro:{ id:'sq_12', name:'Twelve', unlocks:['sq','#C8F02C'] },  author:{ name:'Longer memory' } },
   'sq-7':           { clear:{ name:'Wide open' },                                                   pro:{ name:'Seven wide' },                                    author:{ name:'Total recall' } },
   'tm-sw-set':      { clear:{ id:'tm_close', name:'Dead on' },                                      pro:{ name:'Fine margin' },                                   author:{ name:'Better clock' } },
   'tm-sw-streak':   { clear:{ name:'Still counting' },                                              pro:{ id:'tm_run', name:'Keeps going' },                      author:{ name:'Never off' } },

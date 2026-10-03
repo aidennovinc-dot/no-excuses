@@ -162,10 +162,12 @@ export async function run() {
     const nav = await page.evaluate(async () => { const R = await import('./ui/router.js'); const S = await import('./core/store.js'); const wait = ms => new Promise(r => setTimeout(r, ms)); const on = () => (document.querySelector('.screen.on') || {}).id;
       const open = async id => { R.show('s-menu'); await wait(100); R.show('s-prog', { tab: 'cul' }); await wait(500); document.getElementById('cul-' + id)?.click(); await wait(500); };
       const out = {};
+      // AMENDED at build 69 (68.35): the two payouts are read from config (slots `first` and `dt_pin`) — they were the typed pastels the bright set replaced
+      const TH = await import('./config/theme.js'), slot = by => TH.ITEMS.sq.find(i => i.by === by).v;
       await open('first');
-      out.first = { screen: on(), ring: !!document.querySelector('#c-sq button[data-v="#FFE9C4"].pvw'), applied: Object.values(S.prefs.col || {}).some(c => c && c.sq === '#FFE9C4') };
+      out.first = { screen: on(), ring: !!document.querySelector(`#c-sq button[data-v="${slot('first')}"].pvw`), applied: Object.values(S.prefs.col || {}).some(c => c && c.sq === slot('first')) };
       S.store.ach.dt_pin = Date.now(); S.save(); await open('dt_pin');
-      out.game = { screen: on(), g: document.getElementById('pv').dataset.g, ring: !!document.querySelector('#c-sq button[data-v="#FFD1DC"].pvw') };
+      out.game = { screen: on(), g: document.getElementById('pv').dataset.g, ring: !!document.querySelector(`#c-sq button[data-v="${slot('dt_pin')}"].pvw`) };
       S.store.ach.every = Date.now(); S.save(); await open('every');
       out.lead = { screen: on(), g: document.getElementById('pv').dataset.g, shown: document.getElementById('g-lead').style.display !== 'none', ring: !!document.querySelector('#c-lead button[data-v="#FFB020"].pvw') };
       await open('dt_sweep');

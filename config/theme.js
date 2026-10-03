@@ -7,8 +7,9 @@ export const P1C = '#E0453B', P2C = '#6EC6FF';
    it as --press; nothing else in the app uses it. */
 export const PRESS = { name:'amber', v:'#FFB020' };
 /* v18 (B.18, build 32): a tile's outline fills with its key-1 progress. Not green (L8's first-seen mark), not white (L7's
-   unplayed tile), and not the pressed amber above — LILAC, the #F3D9FF already in the target palette, so the grid gains no
-   new colour. ui/theme.js publishes it as --keyfill; the filled outline and the complete tile's wash both spend it. */
+   unplayed tile), and not the pressed amber above — LILAC, the #F3D9FF that was in the target palette, so the grid gained no
+   new colour. ui/theme.js publishes it as --keyfill; the filled outline and the complete tile's wash both spend it.
+   build 69 (68.35): the target palette went bright and lilac left it; the key fill keeps its value (a separate decision) */
 export const KEYFILL = { name:'lilac', v:'#F3D9FF' };
 // build 69 (68.16): the run timer's last three seconds — the picks page's amber (the same hex as PRESS, a different job). ui/theme.js publishes it as --amber
 export const TIMER_HOT = { name:'amber', v:'#FFB020' };
@@ -57,8 +58,11 @@ export const DESIGNS = { stars:{tint:'#050506'}, grid:{tint:'#0A1430'}, rain:{ti
    Pro light blue, Thorns black-and-white thorns — and every other choice, the starting ones among them, is plain white. Selected is a brighter
    border and a glow in the same colour. Keyed by config/keys.js id, which is what ITEMS.bg's `key` and a key track's KEYS row carry */
 export const ORIGIN_LOOK = { clear: { col: '#E8B84A' }, pro: { col: '#BFE6FF' }, author: { col: '#FFFFFF', thorns: 1 }, plain: { col: '#FFFFFF' } };
+/* build 69 (68.35, PICKED — "Great target colours"): THE TARGET COLOURS GO FROM PASTEL TO BRIGHT. Aiden: "They should be less pastel and more bright." White,
+   yellow, orange, pink, violet, turquoise, lime, then the wheel; no pure red (miss, trap, locked) and no unlock green; each reads on every background. Slot
+   for slot: the same achievement (`by`) opens the same slot, only the colour changed — `sq` and `cut` alike. SQ_WAS below is what each slot held before */
 export const ITEMS = {
-  sq:  [{v:'#FFFFFF'},{v:'#FFE9C4',by:'first'},{v:'#9BE8FF',by:'qt_clean5'},{v:'#FFD1DC',by:'dt_pin'},{v:'#F3D9FF',by:'hd_steady'},{v:'#C6FF7A',by:'qt_clean30'},{v:'#FFF3A0',by:'sq_12'},{v:'wheel',by:'fullset'}],
+  sq:  [{v:'#FFFFFF'},{v:'#FFD60A',by:'first'},{v:'#FF8A1F',by:'qt_clean5'},{v:'#FF3D9A',by:'dt_pin'},{v:'#A06BFF',by:'hd_steady'},{v:'#19E3C8',by:'qt_clean30'},{v:'#C8F02C',by:'sq_12'},{v:'wheel',by:'fullset'}],
   lead:[{v:'#C8322A'},{v:'#FFB020',by:'every'},{v:'#7CFFB2',by:'dt_sweep'},{v:'#4FD9FF',by:'qt_r5'},{v:'#FF4FD8',by:'qt_eyes'},{v:'#FFFFFF',by:'hd_est'},{v:'wheel',by:'fullset'}],
   /* v29 Section A (57.11b, build 57): THE BACKGROUND IS TWO SETTINGS NOW — a PATTERN and a COLOUR. Aiden: the colour wheel "stops applying once
      another background is chosen, and it colours everything on screen — text, borders, buttons — not just the background". Both faults came from one
@@ -80,8 +84,11 @@ export const ITEMS = {
   // over the time played so far — at 15s it averages 15s, at 17s it averages 17s. Shown only on the timed games
   rate:[{v:'live',label:'Live'},{v:'run',label:'Whole run'}],
   // v13 (6.5): the Cut pieces are a pair. This picks the cut-off piece; the rest is the same colour at 40%
-  cut: [{v:'#FFFFFF'},{v:'#FFE9C4',by:'first'},{v:'#9BE8FF',by:'qt_clean5'},{v:'#FFD1DC',by:'dt_pin'},{v:'#F3D9FF',by:'hd_steady'},{v:'#C6FF7A',by:'qt_clean30'},{v:'#FFF3A0',by:'sq_12'},{v:'wheel',by:'fullset'}],
+  cut: [{v:'#FFFFFF'},{v:'#FFD60A',by:'first'},{v:'#FF8A1F',by:'qt_clean5'},{v:'#FF3D9A',by:'dt_pin'},{v:'#A06BFF',by:'hd_steady'},{v:'#19E3C8',by:'qt_clean30'},{v:'#C8F02C',by:'sq_12'},{v:'wheel',by:'fullset'}],
 };
+/* build 69 (68.35): the pastel each slot held until this build, keyed to the achievement that opens the slot. core/store.js cleanPrefs reads a stored
+   target or Cut colour that is one of these as its slot's colour now (ITEMS, by `by`), so a profile keeps the slot it chose, in the new colour */
+export const SQ_WAS = { '#FFE9C4':'first', '#9BE8FF':'qt_clean5', '#FFD1DC':'dt_pin', '#F3D9FF':'hd_steady', '#C6FF7A':'qt_clean30', '#FFF3A0':'sq_12' };
 // the two-player pictures (v10). v14: the caption is gone (4.2), the phones are phone-shaped (4.4) and versus draws a player at
 // each end of the one phone (4.5). The labels are drawn beside them by ui/screens/pick.js, so they carry the player colours
 export const VS_ART = {
