@@ -267,8 +267,15 @@ export const CHEST_WORDS = {
    number would. `oneWay` is RETIRED: "nothing under the list on either". `go` is ENTER THE GAUNTLET on both (he said it of
    Mini; Cowork's reading is both). `roundsEach` / `roundsPair` / `modePair` are 57.9's one-row Estimate: its two plays are
    one step of the run and one spoke on the web, so they are ONE row — "2 rounds each" on Mini, "7 + 10 rounds" on Mega. */
-export const GAUNTLET = { name:{ g1:'Gauntlet Mini', g2:'Gauntlet Mega' }, msgTitle:'The {name}', toast:'{need} first', soon:'Coming soon',
-  intro:{ g1:'{n} short games back to back. No retries, one final score.', g2:'{n} full length games back to back. Do you have what it takes?' },
+/* build 69 (68.28): g3 is GAUNTLET · VERSUS, test-only — a run of duels against the computer (config/gauntlets.js VERSUS_AI). `bot` is the
+   opponent's name wherever a two-player screen would say "Player 2"; the rest is its screen: the roster's opponent line, the card between
+   duels, and the screen a lost or won run ends on. */
+export const GAUNTLET = { name:{ g1:'Gauntlet Mini', g2:'Gauntlet Mega', g3:'Gauntlet · Versus' }, msgTitle:'The {name}', toast:'{need} first', soon:'Coming soon',
+  intro:{ g1:'{n} short games back to back. No retries, one final score.', g2:'{n} full length games back to back. Do you have what it takes?',
+    g3:'{n} duels against the computer, one per game. Lose one and the run is over.' },
+  bot:'Computer', botTurn:'its turn', yourTurn:'your turn<br>tap when ready', vsCap:'{note} · {s}s',
+  duelGo:'Start the duels', duelWon:'Duel {n} of {s} won', duelNext:'Next duel · {name}', duelOver:'You got to duel {n} of {s} · lost to {name}',
+  duelAll:'{name} — won, {s} of {s}', duelRetry:'Retry', duelBack:'Back', duelBoard:'{n} of {s}', duelTest:'Test only — not in the released app.',
   go:'Enter the Gauntlet', again:'Again, from game one',
   /* v29 Section A (58.2, build 58): a FINISHED Gauntlet is marked on its own map tile — a tick, and its best score under
      it — because finishing one is now what opens the next chest and the map is where a player looks to see what is left. */
@@ -307,7 +314,9 @@ export const VS_LINE = { sequence:'{n} lives each · the pattern grows a note a 
 export const HUD = { goal:'<i><b>{need}</b> → unlocks {name}</i>', aim:'<i>goal · <b>{aim}</b></i>', keyGoal:'<i><b>{need}</b> → {name} · {key}</i>', roundOf:'Round {n} of {s}',
   allow:'{left}{unit}', round:'Round {n}', goalHit:'✓ ', best:'best {score}', versus:'versus', pass:'pass & play',
   vsLead:'first to {t} · or lead by {n}', vsQt:'tap your white square', vsDots:'squares vs circles · wrong shape gives them the point', level:'level', lead:'{who} +{n}',
-  draw:'draw', wins:'Player {n} wins', byLead:'by {n}', onClock:'on the clock', skipIn:'skip in {n}', skip:'skip' };
+  draw:'draw', wins:'Player {n} wins', byLead:'by {n}', onClock:'on the clock', skipIn:'skip in {n}', skip:'skip',
+  // build 69 (68.28): the header's mode line in a Gauntlet · Versus duel
+  vsBot:'vs computer' };
 // v14 (4.7 / 4.9): the game name sits in its usual place at the top, whose turn it is is the biggest thing on the screen, and
 // player 2 is told what there is to beat — the score, and the pace behind it where the game has one
 export const PASS = { eyebrow:'{game} · pass & play', up:'your turn', hand:'hand the phone over', beat:'to beat', rate:'{n}/s' };
@@ -425,6 +434,8 @@ export const ABOUT = {
   // build 69 (68.23): the unlock switches and the "play this tour" list
   devUnl:'unlocks · one switch each, a real unlock (off takes it back with its first-time moments)', devUnlGame:'the game', devUnlMenu:'menu items',
   devTour:'play this tour', devTourKey:'Skill Key intro', devTourWelcome:'Welcome video',
+  // build 69 (68.28): the hint over the Gauntlet · Versus button
+  devDuel:'duels against the computer · test only',
   devAnim:'animations · nothing is stored', devKeyIn:'key arrival', devSeg:'segment advance', devWhole:'key complete', devChest:'chest {n} opening',
   // v23 (L.8f, build 40): the meter as the app reads it right now, and whether Testing's override is what it is reading
   // v28 (item 9, build 53): Testing is the one screen that works in the RAW meter (three bands of 100); everywhere a player looks it is meterPct(), 0–100

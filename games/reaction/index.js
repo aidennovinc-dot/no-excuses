@@ -12,6 +12,7 @@ import * as hud from "../_shared/hud.js";
 import { genRect, rnd, roundEngine, rxBar } from "../_shared/round.js";
 import { roundShow, tierWord } from "../_shared/tier.js";
 import { makeTwo } from "../_shared/two.js";
+import { makeBot, named } from "../_shared/bot.js";
 // v18 (B.3c / B.7): one hold, shared with Timing, so both Streaks add up at the same readable beat
 const HOLD_MS=CFG.hold;
 /* Reaction — Flash: white after a random wait, tap. Go/No-go (v8): shapes cycle past in different spots; tap the rule shape the moment it shows. A wrong shape ends the run. Score is ms, averaged */
@@ -98,6 +99,7 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
   // arrives on a beat, so its turn is a block of shapes — one rule period — and the block is scored the way its Set is
   begin(){ this.round=0; this.times=[]; this.faults=0; this.noTaps=0; this.over=0; this.out=false; this.wrong=0; this.seen=0; this.got=0; this.goDealt=0; this.bi=0; this.block=null; this.vsN=[0,0]; this.vsDone=false; this.skipped=[]; this.dealer=makeDealer('reaction:nogo'); this.spec=null; this.dwell=0; this.gotAll=0;
     // build 68 (67.17): a Flash Set's top is its average from the start — "AVG — ms" until the first tap lands
+    this.bot=this.versus()?makeBot(this.ctx):null; this.botA=null;
     this.two=makeTwo(this.ctx,{lower:true,fmt:v=>Math.round(v)+CP.ms}); hud.score(!this.streak()&&!this.nogo()&&!this.two.on&&!this.versus()?T(CP.avgTop,{n:'—'}):'0');
     if(this.versus()) return this.vsRound(); if(this.two.on) return this.next(); if(this.nogo()) return this.nogoBegin(); this.next(); },
   // Flash (v11 / v14 section 5): Set = 5 attempts, average ms. Streak = every ms above 150 (C.1) adds to a total; the run ends at 500, score attempts
@@ -143,7 +145,10 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
     /* v18 (B.6): a Set waits FLASH_MAX and then SCORES it. "too slow · try again · attempt 2 of 5" is gone — a retake
        measured only the attempts you were quick on, which is the opposite of what a reaction Set is for. The Streak still
        waits 1500ms for the 600ms no-tap (v13 9.1): there the cost is the budget and there was never a retake to remove. */
-    if(!this.versus()) this.later(()=>{ if(this.st==='go'){ if(this.streak()||this.two.on) return this.noTap(); this.noTap(this.FLASH_MAX); } },this.streak()||this.two.on?1500:this.FLASH_MAX); },
+    if(!this.versus()) this.later(()=>{ if(this.st==='go'){ if(this.streak()||this.two.on) return this.noTap(); this.noTap(this.FLASH_MAX); } },this.streak()||this.two.on?1500:this.FLASH_MAX);
+    // 68.28: the computer taps its reaction time after the flash is armed, timed off the same clock a finger's tap is
+    else if(this.bot&&this.botA&&!this.botA.miss){ const v=this.botA.v; const at=()=>{ if(this.st!=='go') return; if(!this.armed) return this.later(at,8);
+      this.later(()=>{ if(this.st==='go'&&this.armed) this.vsTap({p:1,t:this.t0+v}); },Math.max(0,this.t0+v-performance.now())); }; this.later(at,8); } },
   /* build 68 (67.38): false starts IN A ROW, for the Excuses — an early tap adds one, any other answer (a tap, or none) ends the row */
   erun(early){ const xs=this.ctx.xs; if(!xs) return; xs.erun=early?(xs.erun||0)+1:0; xs.erow=Math.max(xs.erow||0,xs.erun); },
   noTap(cap){ this.erun(0); const ms=cap||600; this.st='show'; this.times.push(ms); this.noTaps=(this.noTaps||0)+1; const add=Math.max(0,ms-this.FLASH_FREE);
@@ -205,13 +210,17 @@ const RX=Object.assign(roundEngine(),{ id:'reaction', holdResult:true, times:[],
     // v16 (1.4): each player's own music stem swells with their share of the best-of. Presentation only (L10)
     this.ctx.emit('live',{vsP:[this.vsN[0]/need,this.vsN[1]/need]});
     hud.time(T(CP.hudVs,{n:this.round,s:this.ctx.len})); this.st='wait'; this.armed=false;
-    $('#gen').innerHTML=`<div class="rxpane" id="rxpane"><div class="rxmsg" id="rxmsg" style="top:44%;font-size:11px">${CP.wait}</div></div><div class="vz top p2">${pWho(1)}<b>${this.vsN[1]}</b></div><div class="vz bot p1">${pWho(0)}<b>${this.vsN[0]}</b></div>`;
-    this.later(()=>this.go(),1200+Math.random()*3300); },
+    $('#gen').innerHTML=`<div class="rxpane" id="rxpane"><div class="rxmsg" id="rxmsg" style="top:44%;font-size:11px">${CP.wait}</div></div><div class="vz top p2">${named(this.bot,pWho(1))}<b>${this.vsN[1]}</b></div><div class="vz bot p1">${pWho(0)}<b>${this.vsN[0]}</b></div>`;
+    const wait=1200+Math.random()*3300; this.later(()=>this.go(),wait);
+    /* build 69 (68.28): the computer's round is one draw (games/_shared/bot.js) — its fixed reaction time with a wobble, or the odd false
+       start, which jumps the gun part-way through the wait and hands the round over exactly as a player's early tap does */
+    if(this.bot){ const a=this.botA=this.bot.draw(); if(a.miss) this.later(()=>{ if(this.st==='wait') this.vsTap({p:1,t:performance.now()}); },wait*.6); } },
   // build 55 (in passing): st 'go' with nothing armed yet was neither early nor timed, and the tapper took the round at "0ms"
-  vsTap(ev){ if(this.st!=='wait'&&this.st!=='go') return; const r=genRect(); const p=(ev.y-r.top)<r.height/2?1:0; const early=this.st==='wait'||!this.armed; const w=early?1-p:p; this.st='show'; this.clearT(); this.vsN[w]++;
+  // 68.28: `ev.p` is the computer's own tap; with a computer at the top end, every finger on the glass is the player's
+  vsTap(ev){ if(this.st!=='wait'&&this.st!=='go') return; const r=genRect(); const p=ev.p!==undefined?ev.p:this.bot?0:(ev.y-r.top)<r.height/2?1:0; const early=this.st==='wait'||!this.armed; const w=early?1-p:p; this.st='show'; this.clearT(); this.vsN[w]++;
     const ms=!early&&this.armed?Math.max(1,Math.round(ev.t-this.t0)):0; const pane=$('#rxpane'); pane.classList.remove('lit'); pane.classList.toggle('bad',early);
-    pane.innerHTML=`<div class="rxmsg" style="top:40%"><b class="fb ${w?'p2':'p1'}" style="font-size:clamp(18px,5vw,30px)">${T(CP.takes,{n:w+1})}</b><span class="sub">${early?T(CP.tappedEarly,{n:p+1}):ms+CP.ms}</span></div>`; hud.tick($$('.vz b')[w?0:1],this.vsN[w],w); early?this.ctx.audio.miss():this.ctx.audio.hit(); this.later(()=>this.vsRound(),1500); },
-  vsEnd(){ const [a,b]=this.vsN; const w=winner(a,b); this.st='over'; $('#gen').innerHTML=`<div class="rxpane"><div class="rxmsg" style="top:40%"><b class="fb ${w<0?'':w?'p2':'p1'}" style="font-size:clamp(18px,5vw,30px)">${w<0?CP.draw:T(CP.wins,{n:w+1})}</b><span class="sub">${a} – ${b}</span></div></div>`; this.ctx.audio.end(); this.later(()=>this.ctx.emit('finish',{hits:a,misses:0,vs2:{a,b,w,how:`${a}–${b}`}}),1600); },
+    pane.innerHTML=`<div class="rxmsg" style="top:40%"><b class="fb ${w?'p2':'p1'}" style="font-size:clamp(18px,5vw,30px)">${named(this.bot,T(CP.takes,{n:w+1}))}</b><span class="sub">${early?named(this.bot,T(CP.tappedEarly,{n:p+1})):ms+CP.ms}</span></div>`; hud.tick($$('.vz b')[w?0:1],this.vsN[w],w); early?this.ctx.audio.miss():this.ctx.audio.hit(); this.later(()=>this.vsRound(),1500); },
+  vsEnd(){ const [a,b]=this.vsN; const w=winner(a,b); this.st='over'; $('#gen').innerHTML=`<div class="rxpane"><div class="rxmsg" style="top:40%"><b class="fb ${w<0?'':w?'p2':'p1'}" style="font-size:clamp(18px,5vw,30px)">${w<0?CP.draw:named(this.bot,T(CP.wins,{n:w+1}))}</b><span class="sub">${a} – ${b}</span></div></div>`; this.ctx.audio.end(); this.later(()=>this.ctx.emit('finish',{hits:a,misses:0,vs2:{a,b,w,how:`${a}–${b}`}}),1600); },
   /* Go / No-go (v11): shapes arrive on a fixed beat — the skill is inhibition, not prediction.
      v18 (B.1b): the rule changes every ROUND, and a round is GO_PER correct taps of one shape. A Set is ctx.len of them
      — five rounds, fifteen correct taps — scored on the average ms over every target the run DEALT plus 150ms a wrong

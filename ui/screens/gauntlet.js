@@ -12,13 +12,13 @@
    The run itself is run/gauntlet.js. This file knows the id, the roster it is shown, and what `gaunt:done` hands back. */
 
 import { GAUNTLET } from "../../config/copy.js";
-import { GAUNTLET_RUNS, GAUNTLET_SCORE } from "../../config/gauntlets.js";
+import { GAUNTLET_RUNS, GAUNTLET_SCORE, VERSUS_AI, VERSUS_ID } from "../../config/gauntlets.js";
 import { MODE_NAME } from "../../config/games.js";
 import { $, T, esc } from "../../core.js";
 import { on } from "../../core/events.js";
 import { prefs, save } from "../../core/store.js";
 import { GAMES, lenName } from "../../games/registry.js";
-import { gauntBoard, startGauntlet } from "../../run/gauntlet.js";
+import { gauntBoard, gauntDrop, nextDuel, startGauntlet, versusPlays } from "../../run/gauntlet.js";
 import { define } from "../actions.js";
 import { register, show } from "../router.js";
 
@@ -87,11 +87,41 @@ function resultHtml(id, out) {
     + `<button class="item big" data-act="gaunt-go" data-gid="${esc(id)}">${esc(GAUNTLET.again)}</button></div>`;
 }
 
+/* ---------- build 69 (68.28): GAUNTLET · VERSUS, TEST-ONLY ----------
+   The same screen, three faces: the BRIEF (seven duels, each row naming the computer's number today — off the Skill bar through
+   games/_shared/bot.js versusPlays, so the screen and the opponent can never disagree), BETWEEN two duels (what you won, what is next, one
+   button), and the END (how far you got, Retry and Back). Reached from Testing only, and Back goes back there. */
+const duelName = st => GAMES[st.g].name + (GAMES[st.g].modes.length > 1 && MODE_NAME[st.d] ? ' · ' + MODE_NAME[st.d] : '');
+const duelSay = st => { const p = versusPlays(st.g + ':' + st.d), row = VERSUS_AI[st.g + ':' + st.d] || {};
+  return p ? p.shown + (row.win ? ' · ' + row.win : '') : ''; };
+// `done` duels won and ticked; the next one edged — or, on a lost run, the duel it was lost at crossed in red
+function duelRoster(id, done = 0, lost = false) {
+  return `<ol class="gtlist gtduel">` + (GAUNTLET_RUNS[id] || []).map((st, i) =>
+    `<li class="${i < done ? 'won' : i === done ? (lost ? 'lost' : 'next') : ''}"><b>${i < done ? '✓' : i === done && lost ? '✗' : i + 1}</b><span>${esc(duelName(st))}<small>${esc(GAUNTLET.bot)} · ${esc(duelSay(st))}</small></span></li>`).join('') + `</ol>`;
+}
+function duelBrief(id) {
+  return `<div class="gtbrief">${duelRoster(id)}`
+    + `<button class="item big gtgo" data-act="gaunt-go" data-gid="${esc(id)}">${esc(GAUNTLET.duelGo)}</button>`
+    + `<div class="hint">${esc(GAUNTLET.duelTest)}</div>` + boardHtml(id) + `</div>`;
+}
+function duelBetween(id, b) {
+  return `<div class="gtres gtbetween"><div class="gtbig">${esc(T(GAUNTLET.duelWon, { n: b.won, s: b.n }))}</div>${duelRoster(id, b.i)}`
+    + `<button class="item big gtgo" data-act="gaunt-next">${esc(T(GAUNTLET.duelNext, { name: duelName(b.next) }))}</button></div>`;
+}
+function duelOver(id, out) {
+  const d = out.duel, line = d.lost ? T(GAUNTLET.duelOver, { n: d.at, s: d.n, name: duelName(d) }) : T(GAUNTLET.duelAll, { name: GAUNTLET.name[id] || '', s: d.n });
+  return `<div class="gtres gtover"><div class="gtbig">${esc(line)}</div>${duelRoster(id, d.won, d.lost)}`
+    + `<button class="item big" data-act="gaunt-go" data-gid="${esc(id)}">${esc(GAUNTLET.duelRetry)}</button>`
+    + `<button class="item" data-act="back">${esc(GAUNTLET.duelBack)}</button>` + boardHtml(id) + `</div>`;
+}
+
 function boardHtml(id) {
   const rows = gauntBoard(id).slice(0, 10);
   if (!rows.length) return '';
+  // 68.28: a Gauntlet · Versus row is duels won out of the run's seven, not a percentage
+  const n = (GAUNTLET_RUNS[id] || []).length, fig = r => id === VERSUS_ID ? T(GAUNTLET.duelBoard, { n: r.score, s: n }) : T(GAUNTLET.pct, { n: r.score });
   return `<div class="gtboard"><h4>${esc(GAUNTLET.board)}</h4><ol>` + rows.map(r =>
-    `<li><span>${esc(T(GAUNTLET.pct, { n: r.score }))}</span><i>${new Date(r.t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: '2-digit' })}</i></li>`).join('')
+    `<li><span>${esc(fig(r))}</span><i>${new Date(r.t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: '2-digit' })}</i></li>`).join('')
     + `</ol></div>`;
 }
 
@@ -104,8 +134,12 @@ function briefHtml(id) {
 }
 
 let cur = 'g1';
-register('s-gauntlet', { onShow({ id, done } = {}) {
+register('s-gauntlet', { onShow({ id, done, between } = {}) {
   if (id) cur = id; const g = cur;
+  // 68.28: Gauntlet · Versus — its own three faces, no message slot written, and Back returns to Testing (onBack below)
+  if (g === VERSUS_ID) { $('#s-gauntlet').dataset.g = g; $('#gt-title').textContent = GAUNTLET.name[g] || '';
+    $('#gt-soon').textContent = T((GAUNTLET.intro && GAUNTLET.intro[g]) || '', { n: (GAUNTLET_RUNS[g] || []).length });
+    $('#gt-body').innerHTML = between ? duelBetween(g, between) : done && done.duel ? duelOver(g, done) : duelBrief(g); return; }
   /* 57.9: `data-g` is how the stylesheet knows WHICH Gauntlet is on screen — the scary face and the deep red go on the title
      and the button, and Mega is dressed a step further than Mini. Nothing about the look is decided here. */
   $('#s-gauntlet').dataset.g = g;
@@ -114,10 +148,13 @@ register('s-gauntlet', { onShow({ id, done } = {}) {
   $('#gt-body').innerHTML = done ? resultHtml(g, done) : briefHtml(g);
   // item 8 (build 52): arriving here is opening the Gauntlet, and that is what opens its message slot
   if (g && !(prefs.gauntSeen || {})[g]) { prefs.gauntSeen = Object.assign({}, prefs.gauntSeen, { [g]: 1 }); save(); }
-} });
+}, onBack() { if (cur !== VERSUS_ID) return false; gauntDrop(); show('s-testing'); return true; } });
 
-define({ 'gaunt-go'(b) { startGauntlet(b.dataset.gid || cur); return 'click'; } });
+define({ 'gaunt-go'(b) { startGauntlet(b.dataset.gid || cur); return 'click'; },
+  // 68.28: the button between two duels
+  'gaunt-next'() { nextDuel(); return 'click'; } });
 
 // the run hands itself back (A4: it emits, this screen navigates). A quit lands on the brief — one way through, start again
 on('gaunt:done', out => show('s-gauntlet', { id: out.id, done: out }));
 on('gaunt:quit', ({ id }) => show('s-gauntlet', { id }));
+on('gaunt:between', b => show('s-gauntlet', { id: b.id, between: b }));

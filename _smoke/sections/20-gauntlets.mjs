@@ -274,4 +274,121 @@ export async function run() {
       : bad('57.9 / 57.10 / v30 59.5 the Gauntlet screens', JSON.stringify({ two, sw, swBand, gone, copy, looks, oneLine, screens, est }));
     await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   }
+  await duels68();
+}
+
+/* ---- build 69 (68.28): GAUNTLET · VERSUS, test-only — a run of duels against the computer ----
+   Aiden: "The gauntlet mini should actually be versing a computer in the versus mode of the games … simulated like a set number of hits per
+   second … put it into the game as like an additional version, just so I can test it." Everything the computer plays at is read off the
+   config here (VERSUS_AI, KEY_BARS), never typed. The player's end is played by an in-page hand that taps the real elements (a lit pad, the
+   square, the flash, the clock at its target, the ball at its marker, the shape) and, on a Grow round, holds for exactly the target — so
+   which side wins is decided by the computer's level, which the run's own test hook sets. */
+async function duels68() {
+  const GA = await import(pathToFileURL(path.join(root, 'config', 'gauntlets.js')).href);
+  const KB = await import(pathToFileURL(path.join(root, 'config', 'key-bars.js')).href);
+  const CP = await import(pathToFileURL(path.join(root, 'config', 'copy.js')).href);
+  const GM = await import(pathToFileURL(path.join(root, 'config', 'games.js')).href);
+  const fill = (s, v) => String(s).replace(/\{(\w+)\}/g, (_, k) => v[k] ?? '');
+  const ID = GA.VERSUS_ID, steps = GA.GAUNTLET_RUNS[ID] || [];
+  const dname = st => GM.GAMES[st.g].name + (GM.GAMES[st.g].modes.length > 1 && GM.MODE_NAME[st.d] ? ' · ' + GM.MODE_NAME[st.d] : '');
+
+  // the roster: seven duels, one per game, Sequence and Spot · Count left out, every one with an opponent row whose bar exists
+  { const keys = steps.map(s => s.g + ':' + s.d), games = new Set(steps.map(s => s.g));
+    const noRow = keys.filter(k => !GA.VERSUS_AI[k] || !KB.KEY_BARS[GA.VERSUS_AI[k].bar]);
+    (steps.length === 7 && new Set(keys).size === 7 && games.size === 6 && !games.has('sequence') && !keys.includes('spot:count') && !noRow.length && GA.GAUNTLET_RUNS.g1.length === 9)
+      ? ok(`68.28 Gauntlet · Versus is seven duels, one per game — ${steps.map(dname).join(' > ')} — Sequence and Spot · Count left out, every duel an opponent row in VERSUS_AI on a Skill bar that exists; Mini and Mega untouched`)
+      : bad('68.28 the Gauntlet · Versus roster', JSON.stringify({ keys, noRow })); }
+
+  // it exists only while BUILD_FLAGS.dev; it is not on the map and no chest wants it
+  await boot({ chests: { games: 1, key: 1, pro: 1, thorns: 1 } });
+  await click('[data-go="s-pick"]'); await sleep(1200);
+  const where = await page.evaluate(async id => { const B = await import('./config/build.js'), G = await import('./run/gauntlet.js'), K = await import('./progress/key.js'), C = await import('./config/chests.js');
+    const tile = document.querySelectorAll(`#grid [data-gauntlet="${id}"]`).length, needs = C.CHESTS.flatMap(c => K.chestNeeds(c.id)).filter(r => r.gaunt === id).length;
+    const onDev = G.duelOn(id); B.BUILD_FLAGS.dev = false; const offStart = G.startGauntlet(id), offOn = G.duelOn(id); B.BUILD_FLAGS.dev = true;
+    const btn = document.getElementById('dev-gversus');
+    return { tile, needs, onDev, offStart, offOn, gaunted: K.chestNeeds('pro').map(r => r.gaunt).filter(Boolean), btn: btn ? { dev: btn.hasAttribute('data-dev'), act: btn.dataset.act, text: btn.textContent } : null }; }, ID);
+  (where.tile === 0 && where.needs === 0 && where.onDev && where.offStart === false && !where.offOn && where.btn && where.btn.dev && where.gaunted.join() === 'g1')
+    ? ok(`68.28 Gauntlet · Versus exists only while BUILD_FLAGS.dev — off, startGauntlet refuses it; its Testing button carries data-dev (the native build strips it) — and it has no map tile and no chest asks for it (the Pro chest still wants Gauntlet Mini alone)`)
+    : bad('68.28 Gauntlet · Versus is test-only', JSON.stringify(where));
+
+  // every opponent number is DERIVED from KEY_BARS at run time: the config's arithmetic, and a bar that moves moves the computer
+  { const want = {}; for (const [k, r] of Object.entries(GA.VERSUS_AI)) { const bar = KB.KEY_BARS[r.bar].bar, len = +r.bar.split(':')[2];
+      const per = r.kind === 'mean' ? bar : bar / len; want[k] = r.kind === 'rate' ? per * r.level : per / r.level; }
+    const got = await page.evaluate(async () => { const G = await import('./run/gauntlet.js'), A = await import('./config/gauntlets.js'), KB = await import('./config/key-bars.js');
+      const out = {}; for (const [k, r] of Object.entries(A.VERSUS_AI)) { const row = KB.KEY_BARS[r.bar], was = row.bar, a = G.versusPlays(k).at;
+        row.bar = was * 1.5; const b = G.versusPlays(k).at; row.bar = was; out[k] = { a, b, back: G.versusPlays(k).at }; } return out; });
+    const off = Object.keys(want).filter(k => !got[k] || Math.abs(got[k].a - want[k]) > 1e-9 || Math.abs(got[k].b / got[k].a - 1.5) > 1e-9 || got[k].back !== got[k].a);
+    const shown = Object.keys(want).map(k => `${k} ${(+got[k].a).toFixed(GA.VERSUS_AI[k].dp)}`).join(', ');
+    !off.length ? ok(`68.28 every opponent number comes off its Skill bar at run time — ${shown} — and moving a bar by half moves the computer by half`)
+      : bad('68.28 the opponent numbers are derived from KEY_BARS', JSON.stringify({ off, want, got })); }
+
+  // the in-page hand for the player's end, and the listeners the run is read through
+  const hand = (on, slow = 0) => page.evaluate(async (on, slow) => {
+    clearInterval(window.__hand68); if (!on) return;
+    const [TM, HD, SP, RX] = (await Promise.all([import('./games/timing/index.js'), import('./games/estimate/index.js'), import('./games/spot/index.js'), import('./games/reaction/index.js')])).map(m => m.default);
+    const G = await import('./config/games.js'), C = await import('./core.js');
+    const pd = (el, x, y) => el && el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: x, clientY: y, pointerId: 1 }));
+    const mid = el => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
+    window.__hand68 = setInterval(() => { const gm = document.getElementById('game'); if (!gm.classList.contains('on') || !gm.classList.contains('live')) return; const g = gm.dataset.g;
+      if (gm.classList.contains('tapon')) { const t = document.getElementById(g === 'hold' ? 'hfield' : 'gen'); return pd(t, ...mid(t)); }
+      if (g === 'quick-tap') { if (slow && performance.now() - (window.__last68 || 0) < slow) return; window.__last68 = performance.now(); for (let i = 0; i < 4; i++) { const sq = document.getElementById('vsq0' + i); if (sq && sq.style.getPropertyValue('--v').trim() === '1') { const p = document.querySelector(`[data-vs-side="0:${i}"]`); return pd(p, ...mid(p)); } } return; }
+      if (g === 'dots') { const s = document.getElementById('vs0'); if (s && s.classList.contains('on')) pd(document.getElementById('vfield'), ...mid(s)); return; }
+      if (g === 'hold') { if (HD.two && HD.two.on && HD.two.p === 0 && HD.st === 'wait') { HD.down({ type: 'down', x: 0, y: 0 }); HD.t0 = performance.now() - HD.target / (G.CFG.holdRate * C.vmin()) * 1000; HD.up(); } return; }
+      if (g === 'reaction') { const p = document.getElementById('rxpane'); if (p && p.classList.contains('lit') && RX.armed) { const e = document.getElementById('gen'), r = e.getBoundingClientRect(); pd(e, r.left + r.width / 2, r.top + r.height * .8); } return; }
+      if (g === 'timing') { if (!(TM.two && TM.two.on && TM.two.p === 0 && TM.st === 'run')) return;
+        const hit = TM.hid() ? (TM.ball && TM.ball.t >= TM.ball.markT) : performance.now() - TM.t0 >= TM.target * 1000; if (hit) { const e = document.getElementById('gen'); pd(e, ...mid(e)); } return; }
+      if (g === 'spot') { if (SP.st !== 'vsfind') return; const i = SP.pts.findIndex(q => q.shape === SP.o1), el = document.querySelectorAll('#gen .fs')[i]; if (el) pd(document.getElementById('gen'), ...mid(el)); } }, 25); }, on, slow);
+  const listen = () => page.evaluate(() => import('./core/events.js').then(E => { window.__gv68 = null; window.__gb68 = []; window.__acts68 = [];
+    if (!window.__on68) { window.__on68 = 1; E.on('gaunt:done', o => { if (o && o.duel) window.__gv68 = o; }); E.on('gaunt:between', b => window.__gb68.push(b.i)); E.on('bot:act', a => window.__acts68.push(a)); } }));
+  let nexts = 0;
+  const drive = async (over, ms = 300000, stopAtBetween = false) => {
+    await listen(); await page.evaluate((id, o) => import('./run/gauntlet.js').then(G => G.startGauntlet(id, o)), ID, over);
+    const end = Date.now() + ms;
+    while (Date.now() < end) {
+      const st = await page.evaluate(() => ({ done: window.__gv68, between: window.__gb68.length, next: !!document.querySelector('#s-gauntlet.on [data-act="gaunt-next"]') }));
+      if (st.done) return st.done;
+      if (st.next) { if (stopAtBetween) return { between: true }; await click('#s-gauntlet.on [data-act="gaunt-next"]'); nexts++; }
+      await sleep(150); }
+    return null; };
+  const store = () => page.evaluate(() => { const st = JSON.parse(localStorage.getItem('ne')) || {};
+    return { runs: (st.runs || []).length, unlock: Object.keys(st.unlock || {}).length, ach: Object.keys(st.ach || {}).length, bars: Object.keys(st.bars || {}).length, gaunt: (st.gaunt || []).filter(r => r.id === 'g3').map(r => r.score) }; });
+
+  await boot({ chests: { games: 1, key: 1, pro: 1, thorns: 0 } }, { unlock: {}, ach: {}, bars: {} });
+  const before = await store();
+  // A WHOLE RUN THE COMPUTER ENDS EARLY: every duel at a hundredth of its level except duel 2 (Dots), forced far past the player
+  await hand(true);
+  const lost = await drive({ seed: 11, level: 0.01, miss: 0, levels: { 1: 60 } });
+  const lostScreen = await page.evaluate(() => ({ on: document.querySelector('.screen.on') && document.querySelector('.screen.on').id, big: (document.querySelector('#gt-body .gtbig') || {}).textContent || '',
+    retry: !!document.querySelector('#gt-body [data-act="gaunt-go"]'), back: !!document.querySelector('#gt-body [data-act="back"]'), ticks: document.querySelectorAll('#gt-body .gtduel li.won').length }));
+  const wantLost = fill(CP.GAUNTLET.duelOver, { n: 2, s: steps.length, name: dname(steps[1]) });
+  (lost && lost.duel && lost.duel.lost && lost.duel.at === 2 && lost.duel.won === 1 && nexts === 1 && lostScreen.on === 's-gauntlet' && lostScreen.big === wantLost && lostScreen.retry && lostScreen.back && lostScreen.ticks === 1)
+    ? ok(`68.28 a Gauntlet · Versus run is a run of duels: duel 1 won, the screen between offers the next, and the computer winning duel 2 ends the run there — "${lostScreen.big}", with Retry and Back`)
+    : bad('68.28 the computer ends the run early', JSON.stringify({ lost, nexts, lostScreen, wantLost }));
+  // AND ONE THE PLAYER WINS OUTRIGHT: every duel at a hundredth of its level
+  nexts = 0;
+  const won = await drive({ seed: 12, level: 0.01, miss: 0 });
+  const wonScreen = await page.evaluate(() => ({ big: (document.querySelector('#gt-body .gtbig') || {}).textContent || '', ticks: document.querySelectorAll('#gt-body .gtduel li.won').length }));
+  const wantWon = fill(CP.GAUNTLET.duelAll, { name: CP.GAUNTLET.name[ID], s: steps.length });
+  (won && won.duel && !won.duel.lost && won.duel.won === steps.length && nexts === steps.length - 1 && wonScreen.big === wantWon && wonScreen.ticks === steps.length)
+    ? ok(`68.28 with the computer beaten in every duel the run goes all the way — six screens between, then "${wonScreen.big}"`)
+    : bad('68.28 a Gauntlet · Versus run won outright', JSON.stringify({ won, nexts, wonScreen, wantWon }));
+  await hand(false);
+  const after = await store();
+  (after.runs === before.runs && after.unlock === before.unlock && after.ach === before.ach && after.bars === before.bars && after.gaunt.length === before.gaunt.length + 2 && after.gaunt[0] === steps.length && after.gaunt[1] === 1)
+    ? ok('68.28 / L10 a Gauntlet · Versus run advances nothing — no board row, unlock, achievement or bar — and writes one row each to its own board, scored in duels won (7, then 1)')
+    : bad('68.28 / L10 Gauntlet · Versus wrote something it should not have', JSON.stringify({ before, after }));
+
+  /* NO RUBBER-BANDING: the same seed plays the same computer whatever the player does. Quick Tap twice on one seed — once with nobody at
+     the player's end (the computer wins it), once with the player tapping at a steady 2.5 a second (the player wins it) — and the computer's draws, every one
+     its rate and whether it missed, are the same sequence in both. */
+  await page.evaluate(() => import('./ui/router.js').then(R => R.show('s-menu'))); await sleep(300);
+  await hand(false); const idle = await drive({ seed: 77 }, 120000);
+  const idleActs = await page.evaluate(() => window.__acts68.filter(a => a.key === 'quick-tap:two'));
+  await hand(true, 400); const busy = await drive({ seed: 77 }, 120000, true);
+  const busyActs = await page.evaluate(() => window.__acts68.filter(a => a.key === 'quick-tap:two'));
+  await hand(false); await page.evaluate(() => import('./run/gauntlet.js').then(G => { G.gauntDrop(); return import('./ui/router.js'); }).then(R => R.show('s-menu')));
+  const n = Math.min(idleActs.length, busyActs.length), same = n >= 5 && idleActs.slice(0, n).every((a, i) => a.v === busyActs[i].v && a.miss === busyActs[i].miss);
+  (idle && idle.duel && idle.duel.lost && idle.duel.at === 1 && busy && busy.between && same)
+    ? ok(`68.28 no rubber-banding — on one seed the computer's Quick Tap draws are the same ${n} in a row whether the player sits still (the computer wins) or taps it down (the player wins); its rate is ${(GA.VERSUS_AI['quick-tap:two'].level * KB.KEY_BARS[GA.VERSUS_AI['quick-tap:two'].bar].bar / +GA.VERSUS_AI['quick-tap:two'].bar.split(':')[2]).toFixed(2)} taps a second either way`)
+    : bad('68.28 the computer reads nothing of the player', JSON.stringify({ idle: idle && idle.duel, busy, n, idleActs: idleActs.slice(0, 8), busyActs: busyActs.slice(0, 8) }));
 }

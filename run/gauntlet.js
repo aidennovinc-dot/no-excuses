@@ -11,12 +11,15 @@
    THE SCORE is in config/gauntlets.js's own comment: each step as a percentage of its reference bar, the spokes averaged,
    uncapped. Everything a screen needs is on `gaunt:done`, so no screen has to know any of this (A4). */
 
-import { GAUNTLET_BANDS, GAUNTLET_BAND_OVERRIDE, GAUNTLET_RUNS, GAUNTLET_SCORE, GAUNTLET_STEP } from "../config/gauntlets.js";
+import { BUILD_FLAGS } from "../config/build.js";
+import { GAUNTLET_BANDS, GAUNTLET_BAND_OVERRIDE, GAUNTLET_RUNS, GAUNTLET_SCORE, GAUNTLET_STEP, VERSUS_ID } from "../config/gauntlets.js";
 import { VERDICTS, VERDICT_TIERS } from "../config/verdicts.js";
 import { emit, on } from "../core/events.js";
 import { VS, sel } from "../core/state.js";
 import { save, store } from "../core/store.js";
 import { COMBOS, barOf } from "../progress/key.js";
+// 68.28: the computer's number for a duel, handed on to the screen that prints it (a screen may not import games/_shared, A4)
+import { versusPlays } from "../games/_shared/bot.js";
 import { setGauntStep, start } from "./run.js";
 
 let G = null;   // the Gauntlet in flight: { id, steps, i, runs: [] }
@@ -118,17 +121,59 @@ function finishGauntlet() {
   emit('gaunt:done', out);
 }
 
-function startGauntlet(id) {
+/* ---------- build 69 (68.28): GAUNTLET · VERSUS — a run of duels, test-only ----------
+   One duel per game (config/gauntlets.js GAUNTLET_RUNS.g3), each the game's own two-player run with the computer at the other end: the step
+   carries `bot` — the seed for this duel's computer and, from the Testing hook only, a level / miss override — and games/_shared/bot.js builds
+   the opponent from it. Win and the screen between duels says so and offers the next; lose (or draw) and the run is over where it stands.
+   Nothing banks (L10: finish() returns on the Gauntlet step before any of it); the run writes ONE row to the Gauntlet board, `score` = duels
+   won. It exists only while BUILD_FLAGS.dev — startGauntlet refuses it in a release build, and the only way to it is the Testing screen. */
+const duelOn = id => id === VERSUS_ID && !!BUILD_FLAGS.dev;
+/* `over` is the test hook (the gate, the evidence frames): { seed, level, miss, wobble, levels: { stepIndex: level } }. Absent, every duel
+   plays its own table row on a fresh seed, so a retry is fair but never the same computer. */
+function playDuel() {
+  const st = G.steps[G.i], o = G.over || {}, lv = o.levels && o.levels[G.i] > 0 ? o.levels[G.i] : o.level;
+  const bot = { seed: ((G.seed + (G.i + 1) * 7919) >>> 0) || 1 };
+  if (lv > 0) bot.level = lv; if (o.miss >= 0) bot.miss = o.miss; if (o.wobble >= 0) bot.wobble = o.wobble;
+  VS.reset(); sel.game = st.g; sel.diff = st.d; sel.secs = st.s; sel.vs = st.vs; sel.practice = 0; sel.opens = 3;
+  const run = Object.assign({}, st, { id: G.id, band: null, ramp: null, bot });
+  setGauntStep(run);
+  emit('gaunt:at', { id: G.id, i: G.i, n: G.steps.length, step: run });
+  start();
+}
+function duelEnd(lost) {
+  const n = G.steps.length, won = G.won, at = lost ? G.steps[G.i] : null;
+  const rec = { id: G.id, t: Date.now(), score: won, tier: 'versus', web: [] };
+  store.gaunt = [rec].concat(Array.isArray(store.gaunt) ? store.gaunt : []).slice(0, GAUNTLET_SCORE.keep);
+  save();
+  const out = { id: G.id, duel: { won, n, lost: !!lost, at: lost ? G.i + 1 : n, g: at && at.g, d: at && at.d }, rec };
+  G = null; setGauntStep(null);
+  emit('gaunt:done', out);
+}
+// the player's tap on the screen between duels starts the next one
+function nextDuel() { if (!G || !G.duel || !G.between) return false; G.between = false; playDuel(); return true; }
+// Back from the screen between duels ends the run there — nothing is written, as a quit writes nothing
+function gauntDrop() { if (!G) return; G = null; setGauntStep(null); }
+
+function startGauntlet(id, over) {
   const steps = GAUNTLET_RUNS[id];
   if (!steps || !steps.length) return false;
-  G = { id, steps, i: 0, runs: [] };
+  if (id === VERSUS_ID && !duelOn(id)) return false;
+  const duel = id === VERSUS_ID;
+  G = { id, steps, i: 0, runs: [], duel, won: 0, between: false, over: duel && over ? over : null,
+    seed: duel ? (over && over.seed > 0 ? over.seed : (Date.now() ^ (Math.random() * 1e9)) >>> 0) : 0 };
   emit('gaunt:start', { id, n: steps.length });
-  playStep();
+  duel ? playDuel() : playStep();
   return true;
 }
 
 on('gaunt:step', ({ run }) => {
   if (!G) return;
+  // 68.28: a duel is won when the run says Player 1 won it (`vs2.w` 0); anything else — the computer, or a draw — ends the run here
+  if (G.duel) { const won = !!(run && run.vs2 && run.vs2.w === 0); G.runs.push(run);
+    if (!won) return duelEnd(true);
+    G.won++; G.i++;
+    if (G.i >= G.steps.length) return duelEnd(false);
+    G.between = true; emit('gaunt:between', { id: G.id, i: G.i, n: G.steps.length, won: G.won, next: G.steps[G.i] }); return; }
   G.runs.push(run);
   G.i++;
   if (G.i < G.steps.length) { setTimeout(() => { if (G) playStep(); }, GAUNTLET_STEP.gap); return; }
@@ -140,4 +185,4 @@ on('run:abort', () => { if (!G) return; const id = G.id; G = null; setGauntStep(
 const gauntOn = () => !!G;
 const gauntBoard = id => (Array.isArray(store.gaunt) ? store.gaunt : []).filter(r => r && r.id === id).slice().sort((a, b) => b.score - a.score);
 
-export { bandFor, gauntBoard, gauntOn, gauntVerdict, scoreOf, startGauntlet, stepDetail, stepPct, webOf };
+export { bandFor, duelOn, gauntBoard, gauntDrop, gauntOn, gauntVerdict, nextDuel, scoreOf, startGauntlet, stepDetail, stepPct, versusPlays, webOf };

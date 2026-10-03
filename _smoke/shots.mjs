@@ -2508,6 +2508,46 @@ scene('68.35', async (page, browser) => {
   await frame(page, browser, '68.35-on-lantern', `Customise on the Lantern background: the Quick Tap preview's lit pad in orange (${orange})`);
 });
 
+/* 68.28: GAUNTLET · VERSUS (test-only) — its screen off the Testing button, a Quick Tap duel in play with the computer's count visible, and the
+   screen a run ends on when the computer wins duel 3. The player's end is an in-page hand on the real elements (as the gate's); the computer's
+   level is set through the run's own test hook so the run ends where the frame needs it to. */
+const hand68 = (page, on, grow = 1.15) => page.evaluate(async (on, grow) => {
+  clearInterval(window.__h68); if (!on) return;
+  const [TM, HD, SP, RX] = (await Promise.all([import('./games/timing/index.js'), import('./games/estimate/index.js'), import('./games/spot/index.js'), import('./games/reaction/index.js')])).map(m => m.default);
+  const G = await import('./config/games.js'), C = await import('./core.js');
+  const pd = (el, x, y) => el && el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: x, clientY: y, pointerId: 1 }));
+  const mid = el => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
+  window.__h68 = setInterval(() => { const gm = document.getElementById('game'); if (!gm.classList.contains('on') || !gm.classList.contains('live')) return; const g = gm.dataset.g;
+    if (gm.classList.contains('tapon')) { const t = document.getElementById(g === 'hold' ? 'hfield' : 'gen'); return pd(t, ...mid(t)); }
+    if (g === 'quick-tap') { for (let i = 0; i < 4; i++) { const sq = document.getElementById('vsq0' + i); if (sq && sq.style.getPropertyValue('--v').trim() === '1') { const p = document.querySelector(`[data-vs-side="0:${i}"]`); return pd(p, ...mid(p)); } } return; }
+    if (g === 'dots') { const s = document.getElementById('vs0'); if (s && s.classList.contains('on')) pd(document.getElementById('vfield'), ...mid(s)); return; }
+    if (g === 'hold') { if (HD.two && HD.two.on && HD.two.p === 0 && HD.st === 'wait') { HD.down({ type: 'down', x: 0, y: 0 }); HD.t0 = performance.now() - HD.target * grow / (G.CFG.holdRate * C.vmin()) * 1000; HD.up(); } return; }
+    if (g === 'reaction') { const p = document.getElementById('rxpane'); if (p && p.classList.contains('lit') && RX.armed) { const e = document.getElementById('gen'), r = e.getBoundingClientRect(); pd(e, r.left + r.width / 2, r.top + r.height * .8); } return; }
+    if (g === 'timing') { if (!(TM.two && TM.two.on && TM.two.p === 0 && TM.st === 'run')) return; const hit = TM.hid() ? (TM.ball && TM.ball.t >= TM.ball.markT) : performance.now() - TM.t0 >= TM.target * 1000; if (hit) { const e = document.getElementById('gen'); pd(e, ...mid(e)); } return; }
+    if (g === 'spot') { if (SP.st !== 'vsfind') return; const i = SP.pts.findIndex(q => q.shape === SP.o1), el = document.querySelectorAll('#gen .fs')[i]; if (el) pd(document.getElementById('gen'), ...mid(el)); } }, 30); }, on, grow);
+scene('68.28', async (page, browser) => {
+  await load(page, RUN69);
+  await show(page, 's-testing'); await sleep(500); await page.evaluate(() => document.getElementById('dev-gversus').click()); await sleep(900);
+  say('roster', await page.evaluate(() => [...document.querySelectorAll('#gt-body .gtduel li')].map(li => li.textContent.trim())));
+  await frame(page, browser, '68.28-versus-screen', 'Testing → Gauntlet · Versus: the seven duels, one per game, each row naming the computer’s number today (85% of that game’s Skill bar), Start the duels, and the test-only line');
+  // a Quick Tap duel in play: the player taps a little faster than the computer, the computer's count at the top
+  await page.evaluate(() => import('./run/gauntlet.js').then(G => G.startGauntlet('g3', { seed: 5 })));
+  for (let i = 0; i < 80 && !(await page.evaluate(() => document.getElementById('game').classList.contains('live'))); i++) await sleep(100);
+  for (let i = 0; i < 12; i++) { await page.evaluate(() => { for (let k = 0; k < 4; k++) { const sq = document.getElementById('vsq0' + k); if (sq && sq.style.getPropertyValue('--v').trim() === '1') { const p = document.querySelector(`[data-vs-side="0:${k}"]`), r = p.getBoundingClientRect(); p.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1 })); return; } } }); await sleep(420); }
+  say('duel', await page.evaluate(() => ({ you: document.getElementById('vn0').textContent, computer: document.getElementById('vn1').textContent, top: document.getElementById('vwho1').textContent, mode: document.getElementById('hud-mode').textContent, note: document.getElementById('vsnote').textContent })));
+  await frame(page, browser, '68.28-duel-quick-tap', 'Duel 1, Quick Tap: the player’s pads at the bottom, the COMPUTER’s at the top (light blue, named Computer) tapping its own lit pad at its set rate, both counts ticking, "vs computer" in the header and the 30s cap in the middle line');
+  await page.evaluate(async () => (await import('./run/run.js')).abort(true)); await sleep(800);
+  // a run the computer ends at duel 3: duels 1 and 2 at a hundredth of its level, Estimate · Grow far past the player
+  await page.evaluate(() => import('./ui/router.js').then(R => R.show('s-gauntlet', { id: 'g3' }))); await sleep(400);
+  await hand68(page, true);
+  await page.evaluate(() => import('./run/gauntlet.js').then(G => G.startGauntlet('g3', { seed: 3, level: 0.01, miss: 0, levels: { 2: 60 } })));
+  for (let i = 0; i < 1200; i++) { const st = await page.evaluate(() => ({ next: !!document.querySelector('#s-gauntlet.on [data-act="gaunt-next"]'), over: !!document.querySelector('#s-gauntlet.on .gtover') }));
+    if (st.over) break; if (st.next) await page.evaluate(() => document.querySelector('#s-gauntlet.on [data-act="gaunt-next"]').click()); await sleep(200); }
+  await hand68(page, false); await sleep(600);
+  say('over', await page.evaluate(() => ({ big: (document.querySelector('#gt-body .gtbig') || {}).textContent, ticks: document.querySelectorAll('#gt-body .gtduel li.won').length, buttons: [...document.querySelectorAll('#gt-body button')].map(b => b.textContent) })));
+  await frame(page, browser, '68.28-lost-at-3', 'The run over at duel 3: "You got to duel 3 of 7 · lost to Estimate · Grow", the two won duels ticked, Retry and Back, and the board row (2 of 7)');
+});
+
 const want = ARGV.filter((a, i) => !a.startsWith('--') && !(i > 0 && ARGV[i - 1] === '--out'));
 for (const name of (want.length ? want : Object.keys(SCENES))) {
   if (!SCENES[name]) { console.log('no scene "' + name + '"'); continue; }

@@ -99,7 +99,7 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
   streakScore(){ return String(this.errs.length); },
   next(){ this.clearT(); this.round++; if(this.round>this.targets.length) this.targets=this.targets.concat(this.deal(20));
     // v15 (4.3): the run is over when both players have taken their attempts, and every hand-over waits for a tap
-    if(this.two.on){ if(this.two.over()) return this.ctx.emit('finish',this.two.record()); return this.two.gate(this,()=>{ this.st='arm'; this.hid()?this.hidden():this.watch(); }); }
+    if(this.two.on){ if(this.two.over()) return this.ctx.emit('finish',this.two.record()); return this.two.gate(this,()=>{ this.st='arm'; this.hid()?this.hidden():this.watch(); if(this.two.botTurn()) this.botPlay(); }); }
     if(this.out||(!this.streak()&&this.round>this.ctx.len)) return this.ctx.emit('finish',this.result()); this.hud(); this.st='arm'; this.hid()?this.hidden():this.watch(); },
   watch(){ this.target=this.streak()?this.rampAt(this.round):Math.round((this.targets[this.round-1]||7)*100)/100;
     // v14 (6.18): every target adds to a visible running total of the time the game has asked for, and it lands exactly on the
@@ -235,11 +235,25 @@ const TM=Object.assign(roundEngine(),{ id:'timing', errs:[], target:0, t0:0, bal
   // build 62 (61.19): the count is running — a stopwatch clock or a hidden ball on its way — so run/run.js has the music drop out
   counting(){ return this.st==='run'; },
   replay(){ if(this.st==='idle') return; this.clearT(); cancelAnimationFrame(this.raf); this.stopAt=0;
-    this.st='arm'; this.hid()?this.hidden():this.watch(); },
+    this.st='arm'; this.hid()?this.hidden():this.watch(); if(this.two.on&&this.two.botTurn()) this.botPlay(); },
+  /* build 69 (68.28): THE COMPUTER'S TURN in a Gauntlet · Versus duel. It is the same round on the same screen; the computer's own guess is
+     one draw — its fixed figure (games/_shared/bot.js), off by that much early or late, or the odd miss at `missBy` times it — and it taps at
+     that moment through onDown, so the clock stops or the ghost ball lands where it guessed and its figure counts up like a player's.
+     The tap is kept inside what the round can score: after Stopwatch's first-second lock, after Hidden's ball has gone behind the wall,
+     and never past the moment the round would have stopped itself. */
+  botPlay(){ const b=this.two.bot, a=b.draw(), off=a.v*(a.miss?(b.row.missBy||1):1)*b.sign();
+    const aim=()=>{ if(this.st!=='run'||!this.t0) return this.later(aim,30);
+      let s;
+      if(this.hid()){ const B=this.ball; s=Math.max(B.wall/B.v+0.02,Math.min(B.L/B.v,B.markT/B.v+off/1000)); }
+      else s=Math.max(CFG.swLock/1000+0.05,Math.min(this.target+CFG.swOver-0.05,this.target+off));
+      const at=this.t0+s*1000; this.later(()=>{ if(this.st==='run') this.onDown({t:at,bot:1}); },Math.max(0,at-performance.now())); };
+    this.later(aim,30); },
   swLocked(ev){ if(this.hid()||this.st!=='run'||!this.t0||ev===true) return false;
     const at=(ev&&typeof ev.t==='number'&&ev.t>0)?ev.t:performance.now();
     return at-this.t0<CFG.swLock; },
   onDown(ev){ if(this.st!=='run') return;
+    // 68.28: while the computer holds the phone, only its own tap (or the round running out) is heard
+    if(this.two.on&&this.two.botTurn()&&ev!==true&&!(ev&&ev.bot)) return;
     if(this.swLocked(ev)) return;
     /* v29 (item 16, build 55): A TAP IS SCORED FROM ITS OWN TIME, NEVER FROM THE LAST PAINTED FRAME. Hidden read `ball.t`, which
        the rAF loop wrote on the frame it last drew, so a tap 15ms after that frame was judged as if it had landed on it - up to a

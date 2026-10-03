@@ -66,7 +66,61 @@ const MEGA = [
   { g: 'spot', d: 'find', s: 10, ref: 'spot:find:10', tot: 1, web: 'spot:find' },
 ];
 
-export const GAUNTLET_RUNS = { g1: MINI, g2: MEGA };
+/* ---------- build 69 (68.28): GAUNTLET · VERSUS — TEST-ONLY ----------
+   Aiden: "The gauntlet mini should actually be versing a computer in the versus mode of the games … simulated like a set number of hits per
+   second … put it into the game as like an additional version, just so I can test it." And: "Let's make the threshold slightly easier … than
+   the key thresholds for the same thing … because they're doing it in one run."
+   A RUN OF DUELS, one opponent per game, in this order; lose one and the run is over, showing how far you got. `vs` is the two-player shape the
+   duel plays: 2 is the game's own versus (both ends at once — Quick Tap, Dots, Reaction · Flash, Spot · Find), 1 is the turn-by-turn shared
+   run for the games with no versus of their own (Estimate · Grow, Stopwatch, Hidden), the player first. Sequence and Spot · Count are left out
+   ("I don't think all the games are good for versus mode"). Estimate plays Grow only: one duel per game, and Cut's drag would be a second
+   thing for the computer to fake. Quick Tap and Dots are capped at 30s (VERSUS_AI `cap`), the Marathon length.
+   It exists only while BUILD_FLAGS.dev (run/gauntlet.js refuses it otherwise), is reached from the Testing screen, and has NO map tile, NO
+   chest, NO message row and gates nothing. Like the other two it keeps its own board rows: `score` is duels won. */
+const VERSUS = [
+  { g: 'quick-tap', d: 'two', s: 30, vs: 2 },
+  { g: 'dots', d: 'blind', s: 30, vs: 2 },
+  { g: 'hold', d: 'grow', s: 7, vs: 1 },
+  { g: 'reaction', d: 'flash', s: 5, vs: 2 },
+  { g: 'timing', d: 'stopwatch', s: 5, vs: 1 },
+  { g: 'timing', d: 'hidden', s: 10, vs: 1 },
+  { g: 'spot', d: 'find', s: 10, vs: 2 },
+];
+
+export const GAUNTLET_RUNS = { g1: MINI, g2: MEGA, g3: VERSUS };
+// the one test-only Gauntlet — run/gauntlet.js starts it only while BUILD_FLAGS.dev, and only the Testing screen links to it
+export const VERSUS_ID = 'g3';
+
+/* THE OPPONENT (68.28), one row per duel, keyed like the duel. `bar` is the KEY_BARS row the computer is derived from — the Skill bar (key 1,
+   the `bar` column), read at RUN TIME by games/_shared/bot.js versusPlays(), never a copied number. `level` .85 is 85% of that bar: "slightly
+   easier than the key threshold". `kind` is how the bar becomes the ONE number the computer plays at (`len` is the bar row's own length):
+     rate   bar ÷ len × level   hits a second — it acts that often (Quick Tap, Dots)
+     mean   bar ÷ level         its figure each round, worse than the bar — a slower reaction, a bigger % off (Flash, Grow)
+     total  bar ÷ len ÷ level   a Set total turned into one round's figure, then made worse (Stopwatch, Hidden, Find)
+   `wobble` is a ± fraction on every action and `miss` the chance an action is the odd miss: a wrong pad (Quick Tap), a fumbled claim (Dots), a
+   false start (Flash), or the figure × `missBy` (every other). The average is FIXED — nothing in the computer reads the player's score, so
+   there is no rubber-banding — and each duel draws from its own seeded sequence, so a replay is fair but never the same.
+   `best` is a best-of (first to a majority of it); `leadBy` / `cap` close Quick Tap and Dots — first to lead by 10, else whoever leads at
+   `cap` seconds; Find is first to VS_TARGET rounds, as its versus always was. `say` prints the number, `win` is how the duel is won
+   in a few words (the roster line), `rule` is the row in words. */
+export const VERSUS_AI = {
+  'quick-tap:two': { win: 'lead by 10 · 30s', bar: 'quick-tap:two:30', kind: 'rate', level: 0.85, wobble: 0.08, miss: 0.04, leadBy: 10, cap: 30, dp: 2,
+    say: '{v} taps a second', rule: 'taps at a set rate · first to lead by 10 · else whoever leads at 30s' },
+  'dots:blind': { win: 'lead by 10 · 30s', bar: 'dots:blind:30', kind: 'rate', level: 0.85, wobble: 0.08, miss: 0.04, leadBy: 10, cap: 30, dp: 2,
+    say: '{v} dots a second', rule: 'claims its shapes at a set rate · first to lead by 10 · else whoever leads at 30s' },
+  'hold:grow': { win: 'best of 5', bar: 'hold:grow:7', kind: 'mean', level: 0.85, wobble: 0.08, miss: 0.04, missBy: 2.5, best: 5, dp: 1,
+    say: '{v}% off', rule: 'grows its own shape off by a set %, a round each, you first · closest wins the round · best of 5' },
+  'reaction:flash': { win: 'best of 5', bar: 'reaction:flash:5', kind: 'mean', level: 0.85, wobble: 0.08, miss: 0.04, best: 5, dp: 0,
+    say: '{v}ms', rule: 'taps a set time after the flash · the odd false start · best of 5' },
+  'timing:stopwatch': { win: 'best of 5', bar: 'timing:stopwatch:5', kind: 'total', level: 0.85, wobble: 0.08, miss: 0.04, missBy: 2.5, best: 5, dp: 2,
+    say: '{v}s off', rule: 'its own guess, off by a set time, a round each, you first · closest wins the round · best of 5' },
+  'timing:hidden': { win: 'best of 5', bar: 'timing:hidden:10', kind: 'total', level: 0.85, wobble: 0.08, miss: 0.04, missBy: 2.5, best: 5, dp: 0,
+    say: '{v}ms off', rule: 'its own guess, off by a set time, a round each, you first · closest wins the round · best of 5' },
+  'spot:find': { win: 'first to 5', bar: 'spot:find:10', kind: 'total', level: 0.85, wobble: 0.08, miss: 0.04, missBy: 2.5, dp: 2,
+    say: 'finds in {v}s', rule: 'finds its shape after a set time · first to 5 rounds' },
+};
+/* how long the computer's turn card stays up before it plays (a shared duel), and how long it "looks" before it acts on a Grow round */
+export const VERSUS_BOT = { card: 1100, think: 450 };
 
 /* ---------- v29 Section A (58.1, build 58): A GAUNTLET DEALS EVENLY ----------
    Aiden, of Estimate · Grow: "the gauntlet should be really standardised… a very tight range as to what the games can offer…

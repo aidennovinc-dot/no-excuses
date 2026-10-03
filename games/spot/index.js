@@ -13,6 +13,7 @@ import * as hud from "../_shared/hud.js";
 import { roundShow } from "../_shared/tier.js";
 import { genRect, rnd, roundEngine, rxBar, scatter, shapeHtml } from "../_shared/round.js";
 import { turnsOf } from "../_shared/two.js";
+import { makeBot, named } from "../_shared/bot.js";
 /* Spot (v8) — Count: shapes flash up, count the ones you were shown; decoys, count and flash length all ramp through the run. Find: one shape is different, tap it.
    v13 (10.1–10.3): Normal / Hard are gone — round number IS the difficulty. Count scores total miscount, Find cumulative seconds; both lower is better.
    Set = 10 rounds. Streak = a budget: 5 miscounts for Count, 10 seconds for Find, and the score is rounds. */
@@ -279,10 +280,10 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
   vsTarget(){ return VS_TARGET[this.ctx.game]||5; },
   // 0..1 across a match that can run to 2*target-1 rounds. Motion arrives at round 2, rotation at 3, pulsing at 4
   vp(){ return Math.min(1,(this.round-1)/Math.max(1,this.vsTarget()*2-2)); },
-  vsDeal(){ const all=this.VS_SHAPES, i=rnd(3); this.o1=all[i]; this.o2=all[(i+1)%3]; this.vsBase=all[(i+2)%3]; this.round=0; this.topF=.24; this.vsFindRound(); },
+  vsDeal(){ this.bot=makeBot(this.ctx); const all=this.VS_SHAPES, i=rnd(3); this.o1=all[i]; this.o2=all[(i+1)%3]; this.vsBase=all[(i+2)%3]; this.round=0; this.topF=.24; this.vsFindRound(); },
   vsLine(){ return `<span class="spvs"><b class="p1">${this.vsN[0]}</b> – <b class="p2">${this.vsN[1]}</b><small>${T(CP.vsRound,{n:this.round,t:this.vsTarget()})}</small></span>`; },
   // the rule bar says whose shape is whose and stays up for the whole match — the shapes never change now
-  vsBar(){ rxBar([pWho(0),shapeI(this.o1),`<b>${SHAPES[this.o1].word}</b>`,'·',pWho(1),shapeI(this.o2),`<b>${SHAPES[this.o2].word}</b>`]); },
+  vsBar(){ rxBar([pWho(0),shapeI(this.o1),`<b>${SHAPES[this.o1].word}</b>`,'·',named(this.bot,pWho(1)),shapeI(this.o2),`<b>${SHAPES[this.o2].word}</b>`]); },
   vsFindRound(){ this.clearT(); this.round++;
     if(this.vsN[0]>=this.vsTarget()||this.vsN[1]>=this.vsTarget()) return this.vsEnd();
     const v=this.vp(), r=genRect(); this.size=Math.max(18,Math.min(r.width,r.height)*(.085-v*.02));
@@ -304,21 +305,27 @@ const SP=Object.assign(roundEngine(),{ id:'spot', right:0, wrong:0, answer:0, pt
     // v16 (§4): the intro is 3.0s, was 1.4s. Two players have to find their own shape in the rule bar before they look
     this.later(()=>{ this.st='vsfind'; this.t0=performance.now();
       $('#gen').innerHTML=this.pts.map(q=>shapeHtml(q,this.size,puls?'puls':'')).join('');
-      if(drift||spin) this.move('vsfind'); },3000); },
+      if(drift||spin) this.move('vsfind');
+      /* build 69 (68.28): the computer finds its own shape after its one draw (games/_shared/bot.js) — its fixed time with a wobble, the odd
+         miss at `missBy` times it — and takes the round exactly as a player's find does, unless the player found theirs first */
+      if(this.bot){ const a=this.bot.draw(), ms=a.v*1000*(a.miss?(this.bot.row.missBy||1):1);
+        this.later(()=>{ if(this.st!=='vsfind') return; const i=this.pts.findIndex(q=>q.shape===this.o2); if(i>=0) this.vsTake(1,i); },ms); } },3000); },
   // v17 (B.15): the hit test measures against the shape's OWN size now that a crowd is not all one size
   vsTap(ev){ const best=this.hitAt(ev,q=>q.shape===this.o1||q.shape===this.o2);
     if(best===null) return; const els=$$('#gen .fs'); const sh=this.pts[best].shape;
     // neither player's shape: a wrong tap, and the round carries on
-    if(sh!==this.o1&&sh!==this.o2){ els[best].classList.add('bad'); this.ctx.audio.miss(); haptic(30); return; }
-    const w=sh===this.o1?0:1; this.st='show'; cancelAnimationFrame(this.raf); this.vsN[w]++;
+    // 68.28: with the computer at the other end, its shape is not the player's to find — a tap on it is a wrong tap
+    if((sh!==this.o1&&sh!==this.o2)||(this.bot&&sh===this.o2)){ els[best].classList.add('bad'); this.ctx.audio.miss(); haptic(30); return; }
+    this.vsTake(sh===this.o1?0:1,best); },
+  vsTake(w,best){ const els=$$('#gen .fs'); this.st='show'; cancelAnimationFrame(this.raf); this.vsN[w]++;
     // A.2: the round goes to the owner, and it lights in the owner's colour (L4)
     els[best].classList.remove('puls'); els[best].classList.add('odd',w?'p2':'p1'); els.forEach((el,i)=>{ if(i!==best) el.classList.add('dim'); });
     // v21 (G.7, build 35): the line is redrawn with the new count in it, so the scorer's number pulses in their colour (L4)
     hud.timeHtml(this.vsLine()); hud.pulse($('#hud-time .spvs b.'+(w?'p2':'p1')),w);
-    $('#gen').insertAdjacentHTML('beforeend',`<div class="glbl bot"><b class="${w?'p2':'p1'}">${T(CP.vsTook,{n:w+1})}</b>${f2((performance.now()-this.t0)/1000)}s</div>`);
+    $('#gen').insertAdjacentHTML('beforeend',`<div class="glbl bot"><b class="${w?'p2':'p1'}">${named(this.bot,T(CP.vsTook,{n:w+1}))}</b>${f2((performance.now()-this.t0)/1000)}s</div>`);
     this.ctx.audio.hit(); this.later(()=>this.vsFindRound(),1500); },
   vsEnd(){ const [a,b]=this.vsN; const w=winner(a,b); this.st='over'; rxBar(null); cancelAnimationFrame(this.raf);
-    $('#gen').innerHTML=`<div class="glbl top" style="top:40%"><b class="${w<0?'':w?'p2':'p1'}">${w<0?CP.draw:T(CP.wins,{n:w+1})}</b>${a} – ${b}</div>`;
+    $('#gen').innerHTML=`<div class="glbl top" style="top:40%"><b class="${w<0?'':w?'p2':'p1'}">${w<0?CP.draw:named(this.bot,T(CP.wins,{n:w+1}))}</b>${a} – ${b}</div>`;
     this.ctx.audio.end(); this.later(()=>this.ctx.emit('finish',{hits:a,misses:0,vs2:{a,b,w,how:T(CP.vsHow,{t:this.vsTarget()})}}),1600); },
   onDown(ev){
     if(this.st==='ask'){ if(this.two) return this.twoPick(ev); const b=ev.el.closest('[data-num]'); if(!b) return; const k=+b.dataset.num, ok=k===this.answer;

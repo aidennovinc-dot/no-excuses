@@ -28,7 +28,8 @@ import { audioClock, audioState } from "../../audio.js";
 import { BUILD_FLAGS } from "../../config/build.js";
 import { CHESTS } from "../../config/chests.js";
 import { on } from "../../core/events.js";
-import { ABOUT, GRID, TOAST } from "../../config/copy.js";
+import { ABOUT, GAUNTLET, GRID, TOAST } from "../../config/copy.js";
+import { VERSUS_ID } from "../../config/gauntlets.js";
 import { $, $$, T } from "../../core.js";
 import { prefs, reset, save } from "../../core/store.js";
 import { GAMES } from "../../games/registry.js";
@@ -83,7 +84,9 @@ function devUnl(){ const host=$('#dev-unl'); if(!host) return; const K=tutUnlock
   host.innerHTML=Object.keys(GAMES).map(g=>`<div class="hint">${GAMES[g].name}</div><div class="chips">${all.filter(k=>k.split(':')[0]===g).map(k=>`<button data-act="dev-unl" data-k="${k}" class="chip${u[k]?' sel':''}">${label(k)}</button>`).join('')}</div>`).join('');
   $('#dev-menu').innerHTML=Object.keys(MENU_UNLOCK).map(k=>`<button data-act="dev-menu" data-k="${k}" class="chip${(prefs.menuUnl||{})[k]?' sel':''}">${MENU_UNLOCK[k].name}</button>`).join('');
   $('#dev-tour').innerHTML=TOURS().map(([t,n])=>`<button data-act="dev-tour" data-t="${t}" class="chip">${n}</button>`).join('');
-  $('#dev-unl-hint').textContent=ABOUT.devUnl; $('#dev-menu-hint').textContent=ABOUT.devUnlMenu; $('#dev-tour-hint').textContent=ABOUT.devTour; }
+  $('#dev-unl-hint').textContent=ABOUT.devUnl; $('#dev-menu-hint').textContent=ABOUT.devUnlMenu; $('#dev-tour-hint').textContent=ABOUT.devTour;
+  // build 69 (68.28): the one way to Gauntlet · Versus
+  const gv=$('#dev-gversus'); if(gv){ gv.textContent=GAUNTLET.name[VERSUS_ID]; $('#dev-duel-hint').textContent=ABOUT.devDuel; } }
 // OFF: the unlock goes, with the first-play intro of what it opened (its mode, and for a game the game's own) and its tours
 function devUnlOff(k){ const u=unlocked(), [g,d,s]=k.split(':'); delete u[k];
   if(s===undefined){ store.intro=Object.assign({},store.intro); delete store.intro[g+':'+d]; if(tutUnlockKeys().game.includes(k)) delete store.intro[g]; }
@@ -99,6 +102,8 @@ register('s-testing',{ onShow(){ clockPrev=null; clockTxt=''; devState(); if(BUI
 // B.26: the first game's first combination is the segment the advance demo lights — a real key, drawn over the ring as it is
 const firstKey=()=>{ const g=Object.keys(GAMES)[0]; const d=GAMES[g].modes[0]; return { g, d, key:`${g}:${d}:5`, tier:'clear', was:0, done:1, total:1 }; };
 define({
+  // build 69 (68.28): Gauntlet · Versus — its screen, test-only (it is refused outside BUILD_FLAGS.dev by run/gauntlet.js as well)
+  'gaunt-versus'(){ if(!BUILD_FLAGS.dev) return 'pick'; show('s-gauntlet',{id:VERSUS_ID}); return 'click'; },
   // build 55 (in passing): S5 — the handlers shipped in the release bundle, so a planted button with Web Inspector attached was supporter for the session
   'dev-open'(){ prefs.allOpen=!prefs.allOpen; save(); devState(); toast(prefs.allOpen?TOAST.devOpenOn:TOAST.devOpenOff); return 'pick'; },
   'dev-sup'(){ prefs.supporter=!prefs.supporter; save(); devState(); toast(prefs.supporter?TOAST.supOn:TOAST.supOff); return 'pick'; },

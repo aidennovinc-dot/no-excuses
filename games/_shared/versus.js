@@ -5,10 +5,11 @@
    Build 19 (v14 section 4): Four gives each player four pads, not two (4.11); a wrong tap flashes that player's half red instead of
    going blank (4.12); neither player's dots cross the centre line (4.13); the first to VS_TARGET wins as well as the first to lead
    by VS_LEAD (4.14); and the screen leans towards whoever is ahead, shakes as it gets close and tells the music to change bed (4.15). */
-import { HUD } from "../../config/copy.js";
+import { GAUNTLET, HUD, PLAYER } from "../../config/copy.js";
 import { CFG, VS_CAP, VS_LEAD, VS_TARGET } from "../../config/games.js";
 import { $, T, pWho, vmin, winner } from "../../core.js";
 import { haptic } from "../../core/platform.js";
+import { makeBot, named } from "./bot.js";
 import * as hud from "./hud.js";
 
 const VX={ id:'versus', noIntro:true, ctx:null, n:[0,0], tgt:[0,0], lock:[0,0], streak:[0,0], pos:[null,null], next:[null,null], raf:0, t0:0, done:false, target:100,
@@ -16,13 +17,31 @@ const VX={ id:'versus', noIntro:true, ctx:null, n:[0,0], tgt:[0,0], lock:[0,0], 
   // 4.11: Four is four pads a player in versus too — the format does not work with two
   pads(){ return this.ctx.mode==='four'?4:2; },
   sz(){ return Math.max(64,Math.min(110,18*vmin())); },
+  /* build 69 (68.28): in a Gauntlet · Versus duel the top end is the COMPUTER (games/_shared/bot.js): its half is named for it, it taps its own
+     pads or claims its own shapes at its fixed rate (botGo), the player's finger cannot play its end, and the duel is capped at its row's
+     `cap` seconds — first to lead by `leadBy`, else whoever leads when the time is up. With no computer, nothing here changes. */
   mount(ctx){ this.ctx=ctx; this.n=[0,0]; this.lock=[0,0]; this.streak=[0,0]; this.done=false; this.target=VS_TARGET[ctx.game]||VS_LEAD*10;
-    $('#vn0').textContent='0'; $('#vn1').textContent='0';  $('#vsdiff').textContent=T(HUD.vsLead,{n:VS_LEAD,t:this.target}); $('#vsnote').textContent=this.qt()?HUD.vsQt:HUD.vsDots; $('#vslead').style.left='50%'; $('#vslead').style.width='0'; $('#vwin').classList.remove('on');
+    this.bot=makeBot(ctx); this.lead=this.bot&&this.bot.row.leadBy||VS_LEAD; this.cap=this.bot&&this.bot.row.cap||VS_CAP;
+    $('#vwho1 span').textContent=this.bot?this.bot.name:T(PLAYER.who,{n:2});
+    $('#vn0').textContent='0'; $('#vn1').textContent='0';  $('#vsdiff').textContent=T(HUD.vsLead,{n:this.lead,t:this.target}); $('#vsnote').textContent=this.bot?T(GAUNTLET.vsCap,{note:this.qt()?HUD.vsQt:HUD.vsDots,s:this.cap}):this.qt()?HUD.vsQt:HUD.vsDots; $('#vslead').style.left='50%'; $('#vslead').style.width='0'; $('#vwin').classList.remove('on');
     this.lean(0);
     $('#vfield').style.setProperty('--dsz',this.sz()+'px'); $('#vfield').innerHTML=this.qt()?'':`<div class="vlead" id="vl0"></div><div class="vlead c" id="vl1"></div><div class="vshape" id="vs0"></div><div class="vshape c" id="vs1"></div>`;
     for(let p=0;p<2;p++) for(let i=0;i<4;i++){ const sq=$(`#vsq${p}${i}`); if(sq) sq.style.setProperty('--v',0); } },
   start(){ this.t0=performance.now(); if(this.qt()){ const n=this.pads(); this.tgt=[Math.random()*n|0,Math.random()*n|0]; this.renderQT(); } else { this.pos=[this.spot(0,null),this.spot(1,null)]; this.next=[this.spot(0,this.pos[0]),this.spot(1,this.pos[1])]; this.renderDT(); }
-    const loop=now=>{ if(!this.ctx.timers.alive()||this.done) return; if(now-this.t0>VS_CAP*1000) return this.end(); for(let p=0;p<2;p++) if(this.lock[p]&&now>=this.lock[p]){ this.lock[p]=0; this.qt()?this.renderQT():0; } this.raf=requestAnimationFrame(loop); }; this.raf=requestAnimationFrame(loop); },
+    this.botGo();
+    const loop=now=>{ if(!this.ctx.timers.alive()||this.done) return; if(now-this.t0>this.cap*1000) return this.end(); for(let p=0;p<2;p++) if(this.lock[p]&&now>=this.lock[p]){ this.lock[p]=0; this.qt()?this.renderQT():0; } this.raf=requestAnimationFrame(loop); }; this.raf=requestAnimationFrame(loop); },
+  /* 68.28: the computer's hand. One draw per action — its fixed rate with a wobble — sets when the next is due; the odd miss is a wrong pad
+     (Quick Tap: the same lockout a player gets) or a claim fumbled (Dots: nothing lands). Its pad lights and answers like a player's.
+     The schedule is kept on the clock, not on the timer: a late wake acts for every action already due, so a busy phone cannot slow the
+     computer down — and a gap longer than 300ms (the app was away) is dropped rather than paid back in a burst. */
+  botGo(){ const b=this.bot; if(!b) return; const gap=v=>1000/Math.max(0.05,v); let a=b.draw(), due=performance.now()+gap(a.v);
+    const step=()=>{ if(this.done||!this.ctx.timers.alive()) return; const now=performance.now(); if(now-due>300) due=now;
+      while(!this.done&&now>=due){ this.botAct(a.miss); a=b.draw(); due+=gap(a.v); }
+      if(!this.done) this.ctx.timers.later(step,Math.max(0,due-now)); };
+    this.ctx.timers.later(step,Math.max(0,due-performance.now())); },
+  botAct(miss){ if(this.qt()){ if(this.lock[1]) return; const n=this.pads(); return this.padTap(1,miss?(this.tgt[1]+1)%n:this.tgt[1]); }
+    if(miss) return; this.score(1); if(this.done) return; const lead=this.ctx.mode==='lead';
+    this.pos[1]=lead?this.next[1]:this.spot(1,this.pos[1]); this.next[1]=this.spot(1,this.pos[1]); this.renderDT(); },
   stop(){ cancelAnimationFrame(this.raf); this.lean(0); $('#vs').classList.remove('close'); for(let p=0;p<2;p++) halfOf(p).classList.remove('miss'); },
   // 4.13: the bottom player's shapes stay in the bottom half, the top player's in the top half — neither crosses the centre line
   spot(p,avoid){ const f=$('#vfield').getBoundingClientRect(), sz=this.sz(); const mx=Math.max(1,f.width-sz), top=f.height*.16, bot=f.height*.84-sz, mid=f.height/2;
@@ -31,35 +50,35 @@ const VX={ id:'versus', noIntro:true, ctx:null, n:[0,0], tgt:[0,0], lock:[0,0], 
   renderQT(){ const n=this.pads(); for(let p=0;p<2;p++) for(let i=0;i<4;i++){ const sq=$(`#vsq${p}${i}`); if(sq) sq.style.setProperty('--v',(i<n&&!this.lock[p]&&this.tgt[p]===i)?1:0); } },
   renderDT(){ const lead=this.ctx.mode==='lead'; for(let p=0;p<2;p++){ const s=$('#vs'+p), l=$('#vl'+p); s.style.transform=`translate(${this.pos[p].x}px,${this.pos[p].y}px)`; s.classList.add('on'); if(lead){ l.style.transform=`translate(${this.next[p].x}px,${this.next[p].y}px)`; l.classList.add('on'); } } },
   // 4.15: the screen leans towards whoever is ahead, harder the bigger the margin, and the music is told how close it is
-  lean(d){ const k=Math.max(-1,Math.min(1,d/VS_LEAD)); const el=$('#vslean'); el.style.setProperty('--lk',Math.abs(k).toFixed(2)); el.classList.toggle('p1',k>0); el.classList.toggle('p2',k<0);
-    const near=Math.max(Math.abs(d)/VS_LEAD,Math.max(this.n[0],this.n[1])/this.target); $('#vs').classList.toggle('close',near>=.7);
+  lean(d){ const L=this.lead||VS_LEAD, k=Math.max(-1,Math.min(1,d/L)); const el=$('#vslean'); el.style.setProperty('--lk',Math.abs(k).toFixed(2)); el.classList.toggle('p1',k>0); el.classList.toggle('p2',k<0);
+    const near=Math.max(Math.abs(d)/L,Math.max(this.n[0],this.n[1])/this.target); $('#vs').classList.toggle('close',near>=.7);
     /* v16 (1.4): the two stems. A player is close to winning by their own count OR by their lead, so the proximity is
        whichever of the two is further along — the same pair of conditions `score` ends the run on. Presentation (L10). */
-    const px=p=>Math.max(this.n[p]/this.target, Math.max(0,p?-d:d)/VS_LEAD);
+    const px=p=>Math.max(this.n[p]/this.target, Math.max(0,p?-d:d)/L);
     if(this.ctx) this.ctx.emit('live',{vsTension:Math.min(1,near),vsP:[Math.min(1,px(0)),Math.min(1,px(1))]}); },
   // v21 (G.7, build 35): the count ticks up and pulses in that player's own colour (L4)
-  score(p){ this.n[p]++; const el=$('#vn'+p); hud.tick(el,this.n[p],p); this.ctx.audio.hit(); const d=this.n[0]-this.n[1]; const k=Math.min(1,Math.abs(d)/VS_LEAD)*50; const bar=$('#vslead'); bar.style.width=k+'%'; bar.style.left=d>=0?'50%':(50-k)+'%'; $('#vsdiff').innerHTML=d===0?HUD.level:T(HUD.lead,{who:pWho(d>0?0:1),n:Math.abs(d)});
+  score(p){ this.n[p]++; const el=$('#vn'+p); hud.tick(el,this.n[p],p); this.ctx.audio.hit(); const d=this.n[0]-this.n[1], L=this.lead||VS_LEAD; const k=Math.min(1,Math.abs(d)/L)*50; const bar=$('#vslead'); bar.style.width=k+'%'; bar.style.left=d>=0?'50%':(50-k)+'%'; $('#vsdiff').innerHTML=d===0?HUD.level:named(this.bot,T(HUD.lead,{who:pWho(d>0?0:1),n:Math.abs(d)}));
     this.lean(d);
     // 4.14: first to the target, or first to lead by VS_LEAD
-    if(Math.abs(d)>=VS_LEAD||this.n[p]>=this.target) this.end(); },
+    if(Math.abs(d)>=L||this.n[p]>=this.target) this.end(); },
   /* v21 (F.3, build 35): THE PAD A PLAYER HIT ANSWERS THE FINGER. The lit square moves on to a random pad and that is often
      the same one, so a correct tap could change nothing on screen at all — two players read that as a miss. Presentation
      only (L10). Pass & play was checked for the same gap and does not have it: it runs the solo timed engine, which rings
      the next pad, pops a repeated one and swells the big count on every hit. */
   tapped(p,i){ const pad=$(`[data-vs-side="${p}:${i}"]`); if(!pad) return; pad.classList.remove('tapped'); void pad.offsetWidth; pad.classList.add('tapped'); },
   // a pad tap carries the player and the pad (data-vs-side); a field tap carries the point
-  input(ctx,ev){ if(ev.player!==undefined) this.padTap(ev.player,ev.target); else this.fieldTap(ev); },
+  input(ctx,ev){ if(ev.player!==undefined){ if(this.bot&&ev.player===1) return; this.padTap(ev.player,ev.target); } else this.fieldTap(ev); },
   padTap(p,i){ if(!this.ctx.timers.alive()||this.done||this.lock[p]) return; const n=this.pads(); if(i>=n) return;
     if(this.tgt[p]===i){ this.tapped(p,i); this.score(p); const prev=this.tgt[p]; let t=Math.random()*n|0; if(t===prev){ this.streak[p]++; if(this.streak[p]>=3){ t=(prev+1+(Math.random()*(n-1)|0))%n; this.streak[p]=0; } } else this.streak[p]=0; this.tgt[p]=t; this.renderQT(); }
     // 4.12: a wrong tap reads like it does in solo — a red flash over that player's half and a beat of lockout, not a blank screen
-    else { this.lock[p]=performance.now()+CFG.lockout; this.ctx.audio.miss(); this.renderQT(); this.flash(p); haptic(30); } },
+    else { this.lock[p]=performance.now()+CFG.lockout; this.ctx.audio.miss(); this.renderQT(); this.flash(p); if(!(this.bot&&p===1)) haptic(30); } },
   flash(p){ const h=halfOf(p); h.classList.remove('miss'); void h.offsetWidth; h.classList.add('miss'); this.ctx.timers.later(()=>h.classList.remove('miss'),CFG.lockout); },
   fieldTap(ev){ if(!this.ctx.timers.alive()||this.done||this.qt()) return; const f=$('#vfield').getBoundingClientRect(); const x=ev.x-f.left, y=ev.y-f.top, sz=this.sz(), c=sz/2; let hitP=-1;
     for(let p=0;p<2;p++){ const q=this.pos[p]; if(Math.hypot(x-(q.x+c),y-(q.y+c))<=c*CFG.dotLeeway+8) hitP=p; } if(hitP<0) return;
     // whose finger? the bottom 50% is the bottom player's reach, the top the top player's. A tap on the other player's shape hands them the point
     this.score(hitP); const lead=this.ctx.mode==='lead'; this.pos[hitP]=lead?this.next[hitP]:this.spot(hitP,this.pos[hitP]); this.next[hitP]=this.spot(hitP,this.pos[hitP]); this.renderDT(); },
-  end(){ if(this.done) return; this.done=true; cancelAnimationFrame(this.raf); const a=this.n[0], b=this.n[1]; const w=winner(a,b); const win=$('#vwin'); win.innerHTML=w<0?`<div>${HUD.draw}</div>`:`<div class="${w?'top p2':'p1'}">${T(HUD.wins,{n:w+1})}</div>`; win.classList.add('on'); this.ctx.audio.end();
-    const how=Math.max(a,b)>=this.target?T(HUD.byLead,{n:Math.abs(a-b)}):Math.abs(a-b)>=VS_LEAD?T(HUD.byLead,{n:VS_LEAD}):HUD.onClock;
+  end(){ if(this.done) return; this.done=true; cancelAnimationFrame(this.raf); const a=this.n[0], b=this.n[1]; const w=winner(a,b); const win=$('#vwin'); win.innerHTML=w<0?`<div>${HUD.draw}</div>`:`<div class="${w?'top p2':'p1'}">${named(this.bot,T(HUD.wins,{n:w+1}))}</div>`; win.classList.add('on'); this.ctx.audio.end();
+    const L=this.lead||VS_LEAD, how=Math.max(a,b)>=this.target?T(HUD.byLead,{n:Math.abs(a-b)}):Math.abs(a-b)>=L?T(HUD.byLead,{n:L}):HUD.onClock;
     this.ctx.timers.later(()=>this.ctx.emit('finish',{hits:a,misses:0,vs2:{a,b,w,how}}),1900); },
   result(){ return {hits:this.n[0],misses:0}; } };
 

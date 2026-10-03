@@ -83,6 +83,17 @@ export async function run() {
   await tap('#dev-unl [data-k="hold:grow"]', 'testing · Estimate on'); await tap('#dev-unl [data-k="hold:grow"]', 'testing · Estimate off');
   await tap('#dev-menu [data-k="about"]', 'testing · About'); await tap('#dev-menu [data-k="about"]', 'testing · About back');
   await tap('#dev-tour [data-t="welcome"]', 'testing · play the Welcome again'); await sleep(300); await tap('[data-go="s-testing"]'); await sleep(300);
+  /* build 69 (68.28): Gauntlet · Versus, test-only — its Testing button opens its screen; the button between two duels (staged here with no run
+     in flight, so it starts nothing — the gauntlets section drives it inside a real run); and Back goes back to Testing, not to the map */
+  await tap('#dev-gversus', 'testing · Gauntlet · Versus'); await sleep(500);
+  const gv = await page.evaluate(() => ({ on: document.querySelector('.screen.on').id, g: document.getElementById('s-gauntlet').dataset.g, rows: document.querySelectorAll('#gt-body .gtduel li').length }));
+  await page.evaluate(async () => { const R = await import('./ui/router.js'), A = await import('./config/gauntlets.js'); R.show('s-gauntlet', { id: A.VERSUS_ID, between: { id: A.VERSUS_ID, i: 1, n: 7, won: 1, next: A.GAUNTLET_RUNS[A.VERSUS_ID][1] } }); });
+  await sleep(500); await tap('#gt-body [data-act="gaunt-next"]', 'gauntlet versus · next duel (staged)'); await sleep(300);
+  const still = await onScreen(); await sleep(300); await tap('#s-gauntlet .back', 'gauntlet versus · back'); await sleep(400);
+  const back = await onScreen();
+  (gv.on === 's-gauntlet' && gv.g === 'g3' && gv.rows === 7 && still === 's-gauntlet' && back === 's-testing')
+    ? ok('68.28 Testing → Gauntlet · Versus opens its seven-duel screen; Next duel with no run in flight starts nothing; Back returns to Testing')
+    : bad('68.28 the Gauntlet · Versus buttons', JSON.stringify({ gv, still, back }));
   await tap('#dev-story', 'testing · replay the intro'); await sleep(300);
   (await page.evaluate(() => !!document.querySelector('#s-menu.story'))) ? ok('replay the intro shows the title sequence') : bad('replay the intro', 'on ' + (await onScreen()));
   await tapTitle(); await sleep(400);
@@ -112,7 +123,7 @@ export async function run() {
   (await onScreen()) === 's-pick' ? ok('result back opens the pick sheet') : bad('result back opens the pick sheet', 'on ' + (await onScreen()));
   await tap('#time-row .tbtn:nth-child(2)', 'sheet · length'); await tap('#vs-wrap [data-p="f"]', 'sheet · with a friend'); await tap('#vs-wrap [data-p2="1"]', 'sheet · pass & play'); await tap('#vs-wrap [data-p="0"]', 'sheet · solo');
   // build 18: the chips are one act per screen, and the overlays (lock box, Next card, the full stop) are acts too
-  const expected = ['go', 'back', 'game', 'diff', 'time', 'vs', 'vs2', 'lvl-back', 'go-btn', 'quit', 'over-back', 'share', 'chip-bd', 'radar', 'chip-pv', 'pfold', 'chip-over', 'item', 'pvlock', 'ach', 'unl', 'prac', 'dev-open', 'dev-sup', 'dev-story', 'dev-unl', 'dev-menu', 'dev-tour', 'support', 'wheel-done', 'lock-no', 'lock-go', 'nextup', 'egg', 'ptab', 'chest', 'msg'];
+  const expected = ['go', 'back', 'game', 'diff', 'time', 'vs', 'vs2', 'lvl-back', 'go-btn', 'quit', 'over-back', 'share', 'chip-bd', 'radar', 'chip-pv', 'pfold', 'chip-over', 'item', 'pvlock', 'ach', 'unl', 'prac', 'dev-open', 'dev-sup', 'dev-story', 'dev-unl', 'dev-menu', 'dev-tour', 'gaunt-versus', 'gaunt-next', 'support', 'wheel-done', 'lock-no', 'lock-go', 'nextup', 'egg', 'ptab', 'chest', 'msg'];
   const missing = expected.filter(a => !seen.has(a));
   missing.length ? bad('every data-act driven once', 'not driven: ' + missing.join(', ')) : ok(`every data-act driven once (${expected.length}) — not covered: again, pass-go, to-games, seqdone, praclock, dev-fresh, adskip, toast, cere-tap, reveal-go, reveal-msg (the reveal's three are driven in the build 46 section)`);
 }

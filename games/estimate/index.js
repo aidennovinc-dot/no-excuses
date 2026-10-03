@@ -10,6 +10,7 @@ import { roundShow, tierWord } from "../_shared/tier.js";
 import { Shapes } from "../_shared/shapes.js";
 import { bandPick, gauntBand, gauntDealt, makeDealer, within } from "../_shared/deal.js";
 import { makeTwo } from "../_shared/two.js";
+import { VERSUS_BOT } from "../../config/gauntlets.js";
 import { DEALS, SHAPES } from "../../config/shapes.js";
 /* ---------- Estimate (v9, was Hold). Grow: a shape grows with a wobble and vanishes; tap and hold to grow yours to the same area. Cut: a shape appears; drag a line through it that splits off the share asked for. Score is % off, lower is better ---------- */
 /* build 69 (68.20): EVERY ROUND IS A STEP OF THE LADDER (config/shapes.js DEALS 'hold:grow' / 'hold:cut'): its shape from the step's pool, turned by
@@ -83,6 +84,8 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
   stop(){ this.st='idle'; this.clearT(); this.pending=null; hud.hold(false); },
   // v14 (6.3): the reveal stays up until it is tapped. That tap is consumed here — it must not start the next round's hold
   input(ctx,ev){ if(this.pending){ if(ev.type!=='down') return; const f=this.pending; this.pending=null; hud.hold(false); ctx.audio.click(); return f(); }
+    // build 69 (68.28): while the computer holds the phone in a Gauntlet · Versus duel, the player's taps wait
+    if(this.two.on&&this.two.botTurn&&this.two.botTurn()) return;
     if(ev.type==='down') this.down(ev); else if(ev.type==='move') this.cutMove(ev); else if(ev.type==='up') this.up(); },
   /* v31 (60.27, build 60): a hold that was in progress is abandoned and the round is dealt again. A reveal that had already
      landed is NOT replayed — its figure is in `errs` and the run has moved on — so this only ever fires on a live round. */
@@ -92,7 +95,7 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
     this.clearT(); this.reset(); this.play(); },
   // v31 (60.27, build 60): the growing shape's own frame loop stops with the run; the hold is replayed from the top anyway
   pause(){ cancelAnimationFrame(this.raf); this.raf=0; },
-  replay(){ if(this.st!=='wait'&&this.st!=='hold') return; this.clearT(); this.pending=null; hud.hold(false); this.reset(); this.play(); },
+  replay(){ if(this.st!=='wait'&&this.st!=='hold') return; this.clearT(); this.pending=null; hud.hold(false); this.reset(); this.play(); if(this.two.on&&this.two.botTurn()) this.botPlay(); },
   wait(f){ this.pending=f; hud.hold(true); },
   // first play (v6): Grow — the ghost waits for the target, holds for the right length, lets go, and the reveal plays; Cut has no demo, the one-liner sits for 1.8s
   // v15 (3.2): the demo's own reveal used to be cut off — done fired on a flat 1300ms while the count-and-fill panel needs
@@ -131,7 +134,7 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
   next(){ this.clearT(); this.round++;
     // v15 (4.1 / 4.2): a pass & play run ends when both players have had their turns, not on a length — and every hand-over
     // waits for a tap, which is the one place §3.9 kept the cue for
-    if(this.two.on){ if(this.two.over()) return this.ctx.emit('finish',this.two.record()); this.reset(); return this.two.gate(this,()=>this.play()); }
+    if(this.two.on){ if(this.two.over()) return this.ctx.emit('finish',this.two.record()); this.reset(); return this.two.gate(this,()=>{ this.play(); if(this.two.botTurn()) this.botPlay(); }); }
     if(!this.streak()&&this.round>this.ctx.len) return this.ctx.emit('finish',this.result()); if(this.streak()&&this.total>=100) return this.ctx.emit('finish',this.result()); this.reset(); this.play(); },
   play(){ if(this.cut()) return this.cutRound();
     this.hud(); const v=vmin(); this.shape=this.pickTarget(); this.target=this.growTarget()*v; this.mine=this.shape;
@@ -143,6 +146,17 @@ const HD={ id:'hold', ctx:null, st:'idle', round:0, total:0, errs:[], target:0, 
     this.st='show'; const t0=performance.now(), rate=CFG.holdRate*v, dur=this.target/rate*1000;
     const grow=now=>{ if(!this.live()) return; const p=Math.min(1,(now-t0)/dur); this.set('ht',this.shape,this.target*p,this.wobble(now-t0)); if(p<1) this.raf=requestAnimationFrame(grow); else this.later(()=>this.ready(),420); };
     this.raf=requestAnimationFrame(grow); },
+  /* build 69 (68.28): THE COMPUTER'S TURN in a Gauntlet · Versus duel — the same Grow round on the same screen. It watches the target grow,
+     "looks" for VERSUS_BOT.think, then holds and lets go: its shape grows on screen exactly as a player's does and the reveal is the
+     player's reveal. How long it holds is its one draw (games/_shared/bot.js) — its fixed % off, too big or too small, the odd miss
+     at `missBy` times it — turned into the size that gives that area, kept between 3% and the hold's own ceiling. */
+  botPlay(){ const b=this.two.bot, a=b.draw(), off=a.v*(a.miss?(b.row.missBy||1):1)*b.sign();
+    const look=()=>{ if(this.st!=='wait') return this.later(look,60);
+      this.later(()=>{ if(this.st!=='wait') return; const pct=Math.max(3,100+off), rate=CFG.holdRate*vmin();
+        const size=Math.min(this.capOf(),Math.sqrt(this.shape.coef*this.target*this.target*pct/100/Shapes.area(this.mine.loops))), ms=size/rate*1000;
+        this.down({type:'down',x:0,y:0,bot:1});
+        this.later(()=>{ if(this.st!=='hold') return; this.t0=performance.now()-ms; this.up(); },ms); },VERSUS_BOT.think); };
+    this.later(look,60); },
   // v11: the target stays up as a dashed outline while you grow — turned for same-shape rounds — so you can see what you are comparing to
   /* v17 (B.3): "same shape · it has been turned" and "same area" are GONE, and so is the watch-phase line above. They were
      the footer on every single round of a game that is ten rounds long, saying something the dashed outline already says. */

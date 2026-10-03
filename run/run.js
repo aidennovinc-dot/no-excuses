@@ -149,7 +149,9 @@ function start(){
   $('#game').classList.toggle('versus',vx); $('#game').classList.toggle('bigc',sel.game==='quick-tap'&&!versus);
   // v14 (4.8): whose turn it is is never in doubt — a pass & play run is outlined in that player's colour
   $('#game').classList.toggle('pturn',!!VS.on); if(VS.on) $('#game').style.setProperty('--pc',VS.stage===2?P2C:P1C);
-  const who=VS.on?pWho(VS.stage-1)+' · ':''; $('#hud-mode').innerHTML=who+(MODE_NAME[sel.diff]?MODE_NAME[sel.diff]+' · ':'')+(versus?(c.vsLens?lenName(sel.game,sel.secs,sel.diff,true):HUD.versus):shared?HUD.pass:lenName(sel.game,sel.secs,sel.diff)); $('#score').textContent=c.lower?'0.00':'0';
+  // build 69 (68.28): a Gauntlet · Versus duel says who the other end is — "vs computer" — in place of "versus" / "pass & play"
+  const duel=!!(pendingGaunt&&pendingGaunt.bot);
+  const who=VS.on?pWho(VS.stage-1)+' · ':''; $('#hud-mode').innerHTML=who+(MODE_NAME[sel.diff]?MODE_NAME[sel.diff]+' · ':'')+(duel?HUD.vsBot:versus?(c.vsLens?lenName(sel.game,sel.secs,sel.diff,true):HUD.versus):shared?HUD.pass:lenName(sel.game,sel.secs,sel.diff)); $('#score').textContent=c.lower?'0.00':'0';
   // the next unlock this run could earn, if any, sits under the HUD (v8). Not for two players. v11: a "Try to unlock" or achievement run keeps its goal up as a reminder even when nothing new can unlock
   // v13 (3.8): a "Try to unlock" run keeps the goal for the thing that was tapped — not whatever the chain would offer next
   /* v15 (5.2, build 26): an aim the player ASKED for outranks the chain's automatic offer. goalFor() is what the game
