@@ -177,7 +177,12 @@ function achRow(a,tab,{g,all,fsGame,fresh,nx}){
   // build 69 (68.40): the row's state is its colour and a tick in front — the word "done" is gone; `em` is that tick's place
   const cls=`${isDone?'done':'lock'}${nw} ${jump?'jump':''}${isNx?' nx':''}`, name=`<b class="aname">${esc(a.name)}</b>`, tick=`<em>${isDone?'✓':''}</em>`;
   // build 62 (61.12): a score-target row is its mode and length and what it asks — no name, no second line, no → line
-  if(nameless(a)&&tab!=='cul') return `<button data-act="ach" class="a nameless ${cls}" data-ach="${a.id}" id="${tab}-${a.id}"><span${nxAttr(isNx)}>${esc(achWhere(a,' · '))} — ${line}</span>${tick}${bar}</button>`;
+  /* build 69 (68.40 follow-up): ON A CHEST TAB EVERY BAR IS ONE TARGET ROW. The nine bars that also unlock a cosmetic were drawn in their achievement
+     form there (gold name, requirement, → line) between plain neighbours; the mock has every target alike. Their named form is Customise unlocks' alone.
+     The key entire, the one row on a chest tab that is not a bar, says what it asks under its heading, plainly, the same way */
+  const target=tab!=='cul'&&(nameless(a)||(!!a.combo&&!!chestOfTab(tab)));
+  if(target) return `<button data-act="ach" class="a nameless ${cls}" data-ach="${a.id}" id="${tab}-${a.id}"><span${nxAttr(isNx)}>${esc(achWhere(a,' · '))} — ${line}</span>${tick}${bar}</button>`;
+  if(chestOfTab(tab)) return `<button data-act="ach" class="a nameless ${cls}" data-ach="${a.id}" id="${tab}-${a.id}"><span${nxAttr(isNx)}>${line}</span>${tick}${bar}</button>`;
   /* build 69 (68.42): A CUSTOMISE-UNLOCK ROW IS A FIXED LEFT COLUMN AND TWO LINES. Aiden: "We're using a lot of vertical space … the customised colours
      are way too close to the actual words." The thing it unlocks in a 30px swatch with clear space after it (crossed in red while unearned), then the
      name in gold, then the requirement and where it is played on ONE line (61.16's say-the-mode-once, the → gone), and the state at the right edge:
