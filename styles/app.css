@@ -985,11 +985,13 @@
   /* v18 (B.30): the locked line sits UNDER the row it is about, one per group — never over the options, and never a toast (the toast is pinned to the top
      of the screen, which is what made it unreadable). It is a button in everything but name: a tap goes to the achievement that opens it.
      build 69 (68.33): IT HAS A SLOT OF ITS OWN. It used to take no height until it had something to say, so a locked tap pushed every row under it down
-     (~45px for the Music row's two lines). Every line now sits in a fixed slot two lines tall, empty and untappable until a locked item is tapped, and wide
-     enough that the longest requirement fits two lines; the slot tucks 4px into its group's gap so the screen still fits the phone */
+     (~45px for the Music row's two lines). Every row that holds a locked item (`.slot`, set by renderCustom) keeps a fixed slot two lines tall under it,
+     empty and untappable until a locked item is tapped, and wide enough that the longest requirement fits two lines; a row with nothing locked keeps no
+     slot. The slot tucks 4px into its group's gap so the screen still fits the phone */
   .lockline{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--lock);text-transform:uppercase;text-align:center;line-height:1.5;cursor:pointer;
     width:min(92vw,360px);height:3em;flex:none;box-sizing:border-box;padding:0 4px;margin-top:-4px;overflow:hidden}
   .lockline:empty{pointer-events:none}
+  .lockline:empty:not(.slot){display:none}
   .lockline u{color:var(--ink);text-decoration:underline;text-underline-offset:4px}
   .cgroup{display:flex;flex-direction:column;gap:8px;align-items:center}
   /* v23 (L.7c, build 42): the Everywhere row. A shut theme is crossed out — crossed, not greyed — with the chest that opens it under it, on its

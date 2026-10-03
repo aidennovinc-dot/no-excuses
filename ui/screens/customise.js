@@ -122,6 +122,8 @@ function renderCustom(){
   const pv=$('#pv').style; pv.setProperty('--sq-live',colOf(F.g).sq); pv.setProperty('--cue',colOf(F.g).lead); pv.setProperty('--cutp',colOf(F.g).cut||colOf(F.g).sq); pv.removeProperty('background');
   // B.30: at most one group says anything, and it says it under its own row
   for(const s of LOCK_SETS) lockLine(s,null);
+  // 68.33: a row that holds anything locked keeps the line's two-line slot under it, so the line coming or going moves nothing
+  for(const s of LOCK_SETS){ const el=$('#lk-'+s), row=$('#c-'+s); if(el&&row) el.classList.toggle('slot',!!row.querySelector('.locked')); }
   // v28 (item 2): a locked key track tapped says what opens it under the Music row — its KEY, by name (item 3), never its chest
   if(pvTry.set==='track'){ const k=KEYS.find(x=>'key:'+x.music===pvTry.v); if(k) lockLine('track',{ name:k.name, how:GRID.chestEarn[k.music]||k.name }); }
   else if(pvTry.set){ const L=lockById(pvTry.by); const map={sq:'--sq-live',lead:'--cue',cut:'--cutp'}; if(map[pvTry.set]&&pvTry.v!=='wheel') pv.setProperty(map[pvTry.set],pvTry.v); if(pvTry.set==='bg'&&DESIGNS[pvTry.v]) pv.background=DESIGNS[pvTry.v].tint; lockLine(pvTry.set,L); }

@@ -2158,7 +2158,8 @@ anything Aiden settles goes on the list in the build that implements it.
   makes any sound** — no track preview, no tap sound, no click (the handler returns no sound); a locked colour or background still shows itself on the
   preview, which is seeing, not hearing. **This REVERSES v28 item 2 / B.28's "a locked key track previews — hearing what you have is not the reward"**:
   a locked key track is never heard before its key is earned. (3) **The "Locked · …" line (`.lockline`, B.30) has a slot of its own**, a fixed two lines
-  tall (`height:3em`), under every row that can show one, empty and untappable until a locked item is tapped, `min(92vw,360px)` wide so the longest
+  tall (`height:3em`), under every row that holds a locked item (`.slot`, set by `renderCustom`; a row with nothing locked keeps none, so an all-open
+  Customise has no empty gaps), empty and untappable until a locked item is tapped, `min(92vw,360px)` wide so the longest
   requirement fits two lines, tucked 4px into its group's gap so Customise still fits the phone (67.35). It used to take no height until it spoke, so a
   locked tap pushed everything under it down (~45px under Music). Gate: `side screens`, "68.32 / 68.33" — the locked Lantern tapped with the row at its
   start: `scrollLeft` unchanged, no `Snd.*` / `Music.*` call, the line shown, the Background label unmoved; then every locked item on five games: no
