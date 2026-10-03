@@ -2095,6 +2095,13 @@ scene('68.40', async (page, browser) => {
   await show(page, 's-prog', { tab: 'ach' }); await sleep(600);
   await frame(page, browser, '68.40-achievements', 'Achievements: “General” first, then a heading per game with its map symbol; to-do above done; no filter row, no “Done”');
 });
+/* 68.22: the Author chest's tab while the Pro chest is shut — Aiden's own screen (68.22_author-tab.png) */
+scene('68.22', async (page, browser) => {
+  await load(page, { ...PLAIN, welcomeSeen: 1, chests: { games: 1, key: 1 }, spill: { games: 1, key: 1 } });
+  await show(page, 's-prog', { tab: 'c-thorns' }); await sleep(700);
+  say('tab', await page.evaluate(() => ({ chips: [...document.querySelectorAll('#prog-tabs .chip')].map(c => c.dataset.tab + (c.classList.contains('locked') ? ' locked' : '') + (c.classList.contains('sel') ? ' sel' : '')), text: document.getElementById('p-chest').innerText })));
+  await frame(page, browser, '68.22-author-tab-locked', 'The Author chest’s tab with the Pro chest shut: the Author chip greyed and struck through in red (the Pro chip is open), still selectable; the tab says “Revealed when the chest before it opens” and “How to open this chest →” and nothing else (v0.68: a plain chip, “0 of 0 unlocked”, the filter row)');
+});
 scene('68.40-count', async (page, browser) => {
   await load(page, { ...PLAIN, welcomeSeen: 1, chests: { games: 1, key: 1, pro: 1 }, spill: { games: 1, key: 1, pro: 1 }, gauntSeen: { g1: 1 } });
   await show(page, 's-prog', { tab: 'c-key' }); await sleep(500); await tap68(page, '#chest-g [data-v="all"]'); await sleep(500);

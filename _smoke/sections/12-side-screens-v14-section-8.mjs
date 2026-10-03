@@ -598,6 +598,27 @@ export async function run() {
       ? ok(`68.40 / 68.42 Progress as mocked: the tabs one row that slides (the last tab brought into view on open), no filter row; on every key chest's tab a heading per game with its map symbol and a pip per bar (${Object.values(p40.want).join(' / ')}); Dots, all met, a gold header with nothing under it until it is tapped (then ${p40.dotsAfterTap} rows), Quick Tap open with 2 pips filled; one NEXT per tab with a row to do; to-do above done everywhere; no "Done" anywhere; ${p40.cul.length} Customise-unlock rows with a ${Math.min(...p40.cul.map(r => r.w))}px swatch ${Math.min(...p40.cul.map(r => r.gap))}px clear of two lines of words, the diagonal on every unearned one, the state at the right edge; Achievements opens on "${p40.ach.first}"`)
       : bad('68.40 / 68.42 the Progress rebuild', JSON.stringify({ row: p40.row, filters: p40.filters, pipsOk, foldOk, dots, qt, after: p40.dotsAfterTap, nxOk, nx: Object.fromEntries(Object.entries(p40.tabs).map(([k, x]) => [k, [x.nx, x.todo, x.order, x.done.slice(0, 3)]])), culOk, cul: p40.cul.filter(r => !(r.w >= 28 && r.gap >= 10 && r.diag === r.lock && r.lines === 2 && r.right <= 6 && r.after)).slice(0, 3), culOrder: p40.culOrder, culDone: p40.culDone.slice(0, 3), ach: p40.ach }));
   }
+  /* build 69 (68.22): A TAB FOR A CHEST NOT YET REVEALED IS GREYED WITH THE RED STRIKE, STILL TAPPABLE. Aiden: "At least the box at the top should … be
+     grayed out and have like a small line through it." With the Games and Skill chests open and the Pro chest shut, the Author chest's tab chip
+     wears the locked look (--mute, struck through in the lock red --cue, read off probes) and the Pro chest's does not; a real tap on it selects
+     it; and the tab then shows the "revealed when the chest before it opens" line and its how-to-open link and nothing else — no "0 of 0", no count
+     line, no bar */
+  {
+    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS, allOpen: false, chests: { games: 1, key: 1 }, spill: { games: 1, key: 1 } }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+    const at22 = await page.evaluate(async () => { const R = await import('./ui/router.js'), w = ms => new Promise(r => setTimeout(r, ms)); R.show('s-menu'); await w(80); R.show('s-prog', { tab: 'c-key' }); await w(300);
+      const probe = v => { const p = document.createElement('i'); p.style.color = v; document.body.appendChild(p); const c = getComputedStyle(p).color; p.remove(); return c; };
+      const chip = t => { const c = document.querySelector(`#prog-tabs [data-tab="${t}"]`), s = c ? getComputedStyle(c) : null; return c ? { locked: c.classList.contains('locked'), strike: /line-through/.test(s.textDecorationLine), strikeCol: s.textDecorationColor, col: s.color } : null; };
+      const a = chip('c-thorns'), p = chip('c-pro'), el = document.querySelector('#prog-tabs [data-tab="c-thorns"]'); el.scrollIntoView({ inline: 'center', block: 'nearest' }); await w(150);
+      const r = el.getBoundingClientRect(); return { a, p, mute: probe('var(--mute)'), cue: probe('var(--cue)'), at: [r.left + r.width / 2, r.top + r.height / 2] }; });
+    await page.mouse.click(at22.at[0], at22.at[1]); await sleep(400);
+    const on22 = await page.evaluate(async () => { const C = (await import('./config/copy.js')).PROGRESS_SCREEN, seen = e => !!e && e.getClientRects().length > 0, pc = document.getElementById('p-chest');
+      return { sel: document.querySelector('#prog-tabs .sel')?.dataset.tab, pane: seen(pc), text: pc.innerText, shut: C.shut, count: seen(document.getElementById('chest-count')) || seen(document.getElementById('chest-hint')), bar: seen(document.getElementById('chest-bar')), link: seen(document.querySelector('#chest-need .chestlink')), rows: document.querySelectorAll('#chest-list .a, #chest-list .g').length }; });
+    (at22.a && at22.a.locked && at22.a.strike && at22.a.strikeCol === at22.cue && at22.a.col === at22.mute && at22.p && !at22.p.locked && !at22.p.strike
+      && on22.sel === 'c-thorns' && on22.pane && !/\b0 of 0\b/i.test(on22.text) && on22.text.toLowerCase().includes(on22.shut.toLowerCase()) && !on22.count && !on22.bar && on22.link && !on22.rows)
+      ? ok(`68.22 with the Pro chest shut the Author chest's tab is greyed (${at22.a.col}) and struck through in the lock red (${at22.a.strikeCol}), the Pro chest's is not; a real tap selects it and it shows "${on22.shut}" and its how-to-open link and nothing else — no "0 of 0", no count line, no bar`)
+      : bad('68.22 the unrevealed chest tab', JSON.stringify({ at22, on22: { ...on22, text: on22.text.slice(0, 200) } }));
+  }
   /* build 69 (68.23): TESTING'S UNLOCK SWITCHES ARE REAL UNLOCKS. Aiden: "The tutorial should allow me to unlock games individually so that I can test the
      tutorial." Estimate switched ON from Testing leaves the store as a real Dots run that opens Estimate does once its result has been read and left —
      the unlock banked, its own tour armed at the map's ring — and OFF takes the unlock, the tour and Estimate's first play away again */

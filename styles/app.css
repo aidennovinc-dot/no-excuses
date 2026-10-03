@@ -691,6 +691,8 @@
   .ptabs{flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;width:min(92vw,440px);position:relative;flex:none;padding:2px 0 4px}
   .ptabs::-webkit-scrollbar{display:none}
   .ptabs .chip{flex:none;white-space:nowrap}
+  /* 68.22: a tab for a chest not yet revealed — greyed with the thin red strike Customise's locked choices wear, still a tap target */
+  .ptabs .chip.locked{color:var(--mute);text-decoration:line-through;text-decoration-color:var(--cue);text-decoration-thickness:1.5px}
   .pcount{display:flex;justify-content:space-between;align-items:baseline;gap:12px;width:min(92vw,440px);flex:none;font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);line-height:1.5}
   .pcount span:last-child{text-align:right;white-space:pre-line;color:var(--ink)}
   .pcount span:first-child:empty{display:none}

@@ -2129,3 +2129,10 @@ anything Aiden settles goes on the list in the build that implements it.
   the groups), 68.40 / 68.41 counts (M = the bars); `build 39` L.4b (one row that slides) and L.4c (a chest tab's rows include its game headings);
   `build 33` B.31's gap measure; `chain and its screens` 2.4 (a heading per game); `button actions` (`pfold` for the two filter acts);
   `locked decisions` 64.9 (the tour ends on a game heading).
+- **A tab for a chest not yet revealed is greyed with the red strike, still tappable (68.22).** Aiden: "At least the box at the top should … be
+  grayed out and have like a small line through it." (Cowork) "0 of 0 unlocked" does not show on a hidden chest. A chest tab whose chest is not
+  revealed yet — the A.1 test that prints "Revealed when the chest before it opens" (`shutTab()` in `ui/screens/progress.js`, `groupShown` of its
+  key) — wears `.locked` on its chip: `--mute`, struck through in the lock red `--cue` (the locked look of Customise's choices). It still selects on
+  a tap, and the tab then shows the "revealed when" line and its "How to open this chest →" link and nothing else: the count line and its bar are
+  hidden, so no "0 of 0 unlocked". Gate: `side screens`, "68.22" (written first, FAIL on the unfixed code) — with the Pro chest shut the Author
+  chip has the class, the strike and its colour read off probes, the Pro chip has none; a real tap selects it; no "0 of 0", no count line, no bar.

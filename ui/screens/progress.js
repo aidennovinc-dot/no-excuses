@@ -82,6 +82,8 @@ function tabFor(a){ if(!a) return 'ach'; if(achTab(a)==='cul') return 'cul';
 function chestFor(a){ if(!a||!a.kt) return null; const c=CHESTS.find(x=>x.needs===a.kt); return c?'c-'+c.id:null; }
 // the tier a chest's rows belong to — null for the Games chest, whose rows are the chain and not a key
 const tierOfChest = c => c && c.needs !== 'modes' ? c.needs : null;
+/* build 69 (68.22): a chest tab whose chest is not revealed yet — the test that prints "Revealed when the chest before it opens" (A.1) */
+const shutTab = t => { const tier=tierOfChest(chestOfTab(t)); return !!tier && !groupShown('key'+(KEYS.findIndex(k=>k.id===tier)+1)); };
 
 /* ---------- build 69 (68.40): THE GROUPS ----------
    One heading per game. The symbol is the game's own tile art on the map, copied, never redrawn — a game's look changes in one place. A chest tab's
@@ -204,6 +206,9 @@ function renderChest(tab){
   const c=chestOfTab(tab); if(!c) return;
   const g=got(), all=Scores.runs(); const fresh=[];
   $('#chest-need').innerHTML=needHtml(c);
+  /* build 69 (68.22): a chest not revealed yet has nothing to count — "0 of 0 unlocked" over an empty bar said the opposite of "revealed when the chest
+     before it opens". Its tab is the line and the way to open it, nothing else */
+  const shut=shutTab(tab); $('#chest-count').hidden=shut; $('#chest-bar').hidden=shut;
   const list=$('#chest-list');
   const tier=tierOfChest(c);
   /* build 64 (A1, Aiden's answer to build 62): THE GAMES CHEST COUNTS MODES, AND ITS LINE SAYS SO. The tab counted every row on it, Streaks
@@ -211,8 +216,8 @@ function renderChest(tab){
      says Streak is outside it — "13 of 13" over locked Streak rows no longer reads as a wrong sum. */
   if(!tier){ const m=modeCount(); list.className='unl scroll'; list.innerHTML=gamesHtml(); countLine('chest','',T(PROGRESS_SCREEN.gamesCount,{open:m.open,total:m.total}),m.open,m.total); return; }
   list.className='ach scroll';
-  const key='key'+(KEYS.findIndex(k=>k.id===tier)+1);
-  if(!groupShown(key)){ list.innerHTML=`<h4>${PROGRESS_SCREEN.shut}</h4>`; tabCount('chest',0,0,''); return; }
+
+  if(shut){ list.innerHTML=`<h4>${PROGRESS_SCREEN.shut}</h4>`; return; }
   /* build 69 (the count bugs, from Aiden's 68.40 / 68.41 frames): A CHEST'S TAB LISTS EVERY ROW OF ITS KEY. A key row that also pays out a cosmetic
      lived on Customise unlocks alone, so the Skill tab's Quick Tap said 6/6 over five bars (Four · Sprint pays a target colour). Those rows are on
      their chest's tab as well now, and still on Customise unlocks, which lists what pays out.
@@ -288,7 +293,8 @@ const tabCount=(tab,done,total,label)=>countLine(tab,label||'',T(PROGRESS_SCREEN
    walks every mode of every game. `opts.ach` is a row to scroll to and flash — on whichever tab tabFor says it lives, its game opened if it was shut */
 function renderTabs(tab){
   const row=$('#prog-tabs');
-  row.innerHTML=TABS.map(t=>`<button data-act="ptab" class="chip${t===tab?' sel':''}" data-tab="${t}">${tabLabel(t)}</button>`).join('');
+  // 68.22: a chest not yet revealed is greyed with the red strike — Customise's locked look — and still tappable: it says what reveals it
+  row.innerHTML=TABS.map(t=>`<button data-act="ptab" class="chip${t===tab?' sel':''}${shutTab(t)?' locked':''}" data-tab="${t}">${tabLabel(t)}</button>`).join('');
   const into=()=>{ const s=row.querySelector('.sel'); if(s&&row.clientWidth) row.scrollLeft=Math.max(0,s.offsetLeft-(row.clientWidth-s.offsetWidth)/2); };
   into(); requestAnimationFrame(into);
 }
