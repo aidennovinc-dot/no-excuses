@@ -182,10 +182,15 @@ export async function run() {
       const known = new Set(P.UNLOCKS.map(x => x.need));
       const G = await import('./games/registry.js');
       for (const g in G.GAMES) for (const d of G.GAMES[g].modes) G.GC(g, d).lens.forEach((s, i) => { if (i) known.add(P.lenNeed(g, d, s)); });
-      return { screen: document.querySelector('.screen.on')?.id, rows: rows.length, heads: document.querySelectorAll('#chest-list h4').length,
+      const groups = [...document.querySelectorAll('#chest-list .g[data-g]')];
+      return { screen: document.querySelector('.screen.on')?.id, rows: rows.length, heads: document.querySelectorAll('#chest-list h4').length, groups: groups.length,
+        mixed: groups.flatMap(g => [...g.querySelectorAll('.urow')].filter(r => r.dataset.g !== g.dataset.g).map(r => r.dataset.g + '>' + g.dataset.g)),
+        last: document.querySelector('#chest-list > :last-child')?.className || '',
         stray: needs.filter(n => n && !known.has(n)) }; });
     // RESTATED at build 62 (61.26): TWO headings, games-and-modes and lengths — the third, "Skill key", went with the grey paragraph under it; the key is its own art at the foot now
-    (u.screen === 's-prog' && u.rows > 0 && u.heads === 2 && !u.stray.length) ? ok(`2.4 the Games chest tab lists ${u.rows} rows under ${u.heads} headings, then the Skill key`) : bad('2.4 the Games chest tab', JSON.stringify(u));
+    /* RESTATED at build 69 (68.40, PICKED as mocked): ONE heading per game — each game's modes and lengths under its own name — every row under its own
+       game's heading, then the Skill key at the foot */
+    (u.screen === 's-prog' && u.rows > 0 && u.heads === u.groups && u.groups > 2 && !u.mixed.length && /keyblock/.test(u.last) && !u.stray.length) ? ok(`2.4 / 68.40 the Games chest tab lists ${u.rows} rows under ${u.heads} game headings, then the Skill key`) : bad('2.4 the Games chest tab', JSON.stringify(u));
     (!u.stray.length) ? ok('2.4 / L6 every requirement on the Unlocks screen comes from UNLOCKS or lenNeed — no second copy') : bad('2.4 a requirement written twice', u.stray.join(' | ')); }
 
   /* build 64 (62.13): A LENGTH UNLOCKED AND NEVER PLAYED IS GREEN EVERYWHERE, the result screen's chips included — Aiden's Dash after his first

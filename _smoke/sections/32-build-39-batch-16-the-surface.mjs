@@ -47,7 +47,8 @@ export async function run() {
     const tb = await page.evaluate(() => { const cs = [...document.querySelectorAll('#prog-tabs .chip')];
       const probe = document.createElement('button'); probe.className = 'chip'; document.body.appendChild(probe); const base = getComputedStyle(probe).fontSize; probe.remove();
       return { tabs: cs.map(c => c.dataset.tab + ':' + c.textContent.trim()), sizes: [...new Set(cs.map(c => getComputedStyle(c).fontSize))], base, upper: cs.every(c => getComputedStyle(c).textTransform === 'uppercase'),
-        rows: new Set(cs.map(c => c.offsetTop)).size, inside: cs.every(c => { const r = c.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; }), w: innerWidth }; });
+        rows: new Set(cs.map(c => c.offsetTop)).size, inside: cs.every(c => { const r = c.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; }), w: innerWidth,
+        slides: (() => { const row = document.getElementById('prog-tabs'); return row.scrollWidth > row.clientWidth + 1 && /auto|scroll/.test(getComputedStyle(row).overflowX) && cs.every(c => c.offsetLeft >= 0 && c.offsetLeft + c.offsetWidth <= row.scrollWidth + 1); })() }; });
     /* AMENDED at build 58 (58.3): SIX tabs, one per chest, and every label comes from GRID.chest or PROGRESS_SCREEN so the four chest names
        are still spelled in exactly one place. L.4b's rule is unchanged and is what is asserted — one type size, the chip's own, and the ROW
        wraps rather than the type shrinking. Six labels of that length wrap to THREE rows at 390px; that is the price of naming each chest in
@@ -56,8 +57,10 @@ export async function run() {
     const CP39b = await import(pathToFileURL(path.join(root, 'config', 'copy.js')).href);
     // AMENDED at build 68 (67.38): a seventh tab, Excuses — four rows at 390px now, by the same rule
     const wantTb = CH39b.CHESTS.map(c => 'c-' + c.id + ':' + CP39b.GRID.chest[c.id]).concat(['cul:' + CP39b.PROGRESS_SCREEN.cul, 'ach:' + CP39b.PROGRESS_SCREEN.ach, 'exc:' + CP39b.PROGRESS_SCREEN.exc]).join('|');
-    (tb.tabs.join('|') === wantTb && tb.upper && tb.sizes.length === 1 && tb.sizes[0] === tb.base && tb.inside)
-      ? ok(`L.4b the tabs read ${tb.tabs.map(x => x.split(':')[1]).join(' · ')} in the chip's own ${tb.base} on ${tb.rows} row(s) at ${tb.w}px - the row wraps, the type does not shrink, nothing past the edge`)
+    /* RESTATED at build 69 (68.40, PICKED as mocked — "The tabs become ONE row that slides sideways"): seven labels no longer wrap onto three rows; they
+       sit on ONE row that scrolls sideways, every chip inside the row's own scroll width. L.4b's rule is unchanged: one type size, the chip's own */
+    (tb.tabs.join('|') === wantTb && tb.upper && tb.sizes.length === 1 && tb.sizes[0] === tb.base && tb.rows === 1 && tb.slides)
+      ? ok(`L.4b / 68.40 the tabs read ${tb.tabs.map(x => x.split(':')[1]).join(' · ')} in the chip's own ${tb.base} on ONE row that slides sideways at ${tb.w}px - the type does not shrink, every chip inside the row`)
       : bad('L.4b the tab bar', JSON.stringify({ tb, wantTb }));
     await click('#s-prog .back'); await sleep(400);
     // a profile left on the old Customise tab (builds 33-38) comes back on Customise unlocks, not on nothing
@@ -90,9 +93,11 @@ export async function run() {
       const open = async tab => { R.show('s-menu'); await wait(100); R.show('s-prog', { tab }); await wait(400); };
       await open('c-games'); const unl = ids('#chest-list [data-ach]'), unlRows = document.querySelectorAll('#chest-list .urow').length;
       const chest = {};
-      for (const tab of ['c-key', 'c-pro', 'c-thorns']) { await open(tab); document.querySelector('#chest-g [data-v="all"]')?.click(); await wait(300); chest[tab] = ids('#chest-list .a'); }
+      /* AMENDED at build 69 (68.40, PICKED as mocked): no filter row to set to ALL, and a game's own row ("Quick Tap · Skill key") is its heading now —
+         the gold header that replaces it carries its id — so a chest tab's rows are its `.a` rows and its game headings */
+      for (const tab of ['c-key', 'c-pro', 'c-thorns']) { await open(tab); chest[tab] = ids('#chest-list .a').concat(ids('#chest-list .gh[data-ach]')); }
       await open('cul'); const cul = ids('#cul-list .a'), culHeads = [...document.querySelectorAll('#cul-list h4')].map(h => h.textContent.trim());
-      await open('ach'); document.querySelector('#ach-g [data-v="all"]')?.click(); await wait(300); const ach = ids('#achlist .a');
+      await open('ach'); const ach = ids('#achlist .a');
       const keys = K.keyAch();
       // AMENDED at build 44 (v24 D.2): nine key roster rows carry a reward now, so "every row with an unlocks field" reads both lists
       return { unl, unlRows, chest, cul, culHeads, ach, table: P.ACH.map(a => a.id).concat(keys.map(a => a.id)), withUnlocks: P.ACH.concat(keys).filter(a => a.unlocks).map(a => a.id),

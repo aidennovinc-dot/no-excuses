@@ -31,17 +31,20 @@ export async function run() {
     await click('#prog-tabs [data-tab="ach"]'); await sleep(400); return t; };
   /* TURNED OVER at build 58 (58.3): `qt_bclean5` is a key-1 roster row and lives on the SKILL CHEST tab now, so 8.3 reads a row that is
      still on Achievements — Committed, which is Quick Tap and pays out nothing. The rule is unchanged: the game name leads the title. */
+  /* RESTATED at build 69 (68.40): Achievements is grouped under a heading per game, so the game no longer leads each title (61.9's rule: no row under
+     its game's heading repeats the name) — 8.3's game name now leads the GROUP the row sits in, and the row's own title does not repeat it */
   const ach = await page.evaluate(() => {
     const row = document.getElementById('ach-qt_sab'), sec = document.getElementById('ach-qt_s5'), ev = document.getElementById('ach-every');
+    const head = row && row.closest('.g') ? row.closest('.g').querySelector('h4') : null;
     return { ox: getComputedStyle(document.getElementById('achlist')).overflowX,
-      lead: row ? (row.querySelector('span i') || {}).textContent : null,
-      leadFirst: row ? row.querySelector('span').firstElementChild?.tagName : null,
+      lead: head ? head.textContent.trim() : null,
+      leadFirst: head && !row.querySelector('span').textContent.includes(head.textContent.trim()) ? 'I' : null,
       secret: sec ? (sec.querySelector('small') || {}).textContent : null,
       left: ev ? (ev.querySelector('small') || {}).textContent : null };
   });
   ach.left = await evTxt();
   (ach.ox === 'hidden') ? ok('8.2 the achievements list has no sideways axis to be left panned on') : bad('8.2 achievements list overflow-x', ach.ox);
-  (ach.leadFirst === 'I' && ach.lead === 'Quick Tap') ? ok('8.3 the game name leads the achievement title') : bad('8.3 the game name leads the title', JSON.stringify(ach));
+  (ach.leadFirst === 'I' && ach.lead === 'Quick Tap') ? ok('8.3 / 68.40 the game name leads the achievement — as the heading of its group, not repeated in the title') : bad('8.3 the game name leads the title', JSON.stringify(ach));
   /* v14 8.5 is REVERSED at build 58 (v29 Section A 58.3, Aiden's own line): a secret's description is hidden until it is earned. The tier
      heading says "what earns them is not written down" and every row underneath then wrote it down. The progress bar is the hint now, and
      the only one; an earned secret is described in full, which is asserted where 58.3 is (the block at the foot of this section). */
@@ -83,17 +86,18 @@ export async function run() {
           rows: rows.length, moving, delays,
           art: [...pane.querySelectorAll('.a.cu .rw')].map(r => ({ w: r.textContent.trim(), sw: r.querySelectorAll('.rwsw').length })) }; }, tab); };
     const unl53 = await tabRead('c-games'), cul53 = await tabRead('cul'), ach53 = await tabRead('ach');
-    // the Achievements tab, filtered to one game, must still put Secret last
-    const filtered = await page.evaluate(async () => { const b = document.querySelector('[data-act="chip-ach"][data-v="dots"]'); if (b) b.click();
-      await new Promise(r => setTimeout(r, 350));
-      return [...document.querySelectorAll('#achlist h4')].map(h => h.className); });
+    // RESTATED at build 69 (68.40): there is no filter row any more — each game is a heading; `filtered` is now "no filter chip on the tab"
+    const filtered = await page.evaluate(() => [...document.querySelectorAll('[data-act="chip-ach"], #ach-g')].map(h => h.className));
     const cue = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--cue').trim());
     const R3 = [unl53, cul53, ach53].every(t => !t.moving && !t.delays);
     // build 64 (A1): the Games chest tab counts its modes in its own words ("Every game and mode — 13 of 13", then "Streak not counted"); the other two keep "N of M unlocked"
     const counted = [cul53, ach53].every(t => /^\d+ of \d+ unlocked$/.test(t.hint.trim())) && /\d+ of \d+/.test(unl53.hint);
     const noLede = !unl53.lede;
     /* RESTATED at build 62 (61.13): Achievements is ONE flat list — no Pro or Secret heading, in any filter — and its count is every row it lists */
-    const secretLast = ach53.heads.length === 0 && filtered.length === 0 && new RegExp('^0 of ' + ach53.rows + ' unlocked$').test(ach53.hint.trim());
+    /* RESTATED at build 69 (68.40, PICKED as mocked): Achievements is grouped — "General" first, then one heading per game — and still has no Pro or
+       Secret heading; its count is every row it lists */
+    const tierHead = Object.values(CP53.TIERS).map(t => String(t[0]).toLowerCase());
+    const secretLast = ach53.heads.length > 1 && ach53.heads[0].txt.trim() === CP53.PROGRESS_SCREEN.general && !ach53.heads.some(h => tierHead.includes(h.txt.trim().toLowerCase())) && filtered.length === 0 && new RegExp('^0 of ' + ach53.rows + ' unlocked$').test(ach53.hint.trim());
     const stacked = ach53.heads.every(h => h.disp !== 'flex');
     const art = cul53.art.length && cul53.art.every(r => r.sw === 1);
     (R3 && counted && noLede && secretLast && stacked && art)
@@ -212,20 +216,21 @@ export async function run() {
       ? ok('61.18 a tap sound picked in Customise plays once, in that pack, as a game tap does — no click of its own; OFF picks off and so plays nothing')
       : bad('61.18 the tap-sound preview', JSON.stringify(s18));
   }
-  /* 61.16: a Customise-unlock row is three lines — [thing] Name / the requirement alone / → game · mode · length — and says its mode ONCE;
-     no row says what kind of thing it unlocks (the header does); no requirement anywhere shows a whole percent with decimals */
+  /* 61.16: a Customise-unlock row says its mode ONCE; no row says what kind of thing it unlocks (the header does); no requirement anywhere shows a
+     whole percent with decimals. RESTATED at build 69 (68.42, PICKED as mocked): the row is TWO lines of words beside its swatch — the name, then the
+     requirement and where it is played on one line ("… · Quick Tap · Four · Marathon"); the → line is gone */
   {
     const A = await import(pathToFileURL(path.join(root, 'config', 'achievements.js')).href), clean = A.ACH.find(a => a.id === 'qt_clean30');
     const cul = await tab62('cul'), c16 = cul.rows.find(r => r.id === clean.id), chests = [await tab62('c-games'), await tab62('c-key'), await tab62('c-pro'), await tab62('c-thorns')];
-    const txt = c16 ? c16.lines.filter(Boolean) : [], all = txt.join(' | ');
+    const txt = c16 ? await page.evaluate(id => { const b = document.getElementById('cul-' + id); return b ? [...b.querySelectorAll('.tx > *')].map(e => e.textContent.trim()) : []; }, clean.id) : [], all = txt.join(' | ');
     const once = w => all.split(w).length === 2;
     const pct = cul.rows.concat(...chests.map(c => c.rows)).filter(r => /\d\.0+%/.test(r.lines.join(' '))).map(r => r.id);
-    // 61.28: the words are read from config — the name as shown is its first part, the line the `how` after its mode words, the → line the game's own
+    // 61.28: the words are read from config — the name as shown is its first part, the line the `how` after its mode words, then the game's own where
     const G16 = await page.evaluate(async () => { const R = await import('./games/registry.js'), GG = await import('./config/games.js'); return { game: R.GAMES['quick-tap'].name, mode: GG.MODE_NAME.four, len: R.lenName('quick-tap', 30, 'four') }; });
-    const want16 = [clean.name.split(' · ')[0], null, `→ ${G16.game} · ${G16.mode} · ${G16.len}`];
-    (c16 && txt.length === 3 && txt[0] === want16[0] && !txt[1].includes(G16.mode) && !txt[1].includes(G16.len) && /^[A-Z0-9]/.test(txt[1]) && txt[2] === want16[2] && once(G16.len) && once(G16.mode)
+    const want16 = [clean.name.split(' · ')[0], ` · ${G16.game} · ${G16.mode} · ${G16.len}`];
+    (c16 && txt.length === 2 && txt[0] === want16[0] && txt[1].endsWith(want16[1]) && !txt[1].slice(0, -want16[1].length).includes(G16.mode) && !txt[1].slice(0, -want16[1].length).includes(G16.len) && /^[A-Z0-9]/.test(txt[1]) && !all.includes('→') && once(G16.len) && once(G16.mode)
       && cul.rows.every(r => !/unlocks/i.test(r.title)) && !pct.length)
-      ? ok(`61.16 a Customise-unlock row reads "${txt.join('" / "')}" — Marathon and Four once each, no "unlocks …" on any row, no ".00%" anywhere`)
+      ? ok(`61.16 / 68.42 a Customise-unlock row reads "${txt.join('" / "')}" — two lines, Marathon and Four once each, no "unlocks …" on any row, no ".00%" anywhere`)
       : bad('61.16 the Customise-unlock rows', JSON.stringify({ txt, pct: pct.slice(0, 4), title: (cul.rows.find(r => /unlocks/i.test(r.title)) || {}).title }));
   }
   /* 61.26: the foot of the Games chest tab is the Skill key's art and one line — lit, "Skill key unlocked", once the Games chest has opened it,
@@ -497,44 +502,101 @@ export async function run() {
       ? ok(`68.3 every web label is drawn once and inside its own picture: one label per game on Scores and on the Skill Key, on two opens in a row and after a tap on Spot re-rendered them, and none of the ${l3.board[0].n.length} on either screen reaches outside its SVG's box`)
       : bad('68.3 the web labels', JSON.stringify(l3));
   }
-  /* build 69 (68.41 / 68.43): A GAME FILTER SHOWS THAT GAME'S ROWS AND NOTHING ELSE. "The key entire" showed under Quick Tap on the Pro tab, and
-     "Off the Rails" and "Grand tour" under Dots on Achievements: a row whose `g` is 'all' passed every game filter. Every game filter on every key
-     chest's tab and on Achievements, profile with all four chests open: no row of another game and no general row (`g: 'all'`); under ALL the
-     general rows are there */
+  /* build 69 (68.41 / 68.43): A GAME'S ROWS ARE THAT GAME'S AND NOTHING ELSE. "The key entire" showed under Quick Tap on the Pro tab, and "Off the
+     Rails" and "Grand tour" under Dots on Achievements: a row whose `g` is 'all' passed every game filter. RESTATED at build 69 (68.40, PICKED as
+     mocked): the filter rows are gone and each game is a heading, so the rule is read off the groups — on every key chest's tab and on Achievements,
+     profile with all four chests open, every row under a game's heading is that game's, and the general rows (`g: 'all'`) are all under the one
+     general group, General on Achievements, the key entire on a chest tab */
   {
     await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS, chests: { games: 1, key: 1, pro: 1, thorns: 1 }, gauntSeen: { g1: 1, g2: 1 } }, runs: [], ach: {}, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
     await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
     const f41 = await page.evaluate(async () => { const R = await import('./ui/router.js'), P = await import('./progress.js'), K = await import('./progress/key.js'), ids = Object.keys((await import('./games/registry.js')).GAMES), w = ms => new Promise(r => setTimeout(r, ms));
       const gOf = Object.fromEntries(P.achAll().concat(K.keyAch()).map(a => [a.id, a.g])), out = [];
       for (const tab of ['c-key', 'c-pro', 'c-thorns', 'ach']) { R.show('s-menu'); await w(80); R.show('s-prog', { tab }); await w(300);
-        for (const g of ['all', ...ids]) { const chip = document.querySelector(`${tab === 'ach' ? '#ach-g' : '#chest-g'} [data-v="${g}"]`); if (chip) { chip.click(); await w(150); }
-          const rows = [...document.querySelectorAll(`${tab === 'ach' ? '#achlist' : '#chest-list'} [data-ach]`)].map(b => b.dataset.ach);
-          out.push({ tab, g, n: rows.length, wrong: rows.filter(id => g !== 'all' && gOf[id] !== g), general: rows.filter(id => gOf[id] === 'all') }); } }
+        const list = document.getElementById(tab === 'ach' ? 'achlist' : 'chest-list');
+        for (const g of ['all', ...ids]) { const gr = list.querySelector(`.g[data-g="${g}"]`), rows = gr ? [...gr.querySelectorAll('.gb [data-ach]')].map(b => b.dataset.ach) : [];
+          out.push({ tab, g, n: rows.length, wrong: rows.filter(id => gOf[id] !== g), general: rows.filter(id => gOf[id] === 'all') }); }
+        out.push({ tab, g: 'outside', n: 0, wrong: [...list.querySelectorAll('.a[data-ach]')].filter(b => !b.closest('.g[data-g]')).map(b => b.dataset.ach), general: [] }); }
       R.show('s-menu'); return out; });
     const leaks = f41.filter(x => x.wrong.length), allRows = f41.filter(x => x.g === 'all');
-    (!leaks.length && allRows.every(x => x.general.length > 0) && f41.filter(x => x.g !== 'all').every(x => x.n > 0 || x.tab === 'ach'))
-      ? ok(`68.41 / 68.43 a game filter shows that game's rows and nothing else: ${f41.length - allRows.length} game filters across the three key chests' tabs and Achievements, no row of another game and no general row under any of them; the general rows (${allRows.map(x => x.tab + ' ' + x.general.length).join(', ')}) show under ALL`)
-      : bad('68.41 / 68.43 the filter leaks', JSON.stringify({ leaks: leaks.map(x => ({ tab: x.tab, g: x.g, wrong: x.wrong })), all: allRows.map(x => ({ tab: x.tab, general: x.general.length })) }));
+    (!leaks.length && allRows.every(x => x.general.length > 0) && f41.filter(x => x.g !== 'all' && x.g !== 'outside').every(x => x.n > 0 || x.tab === 'ach'))
+      ? ok(`68.41 / 68.43 / 68.40 each game's heading holds that game's rows and nothing else: ${f41.filter(x => x.g !== 'all' && x.g !== 'outside').length} game groups across the three key chests' tabs and Achievements, no row of another game and no general row under any of them; the general rows (${allRows.map(x => x.tab + ' ' + x.general.length).join(', ')}) sit in their own group`)
+      : bad('68.41 / 68.43 the group leaks', JSON.stringify({ leaks: leaks.map(x => ({ tab: x.tab, g: x.g, wrong: x.wrong })), all: allRows.map(x => ({ tab: x.tab, general: x.general.length })) }));
   }
   /* build 69 (the count bugs, from Aiden's 68.40 / 68.41 frames): EVERY CHEST TAB LISTS EVERY BAR. The Skill tab's Quick Tap group said 6/6 over five
      bars (no Four · Sprint), the Pro tab's 1/6 over five (no Four · Dash), and the tabs counted 33 and 34 where the key has 30 bars: a key row that
-     also pays out a cosmetic lived on Customise unlocks alone. On each key chest's tab under ALL, for every game: the bar rows listed are that game's
-     rows in config/key-bars.js, each exactly once; and the tab's "N of M" M is the bars, plus one row per game, plus the key entire — all read from
-     config */
+     also pays out a cosmetic lived on Customise unlocks alone. On each key chest's tab, for every game: the bar rows listed are that game's rows in
+     config/key-bars.js, each exactly once; and the tab's "N of M" M is read from config. AMENDED at build 69 (68.40, PICKED as mocked): a game's own
+     row ("Quick Tap · Skill key") is its gold heading now and the filter row is gone, so M is the key's bars alone — the 30 the key and the next-unlock
+     card count — with the game headings and their pips as the per-game view and the key entire still listed under its own heading */
   {
     const c7 = await page.evaluate(async () => { const R = await import('./ui/router.js'), K = await import('./progress/key.js'), KB = (await import('./config/key-bars.js')).KEY_BARS, G = (await import('./games/registry.js')).GAMES, w = ms => new Promise(r => setTimeout(r, ms));
       const ids = Object.keys(G), out = [];
       for (const [tab, tier] of [['c-key', 'clear'], ['c-pro', 'pro'], ['c-thorns', 'author']]) { R.show('s-menu'); await w(80); R.show('s-prog', { tab }); await w(300);
-        document.querySelector('#chest-g [data-v="all"]').click(); await w(200);
-        const shown = [...document.querySelectorAll('#chest-list [data-ach]')].map(b => b.dataset.ach), bars = K.keyAch().filter(a => a.kt === tier && a.combo);
+        const shown = [...document.querySelectorAll('#chest-list .a[data-ach]')].map(b => b.dataset.ach), bars = K.keyAch().filter(a => a.kt === tier && a.combo);
         const per = ids.map(g => { const want = bars.filter(a => a.g === g).map(a => a.id), n = want.map(id => shown.filter(x => x === id).length);
           return { g, cfg: Object.keys(KB).filter(k => k.split(':')[0] === g).length, listed: n.filter(x => x === 1).length, twice: n.filter(x => x > 1).length, missing: want.filter((id, i) => !n[i]) }; });
         const m = (document.getElementById('chest-hint').textContent.match(/(\d+)\D+(\d+)/) || []).map(Number);
-        out.push({ tab, per, M: m[2], want: Object.keys(KB).length + ids.length + 1 }); }
+        out.push({ tab, per, M: m[2], want: Object.keys(KB).length }); }
       R.show('s-menu'); return out; });
     (c7.every(t => t.M === t.want && t.per.every(p => p.listed === p.cfg && !p.twice && !p.missing.length)))
-      ? ok(`68.40 / 68.41 every chest tab lists every bar: on the Skill, Pro and Author chests' tabs each game lists its ${c7[0].per.map(p => p.cfg).join(' / ')} bars from config/key-bars.js, each once, and each tab counts ${c7[0].want} (${c7[0].want - c7[0].per.length - 1} bars + ${c7[0].per.length} games + the key entire)`)
+      ? ok(`68.40 / 68.41 every chest tab lists every bar: on the Skill, Pro and Author chests' tabs each game lists its ${c7[0].per.map(p => p.cfg).join(' / ')} bars from config/key-bars.js, each once, and each tab counts ${c7[0].want} — the key's bars (a game's own row is its heading now)`)
       : bad('68.40 / 68.41 the chest tab counts', JSON.stringify(c7.map(t => ({ tab: t.tab, M: t.M, want: t.want, off: t.per.filter(p => p.listed !== p.cfg || p.twice || p.missing.length) }))));
+  }
+  /* build 69 (68.40 / 68.42, PICKED as mocked): THE PROGRESS LISTS ARE REBUILT. Aiden: "It's just not super obvious that everything is complete in this, or
+     like how far through we are"; on Customise unlocks "the customised colours are way too close to the actual words". A profile with all four chests open,
+     Dots' Skill bars all met and two of Quick Tap's: the tabs are one row that slides (every chip's top equal, the row scrolls, the last tab brought into
+     view when it is opened); no game filter row on any tab; each chest tab has one heading per game, with the game's map symbol and a pip per KEY_BARS row
+     of that game; a game whose bars are all met is a gold header with no row showing under it until it is tapped; exactly one NEXT marker on each tab
+     that has a row to do; to-do rows above done rows in every group; no element anywhere on Progress says "Done"; on Customise unlocks every swatch is
+     at least 28px with at least 10px to its words, an unearned one carries the red diagonal and the state sits at the right edge; Achievements opens on
+     a "General" heading. Every count and word read from config */
+  {
+    await setStorage({ ne: { v: 7, prefs: { ...OPEN_PREFS, allOpen: false, chests: { games: 1, key: 1, pro: 1, thorns: 1 }, gauntSeen: { g1: 1, g2: 1 } }, runs: [], ach: { qt_sab: Date.now() }, unlock: {}, intro: SEEN_INTRO, seen: {}, bars: {} } });
+    await page.reload({ waitUntil: 'networkidle0' }); await sleep(300);
+    const p40 = await page.evaluate(async () => { const R = await import('./ui/router.js'), S = await import('./core/store.js'), K = await import('./progress/key.js'), KB = (await import('./config/key-bars.js')).KEY_BARS, G = (await import('./games/registry.js')).GAMES, C = await import('./config/copy.js'), w = ms => new Promise(r => setTimeout(r, ms));
+      const bars = K.keyAch().filter(a => a.kt === 'clear' && a.combo), met = bars.filter(a => a.g === 'dots').concat(bars.filter(a => a.g === 'quick-tap').slice(0, 2));
+      for (const a of met) { S.store.ach[a.id] = Date.now(); S.store.bars[K.skey(a.combo, 'clear')] = Date.now(); }
+      S.save();
+      const seen = e => e.getClientRects().length > 0, ids = Object.keys(G), out = { tabs: {} };
+      const orderOk = list => [...list.querySelectorAll('.g')].every(gr => { const d = [...gr.querySelectorAll('.a, .urow')].map(x => x.classList.contains('done')), i = d.indexOf(true); return i < 0 || d.slice(i).every(Boolean); });
+      const doneWord = () => [...document.querySelectorAll('#s-prog *')].filter(e => seen(e) && !e.children.length && /^done$/i.test(e.textContent.trim())).map(e => e.className || e.tagName);
+      for (const tab of ['c-games', 'c-key', 'c-pro', 'c-thorns']) { R.show('s-menu'); await w(80); R.show('s-prog', { tab }); await w(300);
+        const list = document.getElementById('chest-list');
+        const heads = [...list.querySelectorAll('.gh[data-g]')].filter(h => h.dataset.g !== 'all').map(h => { const gr = h.closest('.g'); return { g: h.dataset.g, pips: h.querySelectorAll('.pips i').length, filled: h.querySelectorAll('.pips i.f').length, sym: !!h.querySelector('.mini'), gold: !!gr && gr.classList.contains('whole'), rows: gr ? gr.querySelectorAll('.a, .urow').length : 0, shown: gr ? [...gr.querySelectorAll('.a, .urow')].filter(seen).length : 0 }; });
+        const todo = [...list.querySelectorAll('.a.lock, .urow.lock')].length;
+        out.tabs[tab] = { heads, todo, nx: list.querySelectorAll('.nx').length, order: orderOk(list), done: doneWord() }; }
+      out.want = Object.fromEntries(ids.map(g => [g, Object.keys(KB).filter(k => k.split(':')[0] === g).length]));
+      const dh = document.querySelector('#chest-list .gh[data-g="dots"]');
+      R.show('s-menu'); await w(80); R.show('s-prog', { tab: 'c-key' }); await w(300);
+      const dh2 = document.querySelector('#chest-list .gh[data-g="dots"]'); if (dh2) { dh2.click(); await w(200); }
+      out.dotsAfterTap = dh2 && dh2.closest('.g') ? [...dh2.closest('.g').querySelectorAll('.a')].filter(seen).length : 0;
+      const row = document.getElementById('prog-tabs'), chips = [...row.querySelectorAll('.chip')];
+      out.row = { tops: new Set(chips.map(c => Math.round(c.getBoundingClientRect().top))).size, slides: row.scrollWidth > row.clientWidth + 1 && /auto|scroll/.test(getComputedStyle(row).overflowX), wrap: getComputedStyle(row).flexWrap };
+      R.show('s-menu'); await w(80); R.show('s-prog', { tab: 'exc' }); await w(300);
+      const ex = row.querySelector('[data-tab="exc"]').getBoundingClientRect(), rr = row.getBoundingClientRect(); out.row.lastInView = ex.left >= rr.left - 1 && ex.right <= rr.right + 1;
+      out.filters = !!document.querySelector('#chest-g, #ach-g, [data-act="chip-chest"], [data-act="chip-ach"]');
+      R.show('s-menu'); await w(80); R.show('s-prog', { tab: 'cul' }); await w(300);
+      const cl = document.getElementById('cul-list');
+      out.cul = [...cl.querySelectorAll('.a.cu')].map(b => { const sw = b.querySelector('.cuart'), tx = b.querySelector('.tx'), st = b.querySelector('.st'), r = b.getBoundingClientRect();
+        const s = sw ? sw.getBoundingClientRect() : null, t = tx ? tx.getBoundingClientRect() : null, e = st ? st.getBoundingClientRect() : null, af = sw ? getComputedStyle(sw, '::after') : null;
+        return { id: b.dataset.ach, lock: b.classList.contains('lock'), w: s ? Math.round(Math.min(s.width, s.height)) : 0, gap: s && t ? Math.round(t.left - s.right) : 0, diag: !!af && af.content !== 'none' && af.content !== 'normal' && af.display !== 'none', lines: tx ? tx.children.length : 0, right: e && e.width ? Math.round(r.right - e.right) : (b.classList.contains('lock') ? 0 : 99), after: e && t ? e.left >= t.right - 1 : false }; });
+      out.culOrder = orderOk(cl); out.culDone = doneWord();
+      R.show('s-menu'); await w(80); R.show('s-prog', { tab: 'ach' }); await w(300);
+      const al = document.getElementById('achlist'), ah = [...al.querySelectorAll('.g > h4')];
+      out.ach = { first: ah[0] ? ah[0].textContent.trim() : null, general: C.PROGRESS_SCREEN.general, games: ah.slice(1).map(h => !!h.querySelector('.mini')), order: orderOk(al), done: doneWord() };
+      R.show('s-menu'); return out; });
+    const keyTabs = ['c-key', 'c-pro', 'c-thorns'].map(t => [t, p40.tabs[t]]);
+    const pipsOk = keyTabs.every(([, x]) => x.heads.length === Object.keys(p40.want).length && x.heads.every(h => h.pips === p40.want[h.g] && h.sym));
+    const dots = p40.tabs['c-key'].heads.find(h => h.g === 'dots') || {}, qt = p40.tabs['c-key'].heads.find(h => h.g === 'quick-tap') || {};
+    const foldOk = dots.gold && dots.rows > 0 && dots.shown === 0 && p40.dotsAfterTap === dots.rows && !qt.gold && qt.filled === 2 && qt.shown === qt.rows;
+    const nxOk = Object.values(p40.tabs).every(x => x.nx === (x.todo ? 1 : 0)) && keyTabs.every(([, x]) => x.nx === 1);
+    const culOk = p40.cul.length > 0 && p40.cul.every(r => r.w >= 28 && r.gap >= 10 && r.diag === r.lock && r.lines === 2 && r.right <= 6 && r.after) && p40.culOrder;
+    const achOk = p40.ach.first === p40.ach.general && p40.ach.games.length > 1 && p40.ach.games.every(Boolean) && p40.ach.order;
+    const noDone = Object.values(p40.tabs).every(x => !x.done.length) && !p40.culDone.length && !p40.ach.done.length;
+    (p40.row.tops === 1 && p40.row.slides && p40.row.wrap === 'nowrap' && p40.row.lastInView && !p40.filters && pipsOk && foldOk && nxOk && Object.values(p40.tabs).every(x => x.order) && noDone && culOk && achOk)
+      ? ok(`68.40 / 68.42 Progress as mocked: the tabs one row that slides (the last tab brought into view on open), no filter row; on every key chest's tab a heading per game with its map symbol and a pip per bar (${Object.values(p40.want).join(' / ')}); Dots, all met, a gold header with nothing under it until it is tapped (then ${p40.dotsAfterTap} rows), Quick Tap open with 2 pips filled; one NEXT per tab with a row to do; to-do above done everywhere; no "Done" anywhere; ${p40.cul.length} Customise-unlock rows with a ${Math.min(...p40.cul.map(r => r.w))}px swatch ${Math.min(...p40.cul.map(r => r.gap))}px clear of two lines of words, the diagonal on every unearned one, the state at the right edge; Achievements opens on "${p40.ach.first}"`)
+      : bad('68.40 / 68.42 the Progress rebuild', JSON.stringify({ row: p40.row, filters: p40.filters, pipsOk, foldOk, dots, qt, after: p40.dotsAfterTap, nxOk, nx: Object.fromEntries(Object.entries(p40.tabs).map(([k, x]) => [k, [x.nx, x.todo, x.order, x.done.slice(0, 3)]])), culOk, cul: p40.cul.filter(r => !(r.w >= 28 && r.gap >= 10 && r.diag === r.lock && r.lines === 2 && r.right <= 6 && r.after)).slice(0, 3), culOrder: p40.culOrder, culDone: p40.culDone.slice(0, 3), ach: p40.ach }));
   }
   /* build 69 (68.23): TESTING'S UNLOCK SWITCHES ARE REAL UNLOCKS. Aiden: "The tutorial should allow me to unlock games individually so that I can test the
      tutorial." Estimate switched ON from Testing leaves the store as a real Dots run that opens Estimate does once its result has been read and left —

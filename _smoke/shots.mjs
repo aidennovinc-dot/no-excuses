@@ -1803,7 +1803,7 @@ scene('64.10', async (page, browser) => {
 
 scene('64.9', async (page, browser) => {
   await load(page, { ...MENU_NEW, menuUnl: { prog: 1 }, tuts: { prog: 0 } }, { unlock: { 'dots:blind': 1, 'hold:grow': 1 } }); await show(page, 's-menu'); await sleep(600);
-  await tutFrames(page, browser, '64.9', 5, { 0: '#s-menu .item[data-go="s-prog"]', 4: '#chest-g .chip[data-v="hold"]' }, 'Progress tutorial, after the first Estimate run — ');
+  await tutFrames(page, browser, '64.9', 5, { 0: '#s-menu .item[data-go="s-prog"]', 4: '#chest-list .gh[data-g]' }, 'Progress tutorial, after the first Estimate run — ');
 });
 scene('64.12', async (page, browser) => {
   await load(page, { ...MENU_NEW, menuUnl: { prog: 1, board: 1 }, tuts: { prog: 'done', board: 0 } }, { unlock: { 'dots:blind': 1, 'reaction:flash': 1 } }); await show(page, 's-menu'); await sleep(600);
@@ -2077,7 +2077,25 @@ scene('68.41', async (page, browser) => {
 
 /* the count bugs (Aiden's 68.40 / 68.41 frames): the Skill chest's tab under ALL, its Quick Tap group listing all six bars (v0.68: five, no
    Four · Sprint, "33 of 33"); the Pro chest's tab under Quick Tap, all six (v0.68: five, no Four · Dash, "of 34") */
+/* build 69 (68.40 / 68.42, PICKED as mocked): the rebuilt lists. A profile with the Skill chest open, every Dots bar met, two of Quick Tap's and a
+   Quick Tap · Two · Marathon run of 40 (its bar is 51): the Skill tab part-way — the count line and its gold bar, Quick Tap open with NEXT on Marathon,
+   Dots a gold folded heading; Customise unlocks with two earned; Achievements opening on General */
+const P740 = async page => page.evaluate(async () => { const S = await import('./core/store.js'), K = await import('./progress/key.js');
+  const bars = K.keyAch().filter(a => a.kt === 'clear' && a.combo), met = bars.filter(a => a.g === 'dots').concat(bars.filter(a => a.combo === 'quick-tap:two:5' || a.combo === 'quick-tap:two:15'));
+  for (const a of met) { S.store.ach[a.id] = Date.now(); S.store.bars[K.skey(a.combo, 'clear')] = Date.now(); }
+  for (const id of ['first', 'qt_sab', 'rails']) S.store.ach[id] = Date.now(); S.save(); });
 scene('68.40', async (page, browser) => {
+  await load(page, { ...PLAIN, welcomeSeen: 1, allOpen: 1, chests: { games: 1, key: 1, pro: 1 }, spill: { games: 1, key: 1, pro: 1 }, gauntSeen: { g1: 1 } }, { runs: [{ t: Date.now() - 6e5, g: 'quick-tap', d: 'two', s: 30, hits: 40, misses: 0, row: 40, v: 4 }] });
+  await P740(page); await show(page, 's-menu'); await sleep(200);
+  await show(page, 's-prog', { tab: 'c-key' }); await sleep(600);
+  say('skill', await page.evaluate(() => ({ line: document.getElementById('chest-lab').textContent + ' · ' + document.getElementById('chest-hint').textContent, heads: [...document.querySelectorAll('#chest-list .g')].map(g => g.dataset.g + (g.classList.contains('whole') ? ' gold' : '') + (g.classList.contains('fold') ? ' folded' : '')), next: (document.querySelector('#chest-list .nx span') || {}).textContent })));
+  await frame(page, browser, '68.40-skill-tab', 'The Skill chest’s tab part-way: one row of tabs that slides, “Skill key · 8 of 30 unlocked” over a gold bar, Quick Tap open (to-do above done, NEXT on Two · Marathon, the best-so-far bars), Dots a gold folded heading with its tick; no filter row, no “Done” (v0.68: tabs on three lines, “33 of 33”, a filter row, green rows ending DONE, the gold “Quick Tap · Skill key” row)');
+  await show(page, 's-prog', { tab: 'cul' }); await sleep(600);
+  await frame(page, browser, '68.42-customise-unlocks', 'Customise unlocks: each group its label, count and thin bar; each row a 30px swatch in a fixed column with clear space, crossed in red until earned, the name in gold, the requirement and where on one line, the state at the right edge; to-do above earned (v0.68: a tiny swatch jammed against the name, three lines a row)');
+  await show(page, 's-prog', { tab: 'ach' }); await sleep(600);
+  await frame(page, browser, '68.40-achievements', 'Achievements: “General” first, then a heading per game with its map symbol; to-do above done; no filter row, no “Done”');
+});
+scene('68.40-count', async (page, browser) => {
   await load(page, { ...PLAIN, welcomeSeen: 1, chests: { games: 1, key: 1, pro: 1 }, spill: { games: 1, key: 1, pro: 1 }, gauntSeen: { g1: 1 } });
   await show(page, 's-prog', { tab: 'c-key' }); await sleep(500); await tap68(page, '#chest-g [data-v="all"]'); await sleep(500);
   say('count', await page.evaluate(() => ({ line: document.getElementById('chest-hint').textContent, qt: [...document.querySelectorAll('#chest-list h4')].map(h => h.textContent)[0] })));

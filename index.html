@@ -150,33 +150,36 @@
        Aiden: "the current achievements make no sense" - his 67 of 110 were the Skill-key and Pro-key bars listed a second time
        as achievements. Each chest now has a tab that says what THAT chest needs, the key rows live under their own chest, and
        Achievements keeps only the extras that fit nowhere else. The chip row is filled by ui/screens/progress.js from CHESTS,
-       so the four chest names are still spelled once (GRID.chest) and adding a chest adds a tab. Six labels wrap the row at
-       390px; the row wraps rather than the type shrinking (L.4b). -->
+       so the four chest names are still spelled once (GRID.chest) and adding a chest adds a tab. Build 69 (68.40): the row is ONE
+       line that slides sideways rather than wrapping onto three; the type still never shrinks (L.4b). -->
   <div class="chips ptabs" id="prog-tabs"></div>
   <!-- v28 (item 4, build 53): the grey helper line on each tab is now the tab's own count - "N of M unlocked". The Game unlocks paragraph
        under it (UNLOCKS_SCREEN.lede) went with the helper text it explained -->
   <!-- 58.3: ONE host for all four chest tabs - they differ in what they list, not in how they are laid out, and four scrollers
-       would be four copies of the same furniture. `chest-need` is what the chest is waiting for, ticked, and it does not scroll
-       away; `chest-g` is the per-game filter, which stays inside each chest tab; `chest-list` takes `unl` or `ach` per tab -->
+       would be four copies of the same furniture. `chest-need` is what the chest is waiting for and it does not scroll away;
+       `chest-list` takes `unl` or `ach` per tab. Build 69 (68.40): every tab opens on its count line (what it counts, then the count)
+       over a thin gold bar; the per-game filter rows are gone - each game is a heading in the list -->
   <div class="ptab" id="p-chest">
-    <div class="eyebrow" id="chest-hint"></div>
+    <div class="pcount" id="chest-count"><span id="chest-lab"></span><span id="chest-hint"></span></div>
+    <div class="cbar" id="chest-bar"><i></i></div>
     <div class="unl" id="chest-need"></div>
-    <div class="chips" id="chest-g"></div>
     <div class="scroll" id="chest-list"></div>
   </div>
   <!-- v23 (L.4c / L.4d, build 39): every achievement that pays out a cosmetic, grouped by the Customise row it pays into -->
   <div class="ptab" id="p-cul" hidden>
-    <div class="eyebrow" id="cul-hint"></div>
+    <div class="pcount"><span id="cul-lab"></span><span id="cul-hint"></span></div>
+    <div class="cbar" id="cul-bar"><i></i></div>
     <div class="ach scroll" id="cul-list"></div>
   </div>
   <div class="ptab" id="p-ach" hidden>
-    <div class="eyebrow" id="ach-hint"></div>
-    <div class="chips" id="ach-g"></div>
+    <div class="pcount"><span id="ach-lab"></span><span id="ach-hint"></span></div>
+    <div class="cbar" id="ach-bar"><i></i></div>
     <div class="ach scroll" id="achlist"></div>
   </div>
   <!-- build 68 (67.38): the Excuses — the total, then each one with its hint and its count (ui/screens/progress.js renderExc) -->
   <div class="ptab" id="p-exc" hidden>
-    <div class="eyebrow" id="exc-hint"></div>
+    <div class="pcount"><span id="exc-lab"></span><span id="exc-hint"></span></div>
+    <div class="cbar" id="exc-bar"><i></i></div>
     <div class="ach scroll" id="exc-list"></div>
   </div>
 </section>

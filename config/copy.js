@@ -176,6 +176,9 @@ export const PROGRESS_SCREEN = { title:'progress', unl:'Game unlocks', cul:'Cust
   needGaunt:'{name} — finish one run', met:'done', todo:'not yet',
   shut:'Revealed when the chest before it opens', whole:'The key entire',
   extras:'Added extras', gauntBest:'best {n}%',
+  /* build 69 (68.40 / 68.42): the rebuilt lists — `next` is the chip on the one row closest to done, `general` heads the rows that belong to no game
+     on Achievements, `of` is a Customise-unlocks group's own count */
+  next:'Next', general:'General', of:'{done} of {total}',
   culGroup:{ sq:'Target colours', lead:'Lead colours', cut:'Cut pieces', bg:'Backgrounds', snd:'Tap sounds', scale:'Scales', rate:'Taps per second', wheel:'Colour wheel' } };
 /* v17 (B.23 / B.24, build 29): the game-select grid says what order the games open in, and where that order ENDS.
    The chest needs key 1 — every clearance bar cleared — and A.1 forbids anything about pro or author appearing before

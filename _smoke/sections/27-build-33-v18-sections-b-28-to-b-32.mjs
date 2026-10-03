@@ -41,7 +41,8 @@ export async function run() {
         rows: document.querySelectorAll(t.startsWith('c-') ? '#chest-list .urow, #chest-list .a' : t === 'cul' ? '#cul-list .a' : '#achlist .a').length,
         needs: document.getElementById('p-chest').hidden ? null : document.querySelectorAll('#chest-need .urow').length,
         link: document.getElementById('p-chest').hidden ? null : document.querySelectorAll('#chest-need .chestlink').length,
-        gap: (() => { const h = document.getElementById('chest-hint').getBoundingClientRect(), g = document.getElementById('chest-g').getBoundingClientRect(), n = document.getElementById('chest-need').getBoundingClientRect(); return Math.round(g.top - h.bottom - (n.height || 0)); })(),
+        // AMENDED at build 69 (68.40): the filter row (#chest-g) is gone, so the gap is measured to the list that now sits under the count line and the link
+        gap: (() => { const h = document.getElementById('chest-hint').getBoundingClientRect(), g = document.getElementById('chest-list').getBoundingClientRect(), n = document.getElementById('chest-need').getBoundingClientRect(); return Math.round(g.top - h.bottom - (n.height || 0)); })(),
         stored: JSON.parse(localStorage.getItem('ne')).prefs.progTab }), t); }
     const one58 = ['c-games', 'c-key', 'c-pro', 'c-thorns'].every(t => walk[t].shown.join() === 'p-chest')
       && walk.cul.shown.join() === 'p-cul' && walk.ach.shown.join() === 'p-ach';

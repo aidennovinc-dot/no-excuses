@@ -52,11 +52,11 @@ export async function run() {
   (await onScreen()) === 's-key' ? ok('the Unlocks screen\'s key row opens the key') : bad('unlocks · key row', 'on ' + (await onScreen()));
   await tap('#s-key .back', 'key · back'); await sleep(300);
   // achievements: filter chip, a row that jumps to a sheet (Quick Tap · Clean · Sprint · Four)
-  await tap('[data-go="s-prog"]'); await tap('#prog-tabs [data-tab="cul"]', 'progress · customise unlocks tab'); await tap('#prog-tabs [data-tab="ach"]', 'progress · achievements tab'); await tap('#ach-g [data-v="quick-tap"]', 'achievements · filter chip');
-  // 58.3: the per-game filter inside a chest tab is its own action, and the Skill chest tab is where the key rows live now
-  await tap('#prog-tabs [data-tab="c-key"]', 'progress · skill chest tab'); await tap('#chest-g [data-v="dots"]', 'skill chest · filter chip'); await sleep(300);
-  // back to Achievements, filtered as it was, for the row walk below
-  await tap('#prog-tabs [data-tab="ach"]'); await sleep(300); await tap('#ach-g [data-v="quick-tap"]'); await sleep(300);
+  await tap('[data-go="s-prog"]'); await tap('#prog-tabs [data-tab="cul"]', 'progress · customise unlocks tab'); await tap('#prog-tabs [data-tab="ach"]', 'progress · achievements tab');
+  // AMENDED at build 69 (68.40): the filter rows are gone; a game's heading on a chest tab opens and shuts its rows, and that is the action driven here
+  await tap('#prog-tabs [data-tab="c-key"]', 'progress · skill chest tab'); await tap('#chest-list .gh[data-g="dots"]', 'skill chest · game heading'); await sleep(300);
+  // back to Achievements for the row walk below
+  await tap('#prog-tabs [data-tab="ach"]'); await sleep(300);
   // AMENDED at build 58 (58.3): `qt_bclean5` is a key-1 roster row and lives on the Skill chest tab now; Committed is Quick Tap, pays out nothing, and jumps
   await tap('#ach-qt_sab', 'achievements · jump row');   // AMENDED at build 39 (v23 L.4c): Clean · Sprint · Four pays out a colour, so it is on Customise unlocks await sleep(300);
   await sleep(300);
@@ -112,7 +112,7 @@ export async function run() {
   (await onScreen()) === 's-pick' ? ok('result back opens the pick sheet') : bad('result back opens the pick sheet', 'on ' + (await onScreen()));
   await tap('#time-row .tbtn:nth-child(2)', 'sheet · length'); await tap('#vs-wrap [data-p="f"]', 'sheet · with a friend'); await tap('#vs-wrap [data-p2="1"]', 'sheet · pass & play'); await tap('#vs-wrap [data-p="0"]', 'sheet · solo');
   // build 18: the chips are one act per screen, and the overlays (lock box, Next card, the full stop) are acts too
-  const expected = ['go', 'back', 'game', 'diff', 'time', 'vs', 'vs2', 'lvl-back', 'go-btn', 'quit', 'over-back', 'share', 'chip-bd', 'radar', 'chip-pv', 'chip-ach', 'chip-over', 'item', 'pvlock', 'ach', 'unl', 'chip-chest', 'prac', 'dev-open', 'dev-sup', 'dev-story', 'dev-unl', 'dev-menu', 'dev-tour', 'support', 'wheel-done', 'lock-no', 'lock-go', 'nextup', 'egg', 'ptab', 'chest', 'msg'];
+  const expected = ['go', 'back', 'game', 'diff', 'time', 'vs', 'vs2', 'lvl-back', 'go-btn', 'quit', 'over-back', 'share', 'chip-bd', 'radar', 'chip-pv', 'pfold', 'chip-over', 'item', 'pvlock', 'ach', 'unl', 'prac', 'dev-open', 'dev-sup', 'dev-story', 'dev-unl', 'dev-menu', 'dev-tour', 'support', 'wheel-done', 'lock-no', 'lock-go', 'nextup', 'egg', 'ptab', 'chest', 'msg'];
   const missing = expected.filter(a => !seen.has(a));
   missing.length ? bad('every data-act driven once', 'not driven: ' + missing.join(', ')) : ok(`every data-act driven once (${expected.length}) — not covered: again, pass-go, to-games, seqdone, praclock, dev-fresh, adskip, toast, cere-tap, reveal-go, reveal-msg (the reveal's three are driven in the build 46 section)`);
 }

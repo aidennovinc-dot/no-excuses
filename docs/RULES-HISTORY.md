@@ -2091,3 +2091,41 @@ anything Aiden settles goes on the list in the build that implements it.
   (`../_review/scripts/catalogue.ref.mjs` `overallRef`) follows it. The line as it stood: "a spoke is the average of the combinations played
   (`radarOf`); … the overall figure (`radarAll`) wears a key's style past its ring". Gate: `build 32`, "64.13 the chart (amended by 68.26)"
   and "68.26".
+- **The Progress lists are rebuilt, as the picks page mocked them (68.40 / 68.42, PICKED — "Well done on the progress screen").** Aiden on v0.68:
+  "It's just not super obvious that everything is complete in this, or like how far through we are … you have to really read it." And on Customise
+  unlocks: "We're using a lot of vertical space … the customised colours are way too close to the actual words." Built in `ui/screens/progress.js`,
+  `#s-prog` in `index.html` and the Progress block of `styles/app.css`:
+  - The tabs are ONE row that slides sideways (`.ptabs`: no wrap, `overflow-x:auto`, scrollbar hidden), seven in today's order; the picked tab is
+    brought into view when it is picked and when the screen opens on it. A tutorial step ringing a tab slid out of sight brings it back into the
+    row the way 68.12 brings an off-screen target in (`inRow()` beside `inView()` in `ui/tutorial.js`).
+  - Every tab opens on its count line — what it counts on the left (the key's name on a chest tab), "N of M unlocked" on the right — over a thin
+    gold bar (`.pcount`, `.cbar`). The Games chest's line is still its 13 modes and "Streak not counted" (A1).
+  - ONE heading per game on every chest tab: the game's own map symbol (the tile's `.mini`, copied off the map, never redrawn), its name and a pip
+    per target — a `KEY_BARS` row on a key chest, a chain or length row on the Games chest — green once met. A game whose targets are all met is a
+    gold heading with a tick, FOLDED SHUT until it is tapped (`pfold`); an unfinished one is open and can be shut; the screen keeps what the player
+    chose while it is up. On a key chest the gold heading IS the old gold "Quick Tap · Skill key" row and carries its id (`data-ach`); the row
+    and its two lines are gone. **The count (the reconciliation P2's rule needed): "N of M" on a key chest's tab is its BARS — M is 30 today, the
+    number the key and the next-unlock card count — with the game headings and their pips as the per-game view and the key entire still listed
+    under its own heading.** (Was bars + games + 1 = 38, build 69 P2.)
+  - To-do rows above done rows in every group; no "Done" / "Open" / "Locked" word on any row (the state is the row's colour and a tick in front);
+    the thin best-so-far bar stays under unfinished targets; a NEXT chip (`PROGRESS_SCREEN.next`, drawn from an attribute so it is never part of a
+    row's words) on the ONE row closest to done — on a key chest `closest()` in `progress/next.js`, the test the next-unlock card uses, now shared;
+    on the Games chest the row the card names, else the first row to do.
+  - The game FILTER rows (`#chest-g`, `#ach-g`) are gone from every tab; the headings do the job. Achievements is grouped too — "General"
+    (`PROGRESS_SCREEN.general`) heads the `g:'all'` rows, then a heading per game — so its rows no longer repeat their game's name (61.9's rule;
+    61.13's flat list and 68.41's "general rows under All" are superseded). The `prog` tour's last step rings the first game heading and takes a
+    tap on any game heading (it rang the filter row).
+  - Customise unlocks: a group per Customise row as before, each its label, "n of m" and a thin bar; each row a fixed left column with a 30px swatch
+    (`unlockArt`) and 12px of clear space, the thin red diagonal across an unearned swatch, then two lines — the name in gold, then the requirement
+    and where it is played on ONE line (61.16's say-the-mode-once kept, the → line gone) — and the state at the right edge: ✓ once earned, else the
+    thin best-so-far bar. A tap on an unearned row still goes to that game and mode (`ach` → `jumpTo` → "Play …?").
+  The lines as they stood before it: "**Customise is its own screen; Progress is ONE TAB PER CHEST** (58.3): Games · Skill · Pro · Author chest,
+  Customise unlocks, Achievements; each chest tab opens with what it needs (`chestNeeds()`); one partition, `tabFor()` in `ui/screens/progress.js`,
+  except that a chest's tab lists every row of its key, a cosmetic-paying one on Customise unlocks too (68.40); `prefs.progTab` `c-<chest>` / `cul`
+  / `ach`." and "**R3: a list appears the moment it is asked for** — no entry animation on any Progress tab or filter (v28 item 1). No secrets
+  (61.14): every row shows its name and what earns it; Achievements is one flat list (61.13); a score-target row has no name (61.12); a game filter
+  shows that game's rows only, general rows (`g:'all'`) under All (68.41)." Gate: `side screens`, "68.40 / 68.42" (written first, FAIL on v0.68);
+  restated there: 8.3 (the game leads the GROUP), v28 items 1 / 4 / 6 (General first, no tier heading), 61.16 (two lines), 68.41 / 68.43 (read off
+  the groups), 68.40 / 68.41 counts (M = the bars); `build 39` L.4b (one row that slides) and L.4c (a chest tab's rows include its game headings);
+  `build 33` B.31's gap measure; `chain and its screens` 2.4 (a heading per game); `button actions` (`pfold` for the two filter acts);
+  `locked decisions` 64.9 (the tour ends on a game heading).

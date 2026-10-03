@@ -45,6 +45,13 @@ function lenCard(g, d, s, L, extra = {}) { const lens = GC(g, d).lens, i = lens.
   return Object.assign({ kind: 'len', key: `${g}:${d}:${s}`, name: comboName(g, d, s), need: L.need, best: B ? num(best, B) : null, frac: B ? along(best, B) : null,
     where: { g, d, s: L.s }, len: { g, d, s } }, extra); }
 const chestCard = id => ({ kind: 'chest', key: 'chest:' + id, name: T(NEXT_CARD.chest, { chest: GRID.chest[id] }), need: id === 'games' ? NEXT_CARD.allModes : NEXT_CARD.whole, go: 'map' });
+/* the bar of tier `t` the player is CLOSEST to clearing — best ÷ target, on lengths that are open, the first of equals. The card's own test, and
+   (build 69, 68.40) the one Progress's NEXT marker uses on a chest tab, so the two can never point at different bars */
+function closest(t) { let top = null;
+  for (const c of COMBOS) { const bar = barOf(c, t); if (bar === null || isCleared(c.key, t) || !isOpen(c.g, c.d) || !lenOpen(c.g, c.d, c.s)) continue;
+    const b = Scores.best(c.g, c.d, c.s), f = b === null ? 0 : along(b, { at: bar, lower: c.bar.dir === 'lower' });
+    if (!top || f > top.f) top = { c, b, f }; }
+  return top; }
 
 function nextPick() { if (prefs.allOpen || chestOpen('thorns')) return null;
   const u = unlocked();
@@ -63,10 +70,7 @@ function nextPick() { if (prefs.allOpen || chestOpen('thorns')) return null;
   if (isShell(t)) return null;
   if (st.whole) { if (chase.gaunt && !gauntDone(chase.gaunt)) return { kind: 'gaunt', key: 'gaunt:' + chase.gaunt, name: T(NEXT_CARD.gaunt, { name: GAUNTLET.name[chase.gaunt] || chase.gaunt }), need: T(NEXT_CARD.gauntNeed, { chest: GRID.chest[chase.id] }), go: 'map', count };
     return Object.assign(chestCard(chase.id), { count }); }
-  let top = null;
-  for (const c of COMBOS) { const bar = barOf(c, t); if (bar === null || isCleared(c.key, t) || !isOpen(c.g, c.d) || !lenOpen(c.g, c.d, c.s)) continue;
-    const b = Scores.best(c.g, c.d, c.s), f = b === null ? 0 : along(b, { at: bar, lower: c.bar.dir === 'lower' });
-    if (!top || f > top.f) top = { c, b, f }; }
+  const top = closest(t);
   if (top) { const { c, b, f } = top;
     return { kind: 'bar', key: 'bar:' + c.key + ':' + t, kt: t, name: comboName(c.g, c.d, c.s), need: wantOf(c, t), best: b === null ? null : scoreTxt(c.g, b, c.d, c.s), frac: f, where: { g: c.g, d: c.d, s: c.s }, count }; }
   for (const c of COMBOS) { if (barOf(c, t) === null || isCleared(c.key, t) || !isOpen(c.g, c.d)) continue; const L = lenLock(c.g, c.d, c.s); if (L) return lenCard(c.g, c.d, c.s, L, { count }); }
@@ -83,4 +87,4 @@ function pickGoal(g, d, s) { const p = nextPick(); if (!p || !p.where || p.where
   if (p.kind === 'bar') return p.where.d === d && p.where.s === s ? keyGoal(g, d, s) : null;
   return null; }
 
-export { nextPick, pickGoal };
+export { closest, nextPick, pickGoal };

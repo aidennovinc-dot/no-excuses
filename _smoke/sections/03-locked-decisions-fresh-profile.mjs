@@ -359,12 +359,18 @@ export async function run() {
       await page.evaluate(async () => (await import('./ui/router.js')).show('s-menu'));
       const p = [await waitText(CP.prog[1])]; await click('#s-menu .item[data-go="s-prog"]'); p.push(await waitText(CP.prog[2]));
       for (let i = 3; i <= 6; i++) { await anywhere(); p.push(await waitText(CP.prog[i])); }
-      await click('#chest-g .chip[data-v="all"]'); await sleep(300); const allHeld = (await box() || {}).text;
-      await click('#chest-g .chip[data-v="hold"]'); await sleep(500);
-      const pEnd = await page.evaluate(() => ({ done: JSON.parse(localStorage.getItem('ne')).prefs.tuts.prog, box: !document.getElementById('tut').hidden, g: document.querySelector('#chest-g .chip.sel')?.dataset.v, tab: document.querySelector('#prog-tabs .chip.sel')?.dataset.tab }));
-      (est.prog.p0 === um(P0) && est.prog.on === 's-over' && p.map(b => b && b.text).join('|') === CP.prog.slice(1).join('|') && p[0].drawn && p[3].drawn && p[4].drawn && p[5].drawn && allHeld === CP.prog[6] && pEnd.done === 'done' && !pEnd.box && pEnd.g === 'hold' && pEnd.tab === 'c-games')
-        ? ok(`64.9 / section C the Progress tutorial: "${um(P0)}" on the first Estimate run's result, then Progress ringed on the menu, its boxes in order (the Games chest line split in two), the tab ringed, a game filter picked to finish (All does nothing)`)
-        : bad('64.9 the Progress tutorial', JSON.stringify({ est, P0, p: p.map(b => b && { t: b.text, drawn: b.drawn }), allHeld, pEnd }));
+      /* AMENDED at build 69 (68.40): the filter row is gone — each game is a heading — so the last box rings the first game's heading and a tap on any
+         game's heading ends it; a tap on the count line above the list does nothing. The tap is a real one on the ring; any game's heading would do
+         (the step's `hit`), the first is the one ringed */
+      await click('#chest-hint'); await sleep(300); const allHeld = (await box() || {}).text;
+      const ring = await page.evaluate(async () => { const a = await (await import('./ui/tutorial.js')).tutAim(), h = document.querySelector('#chest-list .gh[data-g]'); if (!a || !h) return null; const r = h.getBoundingClientRect(), t = document.elementFromPoint(a[0], a[1]);
+        return { a, first: a[0] >= r.left && a[0] <= r.right && a[1] >= r.top && a[1] <= r.bottom, g: t && t.closest('.gh') ? t.closest('.gh').dataset.g : null }; });
+      if (ring) await page.mouse.click(ring.a[0], ring.a[1]); await sleep(500);
+      const pEnd = await page.evaluate(() => ({ done: JSON.parse(localStorage.getItem('ne')).prefs.tuts.prog, box: !document.getElementById('tut').hidden, tab: document.querySelector('#prog-tabs .chip.sel')?.dataset.tab }));
+      pEnd.g = ring && ring.g;
+      (est.prog.p0 === um(P0) && est.prog.on === 's-over' && p.map(b => b && b.text).join('|') === CP.prog.slice(1).join('|') && p[0].drawn && p[3].drawn && p[4].drawn && p[5].drawn && allHeld === CP.prog[6] && pEnd.done === 'done' && !pEnd.box && !!pEnd.g && pEnd.tab === 'c-games' && ring && ring.first)
+        ? ok(`64.9 / section C / 68.40 the Progress tutorial: "${um(P0)}" on the first Estimate run's result, then Progress ringed on the menu, its boxes in order (the Games chest line split in two), the tab ringed, the first game's heading ringed and a tap on a game's heading to finish (a tap elsewhere does nothing)`)
+        : bad('64.9 the Progress tutorial', JSON.stringify({ est, P0, p: p.map(b => b && { t: b.text, drawn: b.drawn }), allHeld, pEnd, ring }));
       await page.evaluate(async () => (await import('./ui/router.js')).show('s-menu'));
       // AMENDED at build 68 (67.15): the menu box is "Tap Scores to take a look"; "You've unlocked Scores" is gone (its result box says it)
       /* AMENDED at build 69 (68.25): inside, after the welcome, the tour is the web's — its rings, a spoke, a game to tap, Overall — walked here with a tap

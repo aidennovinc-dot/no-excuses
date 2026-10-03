@@ -271,10 +271,12 @@ tutorial('prog',[
   { on:pr, room:'s-prog', el:gtab, tap:1, skip:gsel, text:()=>T(TUTORIAL.look,{name:GRID.chest.games}) },
   { on:()=>pr()&&gsel(), room:'s-prog', el:gtab, text:P9[4] },
   { on:()=>pr()&&gsel(), room:'s-prog', el:gtab, text:P9[5] },
-  { on:()=>pr()&&!!$('#prog-tabs [data-tab="c-games"].sel'), room:'s-prog', el:()=>$('#chest-g'), tap:1, hit:t=>{ const b=t.closest&&t.closest('#chest-g .chip'); return !!b&&b.dataset.v!=='all'; }, text:P9[6] },
+  /* build 69 (68.40): the game filter row is gone — each game is a heading on the list — so the last step rings the first game's heading and any
+     game's heading answers it */
+  { on:()=>pr()&&!!$('#prog-tabs [data-tab="c-games"].sel'), room:'s-prog', el:()=>$('#chest-list .gh[data-g]'), tap:1, hit:t=>!!(t.closest&&t.closest('#chest-list .gh[data-g]')), text:P9[6] },
 ],{ opened:()=>menuOpen('s-prog'),
   meta:{ name:'Progress', trigger:'The first Estimate run', start:'That run\'s result, ahead of its toasts (or the main menu, for a player who left it first)', why:'Progress is where every unlock lives, and how to earn it',
-    at:[['Result, or the main menu',''],['Result, or the main menu',''],['Main menu','Progress'],['Progress',''],['Progress',''],['Progress','Games chest tab, to tap (only if another tab is up)'],['Progress','Games chest tab'],['Progress','Games chest tab'],['Progress · Games chest','a game filter (not All)']] } });
+    at:[['Result, or the main menu',''],['Result, or the main menu',''],['Main menu','Progress'],['Progress',''],['Progress',''],['Progress','Games chest tab, to tap (only if another tab is up)'],['Progress','Games chest tab'],['Progress','Games chest tab'],['Progress · Games chest','a game\'s heading']] } });
 /* 64.12: SCORES, after the first Reaction run. Scores ringed on the menu; inside, a welcome, then (build 69, 68.25 — "The Scores tour is built out")
    one box per ring of the web, each ringed with its value from RADAR — the Skill key's, Pro's, Author's — then past the edge (the web), one spoke, a
    game's point on the web to tap (the one must-tap box: it picks that game — its title, chips and top 10 under the web, 68.1 / 68.2) and Overall.
@@ -514,7 +516,7 @@ function tick(){
      and then click once the box is around it, which is just ridiculous." A target less than 90% inside the safe area is brought in by the game as its
      box comes up (smooth, once a step), and the box shows when it has arrived — or after BRING_MS whatever, so nothing can hold the player */
   if(s.el){ const r=union([].concat(el).filter(vis)), k=id+':'+i;
-    if(r&&inView(r)<.9&&!(scrollFor===k&&performance.now()-scrollAt>BRING_MS)){ if(scrollFor!==k){ scrollFor=k; scrollAt=performance.now(); bring(first); } return hide(); } }
+    if(r&&(inView(r)<.9||inRow(first)<.9)&&!(scrollFor===k&&performance.now()-scrollAt>BRING_MS)){ if(scrollFor!==k){ scrollFor=k; scrollAt=performance.now(); bring(first); } return hide(); } }
   cur={ id, i, s }; toastYield();
   const p=place(el,typeof s.text==='function'?s.text():s.text,{ id, i, tap:s.tap, noRing:s.ring===0||!!s.arrow, arrow:s.arrow, tag:s.tag, glow:s.glow, keep:s.keep });
   // build 69 (68.4): what the box is about, for the gate — its target's rectangle, and whether that is the whole screen
@@ -524,6 +526,10 @@ function run(){ if(!timer) timer=setInterval(tick,200); }
 let scrollFor='', scrollAt=0;
 const BRING_MS=1500;
 function inView(r){ const s=insets(), t=s.top, b=innerHeight-s.bottom; return Math.max(0,Math.min(r.bottom,b)-Math.max(r.top,t))/Math.max(1,Math.min(r.height,b-t)); }
+/* build 69 (68.40): and a target in a row that slides sideways — Progress's tabs, one row now — counts only the part that row shows, so a tab slid out
+   of sight is brought back into the row the same way */
+function inRow(el){ for(let p=el&&el.parentElement;p&&p!==document.body;p=p.parentElement){ if(p.scrollWidth<=p.clientWidth+1||!/auto|scroll/.test(getComputedStyle(p).overflowX)) continue;
+  const a=el.getBoundingClientRect(), b=p.getBoundingClientRect(); return Math.max(0,Math.min(a.right,b.right)-Math.max(a.left,b.left))/Math.max(1,a.width); } return 1; }
 function bring(el){ try{ el.scrollIntoView({ block:'center', inline:'nearest', behavior:REDUCE?'auto':'smooth' }); }catch(e){} }
 // while the game brings a target in, the tap belongs to the tutorial as well (its box is about to show)
 function bringing(){ if(!scrollFor||performance.now()-scrollAt>=BRING_MS) return false; const id=active(), d=id&&DEFS[id]; return !!d&&scrollFor===id+':'+d.step(); }
